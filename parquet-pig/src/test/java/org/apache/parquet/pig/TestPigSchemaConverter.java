@@ -57,9 +57,43 @@ public class TestPigSchemaConverter {
     assertEquals(pigSchema, convertedSchema);
   }
 
+  private void testConversion(String pigSchemaString, String schemaString) throws Exception {
+    Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
+    MessageType schema = pigSchemaConverter.convert(pigSchema);
+    MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);
+    assertEquals("converting "+pigSchemaString+" to "+schemaString, expectedMT, schema);
+
+    MessageType filtered = pigSchemaConverter.filter(schema, pigSchema, null);
+    assertEquals("converting "+pigSchemaString+" to "+schemaString+" and filtering", schema.toString(), filtered.toString());
+  }
+
+  private void testFixedConversion(String schemaString, String pigSchemaString)
+      throws Exception {
+    Schema expectedPigSchema = Utils.getSchemaFromString(pigSchemaString);
+    MessageType parquetSchema = MessageTypeParser.parseMessageType(schemaString);
+    Schema pigSchema = pigSchemaConverter.convert(parquetSchema);
+    assertEquals("converting " + schemaString + " to " + pigSchemaString,
+        expectedPigSchema, pigSchema);
+  }
+
   @Test
   public void testSimpleBag() throws Exception {
     testPigConversion("b:{t:(a:int)}");
+  }
+
+  @Test
+  public void testRepeatedPrimitives() throws Exception {
+    testPigConversion("bag_b:{(b: int)}");
+  }
+
+  @Test
+  public void testRepeatedPrimitives2() throws Exception {
+    testPigConversion("bag_b:{(b: chararray)}");
+  }
+
+  @Test
+  public void testRepeatedPrimitivesInAMessage() throws Exception {
+    testPigConversion("(a:chararray, bag_b:{(b: boolean)}, c:int)");
   }
 
   @Test
@@ -97,16 +131,6 @@ public class TestPigSchemaConverter {
         }
       }
     }
-  }
-
-  private void testConversion(String pigSchemaString, String schemaString) throws Exception {
-    Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
-    MessageType schema = pigSchemaConverter.convert(pigSchema);
-    MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);
-    assertEquals("converting "+pigSchemaString+" to "+schemaString, expectedMT, schema);
-
-    MessageType filtered = pigSchemaConverter.filter(schema, pigSchema, null);
-    assertEquals("converting "+pigSchemaString+" to "+schemaString+" and filtering", schema.toString(), filtered.toString());
   }
 
   @Test
@@ -215,14 +239,23 @@ public class TestPigSchemaConverter {
         "}\n",
         "a:{" + PigSchemaConverter.ARRAY_VALUE_NAME + ":(b: chararray)}");
   }
-  
-  private void testFixedConversion(String schemaString, String pigSchemaString)
-      throws Exception {
-    Schema expectedPigSchema = Utils.getSchemaFromString(pigSchemaString);
-    MessageType parquetSchema = MessageTypeParser.parseMessageType(schemaString);
-    Schema pigSchema = pigSchemaConverter.convert(parquetSchema);
-    assertEquals("converting " + schemaString + " to " + pigSchemaString,
-                 expectedPigSchema, pigSchema);
+
+  @Test
+  public void testListOfPrimitiveIsWrapInABag() throws Exception {
+    testFixedConversion(
+        "message pig_schema {\n" +
+            "  repeated binary b (UTF8);\n" +
+            "}\n",
+        "bag_b:{(b: chararray)}");
+  }
+
+  @Test
+  public void testTupleWithRepeatedPrimitive() throws Exception {
+    testConversion(
+        "bag_b:{(b: chararray)}",
+        "message pig_schema {\n" +
+            "  repeated binary b (UTF8);\n" +
+            "}\n");
   }
   
   @Test

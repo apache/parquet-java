@@ -60,8 +60,10 @@ import org.apache.parquet.schema.Type.Repetition;
  *
  */
 public class PigSchemaConverter {
+
   private static final Log LOG = Log.getLog(PigSchemaConverter.class);
   static final String ARRAY_VALUE_NAME = "value";
+  public static final String WRAP_BAG_PREFIX = "bag_";
   private ColumnAccess columnAccess;
 
   public PigSchemaConverter() {
@@ -134,11 +136,20 @@ public class PigSchemaConverter {
         String name = name(fieldSchema.alias, "field_"+i);
         if (schemaToFilter.containsField(name)) {
           newFields.add(filter(schemaToFilter.getType(name), fieldSchema));
+        } else if (name.startsWith(WRAP_BAG_PREFIX)) {
+          String innerFieldName = wrappedName(name);
+          if (schemaToFilter.containsField(innerFieldName)) {
+              newFields.add(filterWrappedPrimitive(schemaToFilter.getType(innerFieldName)));
+          }
         }
       }
       return newFields;
     }
+
+
   }
+
+
 
   /**
    * @param pigSchema the pig schema to turn into a string representation
@@ -147,6 +158,31 @@ public class PigSchemaConverter {
   static String pigSchemaToString(Schema pigSchema) {
     final String pigSchemaString = pigSchema.toString();
     return pigSchemaString.substring(1, pigSchemaString.length() - 1);
+  }
+
+  /**
+   * Check if the name is the name of the bag which wrap a repeated primitive
+   * @param name
+   * @return true if it's a wrapped type (encapsulate in a tuple in a bag), false otherwise
+   */
+  public static boolean isWrappedType(String name) {
+    if (name.startsWith(WRAP_BAG_PREFIX)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if the name is the name of the bag which wrap a repeated primitive
+   * @param name
+   * @return the inner field name or the same name as input if not wrapped by a bag
+   */
+  public static String wrappedName(String name) {
+    String resultName = name;
+    if (isWrappedType(name)){
+      resultName = name.substring(PigSchemaConverter.WRAP_BAG_PREFIX.length(),name.length());
+    }
+    return resultName;
   }
 
   public static RequiredFieldList deserializeRequiredFieldList(String requiredFieldString) {
@@ -192,8 +228,13 @@ public class PigSchemaConverter {
       try{
         FieldSchema innerfieldSchema = getFieldSchema(parquetType);
         if (parquetType.isRepetition(Repetition.REPEATED)) {
-          Schema bagSchema = new Schema(Arrays.asList(innerfieldSchema));
-          fields.add(new FieldSchema(null, bagSchema, DataType.BAG));
+            Schema bagSchema;
+            if (parquetType.isPrimitive()) {
+                bagSchema = new Schema(new FieldSchema(null,new Schema(innerfieldSchema),DataType.TUPLE));
+            } else {
+                bagSchema = new Schema(Arrays.asList(innerfieldSchema));
+            }
+          fields.add(new FieldSchema(WRAP_BAG_PREFIX + parquetType.getName(), bagSchema, DataType.BAG));
         } else {
           fields.add(innerfieldSchema);
         }
@@ -346,42 +387,58 @@ public class PigSchemaConverter {
     return convertWithName(fieldSchema, name);
   }
 
-  private Type convertWithName(FieldSchema fieldSchema, String name) {
+  private Type convertWithName(FieldSchema fieldSchema, String name, Repetition repetition) {
     try {
       switch (fieldSchema.type) {
-      case DataType.BAG:
-        return convertBag(name, fieldSchema);
-      case DataType.TUPLE:
-        return convertTuple(name, fieldSchema, Repetition.OPTIONAL);
-      case DataType.MAP:
-        return convertMap(name, fieldSchema);
-      case DataType.BOOLEAN:
-        return primitive(name, PrimitiveTypeName.BOOLEAN);
-      case DataType.CHARARRAY:
-        return primitive(name, PrimitiveTypeName.BINARY, OriginalType.UTF8);
-      case DataType.INTEGER:
-        return primitive(name, PrimitiveTypeName.INT32);
-      case DataType.LONG:
-        return primitive(name, PrimitiveTypeName.INT64);
-      case DataType.FLOAT:
-        return primitive(name, PrimitiveTypeName.FLOAT);
-      case DataType.DOUBLE:
-        return primitive(name, PrimitiveTypeName.DOUBLE);
-      case DataType.DATETIME:
-        throw new UnsupportedOperationException();
-      case DataType.BYTEARRAY:
-        return primitive(name, PrimitiveTypeName.BINARY);
-      default:
-        throw new SchemaConversionException("Unknown type " + fieldSchema.type + " " + DataType.findTypeName(fieldSchema.type));
+        case DataType.BAG:
+          if (name.startsWith(WRAP_BAG_PREFIX)) {
+            return convertWrappedPrimitive(wrappedName(name), fieldSchema);
+          }
+          return convertBag(name, fieldSchema);
+        case DataType.TUPLE:
+          return convertTuple(name, fieldSchema, Repetition.OPTIONAL);
+        case DataType.MAP:
+          return convertMap(name, fieldSchema);
+        case DataType.BOOLEAN:
+          return primitive(name, PrimitiveTypeName.BOOLEAN, null, repetition);
+        case DataType.CHARARRAY:
+          return primitive(name, PrimitiveTypeName.BINARY, OriginalType.UTF8, repetition);
+        case DataType.INTEGER:
+          return primitive(name, PrimitiveTypeName.INT32, null, repetition);
+        case DataType.LONG:
+          return primitive(name, PrimitiveTypeName.INT64, null, repetition);
+        case DataType.FLOAT:
+          return primitive(name, PrimitiveTypeName.FLOAT, null, repetition);
+        case DataType.DOUBLE:
+          return primitive(name, PrimitiveTypeName.DOUBLE, null, repetition);
+        case DataType.DATETIME:
+          throw new UnsupportedOperationException();
+        case DataType.BYTEARRAY:
+          return primitive(name, PrimitiveTypeName.BINARY, null, repetition);
+        default:
+          throw new SchemaConversionException("Unknown type " + fieldSchema.type + " " + DataType.findTypeName(fieldSchema.type));
       }
     } catch (FrontendException e) {
       throw new SchemaConversionException("can't convert "+fieldSchema, e);
     }
   }
 
+  private Type convertWithName(FieldSchema fieldSchema, String name) {
+    return convertWithName(fieldSchema, name, Repetition.OPTIONAL);
+  }
+
   private Type convert(FieldSchema fieldSchema, int index) {
     return convert(fieldSchema, "field_"+index);
   }
+
+  private Type convertWrappedPrimitive(String wrappedName, FieldSchema fieldSchema) throws FrontendException {
+    FieldSchema innerTuple = fieldSchema.schema.getField(0);
+    FieldSchema innerType = innerTuple.schema.getField(0);
+    return convertWithName(innerType, wrappedName, Repetition.REPEATED);
+  }
+
+
+
 
   /**
    *
@@ -400,6 +457,11 @@ public class PigSchemaConverter {
 
   private String name(String fieldAlias, String defaultName) {
     return fieldAlias == null ? defaultName : fieldAlias;
+  }
+
+
+  private Type primitive(String name, PrimitiveTypeName primitive, OriginalType originalType, Repetition repetition) {
+    return new PrimitiveType(repetition, primitive, name, originalType);
   }
 
   private Type primitive(String name, PrimitiveTypeName primitive, OriginalType originalType) {
@@ -515,5 +577,18 @@ public class PigSchemaConverter {
       innerField = innerField.schema.getField(0);
     }
     return bagType.withNewFields(filter(nested, innerField));
+  }
+
+  /**
+   * Filter wrapped primitives (repeated primitives convert to bag with a tuple for pig)
+   * @param innerType the inner type
+   * @return
+   */
+  private Type filterWrappedPrimitive(Type innerType) {
+    if (DEBUG) LOG.debug("filtering wrapped schema:\n" + innerType);
+    if (innerType.getRepetition() != Repetition.REPEATED) {
+      throw new RuntimeException("inner type should be a repeated primitive: " + innerType);
+    }
+    return innerType;
   }
 }
