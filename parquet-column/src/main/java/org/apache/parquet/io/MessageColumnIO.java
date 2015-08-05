@@ -18,9 +18,12 @@
  */
 package org.apache.parquet.io;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnWriteStore;
@@ -172,16 +175,39 @@ public class MessageColumnIO extends GroupColumnIO {
     private final FieldsMarker[] fieldsWritten;
     private final int[] r;
     private final ColumnWriter[] columnWriter;
+    /** maintain a map of a group and all the leaf nodes underneath it. It's used to optimize writing null for a group node
+     * all the leaves can be called directly without traversing the sub tree of the group node */
+    private Map<GroupColumnIO, List<ColumnWriter>>  groupToLeafWriter = new HashMap<GroupColumnIO, List<ColumnWriter>>();
     private final ColumnWriteStore columns;
     private boolean emptyField = true;
+
+    private void buildGroupToLeafWriterMap(PrimitiveColumnIO primitive, ColumnWriter writer) {
+      GroupColumnIO  parent = primitive.getParent();
+      do {
+        getLeafWriters(parent).add(writer);
+        parent = parent.getParent();
+      } while (parent != null);
+    }
+
+    private List<ColumnWriter> getLeafWriters(GroupColumnIO group) {
+      List<ColumnWriter> writers = groupToLeafWriter.get(group);
+      if (writers == null) {
+        writers = new ArrayList<ColumnWriter>();
+        groupToLeafWriter.put(group, writers);
+      }
+      return writers;
+    }
 
     public MessageColumnIORecordConsumer(ColumnWriteStore columns) {
       this.columns = columns;
       int maxDepth = 0;
       this.columnWriter = new ColumnWriter[MessageColumnIO.this.getLeaves().size()];
+
       for (PrimitiveColumnIO primitiveColumnIO : MessageColumnIO.this.getLeaves()) {
+        ColumnWriter w = columns.getColumnWriter(primitiveColumnIO.getColumnDescriptor());
         maxDepth = Math.max(maxDepth, primitiveColumnIO.getFieldPath().length);
-        columnWriter[primitiveColumnIO.getId()] = columns.getColumnWriter(primitiveColumnIO.getColumnDescriptor());
+        columnWriter[primitiveColumnIO.getId()] = w;
+        buildGroupToLeafWriterMap(primitiveColumnIO, w);
       }
 
       fieldsWritten = new FieldsMarker[maxDepth];
@@ -271,10 +297,13 @@ public class MessageColumnIO extends GroupColumnIO {
         columnWriter[((PrimitiveColumnIO)undefinedField).getId()].writeNull(r, d);
       } else {
         GroupColumnIO groupColumnIO = (GroupColumnIO)undefinedField;
-        int childrenCount = groupColumnIO.getChildrenCount();
-        for (int i = 0; i < childrenCount; i++) {
-          writeNull(groupColumnIO.getChild(i), r, d);
-        }
+        writeNullToLeaves(groupColumnIO, r, d);
+      }
+    }
+
+    private void writeNullToLeaves(GroupColumnIO group, int r, int d) {
+      for(ColumnWriter leafWriter: groupToLeafWriter.get(group)) {
+        leafWriter.writeNull(r,d);
       }
     }
 
