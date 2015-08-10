@@ -180,16 +180,6 @@ public class MessageColumnIO extends GroupColumnIO {
      */
     private Map<GroupColumnIO, List<ColumnWriter>> groupToLeafWriter = new HashMap<GroupColumnIO, List<ColumnWriter>>();
 
-    class NullValue {
-      int r;
-      int d;
-
-      public NullValue(int r, int d) {
-        this.r = r;
-        this.d = d;
-      }
-    }
-
     /**
      * cache the nulls for a group node. It only stores the repetition level, since the definition level
      * should always be the definition level of the parent node
