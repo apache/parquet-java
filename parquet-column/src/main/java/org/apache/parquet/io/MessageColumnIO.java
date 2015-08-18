@@ -345,10 +345,12 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     private void cacheNullForGroup(GroupColumnIO group, int r) {
-      if (!groupNullCache.containsKey(group)) {
-        groupNullCache.put(group, new IntArrayList());
+      IntArrayList nulls = groupNullCache.get(group);
+      if (nulls == null) {
+        nulls = new IntArrayList();
+        groupNullCache.put(group, nulls);
       }
-      groupNullCache.get(group).add(r);
+      nulls.add(r);
     }
 
     private void writeNullToLeaves(GroupColumnIO group) {
