@@ -379,9 +379,11 @@ public class MessageColumnIO extends GroupColumnIO {
     public void startGroup() {
       if (DEBUG) log("startGroup()");
       GroupColumnIO group = (GroupColumnIO) currentColumnIO;
+
       // current group is not null, need to flush all the nulls that were cached before
-      if (hasNullCache(group))
+      if (hasNullCache(group)) {
         flushCachedNulls(group);
+      }
 
       ++currentLevel;
       r[currentLevel] = r[currentLevel - 1];
