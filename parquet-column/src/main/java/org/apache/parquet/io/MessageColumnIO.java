@@ -30,6 +30,7 @@ import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.column.values.dictionary.IntList;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -47,6 +48,7 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntIterator;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
@@ -360,7 +362,8 @@ public class MessageColumnIO extends GroupColumnIO {
 
       int parentDefinitionLevel = group.getParent().getDefinitionLevel();
       for (ColumnWriter leafWriter : groupToLeafWriter.get(group)) {
-        for (int repetitionLevel : groupNullCache.get(group)) {
+        for (IntIterator iter = nullCache.iterator(); iter.hasNext();) {
+          int repetitionLevel = iter.nextInt();
           leafWriter.writeNull(repetitionLevel, parentDefinitionLevel);
         }
       }
