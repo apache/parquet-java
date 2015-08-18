@@ -52,6 +52,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 /**
  * Message level of the IO structure
  *
+ *
  * @author Julien Le Dem
  */
 public class MessageColumnIO extends GroupColumnIO {
@@ -174,13 +175,19 @@ public class MessageColumnIO extends GroupColumnIO {
     private final FieldsMarker[] fieldsWritten;
     private final int[] r;
     private final ColumnWriter[] columnWriter;
+
     /**
-     * maintain a map of a group and all the leaf nodes underneath it. It's used to optimize writing null for a group node
-     * all the leaves can be called directly without traversing the sub tree of the group node
+     * maintain a map of groups and all the leaf nodes underneath it. It's used to optimize writing null for a group node.
+     * Instead of using recursion calls, all the leaves can be called directly without traversing the sub tree of the group node
      */
     private Map<GroupColumnIO, List<ColumnWriter>> groupToLeafWriter = new HashMap<GroupColumnIO, List<ColumnWriter>>();
 
     /**
+     * To improve null writing performance, we cache nulls on group node. We flush nulls when a
+     * non-null value hits the group node.
+     *
+     * Intuitively, when we encounter a group node that is null, all the leaves underneath it should be null
+     *
      * cache the nulls for a group node. It only stores the repetition level, since the definition level
      * should always be the definition level of the parent node
      */
