@@ -19,6 +19,7 @@
 package org.apache.parquet.tools.read;
 
 import com.google.common.collect.Maps;
+import org.codehaus.jackson.node.BinaryNode;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -52,7 +53,7 @@ public class SimpleMapRecord extends SimpleRecord {
         return Arrays.toString((boolean[]) kvValue);
       }
       else if (type.getComponentType() == byte.class) {
-        return Arrays.toString((byte[]) kvValue);
+        return new BinaryNode((byte[]) kvValue).asText();
       }
       else if (type.getComponentType() == char.class) {
         return Arrays.toString((char[]) kvValue);
