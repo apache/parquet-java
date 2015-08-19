@@ -375,6 +375,9 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         hasFieldsIgnored |= true;
         continue;
       }
+      
+      childFieldsPresent++;
+
       buffer.add(new Action() {
         @Override
         public void write(TProtocol out) throws TException {
@@ -386,11 +389,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
           return "f=" + currentField.id + "<t=" + typeName(currentField.type) + ">: ";
         }
       });
-      boolean wasIgnored = readOneValue(in, field.type, buffer, expectedField.getType());
-      if (!wasIgnored) {
-        childFieldsPresent++;
-      }
-      hasFieldsIgnored |= wasIgnored;
+      hasFieldsIgnored |= readOneValue(in, field.type, buffer, expectedField.getType());
       in.readFieldEnd();
       buffer.add(FIELD_END);
     }

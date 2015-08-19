@@ -220,6 +220,43 @@ public class TestProtocolReadToWrite {
     assertEquals(0, countingHandler.fieldIgnoredCount);
   }
 
+  @Test
+  public void testUnionWithStructWithUnknownField() throws Exception {
+    CountingErrorHandler countingHandler = new CountingErrorHandler();
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(UnionV3.class), countingHandler);
+    ByteArrayOutputStream in = new ByteArrayOutputStream();
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+    UnionV3 validUnion = UnionV3.aStruct(new StructV1("a valid struct"));
+    StructV2 structV2 = new StructV2("a valid struct");
+    structV2.setAge("a valid age");
+    UnionThatLooksLikeUnionV3 unionWithUnknownStructField = UnionThatLooksLikeUnionV3.aStruct(structV2);
+
+    validUnion.write(protocol(in));
+    unionWithUnknownStructField.write(protocol(in));
+
+    ByteArrayInputStream baos = new ByteArrayInputStream(in.toByteArray());
+
+    // both should not throw
+    p.readOne(protocol(baos), protocol(out));
+    p.readOne(protocol(baos), protocol(out));
+
+    assertEquals(1, countingHandler.recordCountOfMissingFields);
+    assertEquals(1, countingHandler.fieldIgnoredCount);
+
+    in = new ByteArrayOutputStream();
+    validUnion.write(protocol(in));
+    unionWithUnknownStructField.write(protocol(in));
+
+    baos = new ByteArrayInputStream(in.toByteArray());
+
+    // both should not throw
+    p.readOne(protocol(baos), protocol(out));
+    p.readOne(protocol(baos), protocol(out));
+
+    assertEquals(2, countingHandler.recordCountOfMissingFields);
+    assertEquals(2, countingHandler.fieldIgnoredCount);
+  }
 
   /**
    * When enum value in data has an undefined index, it's considered as corrupted record and will be skipped.
