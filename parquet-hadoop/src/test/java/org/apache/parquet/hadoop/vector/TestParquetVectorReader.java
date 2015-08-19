@@ -31,6 +31,8 @@ import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetRecordReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.VectorizedParquetReader;
+import org.apache.parquet.hadoop.VectorizedParquetRecordReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
@@ -126,7 +128,7 @@ public abstract class TestParquetVectorReader
     conf.set(PARQUET_READ_SCHEMA, schemaString);
     switch (readerType) {
       case NON_MR:
-        return ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build();
+        return new VectorizedParquetReader(ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build());
       case MR:
         Job vectorJob = new Job(conf, "read vector");
         ParquetInputFormat.setInputPaths(vectorJob, file);
@@ -135,7 +137,7 @@ public abstract class TestParquetVectorReader
         TaskAttemptContext context = newTaskAttemptContext(vectorJob.getConfiguration(), new TaskAttemptID());
         ParquetRecordReader mrReader = (ParquetRecordReader) parquetInputFormat.createRecordReader(split, context);
         mrReader.initialize(split, context);
-        return mrReader;
+        return new VectorizedParquetRecordReader(mrReader);
       default:
         throw new IllegalArgumentException("Invalid reader type");
     }

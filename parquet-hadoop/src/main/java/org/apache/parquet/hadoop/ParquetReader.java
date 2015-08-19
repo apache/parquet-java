@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -49,13 +50,12 @@ import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.io.vector.ObjectColumnVector;
 import org.apache.parquet.io.vector.RowBatch;
-import org.apache.parquet.io.vector.VectorizedReader;
 
 /**
  * Read records from a Parquet file.
  * TODO: too many constructors (https://issues.apache.org/jira/browse/PARQUET-39)
  */
-public class ParquetReader<T> implements VectorizedReader<T> {
+public class ParquetReader<T> implements Closeable {
 
   private final ReadSupport<T> readSupport;
   private final Configuration conf;
@@ -183,7 +183,6 @@ public class ParquetReader<T> implements VectorizedReader<T> {
    * @return the row batch that was read
    * @throws java.io.IOException
    */
-  @Override
   public RowBatch nextBatch(RowBatch previous, Class<T> clazz) throws IOException {
     RowBatch rowBatch = previous;
     if (rowBatch == null) {
@@ -208,7 +207,6 @@ public class ParquetReader<T> implements VectorizedReader<T> {
    * @return the row batch that was read
    * @throws java.io.IOException
    */
-   @Override
    public RowBatch nextBatch(RowBatch previous) throws IOException {
      MessageType requestedSchema = readContext.getRequestedSchema();
      List<ColumnDescriptor> columns = requestedSchema.getColumns();

@@ -61,7 +61,6 @@ import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.io.vector.RowBatch;
-import org.apache.parquet.io.vector.VectorizedReader;
 
 /**
  * Reads the records from a block of a Parquet file
@@ -72,7 +71,7 @@ import org.apache.parquet.io.vector.VectorizedReader;
  *
  * @param <T> type of the materialized records
  */
-public class ParquetRecordReader<T> extends RecordReader<Void, T> implements VectorizedReader<T> {
+public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   private static final Log LOG = Log.getLog(ParquetRecordReader.class);
   private final InternalParquetRecordReader<T> internalReader;
@@ -250,7 +249,6 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> implements Vec
    * @return the row batch that was read
    * @throws java.io.IOException
    */
-  @Override
   public RowBatch nextBatch(RowBatch previous, Class<T> clazz) throws IOException {
     throw new UnsupportedOperationException("Reading a batch of rows of complex types is not supported");
   }
@@ -262,7 +260,6 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> implements Vec
    * @return the row batch that was read
    * @throws java.io.IOException
    */
-  @Override
   public RowBatch nextBatch(RowBatch previous) throws IOException {
     MessageType requestedSchema = readContext.getRequestedSchema();
     List<ColumnDescriptor> columns = requestedSchema.getColumns();
