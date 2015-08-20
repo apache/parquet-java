@@ -481,7 +481,7 @@ public class TestColumnIO {
     for (Group group : groups) {
       final Group got = recordReader.read();
       assertEquals("deserialization does not display the same result",
-                   group.toString(), got.toString());
+                   group.toString(), got == null ? "" : got.toString());
     }
   }
 
