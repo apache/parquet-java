@@ -75,4 +75,18 @@ public class CorruptStatisticsTest {
     assertFalse(CorruptStatistics.shouldIgnoreStatistics("impala version (build)", PrimitiveTypeName.BINARY));
 
   }
+
+  @Test
+  public void testDistributionCorruptStatistics() {
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.5.0-cdh5.4.999 (build abcd)", PrimitiveTypeName.BINARY));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.5.0-cdh5.5.0-SNAPSHOT (build 956ed6c14c611b4c4eaaa1d6e5b9a9c6d4dfa336)", PrimitiveTypeName.BINARY));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.5.0-cdh5.5.0 (build abcd)", PrimitiveTypeName.BINARY));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.5.0-cdh5.5.1 (build abcd)", PrimitiveTypeName.BINARY));
+    assertFalse(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.5.0-cdh5.6.0 (build abcd)", PrimitiveTypeName.BINARY));
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.4.10 (build abcd)", PrimitiveTypeName.BINARY));
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.5.0 (build abcd)", PrimitiveTypeName.BINARY));
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.5.1 (build abcd)", PrimitiveTypeName.BINARY));
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.6.0 (build abcd)", PrimitiveTypeName.BINARY));
+    assertTrue(CorruptStatistics.shouldIgnoreStatistics("parquet-mr version 1.7.0 (build abcd)", PrimitiveTypeName.BINARY));
+  }
 }
