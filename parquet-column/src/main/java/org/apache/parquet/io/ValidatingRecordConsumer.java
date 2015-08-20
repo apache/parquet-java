@@ -126,6 +126,10 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     types.pop();
     previousField.pop();
   }
+  @Override
+  public void flush(){
+    delegate.flush();
+  }
 
   private void validate(PrimitiveTypeName p) {
     Type currentType = types.peek().asGroupType().getType(fields.peek());

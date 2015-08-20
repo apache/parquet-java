@@ -30,6 +30,7 @@ import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.column.values.dictionary.IntList;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -46,6 +47,8 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntIterator;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
@@ -53,7 +56,6 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  *
  *
  * @author Julien Le Dem
- *
  */
 public class MessageColumnIO extends GroupColumnIO {
   private static final Log logger = Log.getLog(MessageColumnIO.class);
@@ -144,6 +146,38 @@ public class MessageColumnIO extends GroupColumnIO {
     });
   }
 
+  /**
+   * To improve null writing performance, we cache null values on group nodes. We flush nulls when a
+   * non-null value hits the group node.
+   *
+   * Intuitively, when a group node hits a null value, all the leaves underneath it should be null.
+   * A direct way of doing it is to write nulls for all the leaves underneath it when a group node
+   * is null. This approach is not optimal, consider following case:
+   *
+   *    - When the schema is really wide where for each group node, there are thousands of leaf
+   *    nodes underneath it.
+   *    - When the data being written is really sparse, group nodes could hit nulls frequently.
+   *
+   * With the direct approach, if a group node hit null values a thousand times, and there are a
+   * thousand nodes underneath it.
+   * For each null value, it iterates over a thousand leaf writers to write null values and it
+   *  will do it for a thousand null values.
+   *
+   * In the above case, each leaf writer maintains it's own buffer of values, calling thousands of
+   * them in turn is very bad for memory locality. Instead each group node can remember the null values
+   * encountered and flush only when a non-null value hits the group node. In this way, when we flush
+   * null values, we only iterate through all the leaves 1 time and multiple cached null values are
+   * flushed to each leaf in a tight loop. This implementation has following characteristics.
+   *
+   *    1. When a group node hits a null value, it adds the repetition level of the null value to
+   *    the groupNullCache. The definition level of the cached nulls should always be the same as
+   *    the definition level of the group node so there is no need to store it.
+   *
+   *    2. When a group node hits a non null value and it has null value cached, it should flush null
+   *    values and start from his children group nodes first. This make sure the order of null values
+   *     being flushed is correct.
+   *
+   */
   private class MessageColumnIORecordConsumer extends RecordConsumer {
     private ColumnIO currentColumnIO;
     private int currentLevel = 0;
@@ -154,8 +188,8 @@ public class MessageColumnIO extends GroupColumnIO {
       @Override
       public String toString() {
         return "VistedIndex{" +
-                "vistedIndexes=" + vistedIndexes +
-                '}';
+            "vistedIndexes=" + vistedIndexes +
+            '}';
       }
 
       public void reset(int fieldsCount) {
@@ -175,14 +209,24 @@ public class MessageColumnIO extends GroupColumnIO {
     private final FieldsMarker[] fieldsWritten;
     private final int[] r;
     private final ColumnWriter[] columnWriter;
-    /** maintain a map of a group and all the leaf nodes underneath it. It's used to optimize writing null for a group node
-     * all the leaves can be called directly without traversing the sub tree of the group node */
-    private Map<GroupColumnIO, List<ColumnWriter>>  groupToLeafWriter = new HashMap<GroupColumnIO, List<ColumnWriter>>();
+
+    /**
+     * Maintain a map of groups and all the leaf nodes underneath it. It's used to optimize writing null for a group node.
+     * Instead of using recursion calls, all the leaves can be called directly without traversing the sub tree of the group node
+     */
+    private Map<GroupColumnIO, List<ColumnWriter>> groupToLeafWriter = new HashMap<GroupColumnIO, List<ColumnWriter>>();
+
+
+    /*
+     * Cache nulls for each group node. It only stores the repetition level, since the definition level
+     * should always be the definition level of the group node.
+     */
+    private Map<GroupColumnIO, IntArrayList> groupNullCache = new HashMap<GroupColumnIO, IntArrayList>();
     private final ColumnWriteStore columns;
     private boolean emptyField = true;
 
     private void buildGroupToLeafWriterMap(PrimitiveColumnIO primitive, ColumnWriter writer) {
-      GroupColumnIO  parent = primitive.getParent();
+      GroupColumnIO parent = primitive.getParent();
       do {
         getLeafWriters(parent).add(writer);
         parent = parent.getParent();
@@ -227,7 +271,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private void log(Object m) {
       String indent = "";
-      for (int i = 0; i<currentLevel; ++i) {
+      for (int i = 0; i < currentLevel; ++i) {
         indent += "  ";
       }
       logger.debug(indent + m);
@@ -238,7 +282,7 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) log("< MESSAGE START >");
       currentColumnIO = MessageColumnIO.this;
       r[0] = 0;
-      int numberOfFieldsToVisit = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      int numberOfFieldsToVisit = ((GroupColumnIO) currentColumnIO).getChildrenCount();
       fieldsWritten[0].reset(numberOfFieldsToVisit);
       if (DEBUG) printState();
     }
@@ -255,7 +299,7 @@ public class MessageColumnIO extends GroupColumnIO {
     public void startField(String field, int index) {
       try {
         if (DEBUG) log("startField(" + field + ", " + index + ")");
-        currentColumnIO = ((GroupColumnIO)currentColumnIO).getChild(index);
+        currentColumnIO = ((GroupColumnIO) currentColumnIO).getChild(index);
         emptyField = true;
         if (DEBUG) printState();
       } catch (RuntimeException e) {
@@ -276,11 +320,11 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     private void writeNullForMissingFieldsAtCurrentLevel() {
-      int currentFieldsCount = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      int currentFieldsCount = ((GroupColumnIO) currentColumnIO).getChildrenCount();
       for (int i = 0; i < currentFieldsCount; i++) {
         if (!fieldsWritten[currentLevel].isWritten(i)) {
           try {
-            ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(i);
+            ColumnIO undefinedField = ((GroupColumnIO) currentColumnIO).getChild(i);
             int d = currentColumnIO.getDefinitionLevel();
             if (DEBUG)
               log(Arrays.toString(undefinedField.getFieldPath()) + ".writeNull(" + r[currentLevel] + "," + d + ")");
@@ -294,17 +338,36 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private void writeNull(ColumnIO undefinedField, int r, int d) {
       if (undefinedField.getType().isPrimitive()) {
-        columnWriter[((PrimitiveColumnIO)undefinedField).getId()].writeNull(r, d);
+        columnWriter[((PrimitiveColumnIO) undefinedField).getId()].writeNull(r, d);
       } else {
-        GroupColumnIO groupColumnIO = (GroupColumnIO)undefinedField;
-        writeNullToLeaves(groupColumnIO, r, d);
+        GroupColumnIO groupColumnIO = (GroupColumnIO) undefinedField;
+        // only cache the repetition level, the definition level should always be the definition level of the parent node
+        cacheNullForGroup(groupColumnIO, r);
       }
     }
 
-    private void writeNullToLeaves(GroupColumnIO group, int r, int d) {
-      for(ColumnWriter leafWriter: groupToLeafWriter.get(group)) {
-        leafWriter.writeNull(r,d);
+    private void cacheNullForGroup(GroupColumnIO group, int r) {
+      IntArrayList nulls = groupNullCache.get(group);
+      if (nulls == null) {
+        nulls = new IntArrayList();
+        groupNullCache.put(group, nulls);
       }
+      nulls.add(r);
+    }
+
+    private void writeNullToLeaves(GroupColumnIO group) {
+      IntArrayList nullCache = groupNullCache.get(group);
+      if (nullCache == null || nullCache.isEmpty())
+        return;
+
+      int parentDefinitionLevel = group.getParent().getDefinitionLevel();
+      for (ColumnWriter leafWriter : groupToLeafWriter.get(group)) {
+        for (IntIterator iter = nullCache.iterator(); iter.hasNext();) {
+          int repetitionLevel = iter.nextInt();
+          leafWriter.writeNull(repetitionLevel, parentDefinitionLevel);
+        }
+      }
+      nullCache.clear();
     }
 
     private void setRepetitionLevel() {
@@ -315,13 +378,37 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void startGroup() {
       if (DEBUG) log("startGroup()");
+      GroupColumnIO group = (GroupColumnIO) currentColumnIO;
 
-      ++ currentLevel;
+      // current group is not null, need to flush all the nulls that were cached before
+      if (hasNullCache(group)) {
+        flushCachedNulls(group);
+      }
+
+      ++currentLevel;
       r[currentLevel] = r[currentLevel - 1];
 
-      int fieldsCount = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      int fieldsCount = ((GroupColumnIO) currentColumnIO).getChildrenCount();
       fieldsWritten[currentLevel].reset(fieldsCount);
       if (DEBUG) printState();
+    }
+
+    private boolean hasNullCache(GroupColumnIO group) {
+      IntArrayList nulls = groupNullCache.get(group);
+      return nulls != null && !nulls.isEmpty();
+    }
+
+
+    private void flushCachedNulls(GroupColumnIO group) {
+      //flush children first
+      for (int i = 0; i < group.getChildrenCount(); i++) {
+        ColumnIO child = group.getChild(i);
+        if (child instanceof GroupColumnIO) {
+          flushCachedNulls((GroupColumnIO) child);
+        }
+      }
+      //then flush itself
+      writeNullToLeaves(group);
     }
 
     @Override
@@ -329,14 +416,14 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) log("endGroup()");
       emptyField = false;
       writeNullForMissingFieldsAtCurrentLevel();
-      -- currentLevel;
+      --currentLevel;
 
       setRepetitionLevel();
       if (DEBUG) printState();
     }
 
     private ColumnWriter getColumnWriter() {
-      return columnWriter[((PrimitiveColumnIO)currentColumnIO).getId()];
+      return columnWriter[((PrimitiveColumnIO) currentColumnIO).getId()];
     }
 
     @Override
@@ -399,6 +486,12 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) printState();
     }
 
+
+    //should flush null for all groups
+    @Override
+    public void flush() {
+      flushCachedNulls(MessageColumnIO.this);
+    }
   }
 
   public RecordConsumer getRecordWriter(ColumnWriteStore columns) {
@@ -421,6 +514,6 @@ public class MessageColumnIO extends GroupColumnIO {
 
   @Override
   public MessageType getType() {
-    return (MessageType)super.getType();
+    return (MessageType) super.getType();
   }
 }

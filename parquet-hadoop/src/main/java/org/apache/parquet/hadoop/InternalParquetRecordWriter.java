@@ -37,6 +37,7 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
+import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 
 class InternalParquetRecordWriter<T> {
@@ -63,6 +64,7 @@ class InternalParquetRecordWriter<T> {
 
   private ColumnWriteStore columnStore;
   private ColumnChunkPageWriteStore pageStore;
+  private RecordConsumer recordConsumer;
 
 
   /**
@@ -106,7 +108,8 @@ class InternalParquetRecordWriter<T> {
         pageStore,
         pageSize);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
-    writeSupport.prepareForWrite(columnIO.getRecordWriter(columnStore));
+    this.recordConsumer = columnIO.getRecordWriter(columnStore);
+    writeSupport.prepareForWrite(recordConsumer);
   }
 
   public void close() throws IOException, InterruptedException {
@@ -154,6 +157,7 @@ class InternalParquetRecordWriter<T> {
 
   private void flushRowGroupToStore()
       throws IOException {
+    recordConsumer.flush();
     LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.getAllocatedSize()));
     if (columnStore.getAllocatedSize() > (3 * rowGroupSizeThreshold)) {
       LOG.warn("Too much memory used: " + columnStore.memUsageString());
