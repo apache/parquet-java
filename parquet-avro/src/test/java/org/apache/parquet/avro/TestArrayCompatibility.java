@@ -669,11 +669,11 @@ public class TestArrayCompatibility {
             rc.startField("locations", 0);
 
             rc.startGroup();
-            rc.startField("array", 0); // start writing array contents
+            rc.startField("bag", 0); // start writing array contents
 
             // write a non-null element
             rc.startGroup(); // array level
-            rc.startField("element", 0);
+            rc.startField("array_element", 0);
 
             rc.startGroup();
             rc.startField("latitude", 0);
@@ -684,12 +684,12 @@ public class TestArrayCompatibility {
             rc.endField("longitude", 1);
             rc.endGroup();
 
-            rc.endField("element", 0);
+            rc.endField("array_element", 0);
             rc.endGroup(); // array level
 
             // write a second non-null element
             rc.startGroup(); // array level
-            rc.startField("element", 0);
+            rc.startField("array_element", 0);
 
             rc.startGroup();
             rc.startField("latitude", 0);
@@ -700,10 +700,10 @@ public class TestArrayCompatibility {
             rc.endField("longitude", 1);
             rc.endGroup();
 
-            rc.endField("element", 0);
+            rc.endField("array_element", 0);
             rc.endGroup(); // array level
 
-            rc.endField("array", 0); // finished writing array contents
+            rc.endField("bag", 0); // finished writing array contents
             rc.endGroup();
 
             rc.endField("locations", 0);
@@ -876,6 +876,11 @@ public class TestArrayCompatibility {
   @Test
   public void testThriftCompatListOfPrimitiveList() throws Exception {
     Path test = writeDirect(
+        // This Parquet schema is converted from the following Thrift schema:
+        //
+        //   struct ListOfPrimitiveList {
+        //     1: list<list<i32>> list_of_list_of_ints;
+        //   }
         "message ListOfPrimitiveList {" +
             "  required group list_of_list_of_ints (LIST) {" +
             "    repeated group list_of_list_of_ints_tuple (LIST) {" +
