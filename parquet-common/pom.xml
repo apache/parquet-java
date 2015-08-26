@@ -18,10 +18,10 @@
   -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>com.twitter</groupId>
+    <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.6.0rc3-drill-r0.3</version>
+    <version>1.8.2-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -29,13 +29,19 @@
   <artifactId>parquet-common</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Common (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet Common</name>
+  <url>https://parquet.apache.org</url>
 
   <properties>
   </properties>
 
   <dependencies>
+    <dependency>
+        <groupId>org.semver</groupId>
+        <artifactId>api</artifactId>
+        <version>${semver.api.version}</version>
+        <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -46,6 +52,34 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.2.1</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-generator</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <mainClass>org.apache.parquet.version.Generator</mainClass>
+          <includePluginDependencies>true</includePluginDependencies>
+          <arguments>
+            <argument>${basedir}/target/generated-src</argument>
+          </arguments>
+          <sourceRoot>${basedir}/target/generated-src</sourceRoot>
+        </configuration>
       </plugin>
     </plugins>
   </build>

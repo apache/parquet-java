@@ -4,22 +4,23 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>14</version>
+    <version>16</version>
   </parent>
 
-  <groupId>com.twitter</groupId>
+  <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.6.0rc3-drill-r0.3</version>
+  <version>1.8.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Apache Parquet MR (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet MR</name>
+  <url>https://parquet.apache.org</url>
   <description>Parquet is a columnar storage format that supports nested data. This provides the java implementation.</description>
 
   <scm>
-    <connection>scm:git:git@github.com:apache/incubator-parquet-mr.git</connection>
-    <url>scm:git:git@github.com:apache/incubator-parquet-mr.git</url>
-    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-parquet-format.git</developerConnection>
+    <connection>scm:git:git@github.com:apache/parquet-mr.git</connection>
+    <url>scm:git:git@github.com:apache/parquet-mr.git</url>
+    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/parquet-mr.git</developerConnection>
+    <tag>HEAD</tag>
   </scm>
 
   <licenses>
@@ -37,15 +38,15 @@
   <mailingLists>
     <mailingList>
       <name>Dev Mailing List</name>
-      <post>dev@parquet.incubator.apache.org</post>
-      <subscribe>dev-subscribe@parquet.incubator.apache.org</subscribe>
-      <unsubscribe>dev-unsubscribe@parquet.incubator.apache.org</unsubscribe>
+      <post>dev@parquet.apache.org</post>
+      <subscribe>dev-subscribe@parquet.apache.org</subscribe>
+      <unsubscribe>dev-unsubscribe@parquet.apache.org</unsubscribe>
     </mailingList>
     <mailingList>
       <name>Commits Mailing List</name>
-      <post>commits@parquet.incubator.apache.org</post>
-      <subscribe>commits-subscribe@parquet.incubator.apache.org</subscribe>
-      <unsubscribe>commits-unsubscribe@parquet.incubator.apache.org</unsubscribe>
+      <post>commits@parquet.apache.org</post>
+      <subscribe>commits-subscribe@parquet.apache.org</subscribe>
+      <unsubscribe>commits-unsubscribe@parquet.apache.org</unsubscribe>
     </mailingList>
   </mailingLists>
 
@@ -55,32 +56,6 @@
       <email>julien@twitter.com</email>
     </developer>
   </developers>
-
-  <distributionManagement>
-    <snapshotRepository>
-      <id>sonatype-nexus-snapshots</id>
-      <name>Sonatype OSS</name>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-    <repository>
-      <id>sonatype-nexus-staging</id>
-      <name>Nexus Release Repository</name>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-    </repository>
-  </distributionManagement>
-
-  <repositories>
-    <repository>
-      <id>sonatype-nexus-snapshots</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-     </repository>
-  </repositories>
 
   <!-- this is needed for maven-thrift-plugin, would like to remove this.
    see: https://issues.apache.org/jira/browse/THRIFT-1536  -->
@@ -101,23 +76,28 @@
     <jackson.groupId>org.codehaus.jackson</jackson.groupId>
     <jackson.version>1.9.11</jackson.version>
     <jackson.package>org.codehaus.jackson</jackson.package>
-    <shade.prefix>parquet</shade.prefix>
+    <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.3.0</hadoop.version>
     <cascading.version>2.5.3</cascading.version>
-    <parquet.format.version>2.2.0-rc1</parquet.format.version>
+    <parquet.format.version>2.3.0-incubating</parquet.format.version>
     <log4j.version>1.2.17</log4j.version>
-    <previous.version>1.6.0rc1</previous.version>
+    <previous.version>1.7.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <scala.version>2.10.4</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.10</scala.binary.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.11.1</pig.version>
+    <!-- not sure if this is needed, this was just an empty tag in master TODO review -->
     <pig.classifier>h2</pig.classifier>
+    <thrift.version>0.7.0</thrift.version>
+    <fastutil.version>6.5.7</fastutil.version>
+    <semver.api.version>0.9.33</semver.api.version>
   </properties>
 
   <modules>
     <module>parquet-avro</module>
+    <module>parquet-benchmarks</module>
     <module>parquet-cascading</module>
     <module>parquet-column</module>
     <module>parquet-common</module>
@@ -191,7 +171,7 @@
           <aggregate>true</aggregate>
           <instrumentation>
             <ignores>
-              <ignore>parquet.Log.*</ignore>
+              <ignore>org.apache.parquet.Log.*</ignore>
               <ignore>java.lang.UnsupportedOperationException.*</ignore>
             </ignores>
             <excludes>
@@ -208,6 +188,16 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <!-- Disable the source artifact from ASF parent -->
+          <artifactId>maven-assembly-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>source-release-assembly</id>
+              <phase>none</phase>
+            </execution>
+          </executions>
+        </plugin>
         <plugin>
           <artifactId>maven-enforcer-plugin</artifactId>
           <version>1.3.1</version>
@@ -231,25 +221,26 @@
                    <dumpDetails>true</dumpDetails>
                    <previousVersion>${previous.version}</previousVersion>
                    <excludes>
-                     <exclude>parquet/org/**</exclude>
-                     <exclude>parquet/column/**</exclude>
-                     <exclude>parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>org/apache/parquet/thrift/projection/**</exclude>
+                     <exclude>org/apache/parquet/thrift/ThriftSchemaConverter</exclude>
+                     <exclude>org/apache/parquet/filter2/**</exclude>
+                     <exclude>org/apache/parquet/column/**</exclude>
+                     <exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>shaded/**</exclude> <!-- shaded by parquet -->
+                     <!-- temporary exclusions for false-positives -->
+                     <exclude>org/apache/parquet/Version</exclude>
+                     <exclude>org/apache/parquet/schema/**</exclude> <!-- methods moved to new superclass -->
+                     <exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> <!-- not public -->
+                     <exclude>org/apache/parquet/avro/AvroParquetReader</exclude> <!-- returns subclass of old return class -->
+                     <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> <!-- made public -->
+                     <exclude>org/apache/parquet/io/ColumnIOFactory$ColumnIOCreatorVisitor</exclude> <!-- removed non-API class -->
+                     <exclude>org/apache/parquet/io/ColumnIOFactory/**</exclude> <!-- removed non-API class and methods-->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
              </configuration>
            </execution>
          </executions>
-        </plugin>
-        <plugin>
-         <groupId>org.apache.maven.plugins</groupId>
-         <artifactId>maven-release-plugin</artifactId>
-         <version>2.1</version>
-         <configuration>
-          <mavenExecutorId>forked-path</mavenExecutorId>
-          <useReleaseProfile>false</useReleaseProfile>
-          <arguments>-Psonatype-oss-release</arguments>
-         </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -471,53 +462,6 @@
         </plugins>
       </build>
     </profile>
-    <profile>
-      <id>sonatype-oss-release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>2.1.2</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <goals>
-                  <goal>jar-no-fork</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <version>2.7</version>
-            <executions>
-              <execution>
-                <id>attach-javadocs</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.1</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
 
     <profile>
       <id>hadoop-2</id>
@@ -533,6 +477,12 @@
         <hadoop.version>2.3.0</hadoop.version>
         <pig.version>0.13.0</pig.version>
         <pig.classifier>h2</pig.classifier>
+      </properties>
+    </profile>
+    <profile>
+      <id>thrift9</id>
+      <properties>
+        <thrift.version>0.9.0</thrift.version>
       </properties>
     </profile>
   </profiles>

@@ -24,7 +24,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.io.Writable;
 
-import parquet.io.api.Binary;
+import org.apache.parquet.io.api.Binary;
 
 /**
  *
@@ -57,7 +57,7 @@ public class BinaryWritable implements Writable {
   public void readFields(DataInput input) throws IOException {
     byte[] bytes = new byte[input.readInt()];
     input.readFully(bytes);
-    binary = Binary.fromByteArray(bytes);
+    binary = Binary.fromConstantByteArray(bytes);
   }
 
   @Override

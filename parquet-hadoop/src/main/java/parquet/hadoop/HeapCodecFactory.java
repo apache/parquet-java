@@ -29,13 +29,12 @@ import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
 
+import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.hadoop.CodecFactory;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import parquet.bytes.ByteBufferInputStream;
-import parquet.bytes.BytesInput;
-import parquet.hadoop.CodecFactory.BytesCompressor;
-import parquet.hadoop.CodecFactory.BytesDecompressor;
-import parquet.hadoop.metadata.CompressionCodecName;
 
-public class HeapCodecFactory extends CodecFactory<BytesCompressor, BytesDecompressor> {
+public class HeapCodecFactory extends CodecFactory<CodecFactory.BytesCompressor, CodecFactory.BytesDecompressor> {
 
   public static class HeapBytesDecompressor extends BytesDecompressor {
 

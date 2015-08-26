@@ -42,8 +42,6 @@ except ImportError:
 # Location of your Parquet git development area
 PARQUET_HOME = os.path.abspath(__file__).rsplit("/", 2)[0]
 PROJECT_NAME = PARQUET_HOME.rsplit("/", 1)[1]
-if PROJECT_NAME.find("incubator-") != 0:
-  PROJECT_NAME = "incubator-" + PROJECT_NAME
 print "PARQUET_HOME = " + PARQUET_HOME
 print "PROJECT_NAME = " + PROJECT_NAME
 
@@ -81,11 +79,19 @@ def fail(msg):
 
 
 def run_cmd(cmd):
-    if isinstance(cmd, list):
-        return subprocess.check_output(cmd)
-    else:
-        return subprocess.check_output(cmd.split(" "))
-
+    try:       
+        if isinstance(cmd, list):
+            return subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        else:
+            return subprocess.check_output(cmd.split(" "), stderr = subprocess.STDOUT)          
+    except subprocess.CalledProcessError as e:
+        # this avoids hiding the stdout / stderr of failed processes
+        print 'Command failed: %s' % cmd
+        print 'With output:'
+        print '--------------'
+        print e.output
+        print '--------------'
+        raise e
 
 def continue_maybe(prompt):
     result = raw_input("\n%s (y/n): " % prompt)

@@ -18,10 +18,10 @@
   -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>com.twitter</groupId>
+    <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.6.0rc3-drill-r0.3</version>
+    <version>1.8.2-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -29,21 +29,16 @@
   <artifactId>parquet-encoding</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Encodings (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet Encodings</name>
+  <url>https://parquet.apache.org</url>
 
   <properties>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter</groupId>
-      <artifactId>parquet-generator</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -67,6 +62,13 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.2.1</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-generator</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <phase>generate-sources</phase>
@@ -76,7 +78,8 @@
           </execution>
         </executions>
         <configuration>
-          <mainClass>parquet.encoding.Generator</mainClass>          
+          <mainClass>org.apache.parquet.encoding.Generator</mainClass>
+          <includePluginDependencies>true</includePluginDependencies>
           <arguments>
             <argument>${basedir}/target/generated-src</argument>
           </arguments>

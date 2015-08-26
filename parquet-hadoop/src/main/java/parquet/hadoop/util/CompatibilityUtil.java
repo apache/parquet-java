@@ -24,11 +24,11 @@ import java.util.EnumSet;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Constructor;
-import parquet.Log;
 
+// TODO - this is the wrong package name, it should begin with org.apache
+import org.apache.parquet.Log;
 import parquet.org.apache.thrift.TBase;
 import parquet.org.apache.thrift.TException;
-import parquet.format.FileMetaData;
 import parquet.org.apache.thrift.protocol.*;
 import parquet.org.apache.thrift.transport.TIOStreamTransport;
 import parquet.org.apache.thrift.transport.TTransport;
@@ -164,7 +164,16 @@ public class CompatibilityUtil {
     int l=readBuf.remaining();
     if (useV21) {
       try {
-        res = f.read(readBuf);
+        if (readBuf.hasArray()) {
+          res = f.read(readBuf.array());
+        } else {
+          // TODO = figure out how to avoid this copy using the new Hadoop 2.0 API if possible
+          // this is in the compatibility section, so it might deliberately only have
+          // access to the old API
+          byte[] temp = new byte[readBuf.remaining()];
+          readBuf.get(temp);
+          res = f.read(temp);
+        }
       }catch (UnsupportedOperationException e) {
         byte[] buf = new byte[maxSize];
         res=f.read(buf);

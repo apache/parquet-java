@@ -19,6 +19,206 @@
 
 # Parquet #
 
+### Version 1.8.1 ###
+
+#### Bug
+
+*   [[PARQUET-331](https://issues.apache.org/jira/browse/PARQUET-331)] - Merge script doesn't surface stderr from failed sub processes
+*   [[PARQUET-336](https://issues.apache.org/jira/browse/PARQUET-336)] - ArrayIndexOutOfBounds in checkDeltaByteArrayProblem
+*   [[PARQUET-337](https://issues.apache.org/jira/browse/PARQUET-337)] - binary fields inside map/set/list are not handled in parquet-scrooge
+*   [[PARQUET-338](https://issues.apache.org/jira/browse/PARQUET-338)] - Readme references wrong format of pull request title
+
+#### Improvement
+
+*   [[PARQUET-279](https://issues.apache.org/jira/browse/PARQUET-279)] - Check empty struct in the CompatibilityChecker util
+
+#### Task
+
+*   [[PARQUET-339](https://issues.apache.org/jira/browse/PARQUET-339)] - Add Alex Levenson to KEYS file
+
+### Version 1.8.0 ###
+
+#### Bug
+
+*   [PARQUET-151](https://issues.apache.org/jira/browse/PARQUET-151) - Null Pointer exception in parquet.hadoop.ParquetFileWriter.mergeFooters
+*   [PARQUET-152](https://issues.apache.org/jira/browse/PARQUET-152) - Encoding issue with fixed length byte arrays
+*   [PARQUET-164](https://issues.apache.org/jira/browse/PARQUET-164) - Warn when parquet memory manager kicks in
+*   [PARQUET-199](https://issues.apache.org/jira/browse/PARQUET-199) - Add a callback when the MemoryManager adjusts row group size
+*   [PARQUET-201](https://issues.apache.org/jira/browse/PARQUET-201) - Column with OriginalType INT_8 failed at filtering
+*   [PARQUET-227](https://issues.apache.org/jira/browse/PARQUET-227) - Parquet thrift can write unions that have 0 or more than 1 set value
+*   [PARQUET-246](https://issues.apache.org/jira/browse/PARQUET-246) - ArrayIndexOutOfBoundsException with Parquet write version v2
+*   [PARQUET-251](https://issues.apache.org/jira/browse/PARQUET-251) - Binary column statistics error when reuse byte[] among rows
+*   [PARQUET-252](https://issues.apache.org/jira/browse/PARQUET-252) - parquet scrooge support should support nested container type
+*   [PARQUET-254](https://issues.apache.org/jira/browse/PARQUET-254) - Wrong exception message for unsupported INT96 type
+*   [PARQUET-269](https://issues.apache.org/jira/browse/PARQUET-269) - Restore scrooge-maven-plugin to 3.17.0 or greater
+*   [PARQUET-284](https://issues.apache.org/jira/browse/PARQUET-284) - Should use ConcurrentHashMap instead of HashMap in ParquetMetadataConverter
+*   [PARQUET-285](https://issues.apache.org/jira/browse/PARQUET-285) - Implement nested types write rules in parquet-avro
+*   [PARQUET-287](https://issues.apache.org/jira/browse/PARQUET-287) - Projecting unions in thrift causes TExceptions in deserializatoin
+*   [PARQUET-296](https://issues.apache.org/jira/browse/PARQUET-296) - Set master branch version back to 1.8.0-SNAPSHOT
+*   [PARQUET-297](https://issues.apache.org/jira/browse/PARQUET-297) - created_by in file meta data doesn't contain parquet library version
+*   [PARQUET-314](https://issues.apache.org/jira/browse/PARQUET-314) - Fix broken equals implementation(s)
+*   [PARQUET-316](https://issues.apache.org/jira/browse/PARQUET-316) - Run.sh is broken in parquet-benchmarks
+*   [PARQUET-317](https://issues.apache.org/jira/browse/PARQUET-317) - writeMetaDataFile crashes when a relative root Path is used
+*   [PARQUET-320](https://issues.apache.org/jira/browse/PARQUET-320) - Restore semver checks
+*   [PARQUET-324](https://issues.apache.org/jira/browse/PARQUET-324) - row count incorrect if data file has more than 2^31 rows
+*   [PARQUET-325](https://issues.apache.org/jira/browse/PARQUET-325) - Do not target row group sizes if padding is set to 0
+*   [PARQUET-329](https://issues.apache.org/jira/browse/PARQUET-329) - ThriftReadSupport#THRIFT_COLUMN_FILTER_KEY was removed (incompatible change)
+
+#### Improvement
+
+*   [PARQUET-175](https://issues.apache.org/jira/browse/PARQUET-175) - Allow setting of a custom protobuf class when reading parquet file using parquet-protobuf.
+*   [PARQUET-223](https://issues.apache.org/jira/browse/PARQUET-223) - Add Map and List builiders
+*   [PARQUET-245](https://issues.apache.org/jira/browse/PARQUET-245) - Travis CI runs tests even if build fails
+*   [PARQUET-248](https://issues.apache.org/jira/browse/PARQUET-248) - Simplify ParquetWriters's constructors
+*   [PARQUET-253](https://issues.apache.org/jira/browse/PARQUET-253) - AvroSchemaConverter has confusing Javadoc
+*   [PARQUET-259](https://issues.apache.org/jira/browse/PARQUET-259) - Support Travis CI in parquet-cpp
+*   [PARQUET-264](https://issues.apache.org/jira/browse/PARQUET-264) - Update README docs for graduation
+*   [PARQUET-266](https://issues.apache.org/jira/browse/PARQUET-266) - Add support for lists of primitives to Pig schema converter
+*   [PARQUET-272](https://issues.apache.org/jira/browse/PARQUET-272) - Updates docs decscription to match data model
+*   [PARQUET-274](https://issues.apache.org/jira/browse/PARQUET-274) - Updates URLs to link against the apache user instead of Parquet on github
+*   [PARQUET-276](https://issues.apache.org/jira/browse/PARQUET-276) - Updates CONTRIBUTING file with new repo info
+*   [PARQUET-286](https://issues.apache.org/jira/browse/PARQUET-286) - Avro object model should use Utf8
+*   [PARQUET-288](https://issues.apache.org/jira/browse/PARQUET-288) - Add dictionary support to Avro converters
+*   [PARQUET-289](https://issues.apache.org/jira/browse/PARQUET-289) - Allow object models to extend the ParquetReader builders
+*   [PARQUET-290](https://issues.apache.org/jira/browse/PARQUET-290) - Add Avro data model to the reader builder
+*   [PARQUET-306](https://issues.apache.org/jira/browse/PARQUET-306) - Improve alignment between row groups and HDFS blocks
+*   [PARQUET-308](https://issues.apache.org/jira/browse/PARQUET-308) - Add accessor to ParquetWriter to get current data size
+*   [PARQUET-309](https://issues.apache.org/jira/browse/PARQUET-309) - Remove unnecessary compile dependency on parquet-generator
+*   [PARQUET-321](https://issues.apache.org/jira/browse/PARQUET-321) - Set the HDFS padding default to 8MB
+*   [PARQUET-327](https://issues.apache.org/jira/browse/PARQUET-327) - Show statistics in the dump output
+
+#### New Feature
+
+*   [PARQUET-229](https://issues.apache.org/jira/browse/PARQUET-229) - Make an alternate, stricter thrift column projection API
+*   [PARQUET-243](https://issues.apache.org/jira/browse/PARQUET-243) - Add avro-reflect support
+
+#### Task
+
+*   [PARQUET-262](https://issues.apache.org/jira/browse/PARQUET-262) - When 1.7.0 is released, restore semver plugin config
+*   [PARQUET-292](https://issues.apache.org/jira/browse/PARQUET-292) - Release Parquet 1.8.0
+
+### Version 1.7.0 ###
+
+*   [PARQUET-23](https://issues.apache.org/jira/browse/PARQUET-23) - Rename to org.apache.
+
+### Version 1.6.0 ###
+
+####  Bug
+
+*   [PARQUET-3](https://issues.apache.org/jira/browse/PARQUET-3) - tool to merge pull requests based on Spark
+*   [PARQUET-4](https://issues.apache.org/jira/browse/PARQUET-4) - Use LRU caching for footers in ParquetInputFormat.
+*   [PARQUET-8](https://issues.apache.org/jira/browse/PARQUET-8) - [parquet-scrooge] mvn eclipse:eclipse fails on parquet-scrooge
+*   [PARQUET-9](https://issues.apache.org/jira/browse/PARQUET-9) - InternalParquetRecordReader will not read multiple blocks when filtering
+*   [PARQUET-18](https://issues.apache.org/jira/browse/PARQUET-18) - Cannot read dictionary-encoded pages with all null values
+*   [PARQUET-19](https://issues.apache.org/jira/browse/PARQUET-19) - NPE when an empty file is included in a Hive query that uses CombineHiveInputFormat
+*   [PARQUET-21](https://issues.apache.org/jira/browse/PARQUET-21) - Fix reference to 'github-apache' in dev docs
+*   [PARQUET-56](https://issues.apache.org/jira/browse/PARQUET-56) - Added an accessor for the Long column type in example Group
+*   [PARQUET-62](https://issues.apache.org/jira/browse/PARQUET-62) - DictionaryValuesWriter dictionaries are corrupted by user changes.
+*   [PARQUET-63](https://issues.apache.org/jira/browse/PARQUET-63) - Fixed-length columns cannot be dictionary encoded.
+*   [PARQUET-66](https://issues.apache.org/jira/browse/PARQUET-66) - InternalParquetRecordWriter int overflow causes unnecessary memory check warning
+*   [PARQUET-69](https://issues.apache.org/jira/browse/PARQUET-69) - Add committer doc and REVIEWERS files
+*   [PARQUET-70](https://issues.apache.org/jira/browse/PARQUET-70) - PARQUET #36: Pig Schema Storage to UDFContext
+*   [PARQUET-75](https://issues.apache.org/jira/browse/PARQUET-75) - String decode using 'new String' is slow
+*   [PARQUET-80](https://issues.apache.org/jira/browse/PARQUET-80) - upgrade semver plugin version to 0.9.27
+*   [PARQUET-82](https://issues.apache.org/jira/browse/PARQUET-82) - ColumnChunkPageWriteStore assumes pages are smaller than Integer.MAX\_VALUE
+*   [PARQUET-88](https://issues.apache.org/jira/browse/PARQUET-88) - Fix pre-version enforcement.
+*   [PARQUET-94](https://issues.apache.org/jira/browse/PARQUET-94) - ParquetScroogeScheme constructor ignores klass argument
+*   [PARQUET-96](https://issues.apache.org/jira/browse/PARQUET-96) - parquet.example.data.Group is missing some methods
+*   [PARQUET-97](https://issues.apache.org/jira/browse/PARQUET-97) - ProtoParquetReader builder factory method not static
+*   [PARQUET-101](https://issues.apache.org/jira/browse/PARQUET-101) - Exception when reading data with parquet.task.side.metadata=false
+*   [PARQUET-104](https://issues.apache.org/jira/browse/PARQUET-104) - Parquet writes empty Rowgroup at the end of the file
+*   [PARQUET-106](https://issues.apache.org/jira/browse/PARQUET-106) - Relax InputSplit Protections
+*   [PARQUET-107](https://issues.apache.org/jira/browse/PARQUET-107) - Add option to disable summary metadata aggregation after MR jobs
+*   [PARQUET-114](https://issues.apache.org/jira/browse/PARQUET-114) - Sample NanoTime class serializes and deserializes Timestamp incorrectly
+*   [PARQUET-122](https://issues.apache.org/jira/browse/PARQUET-122) - make parquet.task.side.metadata=true by default
+*   [PARQUET-124](https://issues.apache.org/jira/browse/PARQUET-124) - parquet.hadoop.ParquetOutputCommitter.commitJob() throws parquet.io.ParquetEncodingException
+*   [PARQUET-132](https://issues.apache.org/jira/browse/PARQUET-132) - AvroParquetInputFormat should use a parameterized type
+*   [PARQUET-135](https://issues.apache.org/jira/browse/PARQUET-135) - Input location is not getting set for the getStatistics in ParquetLoader when using two different loaders within a Pig script.
+*   [PARQUET-136](https://issues.apache.org/jira/browse/PARQUET-136) - NPE thrown in StatisticsFilter when all values in a string/binary column trunk are null
+*   [PARQUET-142](https://issues.apache.org/jira/browse/PARQUET-142) - parquet-tools doesn't filter \_SUCCESS file
+*   [PARQUET-145](https://issues.apache.org/jira/browse/PARQUET-145) - InternalParquetRecordReader.close() should not throw an exception if initialization has failed
+*   [PARQUET-150](https://issues.apache.org/jira/browse/PARQUET-150) - Merge script requires ':' in PR names
+*   [PARQUET-157](https://issues.apache.org/jira/browse/PARQUET-157) - Divide by zero in logging code
+*   [PARQUET-159](https://issues.apache.org/jira/browse/PARQUET-159) - paquet-hadoop tests fail to compile
+*   [PARQUET-162](https://issues.apache.org/jira/browse/PARQUET-162) - ParquetThrift should throw when unrecognized columns are passed to the column projection API
+*   [PARQUET-168](https://issues.apache.org/jira/browse/PARQUET-168) - Wrong command line option description in parquet-tools
+*   [PARQUET-173](https://issues.apache.org/jira/browse/PARQUET-173) - StatisticsFilter doesn't handle And properly
+*   [PARQUET-174](https://issues.apache.org/jira/browse/PARQUET-174) - Fix Java6 compatibility
+*   [PARQUET-176](https://issues.apache.org/jira/browse/PARQUET-176) - Parquet fails to parse schema contains '\r'
+*   [PARQUET-180](https://issues.apache.org/jira/browse/PARQUET-180) - Parquet-thrift compile issue with 0.9.2.
+*   [PARQUET-184](https://issues.apache.org/jira/browse/PARQUET-184) - Add release scripts and documentation
+*   [PARQUET-186](https://issues.apache.org/jira/browse/PARQUET-186) - Poor performance in SnappyCodec because of string concat in tight loop
+*   [PARQUET-187](https://issues.apache.org/jira/browse/PARQUET-187) - parquet-scrooge doesn't compile under 2.11
+*   [PARQUET-188](https://issues.apache.org/jira/browse/PARQUET-188) - Parquet writes columns out of order (compared to the schema)
+*   [PARQUET-189](https://issues.apache.org/jira/browse/PARQUET-189) - Support building parquet with thrift 0.9.0
+*   [PARQUET-196](https://issues.apache.org/jira/browse/PARQUET-196) - parquet-tools command to get rowcount & size
+*   [PARQUET-197](https://issues.apache.org/jira/browse/PARQUET-197) - parquet-cascading and the mapred API does not create metadata file
+*   [PARQUET-202](https://issues.apache.org/jira/browse/PARQUET-202) - Typo in the connection info in the pom prevents publishing an RC
+*   [PARQUET-207](https://issues.apache.org/jira/browse/PARQUET-207) - ParquetInputSplit end calculation bug
+*   [PARQUET-208](https://issues.apache.org/jira/browse/PARQUET-208) - revert PARQUET-197
+*   [PARQUET-214](https://issues.apache.org/jira/browse/PARQUET-214) - Avro: Regression caused by schema handling
+*   [PARQUET-215](https://issues.apache.org/jira/browse/PARQUET-215) - Parquet Thrift should discard records with unrecognized union members
+*   [PARQUET-216](https://issues.apache.org/jira/browse/PARQUET-216) - Decrease the default page size to 64k
+*   [PARQUET-217](https://issues.apache.org/jira/browse/PARQUET-217) - Memory Manager's min allocation heuristic is not valid for schemas with many columns
+*   [PARQUET-232](https://issues.apache.org/jira/browse/PARQUET-232) - minor compilation issue
+*   [PARQUET-234](https://issues.apache.org/jira/browse/PARQUET-234) - Restore ParquetInputSplit methods from 1.5.0
+*   [PARQUET-235](https://issues.apache.org/jira/browse/PARQUET-235) - Fix compatibility of parquet.metadata with 1.5.0
+*   [PARQUET-236](https://issues.apache.org/jira/browse/PARQUET-236) - Check parquet-scrooge compatibility
+*   [PARQUET-237](https://issues.apache.org/jira/browse/PARQUET-237) - Check ParquetWriter constructor compatibility with 1.5.0
+*   [PARQUET-239](https://issues.apache.org/jira/browse/PARQUET-239) - Make AvroParquetReader#builder() static
+*   [PARQUET-242](https://issues.apache.org/jira/browse/PARQUET-242) - AvroReadSupport.setAvroDataSupplier is broken
+
+####  Improvement
+
+*   [PARQUET-2](https://issues.apache.org/jira/browse/PARQUET-2) - Adding Type Persuasion for Primitive Types
+*   [PARQUET-25](https://issues.apache.org/jira/browse/PARQUET-25) - Pushdown predicates only work with hardcoded arguments
+*   [PARQUET-52](https://issues.apache.org/jira/browse/PARQUET-52) - Improve the encoding fall back mechanism for Parquet 2.0
+*   [PARQUET-57](https://issues.apache.org/jira/browse/PARQUET-57) - Make dev commit script easier to use
+*   [PARQUET-61](https://issues.apache.org/jira/browse/PARQUET-61) - Avoid fixing protocol events when there is not required field missing
+*   [PARQUET-74](https://issues.apache.org/jira/browse/PARQUET-74) - Use thread local decoder cache in Binary toStringUsingUTF8()
+*   [PARQUET-79](https://issues.apache.org/jira/browse/PARQUET-79) - Add thrift streaming API to read metadata
+*   [PARQUET-84](https://issues.apache.org/jira/browse/PARQUET-84) - Add an option to read the rowgroup metadata on the task side.
+*   [PARQUET-87](https://issues.apache.org/jira/browse/PARQUET-87) - Better and unified API for projection pushdown on cascading scheme
+*   [PARQUET-89](https://issues.apache.org/jira/browse/PARQUET-89) - All Parquet CI tests should be run against hadoop-2
+*   [PARQUET-92](https://issues.apache.org/jira/browse/PARQUET-92) - Parallel Footer Read Control
+*   [PARQUET-105](https://issues.apache.org/jira/browse/PARQUET-105) - Refactor and Document Parquet Tools
+*   [PARQUET-108](https://issues.apache.org/jira/browse/PARQUET-108) - Parquet Memory Management in Java
+*   [PARQUET-115](https://issues.apache.org/jira/browse/PARQUET-115) - Pass a filter object to user defined predicate in filter2 api
+*   [PARQUET-116](https://issues.apache.org/jira/browse/PARQUET-116) - Pass a filter object to user defined predicate in filter2 api
+*   [PARQUET-117](https://issues.apache.org/jira/browse/PARQUET-117) - implement the new page format for Parquet 2.0
+*   [PARQUET-119](https://issues.apache.org/jira/browse/PARQUET-119) - add data\_encodings to ColumnMetaData to enable dictionary based predicate push down
+*   [PARQUET-121](https://issues.apache.org/jira/browse/PARQUET-121) - Allow Parquet to build with Java 8
+*   [PARQUET-128](https://issues.apache.org/jira/browse/PARQUET-128) - Optimize the parquet RecordReader implementation when: A. filterpredicate is pushed down , B. filterpredicate is pushed down on a flat schema
+*   [PARQUET-133](https://issues.apache.org/jira/browse/PARQUET-133) - Upgrade snappy-java to 1.1.1.6
+*   [PARQUET-134](https://issues.apache.org/jira/browse/PARQUET-134) - Enhance ParquetWriter with file creation flag
+*   [PARQUET-140](https://issues.apache.org/jira/browse/PARQUET-140) - Allow clients to control the GenericData object that is used to read Avro records
+*   [PARQUET-141](https://issues.apache.org/jira/browse/PARQUET-141) - improve parquet scrooge integration
+*   [PARQUET-160](https://issues.apache.org/jira/browse/PARQUET-160) - Simplify CapacityByteArrayOutputStream
+*   [PARQUET-165](https://issues.apache.org/jira/browse/PARQUET-165) - A benchmark module for Parquet would be nice
+*   [PARQUET-177](https://issues.apache.org/jira/browse/PARQUET-177) - MemoryManager ensure minimum Column Chunk size
+*   [PARQUET-181](https://issues.apache.org/jira/browse/PARQUET-181) - Scrooge Write Support
+*   [PARQUET-191](https://issues.apache.org/jira/browse/PARQUET-191) - Avro schema conversion incorrectly converts maps with nullable values.
+*   [PARQUET-192](https://issues.apache.org/jira/browse/PARQUET-192) - Avro maps drop null values
+*   [PARQUET-193](https://issues.apache.org/jira/browse/PARQUET-193) - Avro: Implement read compatibility rules for nested types
+*   [PARQUET-203](https://issues.apache.org/jira/browse/PARQUET-203) - Consolidate PathFilter for hidden files
+*   [PARQUET-204](https://issues.apache.org/jira/browse/PARQUET-204) - Directory support for parquet-schema
+*   [PARQUET-210](https://issues.apache.org/jira/browse/PARQUET-210) - JSON output for parquet-cat
+
+####  New Feature
+
+*   [PARQUET-22](https://issues.apache.org/jira/browse/PARQUET-22) - Parquet #13: Backport of HIVE-6938
+*   [PARQUET-49](https://issues.apache.org/jira/browse/PARQUET-49) - Create a new filter API that supports filtering groups of records based on their statistics
+*   [PARQUET-64](https://issues.apache.org/jira/browse/PARQUET-64) - Add new logical types to parquet-column
+*   [PARQUET-123](https://issues.apache.org/jira/browse/PARQUET-123) - Add dictionary support to AvroIndexedRecordReader
+*   [PARQUET-198](https://issues.apache.org/jira/browse/PARQUET-198) - parquet-cascading Add Parquet Avro Scheme
+
+####  Task
+
+*   [PARQUET-50](https://issues.apache.org/jira/browse/PARQUET-50) - Remove items from semver blacklist
+*   [PARQUET-139](https://issues.apache.org/jira/browse/PARQUET-139) - Avoid reading file footers in parquet-avro InputFormat
+*   [PARQUET-190](https://issues.apache.org/jira/browse/PARQUET-190) - Fix an inconsistent Javadoc comment of ReadSupport.prepareForRead
+*   [PARQUET-230](https://issues.apache.org/jira/browse/PARQUET-230) - Add build instructions to the README
+
 ### Version 1.5.0 ###
 * ISSUE [399](https://github.com/Parquet/parquet-mr/pull/399): Fixed resetting stats after writePage bug, unit testing of readFooter
 * ISSUE [397](https://github.com/Parquet/parquet-mr/pull/397): Fixed issue with column pruning when using requested schema

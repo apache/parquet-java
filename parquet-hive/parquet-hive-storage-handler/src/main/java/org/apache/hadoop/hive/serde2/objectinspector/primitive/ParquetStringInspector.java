@@ -21,7 +21,7 @@ package org.apache.hadoop.hive.serde2.objectinspector.primitive;
 import org.apache.hadoop.hive.ql.io.parquet.writable.BinaryWritable;
 import org.apache.hadoop.io.Text;
 
-import parquet.io.api.Binary;
+import org.apache.parquet.io.api.Binary;
 
 /**
  * The ParquetStringInspector inspects a BinaryWritable to give a Text or String.
@@ -77,7 +77,8 @@ public class ParquetStringInspector extends JavaStringObjectInspector implements
 
   @Override
   public Object set(final Object o, final Text text) {
-    return new BinaryWritable(text == null ? null : Binary.fromByteArray(text.getBytes()));
+    return new BinaryWritable(text == null ? null : Binary.fromReusedByteArray(text.getBytes
+        ()));
   }
 
   @Override

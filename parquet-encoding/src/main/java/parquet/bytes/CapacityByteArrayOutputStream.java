@@ -18,6 +18,9 @@
  */
 package parquet.bytes;
 
+import org.apache.parquet.Log;
+import org.apache.parquet.Preconditions;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -25,8 +28,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import parquet.Log;
-import parquet.Preconditions;
 
 /**
  * functionality of ByteArrayOutputStream without the memory and copy overhead
@@ -39,6 +40,7 @@ import parquet.Preconditions;
  * @author Julien Le Dem
  *
  */
+// TODO - possibly rename to CapacityByteBufferOutputStream to reflect implementation change
 public class CapacityByteArrayOutputStream extends OutputStream {
   private static final Log LOG = Log.getLog(CapacityByteArrayOutputStream.class);
 
