@@ -378,13 +378,12 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     public byte[] getBytes() {
       byte[] bytes = new byte[length];
 
-      value.mark();
+//      value.mark();
       int limit = value.limit();
       value.limit(offset+length);
       int position = value.position();
       value.position(offset);
-      value.position(offset);
-      value.get(bytes).reset();
+      value.get(bytes);//.reset();
       value.limit(limit);
       value.position(position);
       if (!isBackingBytesReused) { // backing buffer might change
@@ -405,8 +404,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public int hashCode() {
       if (value.hasArray()) {
-        return Binary.hashCode(value.array(), value.arrayOffset() + value.position(),
-            value.arrayOffset() + value.remaining());
+        return Binary.hashCode(value.array(), value.arrayOffset() + offset, length);
       }
       byte[] bytes = getBytes();
       return Binary.hashCode(bytes, 0, bytes.length);
@@ -415,8 +413,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     boolean equals(Binary other) {
       if (value.hasArray()) {
-        return other.equals(value.array(), value.arrayOffset() + value.position(),
-            value.arrayOffset() + value.remaining());
+        return other.equals(value.array(), value.arrayOffset() + offset, length);
       }
       byte[] bytes = getBytes();
       return other.equals(bytes, 0, bytes.length);
@@ -425,7 +422,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     boolean equals(byte[] other, int otherOffset, int otherLength) {
       if (value.hasArray()) {
-        return Binary.equals(value.array(), offset, length, other, otherOffset, otherLength);
+        return Binary.equals(value.array(), value.arrayOffset() + offset, length, other, otherOffset, otherLength);
       }
       byte[] bytes = getBytes();
       return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
@@ -434,8 +431,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public int compareTo(Binary other) {
       if (value.hasArray()) {
-        return other.compareTo(value.array(), value.arrayOffset() + value.position(),
-            value.arrayOffset() + value.remaining());
+        return other.compareTo(value.array(), value.arrayOffset() + offset, length);
       }
       byte[] bytes = getBytes();
       return other.compareTo(bytes, 0, bytes.length);
@@ -444,8 +440,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     int compareTo(byte[] other, int otherOffset, int otherLength) {
       if (value.hasArray()) {
-        return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + value.position(),
-            value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
+        return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + offset, length,
+            other, otherOffset, otherLength);
       }
       byte[] bytes = getBytes();
       return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
@@ -521,11 +517,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   }
 
   public static Binary fromReusedByteBuffer(final ByteBuffer value) {
-    return new ByteBufferBackedBinary(value, 0, value.remaining(), true);
+    return new ByteBufferBackedBinary(value, value.position(), value.remaining(), true);
   }
 
   public static Binary fromConstantByteBuffer(final ByteBuffer value) {
-    return new ByteBufferBackedBinary(value, 0, value.remaining(), false);
+    return new ByteBufferBackedBinary(value, value.position(), value.remaining(), false);
   }
 
   @Deprecated

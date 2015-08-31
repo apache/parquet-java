@@ -66,6 +66,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private Set<Encoding> encodings = new HashSet<Encoding>();
 
     private Statistics totalStatistics;
+    private final ByteBufferAllocator allocator;
 
     // TODO - look back at this, the ByteBuffer code changes involved passing an allocator here
     // the way this was refactored with the ConcatenatingByteArrayCollector, it is supposed
@@ -73,9 +74,12 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     // I assume that this is actually going to be making a copy from off-heap ByteBuffers into
     // byte arrays, I think the ConcatenatingByteArrayCollector likely should be refactored
     // to be maintaining a list of ByteBuffers instead of byte arrays
-    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int pageSize) {
+    private ColumnChunkPageWriter(ColumnDescriptor path,
+                                  BytesCompressor compressor,
+                                  ByteBufferAllocator allocator) {
       this.path = path;
       this.compressor = compressor;
+      this.allocator = allocator;
       this.buf = new ConcatenatingByteArrayCollector();
       this.totalStatistics = getStatsBasedOnType(this.path.getType());
     }
@@ -225,7 +229,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     @Override
     public ByteBufferAllocator getAllocator() {
-      return null;
+      return allocator;
     }
 
     @Override
@@ -241,14 +245,14 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
-  private ByteBufferAllocator allocator;
+//  private ByteBufferAllocator allocator;
 
   // TODO - look back at this, an allocator was being passed here in the ByteBuffer changes
   // See the comment at the ColumnChunkPageWriter constructor above
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int pageSize) {
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, pageSize));
+      writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator));
     }
   }
 

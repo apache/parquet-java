@@ -106,7 +106,7 @@ class InternalParquetRecordWriter<T> {
   }
 
   private void initStore() {
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, pageSize);
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, allocator);
     columnStore = parquetProperties.newColumnWriteStore(
         schema,
         pageStore,
