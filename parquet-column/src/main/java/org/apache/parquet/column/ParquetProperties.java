@@ -87,18 +87,15 @@ public class ParquetProperties {
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
-    this.allocator=allocator;
+    this.allocator = allocator != null ? allocator : new HeapByteBufferAllocator();
   }
 
-  // TODO - should this just throw an exception if called with null? There are the other methods that can be called without the
-  // parameter at all, seems like a cleaner way to manage it
-  public static ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol, int pageSize, ByteBufferAllocator allocator) {
+  public ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol, int pageSize) {
     if (maxLevel == 0) {
       return new DevNullValuesWriter();
     } else {
       return new RunLengthBitPackingHybridValuesWriter(
-          getWidthFromMaxInt(maxLevel), initialSizePerCol, pageSize,
-          allocator != null ? allocator : new HeapByteBufferAllocator()
+          getWidthFromMaxInt(maxLevel), initialSizePerCol, pageSize, this.allocator
       );
     }
   }
