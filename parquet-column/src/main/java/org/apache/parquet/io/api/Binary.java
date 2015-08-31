@@ -344,20 +344,14 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public String toStringUsingUTF8() {
-      // TODO - how can I avoid this?
       int limit = value.limit();
       value.limit(offset+length);
       int position = value.position();
       value.position(offset);
       // no corresponding interface to read a subset of a buffer, would have to slice it
-      // which creates another ByteBuffer object or do what is done here to adjust the limit
-      // and set it back after
+      // which creates another ByteBuffer object or do what is done here to adjust the
+      // limit/offset and set them back after
       String ret = UTF8.decode(value).toString();
-//      byte[] temp = new byte[length];
-//      value.mark();
-//      value.get(temp);
-//      value.reset();
-//      String ret = new String(temp, UTF8);
       value.limit(limit);
       value.position(position);
       return ret;
@@ -378,12 +372,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     public byte[] getBytes() {
       byte[] bytes = new byte[length];
 
-//      value.mark();
       int limit = value.limit();
       value.limit(offset+length);
       int position = value.position();
       value.position(offset);
-      value.get(bytes);//.reset();
+      value.get(bytes);
       value.limit(limit);
       value.position(position);
       if (!isBackingBytesReused) { // backing buffer might change
@@ -447,37 +440,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
     }
 
-    //    @Override
-//    public int hashCode() {
-//      if (value.hasArray()) {
-//        return Binary.hashCode(value.array(), offset, length);
-//      }
-//      byte[] bytes = getBytesUnsafe();
-//      // This doesn't pass the offset because the call to getBytesUnsafe() truncates to the actual size of the data
-//      // referred to as a subset of the ByteBuffer specified by offset and length
-//      return Binary.hashCode(bytes, 0, length);
-//    }
-//
-//    @Override
-//    boolean equals(Binary other) {
-//      return value.compareTo(other.toByteBuffer()) == 0;
-//    }
-//
-//    @Override
-//    boolean equals(byte[] other, int otherOffset, int otherLength) {
-//      return value.compareTo(ByteBuffer.wrap(other, offset, length)) == 0;
-//    }
-//
-//    @Override
-//    public int compareTo(Binary other) {
-//      return value.compareTo(other.toByteBuffer());
-//    }
-//
-//    @Override
-//    int compareTo(byte[] other, int otherOffset, int otherLength) {
-//      return value.compareTo(ByteBuffer.wrap(other, offset, length));
-//    }
-//
     @Override
     public ByteBuffer toByteBuffer() {
       return value;
