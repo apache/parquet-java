@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.column;
 
-import parquet.bytes.ByteBufferAllocator;
-import parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static org.apache.parquet.column.Encoding.PLAIN;

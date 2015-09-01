@@ -28,8 +28,8 @@ import java.util.List;
 
 import org.junit.Test;
 
-import parquet.bytes.ByteBufferInputStream;
-import parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;

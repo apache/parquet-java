@@ -52,11 +52,9 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
 
-import parquet.bytes.ByteBufferInputStream;
-import parquet.hadoop.HeapCodecFactory;
-import parquet.hadoop.util.CompatibilityUtil;
+import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.hadoop.util.CompatibilityUtil;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;

@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column.values.boundedint;
 
-import parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
 

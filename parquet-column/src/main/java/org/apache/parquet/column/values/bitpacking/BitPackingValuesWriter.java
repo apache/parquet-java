@@ -25,7 +25,7 @@ import static org.apache.parquet.column.values.bitpacking.BitPacking.getBitPacki
 import java.io.IOException;
 
 import org.apache.parquet.ParquetRuntimeException;
-import parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;

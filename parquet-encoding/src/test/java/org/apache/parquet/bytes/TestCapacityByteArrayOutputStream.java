@@ -27,9 +27,6 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import org.junit.Test;
-import parquet.bytes.ByteBufferAllocator;
-import parquet.bytes.DirectByteBufferAllocator;
-import parquet.bytes.HeapByteBufferAllocator;
 
 public class TestCapacityByteArrayOutputStream {
 

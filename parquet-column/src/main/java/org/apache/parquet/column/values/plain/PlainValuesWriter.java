@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 
 import org.apache.parquet.ParquetRuntimeException;
-import parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;

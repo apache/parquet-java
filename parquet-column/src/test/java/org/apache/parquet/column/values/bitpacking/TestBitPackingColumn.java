@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 
 import org.junit.Test;
 
-import parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;

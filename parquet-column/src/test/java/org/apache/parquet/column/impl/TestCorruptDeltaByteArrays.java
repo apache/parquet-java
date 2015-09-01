@@ -35,9 +35,8 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
-import parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;

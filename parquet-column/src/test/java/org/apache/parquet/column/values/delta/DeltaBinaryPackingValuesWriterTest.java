@@ -28,7 +28,7 @@ import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 
-import parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetDecodingException;

@@ -21,7 +21,7 @@ package org.apache.parquet.column.values.rle;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;

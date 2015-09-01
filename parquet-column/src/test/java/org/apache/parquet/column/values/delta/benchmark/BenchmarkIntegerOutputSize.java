@@ -19,7 +19,7 @@
 package org.apache.parquet.column.values.delta.benchmark;
 
 import org.junit.Test;
-import parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import java.util.Random;

@@ -19,7 +19,7 @@
 package org.apache.parquet.column.values.delta;
 
 import org.apache.parquet.ParquetRuntimeException;
-import parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;

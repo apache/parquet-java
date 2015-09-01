@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.util;
+package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
 import java.io.EOFException;
@@ -25,7 +25,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Constructor;
 
-// TODO - this is the wrong package name, it should begin with org.apache
 import org.apache.parquet.Log;
 import parquet.org.apache.thrift.TBase;
 import parquet.org.apache.thrift.TException;

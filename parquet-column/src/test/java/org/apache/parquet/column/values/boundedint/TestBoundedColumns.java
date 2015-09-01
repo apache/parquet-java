@@ -29,7 +29,7 @@ import java.util.Random;
 
 import org.junit.Test;
 
-import parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 
 public class TestBoundedColumns {
   private final Random r = new Random(42L);

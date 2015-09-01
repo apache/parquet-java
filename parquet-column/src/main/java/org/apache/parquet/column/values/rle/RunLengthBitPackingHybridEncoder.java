@@ -21,7 +21,7 @@ package org.apache.parquet.column.values.rle;
 import java.io.IOException;
 
 import org.apache.parquet.ParquetRuntimeException;
-import parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesInput;

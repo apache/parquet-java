@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,24 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.bytes;
+package org.apache.parquet.bytes;
 
 import java.nio.ByteBuffer;
 
-public class HeapByteBufferAllocator implements ByteBufferAllocator{
+public interface ByteBufferAllocator {
+  ByteBuffer allocate(int size);
 
-  public static final HeapByteBufferAllocator getInstance(){ return new HeapByteBufferAllocator();}
-
-  public HeapByteBufferAllocator() {
-    super();
-  }
-
-  public ByteBuffer allocate(final int size) {
-    return ByteBuffer.allocate(size);
-  }
-
-  public void release(ByteBuffer b) {
-    return;
-  }
+  //For RefCounted implementations using direct memory, the release method
+  //needs to be called to free references to the allocated memory
+  void release(ByteBuffer b);
 
 }

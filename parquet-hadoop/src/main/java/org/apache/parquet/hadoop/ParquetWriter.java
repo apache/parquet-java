@@ -29,8 +29,7 @@ import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
-import parquet.bytes.HeapByteBufferAllocator;
-import parquet.hadoop.HeapCodecFactory;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 /**
  * Write records to a Parquet file.

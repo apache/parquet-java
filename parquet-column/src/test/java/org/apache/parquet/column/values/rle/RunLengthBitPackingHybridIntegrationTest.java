@@ -20,9 +20,9 @@ package org.apache.parquet.column.values.rle;
 
 import java.nio.ByteBuffer;
 
-import parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.junit.Test;
-import parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 
 import static org.junit.Assert.assertEquals;
 

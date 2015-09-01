@@ -44,7 +44,6 @@ import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
-import parquet.hadoop.HeapCodecFactory;
 
 /**
  * OutputFormat to write to a Parquet file

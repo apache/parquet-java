@@ -20,7 +20,7 @@ package org.apache.parquet.column.values.rle;
 
 import java.io.IOException;
 
-import parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;

@@ -21,10 +21,9 @@ package org.apache.parquet.column.values.dictionary;
 import static org.apache.parquet.Log.DEBUG;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 
-import parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.Dictionary;

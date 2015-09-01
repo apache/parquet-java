@@ -24,8 +24,8 @@ import static org.apache.parquet.bytes.BytesInput.copy;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import parquet.bytes.ByteBufferAllocator;
-import parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;

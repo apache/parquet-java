@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.column.values.boundedint;
 
-import parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import static org.apache.parquet.bytes.BytesInput.concat;
 import static org.apache.parquet.column.Encoding.RLE;
 import org.apache.parquet.Log;

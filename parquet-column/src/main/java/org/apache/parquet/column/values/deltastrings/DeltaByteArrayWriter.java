@@ -18,15 +18,13 @@
  */
 package org.apache.parquet.column.values.deltastrings;
 
-import parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesWriter;
 import org.apache.parquet.io.api.Binary;
-
-import java.nio.ByteBuffer;
 
 /**
  * Write prefix lengths using delta encoding, followed by suffixes with Delta length byte arrays

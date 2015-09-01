@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.hadoop;
+package org.apache.parquet.hadoop;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -32,7 +32,7 @@ import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.ByteBufferInputStream;
 
 public class HeapCodecFactory extends CodecFactory<CodecFactory.BytesCompressor, CodecFactory.BytesDecompressor> {
 
