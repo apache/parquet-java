@@ -32,6 +32,7 @@ import java.nio.ByteBuffer;
 import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.Log;
 import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -623,7 +624,7 @@ class ColumnReaderImpl implements ColumnReader {
       return new RLEIntIterator(
           new RunLengthBitPackingHybridDecoder(
               BytesUtils.getWidthFromMaxInt(maxLevel),
-              new ByteArrayInputStream(bytes.toByteArray())));
+              new ByteBufferInputStream(bytes.toByteBuffer())));
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read levels in page for col " + path, e);
     }

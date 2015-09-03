@@ -106,7 +106,7 @@ public class ParquetProperties {
   private ValuesWriter plainWriter(ColumnDescriptor path, int initialSizePerCol, int pageSize) {
     switch (path.getType()) {
     case BOOLEAN:
-      return new BooleanPlainValuesWriter(this.allocator);
+      return new BooleanPlainValuesWriter();
     case INT96:
       return new FixedLenByteArrayPlainValuesWriter(12, initialSizePerCol, pageSize, this.allocator);
     case FIXED_LEN_BYTE_ARRAY:

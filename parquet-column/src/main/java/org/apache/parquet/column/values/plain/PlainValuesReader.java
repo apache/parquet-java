@@ -50,11 +50,6 @@ abstract public class PlainValuesReader extends ValuesReader {
     this.in = new LittleEndianDataInputStream(new ByteBufferInputStream(in.duplicate(), offset, in.limit() - offset));
   }
   
-  @Override
-  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
-    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
-  }
-
   public static class DoublePlainValuesReader extends PlainValuesReader {
 
     @Override

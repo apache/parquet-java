@@ -37,10 +37,8 @@ import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
 public class BooleanPlainValuesWriter extends ValuesWriter {
 
   private ByteBitPackingValuesWriter bitPackingWriter;
-  private ByteBufferAllocator allocator;
 
-  public BooleanPlainValuesWriter(ByteBufferAllocator allocator) {
-    this.allocator = allocator;
+  public BooleanPlainValuesWriter() {
     bitPackingWriter = new ByteBitPackingValuesWriter(1, LITTLE_ENDIAN);
   }
 

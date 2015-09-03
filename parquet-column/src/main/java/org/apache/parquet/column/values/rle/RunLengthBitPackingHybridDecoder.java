@@ -52,17 +52,6 @@ public class RunLengthBitPackingHybridDecoder {
   private int currentValue;
   private int[] currentBuffer;
 
-  public RunLengthBitPackingHybridDecoder(int bitWidth, ByteArrayInputStream in) {
-    if (DEBUG) LOG.debug("decoding bitWidth " + bitWidth);
-
-    Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
-    this.bitWidth = bitWidth;
-    this.packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
-    byte[] buf = new byte[in.available()];
-    in.read(buf, 0, in.available());
-    this.in = new ByteBufferInputStream(ByteBuffer.wrap(buf));
-  }
-
   public RunLengthBitPackingHybridDecoder(int bitWidth, ByteBufferInputStream in) {
     if (DEBUG) LOG.debug("decoding bitWidth " + bitWidth);
 
