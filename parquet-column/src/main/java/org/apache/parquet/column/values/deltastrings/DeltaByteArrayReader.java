@@ -54,11 +54,6 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
   }
   
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
-    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
-  }
-
-  @Override
   public void skip() {
     prefixLengthReader.skip();
     suffixReader.skip();

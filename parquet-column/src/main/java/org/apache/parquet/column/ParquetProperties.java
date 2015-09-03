@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column;
 
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
@@ -77,6 +78,7 @@ public class ParquetProperties {
   private final int dictionaryPageSizeThreshold;
   private final WriterVersion writerVersion;
   private final boolean enableDictionary;
+  // TODO - Should this even hold an allocator? this isn't really a property
   private ByteBufferAllocator allocator;
 
   public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict) {
@@ -87,7 +89,8 @@ public class ParquetProperties {
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
-    this.allocator = allocator != null ? allocator : new HeapByteBufferAllocator();
+    Preconditions.checkNotNull(allocator, "ByteBufferAllocator");
+    this.allocator = allocator;
   }
 
   public ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol, int pageSize) {
@@ -231,20 +234,22 @@ public class ParquetProperties {
   public ColumnWriteStore newColumnWriteStore(
       MessageType schema,
       PageWriteStore pageStore,
-      int pageSize) {
+      int pageSize,
+      ByteBufferAllocator allocator) {
     switch (writerVersion) {
     case PARQUET_1_0:
       return new ColumnWriteStoreV1(
           pageStore,
           pageSize,
           dictionaryPageSizeThreshold,
-          enableDictionary, writerVersion);
+          enableDictionary, writerVersion, allocator);
     case PARQUET_2_0:
       return new ColumnWriteStoreV2(
           schema,
           pageStore,
           pageSize,
-          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary));
+          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary),
+          allocator);
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);
     }

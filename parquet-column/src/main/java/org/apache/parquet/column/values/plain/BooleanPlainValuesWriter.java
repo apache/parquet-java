@@ -41,7 +41,7 @@ public class BooleanPlainValuesWriter extends ValuesWriter {
 
   public BooleanPlainValuesWriter(ByteBufferAllocator allocator) {
     this.allocator = allocator;
-    bitPackingWriter = new ByteBitPackingValuesWriter(1, LITTLE_ENDIAN, this.allocator);
+    bitPackingWriter = new ByteBitPackingValuesWriter(1, LITTLE_ENDIAN);
   }
 
   @Override

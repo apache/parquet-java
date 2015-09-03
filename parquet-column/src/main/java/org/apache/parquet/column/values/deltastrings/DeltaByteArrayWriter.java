@@ -41,12 +41,10 @@ public class DeltaByteArrayWriter extends ValuesWriter{
   private ValuesWriter prefixLengthWriter;
   private ValuesWriter suffixWriter;
   private byte[] previous;
-  private ByteBufferAllocator allocator;
 
   public DeltaByteArrayWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    this.allocator=allocator;
-    this.prefixLengthWriter = new DeltaBinaryPackingValuesWriter(128, 4, initialCapacity, pageSize, this.allocator);
-    this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity, pageSize, this.allocator);
+    this.prefixLengthWriter = new DeltaBinaryPackingValuesWriter(128, 4, initialCapacity, pageSize, allocator);
+    this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity, pageSize, allocator);
     this.previous = new byte[0];
   }
 

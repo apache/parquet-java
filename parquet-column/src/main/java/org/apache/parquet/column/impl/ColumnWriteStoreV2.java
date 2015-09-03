@@ -29,6 +29,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
@@ -50,6 +51,7 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
   private long rowCount;
   private long rowCountForNextSizeCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
   private final long thresholdTolerance;
+  private final ByteBufferAllocator allocator;
 
   private int pageSizeThreshold;
 
@@ -57,14 +59,16 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
       MessageType schema,
       PageWriteStore pageWriteStore,
       int pageSizeThreshold,
-      ParquetProperties parquetProps) {
+      ParquetProperties parquetProps,
+      ByteBufferAllocator allocator) {
     super();
     this.pageSizeThreshold = pageSizeThreshold;
     this.thresholdTolerance = (long)(pageSizeThreshold * THRESHOLD_TOLERANCE_RATIO);
+    this.allocator = allocator;
     Map<ColumnDescriptor, ColumnWriterV2> mcolumns = new TreeMap<ColumnDescriptor, ColumnWriterV2>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      mcolumns.put(path, new ColumnWriterV2(path, pageWriter, parquetProps, pageSizeThreshold));
+      mcolumns.put(path, new ColumnWriterV2(path, pageWriter, parquetProps, pageSizeThreshold, allocator));
     }
     this.columns = unmodifiableMap(mcolumns);
     this.writers = this.columns.values();

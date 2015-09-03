@@ -35,7 +35,7 @@ public class ByteBitPackingValuesWriter extends ValuesWriter {
   private final int bitWidth;
   private ByteBasedBitPackingEncoder encoder;
 
-  public ByteBitPackingValuesWriter(int bound, Packer packer, ByteBufferAllocator a) {
+  public ByteBitPackingValuesWriter(int bound, Packer packer) {
     this.packer = packer;
     this.bitWidth = BytesUtils.getWidthFromMaxInt(bound);
     this.encoder = new ByteBasedBitPackingEncoder(bitWidth, packer);
@@ -67,11 +67,6 @@ public class ByteBitPackingValuesWriter extends ValuesWriter {
   @Override
   public void reset() {
     encoder = new ByteBasedBitPackingEncoder(bitWidth, packer);
-  }
-
-  @Override
-  public void close() {
-    /* nothing to do */
   }
 
   @Override

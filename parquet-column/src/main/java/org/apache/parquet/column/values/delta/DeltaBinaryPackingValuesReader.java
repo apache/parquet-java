@@ -66,7 +66,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    */
   @Override
   public void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException {
-    in = new ByteBufferInputStream(page.duplicate(), offset, page.limit() - offset);
+    in = new ByteBufferInputStream(page, offset, page.limit() - offset);
     this.config = DeltaBinaryPackingConfig.readConfig(in);
     this.page = page;
     this.totalValueCount = BytesUtils.readUnsignedVarInt(in);
@@ -80,11 +80,6 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
       loadNewBlockToBuffer();
     }
     this.nextOffset = page.limit() - in.available();
-  }
-  
-  @Override
-  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
-    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
   }
   
   @Override

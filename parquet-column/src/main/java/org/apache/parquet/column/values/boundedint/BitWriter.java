@@ -23,6 +23,7 @@ import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
+import org.apache.parquet.column.OutputStreamCloseException;
 
 import java.io.IOException;
 
@@ -36,7 +37,6 @@ class BitWriter {
   private static final int[] byteToTrueMask = new int[8];
   private static final int[] byteToFalseMask = new int[8];
   private boolean finished = false;
-  private ByteBufferAllocator allocator;
   static {
     int currentMask = 1;
     for (int i = 0; i < byteToTrueMask.length; i++) {
@@ -47,8 +47,7 @@ class BitWriter {
   }
 
   public BitWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    this.allocator = allocator;
-    this.baos = new CapacityByteArrayOutputStream(initialCapacity, pageSize, this.allocator);
+    this.baos = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
   }
 
   public void writeBit(boolean bit) {
@@ -170,7 +169,7 @@ class BitWriter {
     try {
       baos.close();
     } catch (IOException e) {
-      throw new ParquetRuntimeException("Error closing output stream.", e){};
+      throw new OutputStreamCloseException(e);
     }
   }
 }

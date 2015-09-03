@@ -24,6 +24,7 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.OutputStreamCloseException;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
@@ -105,8 +106,6 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    */
   private int previousValue = 0;
 
-  private ByteBufferAllocator allocator;
-
   /**
    * min delta is written to the beginning of each block.
    * it's zig-zag encoded. The deltas stored in each block is actually the difference to min delta,
@@ -124,8 +123,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     bitWidths = new int[config.miniBlockNumInABlock];
     deltaBlockBuffer = new int[blockSizeInValues];
     miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
-    this.allocator = allocator;
-    baos = new CapacityByteArrayOutputStream(slabSize, pageSize, this.allocator);
+    baos = new CapacityByteArrayOutputStream(slabSize, pageSize, allocator);
   }
 
   @Override
@@ -268,10 +266,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     try {
       this.baos.close();
     } catch (IOException e) {
-      throw new ParquetRuntimeException("Error closing output stream.", e){
-        // Should not be a common exception case, only if there is a low level I/O issue that will likely not
-        // be recoverable.
-      };
+      throw new OutputStreamCloseException(e);
     }
     this.deltaValuesToFlush = 0;
     this.minDeltaInCurrentBlock = Integer.MAX_VALUE;

@@ -50,7 +50,6 @@ class BoundedIntValuesWriter extends ValuesWriter {
   private int bitsPerValue;
   private BitWriter bitWriter;
   private boolean isFirst = true;
-  private ByteBufferAllocator allocator;
 
   private static final int[] byteToTrueMask = new int[8];
   static {
@@ -65,8 +64,7 @@ class BoundedIntValuesWriter extends ValuesWriter {
     if (bound == 0) {
       throw new ParquetEncodingException("Value bound cannot be 0. Use DevNullColumnWriter instead.");
     }
-    this.allocator = allocator;
-    this.bitWriter = new BitWriter(initialCapacity, pageSize, this.allocator);
+    this.bitWriter = new BitWriter(initialCapacity, pageSize, allocator);
     bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
     shouldRepeatThreshold = (bitsPerValue + 9)/(1 + bitsPerValue);
     if (Log.DEBUG) LOG.debug("init column with bit width of " + bitsPerValue + " and repeat threshold of " + shouldRepeatThreshold);

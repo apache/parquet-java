@@ -110,7 +110,8 @@ class InternalParquetRecordWriter<T> {
     columnStore = parquetProperties.newColumnWriteStore(
         schema,
         pageStore,
-        pageSize);
+        pageSize,
+        allocator);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);
     writeSupport.prepareForWrite(recordConsumer);

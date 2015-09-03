@@ -228,11 +228,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     @Override
-    public ByteBufferAllocator getAllocator() {
-      return allocator;
-    }
-
-    @Override
     public void reset() {
 
     }

@@ -40,11 +40,6 @@ public class DevNullValuesWriter extends ValuesWriter {
   }
 
   @Override
-  public void close() {
-
-  }
-
-  @Override
   public void writeInteger(int v) {
   }
 

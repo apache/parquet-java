@@ -62,10 +62,12 @@ public abstract class ValuesReader {
   public abstract void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException;
   
   /**
-   * Compatitble Interface.
+   * Compatibility Interface.
    */
-  public abstract void initFromPage(int valueCount, byte[] page, int offset) throws IOException;
-  
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException {
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
+  }
+
   /**
    * Called to return offset of the next section
    * @return offset of the next section

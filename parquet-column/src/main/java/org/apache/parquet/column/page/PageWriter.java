@@ -87,13 +87,6 @@ public interface PageWriter {
   String memUsageString(String prefix);
 
   /**
-   * Gets the associated ByteBuffer allocator. The allocator is passed in all the way down to
-   * the Column ValuesWriter(s).
-   * @return
-   */
-  ByteBufferAllocator getAllocator();
-
-  /**
    * Reset the page writer. Reset/reallocate any resources.
    */
   public void reset();

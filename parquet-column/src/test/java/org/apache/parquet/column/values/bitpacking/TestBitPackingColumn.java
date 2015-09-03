@@ -199,7 +199,7 @@ public class TestBitPackingColumn {
         return new ByteBitPackingValuesReader(bound, BIG_ENDIAN);
       }
       public ValuesWriter getWriter(final int bound) {
-        return new ByteBitPackingValuesWriter(bound, BIG_ENDIAN, new DirectByteBufferAllocator());
+        return new ByteBitPackingValuesWriter(bound, BIG_ENDIAN);
       }
     }
     ;

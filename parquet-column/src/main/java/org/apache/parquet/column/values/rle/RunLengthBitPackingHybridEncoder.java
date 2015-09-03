@@ -27,6 +27,7 @@ import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
+import org.apache.parquet.column.OutputStreamCloseException;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 
@@ -291,10 +292,7 @@ public class RunLengthBitPackingHybridEncoder {
     try {
       baos.close();
     } catch (IOException e) {
-      throw new ParquetRuntimeException("Error closing output stream.", e){
-        // Should not be a common exception case, only if there is a low level I/O issue that will likely not
-        // be recoverable.
-      };
+      throw new OutputStreamCloseException(e);
     }
   }
 
