@@ -43,18 +43,13 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
 
   @Override
   public void initFromPage(int valueCountL, ByteBuffer page, int offset) throws IOException {
-    ByteBufferInputStream in = new ByteBufferInputStream(page.duplicate(), offset, page.limit() - offset);
+    ByteBufferInputStream in = new ByteBufferInputStream(page, offset, page.limit() - offset);
     int length = BytesUtils.readIntLittleEndian(in);
 
     decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
 
     // 4 is for the length which is stored as 4 bytes little endian
     this.nextOffset = offset + length + 4;
-  }
-  
-  @Override
-  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
-    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
   }
   
   @Override

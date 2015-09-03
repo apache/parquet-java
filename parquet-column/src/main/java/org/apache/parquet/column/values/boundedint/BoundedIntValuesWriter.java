@@ -103,11 +103,6 @@ class BoundedIntValuesWriter extends ValuesWriter {
 
   @Override
   public void close() {
-    currentValue = -1;
-    currentValueCt = -1;
-    currentValueIsRepeated = false;
-    thereIsABufferedValue = false;
-    isFirst = true;
     bitWriter.close();
   }
 
