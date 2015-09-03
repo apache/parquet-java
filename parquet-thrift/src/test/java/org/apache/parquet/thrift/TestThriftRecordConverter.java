@@ -27,16 +27,17 @@ import org.apache.parquet.Files;
 import org.apache.parquet.Strings;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.thrift.ThriftRecordConverter.FieldEnumConverter;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftField.Requirement;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.EnumType;
 import org.apache.parquet.thrift.struct.ThriftType.EnumValue;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.apache.parquet.thrift.ThriftRecordConverter.EnumConverter;
 import org.apache.parquet.thrift.test.compat.StructWithUnionV1;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
+
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -50,7 +51,7 @@ public class TestThriftRecordConverter {
 
     ArrayList<TProtocol> events = new ArrayList<TProtocol>();
 
-    FieldEnumConverter conv = new  FieldEnumConverter(events, field);
+    EnumConverter conv = new EnumConverter(events, field);
 
     conv.addBinary(Binary.fromString("hello"));
 

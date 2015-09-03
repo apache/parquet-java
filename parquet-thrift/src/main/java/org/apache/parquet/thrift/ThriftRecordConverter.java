@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -103,6 +104,23 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
           return new TField(field.getName(), thriftType, field.getFieldId());
         }
       };
+    }
+
+    @Override
+    public boolean hasDictionarySupport() {
+      return delegate.hasDictionarySupport();
+    }
+
+    @Override
+    public void setDictionary(Dictionary dictionary) {
+      delegate.setDictionary(dictionary);
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      startField();
+      delegate.addValueFromDictionary(dictionaryId);
+      endField();
     }
 
     @Override
@@ -257,6 +275,22 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     }
 
     @Override
+    public boolean hasDictionarySupport() {
+      return delegate.hasDictionarySupport();
+    }
+
+    @Override
+    public void setDictionary(Dictionary dictionary) {
+      delegate.setDictionary(dictionary);
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      delegate.addValueFromDictionary(dictionaryId);
+      ++ count;
+    }
+
+    @Override
     public void addBinary(Binary value) {
       delegate.addBinary(value);
       ++ count;
@@ -304,20 +338,50 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   }
 
-  /**
-   * convert primitive values
-   *
-   * @author Julien Le Dem
-   *
-   */
-  static class FieldPrimitiveConverter extends PrimitiveConverter {
+  static abstract class PrimitiveConverterBase extends PrimitiveConverter {
+    protected final List<TProtocol> events;
+    private ParquetProtocol[] dictionary;
 
-    private final List<TProtocol> events;
-    private ThriftTypeID type;
-
-    public FieldPrimitiveConverter(List<TProtocol> events, ThriftField field) {
+    protected PrimitiveConverterBase(List<TProtocol> events) {
       this.events = events;
-      this.type = field.getType().getType();
+    }
+
+    protected abstract ParquetProtocol decodeFromDictionary(Dictionary d, int i);
+
+    @Override
+    public boolean hasDictionarySupport() {
+      return true;
+    }
+
+    @Override
+    public void setDictionary(Dictionary dictionary) {
+      this.dictionary = new ParquetProtocol[dictionary.getMaxId() + 1];
+      for (int i = 0; i <= dictionary.getMaxId(); i++) {
+        this.dictionary[i] = decodeFromDictionary(dictionary, i);
+      }
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      events.add(this.dictionary[dictionaryId]);
+    }
+  }
+
+  static final class BooleanConverter extends PrimitiveConverterBase {
+
+    BooleanConverter(List<TProtocol> events) {
+      super(events);
+    }
+
+    @Override
+    protected ParquetProtocol decodeFromDictionary(Dictionary d, int i) {
+      final boolean value = d.decodeToBoolean(i);
+      return new ParquetProtocol("readBool()") {
+        @Override
+        public boolean readBool() throws TException {
+          return value;
+        }
+      };
     }
 
     @Override
@@ -329,6 +393,24 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         }
       });
     }
+  }
+
+  static final class DoubleConverter extends PrimitiveConverterBase {
+
+    DoubleConverter(List<TProtocol> events) {
+      super(events);
+    }
+
+    @Override
+    protected ParquetProtocol decodeFromDictionary(Dictionary d, int i) {
+      final double value = d.decodeToDouble(i);
+      return new ParquetProtocol("readDouble()") {
+        @Override
+        public double readDouble() throws TException {
+          return value;
+        }
+      };
+    }
 
     @Override
     public void addDouble(final double value) {
@@ -339,49 +421,107 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         }
       });
     }
+  }
+
+  static final class ByteConverter extends PrimitiveConverterBase {
+
+    ByteConverter(List<TProtocol> events) {
+      super(events);
+    }
 
     @Override
-    public void addFloat(final float value) {
-      // TODO: check thrift has no float
-      events.add(new ParquetProtocol("readDouble() float") {
+    protected ParquetProtocol decodeFromDictionary(Dictionary d, int i) {
+      final byte value = (byte) d.decodeToInt(i);
+      return new ParquetProtocol("readByte() int") {
         @Override
-        public double readDouble() throws TException {
+        public byte readByte() throws TException {
           return value;
         }
-      });
+      };
     }
 
     @Override
     public void addInt(final int value) {
-      // TODO: make subclass per type
-      switch (type) {
-      case BYTE:
-        events.add(new ParquetProtocol("readByte() int") {
-          @Override
-          public byte readByte() throws TException {
-            return (byte)value;
-          }
-        });
-        break;
-      case I16:
-        events.add(new ParquetProtocol("readI16()") {
-          @Override
-          public short readI16() throws TException {
-            return (short)value;
-          }
-        });
-        break;
-      case I32:
-        events.add(new ParquetProtocol("readI32()") {
-          @Override
-          public int readI32() throws TException {
-            return value;
-          }
-        });
-        break;
-        default:
-          throw new UnsupportedOperationException("not convertible type " + type);
-      }
+      events.add(new ParquetProtocol("readByte() int") {
+        @Override
+        public byte readByte() throws TException {
+          return (byte) value;
+        }
+      });
+    }
+  }
+
+  static final class ShortConverter extends PrimitiveConverterBase {
+
+    ShortConverter(List<TProtocol> events) {
+      super(events);
+    }
+
+    @Override
+    protected ParquetProtocol decodeFromDictionary(Dictionary d, int i) {
+      final short value = (short) d.decodeToInt(i);
+      return new ParquetProtocol("readI16()") {
+        @Override
+        public short readI16() throws TException {
+          return value;
+        }
+      };
+    }
+
+    @Override
+    public void addInt(final int value) {
+      events.add(new ParquetProtocol("readI16()") {
+        @Override
+        public short readI16() throws TException {
+          return (short) value;
+        }
+      });
+    }
+  }
+
+  static final class IntConverter extends PrimitiveConverterBase {
+
+    IntConverter(List<TProtocol> events) {
+      super(events);
+    }
+
+    @Override
+    protected ParquetProtocol decodeFromDictionary(Dictionary d, int i) {
+      final int value = d.decodeToInt(i);
+      return new ParquetProtocol("readI32()") {
+        @Override
+        public int readI32() throws TException {
+          return value;
+        }
+      };
+    }
+
+    @Override
+    public void addInt(final int value) {
+      events.add(new ParquetProtocol("readI32()") {
+        @Override
+        public int readI32() throws TException {
+          return value;
+        }
+      });
+    }
+  }
+
+  static final class LongConverter extends PrimitiveConverterBase {
+
+    LongConverter(List<TProtocol> events) {
+      super(events);
+    }
+
+    @Override
+    protected ParquetProtocol decodeFromDictionary(Dictionary d, int i) {
+      final long value = d.decodeToLong(i);
+      return new ParquetProtocol("readI64()") {
+        @Override
+        public long readI64() throws TException {
+          return value;
+        }
+      };
     }
 
     @Override
@@ -393,20 +533,42 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         }
       });
     }
-
   }
 
-  /**
-   * converts Binary into String
-   * @author Julien Le Dem
-   *
-   */
-  static class FieldStringConverter extends PrimitiveConverter {
+  static final class StringConverter extends PrimitiveConverterBase {
 
-    private final List<TProtocol> events;
+    StringConverter(List<TProtocol> events) {
+      super(events);
+    }
 
-    public FieldStringConverter(List<TProtocol> events, ThriftField field) {
-      this.events = events;
+    @Override
+    protected ParquetProtocol decodeFromDictionary(Dictionary d, int i) {
+      final Binary decoded = d.decodeToBinary(i);
+
+      return new ParquetProtocol("readString() binary") {
+        // since we don't know whether this field is a binary or a string,
+        // we lazily convert the first time readString() or readBinary is called.
+        // we can't eagerly convert because a binary blob might not be a valid string
+        // TODO: ensure that this code doesn't need to be threadsafe
+        private String asString = null;
+        private ByteBuffer asBuffer = null;
+
+        @Override
+        public String readString() throws TException {
+          if (asString == null ) {
+            this.asString = decoded.toStringUsingUTF8();
+          }
+          return this.asString;
+        }
+
+        @Override
+        public ByteBuffer readBinary() throws TException {
+          if (asBuffer == null) {
+            this.asBuffer = decoded.toByteBuffer();
+          }
+          return this.asBuffer;
+        }
+      };
     }
 
     @Override
@@ -422,28 +584,41 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         }
       });
     }
-
   }
 
-  /**
-   * converts Binary into Enum
-   * @author Julien Le Dem
-   *
-   */
-   static class FieldEnumConverter extends PrimitiveConverter {
+   static class EnumConverter extends PrimitiveConverterBase {
 
-    private final List<TProtocol> events;
     private final Map<Binary, Integer> enumLookup = new HashMap<Binary, Integer>();
     private final ThriftField field;
 
-    public FieldEnumConverter(List<TProtocol> events, ThriftField field) {
-      this.events = events;
+    public EnumConverter(List<TProtocol> events, ThriftField field) {
+      super(events);
       this.field = field;
       final Iterable<EnumValue> values = ((EnumType)field.getType()).getValues();
       for (EnumValue enumValue : values) {
         enumLookup.put(Binary.fromString(enumValue.getName()), enumValue.getId());
       }
     }
+
+     @Override
+     protected ParquetProtocol decodeFromDictionary(Dictionary d, int i) {
+       Binary value = d.decodeToBinary(i);
+       final Integer id = enumLookup.get(value);
+       if (id == null) {
+         throw new ParquetDecodingException("Unrecognized enum value: "
+             + value.toStringUsingUTF8()
+             + " known values: "
+             + enumLookup
+             + " in " + this.field);
+       }
+
+       return new ParquetProtocol("readI32() enum") {
+         @Override
+         public int readI32() throws TException {
+           return id;
+         }
+       };
+     }
 
     @Override
     public void addBinary(final Binary value) {
@@ -876,20 +1051,32 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   private static Converter newConverter(List<TProtocol> events, Type type, ThriftField field) {
     switch (field.getType().getType()) {
-    case LIST:
-      return new ListConverter(events, type.asGroupType(), field);
-    case SET:
-      return new SetConverter(events, type.asGroupType(), field);
-    case MAP:
-      return new MapConverter(events, type.asGroupType(), field);
-    case STRUCT:
-      return new StructConverter(events, type.asGroupType(), field);
-    case STRING:
-      return new FieldStringConverter(events, field);
-    case ENUM:
-      return new FieldEnumConverter(events, field);
-    default:
-      return new FieldPrimitiveConverter(events, field);
+      case BOOL:
+        return new BooleanConverter(events);
+      case BYTE:
+        return new ByteConverter(events);
+      case DOUBLE:
+        return new DoubleConverter(events);
+      case I16:
+        return new ShortConverter(events);
+      case I32:
+        return new IntConverter(events);
+      case I64:
+        return new LongConverter(events);
+      case STRING:
+        return new StringConverter(events);
+      case STRUCT:
+        return new StructConverter(events, type.asGroupType(), field);
+      case MAP:
+        return new MapConverter(events, type.asGroupType(), field);
+      case SET:
+        return new SetConverter(events, type.asGroupType(), field);
+      case LIST:
+        return new ListConverter(events, type.asGroupType(), field);
+      case ENUM:
+        return new EnumConverter(events, field);
+      default:
+        throw new IllegalArgumentException("Unrecognized type " + field.getType().getType());
     }
   }
 }
