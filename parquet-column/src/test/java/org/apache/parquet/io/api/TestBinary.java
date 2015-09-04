@@ -143,18 +143,11 @@ public class TestBinary {
     testBinary(BUFFER_BF, false);
   }
 
-  // TODO - enhance this with another case once I figure out if an issue with the equals method on one of the binary
-  // implementations is causing the other test to fail after the ByteBuffer merge
   @Test
   public void testEqualityMethods() throws Exception {
-    Binary bin1 = Binary.fromConstantByteArray("alice".getBytes());
-    Binary bin2 = Binary.fromConstantByteBuffer(ByteBuffer.wrap("alice".getBytes()));
+    Binary bin1 = Binary.fromConstantByteArray("alice".getBytes(), 1, 3);
+    Binary bin2 = Binary.fromConstantByteBuffer(ByteBuffer.wrap("alice".getBytes(), 1, 3));
     assertEquals(bin1, bin2);
-    bin1 = Binary.fromConstantByteArray("alice".getBytes(), 1, 3);
-    bin2 = Binary.fromConstantByteBuffer(ByteBuffer.wrap("alice".getBytes()), 1, 3);
-    assertEquals(bin1, bin2);
-    bin1 = Binary.fromConstantByteArray("alice".getBytes(), 1, 3);
-    bin2 = Binary.fromConstantByteBuffer(ByteBuffer.wrap("alice".getBytes()));
   }
 
   @Test

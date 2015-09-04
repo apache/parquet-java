@@ -70,6 +70,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   abstract int compareTo(byte[] bytes, int offset, int length);
 
+  abstract int compareTo(ByteBuffer bytes, int offset, int length);
+
   abstract public ByteBuffer toByteBuffer();
 
   @Override
@@ -188,6 +190,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     int compareTo(byte[] other, int otherOffset, int otherLength) {
       return Binary.compareTwoByteArrays(value, offset, length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    int compareTo(ByteBuffer bytes, int otherOffset, int otherLength) {
+      return Binary.compareByteArrayToByteBuffer(value, offset, length, bytes, otherOffset, otherLength);
     }
 
     @Override
@@ -314,6 +321,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
+    int compareTo(ByteBuffer bytes, int otherOffset, int otherLength) {
+      return Binary.compareByteArrayToByteBuffer(value, 0, value.length, bytes, otherOffset, otherLength);
+    }
+
+    @Override
     public ByteBuffer toByteBuffer() {
       return ByteBuffer.wrap(value);
     }
@@ -385,7 +397,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       byte[] bytes = new byte[length];
 
       int limit = value.limit();
-      value.limit(offset+length);
+      value.limit(offset + length);
       int position = value.position();
       value.position(offset);
       value.get(bytes);
@@ -411,10 +423,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       if (value.hasArray()) {
         return Binary.hashCode(value.array(), value.arrayOffset() + offset, length);
       } else {
-
+        return Binary.hashCode(value, offset, length);
       }
-      byte[] bytes = getBytesUnsafe();
-      return Binary.hashCode(bytes, 0, bytes.length);
     }
 
     @Override
@@ -424,17 +434,15 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       } else {
         return other.equals(value, offset, length);
       }
-//      byte[] bytes = getBytesUnsafe();
-//      return other.equals(bytes, 0, bytes.length);
     }
 
     @Override
     boolean equals(byte[] other, int otherOffset, int otherLength) {
       if (value.hasArray()) {
         return Binary.equals(value.array(), value.arrayOffset() + offset, length, other, otherOffset, otherLength);
+      } else {
+        return Binary.equals(other, otherOffset, otherLength, value, offset, length);
       }
-      byte[] bytes = getBytesUnsafe();
-      return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
     }
 
     @Override
@@ -446,9 +454,9 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     public int compareTo(Binary other) {
       if (value.hasArray()) {
         return other.compareTo(value.array(), value.arrayOffset() + offset, length);
+      } else {
+        return other.compareTo(value, offset, length);
       }
-      byte[] bytes = getBytesUnsafe();
-      return other.compareTo(bytes, 0, bytes.length);
     }
 
     @Override
@@ -456,9 +464,14 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       if (value.hasArray()) {
         return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + offset, length,
             other, otherOffset, otherLength);
+      } {
+        return Binary.compareByteBufferToByteArray(value, offset, length, other, otherOffset, otherLength);
       }
-      byte[] bytes = getBytesUnsafe();
-      return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    int compareTo(ByteBuffer bytes, int otherOffset, int otherLength) {
+      return Binary.compareTwoByteBuffers(value, offset, length, bytes, otherOffset, otherLength);
     }
 
     @Override
@@ -589,6 +602,47 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       }
     }
     return true;
+  }
+
+  private static final int compareByteBufferToByteArray(ByteBuffer buf, int offset1, int length1,
+                                                        byte[] array, int offset2, int length2) {
+    return -1 * Binary.compareByteArrayToByteBuffer(array, offset1, length1, buf, offset2, length2);
+  }
+
+  private static final int compareByteArrayToByteBuffer(byte[] array1, int offset1, int length1,
+                                                        ByteBuffer buf, int offset2, int length2) {
+    if (array1 == null && buf == null) return 0;
+    int min_length = (length1 < length2) ? length1 : length2;
+    for (int i = 0; i < min_length; i++) {
+      if (array1[i + offset1] < buf.get(i + offset2)) {
+        return 1;
+      }
+      if (array1[i + offset1] > buf.get(i + offset2)) {
+        return -1;
+      }
+    }
+    // check remainder
+    if (length1 == length2) { return 0; }
+    else if (length1 < length2) { return 1;}
+    else { return -1; }
+  }
+
+  private static final int compareTwoByteBuffers(ByteBuffer buf1, int offset1, int length1,
+                                                        ByteBuffer buf2, int offset2, int length2) {
+    if (buf1 == null && buf2 == null) return 0;
+    int min_length = (length1 < length2) ? length1 : length2;
+    for (int i = 0; i < min_length; i++) {
+      if (buf1.get(i + offset1) < buf2.get(i + offset2)) {
+        return 1;
+      }
+      if (buf1.get(i + offset1) > buf2.get(i + offset2)) {
+        return -1;
+      }
+    }
+    // check remainder
+    if (length1 == length2) { return 0; }
+    else if (length1 < length2) { return 1;}
+    else { return -1; }
   }
 
   private static final int compareTwoByteArrays(byte[] array1, int offset1, int length1,
