@@ -54,7 +54,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
         // We have to fill in 0 byte at the end of encoded bytes.
         byte[] tempEncode = new byte[bitWidth];
         encoded.get(tempEncode, 0, encoded.limit() - encodedPos);
-        packer.unpack8Values(ByteBuffer.wrap(tempEncode), 0, decoded, 0);
+        packer.unpack8Values(tempEncode, 0, decoded, 0);
       } else {
         packer.unpack8Values(encoded, encodedPos, decoded, 0);
       }

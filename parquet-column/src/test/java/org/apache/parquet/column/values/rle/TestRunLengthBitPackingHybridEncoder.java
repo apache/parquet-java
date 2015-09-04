@@ -289,7 +289,7 @@ public class TestRunLengthBitPackingHybridEncoder {
 	// bit width 2.
 	bytes[0] = (1 << 1 )| 1;
 	bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
-    ByteBufferInputStream stream = new ByteBufferInputStream(ByteBuffer.wrap(bytes));
+    ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
     RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, stream);
     assertEquals(decoder.readInt(), 1);
     assertEquals(decoder.readInt(), 2);
@@ -311,7 +311,7 @@ public class TestRunLengthBitPackingHybridEncoder {
         next8Values[i] = (byte) is.read();
       }
 
-      packer.unpack8Values(ByteBuffer.wrap(next8Values), 0, unpacked, 0);
+      packer.unpack8Values(next8Values, 0, unpacked, 0);
 
       for (int v = 0; v < 8; v++) {
         values.add(unpacked[v]);
