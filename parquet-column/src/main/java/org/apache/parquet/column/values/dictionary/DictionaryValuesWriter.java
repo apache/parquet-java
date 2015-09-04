@@ -101,9 +101,6 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   /* Track the list of writers used so they can be appropriately closed when necessary
      (currently used for off-heap memory which is not garbage collected) */
   private List<RunLengthBitPackingHybridEncoder> encoders = new ArrayList<RunLengthBitPackingHybridEncoder>();
-  /* Track the list of dictionary writers used so they can be appropriately closed when necessary
-     (currently used for off-heap memory which is not garbage collected) */
-  protected List<ValuesWriter> dicionaryWriters = new ArrayList<ValuesWriter>();
 
   /**
    * @param maxDictionaryByteSize
@@ -115,8 +112,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     this.encodingForDictionaryPage = encodingForDictionaryPage;
   }
 
-  protected DictionaryPage dictPage(ValuesWriter dictionaryEncoder) {
-    return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, encodingForDictionaryPage);
+  protected DictionaryPage dictPage(BytesInput pageBytes) {
+    return new DictionaryPage(pageBytes, lastUsedDictionarySize, encodingForDictionaryPage);
   }
 
   @Override
@@ -197,11 +194,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     for (RunLengthBitPackingHybridEncoder encoder : encoders) {
       encoder.close();
     }
-    for (ValuesWriter writer : dicionaryWriters) {
-      writer.close();
-    }
     encoders.clear();
-    dicionaryWriters.clear();
   }
 
   @Override
@@ -210,11 +203,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     for (RunLengthBitPackingHybridEncoder encoder : encoders) {
       encoder.close();
     }
-    for (ValuesWriter writer : dicionaryWriters) {
-      writer.close();
-    }
     encoders.clear();
-    dicionaryWriters.clear();
   }
 
   @Override
@@ -282,14 +271,15 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
-        dicionaryWriters.add(dictionaryEncoder);
         Iterator<Binary> binaryIterator = binaryDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           Binary entry = binaryIterator.next();
           dictionaryEncoder.writeBytes(entry);
         }
-        return dictPage(dictionaryEncoder);
+        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
+        dictionaryEncoder.close();
+        return ret;
       }
       return null;
     }
@@ -352,14 +342,15 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         FixedLenByteArrayPlainValuesWriter dictionaryEncoder = new FixedLenByteArrayPlainValuesWriter(length, lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
-        dicionaryWriters.add(dictionaryEncoder);
         Iterator<Binary> binaryIterator = binaryDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           Binary entry = binaryIterator.next();
           dictionaryEncoder.writeBytes(entry);
         }
-        return dictPage(dictionaryEncoder);
+        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
+        dictionaryEncoder.close();
+        return ret;
       }
       return null;
     }
@@ -397,13 +388,14 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
-        dicionaryWriters.add(dictionaryEncoder);
         LongIterator longIterator = longDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeLong(longIterator.nextLong());
         }
-        return dictPage(dictionaryEncoder);
+        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
+        dictionaryEncoder.close();
+        return ret;
       }
       return null;
     }
@@ -469,13 +461,14 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
-        dicionaryWriters.add(dictionaryEncoder);
         DoubleIterator doubleIterator = doubleDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeDouble(doubleIterator.nextDouble());
         }
-        return dictPage(dictionaryEncoder);
+        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
+        dictionaryEncoder.close();
+        return ret;
       }
       return null;
     }
@@ -541,13 +534,14 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
-        dicionaryWriters.add(dictionaryEncoder);
         it.unimi.dsi.fastutil.ints.IntIterator intIterator = intDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeInteger(intIterator.nextInt());
         }
-        return dictPage(dictionaryEncoder);
+        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
+        dictionaryEncoder.close();
+        return ret;
       }
       return null;
     }
@@ -613,13 +607,14 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
-        dicionaryWriters.add(dictionaryEncoder);
         FloatIterator floatIterator = floatDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeFloat(floatIterator.nextFloat());
         }
-        return dictPage(dictionaryEncoder);
+        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
+        dictionaryEncoder.close();
+        return ret;
       }
       return null;
     }
