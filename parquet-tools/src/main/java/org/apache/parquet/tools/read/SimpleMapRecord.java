@@ -45,10 +45,13 @@ public class SimpleMapRecord extends SimpleRecord {
     return result;
   }
 
-  private String keyToString(Object kvValue) {
+  String keyToString(Object kvValue) {
+    if (kvValue == null) {
+      return "null";
+    }
+
     Class<?> type = kvValue.getClass();
     if (type.isArray()) {
-
       if (type.getComponentType() == boolean.class) {
         return Arrays.toString((boolean[]) kvValue);
       }
