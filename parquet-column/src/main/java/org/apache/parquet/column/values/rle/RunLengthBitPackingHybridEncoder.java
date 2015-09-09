@@ -20,14 +20,13 @@ package org.apache.parquet.column.values.rle;
 
 import java.io.IOException;
 
-import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
-import org.apache.parquet.column.OutputStreamCloseException;
+import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
+import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 
@@ -66,7 +65,7 @@ public class RunLengthBitPackingHybridEncoder {
 
   private final BytePacker packer;
 
-  private final CapacityByteArrayOutputStream baos;
+  private final CapacityByteBufferOutputStream baos;
 
   /**
    * The bit width used for bit-packing and for writing
@@ -128,7 +127,7 @@ public class RunLengthBitPackingHybridEncoder {
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
 
     this.bitWidth = bitWidth;
-    this.baos = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
+    this.baos = new CapacityByteBufferOutputStream(initialCapacity, pageSize, allocator);
     this.packBuffer = new byte[bitWidth];
     this.bufferedValues = new int[8];
     this.packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
@@ -286,11 +285,7 @@ public class RunLengthBitPackingHybridEncoder {
 
   public void close() {
     reset(false);
-    try {
-      baos.close();
-    } catch (IOException e) {
-      throw new OutputStreamCloseException(e);
-    }
+    baos.close();
   }
 
   public long getBufferedSize() {

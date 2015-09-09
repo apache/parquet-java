@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.bytes;
 
+import org.apache.parquet.OutputStreamCloseException;
+
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -208,6 +210,14 @@ public class LittleEndianDataOutputStream extends OutputStream {
    */
   public final void writeDouble(double v) throws IOException {
     writeLong(Double.doubleToLongBits(v));
+  }
+
+  public void close() {
+    try {
+      out.close();
+    }catch(IOException e){
+      throw new OutputStreamCloseException(e);
+    }
   }
 
 }

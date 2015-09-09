@@ -20,14 +20,13 @@ package org.apache.parquet.column.values.deltalengthbytearray;
 
 import java.io.IOException;
 
-import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
+import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
 import org.apache.parquet.bytes.LittleEndianDataOutputStream;
 import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.OutputStreamCloseException;
+import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -48,11 +47,11 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(DeltaLengthByteArrayValuesWriter.class);
 
   private ValuesWriter lengthWriter;
-  private CapacityByteArrayOutputStream arrayOut;
+  private CapacityByteBufferOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
 
   public DeltaLengthByteArrayValuesWriter(int initialSize, int pageSize, ByteBufferAllocator allocator) {
-    arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, allocator);
+    arrayOut = new CapacityByteBufferOutputStream(initialSize, pageSize, allocator);
     out = new LittleEndianDataOutputStream(arrayOut);
     lengthWriter = new DeltaBinaryPackingValuesWriter(
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,
@@ -100,11 +99,7 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   @Override
   public void close() {
     lengthWriter.close();
-    try {
-      arrayOut.close();
-    } catch (IOException e) {
-      throw new OutputStreamCloseException(e);
-    }
+    arrayOut.close();
   }
 
   @Override

@@ -27,7 +27,7 @@ import org.apache.parquet.Ints;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
+import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.Encoding;
@@ -74,7 +74,7 @@ final class ColumnWriterV2 implements ColumnWriter {
     this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), MIN_SLAB_SIZE, pageSize, allocator);
     this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), MIN_SLAB_SIZE, pageSize, allocator);
 
-    int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSize, 10);
+    int initialSlabSize = CapacityByteBufferOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSize, 10);
     // TODO - Should I be passing an allocator here rather than just letting it use the one stored in ParquetProperties
     this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSize);
   }

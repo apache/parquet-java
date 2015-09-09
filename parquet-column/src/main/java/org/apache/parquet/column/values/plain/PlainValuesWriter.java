@@ -21,14 +21,13 @@ package org.apache.parquet.column.values.plain;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
-import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
+import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
 import org.apache.parquet.bytes.LittleEndianDataOutputStream;
 import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.OutputStreamCloseException;
+import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
@@ -44,13 +43,11 @@ public class PlainValuesWriter extends ValuesWriter {
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
-  private CapacityByteArrayOutputStream arrayOut;
+  private CapacityByteBufferOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
-  private ByteBufferAllocator allocator;
 
   public PlainValuesWriter(int initialSize, int pageSize, ByteBufferAllocator allocator) {
-    this.allocator = allocator;
-    arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, allocator);
+    arrayOut = new CapacityByteBufferOutputStream(initialSize, pageSize, allocator);
     out = new LittleEndianDataOutputStream(arrayOut);
   }
 
@@ -132,11 +129,8 @@ public class PlainValuesWriter extends ValuesWriter {
 
   @Override
   public void close() {
-    try {
-      arrayOut.close();
-    } catch (IOException e) {
-      throw new OutputStreamCloseException(e);
-    }
+    arrayOut.close();
+    out.close();
   }
 
   @Override

@@ -18,13 +18,12 @@
  */
 package org.apache.parquet.column.values.delta;
 
-import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
+import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
 import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.OutputStreamCloseException;
+import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
@@ -63,7 +62,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   public static final int DEFAULT_NUM_MINIBLOCKS = 4;
 
-  private final CapacityByteArrayOutputStream baos;
+  private final CapacityByteBufferOutputStream baos;
 
   /**
    * stores blockSizeInValues, miniBlockNumInABlock and miniBlockSizeInValues
@@ -123,7 +122,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     bitWidths = new int[config.miniBlockNumInABlock];
     deltaBlockBuffer = new int[blockSizeInValues];
     miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
-    baos = new CapacityByteArrayOutputStream(slabSize, pageSize, allocator);
+    baos = new CapacityByteBufferOutputStream(slabSize, pageSize, allocator);
   }
 
   @Override
@@ -263,11 +262,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   @Override
   public void close() {
     this.totalValueCount = 0;
-    try {
-      this.baos.close();
-    } catch (IOException e) {
-      throw new OutputStreamCloseException(e);
-    }
+    this.baos.close();
     this.deltaValuesToFlush = 0;
     this.minDeltaInCurrentBlock = Integer.MAX_VALUE;
   }

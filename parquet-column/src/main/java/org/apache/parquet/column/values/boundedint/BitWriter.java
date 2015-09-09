@@ -18,12 +18,11 @@
  */
 package org.apache.parquet.column.values.boundedint;
 
-import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
-import org.apache.parquet.column.OutputStreamCloseException;
+import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
+import org.apache.parquet.OutputStreamCloseException;
 
 import java.io.IOException;
 
@@ -31,7 +30,7 @@ class BitWriter {
   private static final Log LOG = Log.getLog(BitWriter.class);
   private static final boolean DEBUG = false;//Log.DEBUG;
 
-  private CapacityByteArrayOutputStream baos;
+  private CapacityByteBufferOutputStream baos;
   private int currentByte = 0;
   private int currentBytePosition = 0;
   private static final int[] byteToTrueMask = new int[8];
@@ -47,7 +46,7 @@ class BitWriter {
   }
 
   public BitWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    this.baos = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
+    this.baos = new CapacityByteBufferOutputStream(initialCapacity, pageSize, allocator);
   }
 
   public void writeBit(boolean bit) {
@@ -166,10 +165,6 @@ class BitWriter {
     currentByte = 0;
     currentBytePosition = 0;
     finished = false;
-    try {
-      baos.close();
-    } catch (IOException e) {
-      throw new OutputStreamCloseException(e);
-    }
+    baos.close();
   }
 }
