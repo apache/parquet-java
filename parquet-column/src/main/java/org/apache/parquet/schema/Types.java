@@ -619,8 +619,6 @@ public class Types {
 
     @Override
     protected GroupType build(String name) {
-      Preconditions.checkState(!fields.isEmpty(),
-          "Cannot build an empty group");
       return new GroupType(repetition, name, originalType, fields, id);
     }
 
