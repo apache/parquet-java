@@ -20,21 +20,17 @@
 package org.apache.parquet.statistics;
 
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.PrimitiveType;
-
 import java.math.BigInteger;
-import java.util.*;
+import java.util.Random;
 
-public class RandomValueGenerators {
+public class RandomValues {
   private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
 
-  public static abstract class RandomValueGenerator<T extends Comparable<T>> {
-    protected final Random random;
-    protected final PrimitiveType.PrimitiveTypeName forType;
+  private static abstract class RandomValueGenerator<T extends Comparable<T>> {
+    private final Random random;
 
-    protected RandomValueGenerator(long seed, PrimitiveType.PrimitiveTypeName forType) {
+    protected RandomValueGenerator(long seed) {
       this.random = new Random(seed);
-      this.forType = forType;
     }
 
     public boolean shouldGenerateNull() {
@@ -56,13 +52,13 @@ public class RandomValueGenerators {
     public double randomDouble() { return random.nextDouble(); }
     public double randomDouble(double maximum) { return random.nextDouble() % maximum; }
 
-    public BigInteger randomInt96(Random random) {
+    public BigInteger randomInt96() {
       return new BigInteger(95, random);
     }
 
-    public BigInteger randomInt96(BigInteger maximum, Random random) {
+    public BigInteger randomInt96(BigInteger maximum) {
       BigInteger result;
-      while ((result = randomInt96(random)).compareTo(maximum) > 0);
+      while ((result = randomInt96()).compareTo(maximum) > 0);
       return result;
     }
 
@@ -83,20 +79,15 @@ public class RandomValueGenerators {
       return builder.toString();
     }
 
-    public int randomInt(int low, int high) {
-      int range = (high - low);
-      return low + randomInt(range);
-    }
-
     protected abstract T nextValue();
   }
 
-  public static abstract class RandomBinaryIterable<T extends Comparable<T>> extends RandomValueGenerator<T> {
+  private static abstract class RandomBinaryBase<T extends Comparable<T>> extends RandomValueGenerator<T> {
     protected final int bufferLength;
     protected final byte[] buffer;
 
-    public RandomBinaryIterable(long seed, PrimitiveType.PrimitiveTypeName forType, int bufferLength) {
-      super(seed, forType);
+    public RandomBinaryBase(long seed, int bufferLength) {
+      super(seed);
 
       this.bufferLength = bufferLength;
       this.buffer = new byte[bufferLength];
@@ -105,209 +96,161 @@ public class RandomValueGenerators {
     public abstract Binary nextBinaryValue();
 
     public Binary asReusedBinary(byte[] data) {
-      Arrays.fill(buffer, (byte)0);
-      System.arraycopy(data, 0, buffer, 0, Math.min(data.length, bufferLength));
-      return Binary.fromReusedByteArray(data);
+      int length = Math.min(data.length, bufferLength);
+      System.arraycopy(data, 0, buffer, 0, length);
+      return Binary.fromReusedByteArray(data, 0, length);
     }
   }
 
-  public static class RandomIntGenerator extends RandomValueGenerator<Integer> {
+  public static class IntGenerator extends RandomValueGenerator<Integer> {
     private final RandomRange<Integer> randomRange = new RandomRange<Integer>(randomInt(), randomInt());
     private final int minimum = randomRange.minimum();
     private final int maximum = randomRange.maximum();
     private final int range = (maximum - minimum);
 
-    public RandomIntGenerator(long seed) {
-      super(seed, PrimitiveType.PrimitiveTypeName.INT32);
+    public IntGenerator(long seed) {
+      super(seed);
     }
 
     @Override
     protected Integer nextValue() {
-      if (!shouldGenerateNull()) {
-        return (minimum + randomInt(range));
-      } else {
-        return null;
-      }
+      return (minimum + randomInt(range));
     }
   }
 
-  public static class RandomLongGenerator extends RandomValueGenerator<Long> {
+  public static class LongGenerator extends RandomValueGenerator<Long> {
     private final RandomRange<Long> randomRange = new RandomRange<Long>(randomLong(), randomLong());
     private final long minimum = randomRange.minimum();
     private final long maximum = randomRange.maximum();
     private final long range = (maximum - minimum);
 
-    public RandomLongGenerator(long seed) {
-      super(seed, PrimitiveType.PrimitiveTypeName.INT64);
+    public LongGenerator(long seed) {
+      super(seed);
     }
 
     @Override
     protected Long nextValue() {
-      if (!shouldGenerateNull()) {
-        return (minimum + randomLong(range));
-      } else {
-        return null;
-      }
+      return (minimum + randomLong(range));
     }
   }
 
-  public static class RandomInt96Generator extends RandomBinaryIterable<BigInteger> {
-    private final RandomRange<BigInteger> randomRange = new RandomRange<BigInteger>(randomInt96(random), randomInt96(random));
+  public static class Int96Generator extends RandomBinaryBase<BigInteger> {
+    private final RandomRange<BigInteger> randomRange = new RandomRange<BigInteger>(randomInt96(), randomInt96());
     private final BigInteger minimum = randomRange.minimum();
     private final BigInteger maximum = randomRange.maximum();
     private final BigInteger range = maximum.subtract(minimum);
 
     private static final int INT_96_LENGTH = 12;
 
-    public RandomInt96Generator(long seed) {
-      super(seed, PrimitiveType.PrimitiveTypeName.INT96, INT_96_LENGTH);
+    public Int96Generator(long seed) {
+      super(seed, INT_96_LENGTH);
     }
 
     @Override
     protected BigInteger nextValue() {
-      if (!shouldGenerateNull()) {
-        return (minimum.add(randomInt96(range, super.random)));
-      } else {
-        return null;
-      }
+      return (minimum.add(randomInt96(range)));
     }
 
     @Override
     public Binary nextBinaryValue() {
-      BigInteger value = nextValue();
-      if (value != null) {
-        return asReusedBinary(value.toByteArray());
-      } else {
-        return null;
-      }
+      return asReusedBinary(nextValue().toByteArray());
     }
   }
 
-
-  public static class RandomFloatGenerator extends RandomValueGenerator<Float> {
+  public static class FloatGenerator extends RandomValueGenerator<Float> {
     private final RandomRange<Float> randomRange = new RandomRange<Float>(randomFloat(), randomFloat());
     private final float minimum = randomRange.minimum();
     private final float maximum = randomRange.maximum();
     private final float range = (maximum - minimum);
 
-    public RandomFloatGenerator(long seed) {
-      super(seed, PrimitiveType.PrimitiveTypeName.FLOAT);
+    public FloatGenerator(long seed) {
+      super(seed);
     }
 
     @Override
     protected Float nextValue() {
-      if (!shouldGenerateNull()) {
-        return (minimum + randomFloat(range));
-      } else {
-        return null;
-      }
+      return (minimum + randomFloat(range));
     }
   }
 
-  public static class RandomDoubleGenerator extends RandomValueGenerator<Double> {
+  public static class DoubleGenerator extends RandomValueGenerator<Double> {
     private final RandomRange<Double> randomRange = new RandomRange<Double>(randomDouble(), randomDouble());
     private final double minimum = randomRange.minimum();
     private final double maximum = randomRange.maximum();
     private final double range = (maximum - minimum);
 
-    public RandomDoubleGenerator(long seed) {
-      super(seed, PrimitiveType.PrimitiveTypeName.DOUBLE);
+    public DoubleGenerator(long seed) {
+      super(seed);
     }
 
     @Override
     protected Double nextValue() {
-      if (!shouldGenerateNull()) {
-        return (minimum + randomDouble(range));
-      } else {
-        return null;
-      }
+      return (minimum + randomDouble(range));
     }
   }
 
-  public static class RandomStringGenerator extends RandomBinaryIterable<String> {
+  public static class StringGenerator extends RandomBinaryBase<String> {
     private static final int MAX_STRING_LENGTH = 16;
-    public RandomStringGenerator(long seed) {
-      super(seed, PrimitiveType.PrimitiveTypeName.BINARY, MAX_STRING_LENGTH);
+    public StringGenerator(long seed) {
+      super(seed, MAX_STRING_LENGTH);
     }
 
     @Override
     protected String nextValue() {
       int stringLength = randomInt(15) + 1;
-
-      if (!shouldGenerateNull()) {
-        return randomString(stringLength);
-      } else {
-        return null;
-      }
+      return randomString(stringLength);
     }
 
     @Override
     public Binary nextBinaryValue() {
-      String value = nextValue();
-      if (value != null) {
-        return asReusedBinary(value.getBytes());
-      } else {
-        return null;
-      }
+      return asReusedBinary(nextValue().getBytes());
     }
   }
 
-  public static class RandomBinaryGenerator extends RandomBinaryIterable<Binary> {
+  public static class BinaryGenerator extends RandomBinaryBase<Binary> {
     private static final int MAX_STRING_LENGTH = 16;
-    public RandomBinaryGenerator(long seed) {
-      super(seed, PrimitiveType.PrimitiveTypeName.BINARY, MAX_STRING_LENGTH);
+    public BinaryGenerator(long seed) {
+      super(seed, MAX_STRING_LENGTH);
     }
 
     @Override
     protected Binary nextValue() {
-      if (!shouldGenerateNull()) {
-        for (int index = 0; index < bufferLength; index++) {
-          buffer[index] = (byte)randomInt();
-        }
-
-        return Binary.fromReusedByteArray(buffer);
-      } else {
-        return null;
+      // use a random length, but ensure it is at least a few bytes
+      int length = 5 + randomInt(buffer.length - 5);
+      for (int index = 0; index < length; index++) {
+        buffer[index] = (byte) randomInt();
       }
+
+      return Binary.fromReusedByteArray(buffer, 0, length);
     }
 
     @Override
     public Binary nextBinaryValue() {
-      Binary value = nextValue();
-      if (value != null) {
-        return value;
-      } else {
-        return null;
-      }
+      return nextValue();
     }
   }
 
-  public static class RandomFixedBinaryGenerator extends RandomBinaryIterable<String> {
-    public RandomFixedBinaryGenerator(long seed, int length) {
-      super(seed, PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, length);
+  public static class FixedGenerator extends RandomBinaryBase<Binary> {
+    public FixedGenerator(long seed, int length) {
+      super(seed, length);
     }
 
     @Override
-    protected String nextValue() {
-      if (!shouldGenerateNull()) {
-        return randomFixedLengthString(bufferLength);
-      } else {
-        return null;
+    protected Binary nextValue() {
+      for (int index = 0; index < buffer.length; index++) {
+        buffer[index] = (byte) randomInt();
       }
+
+      return Binary.fromReusedByteArray(buffer);
     }
 
     @Override
     public Binary nextBinaryValue() {
-      String value = nextValue();
-      if (value != null) {
-        return asReusedBinary(value.getBytes());
-      } else {
-        return null;
-      }
+      return nextValue();
     }
   }
 
-  public static class RandomRange<T extends Comparable<T>> {
+  private static class RandomRange<T extends Comparable<T>> {
     private T minimum;
     private T maximum;
 
