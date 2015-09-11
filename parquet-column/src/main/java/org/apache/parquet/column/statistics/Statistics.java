@@ -51,19 +51,19 @@ public abstract class Statistics<T extends Comparable<T>> {
     case INT32:
       return new IntStatistics(statisticsOpts);
     case INT64:
-      return new LongStatistics();
+      return new LongStatistics(statisticsOpts);
     case FLOAT:
-      return new FloatStatistics();
+      return new FloatStatistics(statisticsOpts);
     case DOUBLE:
-      return new DoubleStatistics();
+      return new DoubleStatistics(statisticsOpts);
     case BOOLEAN:
       return new BooleanStatistics();
     case BINARY:
-      return new BinaryStatistics();
+      return new BinaryStatistics(statisticsOpts);
     case INT96:
-      return new BinaryStatistics();
+      return new BinaryStatistics(statisticsOpts);
     case FIXED_LEN_BYTE_ARRAY:
-      return new BinaryStatistics();
+      return new BinaryStatistics(statisticsOpts);
     default:
       throw new UnknownColumnTypeException(type);
     }

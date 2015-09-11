@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import junit.framework.Assert;
 import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOptBuilder;
 import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
 import org.junit.Test;
 
 import org.apache.parquet.io.api.Binary;
@@ -56,35 +57,131 @@ public class TestStatistics {
   }
 
   @Test
-  public void testBloomFilterInt(){
+  public void testBloomFilter() {
     BloomFilterOpts opts =
         new BloomFilterOptBuilder().enable(true).expectedEntries(100).falsePositiveProbability(0.05)
             .build();
     StatisticsOpts statisticsOpts = new StatisticsOpts(opts);
-    IntStatistics statistics = new IntStatistics(statisticsOpts);
-    int v1 = 1;
-    int v2 = 2;
-    int v3 = 3;
+    checkBloomFilter(new Integer[] { 1, 2, 3 }, new IntStatistics(statisticsOpts));
+    checkBloomFilter(new Long[] { 1L, 2L, 3L }, new LongStatistics(statisticsOpts));
+    checkBloomFilter(new Double[] { 1.2, 3.34, 5.5 }, new DoubleStatistics(statisticsOpts));
+    checkBloomFilter(new Float[] { 1.2f, 3.3f, 4.4f }, new FloatStatistics(statisticsOpts));
+    checkBloomFilter(
+        new Binary[] { Binary.fromString("ac"), Binary.fromString("bd"), Binary.fromString("ef") },
+        new BinaryStatistics(statisticsOpts));
+  }
+
+  private void checkBloomFilter(Integer[] data, BloomFilterStatistics statistics) {
+    int v1 = data[0];
+    int v2 = data[1];
+    int v3 = data[2];
     Assert.assertFalse(statistics.test(v1));
     Assert.assertFalse(statistics.test(v2));
     Assert.assertFalse(statistics.test(v3));
-    statistics.updateStats(v1);
-    Assert.assertEquals(v1, statistics.getMin());
-    Assert.assertEquals(v1, statistics.getMax());
+    ((Statistics) statistics).updateStats(v1);
     Assert.assertTrue(statistics.test(v1));
     Assert.assertFalse(statistics.test(v2));
     Assert.assertFalse(statistics.test(v3));
 
-    statistics.updateStats(v2);
-    Assert.assertEquals(v1, statistics.getMin());
-    Assert.assertEquals(v2, statistics.getMax());
+    ((Statistics) statistics).updateStats(v2);
     Assert.assertTrue(statistics.test(v1));
     Assert.assertTrue(statistics.test(v2));
     Assert.assertFalse(statistics.test(v3));
 
-    statistics.updateStats(v3);
-    Assert.assertEquals(v1, statistics.getMin());
-    Assert.assertEquals(v3, statistics.getMax());
+    ((Statistics) statistics).updateStats(v3);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertTrue(statistics.test(v3));
+  }
+
+  private void checkBloomFilter(Double[] data, BloomFilterStatistics statistics) {
+    Double v1 = data[0];
+    Double v2 = data[1];
+    Double v3 = data[2];
+    Assert.assertFalse(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+    ((Statistics) statistics).updateStats(v1);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    ((Statistics) statistics).updateStats(v2);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    ((Statistics) statistics).updateStats(v3);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertTrue(statistics.test(v3));
+  }
+
+  private void checkBloomFilter(Long[] data, BloomFilterStatistics statistics) {
+    Long v1 = data[0];
+    Long v2 = data[1];
+    Long v3 = data[2];
+    Assert.assertFalse(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+    ((Statistics) statistics).updateStats(v1);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    ((Statistics) statistics).updateStats(v2);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    ((Statistics) statistics).updateStats(v3);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertTrue(statistics.test(v3));
+  }
+
+
+  private void checkBloomFilter(Float[] data, BloomFilterStatistics statistics) {
+    Float v1 = data[0];
+    Float v2 = data[1];
+    Float v3 = data[2];
+    Assert.assertFalse(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+    ((Statistics) statistics).updateStats(v1);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    ((Statistics) statistics).updateStats(v2);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    ((Statistics) statistics).updateStats(v3);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertTrue(statistics.test(v3));
+  }
+
+  private void checkBloomFilter(Binary[] data, BloomFilterStatistics statistics) {
+    Binary v1 = data[0];
+    Binary v2 = data[1];
+    Binary v3 = data[2];
+    Assert.assertFalse(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+    ((Statistics) statistics).updateStats(v1);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    ((Statistics) statistics).updateStats(v2);
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    ((Statistics) statistics).updateStats(v3);
     Assert.assertTrue(statistics.test(v1));
     Assert.assertTrue(statistics.test(v2));
     Assert.assertTrue(statistics.test(v3));
@@ -155,7 +252,7 @@ public class TestStatistics {
   public void testLongMinMax() {
     // Test basic max/min
     longArray = new long[] {9, 39, 99, 3, 0, 12, 1000, 65, 542};
-    LongStatistics stats = new LongStatistics();
+    LongStatistics stats = new LongStatistics(null);
 
     for (long l: longArray) {
       stats.updateStats(l);
@@ -165,7 +262,7 @@ public class TestStatistics {
 
     // Test negative values
     longArray = new long[] {-101, 993, -9914, 54, -9, 89, 0, -23, 90};
-    LongStatistics statsNeg = new LongStatistics();
+    LongStatistics statsNeg = new LongStatistics(null);
 
     for (long l: longArray) {
       statsNeg.updateStats(l);
@@ -180,14 +277,14 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(longMaxBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong(), 993);
     assertEquals(ByteBuffer.wrap(longMinBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong(), -9914);
 
-    LongStatistics statsFromBytes = new LongStatistics();
+    LongStatistics statsFromBytes = new LongStatistics(null);
     statsFromBytes.setMinMaxFromBytes(longMinBytes, longMaxBytes);
 
     assertEquals(statsFromBytes.getMax(), 993);
     assertEquals(statsFromBytes.getMin(), -9914);
 
     longArray = new long[] {Long.MAX_VALUE, Long.MIN_VALUE};
-    LongStatistics minMaxValues = new LongStatistics();
+    LongStatistics minMaxValues = new LongStatistics(null);
 
     for (long l: longArray) {
       minMaxValues.updateStats(l);
@@ -202,7 +299,7 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(longMaxBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong(), Long.MAX_VALUE);
     assertEquals(ByteBuffer.wrap(longMinBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong(), Long.MIN_VALUE);
 
-    LongStatistics statsFromBytesMinMax= new LongStatistics();
+    LongStatistics statsFromBytesMinMax= new LongStatistics(null);
     statsFromBytesMinMax.setMinMaxFromBytes(longMinBytesMinMax, longMaxBytesMinMax);
 
     assertEquals(statsFromBytesMinMax.getMax(), Long.MAX_VALUE);
@@ -216,7 +313,7 @@ public class TestStatistics {
   public void testFloatMinMax() {
     // Test basic max/min
     floatArray = new float[] {1.5f, 44.5f, 412.99f, 0.65f, 5.6f, 100.6f, 0.0001f, 23.0f, 553.6f};
-    FloatStatistics stats = new FloatStatistics();
+    FloatStatistics stats = new FloatStatistics(null);
 
     for (float f: floatArray) {
       stats.updateStats(f);
@@ -226,7 +323,7 @@ public class TestStatistics {
 
     // Test negative values
     floatArray = new float[] {-1.5f, -44.5f, -412.99f, 0.65f, -5.6f, -100.6f, 0.0001f, -23.0f, -3.6f};
-    FloatStatistics statsNeg = new FloatStatistics();
+    FloatStatistics statsNeg = new FloatStatistics(null);
 
     for (float f: floatArray) {
       statsNeg.updateStats(f);
@@ -241,14 +338,14 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(floatMaxBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getFloat(), 0.65f, 1e-10);
     assertEquals(ByteBuffer.wrap(floatMinBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getFloat(), -412.99f, 1e-10);
 
-    FloatStatistics statsFromBytes = new FloatStatistics();
+    FloatStatistics statsFromBytes = new FloatStatistics(null);
     statsFromBytes.setMinMaxFromBytes(floatMinBytes, floatMaxBytes);
 
     assertEquals(statsFromBytes.getMax(), 0.65f, 1e-10);
     assertEquals(statsFromBytes.getMin(), -412.99f, 1e-10);
 
     floatArray = new float[] {Float.MAX_VALUE, Float.MIN_VALUE};
-    FloatStatistics minMaxValues = new FloatStatistics();
+    FloatStatistics minMaxValues = new FloatStatistics(null);
 
     for (float f: floatArray) {
       minMaxValues.updateStats(f);
@@ -263,7 +360,7 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(floatMaxBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getFloat(), Float.MAX_VALUE, 1e-10);
     assertEquals(ByteBuffer.wrap(floatMinBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getFloat(), Float.MIN_VALUE, 1e-10);
 
-    FloatStatistics statsFromBytesMinMax= new FloatStatistics();
+    FloatStatistics statsFromBytesMinMax= new FloatStatistics(null);
     statsFromBytesMinMax.setMinMaxFromBytes(floatMinBytesMinMax, floatMaxBytesMinMax);
 
     assertEquals(statsFromBytesMinMax.getMax(), Float.MAX_VALUE, 1e-10);
@@ -277,7 +374,7 @@ public class TestStatistics {
   public void testDoubleMinMax() {
     // Test basic max/min
     doubleArray = new double[] {81.5d, 944.5f, 2.002d, 334.5d, 5.6d, 0.001d, 0.00001d, 23.0d, 553.6d};
-    DoubleStatistics stats = new DoubleStatistics();
+    DoubleStatistics stats = new DoubleStatistics(null);
 
     for (double d: doubleArray) {
       stats.updateStats(d);
@@ -287,7 +384,7 @@ public class TestStatistics {
 
     // Test negative values
     doubleArray = new double[] {-81.5d, -944.5d, 2.002d, -334.5d, -5.6d, -0.001d, -0.00001d, 23.0d, -3.6d};
-    DoubleStatistics statsNeg = new DoubleStatistics();
+    DoubleStatistics statsNeg = new DoubleStatistics(null);
 
     for (double d: doubleArray) {
       statsNeg.updateStats(d);
@@ -302,14 +399,14 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(doubleMaxBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getDouble(), 23.0d, 1e-10);
     assertEquals(ByteBuffer.wrap(doubleMinBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getDouble(), -944.5d, 1e-10);
 
-    DoubleStatistics statsFromBytes = new DoubleStatistics();
+    DoubleStatistics statsFromBytes = new DoubleStatistics(null);
     statsFromBytes.setMinMaxFromBytes(doubleMinBytes, doubleMaxBytes);
 
     assertEquals(statsFromBytes.getMax(), 23.0d, 1e-10);
     assertEquals(statsFromBytes.getMin(), -944.5d, 1e-10);
 
     doubleArray = new double[] {Double.MAX_VALUE, Double.MIN_VALUE};
-    DoubleStatistics minMaxValues = new DoubleStatistics();
+    DoubleStatistics minMaxValues = new DoubleStatistics(null);
 
     for (double d: doubleArray) {
       minMaxValues.updateStats(d);
@@ -324,7 +421,7 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(doubleMaxBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getDouble(), Double.MAX_VALUE, 1e-10);
     assertEquals(ByteBuffer.wrap(doubleMinBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getDouble(), Double.MIN_VALUE, 1e-10);
 
-    DoubleStatistics statsFromBytesMinMax= new DoubleStatistics();
+    DoubleStatistics statsFromBytesMinMax= new DoubleStatistics(null);
     statsFromBytesMinMax.setMinMaxFromBytes(doubleMinBytesMinMax, doubleMaxBytesMinMax);
 
     assertEquals(statsFromBytesMinMax.getMax(), Double.MAX_VALUE, 1e-10);
@@ -386,7 +483,7 @@ public class TestStatistics {
   public void testBinaryMinMax() {
     //Test basic max/min
     stringArray = new String[] {"hello", "world", "this", "is", "a", "test", "of", "the", "stats", "class"};
-    BinaryStatistics stats = new BinaryStatistics();
+    BinaryStatistics stats = new BinaryStatistics(null);
 
     for (String s: stringArray) {
       stats.updateStats(Binary.fromString(s));
@@ -396,7 +493,7 @@ public class TestStatistics {
 
     // Test empty string
     stringArray = new String[] {"", "", "", "", ""};
-    BinaryStatistics statsEmpty = new BinaryStatistics();
+    BinaryStatistics statsEmpty = new BinaryStatistics(null);
 
     for (String s: stringArray) {
       statsEmpty.updateStats(Binary.fromString(s));
@@ -411,7 +508,7 @@ public class TestStatistics {
     assertEquals(new String(stringMaxBytes), "world");
     assertEquals(new String(stringMinBytes), "a");
 
-    BinaryStatistics statsFromBytes = new BinaryStatistics();
+    BinaryStatistics statsFromBytes = new BinaryStatistics(null);
     statsFromBytes.setMinMaxFromBytes(stringMinBytes, stringMaxBytes);
 
     assertEquals(statsFromBytes.getMax(), Binary.fromString("world"));
@@ -423,7 +520,7 @@ public class TestStatistics {
 
   @Test
   public void testBinaryMinMaxForReusedBackingByteArray() {
-    BinaryStatistics stats = new BinaryStatistics();
+    BinaryStatistics stats = new BinaryStatistics(null);
 
     byte[] bytes = new byte[] { 10 };
     final Binary value = Binary.fromReusedByteArray(bytes);
@@ -480,14 +577,14 @@ public class TestStatistics {
 
   private void testMergingLongStats() {
     longArray = new long[] {1l, 2l, 3l, 4l, 5l};
-    LongStatistics longStats = new LongStatistics();
+    LongStatistics longStats = new LongStatistics(null);
 
     for (long s: longArray) {
       longStats.updateStats(s);
     }
 
     longArray = new long[] {0l, 3l, 3l};
-    LongStatistics longStats2 = new LongStatistics();
+    LongStatistics longStats2 = new LongStatistics(null);
 
     for (long s: longArray) {
       longStats2.updateStats(s);
@@ -497,7 +594,7 @@ public class TestStatistics {
     assertEquals(longStats.getMin(), 0l);
 
     longArray = new long[] {-1l, -100l, 100l};
-    LongStatistics longStats3 = new LongStatistics();
+    LongStatistics longStats3 = new LongStatistics(null);
     for (long s: longArray) {
       longStats3.updateStats(s);
     }
@@ -509,14 +606,14 @@ public class TestStatistics {
 
   private void testMergingFloatStats() {
     floatArray = new float[] {1.44f, 12.2f, 98.3f, 1.4f, 0.05f};
-    FloatStatistics floatStats = new FloatStatistics();
+    FloatStatistics floatStats = new FloatStatistics(null);
 
     for (float s: floatArray) {
       floatStats.updateStats(s);
     }
 
     floatArray = new float[] {0.0001f, 9.9f, 3.1f};
-    FloatStatistics floatStats2 = new FloatStatistics();
+    FloatStatistics floatStats2 = new FloatStatistics(null);
 
     for (float s: floatArray) {
       floatStats2.updateStats(s);
@@ -526,7 +623,7 @@ public class TestStatistics {
     assertEquals(floatStats.getMin(), 0.0001f, 1e-10);
 
     floatArray = new float[] {-1.91f, -100.9f, 100.54f};
-    FloatStatistics floatStats3 = new FloatStatistics();
+    FloatStatistics floatStats3 = new FloatStatistics(null);
     for (float s: floatArray) {
       floatStats3.updateStats(s);
     }
@@ -538,14 +635,14 @@ public class TestStatistics {
 
   private void testMergingDoubleStats() {
     doubleArray = new double[] {1.44d, 12.2d, 98.3d, 1.4d, 0.05d};
-    DoubleStatistics doubleStats = new DoubleStatistics();
+    DoubleStatistics doubleStats = new DoubleStatistics(null);
 
     for (double s: doubleArray) {
       doubleStats.updateStats(s);
     }
 
     doubleArray = new double[] {0.0001d, 9.9d, 3.1d};
-    DoubleStatistics doubleStats2 = new DoubleStatistics();
+    DoubleStatistics doubleStats2 = new DoubleStatistics(null);
 
     for (double s: doubleArray) {
       doubleStats2.updateStats(s);
@@ -555,7 +652,7 @@ public class TestStatistics {
     assertEquals(doubleStats.getMin(), 0.0001d, 1e-10);
 
     doubleArray = new double[] {-1.91d, -100.9d, 100.54d};
-    DoubleStatistics doubleStats3 = new DoubleStatistics();
+    DoubleStatistics doubleStats3 = new DoubleStatistics(null);
     for (double s: doubleArray) {
       doubleStats3.updateStats(s);
     }
@@ -596,14 +693,14 @@ public class TestStatistics {
 
   private void testMergingStringStats() {
     stringArray = new String[] {"hello", "world", "this", "is", "a", "test", "of", "the", "stats", "class"};
-    BinaryStatistics stats = new BinaryStatistics();
+    BinaryStatistics stats = new BinaryStatistics(null);
 
     for (String s: stringArray) {
       stats.updateStats(Binary.fromString(s));
     }
 
     stringArray = new String[] {"zzzz", "asdf", "testing"};
-    BinaryStatistics stats2 = new BinaryStatistics();
+    BinaryStatistics stats2 = new BinaryStatistics(null);
 
     for (String s: stringArray) {
       stats2.updateStats(Binary.fromString(s));
@@ -613,7 +710,7 @@ public class TestStatistics {
     assertEquals(stats.getMin(), Binary.fromString("a"));
 
     stringArray = new String[] {"", "good", "testing"};
-    BinaryStatistics stats3 = new BinaryStatistics();
+    BinaryStatistics stats3 = new BinaryStatistics(null);
     for (String s: stringArray) {
       stats3.updateStats(Binary.fromString(s));
     }

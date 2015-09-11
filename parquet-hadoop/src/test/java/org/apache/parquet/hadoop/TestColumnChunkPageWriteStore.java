@@ -92,7 +92,7 @@ public class TestColumnChunkPageWriteStore {
     int v = 3;
     BytesInput definitionLevels = BytesInput.fromInt(d);
     BytesInput repetitionLevels = BytesInput.fromInt(r);
-    Statistics<?> statistics = new BinaryStatistics();
+    Statistics<?> statistics = new BinaryStatistics(null);
     BytesInput data = BytesInput.fromInt(v);
     int rowCount = 5;
     int nullCount = 1;
@@ -159,7 +159,7 @@ public class TestColumnChunkPageWriteStore {
 
     BytesInput fakeData = BytesInput.fromInt(34);
     int fakeCount = 3;
-    BinaryStatistics fakeStats = new BinaryStatistics();
+    BinaryStatistics fakeStats = new BinaryStatistics(null);
 
     // TODO - look back at this, an allocator was being passed here in the ByteBuffer changes
     // see comment at this constructor

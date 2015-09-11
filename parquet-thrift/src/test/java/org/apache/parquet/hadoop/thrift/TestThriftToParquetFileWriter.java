@@ -101,11 +101,11 @@ public class TestThriftToParquetFileWriter {
       //create correct stats small numbers
       IntStatistics intStatsSmall = new IntStatistics(new StatisticsOpts(null));
       intStatsSmall.setMinMax(2, 100);
-      LongStatistics longStatsSmall = new LongStatistics();
+      LongStatistics longStatsSmall = new LongStatistics(null);
       longStatsSmall.setMinMax(-17l,  287L);
-      DoubleStatistics doubleStatsSmall = new DoubleStatistics();
+      DoubleStatistics doubleStatsSmall = new DoubleStatistics(null);
       doubleStatsSmall.setMinMax(-15.55d, 9.63d);
-      BinaryStatistics binaryStatsSmall = new BinaryStatistics();
+      BinaryStatistics binaryStatsSmall = new BinaryStatistics(null);
       binaryStatsSmall.setMinMax(Binary.fromString("as"), Binary.fromString("world"));
       BooleanStatistics boolStats = new BooleanStatistics();
       boolStats.setMinMax(false, true);
@@ -144,11 +144,11 @@ public class TestThriftToParquetFileWriter {
       //create correct stats large numbers
       IntStatistics intStatsLarge = new IntStatistics(new StatisticsOpts(null));
       intStatsLarge.setMinMax(-Integer.MAX_VALUE, Integer.MAX_VALUE);
-      LongStatistics longStatsLarge = new LongStatistics();
+      LongStatistics longStatsLarge = new LongStatistics(null);
       longStatsLarge.setMinMax(-Long.MAX_VALUE, Long.MAX_VALUE);
-      DoubleStatistics doubleStatsLarge = new DoubleStatistics();
+      DoubleStatistics doubleStatsLarge = new DoubleStatistics(null);
       doubleStatsLarge.setMinMax(-Double.MAX_VALUE, Double.MAX_VALUE);
-      BinaryStatistics binaryStatsLarge = new BinaryStatistics();
+      BinaryStatistics binaryStatsLarge = new BinaryStatistics(null);
       binaryStatsLarge.setMinMax(Binary.fromString("some small string"),
                                  Binary.fromString("some very large string here to test in this function"));
       //write rows to a file

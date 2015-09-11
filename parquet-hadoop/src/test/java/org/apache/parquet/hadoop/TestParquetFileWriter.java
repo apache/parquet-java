@@ -28,6 +28,7 @@ import org.apache.parquet.Version;
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
+import org.apache.parquet.format.BloomFilterStrategy;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.apache.parquet.column.statistics.IntStatistics;
@@ -98,8 +99,8 @@ public class TestParquetFileWriter {
   private static final byte[] BYTES4 = { 3, 4, 5, 6 };
   private static final CompressionCodecName CODEC = CompressionCodecName.UNCOMPRESSED;
 
-  private static final BinaryStatistics STATS1 = new BinaryStatistics();
-  private static final BinaryStatistics STATS2 = new BinaryStatistics();
+  private static final BinaryStatistics STATS1 = new BinaryStatistics(null);
+  private static final BinaryStatistics STATS2 = new BinaryStatistics(null);
 
   private String writeSchema;
 
@@ -427,18 +428,16 @@ public class TestParquetFileWriter {
   @Test
   public void testConvertToThriftStatistics() throws Exception {
     long[] longArray = new long[] {39L, 99L, 12L, 1000L, 65L, 542L, 2533461316L, -253346131996L, Long.MAX_VALUE, Long.MIN_VALUE};
-    LongStatistics parquetMRstats = new LongStatistics();
+    LongStatistics parquetMRstats = new LongStatistics(null);
 
     for (long l: longArray) {
       parquetMRstats.updateStats(l);
     }
-    final String createdBy =
-        "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
     Statistics thriftStats =
         org.apache.parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
     LongStatistics convertedBackStats =
-        (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(
-            createdBy, thriftStats, PrimitiveTypeName.INT64);
+        (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
+            .fromParquetStatistics(thriftStats, PrimitiveTypeName.INT64);
 
     assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
     assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());
@@ -520,12 +519,12 @@ public class TestParquetFileWriter {
     byte[] bytes4 = { 3, 4, 5, 6};
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-    BinaryStatistics statsB1C1P1 = new BinaryStatistics();
-    BinaryStatistics statsB1C1P2 = new BinaryStatistics();
-    LongStatistics statsB1C2P1 = new LongStatistics();
-    LongStatistics statsB1C2P2 = new LongStatistics();
-    BinaryStatistics statsB2C1P1 = new BinaryStatistics();
-    LongStatistics statsB2C2P1 = new LongStatistics();
+    BinaryStatistics statsB1C1P1 = new BinaryStatistics(null);
+    BinaryStatistics statsB1C1P2 = new BinaryStatistics(null);
+    LongStatistics statsB1C2P1 = new LongStatistics(null);
+    LongStatistics statsB1C2P2 = new LongStatistics(null);
+    BinaryStatistics statsB2C1P1 = new BinaryStatistics(null);
+    LongStatistics statsB2C2P1 = new LongStatistics(null);
     statsB1C1P1.setMinMax(Binary.fromString("s"), Binary.fromString("z"));
     statsB1C1P2.setMinMax(Binary.fromString("a"), Binary.fromString("b"));
     statsB1C2P1.setMinMax(2l, 10l);
@@ -563,14 +562,14 @@ public class TestParquetFileWriter {
       }
     }
     // correct statistics
-    BinaryStatistics bs1 = new BinaryStatistics();
+    BinaryStatistics bs1 = new BinaryStatistics(null);
     bs1.setMinMax(Binary.fromString("a"), Binary.fromString("z"));
-    LongStatistics ls1 = new LongStatistics();
+    LongStatistics ls1 = new LongStatistics(null);
     ls1.setMinMax(-6l, 10l);
 
-    BinaryStatistics bs2 = new BinaryStatistics();
+    BinaryStatistics bs2 = new BinaryStatistics(null);
     bs2.setMinMax(Binary.fromString("d"), Binary.fromString("e"));
-    LongStatistics ls2 = new LongStatistics();
+    LongStatistics ls2 = new LongStatistics(null);
     ls2.setMinMax(11l, 122l);
 
     { // assert stats are correct for the first block
@@ -694,8 +693,8 @@ public class TestParquetFileWriter {
     byte[] bytes4 = { 3, 4, 5, 6};
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-    BinaryStatistics stats1 = new BinaryStatistics();
-    BinaryStatistics stats2 = new BinaryStatistics();
+    BinaryStatistics stats1 = new BinaryStatistics(null);
+    BinaryStatistics stats2 = new BinaryStatistics(null);
 
     ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
     w.start();

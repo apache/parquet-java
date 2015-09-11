@@ -44,7 +44,8 @@ public class IntStatistics extends Statistics<Integer> implements BloomFilterSta
     }
   }
 
-  @Override public void updateStats(int value) {
+  @Override
+  public void updateStats(int value) {
     if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
@@ -56,7 +57,8 @@ public class IntStatistics extends Statistics<Integer> implements BloomFilterSta
     }
   }
 
-  @Override public void mergeStatisticsMinMax(Statistics stats) {
+  @Override
+  public void mergeStatisticsMinMax(Statistics stats) {
     IntStatistics intStats = (IntStatistics) stats;
     if (!this.hasNonNullValue()) {
       initializeStats(intStats.getMin(), intStats.getMax());
@@ -65,31 +67,32 @@ public class IntStatistics extends Statistics<Integer> implements BloomFilterSta
     }
   }
 
-  @Override public void mergeBloomFilters(Statistics stats) {
+  @Override
+  public void mergeBloomFilters(Statistics stats) {
     if (isBloomFilterEnabled && stats instanceof BloomFilterStatistics) {
       this.bloomFilter.merge(((BloomFilterStatistics) stats).getBloomFilter());
     }
   }
 
-  public void add(Integer value) {
-    bloomFilter.addLong(value);
-  }
-
-  @Override public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
+  @Override
+  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
     max = BytesUtils.bytesToInt(maxBytes);
     min = BytesUtils.bytesToInt(minBytes);
     this.markAsNotEmpty();
   }
 
-  @Override public byte[] getMaxBytes() {
+  @Override
+  public byte[] getMaxBytes() {
     return BytesUtils.intToBytes(max);
   }
 
-  @Override public byte[] getMinBytes() {
+  @Override
+  public byte[] getMinBytes() {
     return BytesUtils.intToBytes(min);
   }
 
-  @Override public String toString() {
+  @Override
+  public String toString() {
     if (this.hasNonNullValue())
       return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
     else if (!this.isEmpty())
@@ -113,23 +116,32 @@ public class IntStatistics extends Statistics<Integer> implements BloomFilterSta
     this.markAsNotEmpty();
   }
 
-  @Override public Integer genericGetMin() {
+  @Override
+  public Integer genericGetMin() {
     return min;
   }
 
-  @Override public Integer genericGetMax() {
+  @Override
+  public Integer genericGetMax() {
     return max;
   }
 
-  @Override public BloomFilter getBloomFilter() {
+  public void add(Integer value) {
+    bloomFilter.addInteger(value);
+  }
+
+  @Override
+  public BloomFilter getBloomFilter() {
     return bloomFilter;
   }
 
-  @Override public boolean test(Integer value) {
-    return bloomFilter.testLong(value);
+  @Override
+  public boolean test(Integer value) {
+    return bloomFilter.testInteger(value);
   }
 
-  @Override public boolean isBloomFilterEnabled() {
+  @Override
+  public boolean isBloomFilterEnabled() {
     return isBloomFilterEnabled;
   }
 

@@ -19,6 +19,7 @@
 package org.apache.parquet.column.statistics.bloomfilter;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.parquet.io.api.Binary;
 
 import java.util.Arrays;
 import java.util.List;
@@ -87,7 +88,7 @@ public class BloomFilter {
         }
     }
 
-    public void addString(String val) {
+    public void addBinary(Binary val) {
         if (val == null) {
             add(null);
         } else {
@@ -102,7 +103,15 @@ public class BloomFilter {
     public void addDouble(double val) {
         addLong(Double.doubleToLongBits(val));
     }
+    
+    public void addInteger(int val){
+        addLong(val);
+    }
 
+    public void addFloat(float val) {
+        addLong(Float.floatToIntBits(val));
+    }
+    
     public boolean test(byte[] val) {
         if (val == null) {
             return testBytes(val, -1);
@@ -133,7 +142,7 @@ public class BloomFilter {
         return true;
     }
 
-    public boolean testString(String val) {
+    public boolean testBinary(Binary val) {
         if (val == null) {
             return test(null);
         } else {
@@ -143,6 +152,14 @@ public class BloomFilter {
 
     public boolean testLong(long val) {
         return testHash(getLongHash(val));
+    }
+
+    public boolean testFloat(float val) {
+        return testInteger(Float.floatToIntBits(val));
+    }
+    
+    public boolean testInteger(int val){
+        return testLong(val);
     }
 
     // Thomas Wang's integer hash function

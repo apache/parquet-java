@@ -25,7 +25,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private boolean max;
   private boolean min;
 
-  @Override
   public void updateStats(boolean value) {
     if (!this.hasNonNullValue()) {
       initializeStats(value, value);

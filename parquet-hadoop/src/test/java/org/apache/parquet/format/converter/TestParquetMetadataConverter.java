@@ -288,7 +288,7 @@ public class TestParquetMetadataConverter {
     PrimitiveTypeName t = PrimitiveTypeName.BINARY;
     ColumnPath p = ColumnPath.get("foo");
     CompressionCodecName c = CompressionCodecName.GZIP;
-    BinaryStatistics s = new BinaryStatistics();
+    BinaryStatistics s = new BinaryStatistics(null);
     ColumnChunkMetaData md = ColumnChunkMetaData.get(p, t, c, e, s,
             0, 0, 0, 0, 0);
     return md;

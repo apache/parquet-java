@@ -82,7 +82,7 @@ public class TestStatisticsFilter {
 
   private static final IntStatistics intStats = new IntStatistics(new StatisticsOpts(null));
   private static final IntStatistics nullIntStats = new IntStatistics(new StatisticsOpts(null));
-  private static final DoubleStatistics doubleStats = new DoubleStatistics();
+  private static final DoubleStatistics doubleStats = new DoubleStatistics(null);
 
   static {
     intStats.setMinMax(10, 100);
@@ -298,7 +298,7 @@ public class TestStatisticsFilter {
   @Test
   public void testClearExceptionForNots() {
     List<ColumnChunkMetaData> columnMetas = Arrays.asList(
-        getDoubleColumnMeta(new DoubleStatistics(), 0L),
+        getDoubleColumnMeta(new DoubleStatistics(null), 0L),
         getIntColumnMeta(new IntStatistics(null), 0L));
 
     FilterPredicate pred = and(not(eq(doubleColumn, 12.0)), eq(intColumn, 17));

@@ -19,18 +19,40 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilter;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
 
-public class LongStatistics extends Statistics<Long> {
-
+public class LongStatistics extends Statistics<Long> implements BloomFilterStatistics<Long> {
   private long max;
   private long min;
+  private BloomFilter bloomFilter;
+  private boolean isBloomFilterEnabled = false;
 
-  @Override
+  public LongStatistics(StatisticsOpts statisticsOpts){
+    super();
+    if (statisticsOpts != null) {
+      updateBloomFilterOptions(statisticsOpts.getBloomFilterOpts());
+    }
+  }
+
+  private void updateBloomFilterOptions(BloomFilterOpts statisticsOpts) {
+    if (statisticsOpts != null && statisticsOpts.isEnabled()) {
+      bloomFilter =
+          new BloomFilter(statisticsOpts.getNumBits(), statisticsOpts.getNumHashFunctions());
+      isBloomFilterEnabled = true;
+    }
+  }
+
   public void updateStats(long value) {
     if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
+    }
+
+    if (isBloomFilterEnabled) {
+      add(value);
     }
   }
 
@@ -104,5 +126,25 @@ public class LongStatistics extends Statistics<Long> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public void add(Long value) {
+    bloomFilter.addLong(value);
+  }
+
+  @Override
+  public BloomFilter getBloomFilter() {
+    return bloomFilter;
+  }
+
+  @Override
+  public boolean test(Long value) {
+    return bloomFilter.testLong(value);
+  }
+
+  @Override
+  public boolean isBloomFilterEnabled() {
+    return isBloomFilterEnabled;
   }
 }

@@ -19,11 +19,32 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilter;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
 
-public class FloatStatistics extends Statistics<Float> {
+public class FloatStatistics extends Statistics<Float> implements BloomFilterStatistics<Float> {
 
   private float max;
   private float min;
+  private BloomFilter bloomFilter;
+  private boolean isBloomFilterEnabled = false;
+
+  public FloatStatistics(StatisticsOpts statisticsOpts) {
+    super();
+    if (statisticsOpts != null) {
+      updateBloomFilterOptions(statisticsOpts.getBloomFilterOpts());
+    }
+  }
+
+  private void updateBloomFilterOptions(BloomFilterOpts statisticsOpts) {
+    if (statisticsOpts != null && statisticsOpts.isEnabled()) {
+      bloomFilter =
+          new BloomFilter(statisticsOpts.getNumBits(), statisticsOpts.getNumHashFunctions());
+      isBloomFilterEnabled = true;
+    }
+  }
+
 
   @Override
   public void updateStats(float value) {
@@ -31,6 +52,10 @@ public class FloatStatistics extends Statistics<Float> {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
+    }
+
+    if (isBloomFilterEnabled) {
+      add(value);
     }
   }
 
@@ -104,5 +129,25 @@ public class FloatStatistics extends Statistics<Float> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public void add(Float value) {
+    bloomFilter.addFloat(value);
+  }
+
+  @Override
+  public BloomFilter getBloomFilter() {
+    return bloomFilter;
+  }
+
+  @Override
+  public boolean test(Float value) {
+    return bloomFilter.testFloat(value);
+  }
+
+  @Override
+  public boolean isBloomFilterEnabled() {
+    return isBloomFilterEnabled;
   }
 }

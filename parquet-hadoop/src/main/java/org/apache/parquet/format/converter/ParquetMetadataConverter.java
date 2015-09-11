@@ -42,6 +42,7 @@ import org.apache.parquet.column.statistics.StatisticsOpts;
 import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
 import org.apache.parquet.format.BloomFilter;
+import org.apache.parquet.format.BloomFilterStrategy;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.ConvertedType;
@@ -257,9 +258,9 @@ public class ParquetMetadataConverter {
       stats.setBloom_filter(null);
     } else {
       BloomFilterStatistics bfStatistics = (BloomFilterStatistics) statistics;
-      BloomFilter bfStats =
-          new BloomFilter(bfStatistics.getBloomFilter().getBitSet(), bfStatistics.getBloomFilter().getNumBits(),
-              bfStatistics.getBloomFilter().getNumHashFunctions());
+      BloomFilter bfStats = new BloomFilter(bfStatistics.getBloomFilter().getBitSet(),
+          bfStatistics.getBloomFilter().getNumBits(),
+          bfStatistics.getBloomFilter().getNumHashFunctions(), BloomFilterStrategy.MURMUR128_32);
       stats.setBloom_filter(bfStats);
     }
   }
@@ -608,7 +609,6 @@ public class ParquetMetadataConverter {
               CompressionCodecName.fromParquet(metaData.codec),
               fromFormatEncodings(metaData.encodings),
               fromParquetStatistics(
-                  parquetMetadata.getCreated_by(),
                   metaData.statistics,
                   messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName()),
               metaData.data_page_offset,
