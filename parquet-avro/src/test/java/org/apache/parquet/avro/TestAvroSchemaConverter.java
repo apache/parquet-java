@@ -21,6 +21,7 @@ package org.apache.parquet.avro;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import java.util.Arrays;
+import java.util.Collections;
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.codehaus.jackson.node.NullNode;
@@ -390,6 +391,25 @@ public class TestAvroSchemaConverter {
         "    }\n" +
         "  }\n" +
         "}\n");
+  }
+
+  @Test
+  public void testParquetMapWithoutMapKeyValueAnnotation() throws Exception {
+    Schema schema = Schema.createRecord("myrecord", null, null, false);
+    Schema map = Schema.createMap(Schema.create(Schema.Type.INT));
+    schema.setFields(Collections.singletonList(new Schema.Field("mymap", map, null, null)));
+    String parquetSchema =
+        "message myrecord {\n" +
+            "  required group mymap (MAP) {\n" +
+            "    repeated group map {\n" +
+            "      required binary key (UTF8);\n" +
+            "      required int32 value;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}\n";
+
+    testParquetToAvroConversion(schema, parquetSchema);
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema, parquetSchema);
   }
 
   public static Schema optional(Schema original) {
