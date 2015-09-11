@@ -23,11 +23,14 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.ValuesType;
-import org.apache.parquet.column.page.*;
+import org.apache.parquet.column.impl.ColumnReaderImpl;
+import org.apache.parquet.column.page.DataPage;
+import org.apache.parquet.column.page.DataPageV1;
+import org.apache.parquet.column.page.DataPageV2;
+import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.column.values.ValuesReader;
-import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -37,33 +40,33 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
-import org.junit.After;
-import org.junit.Before;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.math.BigInteger;
-import java.util.Iterator;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
-import static junit.framework.Assert.assertEquals;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertTrue;
 
 public class TestStatistics {
   private static final int MEGABYTE = 1 << 20;
-  private static final long RANDOM_SEED = System.currentTimeMillis();
+  private static final long RANDOM_SEED = 1441990701846L; //System.currentTimeMillis();
 
   public static class DataGenerationContext {
     public static abstract class WriteContext {
-      protected final String path;
+      protected final File path;
       protected final Path fsPath;
       protected final MessageType schema;
       protected final int blockSize;
@@ -72,9 +75,9 @@ public class TestStatistics {
       protected final boolean enableValidation;
       protected final ParquetProperties.WriterVersion version;
 
-      public WriteContext(String path, MessageType schema, int blockSize, int pageSize, boolean enableDictionary, boolean enableValidation, ParquetProperties.WriterVersion version) throws IOException {
+      public WriteContext(File path, MessageType schema, int blockSize, int pageSize, boolean enableDictionary, boolean enableValidation, ParquetProperties.WriterVersion version) throws IOException {
         this.path = path;
-        this.fsPath = new Path(path);
+        this.fsPath = new Path(path.toString());
         this.schema = schema;
         this.blockSize = blockSize;
         this.pageSize = pageSize;
@@ -88,8 +91,6 @@ public class TestStatistics {
     }
 
     public static void writeAndTest(WriteContext context) throws IOException {
-      File file = new File(context.path);
-
       // Create the configuration, and then apply the schema to our configuration.
       Configuration configuration = new Configuration();
       GroupWriteSupport.setSchema(context.schema, configuration);
@@ -104,167 +105,237 @@ public class TestStatistics {
       ParquetProperties.WriterVersion writerVersion = context.version;
       CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-      ParquetWriter<Group> writer = new ParquetWriter<Group>(context.fsPath, groupWriteSupport, codec, blockSize,
-        pageSize, dictionaryPageSize, enableDictionary, enableValidation, writerVersion, configuration);
+      ParquetWriter<Group> writer = new ParquetWriter<Group>(context.fsPath,
+          groupWriteSupport, codec, blockSize, pageSize, dictionaryPageSize,
+          enableDictionary, enableValidation, writerVersion, configuration);
 
       context.write(writer);
       writer.close();
 
       context.test();
-      file.delete();
+
+      context.path.delete();
     }
   }
 
-  public static abstract class PagingValidator<T extends Comparable<T>> {
-    private final ColumnDescriptor columnDescriptor;
-    private final PrimitiveType.PrimitiveTypeName forType;
+  public static class SingletonPageReader implements PageReader {
+    private final DictionaryPage dict;
+    private final DataPage data;
 
-    public PagingValidator(ColumnDescriptor columnDescriptor) {
-      this.columnDescriptor = columnDescriptor;
-      this.forType = columnDescriptor.getType();
+    public SingletonPageReader(DictionaryPage dict, DataPage data) {
+      this.dict = dict;
+      this.data = data;
     }
 
-    private void validate(PageReadStore store) {
-      PageReader reader = store.getPageReader(columnDescriptor);
-      DataPage page;
-      while ((page = reader.readPage()) != null) {
-        validateStatsForPage(page);
+    @Override
+    public DictionaryPage readDictionaryPage() {
+      return dict;
+    }
+
+    @Override
+    public long getTotalValueCount() {
+      return data.getValueCount();
+    }
+
+    @Override
+    public DataPage readPage() {
+      return data;
+    }
+  }
+
+  private static <T extends Comparable<T>> Statistics<T> getStatisticsFromPageHeader(DataPage page) {
+    return page.accept(new DataPage.Visitor<Statistics<T>>() {
+      @Override
+      @SuppressWarnings("unchecked")
+      public Statistics<T> visit(DataPageV1 dataPageV1) {
+        return (Statistics<T>) dataPageV1.getStatistics();
+      }
+
+      @Override
+      @SuppressWarnings("unchecked")
+      public Statistics<T> visit(DataPageV2 dataPageV2) {
+        return (Statistics<T>) dataPageV2.getStatistics();
+      }
+    });
+  }
+
+  private static class StatsValidator<T extends Comparable<T>> {
+    private final boolean hasNonNull;
+    private final T min;
+    private final T max;
+
+    public StatsValidator(DataPage page) {
+      Statistics<T> stats = getStatisticsFromPageHeader(page);
+      this.hasNonNull = stats.hasNonNullValue();
+      if (hasNonNull) {
+        this.min = stats.genericGetMin();
+        this.max = stats.genericGetMax();
+      } else {
+        this.min = null;
+        this.max = null;
       }
     }
 
-    private Statistics<T> getStatisticsFromPageHeader(DataPage page) {
-      return page.accept(new DataPage.Visitor<Statistics<T>>() {
-        @Override
-        public Statistics<T> visit(DataPageV1 dataPageV1) {
-          return (Statistics<T>)dataPageV1.getStatistics();
-        }
+    public void validate(T value) {
+      if (hasNonNull) {
+        assertTrue("min should be <= all values", min.compareTo(value) <= 0);
+        assertTrue("min should be >= all values", max.compareTo(value) >= 0);
+      }
+    }
+  }
 
-        @Override
-        public Statistics<T> visit(DataPageV2 dataPageV2) {
-          return (Statistics<T>)dataPageV2.getStatistics();
+  private static PrimitiveConverter getValidatingConverter(
+      final DataPage page, PrimitiveTypeName type) {
+    return type.convert(new PrimitiveType.PrimitiveTypeNameConverter<PrimitiveConverter, RuntimeException>() {
+      @Override
+      public PrimitiveConverter convertFLOAT(PrimitiveTypeName primitiveTypeName) {
+        final StatsValidator<Float> validator = new StatsValidator<Float>(page);
+        return new PrimitiveConverter() {
+          @Override
+          public void addFloat(float value) {
+            validator.validate(value);
+          }
+        };
+      }
+
+      @Override
+      public PrimitiveConverter convertDOUBLE(PrimitiveTypeName primitiveTypeName) {
+        final StatsValidator<Double> validator = new StatsValidator<Double>(page);
+        return new PrimitiveConverter() {
+          @Override
+          public void addDouble(double value) {
+            validator.validate(value);
+          }
+        };
+      }
+
+      @Override
+      public PrimitiveConverter convertINT32(PrimitiveTypeName primitiveTypeName) {
+        final StatsValidator<Integer> validator = new StatsValidator<Integer>(page);
+        return new PrimitiveConverter() {
+          @Override
+          public void addInt(int value) {
+            validator.validate(value);
+          }
+        };
+      }
+
+      @Override
+      public PrimitiveConverter convertINT64(PrimitiveTypeName primitiveTypeName) {
+        final StatsValidator<Long> validator = new StatsValidator<Long>(page);
+        return new PrimitiveConverter() {
+          @Override
+          public void addLong(long value) {
+            validator.validate(value);
+          }
+        };
+      }
+
+      @Override
+      public PrimitiveConverter convertBOOLEAN(PrimitiveTypeName primitiveTypeName) {
+        final StatsValidator<Boolean> validator = new StatsValidator<Boolean>(page);
+        return new PrimitiveConverter() {
+          @Override
+          public void addBoolean(boolean value) {
+            validator.validate(value);
+          }
+        };
+      }
+
+      @Override
+      public PrimitiveConverter convertINT96(PrimitiveTypeName primitiveTypeName) {
+        return convertBINARY(primitiveTypeName);
+      }
+
+      @Override
+      public PrimitiveConverter convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName) {
+        return convertBINARY(primitiveTypeName);
+      }
+
+      @Override
+      public PrimitiveConverter convertBINARY(PrimitiveTypeName primitiveTypeName) {
+        final StatsValidator<Binary> validator = new StatsValidator<Binary>(page);
+        return new PrimitiveConverter() {
+          @Override
+          public void addBinary(Binary value) {
+            validator.validate(value);
+          }
+        };
+      }
+    });
+  }
+
+  public static class PageStatsValidator {
+    public void validate(MessageType schema, PageReadStore store) {
+      for (ColumnDescriptor desc : schema.getColumns()) {
+        PageReader reader = store.getPageReader(desc);
+        DictionaryPage dict = reader.readDictionaryPage();
+        DataPage page;
+        while ((page = reader.readPage()) != null) {
+          validateStatsForPage(page, dict, desc);
         }
-      });
+      }
     }
 
-    private void validateStatsForPage(final DataPage page) {
-      page.accept(new DataPage.Visitor<Object>() {
-        @Override
-        public Object visit(DataPageV1 dataPageV1) {
-          try {
-            ValuesReader definitionLevelReader = dataPageV1
-              .getDlEncoding()
-              .getValuesReader(columnDescriptor, ValuesType.DEFINITION_LEVEL);
+    private void validateStatsForPage(DataPage page, DictionaryPage dict, ColumnDescriptor desc) {
+      SingletonPageReader reader = new SingletonPageReader(dict, page);
+      PrimitiveConverter converter = getValidatingConverter(page, desc.getType());
+      Statistics stats = getStatisticsFromPageHeader(page);
 
-            definitionLevelReader.initFromPage(dataPageV1.getValueCount(),
-              dataPageV1.getBytes().toByteArray(),
-              0);
-
-            ValuesReader valuesReader = dataPageV1
-              .getValueEncoding()
-              .getValuesReader(columnDescriptor, ValuesType.VALUES);
-
-            valuesReader.initFromPage(dataPageV1.getValueCount(),
-              dataPageV1.getBytes().toByteArray(),
-              definitionLevelReader.getNextOffset());
-
-            validateStatsV1(page, definitionLevelReader, valuesReader);
-            return null;
-          } catch (IOException ex) { throw new RuntimeException("Failed to read page data."); }
+      long numNulls = 0;
+      ColumnReaderImpl column = new ColumnReaderImpl(desc, reader, converter, null);
+      for (int i = 0; i < reader.getTotalValueCount(); i += 1) {
+        if (column.getCurrentDefinitionLevel() >= desc.getMaxDefinitionLevel()) {
+          column.writeCurrentValueToConverter();
+        } else {
+          numNulls += 1;
         }
+        column.consume();
+      }
 
-        @Override
-        public Object visit(DataPageV2 dataPageV2) {
-          try {
-            RunLengthBitPackingHybridDecoder definitionLevelReader
-              = new RunLengthBitPackingHybridDecoder(1, new ByteArrayInputStream(dataPageV2.getDefinitionLevels().toByteArray()));
+      Assert.assertEquals(numNulls, stats.getNumNulls());
 
-            ValuesReader valuesReader = dataPageV2
-              .getDataEncoding()
-              .getValuesReader(columnDescriptor, ValuesType.VALUES);
-
-            valuesReader.initFromPage(dataPageV2.getValueCount(),
-              dataPageV2.getData().toByteArray(), 0);
-
-            validateStatsV2(page, definitionLevelReader, valuesReader);
-            return null;
-          } catch (IOException ex) { throw new RuntimeException("Failed to read page data."); }
-        }
-
-        private void validateStatsV1(DataPage page, ValuesReader definitionLevelReader, ValuesReader valuesReader) {
-          Statistics<T> statistics = getStatisticsFromPageHeader(page);
-
-          T current;
-          T minimum = statistics.genericGetMin();
-          T maximum = statistics.genericGetMax();
-          int totalNulls = 0;
-          for (int index = 0; index < page.getValueCount(); index++) {
-            if (definitionLevelReader.readInteger() != 0) {
-              current = readValue(valuesReader);
-              assertTrue("min should be <= all values", minimum.compareTo(current) <= 0);
-              assertTrue("min should be >= all values", maximum.compareTo(current) >= 0);
-            } else {
-              totalNulls += 1;
-            }
-          }
-
-          assertEquals("number of nulls should match", statistics.getNumNulls(), totalNulls);
-        }
-
-        private void validateStatsV2(DataPage page, RunLengthBitPackingHybridDecoder definitionLevelReader, ValuesReader valuesReader) throws IOException {
-          Statistics<T> statistics = getStatisticsFromPageHeader(page);
-
-          T current;
-          T minimum = statistics.genericGetMin();
-          T maximum = statistics.genericGetMax();
-          int totalNulls = 0;
-          for (int index = 0; index < page.getValueCount(); index++) {
-            if (definitionLevelReader.readInt() != 0) {
-              current = readValue(valuesReader);
-              assertTrue("min should be <= all values", minimum.compareTo(current) <= 0);
-              assertTrue("min should be >= all values", maximum.compareTo(current) >= 0);
-            } else {
-              totalNulls += 1;
-            }
-          }
-
-          assertEquals("number of nulls should match", statistics.getNumNulls(), totalNulls);
-        }
-      });
+      System.err.println(String.format(
+          "Validated stats min=%s max=%s nulls=%d for page=%s col=%s",
+          String.valueOf(stats.genericGetMin()),
+          String.valueOf(stats.genericGetMax()), stats.getNumNulls(), page,
+          Arrays.toString(desc.getPath())));
     }
-
-    public abstract T readValue(ValuesReader valuesReader);
   }
 
   public static class DataContext extends DataGenerationContext.WriteContext {
     private static final int MAX_TOTAL_ROWS = 1000000;
-    private static final int SIZEOF_BYTE = 8;
-    private static final int SIZEOF_INT96 = (SIZEOF_BYTE * 12);
 
     private final long seed;
     private final Random random;
     private final int recordCount;
 
-    private final RandomValueGenerators.RandomIntGenerator intGenerator = new RandomValueGenerators.RandomIntGenerator(RANDOM_SEED);
-    private final RandomValueGenerators.RandomLongGenerator longGenerator = new RandomValueGenerators.RandomLongGenerator(RANDOM_SEED);
-    private final RandomValueGenerators.RandomInt96Generator int96Generator = new RandomValueGenerators.RandomInt96Generator(RANDOM_SEED);
-    private final RandomValueGenerators.RandomFloatGenerator floatGenerator = new RandomValueGenerators.RandomFloatGenerator(RANDOM_SEED);
-    private final RandomValueGenerators.RandomDoubleGenerator doubleGenerator = new RandomValueGenerators.RandomDoubleGenerator(RANDOM_SEED);
-    private final RandomValueGenerators.RandomStringGenerator stringGenerator = new RandomValueGenerators.RandomStringGenerator(RANDOM_SEED);
-    private final RandomValueGenerators.RandomBinaryGenerator binaryGenerator = new RandomValueGenerators.RandomBinaryGenerator(RANDOM_SEED);
-    private final RandomValueGenerators.RandomFixedBinaryGenerator fixedBinaryGenerator = new RandomValueGenerators.RandomFixedBinaryGenerator(RANDOM_SEED, determineFixBinaryLength(super.schema));
+    private final int fixedLength;
+    private final RandomValues.IntGenerator intGenerator;
+    private final RandomValues.LongGenerator longGenerator;
+    private final RandomValues.Int96Generator int96Generator;
+    private final RandomValues.FloatGenerator floatGenerator;
+    private final RandomValues.DoubleGenerator doubleGenerator;
+    private final RandomValues.StringGenerator stringGenerator;
+    private final RandomValues.BinaryGenerator binaryGenerator;
+    private final RandomValues.FixedGenerator fixedBinaryGenerator;
 
-    public DataContext(long seed, String path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
+    public DataContext(long seed, File path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
       super(path, buildSchema(seed), blockSize, pageSize, enableDictionary, true, version);
 
       this.seed = seed;
       this.random = new Random(seed);
       this.recordCount = random.nextInt(MAX_TOTAL_ROWS);
-    }
 
-    private static int determineFixBinaryLength(MessageType schema) {
-      Type fixedBinaryField = schema.getType("fixed-binary");
-      PrimitiveType fixedBinaryFieldAsPrimitiveType = (PrimitiveType)fixedBinaryField;
-      return fixedBinaryFieldAsPrimitiveType.getTypeLength();
+      this.fixedLength = schema.getType("fixed-binary").asPrimitiveType().getTypeLength();
+      this.intGenerator = new RandomValues.IntGenerator(random.nextLong());
+      this.longGenerator = new RandomValues.LongGenerator(random.nextLong());
+      this.int96Generator = new RandomValues.Int96Generator(random.nextLong());
+      this.floatGenerator = new RandomValues.FloatGenerator(random.nextLong());
+      this.doubleGenerator = new RandomValues.DoubleGenerator(random.nextLong());
+      this.stringGenerator = new RandomValues.StringGenerator(random.nextLong());
+      this.binaryGenerator = new RandomValues.BinaryGenerator(random.nextLong());
+      this.fixedBinaryGenerator = new RandomValues.FixedGenerator(random.nextLong(), fixedLength);
     }
 
     private static MessageType buildSchema(long seed) {
@@ -280,10 +351,10 @@ public class TestStatistics {
         new PrimitiveType(OPTIONAL, BINARY, "strings"),
         new PrimitiveType(OPTIONAL, BINARY, "binary"),
         new PrimitiveType(OPTIONAL, FIXED_LEN_BYTE_ARRAY, fixedBinaryLength, "fixed-binary"),
-        new PrimitiveType(OPTIONAL, INT32, "unconstrained-i32"),
-        new PrimitiveType(OPTIONAL, INT64, "unconstrained-i64"),
-        new PrimitiveType(OPTIONAL, FLOAT, "unconstrained-sngl"),
-        new PrimitiveType(OPTIONAL, DOUBLE, "unconstrained-dbl")
+        new PrimitiveType(REQUIRED, INT32, "unconstrained-i32"),
+        new PrimitiveType(REQUIRED, INT64, "unconstrained-i64"),
+        new PrimitiveType(REQUIRED, FLOAT, "unconstrained-sngl"),
+        new PrimitiveType(REQUIRED, DOUBLE, "unconstrained-dbl")
       );
     }
 
@@ -292,24 +363,30 @@ public class TestStatistics {
       for (int index = 0; index < recordCount; index++) {
         Group group = new SimpleGroup(super.schema);
 
-        Integer intValue = intGenerator.nextValue();
-        Long longValue = longGenerator.nextValue();
-        Binary int96Value = int96Generator.nextBinaryValue();
-        Float floatValue = floatGenerator.nextValue();
-        Double doubleValue = doubleGenerator.nextValue();
-        Binary stringValue = stringGenerator.nextBinaryValue();
-        Binary binaryValue = binaryGenerator.nextBinaryValue();
-        Binary fixedBinaryValue = fixedBinaryGenerator.nextBinaryValue();
-
-        if (intValue != null) { group.append("i32", intValue); }
-        if (longValue != null) { group.append("i64", longValue); }
-        if (int96Value != null) { group.append("i96", int96Value); }
-        if (floatValue != null) { group.append("sngl", floatValue); }
-        if (doubleValue != null) { group.append("dbl", doubleValue); }
-        if (stringValue != null) { group.append("strings", stringValue); }
-        if (binaryValue != null) { group.append("binary", binaryValue); }
-        if (fixedBinaryValue != null) { group.append("fixed-binary", fixedBinaryValue); }
-
+        if (!intGenerator.shouldGenerateNull()) {
+          group.append("i32", intGenerator.nextValue());
+        }
+        if (!longGenerator.shouldGenerateNull()) {
+          group.append("i64", longGenerator.nextValue());
+        }
+        if (!int96Generator.shouldGenerateNull()) {
+          group.append("i96", int96Generator.nextBinaryValue());
+        }
+        if (!floatGenerator.shouldGenerateNull()) {
+          group.append("sngl", floatGenerator.nextValue());
+        }
+        if (!doubleGenerator.shouldGenerateNull()) {
+          group.append("dbl", doubleGenerator.nextValue());
+        }
+        if (!stringGenerator.shouldGenerateNull()) {
+          group.append("strings", stringGenerator.nextBinaryValue());
+        }
+        if (!binaryGenerator.shouldGenerateNull()) {
+          group.append("binary", binaryGenerator.nextBinaryValue());
+        }
+        if (!fixedBinaryGenerator.shouldGenerateNull()) {
+          group.append("fixed-binary", fixedBinaryGenerator.nextBinaryValue());
+        }
         group.append("unconstrained-i32", random.nextInt());
         group.append("unconstrained-i64", random.nextLong());
         group.append("unconstrained-sngl", random.nextFloat());
@@ -322,150 +399,51 @@ public class TestStatistics {
     @Override
     public void test() throws IOException {
       Configuration configuration = new Configuration();
-      ParquetMetadata metadata = ParquetFileReader.readFooter(configuration, super.fsPath, ParquetMetadataConverter.NO_FILTER);
+      ParquetMetadata metadata = ParquetFileReader.readFooter(configuration,
+          super.fsPath, ParquetMetadataConverter.NO_FILTER);
       ParquetFileReader reader = new ParquetFileReader(configuration,
         metadata.getFileMetaData(),
         super.fsPath,
         metadata.getBlocks(),
         metadata.getFileMetaData().getSchema().getColumns());
 
-      PagingValidator<Integer> i32validator = new PagingValidator<Integer>(columnDescriptorByPath("i32")) {
-        @Override
-        public Integer readValue(ValuesReader valuesReader) {
-          return valuesReader.readInteger();
-        }
-      };
-
-      PagingValidator<Long> i64Validator = new PagingValidator<Long>(columnDescriptorByPath("i64")) {
-        @Override
-        public Long readValue(ValuesReader valuesReader) {
-          return valuesReader.readLong();
-        }
-      };
-
-      PagingValidator<Binary> i96Validator = new PagingValidator<Binary>(columnDescriptorByPath("i96")) {
-        @Override
-        public Binary readValue(ValuesReader valuesReader) {
-          return valuesReader.readBytes();
-        }
-      };
-
-      PagingValidator<Float> snglValidator = new PagingValidator<Float>(columnDescriptorByPath("sngl")) {
-        @Override
-        public Float readValue(ValuesReader valuesReader) {
-          return valuesReader.readFloat();
-        }
-      };
-
-      PagingValidator<Double> dblValidator = new PagingValidator<Double>(columnDescriptorByPath("dbl")) {
-        @Override
-        public Double readValue(ValuesReader valuesReader) {
-          return valuesReader.readDouble();
-        }
-      };
-
-      PagingValidator<Binary> stringValidator = new PagingValidator<Binary>(columnDescriptorByPath("strings")) {
-        @Override
-        public Binary readValue(ValuesReader valuesReader) {
-          return valuesReader.readBytes();
-        }
-      };
-
-      PagingValidator<Binary> binaryValidator = new PagingValidator<Binary>(columnDescriptorByPath("binary")) {
-        @Override
-        public Binary readValue(ValuesReader valuesReader) {
-          return valuesReader.readBytes();
-        }
-      };
-
-      PagingValidator<Binary> fixedBinaryValidator = new PagingValidator<Binary>(columnDescriptorByPath("fixed-binary")) {
-        @Override
-        public Binary readValue(ValuesReader valuesReader) {
-          return valuesReader.readBytes();
-        }
-      };
-
-      PagingValidator<Integer> unconstrainedI32validator = new PagingValidator<Integer>(columnDescriptorByPath("unconstrained-i32")) {
-        @Override
-        public Integer readValue(ValuesReader valuesReader) {
-          return valuesReader.readInteger();
-        }
-      };
-
-      PagingValidator<Long> unconstrainedI64Validator = new PagingValidator<Long>(columnDescriptorByPath("unconstrained-i64")) {
-        @Override
-        public Long readValue(ValuesReader valuesReader) {
-          return valuesReader.readLong();
-        }
-      };
-
-      PagingValidator<Float> unconstrainedSnglValidator = new PagingValidator<Float>(columnDescriptorByPath("unconstrained-sngl")) {
-        @Override
-        public Float readValue(ValuesReader valuesReader) {
-          return valuesReader.readFloat();
-        }
-      };
-
-      PagingValidator<Double> unconstrainedDblValidator = new PagingValidator<Double>(columnDescriptorByPath("unconstrained-dbl")) {
-        @Override
-        public Double readValue(ValuesReader valuesReader) {
-          return valuesReader.readDouble();
-        }
-      };
+      PageStatsValidator validator = new PageStatsValidator();
 
       PageReadStore pageReadStore;
       while ((pageReadStore = reader.readNextRowGroup()) != null) {
-        i32validator.validate(pageReadStore);
-        i64Validator.validate(pageReadStore);
-        i96Validator.validate(pageReadStore);
-        snglValidator.validate(pageReadStore);
-        dblValidator.validate(pageReadStore);
-        stringValidator.validate(pageReadStore);
-        binaryValidator.validate(pageReadStore);
-        fixedBinaryValidator.validate(pageReadStore);
-
-        unconstrainedI32validator.validate(pageReadStore);
-        unconstrainedI64Validator.validate(pageReadStore);
-        unconstrainedSnglValidator.validate(pageReadStore);
-        unconstrainedDblValidator.validate(pageReadStore);
+        validator.validate(metadata.getFileMetaData().getSchema(), pageReadStore);
       }
     }
-
-    private ColumnDescriptor columnDescriptorByPath(String path) {
-      return schema.getColumnDescription(path.split("\\."));
-    }
   }
 
+  @Rule
   public final TemporaryFolder folder = new TemporaryFolder();
-
-  @Before
-  public void setup() throws IOException{
-    folder.create();
-  }
-
-  @After
-  public void tearDown() throws IOException {
-    folder.delete();
-  }
 
   @Test
   public void testStatistics() throws IOException {
-    String filename = String.format("%s/test_file%s.parq", folder.getRoot(), RANDOM_SEED);
-    String configuration = String.format("FILENAME %s, SEED: %s", filename, RANDOM_SEED);
-    System.out.println(configuration);
+    File file = folder.newFile("test_file.parquet");
+    file.delete();
+
+    System.out.println(String.format("RANDOM SEED: %s", RANDOM_SEED));
 
     Random random = new Random(RANDOM_SEED);
 
-    int blockSize =(random.nextInt(100) + 10) * MEGABYTE;
+    int blockSize =(random.nextInt(54) + 10) * MEGABYTE;
     int pageSize = (random.nextInt(10) + 1) * MEGABYTE;
 
-    DataContext parquetOneTest = new DataContext(RANDOM_SEED, filename, blockSize, pageSize, false, ParquetProperties.WriterVersion.PARQUET_1_0);
-    DataContext parquetTwoTest = new DataContext(RANDOM_SEED, filename, blockSize, pageSize, false, ParquetProperties.WriterVersion.PARQUET_2_0);
+    List<DataContext> contexts = Arrays.asList(
+        new DataContext(random.nextLong(), file, blockSize,
+            pageSize, false, ParquetProperties.WriterVersion.PARQUET_1_0),
+        new DataContext(random.nextLong(), file, blockSize,
+            pageSize, true, ParquetProperties.WriterVersion.PARQUET_1_0),
+        new DataContext(random.nextLong(), file, blockSize,
+            pageSize, false, ParquetProperties.WriterVersion.PARQUET_2_0),
+        new DataContext(random.nextLong(), file, blockSize,
+            pageSize, true, ParquetProperties.WriterVersion.PARQUET_2_0)
+    );
 
-    for (DataContext test : new DataContext[] { parquetOneTest, parquetTwoTest }) {
+    for (DataContext test : contexts) {
       DataGenerationContext.writeAndTest(test);
     }
   }
-
-
 }
