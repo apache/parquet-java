@@ -19,10 +19,12 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
+import java.util.concurrent.Callable;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.junit.Assert;
 
 public class TestUtils {
 
@@ -35,6 +37,23 @@ public class TestUtils {
     }
     if (!fs.mkdirs(path)) {
       throw new IOException("can not create path " + path);
+    }
+  }
+
+  /**
+   * A convenience method to avoid a large number of @Test(expected=...) tests
+   * @param message A String message to describe this assertion
+   * @param expected An Exception class that the Runnable should throw
+   * @param callable A Callable that is expected to throw the exception
+   */
+  public static void assertThrows(
+      String message, Class<? extends Exception> expected, Callable callable) {
+    try {
+      callable.call();
+      Assert.fail("No exception was thrown (" + message + "), expected: " +
+          expected.getName());
+    } catch (Exception actual) {
+      Assert.assertEquals(message, expected, actual.getClass());
     }
   }
 }
