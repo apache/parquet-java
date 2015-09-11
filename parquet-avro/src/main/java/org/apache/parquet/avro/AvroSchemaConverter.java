@@ -303,7 +303,6 @@ public class AvroSchemaConverter {
             }
             GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
             if (!mapKeyValType.isRepetition(Type.Repetition.REPEATED) ||
-                !mapKeyValType.getOriginalType().equals(OriginalType.MAP_KEY_VALUE) ||
                 mapKeyValType.getFieldCount()!=2) {
               throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
             }
