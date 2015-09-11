@@ -45,12 +45,22 @@ public class GroupWriteSupport extends WriteSupport<Group> {
     return parseMessageType(checkNotNull(configuration.get(PARQUET_EXAMPLE_SCHEMA), PARQUET_EXAMPLE_SCHEMA));
   }
 
-  private MessageType schema;
+  private MessageType schema = null;
   private GroupWriter groupWriter;
+
+  public GroupWriteSupport() {
+  }
+
+  GroupWriteSupport(MessageType schema) {
+    this.schema = schema;
+  }
 
   @Override
   public org.apache.parquet.hadoop.api.WriteSupport.WriteContext init(Configuration configuration) {
-    schema = getSchema(configuration);
+    // if present, prefer the schema passed to the constructor
+    if (schema == null) {
+      schema = getSchema(configuration);
+    }
     return new WriteContext(schema, new HashMap<String, String>());
   }
 
