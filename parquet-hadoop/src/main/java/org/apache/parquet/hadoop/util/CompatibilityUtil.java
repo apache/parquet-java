@@ -170,8 +170,8 @@ public class CompatibilityUtil {
           // this is in the compatibility section, so it might deliberately only have
           // access to the old API
           byte[] temp = new byte[readBuf.remaining()];
-          readBuf.get(temp);
           res = f.read(temp);
+          readBuf.put(temp);
         }
       }catch (UnsupportedOperationException e) {
         byte[] buf = new byte[maxSize];
