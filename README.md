@@ -148,29 +148,29 @@ The build runs in [Travis CI](http://travis-ci.org/apache/parquet-mr):
 [![Build Status](https://travis-ci.org/apache/parquet-mr.svg?branch=master)](http://travis-ci.org/apache/parquet-mr)
 
 ## Add Parquet as a dependency in Maven
-The current release is version `1.7.0`
+The current release is version `1.8.1`
 
 ```xml
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.7.0</version>
+      <version>1.8.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.7.0</version>
+      <version>1.8.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.7.0</version>
+      <version>1.8.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.7.0</version>
+      <version>1.8.1</version>
     </dependency>
   </dependencies>
 ```
@@ -228,4 +228,3 @@ We hold ourselves and the Parquet developer community to two codes of conduct:
 
 Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 See also: 
-
