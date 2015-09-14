@@ -141,7 +141,9 @@ def merge_pr(pr_num, target_ref):
 
     merge_message_flags = []
 
-    merge_message_flags += ["-m", title]
+    title_without_brackets = remove_brackets_from_pr_title(title)
+
+    merge_message_flags += ["-m", title_without_brackets]
     if body != None:
         merge_message_flags += ["-m", body]
 
@@ -217,8 +219,15 @@ def fix_version_from_branch(branch, versions):
         branch_ver = branch.replace("branch-", "")
         return filter(lambda x: x.name.startswith(branch_ver), versions)[-1]
 
+def remove_brackets_from_pr_title(title):
+    m = re.search(r'^\[?(PARQUET-[0-9]+)\]?(\s.*)$', title)
+    if m and len(m.groups()) == 2:
+        return m.group(1) + m.group(2)
+    else:
+        fail("PR title should be prefixed by a jira id \"PARQUET-XXX: ...\", found: \"%s\"" % title)  
+
 def exctract_jira_id(title):
-    m = re.search(r'^(PARQUET-[0-9]+)\b.*$', title)
+    m = re.search(r'^\[?(PARQUET-[0-9]+)\]?\s.*$', title)
     if m and m.groups > 0:
         return m.group(1)
     else:
