@@ -195,6 +195,35 @@ public class TestParquetStorer {
   }
 
   @Test
+  public void testDrillParquetFile() throws Exception {
+    String out = "target/out";
+    int rows = 1000;
+    Properties props = new Properties();
+    props.setProperty("parquet.compression", "gzip");
+    props.setProperty("parquet.page.size", "1000");
+    PigServer pigServer = new PigServer(ExecType.LOCAL, props);
+    Data data = Storage.resetData(pigServer);
+
+    String table = "/Users/jaltekruse/drill/exec/java-exec/target/1442265593823-0/donuts_json/0_0_0.parquet";
+
+    pigServer.setBatchOn();
+    pigServer.registerQuery("B = LOAD '" + table + "' USING "+ParquetLoader.class.getName()+"();");
+    pigServer.registerQuery("Store B into 'out' using mock.Storage();");
+    if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
+      throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
+    }
+
+    List<Tuple> result = data.get("out");
+
+//    assertEquals(rows, result.size());
+    int i = 0;
+    for (Tuple tuple : result) {
+      System.out.println(tuple.toString());
+      ++i;
+    }
+  }
+
+  @Test
   public void testComplexSchema() throws ExecException, Exception {
     String out = "target/out";
     PigServer pigServer = new PigServer(ExecType.LOCAL);

@@ -169,9 +169,8 @@ public class CompatibilityUtil {
           // TODO = figure out how to avoid this copy using the new Hadoop 2.0 API if possible
           // this is in the compatibility section, so it might deliberately only have
           // access to the old API
-          byte[] temp = new byte[readBuf.remaining()];
-          res = f.read(temp);
-          readBuf.put(temp);
+//          byte[] temp = new byte[readBuf.remaining()];
+          res = f.read(readBuf);
         }
       }catch (UnsupportedOperationException e) {
         byte[] buf = new byte[maxSize];

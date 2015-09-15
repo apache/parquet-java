@@ -476,7 +476,10 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public ByteBuffer toByteBuffer() {
-      return value;
+      ByteBuffer ret = value.slice();
+      ret.position(offset);
+      ret.limit(offset + length);
+      return ret;
     }
 
     @Override
