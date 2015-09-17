@@ -47,6 +47,7 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -262,6 +263,10 @@ public class DumpCommand extends ArgsOnlyCommand {
                 out.format(" DLE:%s", pageV1.getDlEncoding());
                 out.format(" RLE:%s", pageV1.getRlEncoding());
                 out.format(" VLE:%s", pageV1.getValueEncoding());
+                Statistics<?> statistics = pageV1.getStatistics();
+                if (statistics != null) {
+                  out.format(" ST:[%s]", statistics);
+                }
                 return null;
               }
 
@@ -270,6 +275,10 @@ public class DumpCommand extends ArgsOnlyCommand {
                 out.format(" DLE:RLE");
                 out.format(" RLE:RLE");
                 out.format(" VLE:%s", pageV2.getDataEncoding());
+                Statistics<?> statistics = pageV2.getStatistics();
+                if (statistics != null) {
+                  out.format(" ST:[%s]", statistics);
+                }
                 return null;
               }
             });
