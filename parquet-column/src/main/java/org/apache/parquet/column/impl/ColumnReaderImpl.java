@@ -57,7 +57,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
  * @author Julien Le Dem
  *
  */
-class ColumnReaderImpl implements ColumnReader {
+public class ColumnReaderImpl implements ColumnReader {
   private static final Log LOG = Log.getLog(ColumnReaderImpl.class);
 
   /**
@@ -149,8 +149,8 @@ class ColumnReaderImpl implements ColumnReader {
   private int dictionaryId;
 
   private long endOfPageValueCount;
-  private int readValues;
-  private int pageValueCount;
+  private int readValues = 0;
+  private int pageValueCount = 0;
 
   private final PrimitiveConverter converter;
   private Binding binding;
