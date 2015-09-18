@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -255,7 +255,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
           SpecificData.get().getClass(avroSchema);
       if (fixedClass != null) {
         try {
-          this.fixedClassCtor = 
+          this.fixedClassCtor =
               fixedClass.getConstructor(new Class[] { byte[].class });
         } catch (Exception e) {
           throw new RuntimeException(e);
@@ -313,7 +313,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       Type repeatedType = type.getType(0);
       // always determine whether the repeated type is the element type by
       // matching it against the element schema.
-      if (isElementType(repeatedType, elementSchema)) {
+      if (isElementType(repeatedType, elementSchema, type.getName())) {
         // the element type is the repeated type (and required)
         converter = newConverter(elementSchema, repeatedType, model, new ParentValueContainer() {
           @Override
@@ -356,11 +356,15 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
      * @param elementSchema the expected Schema for list elements
      * @return {@code true} if the repeatedType is the element schema
      */
-    static boolean isElementType(Type repeatedType, Schema elementSchema) {
+    static boolean isElementType(Type repeatedType, Schema elementSchema, String parentName) {
       if (repeatedType.isPrimitive() ||
           repeatedType.asGroupType().getFieldCount() > 1) {
         // The repeated type must be the element type because it is an invalid
         // synthetic wrapper (must be a group with one field).
+        return true;
+      } else if (repeatedType.asGroupType().getFieldCount() == 1 &&
+          (repeatedType.getName().equals("array") ||
+              repeatedType.getName().equals(parentName + "_tuple"))) {
         return true;
       } else if (elementSchema != null &&
           elementSchema.getType() == Schema.Type.RECORD &&

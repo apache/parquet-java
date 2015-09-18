@@ -21,6 +21,7 @@ package org.apache.parquet.avro;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -653,8 +654,8 @@ public class TestArrayCompatibility {
     Path test = writeDirect(
         "message AvroCompatRequiredGroupInListWithSchema {" +
             "  optional group locations (LIST) {" +
-            "    repeated group array {" +
-            "      optional group element {" +
+            "    repeated group bag {" +
+            "      optional group array_element {" +
             "        required double latitude;" +
             "        required double longitude;" +
             "      }" +
@@ -668,11 +669,11 @@ public class TestArrayCompatibility {
             rc.startField("locations", 0);
 
             rc.startGroup();
-            rc.startField("array", 0); // start writing array contents
+            rc.startField("bag", 0); // start writing array contents
 
             // write a non-null element
             rc.startGroup(); // array level
-            rc.startField("element", 0);
+            rc.startField("array_element", 0);
 
             rc.startGroup();
             rc.startField("latitude", 0);
@@ -683,12 +684,12 @@ public class TestArrayCompatibility {
             rc.endField("longitude", 1);
             rc.endGroup();
 
-            rc.endField("element", 0);
+            rc.endField("array_element", 0);
             rc.endGroup(); // array level
 
             // write a second non-null element
             rc.startGroup(); // array level
-            rc.startField("element", 0);
+            rc.startField("array_element", 0);
 
             rc.startGroup();
             rc.startField("latitude", 0);
@@ -699,10 +700,10 @@ public class TestArrayCompatibility {
             rc.endField("longitude", 1);
             rc.endGroup();
 
-            rc.endField("element", 0);
+            rc.endField("array_element", 0);
             rc.endGroup(); // array level
 
-            rc.endField("array", 0); // finished writing array contents
+            rc.endField("bag", 0); // finished writing array contents
             rc.endGroup();
 
             rc.endField("locations", 0);
@@ -735,6 +736,59 @@ public class TestArrayCompatibility {
     assertReaderContains(
         new AvroParquetReader<GenericRecord>(newConfWithSchema, test),
         newSchema, newRecord);
+  }
+
+  @Test
+  public void testAvroCompatArrayOfPrimitiveArray() throws Exception {
+    Path test = writeDirect(
+        // This Parquet schema is converted from the following Avro IDL:
+        //
+        //   record ArrayOfPrimitiveArray {
+        //     array<array<int>> array_of_array_of_ints;
+        //   }
+        "message ArrayOfPrimitiveArray {" +
+            "  required group array_of_array_of_ints (LIST) {" +
+            "    repeated group array (LIST) {" +
+            "      repeated int32 array;" +
+            "    }" +
+            "  }" +
+            "}",
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+            rc.startField("array_of_array_of_ints", 0);
+
+            rc.startGroup();
+            rc.startField("array", 0);
+
+            rc.startGroup();
+            rc.startField("array", 0);
+
+            rc.addInteger(1);
+            rc.addInteger(2);
+            rc.addInteger(3);
+
+            rc.endField("array", 0);
+            rc.endGroup();
+
+            rc.endField("array", 0);
+            rc.endGroup();
+
+            rc.endField("array_of_array_of_ints", 0);
+            rc.endMessage();
+          }
+        }
+    );
+
+    Schema expectedSchema = record("ArrayOfPrimitiveArray",
+        field("array_of_array_of_ints", array(array(primitive(Schema.Type.INT)))));
+
+    GenericRecord expectedRecord = instance(expectedSchema,
+        "array_of_array_of_ints", Collections.singletonList(Arrays.asList(1, 2, 3)));
+
+    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
   }
 
   @Test
@@ -817,6 +871,59 @@ public class TestArrayCompatibility {
     // both should detect the "array" name
     assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
     assertReaderContains(newBehaviorReader(test), oldSchema, oldRecord);
+  }
+
+  @Test
+  public void testThriftCompatListOfPrimitiveList() throws Exception {
+    Path test = writeDirect(
+        // This Parquet schema is converted from the following Thrift schema:
+        //
+        //   struct ListOfPrimitiveList {
+        //     1: list<list<i32>> list_of_list_of_ints;
+        //   }
+        "message ListOfPrimitiveList {" +
+            "  required group list_of_list_of_ints (LIST) {" +
+            "    repeated group list_of_list_of_ints_tuple (LIST) {" +
+            "      repeated int32 list_of_list_of_ints_tuple_tuple;" +
+            "    }" +
+            "  }" +
+            "}",
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+            rc.startField("list_of_list_of_ints", 0);
+
+            rc.startGroup();
+            rc.startField("list_of_list_of_ints_tuple", 0);
+
+            rc.startGroup();
+            rc.startField("list_of_list_of_ints_tuple_tuple", 0);
+
+            rc.addInteger(1);
+            rc.addInteger(2);
+            rc.addInteger(3);
+
+            rc.endField("list_of_list_of_ints_tuple_tuple", 0);
+            rc.endGroup();
+
+            rc.endField("list_of_list_of_ints_tuple", 0);
+            rc.endGroup();
+
+            rc.endField("list_of_list_of_ints", 0);
+            rc.endMessage();
+          }
+        }
+    );
+
+    Schema expectedSchema = record("ListOfPrimitiveList",
+        field("list_of_list_of_ints", array(array(primitive(Schema.Type.INT)))));
+
+    GenericRecord expectedRecord = instance(expectedSchema,
+        "list_of_list_of_ints", Collections.singletonList(Arrays.asList(1, 2, 3)));
+
+    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
   }
 
   @Test
