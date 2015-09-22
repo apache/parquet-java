@@ -36,6 +36,7 @@ import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT;
 import static org.apache.parquet.schema.OriginalType.*;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 /**
  * <p>
@@ -135,7 +136,7 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.ARRAY)) {
       if (writeOldListStructure) {
         return ConversionPatterns.listType(repetition, fieldName,
-            convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
+            convertField("array", schema.getElementType(), REPEATED));
       } else {
         return ConversionPatterns.listOfElements(repetition, fieldName,
             convertField(AvroWriteSupport.LIST_ELEMENT_NAME, schema.getElementType()));
@@ -213,7 +214,7 @@ public class AvroSchemaConverter {
     List<Schema.Field> fields = new ArrayList<Schema.Field>();
     for (Type parquetType : parquetFields) {
       Schema fieldSchema = convertField(parquetType);
-      if (parquetType.isRepetition(Type.Repetition.REPEATED)) {
+      if (parquetType.isRepetition(REPEATED)) {
         throw new UnsupportedOperationException("REPEATED not supported outside LIST or MAP. Type: " + parquetType);
       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
         fields.add(new Schema.Field(parquetType.getName(), optional(fieldSchema), null,
@@ -282,7 +283,7 @@ public class AvroSchemaConverter {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
             Type repeatedType = parquetGroupType.getType(0);
-            if (!repeatedType.isRepetition(Type.Repetition.REPEATED)) {
+            if (!repeatedType.isRepetition(REPEATED)) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
             if (isElementType(repeatedType, parquetGroupType.getName())) {
@@ -302,7 +303,7 @@ public class AvroSchemaConverter {
               throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
             }
             GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
-            if (!mapKeyValType.isRepetition(Type.Repetition.REPEATED) ||
+            if (!mapKeyValType.isRepetition(REPEATED) ||
                 mapKeyValType.getFieldCount()!=2) {
               throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
             }
@@ -348,6 +349,7 @@ public class AvroSchemaConverter {
         // can't be a synthetic layer because it would be invalid
         repeatedType.isPrimitive() ||
         repeatedType.asGroupType().getFieldCount() > 1 ||
+        repeatedType.asGroupType().getType(0).isRepetition(REPEATED) ||
         // known patterns without the synthetic layer
         repeatedType.getName().equals("array") ||
         repeatedType.getName().equals(parentName + "_tuple") ||

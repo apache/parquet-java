@@ -50,6 +50,7 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
 /**
@@ -744,11 +745,12 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
    * @param elementSchema the expected Schema for list elements
    * @return {@code true} if the repeatedType is the element schema
    */
-  private static boolean isElementType(Type repeatedType, Schema elementSchema) {
+  static boolean isElementType(Type repeatedType, Schema elementSchema) {
     if (repeatedType.isPrimitive() ||
-        repeatedType.asGroupType().getFieldCount() > 1) {
+        repeatedType.asGroupType().getFieldCount() > 1 ||
+        repeatedType.asGroupType().getType(0).isRepetition(REPEATED)) {
       // The repeated type must be the element type because it is an invalid
-      // synthetic wrapper (must be a group with one field).
+      // synthetic wrapper. Must be a group with one optional or required field
       return true;
     } else if (elementSchema != null &&
         elementSchema.getType() == Schema.Type.RECORD &&
