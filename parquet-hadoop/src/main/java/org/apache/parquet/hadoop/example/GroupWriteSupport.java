@@ -22,6 +22,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -47,12 +48,18 @@ public class GroupWriteSupport extends WriteSupport<Group> {
 
   private MessageType schema = null;
   private GroupWriter groupWriter;
+  private Map<String, String> extraMetaData = null;
 
   public GroupWriteSupport() {
   }
 
   GroupWriteSupport(MessageType schema) {
+    this(schema, new HashMap<String, String>());
+  }
+
+  GroupWriteSupport(MessageType schema, Map<String, String> extraMetaData) {
     this.schema = schema;
+    this.extraMetaData = extraMetaData;
   }
 
   @Override
@@ -61,7 +68,7 @@ public class GroupWriteSupport extends WriteSupport<Group> {
     if (schema == null) {
       schema = getSchema(configuration);
     }
-    return new WriteContext(schema, new HashMap<String, String>());
+    return new WriteContext(schema, this.extraMetaData);
   }
 
   @Override
