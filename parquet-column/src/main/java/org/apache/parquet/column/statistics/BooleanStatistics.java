@@ -62,6 +62,11 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
+  public boolean isSmallerThan(long size) {
+    return !hasNonNullValue() || (2 < size);
+  }
+
+  @Override
   public String toString() {
     if (this.hasNonNullValue())
       return String.format("min: %b, max: %b, num_nulls: %d", min, max, this.getNumNulls());
