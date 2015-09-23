@@ -51,9 +51,15 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-        <groupId>org.apache.parquet</groupId>
-        <artifactId>parquet-thrift</artifactId>
-        <version>${project.version}</version>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-thrift</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.thrift</groupId>
+      <artifactId>libthrift</artifactId>
+      <version>${thrift.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -81,10 +87,22 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-       <groupId>cascading</groupId>
-       <artifactId>cascading-hadoop</artifactId>
-       <version>${cascading.version}</version>
-       <scope>provided</scope>
+      <groupId>cascading</groupId>
+      <artifactId>cascading-hadoop</artifactId>
+      <version>${cascading.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
