@@ -507,7 +507,7 @@ public class ParquetFileWriter {
    * This is useful when merging 2 directories of parquet files into a single directory, as long
    * as both directories were written with compatible schemas and equal extraMetaData.
    */
-  public static void writeMergedCommonMetadataFile(List<Path> files, Path outputPath, Configuration conf) throws IOException {
+  public static void writeMergedMetadataFile(List<Path> files, Path outputPath, Configuration conf) throws IOException {
     ParquetMetadata merged = mergeMetadataFiles(files, conf);
     writeMetadataFile(outputPath, merged, outputPath.getFileSystem(conf));
   }

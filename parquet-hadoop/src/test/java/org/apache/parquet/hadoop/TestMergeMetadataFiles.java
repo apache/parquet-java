@@ -174,8 +174,8 @@ public class TestMergeMetadataFiles {
     // test file serialization
     Path mergedOut = new Path(new File(temp.getRoot(), "merged_meta").getAbsolutePath());
     Path mergedCommonOut = new Path(new File(temp.getRoot(), "merged_common_meta").getAbsolutePath());
-    ParquetFileWriter.writeMergedCommonMetadataFile(Arrays.asList(info.metaPath1, info.metaPath2), mergedOut, info.conf);
-    ParquetFileWriter.writeMergedCommonMetadataFile(Arrays.asList(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
+    ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.metaPath1, info.metaPath2), mergedOut, info.conf);
+    ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
 
     ParquetMetadata mergedMeta = ParquetFileReader.readFooter(info.conf, mergedOut, ParquetMetadataConverter.NO_FILTER);
     ParquetMetadata mergedCommonMeta = ParquetFileReader.readFooter(info.conf, mergedCommonOut, ParquetMetadataConverter.NO_FILTER);
@@ -199,14 +199,14 @@ public class TestMergeMetadataFiles {
     Path mergedCommonOut = new Path(new File(temp.getRoot(), "merged_common_meta").getAbsolutePath());
 
     try {
-      ParquetFileWriter.writeMergedCommonMetadataFile(Arrays.asList(info.metaPath1, info.metaPath2), mergedOut, info.conf);
+      ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.metaPath1, info.metaPath2), mergedOut, info.conf);
       fail("this should throw");
     } catch (RuntimeException e) {
       assertEquals("could not merge metadata: key schema_num has conflicting values: [2, 1]", e.getMessage());
     }
 
     try {
-      ParquetFileWriter.writeMergedCommonMetadataFile(Arrays.asList(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
+      ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
       fail("this should throw");
     } catch (RuntimeException e) {
       assertEquals("could not merge metadata: key schema_num has conflicting values: [2, 1]", e.getMessage());
