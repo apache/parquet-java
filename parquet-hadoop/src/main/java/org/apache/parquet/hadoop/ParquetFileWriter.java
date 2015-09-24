@@ -480,7 +480,8 @@ public class ParquetFileWriter {
   }
 
   /**
-   *
+   * Given a list of metadata files, merge them into a single ParquetMetadata
+   * Requires that the schemas be compatible, and the extraMetadata be exactly equal.
    */
   public static ParquetMetadata mergeMetadataFiles(List<Path> files,  Configuration conf) throws IOException {
     Preconditions.checkArgument(!files.isEmpty(), "Cannot merge an empty list of metadata");
@@ -499,6 +500,12 @@ public class ParquetFileWriter {
     return new ParquetMetadata(globalMetaData.merge(), blocks);
   }
 
+  /**
+   * Given a list of metadata files, merge them into a single metadata file.
+   * Requires that the schemas be compatible, and the extraMetaData be exactly equal.
+   * This is useful when merging 2 directories of parquet files into a single directory, as long
+   * as both directories were written with compatible schemas and equal extraMetaData.
+   */
   public static void writeMergedCommonMetadataFile(List<Path> files, Path outputPath, Configuration conf) throws IOException {
     ParquetMetadata merged = mergeMetadataFiles(files, conf);
     writeMetadataFile(outputPath, merged, outputPath.getFileSystem(conf));
