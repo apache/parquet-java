@@ -522,12 +522,7 @@ public class ParquetFileWriter {
    */
   @Deprecated
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
-    FileSystem fs = outputPath.getFileSystem(configuration);
-    outputPath = outputPath.makeQualified(fs);
-    ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);
-    writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_METADATA_FILE);
-    metadataFooter.getBlocks().clear();
-    writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_COMMON_METADATA_FILE);
+    writeMetadataFile(configuration, outputPath, footers, JobSummaryLevel.ALL);
   }
 
   /**
