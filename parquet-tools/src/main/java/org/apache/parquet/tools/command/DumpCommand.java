@@ -47,6 +47,7 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -61,6 +62,8 @@ import org.apache.parquet.tools.util.PrettyPrintWriter;
 import org.apache.parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
 
 import com.google.common.base.Joiner;
+
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 
 public class DumpCommand extends ArgsOnlyCommand {
     private static final Charset UTF8 = Charset.forName("UTF-8");
@@ -115,7 +118,7 @@ public class DumpCommand extends ArgsOnlyCommand {
         Configuration conf = new Configuration();
         Path inpath = new Path(input);
 
-        ParquetMetadata metaData = ParquetFileReader.readFooter(conf, inpath);
+        ParquetMetadata metaData = ParquetFileReader.readFooter(conf, inpath, NO_FILTER);
         MessageType schema = metaData.getFileMetaData().getSchema();
 
         PrettyPrintWriter out = PrettyPrintWriter.stdoutPrettyPrinter()
