@@ -47,6 +47,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -475,7 +476,7 @@ public class ParquetFileWriter {
     org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
     writeFileMetaData(parquetMetadata, out);
     if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
-    BytesUtils.writeIntLittleEndian(out, (int)(out.getPos() - footerIndex));
+    BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
     out.write(MAGIC);
   }
 
@@ -516,13 +517,34 @@ public class ParquetFileWriter {
    * @param configuration the configuration to use to get the FileSystem
    * @param outputPath the directory to write the _metadata file to
    * @param footers the list of footers to merge
+   * @deprecated use the variant of writeMetadataFile that takes a {@link JobSummaryLevel} as an argument.
    * @throws IOException
    */
+  @Deprecated
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
     FileSystem fs = outputPath.getFileSystem(configuration);
     outputPath = outputPath.makeQualified(fs);
     ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);
     writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_METADATA_FILE);
+    metadataFooter.getBlocks().clear();
+    writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_COMMON_METADATA_FILE);
+  }
+
+  /**
+   * writes _common_metadata file, and optionally a _metadata file depending on the {@link JobSummaryLevel} provided
+   */
+  public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers, JobSummaryLevel level) throws IOException {
+    Preconditions.checkArgument(level == JobSummaryLevel.ALL || level == JobSummaryLevel.COMMON_ONLY,
+        "Unsupported level: " + level);
+
+    FileSystem fs = outputPath.getFileSystem(configuration);
+    outputPath = outputPath.makeQualified(fs);
+    ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);
+
+    if (level == JobSummaryLevel.ALL) {
+      writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_METADATA_FILE);
+    }
+
     metadataFooter.getBlocks().clear();
     writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_COMMON_METADATA_FILE);
   }

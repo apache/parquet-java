@@ -30,6 +30,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
+import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -132,15 +133,14 @@ public class TestMergeMetadataFiles {
     }
 
     List<Footer> footers = ParquetFileReader.readFooters(conf, rootPath1.getFileSystem(conf).getFileStatus(rootPath1), false);
-    ParquetFileWriter.writeMetadataFile(conf, rootPath1, footers);
+    ParquetFileWriter.writeMetadataFile(conf, rootPath1, footers, JobSummaryLevel.ALL);
 
     for (int i = 0; i < 7; i++) {
       writeFile(new File(root2, i + ".parquet"), conf, !mixedSchemas);
     }
 
     footers = ParquetFileReader.readFooters(conf, rootPath2.getFileSystem(conf).getFileStatus(rootPath2), false);
-    ParquetFileWriter.writeMetadataFile(conf, rootPath2, footers);
-
+    ParquetFileWriter.writeMetadataFile(conf, rootPath2, footers, JobSummaryLevel.ALL);
 
     info.commonMetaPath1 = new Path(new File(root1, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE).getAbsolutePath());
     info.commonMetaPath2 = new Path(new File(root2, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE).getAbsolutePath());
