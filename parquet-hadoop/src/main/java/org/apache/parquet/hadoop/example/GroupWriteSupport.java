@@ -46,11 +46,12 @@ public class GroupWriteSupport extends WriteSupport<Group> {
     return parseMessageType(checkNotNull(configuration.get(PARQUET_EXAMPLE_SCHEMA), PARQUET_EXAMPLE_SCHEMA));
   }
 
-  private MessageType schema = null;
+  private MessageType schema;
   private GroupWriter groupWriter;
-  private Map<String, String> extraMetaData = null;
+  private Map<String, String> extraMetaData;
 
   public GroupWriteSupport() {
+    this(null, new HashMap<String, String>());
   }
 
   GroupWriteSupport(MessageType schema) {
