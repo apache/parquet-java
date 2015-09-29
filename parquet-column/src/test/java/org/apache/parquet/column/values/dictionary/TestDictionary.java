@@ -28,6 +28,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -475,8 +476,8 @@ public class TestDictionary {
     DictionaryValuesReader reader = initDicReader(cw, INT32);
 
     // pretend there are 100 nulls. what matters is offset = bytes.length.
-    byte[] bytes = {0x00, 0x01, 0x02, 0x03}; // data doesn't matter
-    int offset = bytes.length;
+    ByteBuffer bytes = ByteBuffer.wrap(new byte[] {0x00, 0x01, 0x02, 0x03}); // data doesn't matter
+    int offset = bytes.remaining();
     reader.initFromPage(100, bytes, offset);
   }
 

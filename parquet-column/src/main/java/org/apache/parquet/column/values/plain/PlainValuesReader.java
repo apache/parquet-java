@@ -42,14 +42,14 @@ abstract public class PlainValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, byte[], int)
+   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, ByteBuffer, int)
    */
   @Override
   public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.limit() - offset));
     this.in = new LittleEndianDataInputStream(new ByteBufferInputStream(in.duplicate(), offset, in.limit() - offset));
   }
-  
+
   public static class DoublePlainValuesReader extends PlainValuesReader {
 
     @Override

@@ -60,10 +60,14 @@ public abstract class ValuesReader {
    * @throws IOException
    */
   public abstract void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException;
-  
+
   /**
-   * Compatibility Interface.
+   * Same functionality as method of the same name that takes a ByteBuffer instead of a byte[].
+   *
+   * This method is only provided for backward compatibility and will be removed in a future release.
+   * Please update any code using it as soon as possible.
    */
+  @Deprecated
   public void initFromPage(int valueCount, byte[] page, int offset) throws IOException {
     this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
   }

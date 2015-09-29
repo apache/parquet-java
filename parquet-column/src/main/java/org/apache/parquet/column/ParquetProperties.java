@@ -79,7 +79,7 @@ public class ParquetProperties {
   private final WriterVersion writerVersion;
   private final boolean enableDictionary;
   // TODO - Should this even hold an allocator? this isn't really a property
-  private ByteBufferAllocator allocator;
+  private final ByteBufferAllocator allocator;
 
   public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict) {
     this(dictPageSize, writerVersion, enableDict, new HeapByteBufferAllocator());
