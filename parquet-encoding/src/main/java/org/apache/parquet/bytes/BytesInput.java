@@ -133,7 +133,7 @@ abstract public class BytesInput {
   }
 
   /**
-   * @param arrayOut
+   * @param baos - stream to wrap into a BytesInput
    * @return a BytesInput that will write the content of the buffer
    */
   public static BytesInput from(ByteArrayOutputStream baos) {
@@ -176,9 +176,15 @@ abstract public class BytesInput {
     return baos.getBuf();
   }
 
+  /**
+   *
+   * @return a new ByteBuffer materializing the contents of this input
+   * @throws IOException
+   */
   public ByteBuffer toByteBuffer() throws IOException {
     return ByteBuffer.wrap(toByteArray());
   }
+
   /**
    *
    * @return the size in bytes that would be written
@@ -273,6 +279,10 @@ abstract public class BytesInput {
       BytesUtils.writeIntLittleEndian(out, intValue);
     }
 
+    public ByteBuffer toByteBuffer() throws IOException {
+      return ByteBuffer.allocate(4).putInt(0, intValue);
+    }
+
     @Override
     public long size() {
       return 4;
@@ -293,6 +303,13 @@ abstract public class BytesInput {
       BytesUtils.writeUnsignedVarInt(intValue, out);
     }
 
+    // TODO - make sure this has a test
+    public ByteBuffer toByteBuffer() throws IOException {
+      ByteBuffer ret = ByteBuffer.allocate((int) size());
+      BytesUtils.writeUnsignedVarInt(intValue, ret);
+      return ret;
+    }
+
     @Override
     public long size() {
       int s = 5 - ((Integer.numberOfLeadingZeros(intValue) + 3) / 7);
@@ -309,6 +326,10 @@ abstract public class BytesInput {
     @Override
     public long size() {
       return 0;
+    }
+
+    public ByteBuffer toByteBuffer() throws IOException {
+      return ByteBuffer.allocate(0);
     }
 
   }
@@ -368,6 +389,10 @@ abstract public class BytesInput {
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       out.write(in, offset, length);
+    }
+
+    public ByteBuffer toByteBuffer() throws IOException {
+      return ByteBuffer.wrap(in, offset, length);
     }
 
     @Override

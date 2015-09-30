@@ -221,6 +221,14 @@ public class BytesUtils {
     out.write(value & 0x7F);
   }
 
+  public static void writeUnsignedVarInt(int value, ByteBuffer dest) throws IOException {
+    while ((value & 0xFFFFFF80) != 0L) {
+      dest.putInt((value & 0x7F) | 0x80);
+      value >>>= 7;
+    }
+    dest.putInt(value & 0x7F);
+  }
+
   public static void writeZigZagVarInt(int intValue, OutputStream out) throws IOException{
     writeUnsignedVarInt((intValue << 1) ^ (intValue >> 31), out);
   }
