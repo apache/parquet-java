@@ -33,22 +33,26 @@ public class TestDeltaLengthByteArray {
 
   String[] values = { "parquet", "hadoop", "mapreduce"};
 
+  private DeltaLengthByteArrayValuesWriter getDeltaLengthByteArrayValuesWriter() {
+    return new DeltaLengthByteArrayValuesWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
+  }
+
   @Test
   public void testSerialization () throws IOException {
-    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
+    DeltaLengthByteArrayValuesWriter writer = getDeltaLengthByteArrayValuesWriter();
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
     
     Utils.writeData(writer, values);
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]).toStringUsingUTF8(), bin[i].toStringUsingUTF8());
+      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
     }
   }
 
   @Test
   public void testRandomStrings() throws IOException {
-    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
+    DeltaLengthByteArrayValuesWriter writer = getDeltaLengthByteArrayValuesWriter();
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
 
     String[] values = Utils.getRandomStringSamples(1000, 32);
@@ -56,13 +60,13 @@ public class TestDeltaLengthByteArray {
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]).toStringUsingUTF8(), bin[i].toStringUsingUTF8());
+      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
     }
   }
 
   @Test
   public void testLengths() throws IOException {
-    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
+    DeltaLengthByteArrayValuesWriter writer = getDeltaLengthByteArrayValuesWriter();
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
     Utils.writeData(writer, values);
