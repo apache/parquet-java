@@ -335,9 +335,7 @@ public class ParquetFileReader implements Closeable {
     FileSystem fileSystem = basePath.getFileSystem(configuration);
     if (skipRowGroups && fileSystem.exists(commonMetaDataFile)) {
       // reading the summary file that does not contain the row groups
-      if (Log.INFO) {
-        LOG.info("reading summary file: " + commonMetaDataFile);
-      }
+      if (Log.INFO) LOG.info("reading summary file: " + commonMetaDataFile);
       return readFooter(configuration, commonMetaDataFile, filter(skipRowGroups));
     } else if (fileSystem.exists(metadataFile)) {
       if (Log.INFO) {
@@ -553,11 +551,11 @@ public class ParquetFileReader implements Closeable {
     /**
      *
      * @param descriptor descriptor for the chunk
-     * @param byteBuf contains the chunk data at offset
+     * @param data contains the chunk data at offset
      * @param offset where the chunk starts in offset
      */
-    public Chunk(ChunkDescriptor descriptor, ByteBuffer byteBuf, int offset) {
-      super(byteBuf, offset, descriptor.size);
+    public Chunk(ChunkDescriptor descriptor, ByteBuffer data, int offset) {
+      super(data, offset, descriptor.size);
       this.descriptor = descriptor;
     }
 
