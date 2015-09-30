@@ -548,14 +548,6 @@ public class ParquetMetadataConverter {
     return parquetMetadata;
   }
 
-  public ParquetMetadata readParquetMetadata(FSDataInputStream from)
-      throws IOException {
-    FileMetaData fileMetaData = CompatibilityUtil.read(from, new FileMetaData());
-    if (Log.DEBUG) LOG.debug(fileMetaData);
-    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
-    if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
-    return parquetMetadata;
-  }
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
