@@ -189,6 +189,19 @@ public class CapacityByteBufferOutputStream extends OutputStream {
     }
   }
 
+  private void writeToOutput(OutputStream out, ByteBuffer buf, int len) throws IOException {
+    if (buf.hasArray()) {
+      out.write(buf.array(), buf.arrayOffset(), len);
+    } else {
+      // The OutputStream interface only takes a byte[], unfortunately this means that a ByteBuffer
+      // not backed by a byte array must be copied to fulfil this interface
+      byte[] copy = new byte[len];
+      buf.flip();
+      buf.get(copy);
+      out.write(copy);
+    }
+  }
+
   /**
    * Writes the complete contents of this buffer to the specified output stream argument. the output
    * stream's write method <code>out.write(slab, 0, slab.length)</code>) will be called once per slab.
@@ -197,32 +210,10 @@ public class CapacityByteBufferOutputStream extends OutputStream {
    * @exception  IOException  if an I/O error occurs.
    */
   public void writeTo(OutputStream out) throws IOException {
-    ByteBuffer slab;
     for (int i = 0; i < slabs.size() - 1; i++) {
-      slab = slabs.get(i);
-      if (slab.hasArray()) {
-        out.write(slab.array(), slab.arrayOffset(), slab.position());
-      } else {
-        // The OutputStream interface only takes a byte[], unfortunately this means that a ByteBuffer
-        // not backed by a byte array must be copied to fulfil this interface
-        byte[] copy = new byte[slab.limit()];
-        slab.flip();
-        slab.get(copy);
-        out.write(copy);
-      }
+      writeToOutput(out, slabs.get(i), slabs.get(i).position());
     }
-
-    slab = currentSlab;
-    if (slab.hasArray()) {
-      out.write(slab.array(), slab.arrayOffset(), currentSlabIndex);
-    } else {
-      // The OutputStream interface only takes a byte[], unfortunately this means that a ByteBuffer
-      // not backed by a byte array must be copied to fulfil this interface
-      byte[] copy = new byte[currentSlabIndex];
-      slab.flip();
-      slab.get(copy);
-      out.write(copy);
-    }
+    writeToOutput(out, currentSlab, currentSlabIndex);
   }
 
   /**
