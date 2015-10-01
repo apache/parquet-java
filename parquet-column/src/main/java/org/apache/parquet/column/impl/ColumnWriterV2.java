@@ -227,7 +227,7 @@ final class ColumnWriterV2 implements ColumnWriter {
    * Is called right after writePage
    */
   public void finalizeColumnChunk() {
-    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
+    final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
       if (DEBUG) LOG.debug("write dictionary");
       try {

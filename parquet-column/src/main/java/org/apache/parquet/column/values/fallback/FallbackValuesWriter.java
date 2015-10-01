@@ -103,11 +103,11 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     fallBackWriter.close();
   }
 
-  public DictionaryPage createDictionaryPage() {
+  public DictionaryPage toDictPageAndClose() {
     if (initialUsedAndHadDictionary) {
-      return initialWriter.createDictionaryPage();
+      return initialWriter.toDictPageAndClose();
     } else {
-      return currentWriter.createDictionaryPage();
+      return currentWriter.toDictPageAndClose();
     }
   }
 

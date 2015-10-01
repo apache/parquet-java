@@ -241,7 +241,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     if (valueCount > 0) {
       writePage();
     }
-    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
+    final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
       if (DEBUG) LOG.debug("write dictionary");
       try {

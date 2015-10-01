@@ -112,8 +112,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     this.encodingForDictionaryPage = encodingForDictionaryPage;
   }
 
-  protected DictionaryPage dictPage(BytesInput pageBytes) {
-    return new DictionaryPage(pageBytes, lastUsedDictionarySize, encodingForDictionaryPage);
+  protected DictionaryPage dictPage(ValuesWriter dictPageWriter) {
+    DictionaryPage ret = new DictionaryPage(dictPageWriter.getBytes(), lastUsedDictionarySize, encodingForDictionaryPage);
+    dictPageWriter.close();
+    return ret;
   }
 
   @Override
@@ -190,11 +192,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
   @Override
   public void reset() {
+    close();
     encodedValues = new IntList();
-    for (RunLengthBitPackingHybridEncoder encoder : encoders) {
-      encoder.close();
-    }
-    encoders.clear();
   }
 
   @Override
@@ -267,7 +266,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
 
     @Override
-    public DictionaryPage createDictionaryPage() {
+    public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
@@ -277,9 +276,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
           Binary entry = binaryIterator.next();
           dictionaryEncoder.writeBytes(entry);
         }
-        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
-        dictionaryEncoder.close();
-        return ret;
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -338,7 +335,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
 
     @Override
-    public DictionaryPage createDictionaryPage() {
+    public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         FixedLenByteArrayPlainValuesWriter dictionaryEncoder = new FixedLenByteArrayPlainValuesWriter(length, lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
@@ -348,9 +345,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
           Binary entry = binaryIterator.next();
           dictionaryEncoder.writeBytes(entry);
         }
-        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
-        dictionaryEncoder.close();
-        return ret;
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -384,7 +379,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
 
     @Override
-    public DictionaryPage createDictionaryPage() {
+    public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
@@ -393,9 +388,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeLong(longIterator.nextLong());
         }
-        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
-        dictionaryEncoder.close();
-        return ret;
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -457,7 +450,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
 
     @Override
-    public DictionaryPage createDictionaryPage() {
+    public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
@@ -466,9 +459,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeDouble(doubleIterator.nextDouble());
         }
-        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
-        dictionaryEncoder.close();
-        return ret;
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -530,7 +521,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
 
     @Override
-    public DictionaryPage createDictionaryPage() {
+    public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
@@ -539,9 +530,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeInteger(intIterator.nextInt());
         }
-        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
-        dictionaryEncoder.close();
-        return ret;
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -603,7 +592,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
 
     @Override
-    public DictionaryPage createDictionaryPage() {
+    public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
@@ -612,9 +601,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeFloat(floatIterator.nextFloat());
         }
-        DictionaryPage ret = dictPage(dictionaryEncoder.getBytes());
-        dictionaryEncoder.close();
-        return ret;
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }

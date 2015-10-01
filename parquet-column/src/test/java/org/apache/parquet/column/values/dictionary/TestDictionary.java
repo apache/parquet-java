@@ -483,7 +483,7 @@ public class TestDictionary {
 
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type)
       throws IOException {
-    final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();
+    final DictionaryPage dictionaryPage = cw.toDictPageAndClose().copy();
     final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, type, 0, 0);
     final Dictionary dictionary = PLAIN.initDictionary(descriptor, dictionaryPage);
     final DictionaryValuesReader cr = new DictionaryValuesReader(dictionary);
