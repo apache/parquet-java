@@ -22,9 +22,6 @@ import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
-import org.apache.parquet.OutputStreamCloseException;
-
-import java.io.IOException;
 
 class BitWriter {
   private static final Log LOG = Log.getLog(BitWriter.class);

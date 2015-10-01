@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.bytes;
 
-import org.apache.parquet.OutputStreamCloseException;
+import org.apache.parquet.ParquetRuntimeException;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -213,11 +213,7 @@ public class LittleEndianDataOutputStream extends OutputStream {
   }
 
   public void close() {
-    try {
-      out.close();
-    }catch(IOException e){
-      throw new OutputStreamCloseException(e);
-    }
+    ParquetRuntimeException.closeQuietly(out);
   }
 
 }

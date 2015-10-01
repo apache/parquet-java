@@ -26,7 +26,6 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
 import org.apache.parquet.bytes.LittleEndianDataOutputStream;
 import org.apache.parquet.column.Encoding;
-import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;

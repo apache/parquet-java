@@ -17,8 +17,6 @@
  */
 package org.apache.parquet;
 
-import org.apache.parquet.ParquetRuntimeException;
-
 public class OutputStreamCloseException extends ParquetRuntimeException {
 
   private static final long serialVersionUID = 1L;
