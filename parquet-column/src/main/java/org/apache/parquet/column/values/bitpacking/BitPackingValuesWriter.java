@@ -44,7 +44,6 @@ public class BitPackingValuesWriter extends ValuesWriter {
   private CapacityByteBufferOutputStream out;
   private BitPackingWriter bitPackingWriter;
   private int bitsPerValue;
-  private ByteBufferAllocator allocator;
 
   /**
    * @param bound the maximum value stored by this column
@@ -52,8 +51,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
    */
   public BitPackingValuesWriter(int bound, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
-      this.allocator = allocator;
-    this.out = new CapacityByteBufferOutputStream(initialCapacity, pageSize, this.allocator);
+    this.out = new CapacityByteBufferOutputStream(initialCapacity, pageSize, allocator);
     init();
   }
 

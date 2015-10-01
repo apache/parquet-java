@@ -23,8 +23,10 @@ import java.nio.ByteBuffer;
 public interface ByteBufferAllocator {
   ByteBuffer allocate(int size);
 
-  //For RefCounted implementations using direct memory, the release method
-  //needs to be called to free references to the allocated memory
+  /**
+   * For RefCounted implementations using direct memory, the release method
+   * needs to be called to free references to the allocated memory.
+   */
   void release(ByteBuffer b);
 
 }

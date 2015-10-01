@@ -241,8 +241,6 @@ public class CapacityByteBufferOutputStream extends OutputStream {
     // 7 = 2^3 - 1 so that doubling the initial size 3 times will get to the same size
     this.initialSlabSize = max(bytesUsed / 7, initialSlabSize);
     if (Log.DEBUG) LOG.debug(String.format("initial slab of size %d", initialSlabSize));
-    // Should we avoid re-allocation next time by keeping the buffers here
-    // I think the class may need to be reworked, but it could avoid re-allocations
     for (ByteBuffer slab : slabs) {
       allocator.release(slab);
     }

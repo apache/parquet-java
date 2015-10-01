@@ -66,6 +66,7 @@ public abstract class ValuesReader {
    *
    * This method is only provided for backward compatibility and will be removed in a future release.
    * Please update any code using it as soon as possible.
+   * @see #initFromPage(int, ByteBuffer, int)
    */
   @Deprecated
   public void initFromPage(int valueCount, byte[] page, int offset) throws IOException {
