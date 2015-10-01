@@ -101,7 +101,7 @@ class InternalParquetRecordWriter<T> {
     this.compressor = compressor;
     this.validating = validating;
     this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary);
-    this.allocator=allocator;
+    this.allocator = allocator;
     initStore();
   }
 

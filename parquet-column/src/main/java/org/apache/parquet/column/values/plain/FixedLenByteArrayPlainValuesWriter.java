@@ -46,7 +46,7 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
 
   public FixedLenByteArrayPlainValuesWriter(int length, int initialSize, int pageSize, ByteBufferAllocator allocator) {
     this.length = length;
-    this.allocator=allocator;
+    this.allocator = allocator;
     this.arrayOut = new CapacityByteBufferOutputStream(initialSize, pageSize, this.allocator);
     this.out = new LittleEndianDataOutputStream(arrayOut);
   }
