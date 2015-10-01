@@ -255,7 +255,6 @@ public class TestRecordLevelFilters {
     DoubleColumn lat = doubleColumn("location.lat");
 
     FilterPredicate pred = or(and(gt(lon, 150.0), notEq(lat, null)), eq(name, Binary.fromString("alice")));
-//    FilterPredicate pred = eq(name, Binary.fromString("alice"));
 
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
 
