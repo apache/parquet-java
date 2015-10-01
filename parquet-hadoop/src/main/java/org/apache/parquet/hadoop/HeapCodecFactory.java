@@ -54,7 +54,7 @@ public class HeapCodecFactory extends CodecFactory<CodecFactory.BytesCompressor,
       final BytesInput decompressed;
       if (codec != null) {
         decompressor.reset();
-        InputStream is = codec.createInputStream(new ByteBufferInputStream(bytes.toByteBuffer()), decompressor);
+        InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
         decompressed = BytesInput.from(is, uncompressedSize);
       } else {
         decompressed = bytes;

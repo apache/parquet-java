@@ -187,6 +187,15 @@ abstract public class BytesInput {
 
   /**
    *
+   * @return a new InputStream materializing the contents of this input
+   * @throws IOException
+   */
+  public InputStream toInputStream() throws IOException {
+    return new ByteBufferInputStream(toByteBuffer());
+  }
+
+  /**
+   *
    * @return the size in bytes that would be written
    */
   abstract public long size();

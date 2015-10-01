@@ -623,7 +623,7 @@ class ColumnReaderImpl implements ColumnReader {
       return new RLEIntIterator(
           new RunLengthBitPackingHybridDecoder(
               BytesUtils.getWidthFromMaxInt(maxLevel),
-              new ByteArrayInputStream(bytes.toByteArray())));
+              bytes.toInputStream()));
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read levels in page for col " + path, e);
     }
