@@ -227,15 +227,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       return buf.memUsageString(prefix + " ColumnChunkPageWriter");
     }
 
-    @Override
-    public void reset() {
-
-    }
-
-    @Override
-    public void close() {
-
-    }
   }
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();

@@ -109,14 +109,4 @@ public class MemPageWriter implements PageWriter {
     return String.format("%s %,d bytes", prefix, memSize);
 
   }
-
-  @Override
-  public void reset() {
-  }
-
-  @Override
-  public void close() {
-  }
-
-
 }

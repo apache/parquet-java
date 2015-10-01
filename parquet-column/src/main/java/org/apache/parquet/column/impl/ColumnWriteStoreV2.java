@@ -59,12 +59,11 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
       MessageType schema,
       PageWriteStore pageWriteStore,
       int pageSizeThreshold,
-      ParquetProperties parquetProps,
-      ByteBufferAllocator allocator) {
+      ParquetProperties parquetProps) {
     super();
     this.pageSizeThreshold = pageSizeThreshold;
     this.thresholdTolerance = (long)(pageSizeThreshold * THRESHOLD_TOLERANCE_RATIO);
-    this.allocator = allocator;
+    this.allocator = parquetProps.getAllocator();
     Map<ColumnDescriptor, ColumnWriterV2> mcolumns = new TreeMap<ColumnDescriptor, ColumnWriterV2>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);

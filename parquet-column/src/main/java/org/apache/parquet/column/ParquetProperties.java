@@ -78,7 +78,6 @@ public class ParquetProperties {
   private final int dictionaryPageSizeThreshold;
   private final WriterVersion writerVersion;
   private final boolean enableDictionary;
-  // TODO - Should this even hold an allocator? this isn't really a property
   private final ByteBufferAllocator allocator;
 
   public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict) {
@@ -231,6 +230,10 @@ public class ParquetProperties {
     return enableDictionary;
   }
 
+  public ByteBufferAllocator getAllocator() {
+    return allocator;
+  }
+
   public ColumnWriteStore newColumnWriteStore(
       MessageType schema,
       PageWriteStore pageStore,
@@ -248,8 +251,7 @@ public class ParquetProperties {
           schema,
           pageStore,
           pageSize,
-          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary),
-          allocator);
+          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary, allocator));
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);
     }
