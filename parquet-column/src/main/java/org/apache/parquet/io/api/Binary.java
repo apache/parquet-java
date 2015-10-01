@@ -386,10 +386,14 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       return length;
     }
 
+    // TODO - write a new unit test for this method
     @Override
     public void writeTo(OutputStream out) throws IOException {
-      // TODO: should not have to materialize those bytes
-      out.write(getBytesUnsafe(), offset, length);
+      if (value.hasArray()) {
+        out.write(value.array(), value.arrayOffset() + offset, length);
+      } else {
+        out.write(getBytesUnsafe(), 0, length);
+      }
     }
 
     @Override
