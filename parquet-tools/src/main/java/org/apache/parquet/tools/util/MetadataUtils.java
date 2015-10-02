@@ -19,9 +19,6 @@
 package org.apache.parquet.tools.util;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +27,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.statistics.*;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
@@ -41,6 +39,9 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
+
+import static org.apache.parquet.tools.command.DumpCommand.binaryToBigInteger;
+import static org.apache.parquet.tools.command.DumpCommand.binaryToString;
 
 public class MetadataUtils {
   public static final double BAD_COMPRESSION_RATIO_CUTOFF = 0.97;
@@ -149,6 +150,63 @@ public class MetadataUtils {
     out.format(" FPO:%d", foff);
     out.format(" SZ:%d/%d/%.2f", tsize, usize, ratio);
     out.format(" VC:%d", count);
+
+    if (!meta.getStatistics().isEmpty()) {
+      Statistics statistics = meta.getStatistics();
+
+      if (statistics.hasNonNullValue()) {
+        String maxValue = null;
+        String minValue = null;
+        switch (meta.getType()) {
+          case BINARY:
+            BinaryStatistics binaryStatistics = (BinaryStatistics) statistics;
+            minValue = String.format("%s", binaryToString(binaryStatistics.genericGetMin()));
+            maxValue = String.format("%s", binaryToString(binaryStatistics.genericGetMax()));
+            break;
+          case BOOLEAN:
+            BooleanStatistics booleanStatistics = (BooleanStatistics) statistics;
+            minValue = String.format("%s", booleanStatistics.genericGetMin());
+            maxValue = String.format("%s", booleanStatistics.genericGetMax());
+            break;
+          case DOUBLE:
+            DoubleStatistics doubleStatistics = (DoubleStatistics) statistics;
+            minValue = String.format("%s", doubleStatistics.genericGetMin());
+            maxValue = String.format("%s", doubleStatistics.genericGetMax());
+            break;
+          case FLOAT:
+            FloatStatistics floatStatistics = (FloatStatistics) statistics;
+            minValue = String.format("%s", floatStatistics.genericGetMin());
+            maxValue = String.format("%s", floatStatistics.genericGetMax());
+            break;
+          case INT32:
+            IntStatistics int32Statistics = (IntStatistics) statistics;
+            minValue = String.format("%s", int32Statistics.genericGetMin());
+            maxValue = String.format("%s", int32Statistics.genericGetMax());
+            break;
+          case INT64:
+            LongStatistics int64Statistics = (LongStatistics) statistics;
+            minValue = String.format("%s", int64Statistics.genericGetMin());
+            maxValue = String.format("%s", int64Statistics.genericGetMax());
+            break;
+          case INT96:
+            BinaryStatistics int96Statistics = (BinaryStatistics) statistics;
+            minValue = String.format("%s", binaryToBigInteger(int96Statistics.genericGetMin()));
+            maxValue = String.format("%s", binaryToBigInteger(int96Statistics.genericGetMax()));
+            break;
+          case FIXED_LEN_BYTE_ARRAY:
+            BinaryStatistics fixLenByteArrStatistics = (BinaryStatistics) statistics;
+            minValue = String.format("%s", binaryToString(fixLenByteArrStatistics.genericGetMin()));
+            maxValue = String.format("%s", binaryToString(fixLenByteArrStatistics.genericGetMax()));
+            break;
+        }
+
+        out.format(" MIN:%s", minValue);
+        out.format(" MAX:%s", maxValue);
+      }
+
+      out.format(" NN:%d", meta.getStatistics().getNumNulls());
+    }
+
     if (!encodings.isEmpty()) out.format(" ENC:%s", encodings);
     out.println();
   }
