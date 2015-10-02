@@ -23,7 +23,7 @@ import java.io.IOException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.LittleEndianDataOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
@@ -46,11 +46,11 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(DeltaLengthByteArrayValuesWriter.class);
 
   private ValuesWriter lengthWriter;
-  private CapacityByteBufferOutputStream arrayOut;
+  private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
 
   public DeltaLengthByteArrayValuesWriter(int initialSize, int pageSize, ByteBufferAllocator allocator) {
-    arrayOut = new CapacityByteBufferOutputStream(initialSize, pageSize, allocator);
+    arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, allocator);
     out = new LittleEndianDataOutputStream(arrayOut);
     lengthWriter = new DeltaBinaryPackingValuesWriter(
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,

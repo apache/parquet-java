@@ -48,13 +48,16 @@ import org.apache.parquet.OutputStreamCloseException;
  *
  * When reusing this stream it will adjust the initial slab size based on the previous data size, aiming for fewer
  * allocations, with the assumption that a similar amount of data will be written to this stream on re-use.
- * See ({@link CapacityByteBufferOutputStream#reset()}).
+ * See ({@link CapacityByteArrayOutputStream#reset()}).
  *
  * @author Julien Le Dem
  *
  */
-public class CapacityByteBufferOutputStream extends OutputStream {
-  private static final Log LOG = Log.getLog(CapacityByteBufferOutputStream.class);
+// This class was renamed to reflect that it now contains ByteBuffers instead of byte[]s.
+// This caused a Semver issue, so it was undone, might want to restore the newer name
+// and create a new class with the old name and just make it wrap the current one.
+public class CapacityByteArrayOutputStream extends OutputStream {
+  private static final Log LOG = Log.getLog(CapacityByteArrayOutputStream.class);
   private static final ByteBuffer EMPTY_SLAB = ByteBuffer.wrap(new byte[0]);
 
   private int initialSlabSize;
@@ -68,13 +71,13 @@ public class CapacityByteBufferOutputStream extends OutputStream {
   private ByteBufferAllocator allocator;
 
   /**
-   * Return an initial slab size such that a CapacityByteBufferOutputStream constructed with it
+   * Return an initial slab size such that a CapacityByteArrayOutputStream constructed with it
    * will end up allocating targetNumSlabs in order to reach targetCapacity. This aims to be
    * a balance between the overhead of creating new slabs and wasting memory by eagerly making
    * initial slabs too big.
    *
    * Note that targetCapacity here need not match maxCapacityHint in the constructor of
-   * CapacityByteBufferOutputStream, though often that would make sense.
+   * CapacityByteArrayOutputStream, though often that would make sense.
    *
    * @param minSlabSize no matter what we shouldn't make slabs any smaller than this
    * @param targetCapacity after we've allocated targetNumSlabs how much capacity should we have?
@@ -88,14 +91,19 @@ public class CapacityByteBufferOutputStream extends OutputStream {
     return max(minSlabSize, ((int) (targetCapacity / pow(2, targetNumSlabs))));
   }
 
+  public static CapacityByteArrayOutputStream withTargetNumSlabs(
+      int minSlabSize, int maxCapacityHint, int targetNumSlabs) {
+    return withTargetNumSlabs(minSlabSize, maxCapacityHint, targetNumSlabs, new HeapByteBufferAllocator());
+  }
+
   /**
-   * Construct a CapacityByteBufferOutputStream configured such that its initial slab size is
+   * Construct a CapacityByteArrayOutputStream configured such that its initial slab size is
    * determined by {@link #initialSlabSizeHeuristic}, with targetCapacity == maxCapacityHint
    */
-  public static CapacityByteBufferOutputStream withTargetNumSlabs(
+  public static CapacityByteArrayOutputStream withTargetNumSlabs(
       int minSlabSize, int maxCapacityHint, int targetNumSlabs, ByteBufferAllocator allocator) {
 
-    return new CapacityByteBufferOutputStream(
+    return new CapacityByteArrayOutputStream(
         initialSlabSizeHeuristic(minSlabSize, maxCapacityHint, targetNumSlabs),
         maxCapacityHint, allocator);
   }
@@ -103,18 +111,38 @@ public class CapacityByteBufferOutputStream extends OutputStream {
   /**
    * Defaults maxCapacityHint to 1MB
    * @param initialSlabSize
-   * @deprecated use {@link CapacityByteBufferOutputStream#CapacityByteBufferOutputStream(int, int, ByteBufferAllocator)}
+   * @deprecated use {@link CapacityByteArrayOutputStream#CapacityByteArrayOutputStream(int, int, ByteBufferAllocator)}
    */
   @Deprecated
-  public CapacityByteBufferOutputStream(int initialSlabSize, ByteBufferAllocator allocator) {
+  public CapacityByteArrayOutputStream(int initialSlabSize) {
+    this(initialSlabSize, 1024 * 1024, new HeapByteBufferAllocator());
+  }
+
+  /**
+   * Defaults maxCapacityHint to 1MB
+   * @param initialSlabSize
+   * @deprecated use {@link CapacityByteArrayOutputStream#CapacityByteArrayOutputStream(int, int, ByteBufferAllocator)}
+   */
+  @Deprecated
+  public CapacityByteArrayOutputStream(int initialSlabSize, ByteBufferAllocator allocator) {
     this(initialSlabSize, 1024 * 1024, allocator);
   }
 
   /**
    * @param initialSlabSize the size to make the first slab
    * @param maxCapacityHint a hint (not guarantee) of the max amount of data written to this stream
+   * @deprecated use {@link CapacityByteArrayOutputStream#CapacityByteArrayOutputStream(int, int, ByteBufferAllocator)}
    */
-  public CapacityByteBufferOutputStream(int initialSlabSize, int maxCapacityHint, ByteBufferAllocator allocator) {
+  @Deprecated
+  public CapacityByteArrayOutputStream(int initialSlabSize, int maxCapacityHint) {
+    this(initialSlabSize, maxCapacityHint, new HeapByteBufferAllocator());
+  }
+
+  /**
+   * @param initialSlabSize the size to make the first slab
+   * @param maxCapacityHint a hint (not guarantee) of the max amount of data written to this stream
+   */
+  public CapacityByteArrayOutputStream(int initialSlabSize, int maxCapacityHint, ByteBufferAllocator allocator) {
     checkArgument(initialSlabSize > 0, "initialSlabSize must be > 0");
     checkArgument(maxCapacityHint > 0, "maxCapacityHint must be > 0");
     checkArgument(maxCapacityHint >= initialSlabSize, String.format("maxCapacityHint can't be less than initialSlabSize %d %d", initialSlabSize, maxCapacityHint));

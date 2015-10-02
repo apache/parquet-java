@@ -24,7 +24,7 @@ import java.io.IOException;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
@@ -81,7 +81,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     this.repetitionLevelColumn = parquetProps.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
     this.definitionLevelColumn = parquetProps.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
 
-    int initialSlabSize = CapacityByteBufferOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
+    int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
     this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSizeThreshold);
   }
 

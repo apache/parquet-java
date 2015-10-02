@@ -21,13 +21,13 @@ package org.apache.parquet.column.values.boundedint;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 
 class BitWriter {
   private static final Log LOG = Log.getLog(BitWriter.class);
   private static final boolean DEBUG = false;//Log.DEBUG;
 
-  private CapacityByteBufferOutputStream baos;
+  private CapacityByteArrayOutputStream baos;
   private int currentByte = 0;
   private int currentBytePosition = 0;
   private static final int[] byteToTrueMask = new int[8];
@@ -43,7 +43,7 @@ class BitWriter {
   }
 
   public BitWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    this.baos = new CapacityByteBufferOutputStream(initialCapacity, pageSize, allocator);
+    this.baos = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
   }
 
   public void writeBit(boolean bit) {

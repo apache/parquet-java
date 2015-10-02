@@ -128,7 +128,7 @@ abstract public class BytesInput {
    * @param arrayOut
    * @return a BytesInput that will write the content of the buffer
    */
-  public static BytesInput from(CapacityByteBufferOutputStream arrayOut) {
+  public static BytesInput from(CapacityByteArrayOutputStream arrayOut) {
     return new CapacityBAOSBytesInput(arrayOut);
   }
 
@@ -345,9 +345,9 @@ abstract public class BytesInput {
 
   private static class CapacityBAOSBytesInput extends BytesInput {
 
-    private final CapacityByteBufferOutputStream arrayOut;
+    private final CapacityByteArrayOutputStream arrayOut;
 
-    private CapacityBAOSBytesInput(CapacityByteBufferOutputStream arrayOut) {
+    private CapacityBAOSBytesInput(CapacityByteArrayOutputStream arrayOut) {
       this.arrayOut = arrayOut;
     }
 

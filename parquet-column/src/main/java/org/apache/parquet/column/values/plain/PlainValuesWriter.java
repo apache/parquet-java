@@ -24,7 +24,7 @@ import java.nio.charset.Charset;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.LittleEndianDataOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
@@ -42,11 +42,11 @@ public class PlainValuesWriter extends ValuesWriter {
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
-  private CapacityByteBufferOutputStream arrayOut;
+  private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
 
   public PlainValuesWriter(int initialSize, int pageSize, ByteBufferAllocator allocator) {
-    arrayOut = new CapacityByteBufferOutputStream(initialSize, pageSize, allocator);
+    arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, allocator);
     out = new LittleEndianDataOutputStream(arrayOut);
   }
 

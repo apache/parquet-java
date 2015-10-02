@@ -26,7 +26,7 @@ import java.io.IOException;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
@@ -40,7 +40,7 @@ import org.apache.parquet.io.ParquetEncodingException;
  */
 public class BitPackingValuesWriter extends ValuesWriter {
 
-  private CapacityByteBufferOutputStream out;
+  private CapacityByteArrayOutputStream out;
   private BitPackingWriter bitPackingWriter;
   private int bitsPerValue;
 
@@ -50,7 +50,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
    */
   public BitPackingValuesWriter(int bound, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
-    this.out = new CapacityByteBufferOutputStream(initialCapacity, pageSize, allocator);
+    this.out = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
     init();
   }
 

@@ -23,7 +23,7 @@ import java.io.IOException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.LittleEndianDataOutputStream;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.Encoding;
@@ -38,7 +38,7 @@ import org.apache.parquet.io.api.Binary;
 public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(PlainValuesWriter.class);
 
-  private CapacityByteBufferOutputStream arrayOut;
+  private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
   private int length;
   private ByteBufferAllocator allocator;
@@ -47,7 +47,7 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   public FixedLenByteArrayPlainValuesWriter(int length, int initialSize, int pageSize, ByteBufferAllocator allocator) {
     this.length = length;
     this.allocator = allocator;
-    this.arrayOut = new CapacityByteBufferOutputStream(initialSize, pageSize, this.allocator);
+    this.arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, this.allocator);
     this.out = new LittleEndianDataOutputStream(arrayOut);
   }
 

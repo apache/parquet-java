@@ -21,7 +21,7 @@ package org.apache.parquet.column.values.delta;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.bytes.CapacityByteBufferOutputStream;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
@@ -61,7 +61,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   public static final int DEFAULT_NUM_MINIBLOCKS = 4;
 
-  private final CapacityByteBufferOutputStream baos;
+  private final CapacityByteArrayOutputStream baos;
 
   /**
    * stores blockSizeInValues, miniBlockNumInABlock and miniBlockSizeInValues
@@ -121,7 +121,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     bitWidths = new int[config.miniBlockNumInABlock];
     deltaBlockBuffer = new int[blockSizeInValues];
     miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
-    baos = new CapacityByteBufferOutputStream(slabSize, pageSize, allocator);
+    baos = new CapacityByteArrayOutputStream(slabSize, pageSize, allocator);
   }
 
   @Override
