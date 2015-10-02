@@ -40,7 +40,7 @@ public abstract class ColumnVector
   /**
    * @return the type of the elements in this vector
    */
-  public Class getType(){
+  public Class getType() {
     return valueType;
   }
 
@@ -51,8 +51,7 @@ public abstract class ColumnVector
     return numValues;
   }
 
-  void setNumberOfValues(int numValues)
-  {
+  void setNumberOfValues(int numValues) {
     this.numValues = numValues;
   }
 
@@ -71,7 +70,6 @@ public abstract class ColumnVector
       case BINARY:
         return new ByteColumnVector(1);
       case INT96:
-        //TODO does this always hold
         return new ByteColumnVector(12);
       case FIXED_LEN_BYTE_ARRAY:
         return new ByteColumnVector(descriptor.getTypeLength());
