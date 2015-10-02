@@ -42,6 +42,9 @@ public class HeapCodecFactory extends CodecFactory<CodecFactory.BytesCompressor,
     private final Decompressor decompressor;
 
     public HeapBytesDecompressor(CompressionCodec codec) {
+      // This is only here for compatibility with the old interface, these are unused
+      // in the constructor above
+      super(null, codec);
       this.codec = codec;
       if (codec != null) {
         decompressor = CodecPool.getDecompressor(codec);
@@ -83,6 +86,9 @@ public class HeapCodecFactory extends CodecFactory<CodecFactory.BytesCompressor,
     private final CompressionCodecName codecName;
 
     public HeapBytesCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize) {
+      // This is only here for compatibility with the old interface, these are unused
+      // in the constructor above
+      super(codecName, codec, 0);
       this.codecName = codecName;
       this.codec = codec;
       if (codec != null) {

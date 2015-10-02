@@ -29,7 +29,6 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.hadoop.io.compress.DirectDecompressionCodec;
 import org.apache.hadoop.io.compress.DirectDecompressor;
 
 /**
@@ -39,7 +38,7 @@ import org.apache.hadoop.io.compress.DirectDecompressor;
  * for their file formats (e.g. SequenceFile) but is undesirable for Parquet since
  * we already have the data page which provides that.
  */
-public class SnappyCodec implements Configurable, CompressionCodec, DirectDecompressionCodec {
+public class SnappyCodec implements Configurable, CompressionCodec {
   private Configuration conf;
   // Hadoop config for how big to make intermediate buffers.
   private final String BUFFER_SIZE_CONFIG = "io.file.buffer.size";

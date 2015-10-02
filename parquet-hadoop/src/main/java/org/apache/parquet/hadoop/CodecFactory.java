@@ -30,7 +30,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
-public abstract class CodecFactory<C extends CodecFactory.BytesCompressor, D extends CodecFactory.BytesDecompressor> {
+class CodecFactory<C extends CodecFactory.BytesCompressor, D extends CodecFactory.BytesDecompressor> {
 
   protected static final Map<String, CompressionCodec> CODEC_BY_NAME = Collections
       .synchronizedMap(new HashMap<String, CompressionCodec>());
@@ -40,7 +40,7 @@ public abstract class CodecFactory<C extends CodecFactory.BytesCompressor, D ext
 
   protected final Configuration configuration;
 
-  protected CodecFactory(Configuration configuration) {
+  public CodecFactory(Configuration configuration) {
     this.configuration = configuration;
   }
 
@@ -65,9 +65,9 @@ public abstract class CodecFactory<C extends CodecFactory.BytesCompressor, D ext
     return decomp;
   }
 
-  protected abstract C createCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize);
+  protected C createCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize) {return null;}
 
-  protected abstract D createDecompressor(CompressionCodec codec);
+  protected D createDecompressor(CompressionCodec codec) {return null;}
 
   /**
    *
@@ -106,17 +106,22 @@ public abstract class CodecFactory<C extends CodecFactory.BytesCompressor, D ext
     decompressors.clear();
   }
 
-  public static abstract class BytesCompressor {
-    public abstract BytesInput compress(BytesInput bytes) throws IOException;
+  // May be able to allow this to stay abstract, check back with semver later
+  public static class BytesCompressor {
+    public BytesCompressor(CompressionCodecName compressionCodecName, CompressionCodec compressionCodec, int pageSize) {}
 
-    public abstract CompressionCodecName getCodecName();
+    public BytesInput compress(BytesInput bytes) throws IOException {return null;}
 
-    protected abstract void release();
+    public CompressionCodecName getCodecName() { return null; }
+
+    protected void release() {}
   }
 
-  public static abstract class BytesDecompressor {
-    public abstract BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
+  public static class BytesDecompressor {
+    public BytesDecompressor(CodecFactory codecFactory,CompressionCodec compressionCodec) {}
 
-    protected abstract void release();
+    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {return null;}
+
+    protected void release() {}
   }
 }
