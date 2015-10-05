@@ -26,6 +26,6 @@ public class FloatColumnVector extends ColumnVector
 
   public FloatColumnVector() {
     this.valueType = float.class;
-    values = new float[DEFAULT_VECTOR_LENGTH];
+    values = new float[MAX_VECTOR_LENGTH];
   }
 }

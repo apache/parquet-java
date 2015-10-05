@@ -26,6 +26,6 @@ public class DoubleColumnVector extends ColumnVector
 
   public DoubleColumnVector() {
     this.valueType = double.class;
-    values = new double[DEFAULT_VECTOR_LENGTH];
+    values = new double[MAX_VECTOR_LENGTH];
   }
 }

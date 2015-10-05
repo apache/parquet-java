@@ -26,6 +26,6 @@ public class LongColumnVector extends ColumnVector
 
   public LongColumnVector() {
     this.valueType = long.class;
-    values = new long[DEFAULT_VECTOR_LENGTH];
+    values = new long[MAX_VECTOR_LENGTH];
   }
 }

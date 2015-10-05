@@ -30,7 +30,7 @@ public class ByteColumnVector extends ColumnVector
    */
   public ByteColumnVector(int sizeOfValues) {
     this.valueType = byte.class;
-    capacity = DEFAULT_VECTOR_LENGTH * sizeOfValues;
+    capacity = MAX_VECTOR_LENGTH * sizeOfValues;
     values = new byte[capacity];
   }
 }

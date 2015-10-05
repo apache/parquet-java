@@ -31,6 +31,6 @@ public class ObjectColumnVector<T> extends ColumnVector
 
   public ObjectColumnVector(Class<T> clazz) {
     this.valueType = clazz;
-    values = (T[]) newInstance(clazz, DEFAULT_VECTOR_LENGTH);
+    values = (T[]) newInstance(clazz, MAX_VECTOR_LENGTH);
   }
 }

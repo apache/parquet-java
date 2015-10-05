@@ -28,13 +28,13 @@ import org.apache.parquet.io.vector.ObjectColumnVector;
 
 public abstract class ColumnVector
 {
-  public static final int DEFAULT_VECTOR_LENGTH = 1024;
+  public static final int MAX_VECTOR_LENGTH = 1024;
   protected Class valueType;
   public final boolean [] isNull;
   private int numValues;
 
   public ColumnVector() {
-    this.isNull = new boolean[DEFAULT_VECTOR_LENGTH];
+    this.isNull = new boolean[MAX_VECTOR_LENGTH];
   }
 
   /**

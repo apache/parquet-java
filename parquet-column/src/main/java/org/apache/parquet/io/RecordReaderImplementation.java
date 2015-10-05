@@ -455,7 +455,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   @Override
   public void readVector(ObjectColumnVector<T> vector, long current, long total) {
     int index = 0;
-    for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH; index++, current++) {
+    for ( ; index < ColumnVector.MAX_VECTOR_LENGTH; index++, current++) {
 
       if (current >= total) {
         ((ColumnVector) vector).setNumberOfValues(index);
@@ -482,7 +482,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
     int index = 0;
     int fixedLenByteArrayPosition = 0;
-    for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH && current < total; index++, current++) {
+    for ( ; index < ColumnVector.MAX_VECTOR_LENGTH && current < total; index++, current++) {
       if (reader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
         switch (column.getType()) {
           case BOOLEAN:

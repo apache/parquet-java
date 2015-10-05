@@ -26,6 +26,6 @@ public class IntColumnVector extends ColumnVector
 
   public IntColumnVector() {
     this.valueType = int.class;
-    values = new int[DEFAULT_VECTOR_LENGTH];
+    values = new int[MAX_VECTOR_LENGTH];
   }
 }

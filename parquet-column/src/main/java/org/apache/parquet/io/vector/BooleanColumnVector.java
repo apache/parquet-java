@@ -26,6 +26,6 @@ public class BooleanColumnVector extends ColumnVector
 
   public BooleanColumnVector() {
     this.valueType = boolean.class;
-    values = new boolean[DEFAULT_VECTOR_LENGTH];
+    values = new boolean[MAX_VECTOR_LENGTH];
   }
 }
