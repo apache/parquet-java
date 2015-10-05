@@ -482,13 +482,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
     int index = 0;
     int fixedLenByteArrayPosition = 0;
-    for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH; index++, current++) {
-
-      if (current >= total) {
-        vector.setNumberOfValues(index);
-        return;
-      }
-
+    for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH && current < total; index++, current++) {
       if (reader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
         switch (column.getType()) {
           case BOOLEAN:
