@@ -508,7 +508,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
           case INT96:
           case FIXED_LEN_BYTE_ARRAY:
             ByteColumnVector fixedLenVector = (ByteColumnVector) vector;
-            byte[] fixedLenBinary = reader.getBinary().getBytes();
+            byte[] fixedLenBinary = reader.getBinary().getBytesUnsafe();
             System.arraycopy(fixedLenBinary, 0, fixedLenVector.values, fixedLenByteArrayPosition, fixedLenBinary.length);
             fixedLenByteArrayPosition += fixedLenBinary.length;
             break;
