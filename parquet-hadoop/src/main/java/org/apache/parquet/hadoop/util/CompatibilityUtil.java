@@ -110,7 +110,7 @@ public class CompatibilityUtil {
     } catch (InvocationTargetException e) {
       throw new IllegalArgumentException(errorMsg, e);
     } catch (InstantiationException e) {
-      e.printStackTrace();
+      throw new IllegalArgumentException(errorMsg, e);
     }
   }
   
@@ -138,6 +138,12 @@ public class CompatibilityUtil {
     }
     return int32Buf.getInt();
   }
+
+  public static ByteBuffer read(FSDataInputStream f, int maxSize) throws IOException {
+    byte[] buf = new byte[maxSize];
+    f.read(buf, 0, maxSize);
+    return ByteBuffer.wrap(buf);
+  }
   
   public static ByteBuffer getBuf(FSDataInputStream f, int maxSize)
       throws IOException {
@@ -149,14 +155,10 @@ public class CompatibilityUtil {
                                               maxSize,
                                               EnumSet.of(Enum.valueOf(fileAPI.ReadOptionCls, "SKIP_CHECKSUMS")));
       } catch (Exception e) {
-        byte[] buf = new byte[maxSize];
-        f.read(buf,0,  maxSize);
-        res = ByteBuffer.wrap(buf);
-      } 
+        res = read(f, maxSize);
+      }
     } else {
-      byte[] buf = new byte[maxSize];
-      int size = f.read(buf,0,  maxSize);
-      res = ByteBuffer.wrap(buf, 0, size);
+      res = read(f, maxSize);
     }
     
     if (res == null) {
@@ -167,9 +169,7 @@ public class CompatibilityUtil {
 
   // Caller must allocate the buffer
   public static ByteBuffer getBuf(FSDataInputStream f, ByteBuffer readBuf, int maxSize) throws IOException {
-    Class<?>[] ZCopyArgs = {ByteBuffer.class};
     int res=0;
-    int l=readBuf.remaining();
     if (useV21) {
       try {
         res = f.read(readBuf);
