@@ -61,7 +61,6 @@ public class ParquetReader<T> implements Closeable {
   private final Configuration conf;
   private final Iterator<Footer> footersIterator;
   private final Filter filter;
-  private final GlobalMetaData globalMetaData;
   private final ReadContext readContext;
 
   private InternalParquetRecordReader<T> reader;
@@ -126,7 +125,7 @@ public class ParquetReader<T> implements Closeable {
     List<FileStatus> statuses = Arrays.asList(fs.listStatus(file, HiddenFileFilter.INSTANCE));
     List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses, false);
     this.footersIterator = footers.iterator();
-    globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
+    GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
     MessageType schema = globalMetaData.getSchema();
     Map<String, Set<String>> extraMetadata = globalMetaData.getKeyValueMetaData();
     readContext = readSupport.init(new InitContext(conf, extraMetadata, schema));
