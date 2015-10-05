@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.io.vector;
 
+import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.ColumnVector;
 
 import static java.lang.reflect.Array.newInstance;
@@ -32,5 +33,9 @@ public class ObjectColumnVector<T> extends ColumnVector
   public ObjectColumnVector(Class<T> clazz) {
     this.valueType = clazz;
     values = (T[]) newInstance(clazz, MAX_VECTOR_LENGTH);
+  }
+
+  @Override
+  public void doReadFrom(ColumnReader reader, int index) {
   }
 }

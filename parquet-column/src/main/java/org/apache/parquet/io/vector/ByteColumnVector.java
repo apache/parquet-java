@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.io.vector;
 
+import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.ColumnVector;
 
 public class ByteColumnVector extends ColumnVector
@@ -32,5 +33,11 @@ public class ByteColumnVector extends ColumnVector
     this.valueType = byte.class;
     capacity = MAX_VECTOR_LENGTH * sizeOfValues;
     values = new byte[capacity];
+  }
+
+  @Override
+  public void doReadFrom(ColumnReader reader, int index) {
+    byte[] bytes = reader.getBinary().getBytesUnsafe();
+    System.arraycopy(bytes, 0, values, index, bytes.length);
   }
 }

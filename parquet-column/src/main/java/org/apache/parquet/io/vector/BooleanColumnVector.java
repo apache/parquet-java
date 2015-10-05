@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.io.vector;
 
+import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.ColumnVector;
 
 public class BooleanColumnVector extends ColumnVector
@@ -27,5 +28,10 @@ public class BooleanColumnVector extends ColumnVector
   public BooleanColumnVector() {
     this.valueType = boolean.class;
     values = new boolean[MAX_VECTOR_LENGTH];
+  }
+
+  @Override
+  public void doReadFrom(ColumnReader reader, int index) {
+    values[index] = reader.getBoolean();
   }
 }

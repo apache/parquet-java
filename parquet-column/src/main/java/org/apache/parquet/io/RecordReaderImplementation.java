@@ -486,24 +486,11 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       if (reader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
         switch (column.getType()) {
           case BOOLEAN:
-            BooleanColumnVector booleanColumnVector = (BooleanColumnVector) vector;
-            booleanColumnVector.values[index] = reader.getBoolean();
-            break;
           case DOUBLE:
-            DoubleColumnVector doubleColumnVector = (DoubleColumnVector) vector;
-            doubleColumnVector.values[index] = reader.getDouble();
-            break;
           case FLOAT:
-            FloatColumnVector floatColumnVector = (FloatColumnVector) vector;
-            floatColumnVector.values[index] = reader.getFloat();
-            break;
           case INT32:
-            IntColumnVector intColumnVector = (IntColumnVector) vector;
-            intColumnVector.values[index] = reader.getInteger();
-            break;
           case INT64:
-            LongColumnVector longColumnVector = (LongColumnVector) vector;
-            longColumnVector.values[index] = reader.getLong();
+            vector.readFrom(reader, index);
             break;
           case INT96:
           case FIXED_LEN_BYTE_ARRAY:

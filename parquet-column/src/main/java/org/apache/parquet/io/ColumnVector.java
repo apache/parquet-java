@@ -18,6 +18,7 @@
 package org.apache.parquet.io;
 
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.vector.BooleanColumnVector;
 import org.apache.parquet.io.vector.ByteColumnVector;
 import org.apache.parquet.io.vector.DoubleColumnVector;
@@ -81,4 +82,18 @@ public abstract class ColumnVector
   public static <T> ObjectColumnVector<T> ofType(Class<T> clazz) {
     return new ObjectColumnVector<T>(clazz);
   }
+
+  /**
+   * Reads a single value from the given reader to the specified index into the vector
+   * @param reader
+   * @param index
+   */
+  public void readFrom(ColumnReader reader, int index) {
+    if (index >= MAX_VECTOR_LENGTH) {
+      throw new IllegalArgumentException("index must be smaller than max vector length");
+    }
+    doReadFrom(reader, index);
+  }
+
+  protected abstract void doReadFrom(ColumnReader reader, int index);
 }

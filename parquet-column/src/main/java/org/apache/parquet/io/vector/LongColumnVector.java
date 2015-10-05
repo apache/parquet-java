@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.io.vector;
 
+import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.ColumnVector;
 
 public class LongColumnVector extends ColumnVector
@@ -27,5 +28,10 @@ public class LongColumnVector extends ColumnVector
   public LongColumnVector() {
     this.valueType = long.class;
     values = new long[MAX_VECTOR_LENGTH];
+  }
+
+  @Override
+  public void doReadFrom(ColumnReader reader, int index) {
+    values[index] = reader.getLong();
   }
 }
