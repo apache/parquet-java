@@ -77,7 +77,8 @@ public class CompatibilityUtil {
     try {
       if (v21) {
         fileAPI = new V21FileAPI();
-        bufferPool = fileAPI.ELASTIC_BYTE_BUFFER_CONSTRUCTOR.newInstance();
+        bufferPool = newInstance(fileAPI.ELASTIC_BYTE_BUFFER_CONSTRUCTOR,
+            "Can't create instance.");
       } else {
         fileAPI = null;
         bufferPool = null;
@@ -86,29 +87,37 @@ public class CompatibilityUtil {
       throw new IllegalArgumentException("Can't find class", e);
     } catch (NoSuchMethodException e) {
       throw new IllegalArgumentException("Can't find constructor ", e);
-    } catch (InstantiationException e) {
-      throw new IllegalArgumentException("Can't create instance ", e);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Can't create instance ", e);
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException("Can't create instance ", e);
+    }
+  }
+
+  private static Object invoke(Method method, String errorMsg, Object instance, Object... args) {
+    try {
+      return method.invoke(instance, args);
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException(errorMsg, e);
     } catch (InvocationTargetException e) {
-      throw new IllegalArgumentException("Can't create instance ", e);
+      throw new IllegalArgumentException(errorMsg, e);
+    }
+  }
+
+  private static Object newInstance(Constructor constructor, String errorMsg, Object... args) {
+    try {
+      return constructor.newInstance(args);
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException(errorMsg, e);
+    } catch (InvocationTargetException e) {
+      throw new IllegalArgumentException(errorMsg, e);
+    } catch (InstantiationException e) {
+      e.printStackTrace();
     }
   }
   
   public static void releaseBuffer(FSDataInputStream f, ByteBuffer buf) {
     if (useV21) {
-      try {
-        fileAPI.RELEASE_BUFFER_METHOD.invoke(f, buf);
-      } catch (IllegalAccessException e) {
-        throw new IllegalArgumentException("Can't call method", e);
-      } catch (IllegalArgumentException e) {
-        throw new IllegalArgumentException("Can't call method", e);
-      } catch (InvocationTargetException e) {
-        throw new IllegalArgumentException("Can't call method", e);
-      }
-     } 
+      invoke(fileAPI.RELEASE_BUFFER_METHOD, "Can't call method", f, buf);
+    }
   }
   
   public static int getInt(FSDataInputStream f) throws IOException {
@@ -135,7 +144,7 @@ public class CompatibilityUtil {
     ByteBuffer res = null;
     if (useV21) {
       try {
-        res = (ByteBuffer) fileAPI.READ_METHOD.invoke(f,
+        res = (ByteBuffer) invoke(fileAPI.READ_METHOD, "Unexpected error getting a ByteBuffer.", f,
                                               fileAPI.ELASTIC_BYTE_BUFFER_CONSTRUCTOR.newInstance(),
                                               maxSize,
                                               EnumSet.of(Enum.valueOf(fileAPI.ReadOptionCls, "SKIP_CHECKSUMS")));
@@ -163,15 +172,7 @@ public class CompatibilityUtil {
     int l=readBuf.remaining();
     if (useV21) {
       try {
-        if (readBuf.hasArray()) {
-          res = f.read(readBuf.array());
-        } else {
-          // TODO = figure out how to avoid this copy using the new Hadoop 2.0 API if possible
-          // this is in the compatibility section, so it might deliberately only have
-          // access to the old API
-//          byte[] temp = new byte[readBuf.remaining()];
-          res = f.read(readBuf);
-        }
+        res = f.read(readBuf);
       }catch (UnsupportedOperationException e) {
         byte[] buf = new byte[maxSize];
         res=f.read(buf);
@@ -342,15 +343,8 @@ public class CompatibilityUtil {
               tbuf.limit(lim);
               return slice;
             } else {
-              try {
-                newBuf = (ByteBuffer)fileAPI.GET_BUFFER_METHOD.invoke(bufferPool, false, size);
-              } catch (IllegalAccessException e) {
-                throw new TTransportException("Hadoop FS", e);
-              } catch (IllegalArgumentException e) {
-                throw new TTransportException("Hadoop FS", e);
-              } catch (InvocationTargetException e) {
-                throw new TTransportException("Hadoop FS", e);
-              }
+              newBuf = (ByteBuffer)invoke(fileAPI.GET_BUFFER_METHOD, 
+                  "Unexpected error getting a ByteBuffer.", bufferPool, false, size);
               newBuf.limit(size).position(0);
             }
           }
@@ -381,15 +375,7 @@ public class CompatibilityUtil {
           tbuf = null;
         }
       } else {
-        try {
-          fileAPI.PUT_BUFFER_METHOD.invoke(bufferPool, b);
-        } catch (IllegalAccessException e) {
-          throw new IllegalArgumentException("Can't call method", e);
-        } catch (IllegalArgumentException e) {
-          throw new IllegalArgumentException("Can't call method", e);
-        } catch (InvocationTargetException e) {
-          throw new IllegalArgumentException("Can't call method", e);
-        }
+        invoke(fileAPI.PUT_BUFFER_METHOD, "Error releasing ByteBuf", bufferPool, b);
       }
     }
   }
