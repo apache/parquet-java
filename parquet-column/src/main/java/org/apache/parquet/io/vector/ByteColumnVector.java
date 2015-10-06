@@ -23,21 +23,16 @@ import org.apache.parquet.io.ColumnVector;
 
 public class ByteColumnVector extends ColumnVector
 {
-  public final byte[] values;
-  private final int capacity;
-  /**
-   * For fixed len byte array type sizeOfValues can be > 1
-   * @param sizeOfValues
-   */
-  public ByteColumnVector(int sizeOfValues) {
+  public final byte[][] values;
+
+  public ByteColumnVector() {
     this.valueType = byte.class;
-    capacity = MAX_VECTOR_LENGTH * sizeOfValues;
-    values = new byte[capacity];
+    values = new byte[MAX_VECTOR_LENGTH][];
   }
 
   @Override
   public void doReadFrom(ColumnReader reader, int index) {
     byte[] bytes = reader.getBinary().getBytesUnsafe();
-    System.arraycopy(bytes, 0, values, index, bytes.length);
+    values[index] = bytes;
   }
 }

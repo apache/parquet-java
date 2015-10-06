@@ -69,11 +69,9 @@ public abstract class ColumnVector
       case INT64:
         return new LongColumnVector();
       case BINARY:
-        return new ByteColumnVector(1);
       case INT96:
-        return new ByteColumnVector(12);
       case FIXED_LEN_BYTE_ARRAY:
-        return new ByteColumnVector(descriptor.getTypeLength());
+        return new ByteColumnVector();
       default:
         throw new IllegalArgumentException("Unhandled column type " + descriptor.getType());
     }

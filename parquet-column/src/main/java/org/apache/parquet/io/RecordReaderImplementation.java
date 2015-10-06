@@ -18,14 +18,6 @@
  */
 package org.apache.parquet.io;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
@@ -35,15 +27,17 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.io.vector.ObjectColumnVector;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.io.vector.BooleanColumnVector;
-import org.apache.parquet.io.vector.ByteColumnVector;
-import org.apache.parquet.io.vector.DoubleColumnVector;
-import org.apache.parquet.io.vector.FloatColumnVector;
-import org.apache.parquet.io.vector.IntColumnVector;
-import org.apache.parquet.io.vector.LongColumnVector;
-import org.apache.parquet.io.vector.ObjectColumnVector;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.apache.parquet.Log.DEBUG;
 
@@ -481,27 +475,9 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     int maxDefinitionLevel = column.getMaxDefinitionLevel();
 
     int index = 0;
-    int fixedLenByteArrayPosition = 0;
     for ( ; index < ColumnVector.MAX_VECTOR_LENGTH && current < total; index++, current++) {
       if (reader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
-        switch (column.getType()) {
-          case BOOLEAN:
-          case DOUBLE:
-          case FLOAT:
-          case INT32:
-          case INT64:
-            vector.readFrom(reader, index);
-            break;
-          case INT96:
-          case FIXED_LEN_BYTE_ARRAY:
-            ByteColumnVector fixedLenVector = (ByteColumnVector) vector;
-            byte[] fixedLenBinary = reader.getBinary().getBytesUnsafe();
-            System.arraycopy(fixedLenBinary, 0, fixedLenVector.values, fixedLenByteArrayPosition, fixedLenBinary.length);
-            fixedLenByteArrayPosition += fixedLenBinary.length;
-            break;
-          default:
-            throw new IllegalArgumentException("Unhandled column type " + column.getType());
-        }
+        vector.readFrom(reader, index);
         vector.isNull[index] = false;
       } else {
         vector.isNull[index] = true;

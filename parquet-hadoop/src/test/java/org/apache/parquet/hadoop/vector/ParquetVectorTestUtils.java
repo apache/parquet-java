@@ -20,14 +20,12 @@ package org.apache.parquet.hadoop.vector;
 
 import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.io.vector.BooleanColumnVector;
-import org.apache.parquet.io.vector.ByteColumnVector;
 import org.apache.parquet.io.vector.DoubleColumnVector;
 import org.apache.parquet.io.vector.FloatColumnVector;
 import org.apache.parquet.io.vector.IntColumnVector;
 import org.apache.parquet.io.vector.LongColumnVector;
 import org.apache.parquet.io.vector.RowBatch;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -67,14 +65,6 @@ public class ParquetVectorTestUtils {
       log(read);
       assertEquals(expectedValue, read);
     }
-  }
-
-  public static void assertFixedLengthByteArrayReads(ByteColumnVector vector, int fixedLength, byte[] expectedValue, int position) {
-    byte[] value = new byte[fixedLength];
-    System.arraycopy(vector.values, position, value, 0, fixedLength);
-    String read = new String(value);
-    log(read);
-    assertArrayEquals(expectedValue, value);
   }
 
   public static void log(Object message) {
