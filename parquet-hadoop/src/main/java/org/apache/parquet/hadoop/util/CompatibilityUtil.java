@@ -25,6 +25,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Constructor;
 
+import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.parquet.Log;
 import parquet.org.apache.thrift.TBase;
 import parquet.org.apache.thrift.TException;
@@ -139,21 +140,26 @@ public class CompatibilityUtil {
     return int32Buf.getInt();
   }
 
+  public static ByteBuffer read(FSDataInputStream f, ByteBuffer buf, int maxSize) throws IOException {
+    f.read(buf);
+    return buf;
+  }
+
   public static ByteBuffer read(FSDataInputStream f, int maxSize) throws IOException {
     byte[] buf = new byte[maxSize];
     f.read(buf, 0, maxSize);
     return ByteBuffer.wrap(buf);
   }
-  
+
   public static ByteBuffer getBuf(FSDataInputStream f, int maxSize)
       throws IOException {
     ByteBuffer res = null;
     if (useV21) {
       try {
         res = (ByteBuffer) invoke(fileAPI.READ_METHOD, "Unexpected error getting a ByteBuffer.", f,
-                                              fileAPI.ELASTIC_BYTE_BUFFER_CONSTRUCTOR.newInstance(),
-                                              maxSize,
-                                              EnumSet.of(Enum.valueOf(fileAPI.ReadOptionCls, "SKIP_CHECKSUMS")));
+            fileAPI.ELASTIC_BYTE_BUFFER_CONSTRUCTOR.newInstance(),
+            maxSize,
+            EnumSet.of(Enum.valueOf(fileAPI.ReadOptionCls, "SKIP_CHECKSUMS")));
       } catch (Exception e) {
         res = read(f, maxSize);
       }
