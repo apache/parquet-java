@@ -36,17 +36,9 @@ public class VectorizedParquetRecordReader<T> implements VectorizedReader {
     parquetRecordReader.close();
   }
 
-  /**
-   * Reads the next batch of rows. This method is used for reading complex types
-   * or arbitrary objects and calls the converters eventually to materialize the record.
-   * @param previous a row batch object to be reused by the reader if possible
-   * @param clazz the class of the record type that will be filled into the column vector
-   * @return the row batch that was read
-   * @throws java.io.IOException
-   */
   @Override
   public RowBatch nextBatch(RowBatch previous, Class clazz) throws IOException {
-    return parquetRecordReader.nextBatch(previous, clazz);
+    throw new UnsupportedOperationException("Reading a batch of rows of complex types is not supported");
   }
 
   /**

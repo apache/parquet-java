@@ -240,20 +240,6 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   }
 
   /**
-   * Currently reading a batch of rows of complex types is not supported
-   *
-   * Reads the next batch of rows. This method is used for reading complex types
-   * or arbitrary objects and calls the converters eventually to materialize the record.
-   * @param previous a row batch object to be reused by the reader if possible
-   * @param clazz the class of the record type that will be filled into the column vector
-   * @return the row batch that was read
-   * @throws java.io.IOException
-   */
-  public RowBatch nextBatch(RowBatch previous, Class<T> clazz) throws IOException {
-    throw new UnsupportedOperationException("Reading a batch of rows of complex types is not supported");
-  }
-
-  /**
    * Reads the next batch of rows. This method is used for reading primitive types
    * and does not call the converters at all.
    * @param previous a row batch object to be reused by the reader if possible
