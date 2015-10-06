@@ -185,18 +185,10 @@ public class ParquetReader<T> implements Closeable {
   public RowBatch nextBatch(RowBatch previous, Class<T> clazz) throws IOException {
     RowBatch rowBatch = previous;
     if (rowBatch == null) {
-      rowBatch = new RowBatch();
+      rowBatch = new RowBatch(new ColumnVector[] { ColumnVector.ofType(clazz) } );
     }
 
-    ObjectColumnVector<T> columnVector;
-    if (rowBatch.getColumns() == null) {
-      columnVector = ColumnVector.ofType(clazz);
-      rowBatch.setColumns(new ColumnVector[] { columnVector });
-    } else {
-      columnVector = (ObjectColumnVector<T>) rowBatch.getColumns()[0];
-    }
-
-    return readVector(columnVector) ? rowBatch : null;
+    return readVector((ObjectColumnVector<T>) rowBatch.getColumns()[0]) ? rowBatch : null;
   }
 
   /**
@@ -214,16 +206,10 @@ public class ParquetReader<T> implements Closeable {
 
      RowBatch rowBatch = previous;
      if (rowBatch == null) {
-       rowBatch = new RowBatch();
+       rowBatch = new RowBatch(new ColumnVector[nColumns]);
      }
 
-     if (rowBatch.getColumns() == null) {
-       columnVectors = new ColumnVector[nColumns];
-       rowBatch.setColumns(columnVectors);
-     } else {
-       columnVectors = rowBatch.getColumns();
-     }
-
+     columnVectors = rowBatch.getColumns();
      MessageType[] columnSchemas = new MessageType[nColumns];
      for (int i = 0; i < nColumns; i++) {
        ColumnVector columnVector = columnVectors[i];

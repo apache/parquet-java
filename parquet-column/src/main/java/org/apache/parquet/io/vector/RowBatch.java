@@ -23,14 +23,14 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 
 public class RowBatch {
 
-  private ColumnVector[] columns;
+  private final ColumnVector[] columns;
+
+  public RowBatch(ColumnVector[] columns) {
+    checkNotNull(columns, "columns");
+    this.columns = columns;
+  }
 
   public ColumnVector[] getColumns() {
     return columns;
-  }
-
-  public void setColumns(ColumnVector[] columns) {
-    checkNotNull(columns, "columns");
-    this.columns = columns;
   }
 }

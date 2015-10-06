@@ -268,16 +268,10 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
     RowBatch rowBatch = previous;
     if (rowBatch == null) {
-      rowBatch = new RowBatch();
+      rowBatch = new RowBatch(new ColumnVector[nColumns]);
     }
 
-    if (rowBatch.getColumns() == null) {
-      columnVectors = new ColumnVector[nColumns];
-      rowBatch.setColumns(columnVectors);
-    } else {
-      columnVectors = rowBatch.getColumns();
-    }
-
+    columnVectors = rowBatch.getColumns();
     MessageType[] columnSchemas = new MessageType[nColumns];
     for (int i = 0; i < nColumns; i++) {
       ColumnVector columnVector = columnVectors[i];
