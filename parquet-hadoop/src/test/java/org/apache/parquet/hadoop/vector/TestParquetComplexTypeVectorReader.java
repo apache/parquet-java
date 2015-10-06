@@ -35,8 +35,7 @@ import static org.apache.parquet.hadoop.api.ReadSupport.PARQUET_READ_SCHEMA;
 import static org.apache.parquet.hadoop.vector.ParquetVectorTestUtils.assertVectorTypes;
 import static org.junit.Assert.assertEquals;
 
-public class TestParquetComplexTypeVectorReader
-{
+public class TestParquetComplexTypeVectorReader {
   protected static final Configuration conf = new Configuration();
 
   private Path getTestListFile() {

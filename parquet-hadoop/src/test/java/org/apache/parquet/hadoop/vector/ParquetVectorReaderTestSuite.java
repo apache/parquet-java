@@ -31,6 +31,5 @@ import org.junit.runners.Suite;
         TestParquetVectorReaderSNAPPYV2.class,
         TestParquetComplexTypeVectorReader.class,
 })
-public class ParquetVectorReaderTestSuite
-{
+public class ParquetVectorReaderTestSuite  {
 }

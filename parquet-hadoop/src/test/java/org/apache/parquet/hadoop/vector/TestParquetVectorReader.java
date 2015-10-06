@@ -60,8 +60,7 @@ import static org.apache.parquet.hadoop.vector.ParquetVectorTestUtils.assertVect
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertTrue;
 
-public abstract class TestParquetVectorReader
-{
+public abstract class TestParquetVectorReader {
   private static final int nElements = 2500;
   protected static final Configuration conf = new Configuration();
   protected static final Path file = new Path("target/test/TestParquetVectorReader/testParquetFile");

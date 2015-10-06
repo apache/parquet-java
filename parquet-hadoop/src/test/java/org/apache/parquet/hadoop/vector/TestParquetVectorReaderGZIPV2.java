@@ -32,8 +32,7 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 
 @RunWith(Parameterized.class)
-public class TestParquetVectorReaderGZIPV2 extends TestParquetVectorReader
-{
+public class TestParquetVectorReaderGZIPV2 extends TestParquetVectorReader {
   public TestParquetVectorReaderGZIPV2(ReaderType type) {
     super(type);
   }

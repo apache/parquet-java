@@ -32,8 +32,7 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
 @RunWith(Parameterized.class)
-public class TestParquetVectorReaderUNCOMPRESSED extends TestParquetVectorReader
-{
+public class TestParquetVectorReaderUNCOMPRESSED extends TestParquetVectorReader {
   public TestParquetVectorReaderUNCOMPRESSED(ReaderType type) {
     super(type);
   }

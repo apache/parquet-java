@@ -32,8 +32,7 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 
 @RunWith(Parameterized.class)
-public class TestParquetVectorReaderSNAPPYV2 extends TestParquetVectorReader
-{
+public class TestParquetVectorReaderSNAPPYV2 extends TestParquetVectorReader {
   public TestParquetVectorReaderSNAPPYV2(ReaderType type) {
     super(type);
   }
