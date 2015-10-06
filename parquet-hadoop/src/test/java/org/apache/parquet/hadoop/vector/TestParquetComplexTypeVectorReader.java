@@ -19,47 +19,136 @@
 package org.apache.parquet.hadoop.vector;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.vector.ObjectColumnVector;
 import org.apache.parquet.io.vector.RowBatch;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.hadoop.api.ReadSupport.PARQUET_READ_SCHEMA;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.vector.ParquetVectorTestUtils.assertVectorTypes;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 
 public class TestParquetComplexTypeVectorReader {
-  protected static final Configuration conf = new Configuration();
+  private static final Configuration conf = new Configuration();
+  private static final int N_ELEMENTS = 1500;
 
-  private Path getTestListFile() {
-    try {
-      return new Path(TestParquetComplexTypeVectorReader.class.getClassLoader().getResource("int_list.parquet").toURI());
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
+  private static final Path listFile = new Path("target/test/TestParquetVectorReader/testParquetList");
+  private static final Path structFile = new Path("target/test/TestParquetVectorReader/testParquetStruct");
+  private static final Path mapFile = new Path("target/test/TestParquetVectorReader/testParquetMap");
+
+  private static final MessageType listSchema = new MessageType("list",
+          new GroupType(REPEATED, "list",
+                  new PrimitiveType(REQUIRED, INT32, "element"))
+          );
+
+  private static final MessageType structSchema = new MessageType("struct",
+          new GroupType(REPEATED, "struct",
+                  new PrimitiveType(REQUIRED, BINARY, "f1"),
+                  new PrimitiveType(REQUIRED, BOOLEAN, "f2"),
+                  new PrimitiveType(REQUIRED, INT32, "f3"),
+                  new PrimitiveType(REQUIRED, DOUBLE, "f4"),
+                  new PrimitiveType(REQUIRED, INT64, "f5"))
+          );
+
+  private static final MessageType mapSchema = new MessageType("map",
+          new GroupType(REPEATED, "map",
+                  new GroupType(REPEATED, "map_kv",
+                          new PrimitiveType(REQUIRED, INT32, "key"),
+                          new PrimitiveType(REQUIRED, INT32, "value")))
+          );
+
+  @BeforeClass
+  public static void createTestFiles() throws IOException {
+    cleanup();
+    ParquetWriter listWriter = createWriter(listSchema, listFile);
+    writeList(listWriter);
+    ParquetWriter structWriter = createWriter(structSchema, structFile);
+    writeStruct(structWriter);
+    ParquetWriter mapWriter = createWriter(mapSchema, mapFile);
+    writeMap(mapWriter);
+  }
+
+  private static ParquetWriter createWriter(MessageType schema, Path file) throws IOException {
+    boolean dictionaryEnabled = true;
+    boolean validating = false;
+    GroupWriteSupport.setSchema(schema, conf);
+    return new ParquetWriter<Group>(
+            file,
+            new GroupWriteSupport(),
+            GZIP, 1024*1024, 1024, 1024*1024,
+            dictionaryEnabled, validating, PARQUET_1_0, conf);
+  }
+
+  @AfterClass
+  public static void cleanup() throws IOException {
+    delete(listFile);
+    delete(structFile);
+    delete(mapFile);
+  }
+
+  private static void delete(Path p) throws IOException {
+    FileSystem fs = p.getFileSystem(conf);
+    if (fs.exists(p)) {
+      fs.delete(p, true);
     }
   }
 
-  private Path getTestStructFile() {
-    try {
-      return new Path(TestParquetComplexTypeVectorReader.class.getClassLoader().getResource("struct.parquet").toURI());
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
+  private static void writeList(ParquetWriter<Group> writer) throws IOException {
+    for (int i = 0; i < N_ELEMENTS; i++) {
+      SimpleGroup list = new SimpleGroup(listSchema);
+      Group name = list.addGroup("list");
+      name.append("element", i);
+      writer.write(list);
     }
+    writer.close();
   }
 
-  private Path getTestMapFile() {
-    try {
-      return new Path(TestParquetComplexTypeVectorReader.class.getClassLoader().getResource("map_string_string.parquet").toURI());
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
+  private static void writeStruct(ParquetWriter<Group> writer) throws IOException {
+    for (int i = 0; i < N_ELEMENTS; i++) {
+      SimpleGroup struct = new SimpleGroup(structSchema);
+      Group name = struct.addGroup("struct");
+      name.append("f1", Binary.fromConstantByteArray(String.valueOf(i).getBytes()));
+      name.append("f2", i % 2 == 0);
+      name.append("f3", i);
+      name.append("f4", i * 1.0);
+      name.append("f5", Long.valueOf(i));
+      writer.write(struct);
     }
+    writer.close();
+  }
+
+  private static void writeMap(ParquetWriter<Group> writer) throws IOException {
+    for (int i = 0; i < N_ELEMENTS; i++) {
+      SimpleGroup map = new SimpleGroup(mapSchema);
+      for (int j = 0; j < 10; j++) {
+        Group name = map.addGroup("map");
+        name.addGroup("map_kv")
+                .append("key", j)
+                .append("value", j);
+      }
+      writer.write(map);
+    }
+    writer.close();
   }
 
   private ParquetReader createParquetReader(Path filePath, String schemaString) throws IOException {
@@ -69,12 +158,7 @@ public class TestParquetComplexTypeVectorReader {
 
   @Test
   public void testVectorListRead()  throws Exception {
-    ParquetReader reader = createParquetReader(getTestListFile(), "message org.kitesdk.examples.data.test_record {\n" +
-            "  required group list (LIST) {\n" +
-            "    repeated int32 array;\n" +
-            "  }\n" +
-            "}");
-
+    ParquetReader reader = createParquetReader(listFile, listSchema.toString());
     try {
       int index = 0;
       int totalRowsRead = 0;
@@ -85,10 +169,8 @@ public class TestParquetComplexTypeVectorReader {
         for (int i = 0; i < objectColumnVector.size(); i++) {
           Group group = objectColumnVector.values[i];
           SimpleGroup simpleGroup = (SimpleGroup) group.getGroup(0, 0);
-          int x = simpleGroup.getInteger(0, 0);
-          int y = simpleGroup.getInteger(0, 1);
-          assertEquals(index, x);
-          assertEquals(index * index, y);
+          int element = simpleGroup.getInteger(0, 0);
+          assertEquals(index, element);
           index++;
         }
       }
@@ -100,15 +182,7 @@ public class TestParquetComplexTypeVectorReader {
 
   @Test
   public void testVectorStructRead()  throws Exception {
-    ParquetReader reader = createParquetReader(getTestStructFile(), "message org.kitesdk.examples.data.test_record {\n" +
-            "         required group struct {\n" +
-            "           optional binary f1 (UTF8);\n" +
-            "           optional boolean f2;\n" +
-            "           optional int32 f3;\n" +
-            "           optional double f4;\n" +
-            "           optional int64 f5;\n" +
-            "         }\n}");
-
+    ParquetReader reader = createParquetReader(structFile, structSchema.toString());
     try {
       int index = 0;
       int totalRowsRead = 0;
@@ -140,15 +214,7 @@ public class TestParquetComplexTypeVectorReader {
 
   @Test
   public void testVectorMapRead()  throws Exception {
-    ParquetReader reader = createParquetReader(getTestMapFile(), "message org.kitesdk.examples.data.test_record {\n" +
-            "  required group map (MAP) {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
-            "      required binary key (UTF8);\n" +
-            "      required binary value (UTF8);\n" +
-            "    }\n" +
-            "  }\n" +
-            "}");
-
+    ParquetReader reader = createParquetReader(mapFile, mapSchema.toString());
     try {
       int totalRowsRead = 0;
       for (RowBatch batch = reader.nextBatch(null, Group.class); batch != null; batch = reader.nextBatch(batch, Group.class)) {
@@ -157,14 +223,12 @@ public class TestParquetComplexTypeVectorReader {
         totalRowsRead += objectColumnVector.size();
         for (int i = 0 ; i < objectColumnVector.size(); i++) {
           Group group = objectColumnVector.values[i];
-          SimpleGroup simpleGroup = (SimpleGroup) group.getGroup(0, 0);
-          //the map should have 10 elements (1,1), (2,2), ... , (10,10)
-          for (int j = 0 ; j < 10; j++) {
-            SimpleGroup map = (SimpleGroup) simpleGroup.getGroup(0, j);
-            String key = map.getString(0, 0);
-            String value = map.getString(1, 0);
-            assertEquals(String.valueOf(j+1), key);
-            assertEquals(String.valueOf(j+2), value);
+          for (int j = 0; j < 10; j++) {
+            SimpleGroup simpleGroup = (SimpleGroup) group.getGroup(0, j);
+            int key = simpleGroup.getGroup(0,0).getInteger("key",0);
+            int value = simpleGroup.getGroup(0,0).getInteger("value", 0);
+            assertEquals(j, key);
+            assertEquals(j, value);
           }
         }
       }
