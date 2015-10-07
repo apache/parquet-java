@@ -44,6 +44,7 @@ import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.VectorizedRecordReader;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationException;
 import org.apache.parquet.schema.GroupType;
@@ -53,6 +54,7 @@ import org.apache.parquet.io.vector.ObjectColumnVector;
 
 import static java.lang.String.format;
 import static org.apache.parquet.Log.DEBUG;
+import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 
@@ -268,7 +270,7 @@ class InternalParquetRecordReader<T> {
 
       try {
         checkRead();
-        recordReader.readVector(vector, current, totalCountLoadedSoFar);
+        ((VectorizedRecordReader) recordReader).readVector(vector, current, totalCountLoadedSoFar);
         current += vector.size();
 
         //TODO filtering records while batch reading
@@ -298,7 +300,7 @@ class InternalParquetRecordReader<T> {
 
       try {
         checkRead();
-        recordReader.readVectors(vectors, columns, current, totalCountLoadedSoFar);
+        ((VectorizedRecordReader) recordReader).readVectors(vectors, columns, current, totalCountLoadedSoFar);
         current += vectors[0].size();
 
         //TODO filtering records while batch reading

@@ -437,8 +437,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     throw new IllegalArgumentException("Couldn't find state for schema " + schema);
   }
 
-  @Override
-  public void readVectors(ColumnVector[] vectors, MessageType[] columnSchemas, long current, long total) {
+  protected void readVectors(ColumnVector[] vectors, MessageType[] columnSchemas, long current, long total) {
       for (int i = 0 ; i < columnSchemas.length; i++) {
         MessageType schema  = columnSchemas[i];
         State state = getState(schema);
@@ -446,8 +445,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       }
   }
 
-  @Override
-  public void readVector(ObjectColumnVector<T> vector, long current, long total) {
+  protected void readVector(ObjectColumnVector<T> vector, long current, long total) {
     int index = 0;
     for ( ; index < ColumnVector.MAX_VECTOR_LENGTH; index++, current++) {
 

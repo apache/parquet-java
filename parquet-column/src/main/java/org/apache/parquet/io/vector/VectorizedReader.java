@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.io.vector;
 
+import org.apache.parquet.io.ColumnVector;
+import org.apache.parquet.schema.MessageType;
+
 import java.io.Closeable;
 import java.io.IOException;
 

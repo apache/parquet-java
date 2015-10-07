@@ -116,11 +116,11 @@ public class MessageColumnIO extends GroupColumnIO {
             builder.getValueInspectorsByColumn(),
             streamingPredicate);
 
-        return new RecordReaderImplementation<T>(
-            MessageColumnIO.this,
-            filteringRecordMaterializer,
-            validating,
-            new ColumnReadStoreImpl(columns, filteringRecordMaterializer.getRootConverter(), getType(), createdBy));
+        return new VectorizedRecordReaderImplementation(new RecordReaderImplementation<T>(
+                MessageColumnIO.this,
+                filteringRecordMaterializer,
+                validating,
+                new ColumnReadStoreImpl(columns, filteringRecordMaterializer.getRootConverter(), getType(), createdBy)));
       }
 
       @Override
@@ -137,11 +137,11 @@ public class MessageColumnIO extends GroupColumnIO {
 
       @Override
       public RecordReader<T> visit(NoOpFilter noOpFilter) {
-        return new RecordReaderImplementation<T>(
+        return new VectorizedRecordReaderImplementation(new RecordReaderImplementation<T>(
             MessageColumnIO.this,
             recordMaterializer,
             validating,
-            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType(), createdBy));
+            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType(), createdBy)));
       }
     });
   }
