@@ -42,4 +42,9 @@ class VectorizedRecordReaderImplementation<T> extends VectorizedRecordReader<T> 
   public void readVector(ObjectColumnVector<T> vector, long current, long total) {
     recordReaderImplementation.readVector(vector, current, total);
   }
+
+  RecordReaderImplementation<T> getRecordReaderImplementation()
+  {
+    return recordReaderImplementation;
+  }
 }
