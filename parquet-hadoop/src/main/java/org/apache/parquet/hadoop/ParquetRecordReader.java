@@ -135,11 +135,13 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext context)
       throws IOException, InterruptedException {
-    if (context instanceof TaskInputOutputContext<?, ?, ?, ?>) {
-      BenchmarkCounter.initCounterFromContext((TaskInputOutputContext<?, ?, ?, ?>) context);
+
+    if (ContextUtil.hasCounterMethod(context)) {
+      BenchmarkCounter.initCounterFromContext(context);
     } else {
-      LOG.error("Can not initialize counter due to context is not a instance of TaskInputOutputContext, but is "
-              + context.getClass().getCanonicalName());
+      LOG.error(
+          String.format("Can not initialize counter because the class '%s' does not have a '.getCounterMethod'",
+               context.getClass().getCanonicalName()));
     }
 
     initializeInternalReader(toParquetSplit(inputSplit), ContextUtil.getConfiguration(context));

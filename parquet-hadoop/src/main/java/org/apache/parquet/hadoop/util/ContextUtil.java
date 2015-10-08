@@ -22,6 +22,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Counter;
@@ -61,8 +63,9 @@ public class ContextUtil {
   private static final Field WRAPPED_CONTEXT_FIELD;
 
   private static final Method GET_CONFIGURATION_METHOD;
-  private static final Method GET_COUNTER_METHOD;
   private static final Method INCREMENT_COUNTER_METHOD;
+
+  private static final Map<Class, Method> COUNTER_METHODS_BY_CLASS = new HashMap<Class, Method>();
 
   static {
     boolean v21 = true;
@@ -140,15 +143,20 @@ public class ContextUtil {
         WRAPPED_CONTEXT_FIELD =
             innerMapContextCls.getDeclaredField("mapContext");
         WRAPPED_CONTEXT_FIELD.setAccessible(true);
-        Method get_counter_method;
         try {
-          get_counter_method = Class.forName(PACKAGE + ".TaskAttemptContext").getMethod("getCounter", String.class,
-                  String.class);
-        } catch (Exception e) {
-          get_counter_method = Class.forName(PACKAGE + ".TaskInputOutputContext").getMethod("getCounter",
-                  String.class, String.class);
+          Class<?> taskAttemptContextClass = Class.forName(PACKAGE + ".TaskAttemptContext");
+          Method getCounterMethodForTaskAttemptContext
+            = taskAttemptContextClass.getMethod("getCounter", String.class, String.class);
+
+          COUNTER_METHODS_BY_CLASS.put(taskAttemptContextClass, getCounterMethodForTaskAttemptContext);
+
+        } catch (ClassNotFoundException e) {
+          Class<?> taskInputOutputContextClass = Class.forName(PACKAGE + ".TaskInputOutputContext");
+          Method getCounterMethodForTaskInputOutputContextClass =
+            taskInputOutputContextClass.getMethod("getCounter", String.class, String.class);
+
+          COUNTER_METHODS_BY_CLASS.put(taskInputOutputContextClass, getCounterMethodForTaskInputOutputContextClass);
         }
-        GET_COUNTER_METHOD=get_counter_method;
       } else {
         MAP_CONTEXT_CONSTRUCTOR =
             innerMapContextCls.getConstructor(mapCls,
@@ -161,7 +169,8 @@ public class ContextUtil {
                 InputSplit.class);
         MAP_CONTEXT_IMPL_CONSTRUCTOR = null;
         WRAPPED_CONTEXT_FIELD = null;
-        GET_COUNTER_METHOD=taskIOContextCls.getMethod("getCounter", String.class, String.class);
+
+        COUNTER_METHODS_BY_CLASS.put(taskIOContextCls, taskIOContextCls.getMethod("getCounter", String.class, String.class));
       }
       MAP_CONTEXT_CONSTRUCTOR.setAccessible(true);
       READER_FIELD = mapContextCls.getDeclaredField("reader");
@@ -251,9 +260,33 @@ public class ContextUtil {
     }
   }
 
-  public static Counter getCounter(TaskInputOutputContext context,
-                                   String groupName, String counterName) {
-    return (Counter) invoke(GET_COUNTER_METHOD, context, groupName, counterName);
+  public static Counter getCounter(TaskAttemptContext context, String groupName, String counterName) {
+    Method counterMethod = findCounterMethod(context);
+    return (Counter)invoke(counterMethod, context, groupName, counterName);
+  }
+
+  public static boolean hasCounterMethod(TaskAttemptContext context) {
+    return findCounterMethod(context) != null;
+  }
+
+  private static Method findCounterMethod(TaskAttemptContext context) {
+    if (context != null) {
+      if (COUNTER_METHODS_BY_CLASS.containsKey(context.getClass())) {
+        return COUNTER_METHODS_BY_CLASS.get(context.getClass());
+      }
+
+      try {
+        Method method = context.getClass().getMethod("getCounter", String.class, String.class);
+        if (method.getReturnType().isAssignableFrom(Counter.class)) {
+          COUNTER_METHODS_BY_CLASS.put(context.getClass(), method);
+          return method;
+        }
+      } catch (NoSuchMethodException e) {
+        return null;
+      }
+    }
+
+    return null;
   }
 
   /**
