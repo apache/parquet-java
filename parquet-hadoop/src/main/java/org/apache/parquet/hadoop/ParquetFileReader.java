@@ -252,6 +252,15 @@ public class ParquetFileReader implements Closeable {
   /**
    * Read the footers of all the files under that path (recursively)
    * not using summary files.
+   */
+  public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus, boolean skipRowGroups) throws IOException {
+    List<FileStatus> statuses = listFiles(configuration, fileStatus);
+    return readAllFootersInParallel(configuration, statuses, skipRowGroups);
+  }
+
+  /**
+   * Read the footers of all the files under that path (recursively)
+   * not using summary files.
    * rowGroups are not skipped
    * @param configuration the configuration to access the FS
    * @param fileStatus the root dir
@@ -259,9 +268,9 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException
    */
   public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus) throws IOException {
-    List<FileStatus> statuses = listFiles(configuration, fileStatus);
-    return readAllFootersInParallel(configuration, statuses, false);
+    return readAllFootersInParallel(configuration, fileStatus, false);
   }
+
 
   @Deprecated
   public static List<Footer> readFooters(Configuration configuration, Path path) throws IOException {
