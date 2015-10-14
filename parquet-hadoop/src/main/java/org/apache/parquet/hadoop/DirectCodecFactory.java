@@ -170,6 +170,7 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
 
       decompressor.reset();
       byte[] inputBytes = new byte[compressedSize];
+      input.position(0);
       input.get(inputBytes);
       decompressor.setInput(inputBytes, 0, inputBytes.length);
       byte[] outputBytes = new byte[uncompressedSize];
@@ -248,7 +249,7 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
       Preconditions.checkArgument(compressedSize == uncompressedSize,
           "Non-compressed data did not have matching compressed and uncompressed sizes.");
       output.clear();
-      output.put((ByteBuffer) input.slice().limit(compressedSize));
+      output.put((ByteBuffer) input.duplicate().position(0).limit(compressedSize));
     }
 
     @Override
@@ -319,8 +320,7 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
     }
 
     @Override
-    protected void release() {
-    }
+    protected void release() {}
 
   }
 
@@ -334,10 +334,12 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
 
     public ByteBufBytesInput(ByteBuffer buf, int offset, int length) {
       super();
-      if(buf.capacity() == length && offset == 0){
+      if(buf.capacity() == length && offset == buf.position()){
         this.buf = buf;
-      }else{
-        this.buf = (ByteBuffer) buf.slice().position(offset).limit(offset + length);
+      } else {
+        this.buf = (ByteBuffer) buf.duplicate()
+            .limit(offset + length)
+            .position(offset);
       }
 
       this.length = length;
@@ -346,6 +348,7 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       final WritableByteChannel outputChannel = Channels.newChannel(out);
+      buf.position(0);
       outputChannel.write(buf);
     }
 
