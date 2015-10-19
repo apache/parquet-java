@@ -250,6 +250,7 @@ public class ParquetFileWriter {
         rowAndBlockSize, rowAndBlockSize, maxPaddingSize);
     this.out = fs.create(file, true, DFS_BUFFER_SIZE_DEFAULT,
         fs.getDefaultReplication(file), rowAndBlockSize);
+    this.codecFactory = new CodecFactory(configuration);
   }
 
   /**
