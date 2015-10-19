@@ -196,7 +196,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
       final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
       doubleDictionaryContent = new double[dictionaryPage.getDictionarySize()];
       DoublePlainValuesReader doubleReader = new DoublePlainValuesReader();
-      doubleReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, dictionaryByteBuf.position());
+      doubleReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, 0);
       for (int i = 0; i < doubleDictionaryContent.length; i++) {
         doubleDictionaryContent[i] = doubleReader.readDouble();
       }
@@ -239,7 +239,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
       final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
       intDictionaryContent = new int[dictionaryPage.getDictionarySize()];
       IntegerPlainValuesReader intReader = new IntegerPlainValuesReader();
-      intReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, dictionaryByteBuf.position());
+      intReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, 0);
       for (int i = 0; i < intDictionaryContent.length; i++) {
         intDictionaryContent[i] = intReader.readInteger();
       }

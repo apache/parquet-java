@@ -53,7 +53,9 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.hadoop.util.CompatibilityUtil;
 
 import org.apache.parquet.Log;
@@ -454,6 +456,7 @@ public class ParquetFileReader implements Closeable {
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<ColumnPath, ColumnDescriptor>();
   private final FileMetaData fileMetaData;
   private final String createdBy;
+  private final ByteBufferAllocator allocator;
 
   private int currentBlock = 0;
 
@@ -485,6 +488,7 @@ public class ParquetFileReader implements Closeable {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
     this.codecFactory = new HeapCodecFactory(configuration);
+    this.allocator = new HeapByteBufferAllocator();
   }
 
 
@@ -790,7 +794,8 @@ public class ParquetFileReader implements Closeable {
     public List<Chunk> readAll(FSDataInputStream f) throws IOException {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
-      ByteBuffer chunksByteBuffer = CompatibilityUtil.getBuf(f, length);
+      ByteBuffer chunksByteBuffer = allocator.allocate(length);
+      CompatibilityUtil.getBuf(f, chunksByteBuffer, length);
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
       int currentChunkOffset = 0;

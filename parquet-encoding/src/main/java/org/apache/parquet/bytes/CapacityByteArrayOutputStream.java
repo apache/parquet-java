@@ -53,9 +53,6 @@ import org.apache.parquet.OutputStreamCloseException;
  * @author Julien Le Dem
  *
  */
-// This class was renamed to reflect that it now contains ByteBuffers instead of byte[]s.
-// This caused a Semver issue, so it was undone, might want to restore the newer name
-// and create a new class with the old name and just make it wrap the current one.
 public class CapacityByteArrayOutputStream extends OutputStream {
   private static final Log LOG = Log.getLog(CapacityByteArrayOutputStream.class);
   private static final ByteBuffer EMPTY_SLAB = ByteBuffer.wrap(new byte[0]);

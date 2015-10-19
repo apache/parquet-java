@@ -17,6 +17,8 @@
  */
 package org.apache.parquet.hadoop;
 
+import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,13 +28,12 @@ import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.hadoop.io.compress.DirectDecompressionCodec;
-import org.apache.hadoop.io.compress.DirectDecompressor;
+import org.apache.parquet.Log;
 import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.Preconditions;
 
 public class DirectCodecPool {
-  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DirectCodecPool.class);
+  private static final Log LOG = Log.getLog(DirectCodecPool.class);
 
   public static final DirectCodecPool INSTANCE = new DirectCodecPool();
 
@@ -48,6 +49,29 @@ public class DirectCodecPool {
   private final Map<Class<?>, GenericObjectPool> cPools = (Map<Class<?>, GenericObjectPool>) (Object) Collections
       .synchronizedMap(new HashMap<Object, Object>());
 
+  // Any of these can be null depending on the version of hadoop on the classpath
+  public static final Class DIRECT_DECOMPRESSION_CODEC_CLASS;
+  public static final Method DECOMPRESS_METHOD;
+  static final Method CREATE_DIRECT_DECOMPRESSOR_METHOD;
+
+  static {
+    Class tempClass = null;
+    Method tempCreateMethod = null;
+    Method tempDecompressMethod = null;
+    try {
+      tempClass = Class.forName("org.apache.hadoop.io.compress.DirectDecompressionCodec");
+      tempCreateMethod = tempClass.getMethod("createDirectDecompressor");
+      tempDecompressMethod = tempClass.getMethod("decompress", ByteBuffer.class, ByteBuffer.class);
+    } catch (ClassNotFoundException e) {
+      // do nothing, the class will just be assigned null
+    } catch (NoSuchMethodException e) {
+      // do nothing, the method will just be assigned null
+    }
+    DIRECT_DECOMPRESSION_CODEC_CLASS = tempClass;
+    CREATE_DIRECT_DECOMPRESSOR_METHOD = tempCreateMethod;
+    DECOMPRESS_METHOD = tempDecompressMethod;
+  }
+
   private DirectCodecPool() {
   }
 
@@ -59,7 +83,7 @@ public class DirectCodecPool {
 
     private CodecPool(final CompressionCodec codec){
       try {
-        boolean supportDirectDecompressor = codec instanceof DirectDecompressionCodec;
+        boolean supportDirectDecompressor = codec.getClass() == DIRECT_DECOMPRESSION_CODEC_CLASS;
         compressorPool = new GenericObjectPool(new BasePoolableObjectFactory() {
           public Object makeObject() throws Exception {
             return codec.createCompressor();
@@ -70,8 +94,10 @@ public class DirectCodecPool {
         if (com != null) {
           cPools.put(com.getClass(), compressorPool);
           compressorPool.returnObject(com);
-        }else{
-          logger.warn("Unable to find compressor for codec {}", codec.getClass().getName());
+        } else {
+          if (Log.WARN) {
+            LOG.warn("Unable to find compressor for codec " + codec.getClass().getName());
+          }
         }
 
         decompressorPool = new GenericObjectPool(new BasePoolableObjectFactory() {
@@ -85,13 +111,16 @@ public class DirectCodecPool {
           dePools.put(decom.getClass(), decompressorPool);
           decompressorPool.returnObject(decom);
         } else {
-          logger.warn("Unable to find decompressor for codec {}", codec.getClass().getName());
+          if (Log.WARN) {
+            LOG.warn("Unable to find decompressor for codec " + codec.getClass().getName());
+          }
         }
 
         if (supportDirectDecompressor) {
-          directDecompressorPool = new GenericObjectPool(new BasePoolableObjectFactory() {
+          directDecompressorPool = new GenericObjectPool(
+              new BasePoolableObjectFactory() {
             public Object makeObject() throws Exception {
-              return ((DirectDecompressionCodec) codec).createDirectDecompressor();
+              return CREATE_DIRECT_DECOMPRESSOR_METHOD.invoke(DIRECT_DECOMPRESSION_CODEC_CLASS);
             }
           }, Integer.MAX_VALUE);
 
@@ -102,7 +131,9 @@ public class DirectCodecPool {
 
           } else {
             supportDirectDecompressor = false;
-            logger.warn("Unable to find direct decompressor for codec {}", codec.getClass().getName());
+            if (Log.WARN) {
+              LOG.warn("Unable to find direct decompressor for codec {}" + codec.getClass().getName());
+            }
           }
 
         } else {
@@ -117,10 +148,10 @@ public class DirectCodecPool {
       }
     }
 
-    public DirectDecompressor borrowDirectDecompressor(){
+    public Object borrowDirectDecompressor(){
       Preconditions.checkArgument(supportDirectDecompressor, "Tried to get a direct Decompressor from a non-direct codec.");
       try {
-        return (DirectDecompressor) directDecompressorPool.borrowObject();
+        return directDecompressorPool.borrowObject();
       } catch (Exception e) {
         throw new ParquetCompressionCodecException(e);
       }
@@ -182,7 +213,7 @@ public class DirectCodecPool {
     returnToPool(decompressor, dePools);
   }
 
-  public void returnDecompressor(DirectDecompressor decompressor) {
+  public void returnDecompressor(Object decompressor) {
     returnToPool(decompressor, directDePools);
   }
 

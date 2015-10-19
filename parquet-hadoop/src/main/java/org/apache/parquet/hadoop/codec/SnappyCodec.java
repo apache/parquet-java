@@ -29,7 +29,6 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.hadoop.io.compress.DirectDecompressor;
 
 /**
  * Snappy compression codec for Parquet.  We do not use the default hadoop
@@ -63,8 +62,14 @@ public class SnappyCodec implements Configurable, CompressionCodec {
     return new SnappyDecompressor();
   }
 
-  public DirectDecompressor createDirectDecompressor() {
-    return new SnappyDecompressor.SnappyDirectDecompressor();
+  /**
+   * The DirectDecompressor class cannot be referenced directly to maintain
+   * compatibility with Hadoop 1.1. It can be assumed that this method will
+   * return a SnappyDirectDecompressor if the DirectDecompressor interface
+   * is available on the classpath
+   */
+  public Object createDirectDecompressor() {
+    return SnappyDecompressor.getSnappyDirectDecompressor();
   }
 
   @Override

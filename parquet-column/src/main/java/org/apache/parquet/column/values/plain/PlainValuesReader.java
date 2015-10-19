@@ -47,7 +47,11 @@ abstract public class PlainValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.limit() - offset));
-    this.in = new LittleEndianDataInputStream(new ByteBufferInputStream(in.duplicate(), offset, in.limit() - offset));
+    this.in = new LittleEndianDataInputStream(toInputStream(in, offset));
+  }
+
+  private ByteBufferInputStream toInputStream(ByteBuffer in, int offset) {
+    return new ByteBufferInputStream(in.duplicate(), offset, in.limit() - offset);
   }
 
   public static class DoublePlainValuesReader extends PlainValuesReader {

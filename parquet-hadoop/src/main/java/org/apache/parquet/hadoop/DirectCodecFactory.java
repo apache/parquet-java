@@ -20,16 +20,17 @@ package org.apache.parquet.hadoop;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 
+import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.hadoop.DirectCodecFactory.DirectBytesDecompressor;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.hadoop.io.compress.DirectDecompressor;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -40,6 +41,7 @@ import org.apache.parquet.hadoop.HeapCodecFactory.HeapBytesDecompressor;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectBytesDecompressor> implements AutoCloseable {
+//  private static final Log LOG = Log.getLog(DirectCodecFactory.class);
 
   private final ByteBufferAllocator allocator;
 
@@ -186,7 +188,7 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
   }
 
   public class FullDirectDecompressor extends DirectBytesDecompressor {
-    private final DirectDecompressor decompressor;
+    private final Object decompressor;
     private ByteBuffer compressedBuffer;
     private ByteBuffer uncompressedBuffer;
     private ExposedHeapBytesDecompressor extraDecompressor;
@@ -205,13 +207,25 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
         uncompressedBuffer.clear();
 
         if (bufferIn.isDirect()) {
-          decompressor.decompress(bufferIn, uncompressedBuffer);
+          try {
+            DirectCodecPool.DECOMPRESS_METHOD.invoke(decompressor, bufferIn, uncompressedBuffer);
+          } catch (IllegalAccessException e) {
+            e.printStackTrace();
+          } catch (InvocationTargetException e) {
+            e.printStackTrace();
+          }
         } else {
           compressedBuffer = ensure(this.compressedBuffer, (int) compressedBytes.size());
           compressedBuffer.clear();
           compressedBuffer.put(bufferIn);
           compressedBuffer.flip();
-          decompressor.decompress(compressedBuffer, uncompressedBuffer);
+          try {
+            DirectCodecPool.DECOMPRESS_METHOD.invoke(decompressor, compressedBuffer, uncompressedBuffer);
+          } catch (IllegalAccessException e) {
+            e.printStackTrace();
+          } catch (InvocationTargetException e) {
+            e.printStackTrace();
+          }
         }
         return BytesInput.from(uncompressedBuffer, 0, uncompressedSize);
 
@@ -227,7 +241,13 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
         throws IOException {
       output.clear();
-      decompressor.decompress((ByteBuffer) input.limit(compressedSize), (ByteBuffer) output.limit(uncompressedSize));
+      try {
+        DirectCodecPool.DECOMPRESS_METHOD.invoke(decompressor, (ByteBuffer) input.limit(compressedSize), (ByteBuffer) output.limit(uncompressedSize));
+      } catch (IllegalAccessException e) {
+        e.printStackTrace();
+      } catch (InvocationTargetException e) {
+        e.printStackTrace();
+      }
       output.position(uncompressedSize);
     }
 

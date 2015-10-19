@@ -19,10 +19,13 @@
 package org.apache.parquet.hadoop.codec;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.nio.ByteBuffer;
 
 import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.hadoop.io.compress.DirectDecompressor;
+import org.apache.parquet.hadoop.DirectCodecPool;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.Preconditions;
@@ -149,22 +152,27 @@ public class SnappyDecompressor implements Decompressor {
     // No-op		
   }
 
-  public static class SnappyDirectDecompressor extends SnappyDecompressor implements DirectDecompressor {
-
-    public SnappyDirectDecompressor() {
-      super();
-    }
-
-    public synchronized void decompress(ByteBuffer src, ByteBuffer dst) throws java.io.IOException{
-        if(!dst.hasRemaining()){
-            return;
+  public static Object getSnappyDirectDecompressor() {
+    return Proxy.newProxyInstance(
+        SnappyDecompressor.class.getClassLoader(),
+        new Class[]{DirectCodecPool.DIRECT_DECOMPRESSION_CODEC_CLASS},
+        new InvocationHandler() {
+          @Override
+          public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            if (method == DirectCodecPool.DECOMPRESS_METHOD) {
+              ByteBuffer src = (ByteBuffer) args[0];
+              ByteBuffer dst = (ByteBuffer) args[1];
+              if(!dst.hasRemaining()){
+                return null;
+              }
+              dst.clear();
+              int size = Snappy.uncompress(src, dst);
+              dst.limit(size);
+            }
+            throw new UnsupportedOperationException(method.toString());
+          }
         }
-        dst.clear();
-        int size = Snappy.uncompress(src, dst);
-        dst.limit(size);
-        super.finished = true;
-    } // decompress
-
-  } // class SnappyDirectDecompressor
+    );
+  }
 
 } //class SnappyDecompressor

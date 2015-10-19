@@ -121,8 +121,7 @@ public class TestDictionary {
     reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (long i = 0; i < 100; i++) {
-      assertEquals(Binary.fromString("str" + i).toStringUsingUTF8(),
-                    reader.readBytes().toStringUsingUTF8());
+      assertEquals(Binary.fromString("str" + i), reader.readBytes());
     }
 
     //simulate cutting the page

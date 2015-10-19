@@ -231,7 +231,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
-//  private ByteBufferAllocator allocator;
 
   // TODO - look back at this, an allocator was being passed here in the ByteBuffer changes
   // See the comment at the ColumnChunkPageWriter constructor above
