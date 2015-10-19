@@ -79,5 +79,22 @@ public class VersionTest {
     assertEquals(new ParsedVersion("parquet-mr", "1.6.0", null), VersionParser.parse("parquet-mr version 1.6.0 (build)"));
     assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr version (build)"));
     assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr version (build )"));
+
+    // Missing entire build section
+    assertEquals(new ParsedVersion("parquet-mr", "1.6.0", null), VersionParser.parse("parquet-mr version 1.6.0"));
+    assertEquals(new ParsedVersion("parquet-mr", "1.8.0rc4", null), VersionParser.parse("parquet-mr version 1.8.0rc4"));
+    assertEquals(new ParsedVersion("parquet-mr", "1.8.0rc4-SNAPSHOT", null), VersionParser.parse("parquet-mr version 1.8.0rc4-SNAPSHOT"));
+    assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr version"));
+
+
+    // Various spaces
+    assertEquals(new ParsedVersion("parquet-mr", "1.6.0", null), VersionParser.parse("parquet-mr     version    1.6.0"));
+    assertEquals(new ParsedVersion("parquet-mr", "1.8.0rc4", null), VersionParser.parse("parquet-mr     version    1.8.0rc4"));
+    assertEquals(new ParsedVersion("parquet-mr", "1.8.0rc4-SNAPSHOT", null), VersionParser.parse("parquet-mr      version    1.8.0rc4-SNAPSHOT  "));
+    assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr      version"));
+    assertEquals(new ParsedVersion("parquet-mr", "1.6.0", null), VersionParser.parse("parquet-mr version 1.6.0 (  build )"));
+    assertEquals(new ParsedVersion("parquet-mr", "1.6.0", null), VersionParser.parse("parquet-mr     version 1.6.0 (    build)"));
+    assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr     version (    build)"));
+    assertEquals(new ParsedVersion("parquet-mr", null, null), VersionParser.parse("parquet-mr    version    (build    )"));
   }
 }
