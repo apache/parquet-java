@@ -202,14 +202,20 @@ public class TestMergeMetadataFiles {
       ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.metaPath1, info.metaPath2), mergedOut, info.conf);
       fail("this should throw");
     } catch (RuntimeException e) {
-      assertEquals("could not merge metadata: key schema_num has conflicting values: [2, 1]", e.getMessage());
+      boolean eq1 = e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [2, 1]");
+      boolean eq2 = e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [1, 2]");
+      
+      assertEquals(eq1 || eq2, true);
     }
 
     try {
       ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
       fail("this should throw");
     } catch (RuntimeException e) {
-      assertEquals("could not merge metadata: key schema_num has conflicting values: [2, 1]", e.getMessage());
+      boolean eq1 = e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [2, 1]");
+      boolean eq2 = e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [1, 2]");
+
+      assertEquals(eq1 || eq2, true);
     }
   }
 }
