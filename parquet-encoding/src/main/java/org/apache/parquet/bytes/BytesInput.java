@@ -312,7 +312,6 @@ abstract public class BytesInput {
       BytesUtils.writeUnsignedVarInt(intValue, out);
     }
 
-    // TODO - make sure this has a test
     public ByteBuffer toByteBuffer() throws IOException {
       ByteBuffer ret = ByteBuffer.allocate((int) size());
       BytesUtils.writeUnsignedVarInt(intValue, ret);
