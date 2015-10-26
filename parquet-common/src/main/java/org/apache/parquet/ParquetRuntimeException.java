@@ -45,19 +45,4 @@ abstract public class ParquetRuntimeException extends RuntimeException {
   public ParquetRuntimeException(Throwable cause) {
     super(cause);
   }
-
-  /**
-   * Call the #close() method on a {@see Closable}, wrapping any IOException
-   * in a runtime exception.
-   *
-   * @param closeable - resource to close
-   */
-  public static void closeQuietly(Closeable closeable) {
-    try {
-      closeable.close();
-    }catch(IOException e){
-      throw new ParquetRuntimeException("Error closing I/O related resources.", e) {};
-    }
-  }
-
 }

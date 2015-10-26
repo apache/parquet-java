@@ -40,6 +40,10 @@ import org.apache.parquet.hadoop.HeapCodecFactory.HeapBytesCompressor;
 import org.apache.parquet.hadoop.HeapCodecFactory.HeapBytesDecompressor;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
+/**
+ * Factory to produce compressors and decompressors that operate on java
+ * direct memory, without requiring a copy into heap memory (where possible).
+ */
 public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectBytesDecompressor> implements AutoCloseable {
 //  private static final Log LOG = Log.getLog(DirectCodecFactory.class);
 
@@ -199,43 +203,8 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
 
     @Override
     public BytesInput decompress(BytesInput compressedBytes, int uncompressedSize) throws IOException {
-
-      if(false){
-        // TODO: fix direct path. (currently, this code is causing issues when writing complex Parquet files.
-        ByteBuffer bufferIn = compressedBytes.toByteBuffer();
-        uncompressedBuffer = ensure(uncompressedBuffer, uncompressedSize);
-        uncompressedBuffer.clear();
-
-        if (bufferIn.isDirect()) {
-          try {
-            DirectCodecPool.DECOMPRESS_METHOD.invoke(decompressor, bufferIn, uncompressedBuffer);
-          } catch (IllegalAccessException e) {
-            e.printStackTrace();
-          } catch (InvocationTargetException e) {
-            e.printStackTrace();
-          }
-        } else {
-          compressedBuffer = ensure(this.compressedBuffer, (int) compressedBytes.size());
-          compressedBuffer.clear();
-          compressedBuffer.put(bufferIn);
-          compressedBuffer.flip();
-          try {
-            DirectCodecPool.DECOMPRESS_METHOD.invoke(decompressor, compressedBuffer, uncompressedBuffer);
-          } catch (IllegalAccessException e) {
-            e.printStackTrace();
-          } catch (InvocationTargetException e) {
-            e.printStackTrace();
-          }
-        }
-        return BytesInput.from(uncompressedBuffer, 0, uncompressedSize);
-
-      } else {
-        return extraDecompressor.decompress(compressedBytes, uncompressedSize);
-      }
-
-
+    	return extraDecompressor.decompress(compressedBytes, uncompressedSize);
     }
-
 
     @Override
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
@@ -383,7 +352,6 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
     }
   }
 
-
   public abstract class DirectBytesDecompressor extends CodecFactory.BytesDecompressor {
     public DirectBytesDecompressor() {
       super(null, null);
@@ -392,7 +360,5 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
     public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
         throws IOException;
   }
-
-
 
 }
