@@ -85,6 +85,7 @@
   <properties>
     <maven.compiler.source>1.6</maven.compiler.source>
     <maven.compiler.target>1.6</maven.compiler.target>
+    <shade.prefix>shaded.parquet</shade.prefix>
   </properties>
 
   <build>
@@ -141,6 +142,7 @@
                 <includes>
                   <include>org.apache.thrift:libthrift</include>
                   <include>org.slf4j:slf4j-api</include>
+                  <include>org.slf4j:slf4j-nop</include>
                 </includes>
               </artifactSet>
               <filters>
@@ -164,11 +166,11 @@
               <relocations>
                 <relocation>
                   <pattern>org.apache.thrift</pattern>
-                  <shadedPattern>parquet.org.apache.thrift</shadedPattern>
+                  <shadedPattern>${shade.prefix}.org.apache.thrift</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.slf4j</pattern>
-                  <shadedPattern>parquet.org.slf4j</shadedPattern>
+                  <shadedPattern>${shade.prefix}.org.slf4j</shadedPattern>
                 </relocation>
               </relocations>
             </configuration>
@@ -217,6 +219,11 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+      <version>1.7.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-nop</artifactId>
       <version>1.7.2</version>
     </dependency>
     <dependency>
