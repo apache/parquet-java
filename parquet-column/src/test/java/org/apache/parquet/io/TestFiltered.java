@@ -88,14 +88,13 @@ public class TestFiltered {
 
     // Get first record
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter, FilterCompat.get(column("DocId", equalTo(10l))));
+    RecordReader<Group> recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
+            FilterCompat.get(column("DocId", equalTo(10l))));
 
     readOne(recordReader, "r2 filtered out", r1);
 
     // Get second record
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(column("DocId", equalTo(20l))));
 
     readOne(recordReader, "r1 filtered out", r2);
@@ -109,15 +108,13 @@ public class TestFiltered {
 
     // Get first record
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("DocId", equalTo(10l))));
+    RecordReader<Group> recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
+                FilterCompat.get(column("DocId", equalTo(10l))));
 
     readOne(recordReader, "r2 filtered out", r1);
 
     // Get second record
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(column("DocId", applyFunctionToLong(new LongGreaterThan15Predicate()))));
 
     readOne(recordReader, "r1 filtered out", r2);
@@ -130,24 +127,21 @@ public class TestFiltered {
 
     // First try matching against the A url in record 1
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("Name.Url", equalTo("http://A"))));
+    RecordReader<Group> recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
+                FilterCompat.get(column("Name.Url", equalTo("http://A"))));
 
     readOne(recordReader, "r2 filtered out", r1);
 
     // Second try matching against the B url in record 1 - it should fail as we only match
     // against the first instance of a
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(column("Name.Url", equalTo("http://B"))));
 
     List<Group> all = readAll(recordReader);
     assertEquals("There should be no matching records: " + all , 0, all.size());
 
     // Finally try matching against the C url in record 2
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(column("Name.Url", equalTo("http://C"))));
 
     readOne(recordReader, "r1 filtered out", r2);
@@ -161,24 +155,21 @@ public class TestFiltered {
 
     // First try matching against the A url in record 1
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    RecordReader<Group> recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(column("Name.Url", applyFunctionToString(new StringEndsWithAPredicate()))));
 
     readOne(recordReader, "r2 filtered out", r1);
 
     // Second try matching against the B url in record 1 - it should fail as we only match
     // against the first instance of a
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(column("Name.Url", equalTo("http://B"))));
 
     List<Group> all = readAll(recordReader);
     assertEquals("There should be no matching records: " + all , 0, all.size());
 
     // Finally try matching against the C url in record 2
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(column("Name.Url", equalTo("http://C"))));
 
     readOne(recordReader, "r1 filtered out", r2);
@@ -191,8 +182,7 @@ public class TestFiltered {
     MemPageStore memPageStore = writeTestRecords(columnIO, 6);
 
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    RecordReader<Group> recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(page(4, 4)));
 
     List<Group> all = readAll(recordReader);
@@ -208,8 +198,7 @@ public class TestFiltered {
     MemPageStore memPageStore = writeTestRecords(columnIO, 8);
 
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    RecordReader<Group> recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(and(column("DocId", equalTo(10l)), page(2, 4))));
 
     List<Group> all = readAll(recordReader);
@@ -226,10 +215,9 @@ public class TestFiltered {
     MemPageStore memPageStore = writeTestRecords(columnIO, 8);
 
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    RecordReader<Group> recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(or(column("DocId", equalTo(10l)),
-                column("DocId", equalTo(20l)))));
+                    column("DocId", equalTo(20l)))));
 
     List<Group> all = readAll(recordReader);
     assertEquals("expecting 8 records " + all, 16, all.size());
@@ -245,8 +233,7 @@ public class TestFiltered {
     MemPageStore memPageStore = writeTestRecords(columnIO, 8);
 
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
+    RecordReader<Group> recordReader = columnIO.getRecordReader(memPageStore, recordConverter,
             FilterCompat.get(not(column("DocId", equalTo(10l)))));
 
     List<Group> all = readAll(recordReader);
