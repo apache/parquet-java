@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.Closeable;
@@ -210,6 +211,10 @@ public class ParquetReader<T> implements Closeable {
      }
 
      columnVectors = rowBatch.getColumns();
+
+     checkArgument(columns.size() == columnVectors.length,
+             "Number of columns in the requested schema and the previous row batch don't match.");
+
      MessageType[] columnSchemas = new MessageType[nColumns];
      for (int i = 0; i < nColumns; i++) {
        ColumnVector columnVector = columnVectors[i];

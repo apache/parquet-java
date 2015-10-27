@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.filterRowGroups;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
@@ -42,6 +43,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.Log;
@@ -258,6 +260,10 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     }
 
     columnVectors = rowBatch.getColumns();
+
+    checkArgument(columns.size() == columnVectors.length,
+            "Number of columns in the requested schema and the previous row batch don't match.");
+
     MessageType[] columnSchemas = new MessageType[nColumns];
     for (int i = 0; i < nColumns; i++) {
       ColumnVector columnVector = columnVectors[i];
