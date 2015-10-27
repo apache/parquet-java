@@ -33,6 +33,10 @@ class VectorizedRecordReaderImplementation<T> extends VectorizedRecordReader<T> 
     return recordReaderImplementation.read();
   }
 
+  public boolean shouldSkipCurrentRecord() {
+    return recordReaderImplementation.shouldSkipCurrentRecord();
+  }
+
   @Override
   public void readVectors(ColumnVector[] vectors, MessageType[] columnSchemas, long current, long total) {
     recordReaderImplementation.readVectors(vectors, columnSchemas, current, total);
@@ -43,6 +47,7 @@ class VectorizedRecordReaderImplementation<T> extends VectorizedRecordReader<T> 
     recordReaderImplementation.readVector(vector, current, total);
   }
 
+  //VisibleForTesting
   RecordReaderImplementation<T> getRecordReaderImplementation()
   {
     return recordReaderImplementation;

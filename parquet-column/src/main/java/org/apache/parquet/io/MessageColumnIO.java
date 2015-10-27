@@ -116,7 +116,7 @@ public class MessageColumnIO extends GroupColumnIO {
             builder.getValueInspectorsByColumn(),
             streamingPredicate);
 
-        return new VectorizedRecordReaderImplementation(new RecordReaderImplementation<T>(
+        return new VectorizedRecordReaderImplementation<T>(new RecordReaderImplementation<T>(
                 MessageColumnIO.this,
                 filteringRecordMaterializer,
                 validating,
@@ -125,23 +125,23 @@ public class MessageColumnIO extends GroupColumnIO {
 
       @Override
       public RecordReader<T> visit(UnboundRecordFilterCompat unboundRecordFilterCompat) {
-        return new FilteredRecordReader<T>(
-            MessageColumnIO.this,
-            recordMaterializer,
-            validating,
-            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType(), createdBy),
-            unboundRecordFilterCompat.getUnboundRecordFilter(),
-            columns.getRowCount()
-        );
+        return new VectorizedRecordReaderImplementation<T>(new FilteredRecordReader<T>(
+                MessageColumnIO.this,
+                recordMaterializer,
+                validating,
+                new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType(), createdBy),
+                unboundRecordFilterCompat.getUnboundRecordFilter(),
+                columns.getRowCount()
+        ));
       }
 
       @Override
       public RecordReader<T> visit(NoOpFilter noOpFilter) {
-        return new VectorizedRecordReaderImplementation(new RecordReaderImplementation<T>(
-            MessageColumnIO.this,
-            recordMaterializer,
-            validating,
-            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType(), createdBy)));
+        return new VectorizedRecordReaderImplementation<T>(new RecordReaderImplementation<T>(
+                MessageColumnIO.this,
+                recordMaterializer,
+                validating,
+                new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType(), createdBy)));
       }
     });
   }
