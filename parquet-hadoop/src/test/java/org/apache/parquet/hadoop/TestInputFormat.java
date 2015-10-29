@@ -386,7 +386,7 @@ public class TestInputFormat {
   }
 
   @Test
-  public void testGetFootersReturnsInCorrectOrder() throws IOException {
+  public void testGetFootersReturnsInPredictableOrder() throws IOException {
     File tempDir = Files.createTempDir();
     tempDir.deleteOnExit();
     int numFiles = 10; // create a nontrivial number of files so that it actually tests getFooters() returns files in the correct order

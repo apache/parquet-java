@@ -29,8 +29,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configurable;
@@ -389,7 +391,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       return Collections.emptyList();
     }
     Configuration config = ContextUtil.getConfiguration(jobContext);
-    Map<FileStatusWrapper, Footer> footersMap = new HashMap<FileStatusWrapper, Footer>();
+    // Use LinkedHashMap to preserve the insertion order and ultimately to return the list of
+    // footers in the same order as the list of file statuses returned from listStatus()
+    Map<FileStatusWrapper, Footer> footersMap = new LinkedHashMap<FileStatusWrapper, Footer>();
     Set<FileStatus> missingStatuses = new HashSet<FileStatus>();
     Map<Path, FileStatusWrapper> missingStatusesMap =
             new HashMap<Path, FileStatusWrapper>(missingStatuses.size());
@@ -409,6 +413,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       if (cacheEntry != null) {
         footersMap.put(statusWrapper, cacheEntry.getFooter());
       } else {
+        footersMap.put(statusWrapper, null);
         missingStatuses.add(status);
         missingStatusesMap.put(status.getPath(), statusWrapper);
       }
@@ -427,14 +432,19 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         // we have)
         FileStatusWrapper fileStatus = missingStatusesMap.get(newFooter.getFile());
         footersCache.put(fileStatus, new FootersCacheValue(fileStatus, newFooter));
-        footersMap.put(fileStatus, newFooter);
       }
     }
 
     List<Footer> footers = new ArrayList<Footer>(statuses.size());
-    for (FileStatus status : statuses) {
-      FileStatusWrapper fileStatusWrapper = new FileStatusWrapper(status);
-      footers.add(footersMap.get(fileStatusWrapper));
+    for (Entry<FileStatusWrapper, Footer> footerEntry : footersMap.entrySet()) {
+      Footer footer = footerEntry.getValue();
+
+      if (footer == null) {
+          // Footer was originally missing, so get it from the cache again
+          footers.add(footersCache.getCurrentValue(footerEntry.getKey()).getFooter());
+      } else {
+          footers.add(footer);
+      }
     }
 
     return footers;
