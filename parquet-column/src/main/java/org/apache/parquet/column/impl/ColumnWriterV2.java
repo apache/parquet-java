@@ -65,17 +65,17 @@ final class ColumnWriterV2 implements ColumnWriter {
       ColumnDescriptor path,
       PageWriter pageWriter,
       ParquetProperties parquetProps,
-      int pageSize,
-      ByteBufferAllocator allocator) {
+      int pageSize) {
     this.path = path;
     this.pageWriter = pageWriter;
     resetStatistics();
 
-    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), MIN_SLAB_SIZE, pageSize, allocator);
-    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), MIN_SLAB_SIZE, pageSize, allocator);
+    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(
+        getWidthFromMaxInt(path.getMaxRepetitionLevel()), MIN_SLAB_SIZE, pageSize, parquetProps.getAllocator());
+    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(
+        getWidthFromMaxInt(path.getMaxDefinitionLevel()), MIN_SLAB_SIZE, pageSize, parquetProps.getAllocator());
 
     int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSize, 10);
-    // TODO - Should I be passing an allocator here rather than just letting it use the one stored in ParquetProperties
     this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSize);
   }
 
