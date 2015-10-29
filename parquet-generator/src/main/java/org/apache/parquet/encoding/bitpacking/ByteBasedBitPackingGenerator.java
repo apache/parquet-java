@@ -98,8 +98,10 @@ public class ByteBasedBitPackingGenerator {
     generatePack(fw, bitWidth, 4, msbFirst);
 
     // Unpacking
-    generateUnpack(fw, bitWidth, 1, msbFirst);
-    generateUnpack(fw, bitWidth, 4, msbFirst);
+    generateUnpack(fw, bitWidth, 1, msbFirst, true);
+    generateUnpack(fw, bitWidth, 1, msbFirst, false);
+    generateUnpack(fw, bitWidth, 4, msbFirst, true);
+    generateUnpack(fw, bitWidth, 4, msbFirst, false);
 
     fw.append("  }\n");
   }
@@ -204,9 +206,15 @@ public class ByteBasedBitPackingGenerator {
     fw.append("    }\n");
   }
 
-  private static void generateUnpack(FileWriter fw, int bitWidth, int batch, boolean msbFirst)
+  private static void generateUnpack(FileWriter fw, int bitWidth, int batch, boolean msbFirst, boolean useByteArray)
       throws IOException {
-    fw.append("    public final void unpack" + (batch * 8) + "Values(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {\n");
+    final String bufferDataType;
+    if (useByteArray) {
+      bufferDataType = "byte[]";
+    } else {
+      bufferDataType = "ByteBuffer";
+    }
+    fw.append("    public final void unpack" + (batch * 8) + "Values(final " + bufferDataType + " in, final int inPos, final int[] out, final int outPos) {\n");
     if (bitWidth > 0) {
       int mask = genMask(bitWidth);
       for (int valueIndex = 0; valueIndex < (batch * 8); ++valueIndex) {
@@ -229,7 +237,14 @@ public class ByteBasedBitPackingGenerator {
           } else if (shift > 0){
             shiftString = "<<  " + shift;
           }
-          fw.append(" (((((int)in.get(" + align(byteIndex, 2) + " + inPos)) & 255) " + shiftString + ") & " + mask + ")");
+          final String byteAccess;
+          if (useByteArray) {
+            byteAccess = "in[" + align(byteIndex, 2) + " + inPos]";
+          } else {
+            // use ByteBuffer#get(index) method
+            byteAccess = "in.get(" + align(byteIndex, 2) + " + inPos)";
+          }
+          fw.append(" (((((int)" + byteAccess + ") & 255) " + shiftString + ") & " + mask + ")");
         }
         fw.append(";\n");
       }
