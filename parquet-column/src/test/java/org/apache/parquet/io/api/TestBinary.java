@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.io.api;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -147,6 +149,22 @@ public class TestBinary {
     Binary bin1 = Binary.fromConstantByteArray("alice".getBytes(), 1, 3);
     Binary bin2 = Binary.fromConstantByteBuffer(ByteBuffer.wrap("alice".getBytes(), 1, 3));
     assertEquals(bin1, bin2);
+  }
+
+  @Test
+  public void testWriteAllTo() throws Exception {
+    byte[] orig = {10, 9 ,8, 7, 6, 5, 4, 3, 2, 1};
+    testWriteAllToHelper(Binary.fromConstantByteBuffer(ByteBuffer.wrap(orig)), orig);
+    ByteBuffer buf = ByteBuffer.allocateDirect(orig.length);
+    buf.put(orig);
+    buf.flip();
+    testWriteAllToHelper(Binary.fromConstantByteBuffer(buf), orig);
+  }
+
+  private void testWriteAllToHelper(Binary binary, byte[] orig) throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream(orig.length);
+    binary.writeTo(out);
+    assertArrayEquals(orig, out.toByteArray());
   }
 
   @Test

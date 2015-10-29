@@ -386,7 +386,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       return length;
     }
 
-    // TODO - write a new unit test for this method
     @Override
     public void writeTo(OutputStream out) throws IOException {
       if (value.hasArray()) {
