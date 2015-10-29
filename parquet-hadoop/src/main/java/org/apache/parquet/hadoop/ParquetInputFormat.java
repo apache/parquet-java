@@ -29,8 +29,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configurable;
@@ -389,7 +391,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       return Collections.emptyList();
     }
     Configuration config = ContextUtil.getConfiguration(jobContext);
-    List<Footer> footers = new ArrayList<Footer>(statuses.size());
+    // Use LinkedHashMap to preserve the insertion order and ultimately to return the list of
+    // footers in the same order as the list of file statuses returned from listStatus()
+    Map<FileStatusWrapper, Footer> footersMap = new LinkedHashMap<FileStatusWrapper, Footer>();
     Set<FileStatus> missingStatuses = new HashSet<FileStatus>();
     Map<Path, FileStatusWrapper> missingStatusesMap =
             new HashMap<Path, FileStatusWrapper>(missingStatuses.size());
@@ -407,33 +411,42 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
                 + " found for '" + status.getPath() + "'");
       }
       if (cacheEntry != null) {
-        footers.add(cacheEntry.getFooter());
+        footersMap.put(statusWrapper, cacheEntry.getFooter());
       } else {
+        footersMap.put(statusWrapper, null);
         missingStatuses.add(status);
         missingStatusesMap.put(status.getPath(), statusWrapper);
       }
     }
     if (Log.DEBUG) {
-      LOG.debug("found " + footers.size() + " footers in cache and adding up "
+      LOG.debug("found " + footersMap.size() + " footers in cache and adding up "
               + "to " + missingStatuses.size() + " missing footers to the cache");
     }
 
-
-    if (missingStatuses.isEmpty()) {
-      return footers;
+    if (!missingStatuses.isEmpty()) {
+      List<Footer> newFooters = getFooters(config, missingStatuses);
+      for (Footer newFooter : newFooters) {
+        // Use the original file status objects to make sure we store a
+        // conservative (older) modification time (i.e. in case the files and
+        // footers were modified and it's not clear which version of the footers
+        // we have)
+        FileStatusWrapper fileStatus = missingStatusesMap.get(newFooter.getFile());
+        footersCache.put(fileStatus, new FootersCacheValue(fileStatus, newFooter));
+      }
     }
 
-    List<Footer> newFooters = getFooters(config, missingStatuses);
-    for (Footer newFooter : newFooters) {
-      // Use the original file status objects to make sure we store a
-      // conservative (older) modification time (i.e. in case the files and
-      // footers were modified and it's not clear which version of the footers
-      // we have)
-      FileStatusWrapper fileStatus = missingStatusesMap.get(newFooter.getFile());
-      footersCache.put(fileStatus, new FootersCacheValue(fileStatus, newFooter));
+    List<Footer> footers = new ArrayList<Footer>(statuses.size());
+    for (Entry<FileStatusWrapper, Footer> footerEntry : footersMap.entrySet()) {
+      Footer footer = footerEntry.getValue();
+
+      if (footer == null) {
+          // Footer was originally missing, so get it from the cache again
+          footers.add(footersCache.getCurrentValue(footerEntry.getKey()).getFooter());
+      } else {
+          footers.add(footer);
+      }
     }
 
-    footers.addAll(newFooters);
     return footers;
   }
 

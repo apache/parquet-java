@@ -24,6 +24,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
+import static org.apache.parquet.column.Encoding.BIT_PACKED;
+import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
@@ -49,11 +51,13 @@ import org.apache.hadoop.mapreduce.Job;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter.RecordFilter;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -63,6 +67,7 @@ import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -70,6 +75,8 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+
+import com.google.common.io.Files;
 
 public class TestInputFormat {
 
@@ -376,6 +383,62 @@ public class TestInputFormat {
     shouldOneSplitRowGroupOffsetBe(splits.get(1), 50, 60, 70, 80, 90);
     shouldSplitLengthBe(splits, 50, 50);
     shouldSplitStartBe(splits, 0, 50);
+  }
+
+  @Test
+  public void testGetFootersReturnsInPredictableOrder() throws IOException {
+    File tempDir = Files.createTempDir();
+    tempDir.deleteOnExit();
+    int numFiles = 10; // create a nontrivial number of files so that it actually tests getFooters() returns files in the correct order
+
+    String url = "";
+    for (int i = 0; i < numFiles; i++) {
+      File file = new File(tempDir, String.format("part-%05d.parquet", i));
+      createParquetFile(file);
+      if (i > 0) {
+        url += ",";
+      }
+      url += "file:" + file.getAbsolutePath();
+    }
+
+    Job job = new Job();
+    FileInputFormat.setInputPaths(job, url);
+    List<Footer> footers = new ParquetInputFormat<Object>().getFooters(job);
+    for (int i = 0; i < numFiles; i++) {
+      Footer footer = footers.get(i);
+      File file = new File(tempDir, String.format("part-%05d.parquet", i));
+      assertEquals("file:" + file.getAbsolutePath(), footer.getFile().toString());
+    }
+  }
+
+  private void createParquetFile(File file) throws IOException {
+    Path path = new Path(file.toURI());
+    Configuration configuration = new Configuration();
+
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b;}}");
+    String[] columnPath = {"a", "b"};
+    ColumnDescriptor c1 = schema.getColumnDescription(columnPath);
+
+    byte[] bytes1 = { 0, 1, 2, 3};
+    byte[] bytes2 = { 2, 3, 4, 5};
+    CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
+
+    BinaryStatistics stats = new BinaryStatistics();
+
+    ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
+    w.start();
+    w.startBlock(3);
+    w.startColumn(c1, 5, codec);
+    w.writeDataPage(2, 4, BytesInput.from(bytes1), stats, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(bytes1), stats, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+    w.startBlock(4);
+    w.startColumn(c1, 7, codec);
+    w.writeDataPage(7, 4, BytesInput.from(bytes2), stats, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+    w.end(new HashMap<String, String>());
   }
 
   private File getTempFile() throws IOException {
