@@ -126,7 +126,7 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
     @Override
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
         throws IOException {
-      BytesInput uncompressed = decompress(new ByteBufBytesInput(input), uncompressedSize);
+      BytesInput uncompressed = decompress(BytesInput.from(input, 0, compressedSize), uncompressedSize);
       output.clear();
       output.put(uncompressed.toByteArray(), 0, uncompressedSize);
     }
@@ -311,45 +311,6 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
     @Override
     protected void release() {}
 
-  }
-
-  public static class ByteBufBytesInput extends BytesInput {
-    private final ByteBuffer buf;
-    private final int length;
-
-    public ByteBufBytesInput(ByteBuffer buf) {
-      this(buf, 0, buf.capacity());
-    }
-
-    public ByteBufBytesInput(ByteBuffer buf, int offset, int length) {
-      super();
-      if(buf.capacity() == length && offset == buf.position()){
-        this.buf = buf;
-      } else {
-        this.buf = (ByteBuffer) buf.duplicate()
-            .limit(offset + length)
-            .position(offset);
-      }
-
-      this.length = length;
-    }
-
-    @Override
-    public void writeAllTo(OutputStream out) throws IOException {
-      final WritableByteChannel outputChannel = Channels.newChannel(out);
-      buf.position(0);
-      outputChannel.write(buf);
-    }
-
-    @Override
-    public ByteBuffer toByteBuffer() throws IOException {
-      return buf;
-    }
-
-    @Override
-    public long size() {
-      return length;
-    }
   }
 
   public abstract class DirectBytesDecompressor extends CodecFactory.BytesDecompressor {
