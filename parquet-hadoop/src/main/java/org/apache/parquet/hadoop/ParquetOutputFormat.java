@@ -341,7 +341,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
-    CodecFactory codecFactory = new CodecFactory(conf);
     long blockSize = getLongBlockSize(conf);
     if (INFO) LOG.info("Parquet block size to " + blockSize);
     int pageSize = getPageSize(conf);
@@ -379,7 +378,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         init.getSchema(),
         init.getExtraMetaData(),
         blockSize, pageSize,
-        codecFactory.getCompressor(codec, pageSize),
+        w.getCodecFactory().getCompressor(codec, pageSize),
         dictionaryPageSize,
         enableDictionary,
         validating,

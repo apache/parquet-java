@@ -171,6 +171,8 @@ public class ParquetFileWriter {
 
   private STATE state = STATE.NOT_STARTED;
 
+  private final CodecFactory codecFactory;
+
   /**
    * @param configuration Hadoop configuration
    * @param schema the schema of the data
@@ -226,6 +228,8 @@ public class ParquetFileWriter {
       this.alignment = NoAlignment.get(rowGroupSize);
       this.out = fs.create(file, overwriteFlag);
     }
+    
+    this.codecFactory = new CodecFactory(configuration);
   }
 
   /**
@@ -246,6 +250,7 @@ public class ParquetFileWriter {
         rowAndBlockSize, rowAndBlockSize, maxPaddingSize);
     this.out = fs.create(file, true, DFS_BUFFER_SIZE_DEFAULT,
         fs.getDefaultReplication(file), rowAndBlockSize);
+    this.codecFactory = new CodecFactory(configuration);
   }
 
   /**
@@ -469,6 +474,7 @@ public class ParquetFileWriter {
     ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
     serializeFooter(footer, out);
     out.close();
+    codecFactory.release();
   }
 
   private static void serializeFooter(ParquetMetadata footer, FSDataOutputStream out) throws IOException {
@@ -586,6 +592,13 @@ public class ParquetFileWriter {
    */
   public long getPos() throws IOException {
     return out.getPos();
+  }
+
+  /**
+   * @return The codec factory which should be used to get compressors
+   */  
+  public CodecFactory getCodecFactory() {
+    return codecFactory;
   }
 
   public long getNextRowGroupSize() throws IOException {
