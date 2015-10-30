@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -51,6 +51,7 @@ class InternalParquetRecordWriter<T> {
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
   private final long rowGroupSize;
+  private final long rowGroupMaxRowCount;
   private long rowGroupSizeThreshold;
   private long nextRowGroupSize;
   private final int pageSize;
@@ -86,13 +87,15 @@ class InternalParquetRecordWriter<T> {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
-      WriterVersion writerVersion) {
+      WriterVersion writerVersion,
+      long maxRowCount) {
     this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.rowGroupSize = rowGroupSize;
     this.rowGroupSizeThreshold = rowGroupSize;
+    this.rowGroupMaxRowCount = maxRowCount;
     this.nextRowGroupSize = rowGroupSizeThreshold;
     this.pageSize = pageSize;
     this.compressor = compressor;
@@ -139,7 +142,7 @@ class InternalParquetRecordWriter<T> {
       long recordSize = memSize / recordCount;
       // flush the row group if it is within ~2 records of the limit
       // it is much better to be slightly under size than to be over at all
-      if (memSize > (nextRowGroupSize - 2 * recordSize)) {
+      if (memSize > (nextRowGroupSize - 2 * recordSize) || recordCount >= this.rowGroupMaxRowCount) {
         LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, nextRowGroupSize, recordCount));
         flushRowGroupToStore();
         initStore();

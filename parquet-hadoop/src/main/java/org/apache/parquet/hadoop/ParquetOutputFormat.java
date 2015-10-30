@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,6 +22,7 @@ import static org.apache.parquet.Log.INFO;
 import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
+import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_MAX_ROW_COUNT;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
@@ -141,6 +142,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MEMORY_POOL_RATIO    = "parquet.memory.pool.ratio";
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
   public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
+  public static final String MAX_ROW_COUNT        = "parquet.writer.max.row.count";
 
   // default to no padding for now
   private static final int DEFAULT_MAX_PADDING_SIZE = 0;
@@ -295,6 +297,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     // default to no padding, 0% of the row group size
     return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
   }
+  public static void setMaxRowCount(Configuration conf, long maxRowCount) {
+    conf.setLong(MAX_ROW_COUNT, maxRowCount);
+  }
+
+  private static long getMaxRowCount(Configuration conf) {
+    // default to infinity, i.e. no maximum row count per row group
+    return conf.getLong(MAX_ROW_COUNT, DEFAULT_MAX_ROW_COUNT);
+  }
 
 
   private WriteSupport<T> writeSupport;
@@ -356,6 +366,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Writer version is: " + writerVersion);
     int maxPaddingSize = getMaxPaddingSize(conf);
     if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
+    long maxRowCount = getMaxRowCount(conf);
+    if (INFO) LOG.info("Maximum row count per row group is " + maxRowCount);
 
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(
@@ -384,7 +396,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         enableDictionary,
         validating,
         writerVersion,
-        memoryManager);
+        memoryManager,
+        maxRowCount);
   }
 
   /**

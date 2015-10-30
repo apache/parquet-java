@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -108,7 +108,7 @@ public class TestInputFormat {
       generateSplitByMinMaxSize(50, 49);
       fail("should throw exception when max split size is smaller than the min split size");
     } catch (ParquetDecodingException e) {
-      assertEquals("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = 49; minSplitSize is 50"
+      assertEquals("maxSplitSize, minSplitSize and maxSplitRecordCount should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = 49; minSplitSize is 50"
               , e.getMessage());
     }
   }
@@ -119,7 +119,7 @@ public class TestInputFormat {
       generateSplitByMinMaxSize(-100, -50);
       fail("should throw exception when max split size is negative");
     } catch (ParquetDecodingException e) {
-      assertEquals("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
+      assertEquals("maxSplitSize, minSplitSize and maxSplitRecordCount should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
               , e.getMessage());
     }
   }
@@ -471,14 +471,15 @@ public class TestInputFormat {
         fileStatus,
         schema.toString(),
         extramd,
-        min, max);
+        min, max,
+        ParquetInputFormat.DEFAULT_MAX_SPLIT_RECORD_COUNT);
   }
 
   private List<ParquetInputSplit> generateSplitByDeprecatedConstructor(long min, long max) throws
       IOException {
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
     List<ClientSideMetadataSplitStrategy.SplitInfo> splitInfos = ClientSideMetadataSplitStrategy
-        .generateSplitInfo(blocks, hdfsBlocks, min, max);
+        .generateSplitInfo(blocks, hdfsBlocks, min, max, ParquetInputFormat.DEFAULT_MAX_SPLIT_RECORD_COUNT);
 
     for (ClientSideMetadataSplitStrategy.SplitInfo splitInfo : splitInfos) {
       BlockMetaData lastRowGroup = splitInfo.getRowGroups().get(splitInfo.getRowGroupCount() - 1);
