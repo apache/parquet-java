@@ -18,16 +18,17 @@
 package org.apache.parquet.hadoop;
 
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 
+import org.apache.hadoop.io.compress.CodecPool;
+import org.apache.hadoop.io.compress.CompressionOutputStream;
+import org.apache.hadoop.io.compress.Compressor;
 import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.hadoop.DirectCodecFactory.DirectBytesDecompressor;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.Decompressor;
@@ -35,9 +36,6 @@ import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
-import org.apache.parquet.hadoop.HeapCodecFactory.HeapBytesCompressor;
-import org.apache.parquet.hadoop.HeapCodecFactory.HeapBytesDecompressor;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 /**
@@ -73,6 +71,101 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       allocator.release(buffer);
     }
     return null;
+  }
+
+  public static class HeapBytesDecompressor extends BytesDecompressor {
+
+    private final CompressionCodec codec;
+    private final Decompressor decompressor;
+
+    public HeapBytesDecompressor(CompressionCodec codec) {
+      // This is only here for compatibility with the old interface, these are unused
+      // in the constructor above
+      super(null, codec);
+      this.codec = codec;
+      if (codec != null) {
+        decompressor = CodecPool.getDecompressor(codec);
+      } else {
+        decompressor = null;
+      }
+    }
+
+    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
+      final BytesInput decompressed;
+      if (codec != null) {
+        decompressor.reset();
+        InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
+        decompressed = BytesInput.from(is, uncompressedSize);
+      } else {
+        decompressed = bytes;
+      }
+      return decompressed;
+    }
+
+    protected void release() {
+      if (decompressor != null) {
+        CodecPool.returnDecompressor(decompressor);
+      }
+    }
+  }
+
+  /**
+   * Encapsulates the logic around hadoop compression
+   *
+   * @author Julien Le Dem
+   *
+   */
+  public static class HeapBytesCompressor extends BytesCompressor {
+
+    private final CompressionCodec codec;
+    private final Compressor compressor;
+    private final ByteArrayOutputStream compressedOutBuffer;
+    private final CompressionCodecName codecName;
+
+    public HeapBytesCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize) {
+      // This is only here for compatibility with the old interface, these are unused
+      // in the constructor above
+      super(codecName, codec, 0);
+      this.codecName = codecName;
+      this.codec = codec;
+      if (codec != null) {
+        this.compressor = CodecPool.getCompressor(codec);
+        this.compressedOutBuffer = new ByteArrayOutputStream(pageSize);
+      } else {
+        this.compressor = null;
+        this.compressedOutBuffer = null;
+      }
+    }
+
+    public BytesInput compress(BytesInput bytes) throws IOException {
+      final BytesInput compressedBytes;
+      if (codec == null) {
+        compressedBytes = bytes;
+      } else {
+        compressedOutBuffer.reset();
+        if (compressor != null) {
+          // null compressor for non-native gzip
+          compressor.reset();
+        }
+        CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer, compressor);
+        bytes.writeAllTo(cos);
+        cos.finish();
+        cos.close();
+        compressedBytes = BytesInput.from(compressedOutBuffer);
+      }
+      return compressedBytes;
+    }
+
+    protected void release() {
+      if (compressor != null) {
+        CodecPool.returnCompressor(compressor);
+      }
+    }
+
+    public CompressionCodecName getCodecName() {
+      return codecName;
+    }
+
   }
 
   @Override
