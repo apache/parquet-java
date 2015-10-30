@@ -25,6 +25,7 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -37,6 +38,7 @@ import java.util.Set;
 /**
  * Verify MemoryManager could adjust its writers' allocated memory size.
  */
+@Ignore
 public class TestMemoryManager {
 
   Configuration conf = new Configuration();
