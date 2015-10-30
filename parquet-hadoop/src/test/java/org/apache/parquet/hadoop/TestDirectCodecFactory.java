@@ -54,15 +54,16 @@ public class TestDirectCodecFactory {
         System.arraycopy(random, 0, rawArr, pos, random.length);
         pos += random.length;
       }
+      rawBuf.flip();
 
       final DirectCodecFactory.BytesCompressor c = codecFactory.getCompressor(codec, 64 * 1024);
-      final DirectCodecFactory.DirectBytesDecompressor d = codecFactory.getDecompressor(codec);
+      final CodecFactory.BytesDecompressor d = codecFactory.getDecompressor(codec);
 
       final BytesInput compressed;
       if (useOnHeapCompression) {
         compressed = c.compress(BytesInput.from(rawArr));
       } else {
-        compressed = c.compress(new DirectCodecFactory.ByteBufBytesInput(rawBuf));
+        compressed = c.compress(BytesInput.from(rawBuf, 0, rawBuf.remaining()));
       }
 
       switch (decomp) {
@@ -86,7 +87,8 @@ public class TestDirectCodecFactory {
           final ByteBuffer b = allocator.allocate(buf.capacity());
           try {
             b.put(buf);
-            final BytesInput input = d.decompress(new DirectCodecFactory.ByteBufBytesInput(b), size);
+            b.flip();
+            final BytesInput input = d.decompress(BytesInput.from(b, 0, b.capacity()), size);
             Assert.assertArrayEquals(
                 String.format("While testing codec %s", codec),
                 input.toByteArray(), rawArr);

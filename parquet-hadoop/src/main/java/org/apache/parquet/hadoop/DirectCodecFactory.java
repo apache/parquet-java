@@ -44,7 +44,7 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
  * Factory to produce compressors and decompressors that operate on java
  * direct memory, without requiring a copy into heap memory (where possible).
  */
-public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectBytesDecompressor> implements AutoCloseable {
+public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 //  private static final Log LOG = Log.getLog(DirectCodecFactory.class);
 
   private final ByteBufferAllocator allocator;
@@ -92,7 +92,7 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
   }
 
   @Override
-  protected DirectBytesDecompressor createDecompressor(final CompressionCodec codec) {
+  protected BytesDecompressor createDecompressor(final CompressionCodec codec) {
     // This is here so that debugging can be done if we see inconsistencies between our decompression and upstream
     // decompression.
     // if (true) {
@@ -128,7 +128,6 @@ public class DirectCodecFactory extends CodecFactory<BytesCompressor, DirectByte
         throws IOException {
       BytesInput uncompressed = decompress(BytesInput.from(input, 0, compressedSize), uncompressedSize);
       output.clear();
-      output.put(uncompressed.toByteArray(), 0, uncompressedSize);
     }
 
     @Override

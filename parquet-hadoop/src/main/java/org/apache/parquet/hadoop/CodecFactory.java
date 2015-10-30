@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,13 +31,13 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
-class CodecFactory<C extends CodecFactory.BytesCompressor, D extends CodecFactory.BytesDecompressor> {
+class CodecFactory {
 
   protected static final Map<String, CompressionCodec> CODEC_BY_NAME = Collections
       .synchronizedMap(new HashMap<String, CompressionCodec>());
 
-  private final Map<CompressionCodecName, C> compressors = new HashMap<CompressionCodecName, C>();
-  private final Map<CompressionCodecName, D> decompressors = new HashMap<CompressionCodecName, D>();
+  private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<CompressionCodecName, BytesCompressor>();
+  private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<CompressionCodecName, BytesDecompressor>();
 
   protected final Configuration configuration;
 
@@ -44,8 +45,8 @@ class CodecFactory<C extends CodecFactory.BytesCompressor, D extends CodecFactor
     this.configuration = configuration;
   }
 
-  public C getCompressor(CompressionCodecName codecName, int pageSize) {
-    C comp = compressors.get(codecName);
+  public BytesCompressor getCompressor(CompressionCodecName codecName, int pageSize) {
+    BytesCompressor comp = compressors.get(codecName);
     if (comp == null) {
 
       CompressionCodec codec = getCodec(codecName);
@@ -55,8 +56,8 @@ class CodecFactory<C extends CodecFactory.BytesCompressor, D extends CodecFactor
     return comp;
   }
 
-  public D getDecompressor(CompressionCodecName codecName) {
-    D decomp = decompressors.get(codecName);
+  public BytesDecompressor getDecompressor(CompressionCodecName codecName) {
+    BytesDecompressor decomp = decompressors.get(codecName);
     if (decomp == null) {
       CompressionCodec codec = getCodec(codecName);
       decomp = createDecompressor(codec);
@@ -65,9 +66,9 @@ class CodecFactory<C extends CodecFactory.BytesCompressor, D extends CodecFactor
     return decomp;
   }
 
-  protected C createCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize) {return null;}
+  protected BytesCompressor createCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize) {return null;}
 
-  protected D createDecompressor(CompressionCodec codec) {return null;}
+  protected BytesDecompressor createDecompressor(CompressionCodec codec) {return null;}
 
   /**
    *
@@ -121,6 +122,9 @@ class CodecFactory<C extends CodecFactory.BytesCompressor, D extends CodecFactor
     public BytesDecompressor(CodecFactory codecFactory,CompressionCodec compressionCodec) {}
 
     public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {return null;}
+
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+        throws IOException {}
 
     protected void release() {}
   }

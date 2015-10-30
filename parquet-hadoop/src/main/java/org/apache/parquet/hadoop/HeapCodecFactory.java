@@ -34,7 +34,7 @@ import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 
-public class HeapCodecFactory extends CodecFactory<CodecFactory.BytesCompressor, CodecFactory.BytesDecompressor> {
+public class HeapCodecFactory extends CodecFactory {
 
   public static class HeapBytesDecompressor extends BytesDecompressor {
 
