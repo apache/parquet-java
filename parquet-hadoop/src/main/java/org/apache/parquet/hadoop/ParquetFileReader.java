@@ -55,7 +55,6 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.hadoop.util.CompatibilityUtil;
 
@@ -488,7 +487,7 @@ public class ParquetFileReader implements Closeable {
     for (ColumnDescriptor col : columns) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
-    this.codecFactory = new DirectCodecFactory(configuration, new DirectByteBufferAllocator());
+    this.codecFactory = new HeapCodecFactory(configuration);
     this.allocator = new HeapByteBufferAllocator();
   }
 

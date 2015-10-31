@@ -62,16 +62,6 @@ public class SnappyCodec implements Configurable, CompressionCodec {
     return new SnappyDecompressor();
   }
 
-  /**
-   * The DirectDecompressor class cannot be referenced directly to maintain
-   * compatibility with Hadoop 1.1. It can be assumed that this method will
-   * return a SnappyDirectDecompressor if the DirectDecompressor interface
-   * is available on the classpath
-   */
-  public Object createDirectDecompressor() {
-    return SnappyDecompressor.getSnappyDirectDecompressor();
-  }
-
   @Override
   public CompressionInputStream createInputStream(InputStream stream)
       throws IOException {

@@ -32,7 +32,7 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 public class TestDirectCodecFactory {
 
   private static enum Decompression {
-    ON_HEAP, OFF_HEAP, DRILLBUF
+    ON_HEAP, OFF_HEAP, OFF_HEAP_BYTES_INPUT
   }
 
   private void test(int size, CompressionCodecName codec, boolean useOnHeapCompression, Decompression decomp) {
@@ -67,11 +67,12 @@ public class TestDirectCodecFactory {
       }
 
       switch (decomp) {
-        case DRILLBUF: {
+        case OFF_HEAP: {
           final ByteBuffer buf = compressed.toByteBuffer();
           final ByteBuffer b = allocator.allocate(buf.capacity());
           try {
             b.put(buf);
+            b.flip();
             d.decompress(b, (int) compressed.size(), outBuf, size);
             for (int i = 0; i < size; i++) {
               Assert.assertTrue("Data didn't match at " + i, outBuf.get(i) == rawBuf.get(i));
@@ -82,7 +83,7 @@ public class TestDirectCodecFactory {
           break;
         }
 
-        case OFF_HEAP: {
+        case OFF_HEAP_BYTES_INPUT: {
           final ByteBuffer buf = compressed.toByteBuffer();
           final ByteBuffer b = allocator.allocate(buf.capacity());
           try {

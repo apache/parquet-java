@@ -41,7 +41,6 @@ import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -160,6 +159,8 @@ public class TestColumnChunkPageWriteStore {
     int fakeCount = 3;
     BinaryStatistics fakeStats = new BinaryStatistics();
 
+    // TODO - look back at this, an allocator was being passed here in the ByteBuffer changes
+    // see comment at this constructor
     ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
         compressor(UNCOMPRESSED), schema, new HeapByteBufferAllocator());
 
@@ -177,7 +178,7 @@ public class TestColumnChunkPageWriteStore {
     }
   }
 
-  private CodecFactory.BytesCompressor compressor(CompressionCodecName codec) {
-    return new DirectCodecFactory(conf, new DirectByteBufferAllocator()).getCompressor(codec, pageSize);
+  private HeapCodecFactory.BytesCompressor compressor(CompressionCodecName codec) {
+    return new HeapCodecFactory(conf).getCompressor(codec, pageSize);
   }
 }

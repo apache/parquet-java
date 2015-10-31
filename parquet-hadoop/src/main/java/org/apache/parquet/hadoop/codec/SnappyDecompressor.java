@@ -25,7 +25,7 @@ import java.lang.reflect.Proxy;
 import java.nio.ByteBuffer;
 
 import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.parquet.hadoop.DirectCodecPool;
+import org.apache.parquet.hadoop.DirectCodecFactory;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.Preconditions;
@@ -150,29 +150,6 @@ public class SnappyDecompressor implements Decompressor {
   @Override
   public void setDictionary(byte[] b, int off, int len) {
     // No-op		
-  }
-
-  public static Object getSnappyDirectDecompressor() {
-    return Proxy.newProxyInstance(
-        SnappyDecompressor.class.getClassLoader(),
-        new Class[]{DirectCodecPool.DIRECT_DECOMPRESSION_CODEC_CLASS},
-        new InvocationHandler() {
-          @Override
-          public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            if (method == DirectCodecPool.DECOMPRESS_METHOD) {
-              ByteBuffer src = (ByteBuffer) args[0];
-              ByteBuffer dst = (ByteBuffer) args[1];
-              if(!dst.hasRemaining()){
-                return null;
-              }
-              dst.clear();
-              int size = Snappy.uncompress(src, dst);
-              dst.limit(size);
-            }
-            throw new UnsupportedOperationException(method.toString());
-          }
-        }
-    );
   }
 
 } //class SnappyDecompressor

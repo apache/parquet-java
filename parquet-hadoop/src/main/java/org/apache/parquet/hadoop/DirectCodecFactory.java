@@ -18,25 +18,30 @@
 package org.apache.parquet.hadoop;
 
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.ByteBuffer;
 
-import org.apache.hadoop.io.compress.CodecPool;
-import org.apache.hadoop.io.compress.CompressionOutputStream;
-import org.apache.hadoop.io.compress.Compressor;
-import org.apache.parquet.Log;
-import org.apache.parquet.Preconditions;
+import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.commons.pool.BasePoolableObjectFactory;
+import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.hadoop.io.compress.SnappyCodec;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.Log;
+import org.apache.parquet.ParquetRuntimeException;
+import org.apache.parquet.Preconditions;
 
 /**
  * Factory to produce compressors and decompressors that operate on java
@@ -46,6 +51,29 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 //  private static final Log LOG = Log.getLog(DirectCodecFactory.class);
 
   private final ByteBufferAllocator allocator;
+
+  // Any of these can be null depending on the version of hadoop on the classpath
+  public static final Class DIRECT_DECOMPRESSION_CODEC_CLASS;
+  public static final Method DECOMPRESS_METHOD;
+  static final Method CREATE_DIRECT_DECOMPRESSOR_METHOD;
+
+  static {
+    Class tempClass = null;
+    Method tempCreateMethod = null;
+    Method tempDecompressMethod = null;
+    try {
+      tempClass = Class.forName("org.apache.hadoop.io.compress.DirectDecompressionCodec");
+      tempCreateMethod = tempClass.getMethod("createDirectDecompressor");
+      tempDecompressMethod = tempClass.getMethod("decompress", ByteBuffer.class, ByteBuffer.class);
+    } catch (ClassNotFoundException e) {
+      // do nothing, the class will just be assigned null
+    } catch (NoSuchMethodException e) {
+      // do nothing, the method will just be assigned null
+    }
+    DIRECT_DECOMPRESSION_CODEC_CLASS = tempClass;
+    CREATE_DIRECT_DECOMPRESSOR_METHOD = tempCreateMethod;
+    DECOMPRESS_METHOD = tempDecompressMethod;
+  }
 
   public DirectCodecFactory(Configuration config, ByteBufferAllocator allocator) {
     super(config);
@@ -73,129 +101,31 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     return null;
   }
 
-  public static class HeapBytesDecompressor extends BytesDecompressor {
-
-    private final CompressionCodec codec;
-    private final Decompressor decompressor;
-
-    public HeapBytesDecompressor(CompressionCodec codec) {
-      // This is only here for compatibility with the old interface, these are unused
-      // in the constructor above
-      super(null, codec);
-      this.codec = codec;
-      if (codec != null) {
-        decompressor = CodecPool.getDecompressor(codec);
-      } else {
-        decompressor = null;
-      }
-    }
-
-    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
-      final BytesInput decompressed;
-      if (codec != null) {
-        decompressor.reset();
-        InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
-        decompressed = BytesInput.from(is, uncompressedSize);
-      } else {
-        decompressed = bytes;
-      }
-      return decompressed;
-    }
-
-    protected void release() {
-      if (decompressor != null) {
-        CodecPool.returnDecompressor(decompressor);
-      }
-    }
-  }
-
-  /**
-   * Encapsulates the logic around hadoop compression
-   *
-   * @author Julien Le Dem
-   *
-   */
-  public static class HeapBytesCompressor extends BytesCompressor {
-
-    private final CompressionCodec codec;
-    private final Compressor compressor;
-    private final ByteArrayOutputStream compressedOutBuffer;
-    private final CompressionCodecName codecName;
-
-    public HeapBytesCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize) {
-      // This is only here for compatibility with the old interface, these are unused
-      // in the constructor above
-      super(codecName, codec, 0);
-      this.codecName = codecName;
-      this.codec = codec;
-      if (codec != null) {
-        this.compressor = CodecPool.getCompressor(codec);
-        this.compressedOutBuffer = new ByteArrayOutputStream(pageSize);
-      } else {
-        this.compressor = null;
-        this.compressedOutBuffer = null;
-      }
-    }
-
-    public BytesInput compress(BytesInput bytes) throws IOException {
-      final BytesInput compressedBytes;
-      if (codec == null) {
-        compressedBytes = bytes;
-      } else {
-        compressedOutBuffer.reset();
-        if (compressor != null) {
-          // null compressor for non-native gzip
-          compressor.reset();
-        }
-        CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer, compressor);
-        bytes.writeAllTo(cos);
-        cos.finish();
-        cos.close();
-        compressedBytes = BytesInput.from(compressedOutBuffer);
-      }
-      return compressedBytes;
-    }
-
-    protected void release() {
-      if (compressor != null) {
-        CodecPool.returnCompressor(compressor);
-      }
-    }
-
-    public CompressionCodecName getCodecName() {
-      return codecName;
-    }
-
-  }
-
   @Override
-  protected BytesCompressor createCompressor(final CompressionCodecName codecName, final CompressionCodec codec,
-                                             int pageSize) {
+  protected BytesCompressor createCompressor(final CompressionCodecName codecName, int pageSize) {
 
+    CompressionCodec codec = getCodec(codecName);
     if (codec == null) {
       return new NoopCompressor();
     } else if (codecName == CompressionCodecName.SNAPPY) {
-      // avoid using the Parquet Snappy codec since it allocates direct buffers at awkward spots.
+      // avoid using the default Snappy codec since it allocates direct buffers at awkward spots.
       return new SnappyCompressor();
     } else {
-
-      // todo: move zlib above since it also generates allocateDirect calls.
-      return new HeapBytesCompressor(codecName, codec, pageSize);
+      // todo: create class similar to the SnappyCompressor for zlib and exclude it as
+      // snappy is above since it also generates allocateDirect calls.
+      return new HeapBytesCompressor(codecName, pageSize);
     }
   }
 
   @Override
-  protected BytesDecompressor createDecompressor(final CompressionCodec codec) {
-    // This is here so that debugging can be done if we see inconsistencies between our decompression and upstream
-    // decompression.
-    // if (true) {
-    // return new HeapFakeDirect(codec);
-    // }
-
+  protected BytesDecompressor createDecompressor(final CompressionCodecName codecName) {
+    CompressionCodec codec = getCodec(codecName);
     if (codec == null) {
       return new NoopDecompressor();
+    } else if (codecName == CompressionCodecName.SNAPPY ) {
+      return new SnappyDecompressor();
     } else if (DirectCodecPool.INSTANCE.codec(codec).supportsDirectDecompression()) {
-      return new FullDirectDecompressor(codec);
+      return new FullDirectDecompressor(codecName);
     } else {
       return new IndirectDecompressor(codec);
     }
@@ -206,46 +136,10 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   }
 
   /**
-   * Keeping this here for future debugging versus using custom implementations below.
+   * Wrapper around legacy hadoop compressors that do not implement a direct memory
+   * based version of the decompression algorithm.
    */
-  private class HeapFakeDirect extends DirectBytesDecompressor {
-
-    private final ExposedHeapBytesDecompressor innerCompressor;
-
-    public HeapFakeDirect(CompressionCodec codec){
-      innerCompressor = new ExposedHeapBytesDecompressor(codec);
-    }
-
-    @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
-        throws IOException {
-      BytesInput uncompressed = decompress(BytesInput.from(input, 0, compressedSize), uncompressedSize);
-      output.clear();
-    }
-
-    @Override
-    public BytesInput decompress(BytesInput paramBytesInput, int uncompressedSize) throws IOException {
-      return innerCompressor.decompress(paramBytesInput, uncompressedSize);
-    }
-
-    @Override
-    protected void release() {
-      innerCompressor.release();
-    }
-
-  }
-
-  private class ExposedHeapBytesDecompressor extends HeapBytesDecompressor {
-    public ExposedHeapBytesDecompressor(CompressionCodec codec) {
-      super(codec);
-    }
-
-    public void release() {
-      super.release();
-    }
-  }
-
-  public class IndirectDecompressor extends DirectBytesDecompressor {
+  public class IndirectDecompressor extends BytesDecompressor {
     private final Decompressor decompressor;
 
     public IndirectDecompressor(CompressionCodec codec) {
@@ -283,14 +177,23 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
-  public class FullDirectDecompressor extends DirectBytesDecompressor {
+  /**
+   * Wrapper around new Hadoop compressors that implement a direct memory
+   * based version of a particular decompression algorithm. To maintain
+   * compatibility with Hadoop 1.x these classes that implement
+   * {@link org.apache.hadoop.io.compress.DirectDecompressionCodec}
+   * are currently retrieved and have their decompression method invoked
+   * with reflection.
+   */
+  public class FullDirectDecompressor extends BytesDecompressor {
     private final Object decompressor;
     private ByteBuffer compressedBuffer;
     private ByteBuffer uncompressedBuffer;
-    private ExposedHeapBytesDecompressor extraDecompressor;
-    public FullDirectDecompressor(CompressionCodec codec){
+    private HeapBytesDecompressor extraDecompressor;
+    public FullDirectDecompressor(CompressionCodecName codecName){
+      CompressionCodec codec = getCodec(codecName);
       this.decompressor = DirectCodecPool.INSTANCE.codec(codec).borrowDirectDecompressor();
-      this.extraDecompressor = new ExposedHeapBytesDecompressor(codec);
+      this.extraDecompressor = new HeapBytesDecompressor(codecName);
     }
 
     @Override
@@ -303,11 +206,11 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         throws IOException {
       output.clear();
       try {
-        DirectCodecPool.DECOMPRESS_METHOD.invoke(decompressor, (ByteBuffer) input.limit(compressedSize), (ByteBuffer) output.limit(uncompressedSize));
+        DECOMPRESS_METHOD.invoke(decompressor, (ByteBuffer) input.limit(compressedSize), (ByteBuffer) output.limit(uncompressedSize));
       } catch (IllegalAccessException e) {
-        e.printStackTrace();
+        throw new DirectCodecPool.ParquetCompressionCodecException(e);
       } catch (InvocationTargetException e) {
-        e.printStackTrace();
+        throw new DirectCodecPool.ParquetCompressionCodecException(e);
       }
       output.position(uncompressedSize);
     }
@@ -316,13 +219,13 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     protected void release() {
       compressedBuffer = DirectCodecFactory.this.release(compressedBuffer);
       uncompressedBuffer = DirectCodecFactory.this.release(uncompressedBuffer);
-      DirectCodecPool.INSTANCE.returnDecompressor(decompressor);
+      DirectCodecPool.INSTANCE.returnDirectDecompressor(decompressor);
       extraDecompressor.release();
     }
 
   }
 
-  public class NoopDecompressor extends DirectBytesDecompressor {
+  public class NoopDecompressor extends BytesDecompressor {
 
     @Override
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
@@ -339,20 +242,47 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    protected void release() {
+    protected void release() {}
+
+  }
+
+  public class SnappyDecompressor extends BytesDecompressor {
+
+    private HeapBytesDecompressor extraDecompressor;
+    public SnappyDecompressor() {
+      this.extraDecompressor = new HeapBytesDecompressor(CompressionCodecName.SNAPPY);
     }
 
+    @Override
+    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
+      return extraDecompressor.decompress(bytes, uncompressedSize);
+    }
+
+    @Override
+    public void decompress(ByteBuffer src, int compressedSize, ByteBuffer dst, int uncompressedSize) throws IOException {
+      dst.clear();
+      int size = Snappy.uncompress(src, dst);
+      dst.limit(size);
+    }
+
+    @Override
+    protected void release() {}
   }
 
   public class SnappyCompressor extends BytesCompressor {
 
+    // TODO - this outgoing buffer might be better off not being shared, this seems to
+    // only work because of an extra copy currently happening where this interface is
+    // be consumed
     private ByteBuffer incoming;
     private ByteBuffer outgoing;
 
-    public SnappyCompressor() {
-      super(null,null,0);
-    }
-
+    /**
+     * Compress a given buffer of bytes
+     * @param bytes
+     * @return
+     * @throws IOException
+     */
     @Override
     public BytesInput compress(BytesInput bytes) throws IOException {
       int maxOutputSize = Snappy.maxCompressedLength((int) bytes.size());
@@ -362,6 +292,7 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       if (bufferIn.isDirect()) {
         size = Snappy.compress(bufferIn, outgoing);
       } else {
+        // Snappy library requires buffers be direct
         this.incoming = ensure(this.incoming, (int) bytes.size());
         this.incoming.put(bufferIn);
         this.incoming.flip();
@@ -386,9 +317,7 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
   public static class NoopCompressor extends BytesCompressor {
 
-    public NoopCompressor() {
-      super(null, null, 0);
-    }
+    public NoopCompressor() {}
 
     @Override
     public BytesInput compress(BytesInput bytes) throws IOException {
@@ -402,16 +331,201 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
     @Override
     protected void release() {}
-
   }
 
-  public abstract class DirectBytesDecompressor extends CodecFactory.BytesDecompressor {
-    public DirectBytesDecompressor() {
-      super(null, null);
+  static class DirectCodecPool {
+    private static final Log LOG = Log.getLog(DirectCodecPool.class);
+
+    public static final DirectCodecPool INSTANCE = new DirectCodecPool();
+
+    @SuppressWarnings("unchecked")
+    private final Map<CompressionCodec, CodecPool> codecs =
+        (Map<CompressionCodec, CodecPool>) (Object) Collections.synchronizedMap(new HashMap<Object, Object>());
+
+    @SuppressWarnings("unchecked")
+    private final Map<Class<?>, GenericObjectPool> directDePools = (Map<Class<?>, GenericObjectPool>) (Object) Collections
+        .synchronizedMap(new HashMap<Object, Object>());
+    private final Map<Class<?>, GenericObjectPool> dePools = (Map<Class<?>, GenericObjectPool>) (Object) Collections
+        .synchronizedMap(new HashMap<Object, Object>());
+    private final Map<Class<?>, GenericObjectPool> cPools = (Map<Class<?>, GenericObjectPool>) (Object) Collections
+        .synchronizedMap(new HashMap<Object, Object>());
+
+    private DirectCodecPool() {}
+
+    public class CodecPool {
+      private final GenericObjectPool compressorPool;
+      private final GenericObjectPool decompressorPool;
+      private final GenericObjectPool directDecompressorPool;
+      private final boolean supportDirectDecompressor;
+
+      private CodecPool(final CompressionCodec codec){
+        try {
+          boolean supportDirectDecompressor = codec.getClass() == DIRECT_DECOMPRESSION_CODEC_CLASS;
+          compressorPool = new GenericObjectPool(new BasePoolableObjectFactory() {
+            public Object makeObject() throws Exception {
+              return codec.createCompressor();
+            }
+          }, Integer.MAX_VALUE);
+
+          Object com = compressorPool.borrowObject();
+          if (com != null) {
+            cPools.put(com.getClass(), compressorPool);
+            compressorPool.returnObject(com);
+          } else {
+            if (Log.WARN) {
+              LOG.warn("Unable to find ByteBuffer compressor for codec " + codec.getClass().getName());
+            }
+          }
+
+          decompressorPool = new GenericObjectPool(new BasePoolableObjectFactory() {
+            public Object makeObject() throws Exception {
+              return codec.createDecompressor();
+            }
+          }, Integer.MAX_VALUE);
+
+          Object decom = decompressorPool.borrowObject();
+          if (decom != null) {
+            dePools.put(decom.getClass(), decompressorPool);
+            decompressorPool.returnObject(decom);
+          } else {
+            if (Log.WARN) {
+              LOG.warn("Unable to find ByteBuffer decompressor for codec " + codec.getClass().getName());
+            }
+          }
+
+          if (supportDirectDecompressor) {
+            directDecompressorPool = new GenericObjectPool(
+                new BasePoolableObjectFactory() {
+                  public Object makeObject() throws Exception {
+                    return CREATE_DIRECT_DECOMPRESSOR_METHOD.invoke(DIRECT_DECOMPRESSION_CODEC_CLASS);
+                  }
+                }, Integer.MAX_VALUE);
+
+            Object ddecom = directDecompressorPool.borrowObject();
+            if (ddecom != null) {
+              directDePools.put(ddecom.getClass(), directDecompressorPool);
+              directDecompressorPool.returnObject(ddecom);
+
+            } else {
+              supportDirectDecompressor = false;
+              // This does not throw an exception like the others because there should be a fallback for
+              // any codec that does not support direct version of the compressor or decompressor
+              if (Log.WARN) {
+                LOG.warn("Unable to find direct decompressor for codec {}" + codec.getClass().getName());
+              }
+            }
+
+          } else {
+            directDecompressorPool = null;
+          }
+
+          this.supportDirectDecompressor = supportDirectDecompressor;
+        } catch (Exception e) {
+          throw new ParquetCompressionCodecException("Error creating compression codec pool.", e);
+        }
+      }
+
+      public Object borrowDirectDecompressor(){
+        Preconditions.checkArgument(supportDirectDecompressor, "Tried to get a direct Decompressor from a non-direct codec.");
+        try {
+          return directDecompressorPool.borrowObject();
+        } catch (Exception e) {
+          throw new ParquetCompressionCodecException(e);
+        }
+      }
+
+      public boolean supportsDirectDecompression() {
+        return supportDirectDecompressor;
+      }
+
+      public Decompressor borrowDecompressor(){
+        try {
+          return (Decompressor) decompressorPool.borrowObject();
+        } catch (Exception e) {
+          throw new ParquetCompressionCodecException(e);
+        }
+      }
+
+      public Compressor borrowCompressor(){
+        try {
+          return (Compressor) compressorPool.borrowObject();
+        } catch (Exception e) {
+          throw new ParquetCompressionCodecException(e);
+        }
+      }
     }
 
-    public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
-        throws IOException;
-  }
+    public CodecPool codec(CompressionCodec codec){
+      CodecPool pools = codecs.get(codec);
+      if(pools == null){
+        synchronized(this){
+          pools = codecs.get(codec);
+          if(pools == null){
+            pools = new CodecPool(codec);
+            codecs.put(codec, pools);
+          }
+        }
+      }
+      return pools;
+    }
 
+    private void returnToPool(Object obj, Map<Class<?>, GenericObjectPool> pools) {
+      try {
+        GenericObjectPool pool = pools.get(obj.getClass());
+        if (pool == null) {
+          throw new IllegalStateException("Received unexpected compressor or decompressor, " +
+              "cannot be returned to any available pool: " + obj.getClass().getSimpleName());
+        }
+        pool.returnObject(obj);
+      } catch (Exception e) {
+        throw new ParquetCompressionCodecException(e);
+      }
+    }
+
+    /**
+     * Borrow an object from a pool.
+     *
+     * @param pool - the pull to borrow from, must not be null
+     * @return - an object from the pool
+     */
+    private Object borrow(GenericObjectPool pool) {
+      try {
+        return pool.borrowObject();
+      } catch (Exception e) {
+        throw new ParquetCompressionCodecException(e);
+      }
+
+    }
+
+    public void returnCompressor(Compressor compressor) {
+      returnToPool(compressor, cPools);
+    }
+
+    public void returnDecompressor(Decompressor decompressor) {
+      returnToPool(decompressor, dePools);
+    }
+
+    public void returnDirectDecompressor(Object decompressor) {
+      returnToPool(decompressor, directDePools);
+    }
+
+    public static class ParquetCompressionCodecException extends ParquetRuntimeException {
+
+      public ParquetCompressionCodecException() {
+        super();
+      }
+
+      public ParquetCompressionCodecException(String message, Throwable cause) {
+        super(message, cause);
+      }
+
+      public ParquetCompressionCodecException(String message) {
+        super(message);
+      }
+
+      public ParquetCompressionCodecException(Throwable cause) {
+
+      }
+    }
+  }
 }
