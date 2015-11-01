@@ -53,9 +53,9 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   private final ByteBufferAllocator allocator;
 
   // Any of these can be null depending on the version of hadoop on the classpath
-  public static final Class DIRECT_DECOMPRESSION_CODEC_CLASS;
-  public static final Method DECOMPRESS_METHOD;
-  static final Method CREATE_DIRECT_DECOMPRESSOR_METHOD;
+  private static final Class DIRECT_DECOMPRESSION_CODEC_CLASS;
+  private static final Method DECOMPRESS_METHOD;
+  private static final Method CREATE_DIRECT_DECOMPRESSOR_METHOD;
 
   static {
     Class tempClass = null;
