@@ -77,7 +77,7 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
   public DirectCodecFactory(Configuration config, ByteBufferAllocator allocator) {
     super(config);
-    Preconditions.checkNotNull(allocator, "ByreBufferAllocator cannot be null.");
+    Preconditions.checkNotNull(allocator, "allocator");
     this.allocator = allocator;
   }
 
