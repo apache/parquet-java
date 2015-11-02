@@ -33,7 +33,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.hadoop.io.compress.SnappyCodec;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -75,8 +74,8 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     DECOMPRESS_METHOD = tempDecompressMethod;
   }
 
-  public DirectCodecFactory(Configuration config, ByteBufferAllocator allocator) {
-    super(config);
+  public DirectCodecFactory(Configuration config, ByteBufferAllocator allocator, int pageSize) {
+    super(config, pageSize);
     Preconditions.checkNotNull(allocator, "allocator");
     this.allocator = allocator;
   }
@@ -102,7 +101,7 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   }
 
   @Override
-  protected BytesCompressor createCompressor(final CompressionCodecName codecName, int pageSize) {
+  protected BytesCompressor createCompressor(final CompressionCodecName codecName) {
 
     CompressionCodec codec = getCodec(codecName);
     if (codec == null) {
@@ -113,7 +112,7 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     } else {
       // todo: create class similar to the SnappyCompressor for zlib and exclude it as
       // snappy is above since it also generates allocateDirect calls.
-      return new HeapBytesCompressor(codecName, pageSize);
+      return new HeapBytesCompressor(codecName);
     }
   }
 
@@ -187,8 +186,6 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
    */
   public class FullDirectDecompressor extends BytesDecompressor {
     private final Object decompressor;
-    private ByteBuffer compressedBuffer;
-    private ByteBuffer uncompressedBuffer;
     private HeapBytesDecompressor extraDecompressor;
     public FullDirectDecompressor(CompressionCodecName codecName){
       CompressionCodec codec = getCodec(codecName);
@@ -217,8 +214,6 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
     @Override
     protected void release() {
-      compressedBuffer = DirectCodecFactory.this.release(compressedBuffer);
-      uncompressedBuffer = DirectCodecFactory.this.release(uncompressedBuffer);
       DirectCodecPool.INSTANCE.returnDirectDecompressor(decompressor);
       extraDecompressor.release();
     }

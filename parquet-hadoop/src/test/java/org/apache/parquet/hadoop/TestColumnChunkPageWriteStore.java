@@ -178,7 +178,7 @@ public class TestColumnChunkPageWriteStore {
     }
   }
 
-  private HeapCodecFactory.BytesCompressor compressor(CompressionCodecName codec) {
-    return new HeapCodecFactory(conf).getCompressor(codec, pageSize);
+  private CodecFactory.BytesCompressor compressor(CompressionCodecName codec) {
+    return new CodecFactory(conf, pageSize).getCompressor(codec);
   }
 }

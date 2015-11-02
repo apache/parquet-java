@@ -487,7 +487,9 @@ public class ParquetFileReader implements Closeable {
     for (ColumnDescriptor col : columns) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
-    this.codecFactory = new HeapCodecFactory(configuration);
+    // the page size parameter isn't meaningful when only using
+    // the codec factory to get decompressors
+    this.codecFactory = new CodecFactory(configuration, 0);
     this.allocator = new HeapByteBufferAllocator();
   }
 

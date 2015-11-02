@@ -46,9 +46,20 @@ class CodecFactory {
   private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<CompressionCodecName, BytesDecompressor>();
 
   protected final Configuration configuration;
+  protected final int pageSize;
 
-  public CodecFactory(Configuration configuration) {
+  /**
+   * Create a new codec factory.
+   *
+   * @param configuration used to pass compression codec configuration information
+   * @param pageSize the expected page size, does not set a hard limit, currently just
+   *                 used to set the initial size of the output stream used when
+   *                 compressing a buffer. If this factory is only used to construct
+   *                 decompressors this parameter has no impact on the function of the factory
+   */
+  public CodecFactory(Configuration configuration, int pageSize) {
     this.configuration = configuration;
+    this.pageSize = pageSize;
   }
 
   public class HeapBytesDecompressor extends BytesDecompressor {
@@ -57,8 +68,6 @@ class CodecFactory {
     private final Decompressor decompressor;
 
     public HeapBytesDecompressor(CompressionCodecName codecName) {
-      // This is only here for compatibility with the old interface, these are unused
-      // in the constructor above
       this.codec = getCodec(codecName);
       if (codec != null) {
         decompressor = CodecPool.getDecompressor(codec);
@@ -105,7 +114,7 @@ class CodecFactory {
     private final ByteArrayOutputStream compressedOutBuffer;
     private final CompressionCodecName codecName;
 
-    public HeapBytesCompressor(CompressionCodecName codecName, int pageSize) {
+    public HeapBytesCompressor(CompressionCodecName codecName) {
       this.codecName = codecName;
       this.codec = getCodec(codecName);
       if (codec != null) {
@@ -148,10 +157,10 @@ class CodecFactory {
 
   }
 
-  public BytesCompressor getCompressor(CompressionCodecName codecName, int pageSize) {
+  public BytesCompressor getCompressor(CompressionCodecName codecName) {
     BytesCompressor comp = compressors.get(codecName);
     if (comp == null) {
-      comp = createCompressor(codecName, pageSize);
+      comp = createCompressor(codecName);
       compressors.put(codecName, comp);
     }
     return comp;
@@ -166,8 +175,8 @@ class CodecFactory {
     return decomp;
   }
 
-  protected BytesCompressor createCompressor(CompressionCodecName codecName, int pageSize) {
-    return new HeapBytesCompressor(codecName, pageSize);
+  protected BytesCompressor createCompressor(CompressionCodecName codecName) {
+    return new HeapBytesCompressor(codecName);
   }
 
   protected BytesDecompressor createDecompressor(CompressionCodecName codecName) {

@@ -35,13 +35,15 @@ public class TestDirectCodecFactory {
     ON_HEAP, OFF_HEAP, OFF_HEAP_BYTES_INPUT
   }
 
+  private final int pageSize = 64 * 1024;
+
   private void test(int size, CompressionCodecName codec, boolean useOnHeapCompression, Decompression decomp) {
     ByteBuffer rawBuf = null;
     ByteBuffer outBuf = null;
     ByteBufferAllocator allocator = null;
     try {
       allocator = new DirectByteBufferAllocator();
-      final DirectCodecFactory codecFactory = new DirectCodecFactory(new Configuration(), allocator);
+      final DirectCodecFactory codecFactory = new DirectCodecFactory(new Configuration(), allocator, pageSize);
       rawBuf = allocator.allocate(size);
       final byte[] rawArr = new byte[size];
       outBuf = allocator.allocate(size * 2);
@@ -56,7 +58,7 @@ public class TestDirectCodecFactory {
       }
       rawBuf.flip();
 
-      final DirectCodecFactory.BytesCompressor c = codecFactory.getCompressor(codec, 64 * 1024);
+      final DirectCodecFactory.BytesCompressor c = codecFactory.getCompressor(codec);
       final CodecFactory.BytesDecompressor d = codecFactory.getDecompressor(codec);
 
       final BytesInput compressed;
