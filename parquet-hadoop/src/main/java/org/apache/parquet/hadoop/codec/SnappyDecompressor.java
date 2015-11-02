@@ -19,13 +19,9 @@
 package org.apache.parquet.hadoop.codec;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.nio.ByteBuffer;
 
 import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.parquet.hadoop.DirectCodecFactory;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.Preconditions;
