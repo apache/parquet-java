@@ -36,4 +36,9 @@ public class HeapByteBufferAllocator implements ByteBufferAllocator{
     return;
   }
 
+  @Override
+  public boolean isDirect() {
+    return false;
+  }
+
 }

@@ -23,6 +23,7 @@ import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -43,7 +44,7 @@ public class TestDirectCodecFactory {
     ByteBufferAllocator allocator = null;
     try {
       allocator = new DirectByteBufferAllocator();
-      final DirectCodecFactory codecFactory = new DirectCodecFactory(new Configuration(), allocator, pageSize);
+      final CodecFactory codecFactory = CodecFactory.createDirectCodecFactory(new Configuration(), allocator, pageSize);
       rawBuf = allocator.allocate(size);
       final byte[] rawArr = new byte[size];
       outBuf = allocator.allocate(size * 2);
@@ -121,6 +122,23 @@ public class TestDirectCodecFactory {
       if (outBuf != null) {
         allocator.release(rawBuf);
       }
+    }
+  }
+
+  @Test
+  public void createDirectFactoryWithHeapAllocatorFails() {
+    String errorMsg = "Test failed, creation of a direct codec factory should have failed when passed a non-direct allocator.";
+    try {
+      CodecFactory.createDirectCodecFactory(new Configuration(), new HeapByteBufferAllocator(), 0);
+      throw new RuntimeException(errorMsg);
+    } catch (IllegalStateException ex) {
+      // indicates successful completion of the test
+      Assert.assertTrue("Missing expected error message.",
+          ex.getMessage()
+          .contains("A DirectCodecFactory requires a direct buffer allocator be provided.")
+      );
+    } catch (Exception ex) {
+      throw new RuntimeException(errorMsg + " Failed with the wrong error.");
     }
   }
 

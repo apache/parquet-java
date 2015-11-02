@@ -34,6 +34,7 @@ import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.util.ReflectionUtils;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
@@ -60,6 +61,28 @@ class CodecFactory {
   public CodecFactory(Configuration configuration, int pageSize) {
     this.configuration = configuration;
     this.pageSize = pageSize;
+  }
+
+  /**
+   * Create a codec factory that will provide compressors and decompressors
+   * that will work natively with ByteBuffers backed by direct memory.
+   *
+   * @param config configuration options for different compression codecs
+   * @param allocator an allocator for creating result buffers during compression
+   *                  and decompression, must provide buffers backed by Direct
+   *                  memory and return true for the isDirect() method
+   *                  on the ByteBufferAllocator interface
+   * @param pageSize the default page size. This does not set a hard limit on the
+   *                 size of buffers that can be compressed, but performance may
+   *                 be improved by setting it close to the expected size of buffers
+   *                 (in the case of parquet, pages) that will be compressed. This
+   *                 setting is unused in the case of decompressing data, as parquet
+   *                 always records the uncompressed size of a buffer. If this
+   *                 CodecFactory is only going to be used for decompressors, this
+   *                 parameter will not impact the function of the factory.
+   */
+  public static CodecFactory createDirectCodecFactory(Configuration config, ByteBufferAllocator allocator, int pageSize) {
+    return new DirectCodecFactory(config, allocator, pageSize);
   }
 
   public class HeapBytesDecompressor extends BytesDecompressor {

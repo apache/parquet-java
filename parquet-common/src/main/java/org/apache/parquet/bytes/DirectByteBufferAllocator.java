@@ -32,8 +32,12 @@ public class DirectByteBufferAllocator implements ByteBufferAllocator{
 
   @Override
   public void release(ByteBuffer b) {
+    // The ByteBuffer.allocateDirect
     return;
   }
 
-
+  @Override
+  public boolean isDirect() {
+    return true;
+  }
 }

@@ -46,7 +46,7 @@ import org.apache.parquet.Preconditions;
  * Factory to produce compressors and decompressors that operate on java
  * direct memory, without requiring a copy into heap memory (where possible).
  */
-public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
+class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 //  private static final Log LOG = Log.getLog(DirectCodecFactory.class);
 
   private final ByteBufferAllocator allocator;
@@ -74,9 +74,17 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     DECOMPRESS_METHOD = tempDecompressMethod;
   }
 
-  public DirectCodecFactory(Configuration config, ByteBufferAllocator allocator, int pageSize) {
+  /**
+   * See docs on CodecFactory#createDirectCodecFactory which is how this class is
+   * exposed publicly and is just a pass-through factory method for this constructor
+   * to hide the rest of this class from public access.
+   */
+  DirectCodecFactory(Configuration config, ByteBufferAllocator allocator, int pageSize) {
     super(config, pageSize);
     Preconditions.checkNotNull(allocator, "allocator");
+    Preconditions.checkState(allocator.isDirect(),
+        "A %s requires a direct buffer allocator be provided.",
+        getClass().getSimpleName());
     this.allocator = allocator;
   }
 

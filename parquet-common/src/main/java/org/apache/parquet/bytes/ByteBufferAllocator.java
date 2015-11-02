@@ -29,4 +29,10 @@ public interface ByteBufferAllocator {
    */
   void release(ByteBuffer b);
 
+  /**
+   * Indicates if this allocator will produce ByteBuffers backed by direct memory.
+   *
+   * @return true if direct memory backed buffers will be created by this allocator, else false
+   */
+  boolean isDirect();
 }
