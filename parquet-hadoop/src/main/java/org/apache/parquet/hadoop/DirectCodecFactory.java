@@ -52,12 +52,12 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   private final ByteBufferAllocator allocator;
 
   // Any of these can be null depending on the version of hadoop on the classpath
-  private static final Class DIRECT_DECOMPRESSION_CODEC_CLASS;
+  private static final Class<?> DIRECT_DECOMPRESSION_CODEC_CLASS;
   private static final Method DECOMPRESS_METHOD;
   private static final Method CREATE_DIRECT_DECOMPRESSOR_METHOD;
 
   static {
-    Class tempClass = null;
+    Class<?> tempClass = null;
     Method tempCreateMethod = null;
     Method tempDecompressMethod = null;
     try {
@@ -333,17 +333,14 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
     public static final DirectCodecPool INSTANCE = new DirectCodecPool();
 
-    @SuppressWarnings("unchecked")
     private final Map<CompressionCodec, CodecPool> codecs =
-        (Map<CompressionCodec, CodecPool>) (Object) Collections.synchronizedMap(new HashMap<Object, Object>());
-
-    @SuppressWarnings("unchecked")
-    private final Map<Class<?>, GenericObjectPool> directDePools = (Map<Class<?>, GenericObjectPool>) (Object) Collections
-        .synchronizedMap(new HashMap<Object, Object>());
-    private final Map<Class<?>, GenericObjectPool> dePools = (Map<Class<?>, GenericObjectPool>) (Object) Collections
-        .synchronizedMap(new HashMap<Object, Object>());
-    private final Map<Class<?>, GenericObjectPool> cPools = (Map<Class<?>, GenericObjectPool>) (Object) Collections
-        .synchronizedMap(new HashMap<Object, Object>());
+        Collections.synchronizedMap(new HashMap<CompressionCodec, CodecPool>());
+    private final Map<Class<?>, GenericObjectPool> directDePools = Collections
+        .synchronizedMap(new HashMap<Class<?>, GenericObjectPool>());
+    private final Map<Class<?>, GenericObjectPool> dePools = Collections
+        .synchronizedMap(new HashMap<Class<?>, GenericObjectPool>());
+    private final Map<Class<?>, GenericObjectPool> cPools = Collections
+        .synchronizedMap(new HashMap<Class<?>, GenericObjectPool>());
 
     private DirectCodecPool() {}
 
@@ -434,19 +431,11 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       }
 
       public Decompressor borrowDecompressor(){
-        try {
-          return (Decompressor) decompressorPool.borrowObject();
-        } catch (Exception e) {
-          throw new ParquetCompressionCodecException(e);
-        }
+        return borrow(decompressorPool);
       }
 
       public Compressor borrowCompressor(){
-        try {
-          return (Compressor) compressorPool.borrowObject();
-        } catch (Exception e) {
-          throw new ParquetCompressionCodecException(e);
-        }
+        return borrow(compressorPool);
       }
     }
 
@@ -483,9 +472,10 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
      * @param pool - the pull to borrow from, must not be null
      * @return - an object from the pool
      */
-    private Object borrow(GenericObjectPool pool) {
+    @SuppressWarnings("unchecked")
+    public <T> T borrow(GenericObjectPool pool) {
       try {
-        return pool.borrowObject();
+        return (T) pool.borrowObject();
       } catch (Exception e) {
         throw new ParquetCompressionCodecException(e);
       }

@@ -19,6 +19,8 @@
 package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.parquet.ShouldNeverHappenException;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -95,9 +97,10 @@ public class CompatibilityUtil {
     if (useV21) {
       try {
         res = (Integer) invoke(fileAPI.PROVIDE_BUF_READ_METHOD, "Unexpected error reading into a ByteBuffer", readBuf);
-      }catch (UnsupportedOperationException e) {
+      } catch (UnsupportedOperationException e) {
         // checked for this earlier and set useV21 to false if this exception was thrown
-        // by the current implementation;
+        // by the current implementation, this should never be thrown
+        throw new ShouldNeverHappenException(e);
       }
     } else {
       byte[] buf = new byte[maxSize];
