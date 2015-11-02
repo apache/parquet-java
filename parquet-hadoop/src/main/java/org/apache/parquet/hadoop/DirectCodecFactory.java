@@ -86,7 +86,6 @@ public class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     } else if (buffer.capacity() >= size) {
       buffer.clear();
     } else {
-      allocator.release(buffer);
       release(buffer);
       buffer = allocator.allocate(size);
     }
