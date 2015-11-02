@@ -47,7 +47,7 @@ import org.apache.parquet.Preconditions;
  * direct memory, without requiring a copy into heap memory (where possible).
  */
 class DirectCodecFactory extends CodecFactory implements AutoCloseable {
-//  private static final Log LOG = Log.getLog(DirectCodecFactory.class);
+  private static final Log LOG = Log.getLog(DirectCodecFactory.class);
 
   private final ByteBufferAllocator allocator;
 
@@ -336,7 +336,6 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   }
 
   static class DirectCodecPool {
-    private static final Log LOG = Log.getLog(DirectCodecPool.class);
 
     public static final DirectCodecPool INSTANCE = new DirectCodecPool();
 
@@ -356,6 +355,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       private final GenericObjectPool decompressorPool;
       private final GenericObjectPool directDecompressorPool;
       private final boolean supportDirectDecompressor;
+      private static final String BYTE_BUF_IMPL_NOT_FOUND_MSG =
+          "Unable to find ByteBuffer based %s for codec %s, will use a byte array based implementation instead.";
 
       private CodecPool(final CompressionCodec codec){
         try {
@@ -371,8 +372,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             cPools.put(com.getClass(), compressorPool);
             compressorPool.returnObject(com);
           } else {
-            if (Log.WARN) {
-              LOG.warn("Unable to find ByteBuffer compressor for codec " + codec.getClass().getName());
+            if (Log.DEBUG) {
+              LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor", codec.getClass().getName()));
             }
           }
 
@@ -387,8 +388,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             dePools.put(decom.getClass(), decompressorPool);
             decompressorPool.returnObject(decom);
           } else {
-            if (Log.WARN) {
-              LOG.warn("Unable to find ByteBuffer decompressor for codec " + codec.getClass().getName());
+            if (Log.DEBUG) {
+              LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "decompressor" + codec.getClass().getName()));
             }
           }
 
@@ -407,10 +408,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
             } else {
               supportDirectDecompressor = false;
-              // This does not throw an exception like the others because there should be a fallback for
-              // any codec that does not support direct version of the compressor or decompressor
-              if (Log.WARN) {
-                LOG.warn("Unable to find direct decompressor for codec {}" + codec.getClass().getName());
+              if (Log.DEBUG) {
+                LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor" + codec.getClass().getName()));
               }
             }
 

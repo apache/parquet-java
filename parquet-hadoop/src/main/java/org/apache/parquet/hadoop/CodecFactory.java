@@ -85,12 +85,12 @@ class CodecFactory {
     return new DirectCodecFactory(config, allocator, pageSize);
   }
 
-  public class HeapBytesDecompressor extends BytesDecompressor {
+  class HeapBytesDecompressor extends BytesDecompressor {
 
     private final CompressionCodec codec;
     private final Decompressor decompressor;
 
-    public HeapBytesDecompressor(CompressionCodecName codecName) {
+    HeapBytesDecompressor(CompressionCodecName codecName) {
       this.codec = getCodec(codecName);
       if (codec != null) {
         decompressor = CodecPool.getDecompressor(codec);
@@ -99,6 +99,7 @@ class CodecFactory {
       }
     }
 
+    @Override
     public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
       final BytesInput decompressed;
       if (codec != null) {
@@ -130,14 +131,14 @@ class CodecFactory {
    * @author Julien Le Dem
    *
    */
-  public class HeapBytesCompressor extends BytesCompressor {
+  class HeapBytesCompressor extends BytesCompressor {
 
     private final CompressionCodec codec;
     private final Compressor compressor;
     private final ByteArrayOutputStream compressedOutBuffer;
     private final CompressionCodecName codecName;
 
-    public HeapBytesCompressor(CompressionCodecName codecName) {
+    HeapBytesCompressor(CompressionCodecName codecName) {
       this.codecName = codecName;
       this.codec = getCodec(codecName);
       if (codec != null) {
@@ -149,6 +150,7 @@ class CodecFactory {
       }
     }
 
+    @Override
     public BytesInput compress(BytesInput bytes) throws IOException {
       final BytesInput compressedBytes;
       if (codec == null) {
@@ -168,6 +170,7 @@ class CodecFactory {
       return compressedBytes;
     }
 
+    @Override
     protected void release() {
       if (compressor != null) {
         CodecPool.returnCompressor(compressor);

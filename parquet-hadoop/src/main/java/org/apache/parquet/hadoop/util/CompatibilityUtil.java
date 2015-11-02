@@ -93,7 +93,7 @@ public class CompatibilityUtil {
   }
 
   public static int getBuf(FSDataInputStream f, ByteBuffer readBuf, int maxSize) throws IOException {
-    int res = 0;
+    int res;
     if (useV21) {
       try {
         res = (Integer) invoke(fileAPI.PROVIDE_BUF_READ_METHOD, "Unexpected error reading into a ByteBuffer", readBuf);
@@ -106,10 +106,6 @@ public class CompatibilityUtil {
       byte[] buf = new byte[maxSize];
       res = f.read(buf);
       readBuf.put(buf, 0, maxSize);
-    }
-
-    if (res == 0) {
-      throw new EOFException("Null ByteBuffer returned");
     }
     return res;
   }
