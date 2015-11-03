@@ -105,7 +105,7 @@ public class CompatibilityUtil {
     } else {
       byte[] buf = new byte[maxSize];
       res = f.read(buf);
-      readBuf.put(buf, 0, maxSize);
+      readBuf.put(buf, 0, res);
     }
     return res;
   }
