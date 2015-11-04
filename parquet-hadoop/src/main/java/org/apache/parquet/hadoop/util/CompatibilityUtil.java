@@ -83,14 +83,21 @@ public class CompatibilityUtil {
         res = (Integer) fileAPI.PROVIDE_BUF_READ_METHOD.invoke(f, readBuf);
       } catch (InvocationTargetException e) {
         if (e.getCause() instanceof UnsupportedOperationException) {
-          useV21 = false;
-          return getBuf(f, readBuf, maxSize);
-        } else {
           // the FSDataInputStream docs say specifically that implementations
           // can choose to throw UnsupportedOperationException, so this should
-          // be a reasonable check to make to see if the interface is actually
-          // implemented
-          throw new ShouldNeverHappenException(e);
+          // be a reasonable check to make to see if the interface is
+          // present but not implemented and we should be falling back
+          useV21 = false;
+          return getBuf(f, readBuf, maxSize);
+        } else if (e.getCause() instanceof IOException) {
+          throw (IOException) e.getCause();
+        } else {
+          // To handle any cases where a Runtime exception occurs and provide
+          // some additional context information. A stacktrace would just give
+          // a line number, this at least tells them we were using the version
+          // of the read method designed for using a ByteBuffer.
+          throw new IOException("Error reading out of an FSDataInputStream " +
+              "using the Hadoop 2 ByteBuffer based read method.", e.getCause());
         }
       } catch (IllegalAccessException e) {
         // This method is public because it is defined in an interface,
