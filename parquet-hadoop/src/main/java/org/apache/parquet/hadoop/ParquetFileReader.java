@@ -56,6 +56,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.hadoop.util.CompatibilityUtil;
 
 import org.apache.parquet.Log;
@@ -458,7 +460,7 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
-  static ParquetFileReader open(Configuration conf, Path file) throws IOException {
+  public static ParquetFileReader open(Configuration conf, Path file) throws IOException {
     ParquetMetadata footer = readFooter(conf, file, NO_FILTER);
     return new ParquetFileReader(conf, footer.getFileMetaData(), file,
         footer.getBlocks(), footer.getFileMetaData().getSchema().getColumns());
@@ -474,6 +476,8 @@ public class ParquetFileReader implements Closeable {
   private final ByteBufferAllocator allocator;
 
   private int currentBlock = 0;
+  private ColumnChunkPageReadStore currentRowGroup = null;
+  private DictionaryPageReader nextDictionaryReader = null;
 
   /**
    * @deprecated use @link{ParquetFileReader(Configuration configuration, FileMetaData fileMetaData,
@@ -525,7 +529,7 @@ public class ParquetFileReader implements Closeable {
     if (block.getRowCount() == 0) {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
-    ColumnChunkPageReadStore columnChunkPageReadStore = new ColumnChunkPageReadStore(block.getRowCount());
+    this.currentRowGroup = new ColumnChunkPageReadStore(block.getRowCount());
     // prepare the list of consecutive chunks to read them in one scan
     List<ConsecutiveChunkList> allChunks = new ArrayList<ConsecutiveChunkList>();
     ConsecutiveChunkList currentChunks = null;
@@ -547,14 +551,102 @@ public class ParquetFileReader implements Closeable {
     for (ConsecutiveChunkList consecutiveChunks : allChunks) {
       final List<Chunk> chunks = consecutiveChunks.readAll(f);
       for (Chunk chunk : chunks) {
-        columnChunkPageReadStore.addColumn(chunk.descriptor.col, chunk.readAllPages());
+        currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
       }
     }
-    ++currentBlock;
-    return columnChunkPageReadStore;
+
+    // avoid re-reading bytes the dictionary reader is used after this call
+    nextDictionaryReader.setRowGroup(currentRowGroup);
+
+    advanceToNextBlock();
+
+    return currentRowGroup;
   }
 
+  public boolean skipNextRowGroup() {
+    return advanceToNextBlock();
+  }
 
+  private boolean advanceToNextBlock() {
+    if (currentBlock == blocks.size()) {
+      return false;
+    }
+
+    // update the current block and instantiate a dictionary reader for it
+    ++currentBlock;
+    this.nextDictionaryReader = null;
+
+    return true;
+  }
+
+  /**
+   * Returns a {@link DictionaryPageReadStore} for the row group that would be
+   * returned by calling {@link #readNextRowGroup()} or skipped by calling
+   * {@link #skipNextRowGroup()}.
+   *
+   * @return a DictionaryPageReadStore for the next row group
+   */
+  public DictionaryPageReadStore getNextDictionaryReader() {
+    if (nextDictionaryReader == null && currentBlock < blocks.size()) {
+      this.nextDictionaryReader = getDictionaryReader(blocks.get(currentBlock));
+    }
+    return nextDictionaryReader;
+  }
+
+  public DictionaryPageReader getDictionaryReader(BlockMetaData block) {
+    return new DictionaryPageReader(this, block);
+  }
+
+  /**
+   * Reads and decompresses a dictionary page for the given column chunk.
+   *
+   * Returns null if the given column chunk has no dictionary page.
+   *
+   * @param meta a column's ColumnChunkMetaData to read the dictionary from
+   * @return an uncompressed DictionaryPage or null
+   * @throws IOException
+   */
+  DictionaryPage readDictionary(ColumnChunkMetaData meta) throws IOException {
+    if (!meta.getEncodings().contains(Encoding.PLAIN_DICTIONARY) &&
+        !meta.getEncodings().contains(Encoding.RLE_DICTIONARY)) {
+      return null;
+    }
+
+    // TODO: this should use getDictionaryPageOffset() but it isn't reliable.
+    if (f.getPos() != meta.getStartingPos()) {
+      f.seek(meta.getStartingPos());
+    }
+
+    PageHeader pageHeader = Util.readPageHeader(f);
+    if (!pageHeader.isSetDictionary_page_header()) {
+      return null; // TODO: should this complain?
+    }
+
+    DictionaryPage compressedPage = readCompressedDictionary(pageHeader, f);
+    BytesDecompressor decompressor = codecFactory.getDecompressor(meta.getCodec());
+
+    return new DictionaryPage(
+        decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
+        compressedPage.getDictionarySize(),
+        compressedPage.getEncoding());
+  }
+
+  private static DictionaryPage readCompressedDictionary(
+      PageHeader pageHeader, FSDataInputStream fin) throws IOException {
+    DictionaryPageHeader dictHeader = pageHeader.getDictionary_page_header();
+
+    int uncompressedPageSize = pageHeader.getUncompressed_page_size();
+    int compressedPageSize = pageHeader.getCompressed_page_size();
+
+    byte [] dictPageBytes = new byte[compressedPageSize];
+    fin.readFully(dictPageBytes);
+
+    BytesInput bin = BytesInput.from(dictPageBytes);
+
+    return new DictionaryPage(
+        bin, uncompressedPageSize, dictHeader.getNum_values(),
+        converter.getEncoding(dictHeader.getEncoding()));
+  }
 
   @Override
   public void close() throws IOException {

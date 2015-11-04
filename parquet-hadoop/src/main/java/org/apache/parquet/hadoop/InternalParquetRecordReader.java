@@ -188,21 +188,6 @@ class InternalParquetRecordReader<T> {
     LOG.info("RecordReader initialized will read a total of " + total + " records.");
   }
 
-  private boolean contains(GroupType group, String[] path, int index) {
-    if (index == path.length) {
-      return false;
-    }
-    if (group.containsField(path[index])) {
-      Type type = group.getType(path[index]);
-      if (type.isPrimitive()) {
-        return index + 1 == path.length;
-      } else {
-        return contains(type.asGroupType(), path, index + 1);
-      }
-    }
-    return false;
-  }
-
   public boolean nextKeyValue() throws IOException, InterruptedException {
     boolean recordFound = false;
 

@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.filter2.compat.RowGroupFilter.filterRowGroups;
+import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.*;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
@@ -47,6 +48,7 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
+import org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -162,7 +164,21 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       footer = readFooter(configuration, path, range(split.getStart(), split.getEnd()));
       MessageType fileSchema = footer.getFileMetaData().getSchema();
       Filter filter = getFilter(configuration);
-      filteredBlocks = filterRowGroups(filter, footer.getBlocks(), fileSchema);
+
+      List<FilterLevel> levels = new ArrayList<FilterLevel>();
+
+      if (configuration.getBoolean("parquet.filter.statistics.enabled", true)) {
+        levels.add(STATISTICS);
+      }
+
+      if (configuration.getBoolean("parquet.filter.dictionary.enabled", false)) {
+        levels.add(DICTIONARY);
+      }
+
+      // TODO: use one file reader
+      // either move this inside the internal reader or pass this reader in
+      filteredBlocks = filterRowGroups(levels, filter, footer.getBlocks(),
+          fileSchema, ParquetFileReader.open(configuration, path));
     } else {
       // otherwise we find the row groups that were selected on the client
       footer = readFooter(configuration, path, NO_FILTER);
