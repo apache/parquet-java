@@ -18,6 +18,9 @@
  */
 package org.apache.parquet;
 
+import java.io.Closeable;
+import java.io.IOException;
+
 /**
  * The parent class for all runtime exceptions
  *
@@ -42,5 +45,4 @@ abstract public class ParquetRuntimeException extends RuntimeException {
   public ParquetRuntimeException(Throwable cause) {
     super(cause);
   }
-
 }

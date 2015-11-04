@@ -20,6 +20,7 @@ package org.apache.parquet.column.page;
 
 import java.io.IOException;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.Statistics;
@@ -54,7 +55,6 @@ public interface PageWriter {
    * @param dataEncoding the encoding for the data
    * @param data the data encoded with dataEncoding
    * @param statistics optional stats for this page
-   * @param metadata optional free form key values
    * @throws IOException
    */
   void writePageV2(

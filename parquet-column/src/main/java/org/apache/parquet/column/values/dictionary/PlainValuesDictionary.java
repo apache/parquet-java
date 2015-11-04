@@ -23,6 +23,7 @@ import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.PLAIN;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.Dictionary;
@@ -86,9 +87,10 @@ public abstract class PlainValuesDictionary extends Dictionary {
      */
     public PlainBinaryDictionary(DictionaryPage dictionaryPage, Integer length) throws IOException {
       super(dictionaryPage);
-      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
+      final ByteBuffer dictionaryBytes = dictionaryPage.getBytes().toByteBuffer();
       binaryDictionaryContent = new Binary[dictionaryPage.getDictionarySize()];
-      int offset = 0;
+      // dictionary values are stored in order: size (4 bytes LE) followed by {size} bytes
+      int offset = dictionaryBytes.position();
       if (length == null) {
         // dictionary values are stored in order: size (4 bytes LE) followed by {size} bytes
         for (int i = 0; i < binaryDictionaryContent.length; i++) {
@@ -96,7 +98,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
           // read the length
           offset += 4;
           // wrap the content in a binary
-          binaryDictionaryContent[i] = Binary.fromConstantByteArray(dictionaryBytes, offset, len);
+          binaryDictionaryContent[i] = Binary.fromConstantByteBuffer(dictionaryBytes, offset, len);
           // increment to the next value
           offset += len;
         }
@@ -106,7 +108,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
             "Invalid byte array length: " + length);
         for (int i = 0; i < binaryDictionaryContent.length; i++) {
           // wrap the content in a Binary
-          binaryDictionaryContent[i] = Binary.fromConstantByteArray(
+          binaryDictionaryContent[i] = Binary.fromConstantByteBuffer(
               dictionaryBytes, offset, length);
           // increment to the next value
           offset += length;
@@ -148,10 +150,10 @@ public abstract class PlainValuesDictionary extends Dictionary {
      */
     public PlainLongDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
-      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
+      final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
       longDictionaryContent = new long[dictionaryPage.getDictionarySize()];
       LongPlainValuesReader longReader = new LongPlainValuesReader();
-      longReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
+      longReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, dictionaryByteBuf.position());
       for (int i = 0; i < longDictionaryContent.length; i++) {
         longDictionaryContent[i] = longReader.readLong();
       }
@@ -191,10 +193,10 @@ public abstract class PlainValuesDictionary extends Dictionary {
      */
     public PlainDoubleDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
-      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
+      final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
       doubleDictionaryContent = new double[dictionaryPage.getDictionarySize()];
       DoublePlainValuesReader doubleReader = new DoublePlainValuesReader();
-      doubleReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
+      doubleReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, 0);
       for (int i = 0; i < doubleDictionaryContent.length; i++) {
         doubleDictionaryContent[i] = doubleReader.readDouble();
       }
@@ -234,10 +236,10 @@ public abstract class PlainValuesDictionary extends Dictionary {
      */
     public PlainIntegerDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
-      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
+      final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
       intDictionaryContent = new int[dictionaryPage.getDictionarySize()];
       IntegerPlainValuesReader intReader = new IntegerPlainValuesReader();
-      intReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
+      intReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, 0);
       for (int i = 0; i < intDictionaryContent.length; i++) {
         intDictionaryContent[i] = intReader.readInteger();
       }
@@ -277,10 +279,10 @@ public abstract class PlainValuesDictionary extends Dictionary {
      */
     public PlainFloatDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
-      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
+      final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
       floatDictionaryContent = new float[dictionaryPage.getDictionarySize()];
       FloatPlainValuesReader floatReader = new FloatPlainValuesReader();
-      floatReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
+      floatReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, dictionaryByteBuf.position());
       for (int i = 0; i < floatDictionaryContent.length; i++) {
         floatDictionaryContent[i] = floatReader.readFloat();
       }

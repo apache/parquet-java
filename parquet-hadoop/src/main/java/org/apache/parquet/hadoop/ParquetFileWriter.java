@@ -73,8 +73,9 @@ public class ParquetFileWriter {
   private static ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
 
   public static final String PARQUET_METADATA_FILE = "_metadata";
+  public static final String MAGIC_STR = "PAR1";
+  public static final byte[] MAGIC = MAGIC_STR.getBytes(Charset.forName("ASCII"));
   public static final String PARQUET_COMMON_METADATA_FILE = "_common_metadata";
-  public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
   public static final int CURRENT_VERSION = 1;
 
   // need to supply a buffer size when setting block size. this is the default

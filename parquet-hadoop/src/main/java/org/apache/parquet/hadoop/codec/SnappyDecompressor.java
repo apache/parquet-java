@@ -147,4 +147,5 @@ public class SnappyDecompressor implements Decompressor {
   public void setDictionary(byte[] b, int off, int len) {
     // No-op		
   }
-}
+
+} //class SnappyDecompressor

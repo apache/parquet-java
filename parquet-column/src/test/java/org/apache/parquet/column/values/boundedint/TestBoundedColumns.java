@@ -23,10 +23,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
 
 import org.junit.Test;
+
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 
 public class TestBoundedColumns {
   private final Random r = new Random(42L);
@@ -54,7 +57,7 @@ public class TestBoundedColumns {
   }
 
   private void compareOutput(int bound, int[] ints, String[] result) throws IOException {
-    BoundedIntValuesWriter bicw = new BoundedIntValuesWriter(bound, 64*1024, 64*1024);
+    BoundedIntValuesWriter bicw = new BoundedIntValuesWriter(bound, 64*1024, 64*1024, new DirectByteBufferAllocator());
     for (int i : ints) {
       bicw.writeInteger(i);
     }
@@ -63,7 +66,7 @@ public class TestBoundedColumns {
     byte[] byteArray = bicw.getBytes().toByteArray();
     assertEquals(concat(result), toBinaryString(byteArray, 4));
     BoundedIntValuesReader bicr = new BoundedIntValuesReader(bound);
-    bicr.initFromPage(1, byteArray, 0);
+    bicr.initFromPage(1, ByteBuffer.wrap(byteArray), 0);
     String expected = "";
     String got = "";
     for (int i : ints) {
@@ -123,7 +126,7 @@ public class TestBoundedColumns {
       ByteArrayOutputStream tmp = new ByteArrayOutputStream();
 
       int[] stream = new int[totalValuesInStream];
-      BoundedIntValuesWriter bicw = new BoundedIntValuesWriter(bound, 64 * 1024, 64*1024);
+      BoundedIntValuesWriter bicw = new BoundedIntValuesWriter(bound, 64 * 1024, 64*1024, new DirectByteBufferAllocator());
       int idx = 0;
       for (int stripeNum = 0; stripeNum < valuesPerStripe.length; stripeNum++) {
         int next = 0;
@@ -155,7 +158,7 @@ public class TestBoundedColumns {
       idx = 0;
       int offset = 0;
       for (int stripeNum = 0; stripeNum < valuesPerStripe.length; stripeNum++) {
-        bicr.initFromPage(1, input, offset);
+        bicr.initFromPage(1, ByteBuffer.wrap(input), offset);
         offset = bicr.getNextOffset();
         for (int i = 0; i < valuesPerStripe[stripeNum]; i++) {
           int number = stream[idx++];

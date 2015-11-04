@@ -22,6 +22,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import org.apache.parquet.Log;
@@ -46,6 +47,21 @@ public class BytesUtils {
     return 32 - Integer.numberOfLeadingZeros(bound);
   }
 
+  /**
+   * reads an int in little endian at the given position
+   * @param in
+   * @param offset
+   * @return
+   * @throws IOException
+   */
+  public static int readIntLittleEndian(ByteBuffer in, int offset) throws IOException {
+    int ch4 = in.get(offset) & 0xff;
+    int ch3 = in.get(offset + 1) & 0xff;
+    int ch2 = in.get(offset + 2) & 0xff;
+    int ch1 = in.get(offset + 3) & 0xff;
+    return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
+  }
+  
   /**
    * reads an int in little endian at the given position
    * @param in
@@ -203,6 +219,14 @@ public class BytesUtils {
       value >>>= 7;
     }
     out.write(value & 0x7F);
+  }
+
+  public static void writeUnsignedVarInt(int value, ByteBuffer dest) throws IOException {
+    while ((value & 0xFFFFFF80) != 0L) {
+      dest.putInt((value & 0x7F) | 0x80);
+      value >>>= 7;
+    }
+    dest.putInt(value & 0x7F);
   }
 
   public static void writeZigZagVarInt(int intValue, OutputStream out) throws IOException{

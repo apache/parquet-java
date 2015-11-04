@@ -19,14 +19,15 @@
 package org.apache.parquet.column.values.delta;
 
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * Read values written by {@link DeltaBinaryPackingValuesWriter}
@@ -40,7 +41,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    */
   private int valuesRead;
   private int minDeltaInCurrentBlock;
-  private byte[] page;
+  private ByteBuffer page;
   /**
    * stores the decoded values including the first value which is written to the header
    */
@@ -50,7 +51,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * when data is not aligned to mini block, which means padding 0s are in the buffer
    */
   private int valuesBuffered;
-  private ByteArrayInputStream in;
+  private ByteBufferInputStream in;
   private int nextOffset;
   private DeltaBinaryPackingConfig config;
   private int[] bitWidths;
@@ -64,8 +65,8 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * @throws IOException
    */
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException {
-    in = new ByteArrayInputStream(page, offset, page.length - offset);
+  public void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException {
+    in = new ByteBufferInputStream(page, offset, page.limit() - offset);
     this.config = DeltaBinaryPackingConfig.readConfig(in);
     this.page = page;
     this.totalValueCount = BytesUtils.readUnsignedVarInt(in);
@@ -78,7 +79,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     while (valuesBuffered < totalValueCount) { //values Buffered could be more than totalValueCount, since we flush on a mini block basis
       loadNewBlockToBuffer();
     }
-    this.nextOffset = page.length - in.available();
+    this.nextOffset = page.limit() - in.available();
   }
   
   @Override
@@ -151,7 +152,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
   private void unpack8Values(BytePacker packer) {
     //calculate the pos because the packer api uses array not stream
-    int pos = page.length - in.available();
+    int pos = page.limit() - in.available();
     packer.unpack8Values(page, pos, valuesBuffer, valuesBuffered);
     this.valuesBuffered += 8;
     //sync the pos in stream

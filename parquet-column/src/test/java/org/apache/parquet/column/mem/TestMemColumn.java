@@ -20,6 +20,7 @@ package org.apache.parquet.column.mem;
 
 import static org.junit.Assert.assertEquals;
 
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.junit.Test;
 
 import org.apache.parquet.Log;
@@ -160,6 +161,6 @@ public class TestMemColumn {
   }
 
   private ColumnWriteStoreV1 newColumnWriteStoreImpl(MemPageStore memPageStore) {
-    return new ColumnWriteStoreV1(memPageStore, 2048, 2048, false, WriterVersion.PARQUET_1_0);
+    return new ColumnWriteStoreV1(memPageStore, 2048, 2048, false, WriterVersion.PARQUET_1_0, new HeapByteBufferAllocator());
   }
 }

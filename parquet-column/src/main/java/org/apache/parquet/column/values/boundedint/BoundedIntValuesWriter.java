@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.boundedint;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import static org.apache.parquet.bytes.BytesInput.concat;
 import static org.apache.parquet.column.Encoding.RLE;
 import org.apache.parquet.Log;
@@ -59,11 +60,11 @@ class BoundedIntValuesWriter extends ValuesWriter {
     }
   }
 
-  public BoundedIntValuesWriter(int bound, int initialCapacity, int pageSize) {
+  public BoundedIntValuesWriter(int bound, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
     if (bound == 0) {
       throw new ParquetEncodingException("Value bound cannot be 0. Use DevNullColumnWriter instead.");
     }
-    this.bitWriter = new BitWriter(initialCapacity, pageSize);
+    this.bitWriter = new BitWriter(initialCapacity, pageSize, allocator);
     bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
     shouldRepeatThreshold = (bitsPerValue + 9)/(1 + bitsPerValue);
     if (Log.DEBUG) LOG.debug("init column with bit width of " + bitsPerValue + " and repeat threshold of " + shouldRepeatThreshold);
@@ -98,6 +99,11 @@ class BoundedIntValuesWriter extends ValuesWriter {
     thereIsABufferedValue = false;
     isFirst = true;
     bitWriter.reset();
+  }
+
+  @Override
+  public void close() {
+    bitWriter.close();
   }
 
   @Override

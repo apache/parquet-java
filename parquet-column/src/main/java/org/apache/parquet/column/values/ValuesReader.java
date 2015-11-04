@@ -20,13 +20,14 @@ package org.apache.parquet.column.values;
 
 import java.io.IOException;
 
+import java.nio.ByteBuffer;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 
 /**
  * Base class to implement an encoding for a given column type.
  *
- * A ValuesReader is provided with a page (byte-array) and is responsible
+ * A ValuesReader is provided with a page (byte-buffer) and is responsible
  * for deserializing the primitive values stored in that page.
  *
  * Given that pages are homogeneous (store only a single type), typical subclasses
@@ -58,8 +59,20 @@ public abstract class ValuesReader {
    *
    * @throws IOException
    */
-  public abstract void initFromPage(int valueCount, byte[] page, int offset) throws IOException;
-  
+  public abstract void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException;
+
+  /**
+   * Same functionality as method of the same name that takes a ByteBuffer instead of a byte[].
+   *
+   * This method is only provided for backward compatibility and will be removed in a future release.
+   * Please update any code using it as soon as possible.
+   * @see #initFromPage(int, ByteBuffer, int)
+   */
+  @Deprecated
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException {
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
+  }
+
   /**
    * Called to return offset of the next section
    * @return offset of the next section

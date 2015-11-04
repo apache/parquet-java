@@ -88,7 +88,7 @@
     <scala.binary.version>2.10</scala.binary.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.11.1</pig.version>
-    <pig.classifier />
+    <pig.classifier/>
     <thrift.version>0.7.0</thrift.version>
     <fastutil.version>6.5.7</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
@@ -225,6 +225,7 @@
                      <exclude>org/apache/parquet/filter2/**</exclude>
                      <exclude>org/apache/parquet/column/**</exclude>
                      <exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>org/apache/parquet/hadoop/CodecFactory**</exclude>
                      <exclude>shaded/**</exclude> <!-- shaded by parquet -->
                      <!-- temporary exclusions for false-positives -->
                      <exclude>org/apache/parquet/Version</exclude>

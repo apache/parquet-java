@@ -27,6 +27,7 @@ import static org.apache.parquet.column.ValuesType.VALUES;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.Log;
@@ -548,7 +549,7 @@ public class ColumnReaderImpl implements ColumnReader {
     });
   }
 
-  private void initDataReader(Encoding dataEncoding, byte[] bytes, int offset, int valueCount) {
+  private void initDataReader(Encoding dataEncoding, ByteBuffer bytes, int offset, int valueCount) {
     ValuesReader previousReader = this.dataColumn;
 
     this.currentEncoding = dataEncoding;
@@ -588,8 +589,8 @@ public class ColumnReaderImpl implements ColumnReader {
     this.repetitionLevelColumn = new ValuesReaderIntIterator(rlReader);
     this.definitionLevelColumn = new ValuesReaderIntIterator(dlReader);
     try {
-      byte[] bytes = page.getBytes().toByteArray();
-      if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
+      ByteBuffer bytes = page.getBytes().toByteBuffer();
+      if (DEBUG) LOG.debug("page size " + bytes.remaining() + " bytes and " + pageValueCount + " records");
       if (DEBUG) LOG.debug("reading repetition levels at 0");
       rlReader.initFromPage(pageValueCount, bytes, 0);
       int next = rlReader.getNextOffset();
@@ -608,7 +609,7 @@ public class ColumnReaderImpl implements ColumnReader {
     this.definitionLevelColumn = newRLEIterator(path.getMaxDefinitionLevel(), page.getDefinitionLevels());
     try {
       if (DEBUG) LOG.debug("page data size " + page.getData().size() + " bytes and " + pageValueCount + " records");
-      initDataReader(page.getDataEncoding(), page.getData().toByteArray(), 0, page.getValueCount());
+      initDataReader(page.getDataEncoding(), page.getData().toByteBuffer(), 0, page.getValueCount());
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
     }
@@ -622,7 +623,7 @@ public class ColumnReaderImpl implements ColumnReader {
       return new RLEIntIterator(
           new RunLengthBitPackingHybridDecoder(
               BytesUtils.getWidthFromMaxInt(maxLevel),
-              new ByteArrayInputStream(bytes.toByteArray())));
+              bytes.toInputStream()));
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read levels in page for col " + path, e);
     }

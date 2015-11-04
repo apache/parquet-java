@@ -16,38 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.values.boundedint;
+package org.apache.parquet.bytes;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.apache.parquet.column.values.ValuesReader;
+public class HeapByteBufferAllocator implements ByteBufferAllocator{
 
-/**
- * ColumnReader which does not read any actual data, but rather simply produces
- * an endless stream of constant values.
- * Mainly used to read definition levels when the only possible value is 0
- */
-public class ZeroIntegerValuesReader extends ValuesReader {
-  
-  private int nextOffset;
+  public static final HeapByteBufferAllocator getInstance(){ return new HeapByteBufferAllocator();}
 
-  public int readInteger() {
-    return 0;
+  public HeapByteBufferAllocator() {
+    super();
+  }
+
+  public ByteBuffer allocate(final int size) {
+    return ByteBuffer.allocate(size);
+  }
+
+  public void release(ByteBuffer b) {
+    return;
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
-    this.nextOffset = offset;
-  }
-  
-  @Override
-  public int getNextOffset() {
-    return nextOffset;
-  }
-
-  @Override
-  public void skip() {
+  public boolean isDirect() {
+    return false;
   }
 
 }
