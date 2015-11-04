@@ -31,6 +31,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -149,7 +150,7 @@ public class ParquetReader<T> implements Closeable {
 
       reader = new InternalParquetRecordReader<T>(readSupport, filter);
       reader.initialize(fileSchema,
-          footer.getParquetMetadata().getFileMetaData().getKeyValueMetaData(),
+          footer.getParquetMetadata().getFileMetaData(),
           footer.getFile(), filteredBlocks, conf);
     }
   }
@@ -168,11 +169,18 @@ public class ParquetReader<T> implements Closeable {
   public static class Builder<T> {
     private final ReadSupport<T> readSupport;
     private final Path file;
-    private Configuration conf;
     private Filter filter;
+    protected Configuration conf;
 
     private Builder(ReadSupport<T> readSupport, Path path) {
       this.readSupport = checkNotNull(readSupport, "readSupport");
+      this.file = checkNotNull(path, "path");
+      this.conf = new Configuration();
+      this.filter = FilterCompat.NOOP;
+    }
+
+    protected Builder(Path path) {
+      this.readSupport = null;
       this.file = checkNotNull(path, "path");
       this.conf = new Configuration();
       this.filter = FilterCompat.NOOP;
@@ -188,8 +196,15 @@ public class ParquetReader<T> implements Closeable {
       return this;
     }
 
+    protected ReadSupport<T> getReadSupport() {
+      // if readSupport is null, the protected constructor must have been used
+      Preconditions.checkArgument(readSupport != null,
+          "[BUG] Classes that extend Builder should override getReadSupport()");
+      return readSupport;
+    }
+
     public ParquetReader<T> build() throws IOException {
-      return new ParquetReader<T>(conf, file, readSupport, filter);
+      return new ParquetReader<T>(conf, file, getReadSupport(), filter);
     }
   }
 }

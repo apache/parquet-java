@@ -67,7 +67,8 @@ public class TestMemColumn {
     return new ColumnReadStoreImpl(
         memPageStore,
         new DummyRecordConverter(schema).getRootConverter(),
-        schema
+        schema,
+        null
         ).getColumnReader(path);
   }
 

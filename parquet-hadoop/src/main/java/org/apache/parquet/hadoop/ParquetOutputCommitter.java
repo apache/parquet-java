@@ -30,6 +30,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
 
 import org.apache.parquet.Log;
+import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.util.ContextUtil;
 
 public class ParquetOutputCommitter extends FileOutputCommitter {
@@ -48,25 +49,63 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
     writeMetaDataFile(configuration,outputPath);
   }
 
+  // TODO: This method should propagate errors, and we should clean up
+  // TODO: all the catching of Exceptions below -- see PARQUET-383
   public static void writeMetaDataFile(Configuration configuration, Path outputPath) {
-    if (configuration.getBoolean(ParquetOutputFormat.ENABLE_JOB_SUMMARY, true)) {
+    JobSummaryLevel level = ParquetOutputFormat.getJobSummaryLevel(configuration);
+    if (level == JobSummaryLevel.NONE) {
+      return;
+    }
+
+    try {
+      final FileSystem fileSystem = outputPath.getFileSystem(configuration);
+      FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
+      List<Footer> footers;
+
+      switch (level) {
+        case ALL:
+          footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, false); // don't skip row groups
+          break;
+        case COMMON_ONLY:
+          footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, true); // skip row groups
+          break;
+        default:
+          throw new IllegalArgumentException("Unrecognized job summary level: " + level);
+      }
+
+      // If there are no footers, _metadata file cannot be written since there is no way to determine schema!
+      // Onus of writing any summary files lies with the caller in this case.
+      if (footers.isEmpty()) {
+        return;
+      }
+
       try {
-        final FileSystem fileSystem = outputPath.getFileSystem(configuration);
-        FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
-        List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);
+        ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers, level);
+      } catch (Exception e) {
+        LOG.warn("could not write summary file(s) for " + outputPath, e);
+
+        final Path metadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_METADATA_FILE);
+
         try {
-          ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers);
-        } catch (Exception e) {
-          LOG.warn("could not write summary file for " + outputPath, e);
-          final Path metadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_METADATA_FILE);
           if (fileSystem.exists(metadataPath)) {
             fileSystem.delete(metadataPath, true);
           }
+        } catch (Exception e2) {
+          LOG.warn("could not delete metadata file" + outputPath, e2);
         }
-      } catch (Exception e) {
-        LOG.warn("could not write summary file for " + outputPath, e);
+
+        try {
+          final Path commonMetadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE);
+          if (fileSystem.exists(commonMetadataPath)) {
+            fileSystem.delete(commonMetadataPath, true);
+          }
+        } catch (Exception e2) {
+          LOG.warn("could not delete metadata file" + outputPath, e2);
+        }
+
       }
+    } catch (Exception e) {
+      LOG.warn("could not write summary file for " + outputPath, e);
     }
   }
-
 }

@@ -61,7 +61,7 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   public void writeBytes(Binary v) {
     try {
       lengthWriter.writeInteger(v.length());
-      out.write(v.getBytes());
+      v.writeTo(out);
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write bytes", e);
     }

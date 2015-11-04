@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,61 +24,66 @@ import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 
 /**
- * represent field path for thrift field
+ * Represents an immutable column path as a sequence of fields.
  *
  * @author Tianshuo Deng
  */
 public class FieldsPath {
-  ArrayList<ThriftField> fields = new ArrayList<ThriftField>();
+  private final ArrayList<ThriftField> fields;
 
-  public void push(ThriftField field) {
-    this.fields.add(field);
+  public FieldsPath() {
+    this(new ArrayList<ThriftField>());
   }
 
-  public ThriftField pop() {
-    return this.fields.remove(fields.size() - 1);
+  private FieldsPath(ArrayList<ThriftField> fields) {
+    this.fields = fields;
   }
 
-  @Override
-  public String toString() {
-    StringBuffer pathStrBuffer = new StringBuffer();
+  public FieldsPath push(ThriftField f) {
+    ArrayList<ThriftField> copy = new ArrayList<ThriftField>(fields);
+    copy.add(f);
+    return new FieldsPath(copy);
+  }
+
+  public String toDelimitedString(String delim) {
+    StringBuilder delimited = new StringBuilder();
     for (int i = 0; i < fields.size(); i++) {
       ThriftField currentField = fields.get(i);
       if (i > 0) {
         ThriftField previousField = fields.get(i - 1);
-        if (isKeyFieldOfMap(currentField, previousField)) {
-          pathStrBuffer.append("key/");
+        if (FieldsPath.isKeyFieldOfMap(currentField, previousField)) {
+          delimited.append("key");
+          delimited.append(delim);
           continue;
-        } else if (isValueFieldOfMap(currentField, previousField)) {
-          pathStrBuffer.append("value/");
+        } else if (FieldsPath.isValueFieldOfMap(currentField, previousField)) {
+          delimited.append("value");
+          delimited.append(delim);
           continue;
         }
       }
-
-      pathStrBuffer.append(currentField.getName()).append("/");
+      delimited.append(currentField.getName()).append(delim);
     }
 
-    if (pathStrBuffer.length() == 0) {
+    if (delimited.length() == 0) {
       return "";
     } else {
-      String pathStr = pathStrBuffer.substring(0, pathStrBuffer.length() - 1);
-      return pathStr;
+      return delimited.substring(0, delimited.length() - 1);
     }
   }
 
-  private boolean isValueFieldOfMap(ThriftField currentField, ThriftField previousField) {
-    ThriftType previousType = previousField.getType();
-    if(!(previousType instanceof ThriftType.MapType)) {
-      return false;
-    }
-    return ((ThriftType.MapType)previousType).getValue()==currentField;
+  @Override
+  public String toString() {
+    return toDelimitedString(".");
   }
 
-  private boolean isKeyFieldOfMap(ThriftField currentField, ThriftField previousField) {
+  private static boolean isValueFieldOfMap(ThriftField currentField, ThriftField previousField) {
     ThriftType previousType = previousField.getType();
-    if(!(previousType instanceof ThriftType.MapType)) {
-      return false;
-    }
-    return ((ThriftType.MapType)previousType).getKey()==currentField;
+    return previousType instanceof ThriftType.MapType && ((ThriftType.MapType) previousType).getValue() == currentField;
   }
+
+  private static boolean isKeyFieldOfMap(ThriftField currentField, ThriftField previousField) {
+    ThriftType previousType = previousField.getType();
+    return previousType instanceof ThriftType.MapType && ((ThriftType.MapType) previousType).getKey() == currentField;
+  }
+
 }

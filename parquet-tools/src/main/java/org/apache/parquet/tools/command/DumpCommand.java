@@ -47,6 +47,7 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -61,6 +62,8 @@ import org.apache.parquet.tools.util.PrettyPrintWriter;
 import org.apache.parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
 
 import com.google.common.base.Joiner;
+
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 
 public class DumpCommand extends ArgsOnlyCommand {
     private static final Charset UTF8 = Charset.forName("UTF-8");
@@ -115,7 +118,7 @@ public class DumpCommand extends ArgsOnlyCommand {
         Configuration conf = new Configuration();
         Path inpath = new Path(input);
 
-        ParquetMetadata metaData = ParquetFileReader.readFooter(conf, inpath);
+        ParquetMetadata metaData = ParquetFileReader.readFooter(conf, inpath, NO_FILTER);
         MessageType schema = metaData.getFileMetaData().getSchema();
 
         PrettyPrintWriter out = PrettyPrintWriter.stdoutPrettyPrinter()
@@ -178,7 +181,8 @@ public class DumpCommand extends ArgsOnlyCommand {
                     MetadataUtils.showDetails(out, ccmds);
 
                     List<BlockMetaData> rblocks = Collections.singletonList(block);
-                    freader = new ParquetFileReader(conf, inpath, rblocks, columns);
+                    freader = new ParquetFileReader(
+                        conf, meta.getFileMetaData(), inpath, rblocks, columns);
                     PageReadStore store = freader.readNextRowGroup();
                     while (store != null) {
                         out.incrementTabLevel();
@@ -211,10 +215,13 @@ public class DumpCommand extends ArgsOnlyCommand {
                     long page = 1;
                     long total = blocks.size();
                     long offset = 1;
-                    freader = new ParquetFileReader(conf, inpath, blocks, Collections.singletonList(column));
+                    freader = new ParquetFileReader(
+                        conf, meta.getFileMetaData(), inpath, blocks, Collections.singletonList(column));
                     PageReadStore store = freader.readNextRowGroup();
                     while (store != null) {
-                        ColumnReadStoreImpl crstore = new ColumnReadStoreImpl(store, new DumpGroupConverter(), schema);
+                        ColumnReadStoreImpl crstore = new ColumnReadStoreImpl(
+                            store, new DumpGroupConverter(), schema,
+                            meta.getFileMetaData().getCreatedBy());
                         dump(out, crstore, column, page++, total, offset);
 
                         offset += store.getRowCount();
@@ -307,7 +314,7 @@ public class DumpCommand extends ArgsOnlyCommand {
     }
 
     public static String binaryToString(Binary value) {
-        byte[] data = value.getBytes();
+        byte[] data = value.getBytesUnsafe();
         if (data == null) return null;
 
         try {
@@ -320,7 +327,7 @@ public class DumpCommand extends ArgsOnlyCommand {
     }
 
     public static BigInteger binaryToBigInteger(Binary value) {
-        byte[] data = value.getBytes();
+        byte[] data = value.getBytesUnsafe();
         if (data == null) return null;
 
         return new BigInteger(data);

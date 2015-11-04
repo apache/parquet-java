@@ -108,9 +108,8 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
     } else {
       thriftClass = TBaseWriteSupport.getThriftClass(configuration);
     }
-    ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
-    this.thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
-    this.schema = thriftSchemaConverter.convert(thriftStruct);
+    this.thriftStruct = ThriftSchemaConverter.toStructType(thriftClass);
+    this.schema = ThriftSchemaConverter.convertWithoutProjection(thriftStruct);
     if (buffered) {
       readToWrite = new BufferedProtocolReadToWrite(thriftStruct, errorHandler);
     } else {

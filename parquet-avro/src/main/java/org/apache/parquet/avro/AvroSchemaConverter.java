@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -32,36 +32,42 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
+import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE;
+import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT;
 import static org.apache.parquet.schema.OriginalType.*;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 
 /**
  * <p>
- * Converts an Avro schema into a Parquet schema. See package documentation for details
- * of the mapping.
+ * Converts an Avro schema into a Parquet schema, or vice versa. See package
+ * documentation for details of the mapping.
  * </p>
  */
 public class AvroSchemaConverter {
 
-  static final String ADD_LIST_ELEMENT_RECORDS =
+  public static final String ADD_LIST_ELEMENT_RECORDS =
       "parquet.avro.add-list-element-records";
   private static final boolean ADD_LIST_ELEMENT_RECORDS_DEFAULT = true;
 
   private final boolean assumeRepeatedIsListElement;
+  private final boolean writeOldListStructure;
 
   public AvroSchemaConverter() {
     this.assumeRepeatedIsListElement = ADD_LIST_ELEMENT_RECORDS_DEFAULT;
+    this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
   }
 
   public AvroSchemaConverter(Configuration conf) {
     this.assumeRepeatedIsListElement = conf.getBoolean(
         ADD_LIST_ELEMENT_RECORDS, ADD_LIST_ELEMENT_RECORDS_DEFAULT);
+    this.writeOldListStructure = conf.getBoolean(
+        WRITE_OLD_LIST_STRUCTURE, WRITE_OLD_LIST_STRUCTURE_DEFAULT);
   }
 
   /**
    * Given a schema, check to see if it is a union of a null type and a regular schema,
    * and then return the non-null sub-schema. Otherwise, return the given schema.
-   * 
+   *
    * @param schema The schema to check
    * @return The non-null portion of a union schema, or the given schema
    */
@@ -127,8 +133,13 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.ENUM)) {
       return primitive(fieldName, BINARY, repetition, ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
-      return ConversionPatterns.listType(repetition, fieldName,
-          convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
+      if (writeOldListStructure) {
+        return ConversionPatterns.listType(repetition, fieldName,
+            convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
+      } else {
+        return ConversionPatterns.listOfElements(repetition, fieldName,
+            convertField(AvroWriteSupport.LIST_ELEMENT_NAME, schema.getElementType()));
+      }
     } else if (type.equals(Schema.Type.MAP)) {
       Type valType = convertField("value", schema.getValueType());
       // avro map key type is always string
@@ -176,7 +187,7 @@ public class AvroSchemaConverter {
     return convertField(field.name(), field.schema());
   }
 
-  private PrimitiveType primitive(String name, 
+  private PrimitiveType primitive(String name,
       PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition,
       int typeLength, OriginalType originalType) {
     return new PrimitiveType(repetition, primitive, typeLength, name,
@@ -184,12 +195,12 @@ public class AvroSchemaConverter {
   }
 
   private PrimitiveType primitive(String name,
-      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition, 
+      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition,
       OriginalType originalType) {
     return new PrimitiveType(repetition, primitive, name, originalType);
   }
 
-  private PrimitiveType primitive(String name, 
+  private PrimitiveType primitive(String name,
       PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition) {
     return new PrimitiveType(repetition, primitive, name, null);
   }
@@ -237,7 +248,7 @@ public class AvroSchemaConverter {
             }
             @Override
             public Schema convertINT96(PrimitiveTypeName primitiveTypeName) {
-              throw new IllegalArgumentException("INT64 not yet implemented.");
+              throw new IllegalArgumentException("INT96 not yet implemented.");
             }
             @Override
             public Schema convertFLOAT(PrimitiveTypeName primitiveTypeName) {
@@ -292,7 +303,6 @@ public class AvroSchemaConverter {
             }
             GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
             if (!mapKeyValType.isRepetition(Type.Repetition.REPEATED) ||
-                !mapKeyValType.getOriginalType().equals(OriginalType.MAP_KEY_VALUE) ||
                 mapKeyValType.getFieldCount()!=2) {
               throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
             }

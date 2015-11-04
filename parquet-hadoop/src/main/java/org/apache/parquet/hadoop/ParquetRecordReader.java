@@ -23,6 +23,7 @@ import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.*;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
+import static org.apache.parquet.hadoop.ParquetInputFormat.SPLIT_FILES;
 import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
 
 import java.io.IOException;
@@ -30,7 +31,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.google.common.base.Supplier;
@@ -47,16 +47,21 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.Log;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 
 
@@ -224,10 +229,31 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
             + " in range " + split.getStart() + ", " + split.getEnd());
       }
     }
+
+    if (!filteredBlocks.isEmpty()) {
+      checkDeltaByteArrayProblem(footer.getFileMetaData(), configuration, filteredBlocks.get(0));
+    }
+
     MessageType fileSchema = footer.getFileMetaData().getSchema();
-    Map<String, String> fileMetaData = footer.getFileMetaData().getKeyValueMetaData();
-      internalReader.initialize(
-          fileSchema, fileMetaData, path, filteredBlocks, configuration);
+    internalReader.initialize(
+        fileSchema, footer.getFileMetaData(), path, filteredBlocks, configuration);
+  }
+
+  private void checkDeltaByteArrayProblem(FileMetaData meta, Configuration conf, BlockMetaData block) {
+    // splitting files?
+    if (conf.getBoolean(ParquetInputFormat.SPLIT_FILES, true)) {
+      // this is okay if not using DELTA_BYTE_ARRAY with the bug
+      Set<Encoding> encodings = new HashSet<Encoding>();
+      for (ColumnChunkMetaData column : block.getColumns()) {
+        encodings.addAll(column.getEncodings());
+      }
+      for (Encoding encoding : encodings) {
+        if (CorruptDeltaByteArrays.requiresSequentialReads(meta.getCreatedBy(), encoding)) {
+          throw new ParquetDecodingException("Cannot read data due to " +
+              "PARQUET-246: to read safely, set " + SPLIT_FILES + " to false");
+        }
+      }
+    }
   }
 
   /**

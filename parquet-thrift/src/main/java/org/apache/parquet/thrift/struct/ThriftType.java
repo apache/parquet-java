@@ -98,6 +98,37 @@ public abstract class ThriftType {
     return toJSON();
   }
 
+  public interface StateVisitor<R, S> {
+
+    R visit(MapType mapType, S state);
+
+    R visit(SetType setType, S state);
+
+    R visit(ListType listType, S state);
+
+    R visit(StructType structType, S state);
+
+    R visit(EnumType enumType, S state);
+
+    R visit(BoolType boolType, S state);
+
+    R visit(ByteType byteType, S state);
+
+    R visit(DoubleType doubleType, S state);
+
+    R visit(I16Type i16Type, S state);
+
+    R visit(I32Type i32Type, S state);
+
+    R visit(I64Type i64Type, S state);
+
+    R visit(StringType stringType, S state);
+
+  }
+
+  /**
+   * @deprecated will be removed in 2.0.0; use StateVisitor instead.
+   */
   public interface TypeVisitor {
 
     void visit(MapType mapType);
@@ -126,6 +157,10 @@ public abstract class ThriftType {
 
   }
 
+  /**
+   * @deprecated will be removed in 2.0.0.
+   */
+  @Deprecated
   public static abstract class ComplexTypeVisitor implements TypeVisitor {
 
     @Override
@@ -233,6 +268,11 @@ public abstract class ThriftType {
     }
 
     @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
+    @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
     }
@@ -273,6 +313,11 @@ public abstract class ThriftType {
 
     public ThriftField getValue() {
       return value;
+    }
+
+    @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
 
     @Override
@@ -317,6 +362,11 @@ public abstract class ThriftType {
     }
 
     @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
+    @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
     }
@@ -353,6 +403,11 @@ public abstract class ThriftType {
 
     public ThriftField getValues() {
       return values;
+    }
+
+    @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
 
     @Override
@@ -452,6 +507,11 @@ public abstract class ThriftType {
     }
 
     @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
+    @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
     }
@@ -484,6 +544,11 @@ public abstract class ThriftType {
       super(BOOL);
     }
     @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
+    @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
     }
@@ -495,6 +560,11 @@ public abstract class ThriftType {
     public ByteType() {
       super(BYTE);
     }
+    @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
     @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
@@ -508,6 +578,11 @@ public abstract class ThriftType {
       super(DOUBLE);
     }
     @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
+    @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
     }
@@ -519,6 +594,11 @@ public abstract class ThriftType {
     public I16Type() {
       super(I16);
     }
+    @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
     @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
@@ -532,6 +612,11 @@ public abstract class ThriftType {
       super(I32);
     }
     @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
+    @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
     }
@@ -544,6 +629,12 @@ public abstract class ThriftType {
       super(I64);
     }
     @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
+
+    @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
     }
@@ -555,6 +646,11 @@ public abstract class ThriftType {
     public StringType() {
       super(STRING);
     }
+    @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
     @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
@@ -569,6 +665,8 @@ public abstract class ThriftType {
   }
 
   public abstract void accept(TypeVisitor visitor);
+
+  public abstract <R, S> R accept(StateVisitor<R, S> visitor, S state);
 
   @JsonIgnore
   public ThriftTypeID getType() {

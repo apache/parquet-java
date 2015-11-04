@@ -73,6 +73,13 @@ public class CompatibilityRunner {
       System.err.println(report.getMessages());
       System.exit(1);
     }
+
+    if (report.hasEmptyStruct()) {
+      System.err.println("schema contains empty struct");
+      System.err.println(report.getMessages());
+      System.exit(1);
+    }
+
     System.out.println("[success] schema is compatible");
 
   }
@@ -88,7 +95,7 @@ public class CompatibilityRunner {
     String className = arguments.pollFirst();
     String storedPath = arguments.pollFirst();
     File storeDir = new File(storedPath);
-    ThriftType.StructType structType = new ThriftSchemaConverter().toStructType((Class<? extends TBase<?, ?>>) Class.forName(className));
+    ThriftType.StructType structType = ThriftSchemaConverter.toStructType((Class<? extends TBase<?, ?>>) Class.forName(className));
     ObjectMapper mapper = new ObjectMapper();
 
     String fileName = catName + ".json";

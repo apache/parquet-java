@@ -20,8 +20,10 @@ package org.apache.parquet.hadoop;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.ParquetRuntimeException;
+import org.apache.parquet.Preconditions;
 
 import java.lang.management.ManagementFactory;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -47,13 +49,15 @@ public class MemoryManager {
   private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
+  private final Map<String, Runnable> callBacks = new HashMap<String, Runnable>();
+  private double scale = 1.0;
 
   public MemoryManager(float ratio, long minAllocation) {
     checkRatio(ratio);
 
     memoryPoolRatio = ratio;
     minMemoryAllocation = minAllocation;
-    totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
+    totalMemoryPool = Math.round((double) ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * ratio);
     LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
   }
@@ -100,7 +104,6 @@ public class MemoryManager {
    */
   private void updateAllocation() {
     long totalAllocations = 0;
-    double scale;
     for (Long allocation : writerList.values()) {
       totalAllocations += allocation;
     }
@@ -112,6 +115,10 @@ public class MemoryManager {
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
           "Scaling row group sizes to %.2f%% for %d writers",
           100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
+      for (Runnable callBack : callBacks.values()) {
+        // we do not really want to start a new thread here.
+        callBack.run();
+      }
     }
 
     int maxColCount = 0;
@@ -154,5 +161,38 @@ public class MemoryManager {
    */
   float getMemoryPoolRatio() {
     return memoryPoolRatio;
+  }
+
+  /**
+   * Register callback and deduplicate it if any.
+   * @param callBackName the name of callback. It should be identical.
+   * @param callBack the callback passed in from upper layer, such as Hive.
+   */
+  public void registerScaleCallBack(String callBackName, Runnable callBack) {
+    Preconditions.checkNotNull(callBackName, "callBackName");
+    Preconditions.checkNotNull(callBack, "callBack");
+
+    if (callBacks.containsKey(callBackName)) {
+      throw new IllegalArgumentException("The callBackName " + callBackName +
+          " is duplicated and has been registered already.");
+    } else {
+      callBacks.put(callBackName, callBack);
+    }
+  }
+
+  /**
+   * Get the registered callbacks.
+   * @return
+   */
+  Map<String, Runnable> getScaleCallBacks() {
+    return Collections.unmodifiableMap(callBacks);
+  }
+
+  /**
+   * Get the internal scale value of MemoryManger
+   * @return
+   */
+  double getScale() {
+    return scale;
   }
 }

@@ -96,7 +96,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
           // read the length
           offset += 4;
           // wrap the content in a binary
-          binaryDictionaryContent[i] = Binary.fromByteArray(dictionaryBytes, offset, len);
+          binaryDictionaryContent[i] = Binary.fromConstantByteArray(dictionaryBytes, offset, len);
           // increment to the next value
           offset += len;
         }
@@ -106,7 +106,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
             "Invalid byte array length: " + length);
         for (int i = 0; i < binaryDictionaryContent.length; i++) {
           // wrap the content in a Binary
-          binaryDictionaryContent[i] = Binary.fromByteArray(
+          binaryDictionaryContent[i] = Binary.fromConstantByteArray(
               dictionaryBytes, offset, length);
           // increment to the next value
           offset += length;

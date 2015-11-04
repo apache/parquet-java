@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.io.api;
 
+import org.apache.parquet.io.ParquetDecodingException;
+
 /**
  * Top-level class which should be implemented in order to materialize objects from
  * a stream of Parquet data.
@@ -33,6 +35,7 @@ abstract public class RecordMaterializer<T> {
 
   /**
    * @return the result of the conversion
+   * @throws RecordMaterializationException to signal that a record cannot be materialized, but can be skipped
    */
   abstract public T getCurrentRecord();
 
@@ -45,4 +48,28 @@ abstract public class RecordMaterializer<T> {
    * @return the root converter for this tree
    */
   abstract public GroupConverter getRootConverter();
+
+  /**
+   * This exception signals that the current record is cannot be converted from parquet columns to a materialized
+   * record, but can be skipped if requested. This exception should be used to signal errors like a union with no
+   * set values, or an error in converting parquet primitive values to a materialized record. It should not
+   * be used to signal unrecoverable errors, like a data column being corrupt or unreadable.
+   */
+  public static class RecordMaterializationException extends ParquetDecodingException {
+    public RecordMaterializationException() {
+      super();
+    }
+
+    public RecordMaterializationException(String message, Throwable cause) {
+      super(message, cause);
+    }
+
+    public RecordMaterializationException(String message) {
+      super(message);
+    }
+
+    public RecordMaterializationException(Throwable cause) {
+      super(cause);
+    }
+  }
 }

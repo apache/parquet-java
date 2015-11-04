@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static java.util.Arrays.asList;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
@@ -33,12 +34,21 @@ import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.InvalidSchemaException;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
+import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
 
 import org.apache.parquet.column.Encoding;
@@ -52,6 +62,7 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
+import org.junit.rules.TemporaryFolder;
 
 public class TestParquetWriter {
 
@@ -95,7 +106,7 @@ public class TestParquetWriter {
               .append("float_field", 1.0f)
               .append("double_field", 2.0d)
               .append("flba_field", "foo")
-              .append("int96_field", Binary.fromByteArray(new byte[12])));
+              .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
         }
         writer.close();
         ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build();
@@ -108,7 +119,8 @@ public class TestParquetWriter {
           assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
           assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
           assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
-          assertEquals(Binary.fromByteArray(new byte[12]), group.getInt96("int96_field", 0));
+          assertEquals(Binary.fromConstantByteArray(new byte[12]),
+              group.getInt96("int96_field",0));
         }
         reader.close();
         ParquetMetadata footer = readFooter(conf, file, NO_FILTER);
@@ -125,5 +137,30 @@ public class TestParquetWriter {
         }
       }
     }
+  }
+
+  @Rule
+  public TemporaryFolder temp = new TemporaryFolder();
+
+  @Test
+  public void testBadWriteSchema() throws IOException {
+    final File file = temp.newFile("test.parquet");
+    file.delete();
+
+    TestUtils.assertThrows("Should reject a schema with an empty group",
+        InvalidSchemaException.class, new Callable<Void>() {
+          @Override
+          public Void call() throws IOException {
+            ExampleParquetWriter.builder(new Path(file.toString()))
+                .withType(Types.buildMessage()
+                    .addField(new GroupType(REQUIRED, "invalid_group"))
+                    .named("invalid_message"))
+                .build();
+            return null;
+          }
+        });
+
+    Assert.assertFalse("Should not create a file when schema is rejected",
+        file.exists());
   }
 }

@@ -21,6 +21,7 @@ package org.apache.parquet.avro;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
@@ -30,7 +31,7 @@ import org.apache.parquet.hadoop.ParquetReader;
 public class TestBackwardCompatibility {
 
   @Test
-  public void testStringCompatibility() throws IOException {
+  public void testCompatStringCompatibility() throws IOException {
     // some older versions of Parquet used avro.schema instead of
     // parquet.avro.schema and didn't annotate binary with UTF8 when the type
     // was converted from an Avro string. this validates that the old read
@@ -45,6 +46,22 @@ public class TestBackwardCompatibility {
     while ((r = reader.read()) != null) {
       Assert.assertTrue("Should read value into a String",
           r.get("text") instanceof String);
+    }
+  }
+
+  @Test
+  public void testStringCompatibility() throws IOException {
+    Path testFile = new Path(Resources.getResource("strings-2.parquet").getFile());
+    Configuration conf = new Configuration();
+    conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
+    ParquetReader<GenericRecord> reader = AvroParquetReader
+        .builder(new AvroReadSupport<GenericRecord>(), testFile)
+        .withConf(conf)
+        .build();
+    GenericRecord r;
+    while ((r = reader.read()) != null) {
+      Assert.assertTrue("Should read value into a String",
+          r.get("text") instanceof Utf8);
     }
   }
 

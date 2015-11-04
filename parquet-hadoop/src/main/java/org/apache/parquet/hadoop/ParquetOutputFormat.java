@@ -38,6 +38,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
@@ -80,6 +81,10 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
  * # To enable/disable summary metadata aggregation at the end of a MR job
  * # The default is true (enabled)
  * parquet.enable.summary-metadata=true # false to disable summary aggregation
+ *
+ * # Maximum size (in bytes) allowed as padding to align row groups
+ * # This is also the minimum size of a row group. Default: 0
+ * parquet.writer.max-padding=2097152 # 2 MB
  * </pre>
  *
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
@@ -98,6 +103,33 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
 public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
 
+  public static enum JobSummaryLevel {
+    /**
+     * Write no summary files
+     */
+    NONE,
+    /**
+     * Write both summary file with row group info and summary file without
+     * (both _metadata and _common_metadata)
+     */
+    ALL,
+    /**
+     * Write only the summary file without the row group info
+     * (_common_metadata only)
+     */
+    COMMON_ONLY
+  }
+
+  /**
+   * An alias for JOB_SUMMARY_LEVEL, where true means ALL and false means NONE
+   */
+  @Deprecated
+  public static final String ENABLE_JOB_SUMMARY   = "parquet.enable.summary-metadata";
+
+  /**
+   * Must be one of the values in {@link JobSummaryLevel} (case insensitive)
+   */
+  public static final String JOB_SUMMARY_LEVEL = "parquet.summary.metadata.level";
   public static final String BLOCK_SIZE           = "parquet.block.size";
   public static final String PAGE_SIZE            = "parquet.page.size";
   public static final String COMPRESSION          = "parquet.compression";
@@ -106,9 +138,35 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
   public static final String VALIDATION           = "parquet.validation";
   public static final String WRITER_VERSION       = "parquet.writer.version";
-  public static final String ENABLE_JOB_SUMMARY   = "parquet.enable.summary-metadata";
   public static final String MEMORY_POOL_RATIO    = "parquet.memory.pool.ratio";
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
+  public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
+
+  // default to no padding for now
+  private static final int DEFAULT_MAX_PADDING_SIZE = 0;
+
+  public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
+    String level = conf.get(JOB_SUMMARY_LEVEL);
+    String deprecatedFlag = conf.get(ENABLE_JOB_SUMMARY);
+
+    if (deprecatedFlag != null) {
+      LOG.warn("Setting " + ENABLE_JOB_SUMMARY + " is deprecated, please use " + JOB_SUMMARY_LEVEL);
+    }
+
+    if (level != null && deprecatedFlag != null) {
+      LOG.warn("Both " + JOB_SUMMARY_LEVEL + " and " + ENABLE_JOB_SUMMARY + " are set! " + ENABLE_JOB_SUMMARY + " will be ignored.");
+    }
+
+    if (level != null) {
+      return JobSummaryLevel.valueOf(level.toUpperCase());
+    }
+
+    if (deprecatedFlag != null) {
+      return Boolean.valueOf(deprecatedFlag) ? JobSummaryLevel.ALL : JobSummaryLevel.NONE;
+    }
+
+    return JobSummaryLevel.ALL;
+  }
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -225,6 +283,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return CodecConfig.from(taskAttemptContext).getCodec();
   }
 
+  public static void setMaxPaddingSize(JobContext jobContext, int maxPaddingSize) {
+    setMaxPaddingSize(getConfiguration(jobContext), maxPaddingSize);
+  }
+
+  public static void setMaxPaddingSize(Configuration conf, int maxPaddingSize) {
+    conf.setInt(MAX_PADDING_BYTES, maxPaddingSize);
+  }
+
+  private static int getMaxPaddingSize(Configuration conf) {
+    // default to no padding, 0% of the row group size
+    return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
+  }
 
 
   private WriteSupport<T> writeSupport;
@@ -284,9 +354,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
     WriterVersion writerVersion = getWriterVersion(conf);
     if (INFO) LOG.info("Writer version is: " + writerVersion);
+    int maxPaddingSize = getMaxPaddingSize(conf);
+    if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
 
     WriteContext init = writeSupport.init(conf);
-    ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
+    ParquetFileWriter w = new ParquetFileWriter(
+        conf, init.getSchema(), file, Mode.CREATE, blockSize, maxPaddingSize);
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
@@ -347,7 +420,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    */
   private static MemoryManager memoryManager;
 
-  static MemoryManager getMemoryManager() {
+  public static MemoryManager getMemoryManager() {
     return memoryManager;
   }
 }

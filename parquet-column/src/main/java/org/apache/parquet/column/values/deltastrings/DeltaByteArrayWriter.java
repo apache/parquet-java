@@ -66,6 +66,7 @@ public class DeltaByteArrayWriter extends ValuesWriter{
   public void reset() {
     prefixLengthWriter.reset();
     suffixWriter.reset();
+    previous = new byte[0];
   }
 
   @Override
@@ -86,7 +87,7 @@ public class DeltaByteArrayWriter extends ValuesWriter{
     int length = previous.length < vb.length ? previous.length : vb.length;
     for(i = 0; (i < length) && (previous[i] == vb[i]); i++);
     prefixLengthWriter.writeInteger(i);
-    suffixWriter.writeBytes(Binary.fromByteArray(vb, i, vb.length - i));
+    suffixWriter.writeBytes(v.slice(i, vb.length - i));
     previous = vb;
   }
 }

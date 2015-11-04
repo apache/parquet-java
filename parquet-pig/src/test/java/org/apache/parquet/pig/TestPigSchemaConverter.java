@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.pig;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.junit.Assert.assertEquals;
 import static org.apache.parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static org.apache.parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
@@ -28,6 +30,14 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.junit.Test;
@@ -70,6 +80,23 @@ public class TestPigSchemaConverter {
   @Test
   public void testMapOfList() throws Exception {
     testPigConversion("a:map[{bag: (a:int)}]");
+  }
+
+  @Test
+  public void testListsOfPrimitive() throws Exception {
+    for (Type.Repetition repetition : Type.Repetition.values()) {
+      for (Type.Repetition valueRepetition : Type.Repetition.values()) {
+        for (PrimitiveType.PrimitiveTypeName primitiveTypeName : PrimitiveType.PrimitiveTypeName.values()) {
+          if (primitiveTypeName != PrimitiveType.PrimitiveTypeName.INT96) { // INT96 is NYI
+            Types.PrimitiveBuilder<PrimitiveType> value = Types.primitive(primitiveTypeName, valueRepetition);
+            if (primitiveTypeName == PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+              value.length(1);
+            GroupType type = Types.buildGroup(repetition).addField(value.named("b")).as(OriginalType.LIST).named("a");
+            pigSchemaConverter.convertField(type); // no exceptions, please
+          }
+        }
+      }
+    }
   }
 
   private void testConversion(String pigSchemaString, String schemaString) throws Exception {
@@ -177,6 +204,17 @@ public class TestPigSchemaConverter {
         "  }\n" +
         "}\n");
   }
+
+  @Test
+  public void testListOfPrimitiveIsABag() throws Exception {
+    testFixedConversion(
+        "message pig_schema {\n" +
+        "  optional group a (LIST) {\n" +
+        "    repeated binary b (UTF8);\n" +
+        "  }\n" +
+        "}\n",
+        "a:{" + PigSchemaConverter.ARRAY_VALUE_NAME + ":(b: chararray)}");
+  }
   
   private void testFixedConversion(String schemaString, String pigSchemaString)
       throws Exception {
@@ -221,7 +259,7 @@ public class TestPigSchemaConverter {
     map.put("pig.schema", new LinkedHashSet<String>(Arrays.asList(
         "a:int, b:int, c:int, d:int, e:int, f:int",
         "aa:int, aaa:int, b:int, c:int, ee:int")));
-    Schema result = getPigSchemaFromMultipleFiles(new MessageType("empty"), map);
+    Schema result = getPigSchemaFromMultipleFiles(new MessageType("file_schema", new PrimitiveType(OPTIONAL, INT32,"a")), map);
     assertEquals("a: int,b: int,c: int,d: int,e: int,f: int,aa: int,aaa: int,ee: int", pigSchemaToString(result));
   }
 

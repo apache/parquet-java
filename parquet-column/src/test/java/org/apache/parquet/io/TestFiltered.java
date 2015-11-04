@@ -21,6 +21,7 @@ package org.apache.parquet.io;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.parquet.io.api.RecordConsumer;
 import org.junit.Test;
 
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
@@ -259,11 +260,13 @@ public class TestFiltered {
     MemPageStore memPageStore = new MemPageStore(number * 2);
     ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore, 800, 800, false, WriterVersion.PARQUET_1_0);
 
-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
+    RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
+    GroupWriter groupWriter = new GroupWriter(recordWriter, schema);
     for ( int i = 0; i < number; i++ ) {
       groupWriter.write(r1);
       groupWriter.write(r2);
     }
+    recordWriter.flush();
     columns.flush();
     return memPageStore;
   }

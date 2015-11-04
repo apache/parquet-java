@@ -68,7 +68,7 @@ svn co --depth=empty https://dist.apache.org/repos/dist/dev/parquet tmp
 mkdir -p tmp/$tagrc
 cp ${tarball}* tmp/$tagrc
 svn add tmp/$tagrc
-echo "svn ci -m 'Apache Parquet MR $version RC${rc}' tmp/$tagrc"
+svn ci -m 'Apache Parquet MR $version RC${rc}' tmp/$tagrc
 
 # clean up
 rm -rf tmp

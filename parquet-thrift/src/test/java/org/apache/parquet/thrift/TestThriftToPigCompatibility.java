@@ -154,7 +154,7 @@ public class TestThriftToPigCompatibility {
     final Class<T> class1 = (Class<T>) o.getClass();
     final MessageType schema = thriftSchemaConverter.convert(class1);
 
-    final StructType structType = thriftSchemaConverter.toStructType(class1);
+    final StructType structType = ThriftSchemaConverter.toStructType(class1);
     final ThriftToPig<T> thriftToPig = new ThriftToPig<T>(class1);
     final Schema pigSchema = thriftToPig.toSchema();
     final TupleRecordMaterializer tupleRecordConverter = new TupleRecordMaterializer(schema, pigSchema, true);

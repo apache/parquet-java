@@ -145,4 +145,5 @@ public class TestMessageType {
     assertEquals(schema, schema2);
     assertEquals(schema.toString(), schema2.toString());
   }
+
 }

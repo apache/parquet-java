@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.7.0</version>
+    <version>1.8.2-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -58,6 +58,11 @@
       <version>${avro.version}</version>
     </dependency>
     <dependency>
+      <groupId>it.unimi.dsi</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>${fastutil.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
@@ -79,6 +84,14 @@
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/test/avro</directory>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <artifactId>maven-enforcer-plugin</artifactId>
@@ -92,7 +105,15 @@
         <artifactId>avro-maven-plugin</artifactId>
         <version>${avro.version}</version>
         <executions>
+          <execution>
+            <id>compile-avsc</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>schema</goal>
+            </goals>
+          </execution>
             <execution>
+                <id>compile-idl</id>
                 <phase>generate-test-sources</phase>
                 <goals>
                     <goal>idl-protocol</goal>

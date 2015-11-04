@@ -23,6 +23,7 @@ import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.test.compat.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class CompatibilityCheckerTest {
 
@@ -107,14 +108,25 @@ public class CompatibilityCheckerTest {
     verifyCompatible(ListStructV1.class, ListStructV2.class, true);
   }
 
+  @Test
+  public void testEmptyStruct() {
+    CompatibilityReport report = getCompatibilityReport(NestedEmptyStruct.class, NestedEmptyStruct.class);
+    assertEquals("encountered an empty struct: required_empty\nencountered an empty struct: optional_empty",report.prettyMessages());
+    assertTrue(report.hasEmptyStruct());
+  }
+
   private ThriftType.StructType struct(Class thriftClass) {
-    return new ThriftSchemaConverter().toStructType(thriftClass);
+    return ThriftSchemaConverter.toStructType(thriftClass);
+  }
+
+  private CompatibilityReport getCompatibilityReport(Class oldClass, Class newClass) {
+    CompatibilityChecker checker = new CompatibilityChecker();
+    CompatibilityReport report = checker.checkCompatibility(struct(oldClass), struct(newClass));
+    return report;
   }
 
   private void verifyCompatible(Class oldClass, Class newClass, boolean expectCompatible) {
-    CompatibilityChecker checker = new CompatibilityChecker();
-    CompatibilityReport report = checker.checkCompatibility(struct(oldClass), struct(newClass));
-    System.out.println(report.messages);
+    CompatibilityReport report = getCompatibilityReport(oldClass, newClass);
     assertEquals(expectCompatible, report.isCompatible());
   }
 }

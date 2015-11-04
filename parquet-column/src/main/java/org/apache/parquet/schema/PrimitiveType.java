@@ -204,7 +204,7 @@ public final class PrimitiveType extends Type {
     INT96("getBinary", Binary.class) {
       @Override
       public String toString(ColumnReader columnReader) {
-        return Arrays.toString(columnReader.getBinary().getBytes());
+        return Arrays.toString(columnReader.getBinary().getBytesUnsafe());
       }
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,

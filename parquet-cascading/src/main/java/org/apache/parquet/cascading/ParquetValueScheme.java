@@ -51,17 +51,21 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
 
   public static final class Config<T> implements Serializable {
     private final FilterPredicate filterPredicate;
-    private final String projectionString;
+    private final String deprecatedProjectionString;
+    private final String strictProjectionString;
     private final Class<T> klass;
-    private Config(Class<T> klass, FilterPredicate filterPredicate, String projectionString) {
+
+    private Config(Class<T> klass, FilterPredicate filterPredicate, String deprecatedProjectionString, String strictProjectionString) {
       this.filterPredicate = filterPredicate;
-      this.projectionString = projectionString;
+      this.deprecatedProjectionString = deprecatedProjectionString;
+      this.strictProjectionString = strictProjectionString;
       this.klass = klass;
     }
 
     public Config() {
       filterPredicate = null;
-      projectionString = null;
+      deprecatedProjectionString = null;
+      strictProjectionString = null;
       klass = null;
     }
 
@@ -69,8 +73,13 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
       return filterPredicate;
     }
 
+    @Deprecated
     public String getProjectionString() {
-      return projectionString;
+      return deprecatedProjectionString;
+    }
+
+    public String getStrictProjectionString() {
+      return strictProjectionString;
     }
 
     public Class<T> getKlass() {
@@ -78,15 +87,20 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     }
 
     public Config<T> withFilterPredicate(FilterPredicate f) {
-      return new Config<T>(this.klass, checkNotNull(f, "filterPredicate"), this.projectionString);
+      return new Config<T>(this.klass, checkNotNull(f, "filterPredicate"), this.deprecatedProjectionString, this.strictProjectionString);
     }
 
+    @Deprecated
     public Config<T> withProjectionString(String p) {
-      return new Config<T>(this.klass, this.filterPredicate, checkNotNull(p, "projectionFilter"));
+      return new Config<T>(this.klass, this.filterPredicate, checkNotNull(p, "projectionString"), this.strictProjectionString);
+    }
+
+    public Config<T> withStrictProjectionString(String p) {
+      return new Config<T>(this.klass, this.filterPredicate, this.deprecatedProjectionString, checkNotNull(p, "projectionString"));
     }
 
     public Config<T> withRecordClass(Class<T> klass) {
-      return new Config<T>(checkNotNull(klass, "recordClass"), this.filterPredicate, this.projectionString);
+      return new Config<T>(checkNotNull(klass, "recordClass"), this.filterPredicate, this.deprecatedProjectionString, this.strictProjectionString);
     }
   }
 
@@ -105,9 +119,16 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     this.config = config;
   }
 
+  @Deprecated
   private void setProjectionPushdown(JobConf jobConf) {
-    if (this.config.projectionString!= null) {
-      ThriftReadSupport.setProjectionPushdown(jobConf, this.config.projectionString);
+    if (this.config.deprecatedProjectionString != null) {
+      ThriftReadSupport.setProjectionPushdown(jobConf, this.config.deprecatedProjectionString);
+    }
+  }
+
+  private void setStrictProjectionPushdown(JobConf jobConf) {
+    if (this.config.strictProjectionString != null) {
+      ThriftReadSupport.setStrictFieldProjectionFilter(jobConf, this.config.strictProjectionString);
     }
   }
 
@@ -120,6 +141,7 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
   public void sourceConfInit(FlowProcess<JobConf> jobConfFlowProcess, Tap<JobConf, RecordReader, OutputCollector> jobConfRecordReaderOutputCollectorTap, final JobConf jobConf) {
     setPredicatePushdown(jobConf);
     setProjectionPushdown(jobConf);
+    setStrictProjectionPushdown(jobConf);
     setRecordClass(jobConf);
   }
 

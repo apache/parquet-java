@@ -76,6 +76,7 @@ import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import org.apache.parquet.hadoop.ColumnChunkDictionaryPageReadStore.ColumnChunkDictionaryPageReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
@@ -254,6 +255,15 @@ public class ParquetFileReader implements Closeable {
   /**
    * Read the footers of all the files under that path (recursively)
    * not using summary files.
+   */
+  public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus, boolean skipRowGroups) throws IOException {
+    List<FileStatus> statuses = listFiles(configuration, fileStatus);
+    return readAllFootersInParallel(configuration, statuses, skipRowGroups);
+  }
+
+  /**
+   * Read the footers of all the files under that path (recursively)
+   * not using summary files.
    * rowGroups are not skipped
    * @param configuration the configuration to access the FS
    * @param fileStatus the root dir
@@ -261,9 +271,9 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException
    */
   public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus) throws IOException {
-    List<FileStatus> statuses = listFiles(configuration, fileStatus);
-    return readAllFootersInParallel(configuration, statuses, false);
+    return readAllFootersInParallel(configuration, fileStatus, false);
   }
+
 
   @Deprecated
   public static List<Footer> readFooters(Configuration configuration, Path path) throws IOException {
@@ -441,19 +451,32 @@ public class ParquetFileReader implements Closeable {
   private final Configuration configuration;
   private final FSDataInputStream f;
   private final Path filePath;
-  private int currentBlock = 0;
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<ColumnPath, ColumnDescriptor>();
+  private final FileMetaData fileMetaData;
+  private final String createdBy;
+
+  private int currentBlock = 0;
 
   /**
-   * @param f the Parquet file (will be opened for read in this constructor)
+   * @deprecated use @link{ParquetFileReader(Configuration configuration, FileMetaData fileMetaData,
+   * Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns)} instead
+   */
+  public ParquetFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
+    this(configuration, null, filePath, blocks, columns);
+  }
+
+  /**
+   * @param configuration the Hadoop conf
+   * @param fileMetaData fileMetaData for parquet file
    * @param blocks the blocks to read
-   * @param colums the columns to read (their path)
-   * @param codecClassName the codec used to compress the blocks
+   * @param columns the columns to read (their path)
    * @throws IOException if the file can not be opened
    */
   public ParquetFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
     this.configuration = configuration;
     this.filePath = filePath;
+    this.fileMetaData = fileMetaData;
+    this.createdBy = fileMetaData == null ? null : fileMetaData.getCreatedBy();
     FileSystem fs = filePath.getFileSystem(configuration);
     this.f = fs.open(filePath);
     this.blocks = blocks;
@@ -462,6 +485,7 @@ public class ParquetFileReader implements Closeable {
     }
     this.codecFactory = new CodecFactory(configuration);
   }
+
 
   /**
    * Reads all the columns requested from the row group at the current file position.
@@ -595,7 +619,10 @@ public class ParquetFileReader implements Closeable {
                     this.readAsBytesInput(compressedPageSize),
                     dataHeaderV1.getNum_values(),
                     uncompressedPageSize,
-                    fromParquetStatistics(dataHeaderV1.getStatistics(), descriptor.col.getType()),
+                    fromParquetStatistics(
+                        createdBy,
+                        dataHeaderV1.getStatistics(),
+                        descriptor.col.getType()),
                     converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
                     converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
                     converter.getEncoding(dataHeaderV1.getEncoding())
@@ -615,7 +642,10 @@ public class ParquetFileReader implements Closeable {
                     converter.getEncoding(dataHeaderV2.getEncoding()),
                     this.readAsBytesInput(dataSize),
                     uncompressedPageSize,
-                    fromParquetStatistics(dataHeaderV2.getStatistics(), descriptor.col.getType()),
+                    fromParquetStatistics(
+                        createdBy,
+                        dataHeaderV2.getStatistics(),
+                        descriptor.col.getType()),
                     dataHeaderV2.isIs_compressed()
                     ));
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
