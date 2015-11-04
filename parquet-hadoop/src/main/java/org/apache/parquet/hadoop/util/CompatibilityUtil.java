@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop.util;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.ShouldNeverHappenException;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.lang.reflect.InvocationTargetException;
@@ -31,7 +30,7 @@ public class CompatibilityUtil {
 
   // Will be set to true if the implementation of FSDataInputSteam supports
   // the 2.x APIs, in particular reading using a provided ByteBuffer
-  private static final boolean useV21;
+  private static boolean useV21;
   public static final V21FileAPI fileAPI;
 
   private static class V21FileAPI {
@@ -49,32 +48,17 @@ public class CompatibilityUtil {
     // Test to see if a class from the Hadoop 2.x API is available
     boolean v21 = true;
     try {
-      Class.forName("org.apache.hadoop.io.DirectDecompressor");
+      Class.forName("org.apache.hadoop.io.compress.DirectDecompressor");
     } catch (ClassNotFoundException cnfe) {
       v21 = false;
     }
 
-    boolean interfaceNotActuallyImplemented;
+    useV21 = v21;
     try {
       if (v21) {
         fileAPI = new V21FileAPI();
-        ByteBuffer readBuf = ByteBuffer.allocateDirect(100);
-        // See if the implementation of the filesystem can actually provides functionality in the
-        // new interface or just throws UnsupportedOperationException
-        try {
-          invoke(fileAPI.PROVIDE_BUF_READ_METHOD, "Unexpected error reading into a ByteBuffer", readBuf);
-          interfaceNotActuallyImplemented = false;
-        } catch (UnsupportedOperationException e) {
-          interfaceNotActuallyImplemented = true;
-        }
-        if (interfaceNotActuallyImplemented) {
-          useV21 = false;
-        } else {
-          useV21 = true;
-        }
       } else {
         fileAPI = null;
-        useV21 = false;
       }
 
     } catch (ReflectiveOperationException e) {
@@ -96,10 +80,21 @@ public class CompatibilityUtil {
     int res;
     if (useV21) {
       try {
-        res = (Integer) invoke(fileAPI.PROVIDE_BUF_READ_METHOD, "Unexpected error reading into a ByteBuffer", readBuf);
-      } catch (UnsupportedOperationException e) {
-        // checked for this earlier and set useV21 to false if this exception was thrown
-        // by the current implementation, this should never be thrown
+        res = (Integer) fileAPI.PROVIDE_BUF_READ_METHOD.invoke(f, readBuf);
+      } catch (InvocationTargetException e) {
+        if (e.getCause() instanceof UnsupportedOperationException) {
+          useV21 = false;
+          return getBuf(f, readBuf, maxSize);
+        } else {
+          // the FSDataInputStream docs say specifically that implementations
+          // can choose to throw UnsupportedOperationException, so this should
+          // be a reasonable check to make to see if the interface is actually
+          // implemented
+          throw new ShouldNeverHappenException(e);
+        }
+      } catch (IllegalAccessException e) {
+        // This method is public because it is defined in an interface,
+        // there should be no problems accessing it
         throw new ShouldNeverHappenException(e);
       }
     } else {
