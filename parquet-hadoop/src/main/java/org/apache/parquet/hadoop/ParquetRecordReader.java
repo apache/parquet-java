@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.filter2.compat.RowGroupFilter.filterRowGroups;
+import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.*;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
@@ -32,8 +33,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -45,12 +51,15 @@ import org.apache.parquet.Log;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
+import org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.schema.MessageType;
+
+
 
 /**
  * Reads the records from a block of a Parquet file
@@ -147,7 +156,8 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   }
 
   private void initializeInternalReader(ParquetInputSplit split, Configuration configuration) throws IOException {
-    Path path = split.getPath();
+    final Path path = split.getPath();
+    final Configuration conf = configuration;
     long[] rowGroupOffsets = split.getRowGroupOffsets();
     List<BlockMetaData> filteredBlocks;
     ParquetMetadata footer;
@@ -157,7 +167,34 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       footer = readFooter(configuration, path, range(split.getStart(), split.getEnd()));
       MessageType fileSchema = footer.getFileMetaData().getSchema();
       Filter filter = getFilter(configuration);
-      filteredBlocks = filterRowGroups(filter, footer.getBlocks(), fileSchema);
+
+      List<FilterLevel> levels = new ArrayList<FilterLevel>();
+
+      if(configuration.getBoolean("parquet.filter.statistics.enabled", true)) {
+        levels.add(STATISTICS);
+      }
+
+      //This is for lazy evaluation so that if stats level can provide the
+      //result, we don't need to open a new file stream.
+      Supplier<FSDataInputStream> streamSupplier = null;
+      if(configuration.getBoolean("parquet.filter.dictionary.enabled", false)) {
+        levels.add(DICTIONARY);
+
+        streamSupplier = Suppliers.memoize(new Supplier<FSDataInputStream>() {
+          @Override
+          public FSDataInputStream get() {
+            try {
+              FileSystem fs = path.getFileSystem(conf);
+              return fs.open(path);
+            } catch (IOException e) {
+              LOG.warn("Failed to open path for dictionary predicate evaluation: " + path, e);
+            }
+            return null;
+          }
+        });
+      }
+
+      filteredBlocks = filterRowGroups(levels, filter, footer.getBlocks(), fileSchema, streamSupplier);
     } else {
       // otherwise we find the row groups that were selected on the client
       footer = readFooter(configuration, path, NO_FILTER);
@@ -189,8 +226,8 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     }
     MessageType fileSchema = footer.getFileMetaData().getSchema();
     Map<String, String> fileMetaData = footer.getFileMetaData().getKeyValueMetaData();
-    internalReader.initialize(
-        fileSchema, fileMetaData, path, filteredBlocks, configuration);
+      internalReader.initialize(
+          fileSchema, fileMetaData, path, filteredBlocks, configuration);
   }
 
   /**

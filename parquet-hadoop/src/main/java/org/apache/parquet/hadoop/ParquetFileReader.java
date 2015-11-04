@@ -59,6 +59,8 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
+import org.apache.parquet.column.page.DictionaryPageReader;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -71,6 +73,7 @@ import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import org.apache.parquet.hadoop.CodecFactory.BytesDecompressor;
 import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
+import org.apache.parquet.hadoop.ColumnChunkDictionaryPageReadStore.ColumnChunkDictionaryPageReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -435,6 +438,7 @@ public class ParquetFileReader implements Closeable {
 
   private final CodecFactory codecFactory;
   private final List<BlockMetaData> blocks;
+  private final Configuration configuration;
   private final FSDataInputStream f;
   private final Path filePath;
   private int currentBlock = 0;
@@ -448,6 +452,7 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if the file can not be opened
    */
   public ParquetFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
+    this.configuration = configuration;
     this.filePath = filePath;
     FileSystem fs = filePath.getFileSystem(configuration);
     this.f = fs.open(filePath);
@@ -500,7 +505,35 @@ public class ParquetFileReader implements Closeable {
     return columnChunkPageReadStore;
   }
 
+  public static DictionaryPage getDictionary(Configuration conf, ColumnChunkMetaData meta, FSDataInputStream fin) throws IOException {
+    if(fin.getPos() != meta.getStartingPos()) {
+      fin.seek(meta.getStartingPos());
+    }
 
+    PageHeader pageHeader = Util.readPageHeader(fin);
+
+    return getDictionary(conf, pageHeader, meta, fin);
+  }
+
+  public static DictionaryPage getDictionary(Configuration conf, PageHeader pageHeader, ColumnChunkMetaData meta, FSDataInputStream fin) throws IOException {
+    DictionaryPageHeader dictHeader = pageHeader.getDictionary_page_header();
+
+    int uncompressedPageSize = pageHeader.getUncompressed_page_size();
+    int compressedPageSize = pageHeader.getCompressed_page_size();
+
+    byte [] dictPageBytes = new byte[compressedPageSize];
+
+    fin.read(dictPageBytes);
+
+    BytesInput bin = BytesInput.from(dictPageBytes);
+
+    DictionaryPage compressedPage = new DictionaryPage(bin, uncompressedPageSize, dictHeader.getNum_values(), converter.getEncoding(dictHeader.getEncoding()));
+
+    BytesDecompressor decompressor = new CodecFactory(conf).getDecompressor(meta.getCodec());
+    DictionaryPageReader dictionaryPageReader = new ColumnChunkDictionaryPageReader(decompressor, compressedPage);
+
+    return dictionaryPageReader.readDictionaryPage();
+  }
 
   @Override
   public void close() throws IOException {
@@ -552,14 +585,8 @@ public class ParquetFileReader implements Closeable {
             if (dictionaryPage != null) {
               throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
             }
-          DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
-          dictionaryPage =
-                new DictionaryPage(
-                    this.readAsBytesInput(compressedPageSize),
-                    uncompressedPageSize,
-                    dicHeader.getNum_values(),
-                    converter.getEncoding(dicHeader.getEncoding())
-                    );
+
+            dictionaryPage = getDictionary(configuration, pageHeader, descriptor.metadata, f);
             break;
           case DATA_PAGE:
             DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
