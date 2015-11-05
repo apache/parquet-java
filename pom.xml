@@ -9,7 +9,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.8.2-SNAPSHOT</version>
+  <version>1.8.1-drill-r0</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -185,6 +185,14 @@
   </reporting>
 
   <build>
+ <extensions>
+  <extension>
+    <groupId>org.kuali.maven.wagons</groupId>
+    <artifactId>maven-s3-wagon</artifactId>
+    <version>1.2.1</version>
+  </extension>
+ </extensions>
+
     <pluginManagement>
       <plugins>
         <plugin>
