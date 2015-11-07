@@ -22,10 +22,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Random;
 
 import org.junit.Assert;
 import org.junit.Test;
-
 import org.apache.parquet.Log;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
@@ -101,9 +101,9 @@ public class TestByteBitPacking {
 
   private long[] generateValuesLong(int bitWidth) {
     long[] values = new long[32];
+    Random random = new Random(0);
     for (int j = 0; j < values.length; j++) {
-      values[j] = ((long)(Math.random() * (1l<<32)) * (long)(Math.random() * (1l<<32))) &
-          ((1l << bitWidth) - 1l);
+      values[j] = random.nextLong() & ((1l << bitWidth) - 1l);
     }
     LOG.debug("Input:  " + TestBitPacking.toString(values));
     return values;

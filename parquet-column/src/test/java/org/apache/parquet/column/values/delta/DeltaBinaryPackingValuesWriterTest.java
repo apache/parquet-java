@@ -37,20 +37,31 @@ public class DeltaBinaryPackingValuesWriterTest {
   DeltaBinaryPackingValuesReader reader;
   private int blockSize;
   private int miniBlockNum;
-  private ValuesWriter writer;
+  private ValuesWriter writerForInteger;
+  private ValuesWriter writerForLong;
   private Random random;
 
   @Before
   public void setUp() {
     blockSize = 128;
     miniBlockNum = 4;
-    writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, 200, new DirectByteBufferAllocator());
+    writerForInteger = new DeltaBinaryPackingValuesWriterForInteger(
+        blockSize, miniBlockNum, 100, 200, new DirectByteBufferAllocator());
+    writerForLong = new DeltaBinaryPackingValuesWriterForLong(
+        blockSize, miniBlockNum, 100, 200, new DirectByteBufferAllocator());
     random = new Random(0);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriter(1281, 4, 100, 100, new DirectByteBufferAllocator());
+  public void miniBlockSizeShouldBeMultipleOf8ForInteger() {
+    new DeltaBinaryPackingValuesWriterForInteger(
+        1281, 4, 100, 100, new DirectByteBufferAllocator());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void miniBlockSizeShouldBeMultipleOf8ForLong() {
+    new DeltaBinaryPackingValuesWriterForLong(
+        1281, 4, 100, 100, new DirectByteBufferAllocator());
   }
 
   /* When data size is multiple of Block*/
@@ -162,7 +173,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     writeData(data);
 
     reader = new DeltaBinaryPackingValuesReader();
-    BytesInput bytes = writer.getBytes();
+    BytesInput bytes = writerForInteger.getBytes();
     byte[] valueContent = bytes.toByteArray();
     byte[] pageContent = new byte[valueContent.length * 10];
     int contentOffsetInPage = 33;
@@ -202,7 +213,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     }
     writeData(data);
     reader = new DeltaBinaryPackingValuesReader();
-    reader.initFromPage(100, writer.getBytes().toByteBuffer(), 0);
+    reader.initFromPage(100, writerForInteger.getBytes().toByteBuffer(), 0);
     for (int i = 0; i < data.length; i++) {
       if (i % 3 == 0) {
         reader.skip();
@@ -219,7 +230,8 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < blockSize * 5; i++) {
       data[i] = i * 2;
     }
-    writer.reset();
+    writerForInteger.reset();
+    writerForLong.reset();
     shouldWriteAndRead(data);
   }
 
@@ -235,7 +247,7 @@ public class DeltaBinaryPackingValuesWriterTest {
         data[i] = random.nextLong();
       }
       shouldReadAndWriteLong(data, size);
-      writer.reset();
+      writerForLong.reset();
     }
   }
 
@@ -253,14 +265,13 @@ public class DeltaBinaryPackingValuesWriterTest {
         data[i] = random.nextInt();
       }
       shouldReadAndWrite(data, size);
-      writer.reset();
+      writerForInteger.reset();
     }
   }
 
   private void shouldWriteAndRead(int[] data) throws IOException {
     shouldReadAndWrite(data, data.length);
-    writer.reset();
-    
+
     long[] dataInLong = new long[data.length]; 
     for (int i = 0; i < data.length; i++) {
       dataInLong[i] = (long) data[i];
@@ -271,7 +282,7 @@ public class DeltaBinaryPackingValuesWriterTest {
   private void shouldReadAndWrite(int[] data, int length) throws IOException {
     writeData(data, length);
     reader = new DeltaBinaryPackingValuesReader();
-    byte[] page = writer.getBytes().toByteArray();
+    byte[] page = writerForInteger.getBytes().toByteArray();
     int miniBlockSize = blockSize / miniBlockNum;
 
     double miniBlockFlushed = Math.ceil(((double) length - 1) / miniBlockSize);
@@ -294,14 +305,14 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   private void writeData(int[] data, int length) {
     for (int i = 0; i < length; i++) {
-      writer.writeInteger(data[i]);
+      writerForInteger.writeInteger(data[i]);
     }
   }
 
   private void shouldReadAndWriteLong(long[] data, int length) throws IOException {
     writeDataLong(data, length);
     reader = new DeltaBinaryPackingValuesReader();
-    byte[] page = writer.getBytes().toByteArray();
+    byte[] page = writerForLong.getBytes().toByteArray();
     int miniBlockSize = blockSize / miniBlockNum;
 
     double miniBlockFlushed = Math.ceil(((double) length - 1) / miniBlockSize);
@@ -324,7 +335,7 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   private void writeDataLong(long[] data, int length) {
     for (int i = 0; i < length; i++) {
-      writer.writeLong(data[i]);
+      writerForLong.writeLong(data[i]);
     }
   }
 }

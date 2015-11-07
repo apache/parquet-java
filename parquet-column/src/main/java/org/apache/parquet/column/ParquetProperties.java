@@ -18,20 +18,21 @@
  */
 package org.apache.parquet.column;
 
-import org.apache.parquet.Preconditions;
-import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.bytes.HeapByteBufferAllocator;
-
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
+
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.boundedint.DevNullValuesWriter;
-import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForLong;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
@@ -170,8 +171,9 @@ public class ParquetProperties {
       case FIXED_LEN_BYTE_ARRAY:
         return new DeltaByteArrayWriter(initialSizePerCol, pageSize,this.allocator);
       case INT32:
+        return new DeltaBinaryPackingValuesWriterForInteger(initialSizePerCol, pageSize, this.allocator);
       case INT64:
-        return new DeltaBinaryPackingValuesWriter(initialSizePerCol, pageSize, this.allocator);
+        return new DeltaBinaryPackingValuesWriterForLong(initialSizePerCol, pageSize, this.allocator);
       case INT96:
       case DOUBLE:
       case FLOAT:
