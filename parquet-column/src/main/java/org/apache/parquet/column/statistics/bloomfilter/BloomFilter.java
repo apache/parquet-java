@@ -191,12 +191,12 @@ public class BloomFilter {
         return numHashFunctions;
     }
 
-    public List<Long> getBitSet() {
-        return Arrays.asList(ArrayUtils.toObject(bitSet.getData()));
+    public long[] getBitSet() {
+        return bitSet.getData();
     }
 
-    public void setBitSet(List<Long> data) {
-        bitSet = new BitSet(ArrayUtils.toPrimitive(data.toArray(new Long[] {})));
+    public void setBitSet(long[] data) {
+        this.bitSet = new BitSet(data.clone());
     }
 
     public int getNumBits() {

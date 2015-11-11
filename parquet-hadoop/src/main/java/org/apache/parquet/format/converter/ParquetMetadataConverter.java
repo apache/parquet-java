@@ -21,9 +21,14 @@ package org.apache.parquet.format.converter;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -157,8 +162,10 @@ public class ParquetMetadataConverter {
         visitChildren(result, groupType, element);
       }
 
-      private void visitChildren(final List<SchemaElement> result,
-          GroupType groupType, SchemaElement element) {
+      private void visitChildren(
+          final List<SchemaElement> result,
+          GroupType groupType,
+          SchemaElement element) {
         element.setNum_children(groupType.getFieldCount());
         result.add(element);
         for (org.apache.parquet.schema.Type field : groupType.getFields()) {
@@ -251,16 +258,55 @@ public class ParquetMetadataConverter {
     return stats;
   }
 
-  private static void setBloomFilter(Statistics stats,
+  public static ByteBuffer serializeLongArray(long[] list) {
+    ObjectOutputStream out = null;
+    try {
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      out = new ObjectOutputStream(bos);
+      out.writeObject(list);
+      // Get the bytes of the serialized object
+      byte[] buf = bos.toByteArray();
+      return ByteBuffer.wrap(buf);
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      try {
+        out.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+    return ByteBuffer.allocate(0);
+  }
+
+  public static long[] deserializeLongArray(ByteBuffer buffer) {
+    ObjectInputStream in = null;
+    try {
+      ByteArrayInputStream bis = new ByteArrayInputStream(buffer.array());
+      in = new ObjectInputStream(bis);
+      long[] res = (long[]) in.readObject();
+      return res;
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    }
+    return null;
+  }
+
+  private static void setBloomFilter(
+      Statistics stats,
       org.apache.parquet.column.statistics.Statistics statistics) {
     if (!(statistics instanceof BloomFilterStatistics) || !((BloomFilterStatistics) statistics)
         .isBloomFilterEnabled()) {
       stats.setBloom_filter(null);
     } else {
       BloomFilterStatistics bfStatistics = (BloomFilterStatistics) statistics;
-      BloomFilter bfStats = new BloomFilter(bfStatistics.getBloomFilter().getBitSet(),
-          bfStatistics.getBloomFilter().getNumBits(),
-          bfStatistics.getBloomFilter().getNumHashFunctions(), BloomFilterStrategy.MURMUR128_32);
+      BloomFilter bfStats =
+          new BloomFilter(serializeLongArray(bfStatistics.getBloomFilter().getBitSet()),
+              bfStatistics.getBloomFilter().getNumBits(),
+              bfStatistics.getBloomFilter().getNumHashFunctions(),
+              BloomFilterStrategy.MURMUR128_32);
       stats.setBloom_filter(bfStats);
     }
   }
@@ -288,8 +334,8 @@ public class ParquetMetadataConverter {
       
       // update data for bloom filter statistics
       if (statistics.getBloom_filter()!=null && stats instanceof BloomFilterStatistics) {
-        ((BloomFilterStatistics) stats).getBloomFilter()
-            .setBitSet(statistics.getBloom_filter().getBitSet());
+        ((BloomFilterStatistics) stats).getBloomFilter().setBitSet(
+            deserializeLongArray(ByteBuffer.wrap(statistics.getBloom_filter().getBitSet())));
       }
       stats.setNumNulls(statistics.null_count);
     } else {
