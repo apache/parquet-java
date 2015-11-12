@@ -693,6 +693,7 @@ public class ParquetMetadataConverter {
               CompressionCodecName.fromParquet(metaData.codec),
               fromFormatEncodings(metaData.encodings),
               fromParquetStatistics(
+                  parquetMetadata.created_by,
                   metaData.statistics,
                   messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
                   includeBF),

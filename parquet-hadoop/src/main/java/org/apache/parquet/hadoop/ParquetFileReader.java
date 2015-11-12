@@ -650,8 +650,7 @@ public class ParquetFileReader implements Closeable {
                     this.readAsBytesInput(compressedPageSize),
                     dataHeaderV1.getNum_values(),
                     uncompressedPageSize,
-                    fromParquetStatistics(
-                        dataHeaderV1.getStatistics(),
+                    fromParquetStatistics(createdBy, dataHeaderV1.getStatistics(),
                         descriptor.col.getType()),
                     converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
                     converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
@@ -672,8 +671,7 @@ public class ParquetFileReader implements Closeable {
                     converter.getEncoding(dataHeaderV2.getEncoding()),
                     this.readAsBytesInput(dataSize),
                     uncompressedPageSize,
-                    fromParquetStatistics(
-                        dataHeaderV2.getStatistics(),
+                    fromParquetStatistics(createdBy, dataHeaderV2.getStatistics(),
                         descriptor.col.getType()),
                     dataHeaderV2.isIs_compressed()
                     ));
