@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import org.apache.parquet.column.statistics.StatisticsOpts;
+import org.apache.parquet.column.statistics.ColumnStatisticsOpts;
 import org.junit.Test;
 
 import org.apache.parquet.column.Encoding;
@@ -80,8 +80,9 @@ public class TestStatisticsFilter {
   private static final IntColumn intColumn = intColumn("int.column");
   private static final DoubleColumn doubleColumn = doubleColumn("double.column");
 
-  private static final IntStatistics intStats = new IntStatistics(new StatisticsOpts(null));
-  private static final IntStatistics nullIntStats = new IntStatistics(new StatisticsOpts(null));
+  private static final IntStatistics intStats = new IntStatistics(new ColumnStatisticsOpts(null));
+  private static final IntStatistics nullIntStats =
+      new IntStatistics(new ColumnStatisticsOpts(null));
   private static final DoubleStatistics doubleStats = new DoubleStatistics(null);
 
   static {
@@ -114,11 +115,11 @@ public class TestStatisticsFilter {
 
   @Test
   public void testEqNull() {
-    IntStatistics statsNoNulls = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics statsNoNulls = new IntStatistics(new ColumnStatisticsOpts(null));
     statsNoNulls.setMinMax(10, 100);
     statsNoNulls.setNumNulls(0);
 
-    IntStatistics statsSomeNulls = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics statsSomeNulls = new IntStatistics(new ColumnStatisticsOpts(null));
     statsSomeNulls.setMinMax(10, 100);
     statsSomeNulls.setNumNulls(3);
 
@@ -139,7 +140,7 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(notEq(intColumn, 100), columnMetas));
     assertFalse(canDrop(notEq(intColumn, 101), columnMetas));
 
-    IntStatistics allSevens = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics allSevens = new IntStatistics(new ColumnStatisticsOpts(null));
     allSevens.setMinMax(7, 7);
     assertTrue(canDrop(notEq(intColumn, 7), Arrays.asList(
         getIntColumnMeta(allSevens, 177L),
@@ -149,15 +150,15 @@ public class TestStatisticsFilter {
 
   @Test
   public void testNotEqNull() {
-    IntStatistics statsNoNulls = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics statsNoNulls = new IntStatistics(new ColumnStatisticsOpts(null));
     statsNoNulls.setMinMax(10, 100);
     statsNoNulls.setNumNulls(0);
 
-    IntStatistics statsSomeNulls = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics statsSomeNulls = new IntStatistics(new ColumnStatisticsOpts(null));
     statsSomeNulls.setMinMax(10, 100);
     statsSomeNulls.setNumNulls(3);
 
-    IntStatistics statsAllNulls = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics statsAllNulls = new IntStatistics(new ColumnStatisticsOpts(null));
     statsAllNulls.setMinMax(0, 0);
     statsAllNulls.setNumNulls(177);
 
@@ -261,13 +262,13 @@ public class TestStatisticsFilter {
     FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class);
     FilterPredicate invPred = LogicalInverseRewriter.rewrite(not(userDefined(intColumn, SevensAndEightsUdp.class)));
 
-    IntStatistics seven = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics seven = new IntStatistics(new ColumnStatisticsOpts(null));
     seven.setMinMax(7, 7);
 
-    IntStatistics eight = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics eight = new IntStatistics(new ColumnStatisticsOpts(null));
     eight.setMinMax(8, 8);
 
-    IntStatistics neither = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics neither = new IntStatistics(new ColumnStatisticsOpts(null));
     neither.setMinMax(1 , 2);
 
     assertTrue(canDrop(pred, Arrays.asList(
@@ -315,7 +316,7 @@ public class TestStatisticsFilter {
   @Test
   public void testMissingColumn() {
     List<ColumnChunkMetaData> columnMetas =
-        Arrays.asList(getIntColumnMeta(new IntStatistics(new StatisticsOpts(null)), 0L));
+        Arrays.asList(getIntColumnMeta(new IntStatistics(new ColumnStatisticsOpts(null)), 0L));
     try {
       canDrop(and(eq(doubleColumn, 12.0), eq(intColumn, 17)), columnMetas);
       fail("This should throw");

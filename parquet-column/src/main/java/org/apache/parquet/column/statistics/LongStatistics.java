@@ -29,15 +29,15 @@ public class LongStatistics extends Statistics<Long> implements BloomFilterStati
   private BloomFilter bloomFilter;
   private boolean isBloomFilterEnabled = false;
 
-  public LongStatistics(StatisticsOpts statisticsOpts){
+  public LongStatistics(ColumnStatisticsOpts columnStatisticsOpts){
     super();
-    if (statisticsOpts != null) {
-      updateBloomFilterOptions(statisticsOpts.getBloomFilterOpts());
+    if (columnStatisticsOpts != null) {
+      updateBloomFilterOptions(columnStatisticsOpts.getBloomFilterOpts());
     }
   }
 
-  private void updateBloomFilterOptions(BloomFilterOpts statisticsOpts) {
-    if (statisticsOpts != null && statisticsOpts.isEnabled()) {
+  private void updateBloomFilterOptions(BloomFilterOpts.BloomFilterEntry statisticsOpts) {
+    if (statisticsOpts != null) {
       bloomFilter =
           new BloomFilter(statisticsOpts.getNumBits(), statisticsOpts.getNumHashFunctions());
       isBloomFilterEnabled = true;

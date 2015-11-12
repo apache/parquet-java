@@ -429,6 +429,8 @@ public class TestParquetFileWriter {
   public void testConvertToThriftStatistics() throws Exception {
     long[] longArray = new long[] {39L, 99L, 12L, 1000L, 65L, 542L, 2533461316L, -253346131996L, Long.MAX_VALUE, Long.MIN_VALUE};
     LongStatistics parquetMRstats = new LongStatistics(null);
+    final String createdBy =
+        "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
 
     for (long l: longArray) {
       parquetMRstats.updateStats(l);
@@ -437,7 +439,7 @@ public class TestParquetFileWriter {
         org.apache.parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
     LongStatistics convertedBackStats =
         (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
-            .fromParquetStatistics(thriftStats, PrimitiveTypeName.INT64);
+            .fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT64);
 
     assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
     assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());
@@ -451,17 +453,21 @@ public class TestParquetFileWriter {
     int v3 = 1000;
     final String createdBy =
         "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
+    MessageType messageType =
+        MessageTypeParser.parseMessageType("Message messageType{optional int32 a;}");
     BloomFilterOpts bloomFilterOpts =
-        new BloomFilterOptBuilder().enable(true).expectedEntries(100).falsePositiveProbability(0.05)
-            .build();
-    IntStatistics parquetMRstats = new IntStatistics(new StatisticsOpts(bloomFilterOpts));
+        new BloomFilterOptBuilder().enableCols("a").expectedEntries("100")
+            .falsePositiveProbabilities("0.05").build(messageType);
+    StatisticsOpts statisticsOpts = new StatisticsOpts(bloomFilterOpts);
+    IntStatistics parquetMRstats = new IntStatistics(
+        statisticsOpts.getStatistics(messageType.getColumnDescription(new String[] { "a" })));
     parquetMRstats.updateStats(v1);
 
     Statistics thriftStats = org.apache.parquet.format.converter.ParquetMetadataConverter
         .toParquetStatistics(parquetMRstats);
     IntStatistics convertedBackStats =
         (IntStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
-            .fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT32);
+            .fromParquetStatisticsWithBF(createdBy, thriftStats, PrimitiveTypeName.INT32);
     assertTrue(parquetMRstats.test(v1));
     assertTrue(convertedBackStats.test(v1));
     assertFalse(parquetMRstats.test(v2));
@@ -474,7 +480,7 @@ public class TestParquetFileWriter {
         .toParquetStatistics(parquetMRstats);
     convertedBackStats =
         (IntStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
-            .fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT32);
+            .fromParquetStatisticsWithBF(createdBy, thriftStats, PrimitiveTypeName.INT32);
     assertTrue(parquetMRstats.test(v1));
     assertTrue(convertedBackStats.test(v1));
     assertTrue(parquetMRstats.test(v2));
@@ -487,7 +493,7 @@ public class TestParquetFileWriter {
         .toParquetStatistics(parquetMRstats);
     convertedBackStats =
         (IntStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
-            .fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT32);
+            .fromParquetStatisticsWithBF(createdBy, thriftStats, PrimitiveTypeName.INT32);
     assertTrue(parquetMRstats.test(v1));
     assertTrue(convertedBackStats.test(v1));
     assertTrue(parquetMRstats.test(v2));

@@ -30,21 +30,20 @@ public class FloatStatistics extends Statistics<Float> implements BloomFilterSta
   private BloomFilter bloomFilter;
   private boolean isBloomFilterEnabled = false;
 
-  public FloatStatistics(StatisticsOpts statisticsOpts) {
+  public FloatStatistics(ColumnStatisticsOpts columnStatisticsOpts) {
     super();
-    if (statisticsOpts != null) {
-      updateBloomFilterOptions(statisticsOpts.getBloomFilterOpts());
+    if (columnStatisticsOpts != null) {
+      updateBloomFilterOptions(columnStatisticsOpts.getBloomFilterOpts());
     }
   }
 
-  private void updateBloomFilterOptions(BloomFilterOpts statisticsOpts) {
-    if (statisticsOpts != null && statisticsOpts.isEnabled()) {
+  private void updateBloomFilterOptions(BloomFilterOpts.BloomFilterEntry statisticsOpts) {
+    if (statisticsOpts != null) {
       bloomFilter =
           new BloomFilter(statisticsOpts.getNumBits(), statisticsOpts.getNumHashFunctions());
       isBloomFilterEnabled = true;
     }
   }
-
 
   @Override
   public void updateStats(float value) {

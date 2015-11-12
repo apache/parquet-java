@@ -41,6 +41,7 @@ import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.statistics.StatisticsOpts;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -104,7 +105,7 @@ public class TestColumnChunkPageWriteStore {
       {
         ColumnChunkPageWriteStore store =
             new ColumnChunkPageWriteStore(compressor(GZIP), schema, new HeapByteBufferAllocator(),
-                null);
+                new StatisticsOpts());
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount, nullCount, valueCount,
@@ -165,7 +166,7 @@ public class TestColumnChunkPageWriteStore {
     // see comment at this constructor
     ColumnChunkPageWriteStore store =
         new ColumnChunkPageWriteStore(compressor(UNCOMPRESSED), schema,
-            new HeapByteBufferAllocator(), null);
+            new HeapByteBufferAllocator(), new StatisticsOpts());
 
     for (ColumnDescriptor col : schema.getColumns()) {
       PageWriter pageWriter = store.getPageWriter(col);

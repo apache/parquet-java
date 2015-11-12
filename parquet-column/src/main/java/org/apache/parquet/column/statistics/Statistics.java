@@ -23,7 +23,6 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import java.util.Arrays;
 
-
 /**
  * Statistics class to keep track of statistics in parquet pages and column chunks
  *
@@ -45,8 +44,9 @@ public abstract class Statistics<T extends Comparable<T>> {
    * @param statisticsOpts the options for statistics filter
    * @return instance of a typed statistics class
    */
-  public static Statistics getStatsBasedOnType(PrimitiveTypeName type,
-      StatisticsOpts statisticsOpts) {
+  public static Statistics getStatsBasedOnType(
+      PrimitiveTypeName type,
+      ColumnStatisticsOpts statisticsOpts) {
     switch(type) {
     case INT32:
       return new IntStatistics(statisticsOpts);

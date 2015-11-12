@@ -18,31 +18,16 @@
  */
 package org.apache.parquet.column.statistics;
 
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 
-import java.util.HashMap;
-import java.util.Map;
+public class ColumnStatisticsOpts {
+  BloomFilterOpts.BloomFilterEntry bloomFilterOpts;
 
-public class StatisticsOpts {
-  Map<ColumnDescriptor, ColumnStatisticsOpts> statisticsOptsMap =
-      new HashMap<ColumnDescriptor, ColumnStatisticsOpts>();
-
-  // Used for test
-  public StatisticsOpts() {
+  public ColumnStatisticsOpts(BloomFilterOpts.BloomFilterEntry bloomFilterOpts) {
+    this.bloomFilterOpts = bloomFilterOpts;
   }
 
-  public StatisticsOpts(BloomFilterOpts bloomFilterOpts) {
-    if (bloomFilterOpts != null) {
-      Map<ColumnDescriptor, BloomFilterOpts.BloomFilterEntry> bloomFilterEntryMap =
-          bloomFilterOpts.getFilterEntryList();
-      for (ColumnDescriptor c : bloomFilterEntryMap.keySet()) {
-        statisticsOptsMap.put(c, new ColumnStatisticsOpts(bloomFilterEntryMap.get(c)));
-      }
-    }
-  }
-
-  public ColumnStatisticsOpts getStatistics(ColumnDescriptor colDescriptor) {
-    return statisticsOptsMap.get(colDescriptor);
+  public BloomFilterOpts.BloomFilterEntry getBloomFilterOpts() {
+    return bloomFilterOpts;
   }
 }

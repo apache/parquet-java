@@ -43,6 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Log;
+import org.apache.parquet.column.statistics.ColumnStatisticsOpts;
 import org.apache.parquet.column.statistics.StatisticsOpts;
 import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
@@ -314,19 +315,51 @@ public class ParquetMetadataConverter {
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       String createdBy,
       Statistics statistics,
+      PrimitiveTypeName type,
+      boolean includeBF) {
+    if (includeBF) {
+      return fromParquetStatisticsWithBF(createdBy, statistics, type);
+    } else {
+      return fromParquetStatistics(createdBy, statistics, type);
+    }
+  }
+
+  public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
+      String createdBy,
+      Statistics statistics,
       PrimitiveTypeName type) {
     org.apache.parquet.column.statistics.Statistics stats;
     // If there was no statistics written to the footer, create an empty Statistics object and return
-    // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
     if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type)) {
-      BloomFilterOpts opts = null;
+      // create stats object based on the column type
+      stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type, null);
+
+      if (statistics.isSetMax() && statistics.isSetMin()) {
+        stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
+      }
+      stats.setNumNulls(statistics.null_count);
+    } else {
+      stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type, null);
+    }
+    return stats;
+  }
+
+  public static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsWithBF(
+      String createdBy,
+      Statistics statistics,
+      PrimitiveTypeName type) {
+    org.apache.parquet.column.statistics.Statistics stats;
+    // If there was no statistics written to the footer, create an empty Statistics object and return
+    if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type)) {
+      BloomFilterOpts.BloomFilterEntry opts = null;
       if (statistics.getBloom_filter() != null) {
-        opts = new BloomFilterOpts(statistics.getBloom_filter().getNumBits(),
+        opts = new BloomFilterOpts.BloomFilterEntry(statistics.getBloom_filter().getNumBits(),
             statistics.getBloom_filter().getNumHashFunctions());
       }
       // create stats object based on the column type
-      stats = org.apache.parquet.column.statistics.Statistics
-          .getStatsBasedOnType(type, new StatisticsOpts(opts));
+      stats =
+          org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type,
+              new ColumnStatisticsOpts(opts));
 
       if (statistics.isSetMax() && statistics.isSetMin()) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
@@ -572,7 +605,7 @@ public class ParquetMetadataConverter {
 
   @Deprecated
   public ParquetMetadata readParquetMetadata(InputStream from) throws IOException {
-    return readParquetMetadata(from, NO_FILTER);
+    return readParquetMetadata(from, NO_FILTER, false);
   }
 
   // Visible for testing
@@ -608,7 +641,10 @@ public class ParquetMetadataConverter {
     return offset;
   }
 
-  public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter) throws IOException {
+  public ParquetMetadata readParquetMetadata(
+      final InputStream from,
+      MetadataFilter filter,
+      boolean includeBF) throws IOException {
     FileMetaData fileMetaData = filter.accept(new MetadataFilterVisitor<FileMetaData, IOException>() {
       @Override
       public FileMetaData visit(NoFilter filter) throws IOException {
@@ -626,12 +662,14 @@ public class ParquetMetadataConverter {
       }
     });
     if (Log.DEBUG) LOG.debug(fileMetaData);
-    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
+    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData, includeBF);
     if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
     return parquetMetadata;
   }
 
-  public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
+  public ParquetMetadata fromParquetMetadata(
+      FileMetaData parquetMetadata,
+      boolean includeBF) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
@@ -656,7 +694,8 @@ public class ParquetMetadataConverter {
               fromFormatEncodings(metaData.encodings),
               fromParquetStatistics(
                   metaData.statistics,
-                  messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName()),
+                  messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
+                  includeBF),
               metaData.data_page_offset,
               metaData.dictionary_page_offset,
               metaData.num_values,

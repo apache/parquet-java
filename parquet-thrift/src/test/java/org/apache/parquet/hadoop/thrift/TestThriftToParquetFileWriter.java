@@ -99,7 +99,7 @@ public class TestThriftToParquetFileWriter {
     @Test
     public void testWriteStatistics() throws Exception {
       //create correct stats small numbers
-      IntStatistics intStatsSmall = new IntStatistics(new StatisticsOpts(null));
+      IntStatistics intStatsSmall = new IntStatistics(new ColumnStatisticsOpts(null));
       intStatsSmall.setMinMax(2, 100);
       LongStatistics longStatsSmall = new LongStatistics(null);
       longStatsSmall.setMinMax(-17l,  287L);
@@ -142,7 +142,7 @@ public class TestThriftToParquetFileWriter {
         }
       }
       //create correct stats large numbers
-      IntStatistics intStatsLarge = new IntStatistics(new StatisticsOpts(null));
+      IntStatistics intStatsLarge = new IntStatistics(new ColumnStatisticsOpts(null));
       intStatsLarge.setMinMax(-Integer.MAX_VALUE, Integer.MAX_VALUE);
       LongStatistics longStatsLarge = new LongStatistics(null);
       longStatsLarge.setMinMax(-Long.MAX_VALUE, Long.MAX_VALUE);

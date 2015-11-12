@@ -29,15 +29,15 @@ public class IntStatistics extends Statistics<Integer> implements BloomFilterSta
   private BloomFilter bloomFilter;
   private boolean isBloomFilterEnabled = false;
 
-  public IntStatistics(StatisticsOpts statisticsOpts) {
+  public IntStatistics(ColumnStatisticsOpts columnStatisticsOpts) {
     super();
-    if (statisticsOpts != null) {
-      updateBloomFilterOptions(statisticsOpts.getBloomFilterOpts());
+    if (columnStatisticsOpts != null) {
+      updateBloomFilterOptions(columnStatisticsOpts.getBloomFilterOpts());
     }
   }
 
-  private void updateBloomFilterOptions(BloomFilterOpts statisticsOpts) {
-    if (statisticsOpts != null && statisticsOpts.isEnabled()) {
+  private void updateBloomFilterOptions(BloomFilterOpts.BloomFilterEntry statisticsOpts) {
+    if (statisticsOpts != null) {
       bloomFilter =
           new BloomFilter(statisticsOpts.getNumBits(), statisticsOpts.getNumHashFunctions());
       isBloomFilterEnabled = true;

@@ -148,7 +148,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String EXPACTED_ENTRIES     = "parquet.expected.entries";
   public static final String IS_FPP_PROVIDED      = "parquet.bloom.filter.fpp.provided";
   public static final String FPP_VALUE            = "parquet.bloom.filter.value";
-  public static final String EXPECTED_ENTRIES = "parquet.bloom.filter.expected.entries";
+  public static final String EXPECTED_ENTRIES     = "parquet.bloom.filter.expected.entries";
+  public static final String ENABLE_BLOOM_FILTER_COL_NAME =
+      "parquet.bloom.filter.enable.column.names";
   public static final String FALSE_POSITIVE_PROBABILITY =
       "parquet.bloom.filter.false.positive.probability";
 

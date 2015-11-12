@@ -29,6 +29,8 @@ import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
 import org.junit.Test;
 
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 
 public class TestStatistics {
   private int[] integerArray;
@@ -40,7 +42,7 @@ public class TestStatistics {
 
   @Test
   public void testNumNulls() {
-    IntStatistics stats = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics stats = new IntStatistics(new ColumnStatisticsOpts(null));
     assertEquals(stats.getNumNulls(), 0);
 
     stats.incrementNumNulls();
@@ -58,17 +60,31 @@ public class TestStatistics {
 
   @Test
   public void testBloomFilter() {
+    MessageType messageType = MessageTypeParser.parseMessageType(
+        "message hive_schema {optional int32 a; optional int64 b; optional double c; optional float d; optional binary e;}");
     BloomFilterOpts opts =
-        new BloomFilterOptBuilder().enable(true).expectedEntries(100).falsePositiveProbability(0.05)
-            .build();
+        new BloomFilterOptBuilder().enableCols("a,b,c,d,e").expectedEntries("100,100,100,100,100")
+            .falsePositiveProbabilities("0.05,0.05,0.05,0.05,0.05").build(messageType);
     StatisticsOpts statisticsOpts = new StatisticsOpts(opts);
-    checkBloomFilter(new Integer[] { 1, 2, 3 }, new IntStatistics(statisticsOpts));
-    checkBloomFilter(new Long[] { 1L, 2L, 3L }, new LongStatistics(statisticsOpts));
-    checkBloomFilter(new Double[] { 1.2, 3.34, 5.5 }, new DoubleStatistics(statisticsOpts));
-    checkBloomFilter(new Float[] { 1.2f, 3.3f, 4.4f }, new FloatStatistics(statisticsOpts));
+
+    checkBloomFilter(new Integer[] { 1, 2, 3 },
+        new IntStatistics(getBloomFilterOpts(statisticsOpts, "a", messageType)));
+    checkBloomFilter(new Long[] { 1L, 2L, 3L },
+        new LongStatistics(getBloomFilterOpts(statisticsOpts, "b", messageType)));
+    checkBloomFilter(new Double[] { 1.2, 3.34, 5.5 },
+        new DoubleStatistics(getBloomFilterOpts(statisticsOpts, "c", messageType)));
+    checkBloomFilter(new Float[] { 1.2f, 3.3f, 4.4f },
+        new FloatStatistics(getBloomFilterOpts(statisticsOpts, "d", messageType)));
     checkBloomFilter(
         new Binary[] { Binary.fromString("ac"), Binary.fromString("bd"), Binary.fromString("ef") },
-        new BinaryStatistics(statisticsOpts));
+        new BinaryStatistics(getBloomFilterOpts(statisticsOpts, "b", messageType)));
+  }
+
+  private static ColumnStatisticsOpts getBloomFilterOpts(
+      StatisticsOpts statisticsOpts,
+      String colName,
+      MessageType messageType) {
+    return statisticsOpts.getStatistics(messageType.getColumnDescription(new String[] { colName }));
   }
 
   private void checkBloomFilter(Integer[] data, BloomFilterStatistics statistics) {
@@ -191,7 +207,7 @@ public class TestStatistics {
   public void testIntMinMax() {
     // Test basic max/min
     integerArray = new int[] {1, 3, 14, 54, 66, 8, 0, 23, 54};
-    IntStatistics stats = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics stats = new IntStatistics(new ColumnStatisticsOpts(null));
 
     for (int i: integerArray) {
       stats.updateStats(i);
@@ -201,7 +217,7 @@ public class TestStatistics {
 
     // Test negative values
     integerArray = new int[] {-11, 3, -14, 54, -66, 8, 0, -23, 54};
-    IntStatistics statsNeg = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics statsNeg = new IntStatistics(new ColumnStatisticsOpts(null));
 
     for (int i: integerArray) {
       statsNeg.updateStats(i);
@@ -216,14 +232,14 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(intMaxBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), 54);
     assertEquals(ByteBuffer.wrap(intMinBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), -66);
 
-    IntStatistics statsFromBytes = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics statsFromBytes = new IntStatistics(new ColumnStatisticsOpts(null));
     statsFromBytes.setMinMaxFromBytes(intMinBytes, intMaxBytes);
 
     assertEquals(statsFromBytes.getMax(), 54);
     assertEquals(statsFromBytes.getMin(), -66);
 
     integerArray = new int[] {Integer.MAX_VALUE, Integer.MIN_VALUE};
-    IntStatistics minMaxValues = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics minMaxValues = new IntStatistics(new ColumnStatisticsOpts(null));
 
     for (int i: integerArray) {
       minMaxValues.updateStats(i);
@@ -238,7 +254,7 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(intMaxBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), Integer.MAX_VALUE);
     assertEquals(ByteBuffer.wrap(intMinBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), Integer.MIN_VALUE);
 
-    IntStatistics statsFromBytesMinMax= new IntStatistics(new StatisticsOpts(null));
+    IntStatistics statsFromBytesMinMax= new IntStatistics(new ColumnStatisticsOpts(null));
     statsFromBytesMinMax.setMinMaxFromBytes(intMinBytesMinMax, intMaxBytesMinMax);
 
     assertEquals(statsFromBytesMinMax.getMax(), Integer.MAX_VALUE);
@@ -548,14 +564,14 @@ public class TestStatistics {
 
   private void testMergingIntStats() {
     integerArray = new int[] {1, 2, 3, 4, 5};
-    IntStatistics intStats = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics intStats = new IntStatistics(new ColumnStatisticsOpts(null));
 
     for (int s: integerArray) {
       intStats.updateStats(s);
     }
 
     integerArray = new int[] {0, 3, 3};
-    IntStatistics intStats2 = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics intStats2 = new IntStatistics(new ColumnStatisticsOpts(null));
 
     for (int s: integerArray) {
       intStats2.updateStats(s);
@@ -565,7 +581,7 @@ public class TestStatistics {
     assertEquals(intStats.getMin(), 0);
 
     integerArray = new int[] {-1, -100, 100};
-    IntStatistics intStats3 = new IntStatistics(new StatisticsOpts(null));
+    IntStatistics intStats3 = new IntStatistics(new ColumnStatisticsOpts(null));
     for (int s: integerArray) {
       intStats3.updateStats(s);
     }

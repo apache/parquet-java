@@ -32,6 +32,7 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.statistics.ColumnStatisticsOpts;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.statistics.StatisticsOpts;
 import org.apache.parquet.column.values.ValuesWriter;
@@ -79,7 +80,9 @@ final class ColumnWriterV2 implements ColumnWriter {
   }
 
   private void resetStatistics() {
-    this.statistics = Statistics.getStatsBasedOnType(this.path.getType(), statisticsOpts);
+    ColumnStatisticsOpts columnStatisticsOpts =
+        (statisticsOpts == null) ? null : statisticsOpts.getStatistics(path);
+    this.statistics = Statistics.getStatsBasedOnType(this.path.getType(), columnStatisticsOpts);
   }
 
   private void definitionLevel(int definitionLevel) {

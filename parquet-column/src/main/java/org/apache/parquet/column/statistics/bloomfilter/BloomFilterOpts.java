@@ -18,37 +18,47 @@
  */
 package org.apache.parquet.column.statistics.bloomfilter;
 
+import org.apache.parquet.column.ColumnDescriptor;
+
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * This class contains the otions required for constructing a bloom filter including the number of bits and the number of hash functions.
  */
 public class BloomFilterOpts {
-  private int numBits;
-  private int numHashFunctions;
-  private boolean enabled;
+  public static class BloomFilterEntry {
+    private int numBits;
+    private int numHashFunctions;
 
-  public BloomFilterOpts() {
-    this.enabled = false;
+    /**
+     * @param numBits          number of bits
+     * @param numHashFunctions num of hash functions
+     */
+    public BloomFilterEntry(
+        int numBits,
+        int numHashFunctions) {
+      this.numBits = numBits;
+      this.numHashFunctions = numHashFunctions;
+    }
+
+    public int getNumBits() {
+      return numBits;
+    }
+
+    public int getNumHashFunctions() {
+      return numHashFunctions;
+    }
   }
 
-  /**
-   * @param numBits          number of bits
-   * @param numHashFunctions num of hash functions
-   */
-  public BloomFilterOpts(int numBits, int numHashFunctions) {
-    this.numBits = numBits;
-    this.numHashFunctions = numHashFunctions;
-    this.enabled = true;
+  Map<ColumnDescriptor, BloomFilterEntry> filterEntryList =
+      new HashMap<ColumnDescriptor, BloomFilterEntry>();
+
+  public BloomFilterOpts(Map<ColumnDescriptor, BloomFilterEntry> filterEntryList) {
+    this.filterEntryList = filterEntryList;
   }
 
-  public int getNumBits() {
-    return numBits;
-  }
-
-  public int getNumHashFunctions() {
-    return numHashFunctions;
-  }
-
-  public boolean isEnabled() {
-    return enabled;
+  public Map<ColumnDescriptor, BloomFilterEntry> getFilterEntryList() {
+    return filterEntryList;
   }
 }

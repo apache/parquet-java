@@ -244,6 +244,7 @@ public class ParquetFileWriter {
       this.alignment = NoAlignment.get(rowGroupSize);
       this.out = fs.create(file, overwriteFlag);
     }
+    buildBloomFilterOpts(configuration);
   }
 
   /**
@@ -268,19 +269,14 @@ public class ParquetFileWriter {
   }
 
   private void buildBloomFilterOpts(Configuration conf) {
-    boolean enableBloomFilter = conf.getBoolean(ParquetOutputFormat.ENABLE_BLOOM_FILTER, false);
-    //TODO: remove magic number before shipping
-    long expectedEntries = conf.getLong(ParquetOutputFormat.EXPECTED_ENTRIES, 1000);
-    double fpp = Double.valueOf(conf.get(ParquetOutputFormat.FALSE_POSITIVE_PROBABILITY,
-        String.valueOf(BloomFilter.DEFAULT_FALSE_POSITIVE_PROBABILITY)));
-
-    BloomFilterOpts bloomFilterOpts;
-    if (enableBloomFilter) {
-      bloomFilterOpts = new BloomFilterOptBuilder().enable(true).expectedEntries(expectedEntries)
-          .falsePositiveProbability(fpp).build();
-    } else {
-      bloomFilterOpts = new BloomFilterOptBuilder().enable(false).build();
-    }
+    String colNamesWithBloomFilter = conf.get(ParquetOutputFormat.ENABLE_BLOOM_FILTER_COL_NAME, "");
+    String expectedEntries = conf.get(ParquetOutputFormat.EXPECTED_ENTRIES, "");
+    String FPPs = conf.get(ParquetOutputFormat.FALSE_POSITIVE_PROBABILITY, "");
+    LOG.info("FPP: " + FPPs + " expectedEntries:  " + expectedEntries + "colNamesWithBloomFilter:"
+        + colNamesWithBloomFilter);
+    BloomFilterOpts bloomFilterOpts =
+        new BloomFilterOptBuilder().enableCols(colNamesWithBloomFilter)
+            .expectedEntries(expectedEntries).falsePositiveProbabilities(FPPs).build(schema);
     statisticsOpts = new StatisticsOpts(bloomFilterOpts);
   }
 
@@ -331,7 +327,8 @@ public class ParquetFileWriter {
     uncompressedLength = 0;
     // need to know what type of stats to initialize to
     // better way to do this?
-    currentStatistics = Statistics.getStatsBasedOnType(currentChunkType, statisticsOpts);
+    currentStatistics =
+        Statistics.getStatsBasedOnType(currentChunkType, statisticsOpts.getStatistics(descriptor));
   }
 
   /**

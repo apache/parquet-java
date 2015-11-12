@@ -37,9 +37,9 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.statistics.ColumnStatisticsOpts;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.statistics.StatisticsOpts;
-import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -74,12 +74,12 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
         ColumnDescriptor path,
         BytesCompressor compressor,
         ByteBufferAllocator allocator,
-        StatisticsOpts statisticsOpts) {
+        ColumnStatisticsOpts columnStatisticsOpts) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
       this.buf = new ConcatenatingByteArrayCollector();
-      this.totalStatistics = getStatsBasedOnType(this.path.getType(), statisticsOpts);
+      this.totalStatistics = getStatsBasedOnType(this.path.getType(), columnStatisticsOpts);
     }
 
     @Override
@@ -237,7 +237,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       StatisticsOpts statisticsOpts) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, statisticsOpts));
+      writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator,
+          statisticsOpts.getStatistics(path)));
     }
   }
 

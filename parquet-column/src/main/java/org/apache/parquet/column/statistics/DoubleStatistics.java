@@ -30,15 +30,15 @@ public class DoubleStatistics extends Statistics<Double> implements BloomFilterS
   private BloomFilter bloomFilter;
   private boolean isBloomFilterEnabled = false;
 
-  public DoubleStatistics(StatisticsOpts statisticsOpts){
+  public DoubleStatistics(ColumnStatisticsOpts statisticsOpts){
     super();
     if(statisticsOpts!=null){
       updateBloomFilterOptions(statisticsOpts.getBloomFilterOpts());
     }
   }
 
-  private void updateBloomFilterOptions(BloomFilterOpts statisticsOpts) {
-    if (statisticsOpts != null && statisticsOpts.isEnabled()) {
+  private void updateBloomFilterOptions(BloomFilterOpts.BloomFilterEntry statisticsOpts) {
+    if (statisticsOpts != null) {
       bloomFilter =
           new BloomFilter(statisticsOpts.getNumBits(), statisticsOpts.getNumHashFunctions());
       isBloomFilterEnabled = true;
