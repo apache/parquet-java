@@ -59,6 +59,13 @@ public class DoubleStatistics extends Statistics<Double> implements BloomFilterS
   }
 
   @Override
+  void mergeBloomFilters(Statistics stats) {
+    if (isBloomFilterEnabled && stats instanceof BloomFilterStatistics) {
+      this.bloomFilter.merge(((BloomFilterStatistics) stats).getBloomFilter());
+    }
+  }
+
+  @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     DoubleStatistics doubleStats = (DoubleStatistics)stats;
     if (!this.hasNonNullValue()) {

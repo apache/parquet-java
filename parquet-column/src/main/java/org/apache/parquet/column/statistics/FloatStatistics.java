@@ -59,6 +59,13 @@ public class FloatStatistics extends Statistics<Float> implements BloomFilterSta
   }
 
   @Override
+  void mergeBloomFilters(Statistics stats) {
+    if (isBloomFilterEnabled && stats instanceof BloomFilterStatistics) {
+      this.bloomFilter.merge(((BloomFilterStatistics) stats).getBloomFilter());
+    }
+  }
+
+  @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     FloatStatistics floatStats = (FloatStatistics)stats;
     if (!this.hasNonNullValue()) {

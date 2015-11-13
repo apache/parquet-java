@@ -34,6 +34,11 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
+  void mergeBloomFilters(Statistics stats) {
+    // Do nothing
+  }
+
+  @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     BooleanStatistics boolStats = (BooleanStatistics)stats;
     if (!this.hasNonNullValue()) {

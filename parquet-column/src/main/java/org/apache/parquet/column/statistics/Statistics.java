@@ -164,9 +164,7 @@ public abstract class Statistics<T extends Comparable<T>> {
     mergeBloomFilters(stats);
   }
 
-  protected void mergeBloomFilters(Statistics stats){
-    // Do nothing if it doesn't support bloom filter.
-  }
+  abstract void mergeBloomFilters(Statistics stats);
 
   /**
    * Abstract method to merge this statistics min and max with the values

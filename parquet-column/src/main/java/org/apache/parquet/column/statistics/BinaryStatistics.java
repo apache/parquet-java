@@ -59,6 +59,13 @@ public class BinaryStatistics extends Statistics<Binary> implements BloomFilterS
   }
 
   @Override
+  void mergeBloomFilters(Statistics stats) {
+    if (isBloomFilterEnabled && stats instanceof BloomFilterStatistics) {
+      this.bloomFilter.merge(((BloomFilterStatistics) stats).getBloomFilter());
+    }
+  }
+
+  @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     BinaryStatistics binaryStats = (BinaryStatistics)stats;
     if (!this.hasNonNullValue()) {
