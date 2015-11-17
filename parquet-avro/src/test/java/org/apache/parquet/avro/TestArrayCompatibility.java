@@ -567,9 +567,9 @@ public class TestArrayCompatibility {
   }
 
   @Test
-  public void testAvroCompatRequiredGroupInList() throws Exception {
+  public void testAvroCompatOptionalGroupInList() throws Exception {
     Path test = writeDirect(
-        "message AvroCompatRequiredGroupInList {" +
+        "message AvroCompatOptionalGroupInList {" +
             "  optional group locations (LIST) {" +
             "    repeated group array {" +
             "      optional group element {" +
@@ -634,7 +634,7 @@ public class TestArrayCompatibility {
 
     // old behavior - assume that the repeated type is the element type
     Schema elementRecord = record("array", optionalField("element", location));
-    Schema oldSchema = record("AvroCompatRequiredGroupInList",
+    Schema oldSchema = record("AvroCompatOptionalGroupInList",
         optionalField("locations", array(elementRecord)));
     GenericRecord oldRecord = instance(oldSchema,
         "locations", Arrays.asList(
@@ -649,9 +649,9 @@ public class TestArrayCompatibility {
   }
 
   @Test
-  public void testAvroCompatRequiredGroupInListWithSchema() throws Exception {
+  public void testAvroCompatOptionalGroupInListWithSchema() throws Exception {
     Path test = writeDirect(
-        "message AvroCompatRequiredGroupInListWithSchema {" +
+        "message AvroCompatOptionalGroupInListWithSchema {" +
             "  optional group locations (LIST) {" +
             "    repeated group array {" +
             "      optional group element {" +
@@ -714,7 +714,7 @@ public class TestArrayCompatibility {
         field("latitude", primitive(Schema.Type.DOUBLE)),
         field("longitude", primitive(Schema.Type.DOUBLE)));
 
-    Schema newSchema = record("HiveCompatOptionalGroupInList",
+    Schema newSchema = record("AvroCompatOptionalGroupInListWithSchema",
         optionalField("locations", array(optional(location))));
     GenericRecord newRecord = instance(newSchema,
         "locations", Arrays.asList(
@@ -735,6 +735,142 @@ public class TestArrayCompatibility {
     assertReaderContains(
         new AvroParquetReader<GenericRecord>(newConfWithSchema, test),
         newSchema, newRecord);
+  }
+
+  @Test
+  public void testAvroCompatListInList() throws Exception {
+    Path test = writeDirect(
+        "message AvroCompatListInList {" +
+            "  optional group listOfLists (LIST) {" +
+            "    repeated group array (LIST) {" +
+            "      repeated int32 array;" +
+            "    }" +
+            "  }" +
+            "}",
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+            rc.startField("locations", 0);
+
+            rc.startGroup();
+            rc.startField("array", 0); // start writing array contents
+
+            rc.startGroup();
+            rc.startField("array", 0); // start writing inner array contents
+
+            // write [34, 35, 36]
+            rc.addInteger(34);
+            rc.addInteger(35);
+            rc.addInteger(36);
+
+            rc.endField("array", 0); // finished writing inner array contents
+            rc.endGroup();
+
+            // write an empty list
+            rc.startGroup();
+            rc.endGroup();
+
+            rc.startGroup();
+            rc.startField("array", 0); // start writing inner array contents
+
+            // write [32, 33, 34]
+            rc.addInteger(32);
+            rc.addInteger(33);
+            rc.addInteger(34);
+
+            rc.endField("array", 0); // finished writing inner array contents
+            rc.endGroup();
+
+            rc.endField("array", 0); // finished writing array contents
+            rc.endGroup();
+
+            rc.endField("locations", 0);
+            rc.endMessage();
+          }
+        });
+
+    Schema listOfLists = array(array(primitive(Schema.Type.INT)));
+    Schema oldSchema = record("AvroCompatListInList",
+        optionalField("listOfLists", listOfLists));
+
+    GenericRecord oldRecord = instance(oldSchema,
+        "listOfLists", Arrays.asList(
+            Arrays.asList(34, 35, 36),
+            Arrays.asList(),
+            Arrays.asList(32, 33, 34)));
+
+    // both should detect the "array" name
+    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
+    assertReaderContains(newBehaviorReader(test), oldSchema, oldRecord);
+  }
+
+  @Test
+  public void testThriftCompatListInList() throws Exception {
+    Path test = writeDirect(
+        "message ThriftCompatListInList {" +
+            "  optional group listOfLists (LIST) {" +
+            "    repeated group listOfLists_tuple (LIST) {" +
+            "      repeated int32 listOfLists_tuple_tuple;" +
+            "    }" +
+            "  }" +
+            "}",
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+            rc.startField("locations", 0);
+
+            rc.startGroup();
+            rc.startField("listOfLists_tuple", 0); // start writing array contents
+
+            rc.startGroup();
+            rc.startField("listOfLists_tuple_tuple", 0); // start writing inner array contents
+
+            // write [34, 35, 36]
+            rc.addInteger(34);
+            rc.addInteger(35);
+            rc.addInteger(36);
+
+            rc.endField("listOfLists_tuple_tuple", 0); // finished writing inner array contents
+            rc.endGroup();
+
+            // write an empty list
+            rc.startGroup();
+            rc.endGroup();
+
+            rc.startGroup();
+            rc.startField("listOfLists_tuple_tuple", 0); // start writing inner array contents
+
+            // write [32, 33, 34]
+            rc.addInteger(32);
+            rc.addInteger(33);
+            rc.addInteger(34);
+
+            rc.endField("listOfLists_tuple_tuple", 0); // finished writing inner array contents
+            rc.endGroup();
+
+            rc.endField("listOfLists_tuple", 0); // finished writing array contents
+            rc.endGroup();
+
+            rc.endField("locations", 0);
+            rc.endMessage();
+          }
+        });
+
+    Schema listOfLists = array(array(primitive(Schema.Type.INT)));
+    Schema oldSchema = record("ThriftCompatListInList",
+        optionalField("listOfLists", listOfLists));
+
+    GenericRecord oldRecord = instance(oldSchema,
+        "listOfLists", Arrays.asList(
+            Arrays.asList(34, 35, 36),
+            Arrays.asList(),
+            Arrays.asList(32, 33, 34)));
+
+    // both should detect the "_tuple" names
+    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
+    assertReaderContains(newBehaviorReader(test), oldSchema, oldRecord);
   }
 
   @Test
