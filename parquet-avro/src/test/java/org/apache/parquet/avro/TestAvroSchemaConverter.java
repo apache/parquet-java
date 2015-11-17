@@ -394,6 +394,98 @@ public class TestAvroSchemaConverter {
   }
 
   @Test
+  public void testOldAvroListOfLists() throws Exception {
+    Schema listOfLists = optional(Schema.createArray(Schema.createArray(
+        Schema.create(Schema.Type.INT))));
+    Schema schema = Schema.createRecord("AvroCompatListInList", null, null, false);
+    schema.setFields(Lists.newArrayList(
+        new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
+    ));
+    System.err.println("Avro schema: " + schema.toString(true));
+
+    testRoundTripConversion(schema,
+        "message AvroCompatListInList {\n" +
+            "  optional group listOfLists (LIST) {\n" +
+            "    repeated group array (LIST) {\n" +
+            "      repeated int32 array;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}");
+    // Cannot use round-trip assertion because 3-level representation is used
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema,
+        "message AvroCompatListInList {\n" +
+            "  optional group listOfLists (LIST) {\n" +
+            "    repeated group array (LIST) {\n" +
+            "      repeated int32 array;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}");
+  }
+
+  @Test
+  public void testOldThriftListOfLists() throws Exception {
+    Schema listOfLists = optional(Schema.createArray(Schema.createArray(
+        Schema.create(Schema.Type.INT))));
+    Schema schema = Schema.createRecord("ThriftCompatListInList", null, null, false);
+    schema.setFields(Lists.newArrayList(
+        new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
+    ));
+    System.err.println("Avro schema: " + schema.toString(true));
+
+    // Cannot use round-trip assertion because repeated group names differ
+    testParquetToAvroConversion(schema,
+        "message ThriftCompatListInList {\n" +
+            "  optional group listOfLists (LIST) {\n" +
+            "    repeated group listOfLists_tuple (LIST) {\n" +
+            "      repeated int32 listOfLists_tuple_tuple;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}");
+    // Cannot use round-trip assertion because 3-level representation is used
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema,
+        "message ThriftCompatListInList {\n" +
+        "  optional group listOfLists (LIST) {\n" +
+        "    repeated group listOfLists_tuple (LIST) {\n" +
+        "      repeated int32 listOfLists_tuple_tuple;\n" +
+        "    }\n" +
+        "  }\n" +
+        "}");
+  }
+
+  @Test
+  public void testUnknownTwoLevelListOfLists() throws Exception {
+    // This tests the case where we don't detect a 2-level list by the repeated
+    // group's name, but it must be 2-level because the repeated group doesn't
+    // contain an optional or repeated element as required for 3-level lists
+    Schema listOfLists = optional(Schema.createArray(Schema.createArray(
+        Schema.create(Schema.Type.INT))));
+    Schema schema = Schema.createRecord("UnknownTwoLevelListInList", null, null, false);
+    schema.setFields(Lists.newArrayList(
+        new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
+    ));
+    System.err.println("Avro schema: " + schema.toString(true));
+
+    // Cannot use round-trip assertion because repeated group names differ
+    testParquetToAvroConversion(schema,
+        "message UnknownTwoLevelListInList {\n" +
+            "  optional group listOfLists (LIST) {\n" +
+            "    repeated group mylist (LIST) {\n" +
+            "      repeated int32 innerlist;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}");
+    // Cannot use round-trip assertion because 3-level representation is used
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema,
+        "message UnknownTwoLevelListInList {\n" +
+            "  optional group listOfLists (LIST) {\n" +
+            "    repeated group mylist (LIST) {\n" +
+            "      repeated int32 innerlist;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}");
+  }
+
+  @Test
   public void testParquetMapWithoutMapKeyValueAnnotation() throws Exception {
     Schema schema = Schema.createRecord("myrecord", null, null, false);
     Schema map = Schema.createMap(Schema.create(Schema.Type.INT));
