@@ -62,6 +62,11 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     this.protoMessage = protobufClass;
   }
 
+  @Override
+  public String getName() {
+    return "protobuf";
+  }
+
   public static void setSchema(Configuration configuration, Class<? extends Message> protoClass) {
     configuration.setClass(PB_CLASS_WRITE, protoClass, Message.class);
   }

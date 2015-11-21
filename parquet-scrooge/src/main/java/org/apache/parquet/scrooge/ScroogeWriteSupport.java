@@ -49,6 +49,11 @@ public class ScroogeWriteSupport<T extends ThriftStruct> extends AbstractThriftW
   }
 
   @Override
+  public String getName() {
+    return "scrooge";
+  }
+
+  @Override
   protected StructType getThriftStruct() {
     ScroogeStructConverter schemaConverter = new ScroogeStructConverter();
     return schemaConverter.convert(thriftClass);

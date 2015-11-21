@@ -92,6 +92,11 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     this.model = model;
   }
 
+  @Override
+  public String getName() {
+    return "avro";
+  }
+
   /**
    * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
