@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.parquet.pig.PigSchemaConverter;
-import org.apache.parquet.schema.*;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.DataType;
@@ -79,7 +78,7 @@ public class TupleConverter extends GroupConverter {
         boolean isWrapped = false;
         // case of a repeated field
         if (PigSchemaConverter.isWrappedType(fieldName)) {
-          fieldName = PigSchemaConverter.wrappedName(fieldName);
+          fieldName = PigSchemaConverter.unWrappedName(fieldName);
           isWrapped = true;
         }
         if(parquetSchema.containsField(fieldName) || columnIndexAccess) {

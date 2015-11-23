@@ -63,7 +63,7 @@ public class PigSchemaConverter {
 
   private static final Log LOG = Log.getLog(PigSchemaConverter.class);
   static final String ARRAY_VALUE_NAME = "value";
-  public static final String WRAP_BAG_PREFIX = "bag_";
+  private static final String WRAP_BAG_PREFIX = "bag_";
   private ColumnAccess columnAccess;
 
   public PigSchemaConverter() {
@@ -136,8 +136,8 @@ public class PigSchemaConverter {
         String name = name(fieldSchema.alias, "field_"+i);
         if (schemaToFilter.containsField(name)) {
           newFields.add(filter(schemaToFilter.getType(name), fieldSchema));
-        } else if (name.startsWith(WRAP_BAG_PREFIX)) {
-          String innerFieldName = wrappedName(name);
+        } else if (isWrappedType(name)) {
+          String innerFieldName = unWrappedName(name);
           if (schemaToFilter.containsField(innerFieldName)) {
               newFields.add(filterWrappedPrimitive(schemaToFilter.getType(innerFieldName)));
           }
@@ -177,10 +177,10 @@ public class PigSchemaConverter {
    * @param name
    * @return the inner field name or the same name as input if not wrapped by a bag
    */
-  public static String wrappedName(String name) {
+  public static String unWrappedName(String name) {
     String resultName = name;
     if (isWrappedType(name)){
-      resultName = name.substring(PigSchemaConverter.WRAP_BAG_PREFIX.length(),name.length());
+      resultName = name.substring(WRAP_BAG_PREFIX.length(),name.length());
     }
     return resultName;
   }
@@ -391,8 +391,8 @@ public class PigSchemaConverter {
     try {
       switch (fieldSchema.type) {
         case DataType.BAG:
-          if (name.startsWith(WRAP_BAG_PREFIX)) {
-            return convertWrappedPrimitive(wrappedName(name), fieldSchema);
+          if (isWrappedType(name)) {
+            return convertWrappedPrimitive(unWrappedName(name), fieldSchema);
           }
           return convertBag(name, fieldSchema);
         case DataType.TUPLE:
