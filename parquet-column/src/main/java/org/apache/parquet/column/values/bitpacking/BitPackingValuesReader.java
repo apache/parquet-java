@@ -21,9 +21,10 @@ package org.apache.parquet.column.values.bitpacking;
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static org.apache.parquet.column.values.bitpacking.BitPacking.createBitPackingReader;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
@@ -39,7 +40,7 @@ import org.apache.parquet.io.ParquetDecodingException;
 public class BitPackingValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(BitPackingValuesReader.class);
 
-  private ByteArrayInputStream in;
+  private ByteBufferInputStream in;
   private BitPackingReader bitPackingReader;
   private final int bitsPerValue;
   private int nextOffset;
@@ -66,18 +67,18 @@ public class BitPackingValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(long, byte[], int)
+   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, ByteBuffer, int)
    */
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
     int effectiveBitLength = valueCount * bitsPerValue;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength);
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );
-    this.in = new ByteArrayInputStream(in, offset, length);
+    this.in = new ByteBufferInputStream(in, offset, length);
     this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);
     this.nextOffset = offset + length;
   }
-  
+
   @Override
   public int getNextOffset() {
     return nextOffset;

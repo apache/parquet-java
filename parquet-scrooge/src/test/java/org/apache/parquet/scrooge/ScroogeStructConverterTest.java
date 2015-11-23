@@ -61,15 +61,14 @@ public class ScroogeStructConverterTest {
    */
   private void shouldConvertConsistentlyWithThriftStructConverter(Class scroogeClass) throws ClassNotFoundException {
       Class<? extends TBase<?, ?>> thriftClass = (Class<? extends TBase<?, ?>>)Class.forName(scroogeClass.getName().replaceFirst("org.apache.parquet.scrooge.test", "org.apache.parquet.thrift.test"));
-      ThriftType.StructType structFromThriftSchemaConverter = new ThriftSchemaConverter().toStructType(thriftClass);
+      ThriftType.StructType structFromThriftSchemaConverter = ThriftSchemaConverter.toStructType(thriftClass);
       ThriftType.StructType structFromScroogeSchemaConverter = new ScroogeStructConverter().convert(scroogeClass);
 
       assertEquals(toParquetSchema(structFromThriftSchemaConverter), toParquetSchema(structFromScroogeSchemaConverter));
   }
 
   private MessageType toParquetSchema(ThriftType.StructType struct) {
-    ThriftSchemaConverter sc = new ThriftSchemaConverter();
-    return sc.convert(struct);
+    return ThriftSchemaConverter.convertWithoutProjection(struct);
   }
 
   @Test

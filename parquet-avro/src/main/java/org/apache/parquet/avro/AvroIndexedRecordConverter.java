@@ -125,7 +125,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       }
     }
     if (avroField == null) {
-      throw new InvalidRecordException(String.format("Parquet/Avro schema mismatch. Avro field '%s' not found.",
+      throw new InvalidRecordException(String.format(
+          "Parquet/Avro schema mismatch. Avro field '%s' not found.",
           parquetFieldName));
     }
     return avroField;
@@ -313,7 +314,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       Type repeatedType = type.getType(0);
       // always determine whether the repeated type is the element type by
       // matching it against the element schema.
-      if (isElementType(repeatedType, elementSchema)) {
+      if (AvroRecordConverter.isElementType(repeatedType, elementSchema)) {
         // the element type is the repeated type (and required)
         converter = newConverter(elementSchema, repeatedType, model, new ParentValueContainer() {
           @Override
@@ -341,37 +342,6 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     @Override
     public void end() {
       parent.add(array);
-    }
-
-    /**
-     * Returns whether the given type is the element type of a list or is a
-     * synthetic group with one field that is the element type. This is
-     * determined by checking whether the type can be a synthetic group and by
-     * checking whether a potential synthetic group matches the expected schema.
-     * <p>
-     * Unlike {@link AvroSchemaConverter#isElementType(Type, String)}, this
-     * method never guesses because the expected schema is known.
-     *
-     * @param repeatedType a type that may be the element type
-     * @param elementSchema the expected Schema for list elements
-     * @return {@code true} if the repeatedType is the element schema
-     */
-    static boolean isElementType(Type repeatedType, Schema elementSchema) {
-      if (repeatedType.isPrimitive() ||
-          repeatedType.asGroupType().getFieldCount() > 1) {
-        // The repeated type must be the element type because it is an invalid
-        // synthetic wrapper (must be a group with one field).
-        return true;
-      } else if (elementSchema != null &&
-          elementSchema.getType() == Schema.Type.RECORD &&
-          elementSchema.getFields().size() == 1 &&
-          elementSchema.getFields().get(0).name().equals(
-              repeatedType.asGroupType().getFieldName(0))) {
-        // The repeated type must be the element type because it matches the
-        // structure of the Avro element's schema.
-        return true;
-      }
-      return false;
     }
 
     /**

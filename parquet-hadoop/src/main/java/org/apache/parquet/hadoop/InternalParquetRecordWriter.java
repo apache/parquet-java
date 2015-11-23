@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
@@ -37,6 +38,7 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
+import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 
 class InternalParquetRecordWriter<T> {
@@ -63,6 +65,7 @@ class InternalParquetRecordWriter<T> {
 
   private ColumnWriteStore columnStore;
   private ColumnChunkPageWriteStore pageStore;
+  private RecordConsumer recordConsumer;
 
 
   /**
@@ -84,7 +87,8 @@ class InternalParquetRecordWriter<T> {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
-      WriterVersion writerVersion) {
+      WriterVersion writerVersion,
+      ByteBufferAllocator allocator) {
     this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
@@ -95,18 +99,20 @@ class InternalParquetRecordWriter<T> {
     this.pageSize = pageSize;
     this.compressor = compressor;
     this.validating = validating;
-    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary);
+    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary, allocator);
     initStore();
   }
 
   private void initStore() {
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, pageSize);
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, parquetProperties.getAllocator());
     columnStore = parquetProperties.newColumnWriteStore(
         schema,
         pageStore,
-        pageSize);
+        pageSize,
+        parquetProperties.getAllocator());
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
-    writeSupport.prepareForWrite(columnIO.getRecordWriter(columnStore));
+    this.recordConsumer = columnIO.getRecordWriter(columnStore);
+    writeSupport.prepareForWrite(recordConsumer);
   }
 
   public void close() throws IOException, InterruptedException {
@@ -147,13 +153,16 @@ class InternalParquetRecordWriter<T> {
             max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(nextRowGroupSize / ((float)recordSize))) / 2), // will check halfway
             recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK // will not look more than max records ahead
             );
-        if (DEBUG) LOG.debug(format("Checked mem at %,d will check again at: %,d ", recordCount, recordCountForNextMemCheck));
+        if (DEBUG) {
+          LOG.debug(format("Checked mem at %,d will check again at: %,d ", recordCount, recordCountForNextMemCheck));
+        }
       }
     }
   }
 
   private void flushRowGroupToStore()
       throws IOException {
+    recordConsumer.flush();
     LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.getAllocatedSize()));
     if (columnStore.getAllocatedSize() > (3 * rowGroupSizeThreshold)) {
       LOG.warn("Too much memory used: " + columnStore.memUsageString());

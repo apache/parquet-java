@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.rle;
 
 import java.io.IOException;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
@@ -32,8 +33,8 @@ import org.apache.parquet.io.ParquetEncodingException;
 public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
   private final RunLengthBitPackingHybridEncoder encoder;
 
-  public RunLengthBitPackingHybridValuesWriter(int bitWidth, int initialCapacity, int pageSize) {
-    this.encoder = new RunLengthBitPackingHybridEncoder(bitWidth, initialCapacity, pageSize);
+  public RunLengthBitPackingHybridValuesWriter(int bitWidth, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
+    this.encoder = new RunLengthBitPackingHybridEncoder(bitWidth, initialCapacity, pageSize, allocator);
   }
 
   @Override
@@ -79,6 +80,11 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
   @Override
   public void reset() {
     encoder.reset();
+  }
+
+  @Override
+  public void close() {
+    encoder.close();
   }
 
   @Override

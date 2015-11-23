@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.junit.Test;
 import org.junit.Assert;
 
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.Utils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
@@ -35,7 +36,7 @@ public class TestDeltaByteArray {
 
   @Test
   public void testSerialization () throws Exception {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
     assertReadWrite(writer, reader, values);
@@ -43,14 +44,14 @@ public class TestDeltaByteArray {
 
   @Test
   public void testRandomStrings() throws Exception {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
     assertReadWrite(writer, reader, randvalues);
   }
 
   @Test
   public void testLengths() throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
     Utils.writeData(writer, values);
@@ -82,7 +83,7 @@ public class TestDeltaByteArray {
 
   @Test
   public void testWriterReset() throws Exception {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
 
     assertReadWrite(writer, new DeltaByteArrayReader(), values);
 

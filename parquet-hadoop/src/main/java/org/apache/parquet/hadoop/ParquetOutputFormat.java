@@ -103,6 +103,33 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
 public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
 
+  public static enum JobSummaryLevel {
+    /**
+     * Write no summary files
+     */
+    NONE,
+    /**
+     * Write both summary file with row group info and summary file without
+     * (both _metadata and _common_metadata)
+     */
+    ALL,
+    /**
+     * Write only the summary file without the row group info
+     * (_common_metadata only)
+     */
+    COMMON_ONLY
+  }
+
+  /**
+   * An alias for JOB_SUMMARY_LEVEL, where true means ALL and false means NONE
+   */
+  @Deprecated
+  public static final String ENABLE_JOB_SUMMARY   = "parquet.enable.summary-metadata";
+
+  /**
+   * Must be one of the values in {@link JobSummaryLevel} (case insensitive)
+   */
+  public static final String JOB_SUMMARY_LEVEL = "parquet.summary.metadata.level";
   public static final String BLOCK_SIZE           = "parquet.block.size";
   public static final String PAGE_SIZE            = "parquet.page.size";
   public static final String COMPRESSION          = "parquet.compression";
@@ -111,13 +138,35 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
   public static final String VALIDATION           = "parquet.validation";
   public static final String WRITER_VERSION       = "parquet.writer.version";
-  public static final String ENABLE_JOB_SUMMARY   = "parquet.enable.summary-metadata";
   public static final String MEMORY_POOL_RATIO    = "parquet.memory.pool.ratio";
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
   public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
 
   // default to no padding for now
   private static final int DEFAULT_MAX_PADDING_SIZE = 0;
+
+  public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
+    String level = conf.get(JOB_SUMMARY_LEVEL);
+    String deprecatedFlag = conf.get(ENABLE_JOB_SUMMARY);
+
+    if (deprecatedFlag != null) {
+      LOG.warn("Setting " + ENABLE_JOB_SUMMARY + " is deprecated, please use " + JOB_SUMMARY_LEVEL);
+    }
+
+    if (level != null && deprecatedFlag != null) {
+      LOG.warn("Both " + JOB_SUMMARY_LEVEL + " and " + ENABLE_JOB_SUMMARY + " are set! " + ENABLE_JOB_SUMMARY + " will be ignored.");
+    }
+
+    if (level != null) {
+      return JobSummaryLevel.valueOf(level.toUpperCase());
+    }
+
+    if (deprecatedFlag != null) {
+      return Boolean.valueOf(deprecatedFlag) ? JobSummaryLevel.ALL : JobSummaryLevel.NONE;
+    }
+
+    return JobSummaryLevel.ALL;
+  }
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -292,7 +341,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
-    CodecFactory codecFactory = new CodecFactory(conf);
     long blockSize = getLongBlockSize(conf);
     if (INFO) LOG.info("Parquet block size to " + blockSize);
     int pageSize = getPageSize(conf);
@@ -307,6 +355,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Writer version is: " + writerVersion);
     int maxPaddingSize = getMaxPaddingSize(conf);
     if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
+
+    CodecFactory codecFactory = new CodecFactory(conf, pageSize);
 
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(
@@ -330,7 +380,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         init.getSchema(),
         init.getExtraMetaData(),
         blockSize, pageSize,
-        codecFactory.getCompressor(codec, pageSize),
+        codecFactory.getCompressor(codec),
         dictionaryPageSize,
         enableDictionary,
         validating,

@@ -23,6 +23,7 @@ import static org.apache.parquet.bytes.BytesInput.concat;
 import java.io.IOException;
 
 import org.apache.parquet.Log;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
@@ -66,7 +67,8 @@ final class ColumnWriterV1 implements ColumnWriter {
       int pageSizeThreshold,
       int dictionaryPageSizeThreshold,
       boolean enableDictionary,
-      WriterVersion writerVersion) {
+      WriterVersion writerVersion,
+      ByteBufferAllocator allocator) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
@@ -74,10 +76,10 @@ final class ColumnWriterV1 implements ColumnWriter {
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
     resetStatistics();
 
-    ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
+    ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary, allocator);
 
-    this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
-    this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
+    this.repetitionLevelColumn = parquetProps.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
+    this.definitionLevelColumn = parquetProps.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
 
     int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
     this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSizeThreshold);
@@ -239,7 +241,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     if (valueCount > 0) {
       writePage();
     }
-    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
+    final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
       if (DEBUG) LOG.debug("write dictionary");
       try {
@@ -251,6 +253,16 @@ final class ColumnWriterV1 implements ColumnWriter {
     }
   }
 
+  @Override
+  public void close() {
+    flush();
+    // Close the Values writers.
+    repetitionLevelColumn.close();
+    definitionLevelColumn.close();
+    dataColumn.close();
+  }
+
+  @Override
   public long getBufferedSizeInMemory() {
     return repetitionLevelColumn.getBufferedSize()
         + definitionLevelColumn.getBufferedSize()

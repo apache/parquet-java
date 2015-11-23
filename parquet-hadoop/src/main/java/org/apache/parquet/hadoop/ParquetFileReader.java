@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -27,10 +27,10 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
-import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.SequenceInputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -52,6 +52,11 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.hadoop.util.CompatibilityUtil;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
@@ -185,7 +190,9 @@ public class ParquetFileReader implements Closeable {
 
     if (toRead.size() > 0) {
       // read the footers of the files that did not have a summary file
-      if (Log.INFO) LOG.info("reading another " + toRead.size() + " footers");
+      if (Log.INFO) {
+        LOG.info("reading another " + toRead.size() + " footers");
+      }
       result.addAll(readAllFootersInParallel(configuration, toRead, skipRowGroups));
     }
 
@@ -252,6 +259,15 @@ public class ParquetFileReader implements Closeable {
   /**
    * Read the footers of all the files under that path (recursively)
    * not using summary files.
+   */
+  public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus, boolean skipRowGroups) throws IOException {
+    List<FileStatus> statuses = listFiles(configuration, fileStatus);
+    return readAllFootersInParallel(configuration, statuses, skipRowGroups);
+  }
+
+  /**
+   * Read the footers of all the files under that path (recursively)
+   * not using summary files.
    * rowGroups are not skipped
    * @param configuration the configuration to access the FS
    * @param fileStatus the root dir
@@ -259,9 +275,9 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException
    */
   public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus) throws IOException {
-    List<FileStatus> statuses = listFiles(configuration, fileStatus);
-    return readAllFootersInParallel(configuration, statuses, false);
+    return readAllFootersInParallel(configuration, fileStatus, false);
   }
+
 
   @Deprecated
   public static List<Footer> readFooters(Configuration configuration, Path path) throws IOException {
@@ -288,7 +304,7 @@ public class ParquetFileReader implements Closeable {
    * Read the footers of all the files under that path (recursively)
    * using summary files if possible
    * @param configuration the configuration to access the FS
-   * @param fileStatus the root dir
+   * @param pathStatus the root dir
    * @return all the footers
    * @throws IOException
    */
@@ -333,7 +349,9 @@ public class ParquetFileReader implements Closeable {
       if (Log.INFO) LOG.info("reading summary file: " + commonMetaDataFile);
       return readFooter(configuration, commonMetaDataFile, filter(skipRowGroups));
     } else if (fileSystem.exists(metadataFile)) {
-      if (Log.INFO) LOG.info("reading summary file: " + metadataFile);
+      if (Log.INFO) {
+        LOG.info("reading summary file: " + metadataFile);
+      }
       return readFooter(configuration, metadataFile, filter(skipRowGroups));
     } else {
       return null;
@@ -407,13 +425,17 @@ public class ParquetFileReader implements Closeable {
     FSDataInputStream f = fileSystem.open(file.getPath());
     try {
       long l = file.getLen();
-      if (Log.DEBUG) LOG.debug("File length " + l);
+      if (Log.DEBUG) {
+        LOG.debug("File length " + l);
+      }
       int FOOTER_LENGTH_SIZE = 4;
       if (l < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
         throw new RuntimeException(file.getPath() + " is not a Parquet file (too small)");
       }
       long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
-      if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
+      if (Log.DEBUG) {
+        LOG.debug("reading footer index at " + footerLengthIndex);
+      }
 
       f.seek(footerLengthIndex);
       int footerLength = readIntLittleEndian(f);
@@ -423,7 +445,9 @@ public class ParquetFileReader implements Closeable {
         throw new RuntimeException(file.getPath() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
       }
       long footerIndex = footerLengthIndex - footerLength;
-      if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
+      if (Log.DEBUG) {
+        LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
+      }
       if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
         throw new RuntimeException("corrupted file: the footer index is not within the file");
       }
@@ -441,6 +465,7 @@ public class ParquetFileReader implements Closeable {
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<ColumnPath, ColumnDescriptor>();
   private final FileMetaData fileMetaData;
   private final String createdBy;
+  private final ByteBufferAllocator allocator;
 
   private int currentBlock = 0;
 
@@ -471,7 +496,10 @@ public class ParquetFileReader implements Closeable {
     for (ColumnDescriptor col : columns) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
-    this.codecFactory = new CodecFactory(configuration);
+    // the page size parameter isn't meaningful when only using
+    // the codec factory to get decompressors
+    this.codecFactory = new CodecFactory(configuration, 0);
+    this.allocator = new HeapByteBufferAllocator();
   }
 
 
@@ -531,7 +559,7 @@ public class ParquetFileReader implements Closeable {
    * @author Julien Le Dem
    *
    */
-  private class Chunk extends ByteArrayInputStream {
+  private class Chunk extends ByteBufferInputStream {
 
     private final ChunkDescriptor descriptor;
 
@@ -541,10 +569,9 @@ public class ParquetFileReader implements Closeable {
      * @param data contains the chunk data at offset
      * @param offset where the chunk starts in offset
      */
-    public Chunk(ChunkDescriptor descriptor, byte[] data, int offset) {
-      super(data);
+    public Chunk(ChunkDescriptor descriptor, ByteBuffer data, int offset) {
+      super(data, offset, descriptor.size);
       this.descriptor = descriptor;
-      this.pos = offset;
     }
 
     protected PageHeader readPageHeader() throws IOException {
@@ -617,7 +644,9 @@ public class ParquetFileReader implements Closeable {
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
             break;
           default:
-            if (DEBUG) LOG.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
+            if (DEBUG) {
+              LOG.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
+            }
             this.skip(compressedPageSize);
             break;
         }
@@ -638,7 +667,7 @@ public class ParquetFileReader implements Closeable {
      * @return the current position in the chunk
      */
     public int pos() {
-      return this.pos;
+      return this.byteBuf.position();
     }
 
     /**
@@ -647,8 +676,9 @@ public class ParquetFileReader implements Closeable {
      * @throws IOException
      */
     public BytesInput readAsBytesInput(int size) throws IOException {
-      final BytesInput r = BytesInput.from(this.buf, this.pos, size);
-      this.pos += size;
+      int pos = this.byteBuf.position();
+      final BytesInput r = BytesInput.from(this.byteBuf, pos, size);
+      this.byteBuf.position(pos + size);
       return r;
     }
 
@@ -666,18 +696,18 @@ public class ParquetFileReader implements Closeable {
 
     /**
      * @param descriptor the descriptor of the chunk
-     * @param data contains the data of the chunk at offset
+     * @param byteBuf contains the data of the chunk at offset
      * @param offset where the chunk starts in data
      * @param f the file stream positioned at the end of this chunk
      */
-    private WorkaroundChunk(ChunkDescriptor descriptor, byte[] data, int offset, FSDataInputStream f) {
-      super(descriptor, data, offset);
+    private WorkaroundChunk(ChunkDescriptor descriptor, ByteBuffer byteBuf, int offset, FSDataInputStream f) {
+      super(descriptor, byteBuf, offset);
       this.f = f;
     }
 
     protected PageHeader readPageHeader() throws IOException {
       PageHeader pageHeader;
-      int initialPos = this.pos;
+      int initialPos = pos();
       try {
         pageHeader = Util.readPageHeader(this);
       } catch (IOException e) {
@@ -686,7 +716,7 @@ public class ParquetFileReader implements Closeable {
         // to allow reading older files (using dictionary) we need this.
         // usually 13 to 19 bytes are missing
         // if the last page is smaller than this, the page header itself is truncated in the buffer.
-        this.pos = initialPos; // resetting the buffer to the position before we got the error
+        this.byteBuf.rewind(); // resetting the buffer to the position before we got the error
         LOG.info("completing the column chunk to read the page header");
         pageHeader = Util.readPageHeader(new SequenceInputStream(this, f)); // trying again from the buffer + remainder of the stream.
       }
@@ -694,12 +724,12 @@ public class ParquetFileReader implements Closeable {
     }
 
     public BytesInput readAsBytesInput(int size) throws IOException {
-      if (pos + size > count) {
+      if (pos() + size > initPos + count) {
         // this is to workaround a bug where the compressedLength
         // of the chunk is missing the size of the header of the dictionary
         // to allow reading older files (using dictionary) we need this.
         // usually 13 to 19 bytes are missing
-        int l1 = count - pos;
+        int l1 = initPos + count - pos();
         int l2 = size - l1;
         LOG.info("completed the column chunk with " + l2 + " bytes");
         return BytesInput.concat(super.readAsBytesInput(l1), BytesInput.copy(BytesInput.from(f, l2)));
@@ -775,18 +805,18 @@ public class ParquetFileReader implements Closeable {
     public List<Chunk> readAll(FSDataInputStream f) throws IOException {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
-      byte[] chunksBytes = new byte[length];
-      f.readFully(chunksBytes);
+      ByteBuffer chunksByteBuffer = allocator.allocate(length);
+      CompatibilityUtil.getBuf(f, chunksByteBuffer, length);
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
       int currentChunkOffset = 0;
       for (int i = 0; i < chunks.size(); i++) {
         ChunkDescriptor descriptor = chunks.get(i);
         if (i < chunks.size() - 1) {
-          result.add(new Chunk(descriptor, chunksBytes, currentChunkOffset));
+          result.add(new Chunk(descriptor, chunksByteBuffer, currentChunkOffset));
         } else {
           // because of a bug, the last chunk might be larger than descriptor.size
-          result.add(new WorkaroundChunk(descriptor, chunksBytes, currentChunkOffset, f));
+          result.add(new WorkaroundChunk(descriptor, chunksByteBuffer, currentChunkOffset, f));
         }
         currentChunkOffset += descriptor.size;
       }

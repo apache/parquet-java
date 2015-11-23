@@ -20,10 +20,12 @@ package org.apache.parquet.column.values.rle;
 
 import static org.apache.parquet.Log.DEBUG;
 
-import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesUtils;
@@ -43,14 +45,14 @@ public class RunLengthBitPackingHybridDecoder {
 
   private final int bitWidth;
   private final BytePacker packer;
-  private final ByteArrayInputStream in;
+  private final InputStream in;
 
   private MODE mode;
   private int currentCount;
   private int currentValue;
   private int[] currentBuffer;
 
-  public RunLengthBitPackingHybridDecoder(int bitWidth, ByteArrayInputStream in) {
+  public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
     if (DEBUG) LOG.debug("decoding bitWidth " + bitWidth);
 
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");

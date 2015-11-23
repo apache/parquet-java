@@ -28,10 +28,12 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Dictionary;
@@ -54,27 +56,27 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 public class TestDictionary {
 
   private <I extends DictionaryValuesWriter> FallbackValuesWriter<I, PlainValuesWriter> plainFallBack(I dvw, int initialSize) {
-    return FallbackValuesWriter.of(dvw, new PlainValuesWriter(initialSize, initialSize * 5));
+    return FallbackValuesWriter.of(dvw, new PlainValuesWriter(initialSize, initialSize * 5, new DirectByteBufferAllocator()));
   }
 
   private FallbackValuesWriter<PlainBinaryDictionaryValuesWriter, PlainValuesWriter> newPlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
-    return plainFallBack(new PlainBinaryDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+    return plainFallBack(new PlainBinaryDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY, new DirectByteBufferAllocator()), initialSize);
   }
 
   private FallbackValuesWriter<PlainLongDictionaryValuesWriter, PlainValuesWriter> newPlainLongDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
-    return plainFallBack(new PlainLongDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+    return plainFallBack(new PlainLongDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY, new DirectByteBufferAllocator()), initialSize);
   }
 
   private FallbackValuesWriter<PlainIntegerDictionaryValuesWriter, PlainValuesWriter> newPlainIntegerDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
-    return plainFallBack(new PlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+    return plainFallBack(new PlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY, new DirectByteBufferAllocator()), initialSize);
   }
 
   private FallbackValuesWriter<PlainDoubleDictionaryValuesWriter, PlainValuesWriter> newPlainDoubleDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
-    return plainFallBack(new PlainDoubleDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+    return plainFallBack(new PlainDoubleDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY, new DirectByteBufferAllocator()), initialSize);
   }
 
   private FallbackValuesWriter<PlainFloatDictionaryValuesWriter, PlainValuesWriter> newPlainFloatDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
-    return plainFallBack(new PlainFloatDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+    return plainFallBack(new PlainFloatDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY, new DirectByteBufferAllocator()), initialSize);
   }
 
   @Test
@@ -116,7 +118,7 @@ public class TestDictionary {
 
     //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new BinaryPlainValuesReader();
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (long i = 0; i < 100; i++) {
       assertEquals(Binary.fromString("str" + i), reader.readBytes());
@@ -202,13 +204,13 @@ public class TestDictionary {
 
     DictionaryValuesReader cr = initDicReader(cw, PrimitiveTypeName.INT64);
 
-    cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes1.toByteBuffer(), 0);
     for (long i = 0; i < COUNT; i++) {
       long back = cr.readLong();
       assertEquals(i % 50, back);
     }
 
-    cr.initFromPage(COUNT2, bytes2.toByteArray(), 0);
+    cr.initFromPage(COUNT2, bytes2.toByteBuffer(), 0);
     for (long i = COUNT2; i > 0; i--) {
       long back = cr.readLong();
       assertEquals(i % 50, back);
@@ -226,7 +228,7 @@ public class TestDictionary {
       }
     }
 
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (long i = 0; i < 100; i++) {
       assertEquals(i, reader.readLong());
@@ -272,13 +274,13 @@ public class TestDictionary {
 
     final DictionaryValuesReader cr = initDicReader(cw, DOUBLE);
 
-    cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes1.toByteBuffer(), 0);
     for (double i = 0; i < COUNT; i++) {
       double back = cr.readDouble();
       assertEquals(i % 50, back, 0.0);
     }
 
-    cr.initFromPage(COUNT2, bytes2.toByteArray(), 0);
+    cr.initFromPage(COUNT2, bytes2.toByteBuffer(), 0);
     for (double i = COUNT2; i > 0; i--) {
       double back = cr.readDouble();
       assertEquals(i % 50, back, 0.0);
@@ -297,7 +299,7 @@ public class TestDictionary {
       }
     }
 
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (double i = 0; i < 100; i++) {
       assertEquals(i, reader.readDouble(), 0.00001);
@@ -343,13 +345,13 @@ public class TestDictionary {
 
     DictionaryValuesReader cr = initDicReader(cw, INT32);
 
-    cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes1.toByteBuffer(), 0);
     for (int i = 0; i < COUNT; i++) {
       int back = cr.readInteger();
       assertEquals(i % 50, back);
     }
 
-    cr.initFromPage(COUNT2, bytes2.toByteArray(), 0);
+    cr.initFromPage(COUNT2, bytes2.toByteBuffer(), 0);
     for (int i = COUNT2; i > 0; i--) {
       int back = cr.readInteger();
       assertEquals(i % 50, back);
@@ -368,7 +370,7 @@ public class TestDictionary {
       }
     }
 
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (int i = 0; i < 100; i++) {
       assertEquals(i, reader.readInteger());
@@ -414,13 +416,13 @@ public class TestDictionary {
 
     DictionaryValuesReader cr = initDicReader(cw, FLOAT);
 
-    cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes1.toByteBuffer(), 0);
     for (float i = 0; i < COUNT; i++) {
       float back = cr.readFloat();
       assertEquals(i % 50, back, 0.0f);
     }
 
-    cr.initFromPage(COUNT2, bytes2.toByteArray(), 0);
+    cr.initFromPage(COUNT2, bytes2.toByteBuffer(), 0);
     for (float i = COUNT2; i > 0; i--) {
       float back = cr.readFloat();
       assertEquals(i % 50, back, 0.0f);
@@ -439,7 +441,7 @@ public class TestDictionary {
       }
     }
 
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (float i = 0; i < 100; i++) {
       assertEquals(i, reader.readFloat(), 0.00001);
@@ -473,14 +475,14 @@ public class TestDictionary {
     DictionaryValuesReader reader = initDicReader(cw, INT32);
 
     // pretend there are 100 nulls. what matters is offset = bytes.length.
-    byte[] bytes = {0x00, 0x01, 0x02, 0x03}; // data doesn't matter
-    int offset = bytes.length;
+    ByteBuffer bytes = ByteBuffer.wrap(new byte[] {0x00, 0x01, 0x02, 0x03}); // data doesn't matter
+    int offset = bytes.remaining();
     reader.initFromPage(100, bytes, offset);
   }
 
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type)
       throws IOException {
-    final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();
+    final DictionaryPage dictionaryPage = cw.toDictPageAndClose().copy();
     final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, type, 0, 0);
     final Dictionary dictionary = PLAIN.initDictionary(descriptor, dictionaryPage);
     final DictionaryValuesReader cr = new DictionaryValuesReader(dictionary);
@@ -488,14 +490,14 @@ public class TestDictionary {
   }
 
   private void checkDistinct(int COUNT, BytesInput bytes, ValuesReader cr, String prefix) throws IOException {
-    cr.initFromPage(COUNT, bytes.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes.toByteBuffer(), 0);
     for (int i = 0; i < COUNT; i++) {
       Assert.assertEquals(prefix + i, cr.readBytes().toStringUsingUTF8());
     }
   }
 
   private void checkRepeated(int COUNT, BytesInput bytes, ValuesReader cr, String prefix) throws IOException {
-    cr.initFromPage(COUNT, bytes.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes.toByteBuffer(), 0);
     for (int i = 0; i < COUNT; i++) {
       Assert.assertEquals(prefix + i % 10, cr.readBytes().toStringUsingUTF8());
     }

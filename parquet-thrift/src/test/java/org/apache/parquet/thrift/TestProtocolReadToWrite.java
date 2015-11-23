@@ -92,7 +92,7 @@ public class TestProtocolReadToWrite {
 
   private void writeReadCompare(TBase<?, ?> a)
           throws TException, InstantiationException, IllegalAccessException {
-    ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType((Class<TBase<?, ?>>)a.getClass()))};
+    ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType((Class<TBase<?, ?>>)a.getClass()))};
     for (ProtocolPipe p : pipes) {
       final ByteArrayOutputStream in = new ByteArrayOutputStream();
       final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -110,7 +110,7 @@ public class TestProtocolReadToWrite {
     //handler will rethrow the exception for verifying purpose
     CountingErrorHandler countingHandler = new CountingErrorHandler();
 
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(AddressBook.class), countingHandler);
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(AddressBook.class), countingHandler);
 
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -134,7 +134,7 @@ public class TestProtocolReadToWrite {
   @Test
   public void testUnrecognizedUnionMemberSchema() throws Exception {
     CountingErrorHandler countingHandler = new CountingErrorHandler();
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithUnionV1.class), countingHandler);
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructWithUnionV1.class), countingHandler);
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     StructWithUnionV1 validUnion = new StructWithUnionV1("a valid struct", UnionV1.aLong(new ALong(17L)));
@@ -164,7 +164,7 @@ public class TestProtocolReadToWrite {
   @Test
   public void testUnionWithExtraOrNoValues() throws Exception {
     CountingErrorHandler countingHandler = new CountingErrorHandler();
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithUnionV2.class), countingHandler);
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructWithUnionV2.class), countingHandler);
     ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
@@ -220,6 +220,43 @@ public class TestProtocolReadToWrite {
     assertEquals(0, countingHandler.fieldIgnoredCount);
   }
 
+  @Test
+  public void testUnionWithStructWithUnknownField() throws Exception {
+    CountingErrorHandler countingHandler = new CountingErrorHandler();
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(UnionV3.class), countingHandler);
+    ByteArrayOutputStream in = new ByteArrayOutputStream();
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+    UnionV3 validUnion = UnionV3.aStruct(new StructV1("a valid struct"));
+    StructV2 structV2 = new StructV2("a valid struct");
+    structV2.setAge("a valid age");
+    UnionThatLooksLikeUnionV3 unionWithUnknownStructField = UnionThatLooksLikeUnionV3.aStruct(structV2);
+
+    validUnion.write(protocol(in));
+    unionWithUnknownStructField.write(protocol(in));
+
+    ByteArrayInputStream baos = new ByteArrayInputStream(in.toByteArray());
+
+    // both should not throw
+    p.readOne(protocol(baos), protocol(out));
+    p.readOne(protocol(baos), protocol(out));
+
+    assertEquals(1, countingHandler.recordCountOfMissingFields);
+    assertEquals(1, countingHandler.fieldIgnoredCount);
+
+    in = new ByteArrayOutputStream();
+    validUnion.write(protocol(in));
+    unionWithUnknownStructField.write(protocol(in));
+
+    baos = new ByteArrayInputStream(in.toByteArray());
+
+    // both should not throw
+    p.readOne(protocol(baos), protocol(out));
+    p.readOne(protocol(baos), protocol(out));
+
+    assertEquals(2, countingHandler.recordCountOfMissingFields);
+    assertEquals(2, countingHandler.fieldIgnoredCount);
+  }
 
   /**
    * When enum value in data has an undefined index, it's considered as corrupted record and will be skipped.
@@ -229,7 +266,7 @@ public class TestProtocolReadToWrite {
   @Test
   public void testEnumMissingSchema() throws Exception {
     CountingErrorHandler countingHandler = new CountingErrorHandler();
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithEnum.class), countingHandler);
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructWithEnum.class), countingHandler);
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     StructWithMoreEnum enumDefinedInOldDefinition = new StructWithMoreEnum(NumberEnumWithMoreValue.THREE);
@@ -268,7 +305,7 @@ public class TestProtocolReadToWrite {
         fieldIgnoredCount++;
       }
     };
-    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructV3.class), countingHandler);
+    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructV3.class), countingHandler);
 
     //Data has an extra field of type struct
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
@@ -306,7 +343,7 @@ public class TestProtocolReadToWrite {
       }
     };
 
-    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithIndexStartsFrom4.class), countingHandler);
+    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructWithIndexStartsFrom4.class), countingHandler);
 
     //Data has an extra field of type struct
     final ByteArrayOutputStream in = new ByteArrayOutputStream();

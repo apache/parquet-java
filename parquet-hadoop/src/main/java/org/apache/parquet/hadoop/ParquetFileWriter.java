@@ -39,6 +39,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.Log;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -46,6 +47,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -57,6 +59,7 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.TypeUtil;
 
 /**
  * Internal implementation of the Parquet file writer as a block container
@@ -70,8 +73,9 @@ public class ParquetFileWriter {
   private static ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
 
   public static final String PARQUET_METADATA_FILE = "_metadata";
+  public static final String MAGIC_STR = "PAR1";
+  public static final byte[] MAGIC = MAGIC_STR.getBytes(Charset.forName("ASCII"));
   public static final String PARQUET_COMMON_METADATA_FILE = "_common_metadata";
-  public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
   public static final int CURRENT_VERSION = 1;
 
   // need to supply a buffer size when setting block size. this is the default
@@ -205,6 +209,7 @@ public class ParquetFileWriter {
                            Path file, Mode mode, long rowGroupSize,
                            int maxPaddingSize)
       throws IOException {
+    TypeUtil.checkValidWriteSchema(schema);
     this.schema = schema;
     FileSystem fs = file.getFileSystem(configuration);
     boolean overwriteFlag = (mode == Mode.OVERWRITE);
@@ -472,8 +477,40 @@ public class ParquetFileWriter {
     org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
     writeFileMetaData(parquetMetadata, out);
     if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
-    BytesUtils.writeIntLittleEndian(out, (int)(out.getPos() - footerIndex));
+    BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
     out.write(MAGIC);
+  }
+
+  /**
+   * Given a list of metadata files, merge them into a single ParquetMetadata
+   * Requires that the schemas be compatible, and the extraMetadata be exactly equal.
+   */
+  public static ParquetMetadata mergeMetadataFiles(List<Path> files,  Configuration conf) throws IOException {
+    Preconditions.checkArgument(!files.isEmpty(), "Cannot merge an empty list of metadata");
+
+    GlobalMetaData globalMetaData = null;
+    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+
+    for (Path p : files) {
+      ParquetMetadata pmd = ParquetFileReader.readFooter(conf, p, ParquetMetadataConverter.NO_FILTER);
+      FileMetaData fmd = pmd.getFileMetaData();
+      globalMetaData = mergeInto(fmd, globalMetaData, true);
+      blocks.addAll(pmd.getBlocks());
+    }
+
+    // collapse GlobalMetaData into a single FileMetaData, which will throw if they are not compatible
+    return new ParquetMetadata(globalMetaData.merge(), blocks);
+  }
+
+  /**
+   * Given a list of metadata files, merge them into a single metadata file.
+   * Requires that the schemas be compatible, and the extraMetaData be exactly equal.
+   * This is useful when merging 2 directories of parquet files into a single directory, as long
+   * as both directories were written with compatible schemas and equal extraMetaData.
+   */
+  public static void writeMergedMetadataFile(List<Path> files, Path outputPath, Configuration conf) throws IOException {
+    ParquetMetadata merged = mergeMetadataFiles(files, conf);
+    writeMetadataFile(outputPath, merged, outputPath.getFileSystem(conf));
   }
 
   /**
@@ -481,21 +518,42 @@ public class ParquetFileWriter {
    * @param configuration the configuration to use to get the FileSystem
    * @param outputPath the directory to write the _metadata file to
    * @param footers the list of footers to merge
+   * @deprecated use the variant of writeMetadataFile that takes a {@link JobSummaryLevel} as an argument.
    * @throws IOException
    */
+  @Deprecated
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
+    writeMetadataFile(configuration, outputPath, footers, JobSummaryLevel.ALL);
+  }
+
+  /**
+   * writes _common_metadata file, and optionally a _metadata file depending on the {@link JobSummaryLevel} provided
+   */
+  public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers, JobSummaryLevel level) throws IOException {
+    Preconditions.checkArgument(level == JobSummaryLevel.ALL || level == JobSummaryLevel.COMMON_ONLY,
+        "Unsupported level: " + level);
+
     FileSystem fs = outputPath.getFileSystem(configuration);
     outputPath = outputPath.makeQualified(fs);
     ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);
-    writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_METADATA_FILE);
+
+    if (level == JobSummaryLevel.ALL) {
+      writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_METADATA_FILE);
+    }
+
     metadataFooter.getBlocks().clear();
     writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_COMMON_METADATA_FILE);
   }
 
-  private static void writeMetadataFile(Path outputPath, ParquetMetadata metadataFooter, FileSystem fs, String parquetMetadataFile)
+  private static void writeMetadataFile(Path outputPathRoot, ParquetMetadata metadataFooter, FileSystem fs, String parquetMetadataFile)
       throws IOException {
-    Path metaDataPath = new Path(outputPath, parquetMetadataFile);
-    FSDataOutputStream metadata = fs.create(metaDataPath);
+    Path metaDataPath = new Path(outputPathRoot, parquetMetadataFile);
+    writeMetadataFile(metaDataPath, metadataFooter, fs);
+  }
+
+  private static void writeMetadataFile(Path outputPath, ParquetMetadata metadataFooter, FileSystem fs)
+      throws IOException {
+    FSDataOutputStream metadata = fs.create(outputPath);
     metadata.write(MAGIC);
     serializeFooter(metadataFooter, metadata);
     metadata.close();

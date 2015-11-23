@@ -25,6 +25,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 
 import org.apache.parquet.Log;
 
@@ -70,6 +73,15 @@ abstract public class BytesInput {
    */
   public static BytesInput from(InputStream in, int bytes) {
     return new StreamBytesInput(in, bytes);
+  }
+  
+  /**
+   * @param buffer
+   * @param length number of bytes to read
+   * @return a BytesInput that will read the given bytes from the ByteBuffer
+   */
+  public static BytesInput from(ByteBuffer buffer, int offset, int length) {
+    return new ByteBufferBytesInput(buffer, offset, length);
   }
 
   /**
@@ -121,7 +133,7 @@ abstract public class BytesInput {
   }
 
   /**
-   * @param arrayOut
+   * @param baos - stream to wrap into a BytesInput
    * @return a BytesInput that will write the content of the buffer
    */
   public static BytesInput from(ByteArrayOutputStream baos) {
@@ -162,6 +174,24 @@ abstract public class BytesInput {
     this.writeAllTo(baos);
     if (DEBUG) LOG.debug("converted " + size() + " to byteArray of " + baos.size() + " bytes");
     return baos.getBuf();
+  }
+
+  /**
+   *
+   * @return a new ByteBuffer materializing the contents of this input
+   * @throws IOException
+   */
+  public ByteBuffer toByteBuffer() throws IOException {
+    return ByteBuffer.wrap(toByteArray());
+  }
+
+  /**
+   *
+   * @return a new InputStream materializing the contents of this input
+   * @throws IOException
+   */
+  public InputStream toInputStream() throws IOException {
+    return new ByteBufferInputStream(toByteBuffer());
   }
 
   /**
@@ -258,6 +288,10 @@ abstract public class BytesInput {
       BytesUtils.writeIntLittleEndian(out, intValue);
     }
 
+    public ByteBuffer toByteBuffer() throws IOException {
+      return ByteBuffer.allocate(4).putInt(0, intValue);
+    }
+
     @Override
     public long size() {
       return 4;
@@ -278,6 +312,12 @@ abstract public class BytesInput {
       BytesUtils.writeUnsignedVarInt(intValue, out);
     }
 
+    public ByteBuffer toByteBuffer() throws IOException {
+      ByteBuffer ret = ByteBuffer.allocate((int) size());
+      BytesUtils.writeUnsignedVarInt(intValue, ret);
+      return ret;
+    }
+
     @Override
     public long size() {
       int s = 5 - ((Integer.numberOfLeadingZeros(intValue) + 3) / 7);
@@ -294,6 +334,10 @@ abstract public class BytesInput {
     @Override
     public long size() {
       return 0;
+    }
+
+    public ByteBuffer toByteBuffer() throws IOException {
+      return ByteBuffer.allocate(0);
     }
 
   }
@@ -355,11 +399,49 @@ abstract public class BytesInput {
       out.write(in, offset, length);
     }
 
+    public ByteBuffer toByteBuffer() throws IOException {
+      return ByteBuffer.wrap(in, offset, length);
+    }
+
     @Override
     public long size() {
       return length;
     }
 
   }
+  
+  private static class ByteBufferBytesInput extends BytesInput {
+    
+    private final ByteBuffer byteBuf;
+    private final int length;
+    private final int offset;
 
+    private ByteBufferBytesInput(ByteBuffer byteBuf, int offset, int length) {
+      this.byteBuf = byteBuf;
+      this.offset = offset;
+      this.length = length;
+    }
+
+    @Override
+    public void writeAllTo(OutputStream out) throws IOException {
+      final WritableByteChannel outputChannel = Channels.newChannel(out);
+      byteBuf.position(offset);
+      ByteBuffer tempBuf = byteBuf.slice();
+      tempBuf.limit(length);
+      outputChannel.write(tempBuf);
+    }
+    
+    @Override
+    public ByteBuffer toByteBuffer() throws IOException {
+      byteBuf.position(offset);
+      ByteBuffer buf = byteBuf.slice();
+      buf.limit(length);
+      return buf;
+    }
+
+    @Override
+    public long size() {
+      return length;
+    }
+  }
 }

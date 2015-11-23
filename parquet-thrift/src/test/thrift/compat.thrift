@@ -152,6 +152,10 @@ union UnionV2 {
   3: ABool aNewBool
 }
 
+union UnionV3 {
+  1: StructV1 aStruct
+}
+
 struct StructWithUnionV1 {  
   1: required string name,
   2: required UnionV1 aUnion
@@ -171,6 +175,10 @@ struct AStructThatLooksLikeUnionV2 {
 struct StructWithAStructThatLooksLikeUnionV2 {  
   1: required string name,
   2: required AStructThatLooksLikeUnionV2 aNotQuiteUnion
+}
+
+union UnionThatLooksLikeUnionV3 {
+  1: StructV2 aStruct
 }
 
 union UnionOfStructs {

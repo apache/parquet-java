@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Random;
 
 import org.apache.parquet.io.api.Binary;
@@ -61,7 +62,7 @@ public class Utils {
   public static Binary[] readData(ValuesReader reader, byte[] data, int offset, int length)
       throws IOException {
     Binary[] bins = new Binary[length];
-    reader.initFromPage(length, data, 0);
+    reader.initFromPage(length, ByteBuffer.wrap(data), 0);
     for(int i=0; i < length; i++) {
       bins[i] = reader.readBytes();
     }
@@ -76,7 +77,7 @@ public class Utils {
   public static int[] readInts(ValuesReader reader, byte[] data, int offset, int length)
       throws IOException {
     int[] ints = new int[length];
-    reader.initFromPage(length, data, offset);
+    reader.initFromPage(length, ByteBuffer.wrap(data), offset);
     for(int i=0; i < length; i++) {
       ints[i] = reader.readInteger();
     }

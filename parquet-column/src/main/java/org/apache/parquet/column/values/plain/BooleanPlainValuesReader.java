@@ -22,6 +22,7 @@ import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.column.values.ValuesReader;
@@ -62,8 +63,8 @@ public class BooleanPlainValuesReader extends ValuesReader {
    * @see org.apache.parquet.column.values.ValuesReader#initFromPage(byte[], int)
    */
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
-    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
+  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
+    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.limit() - offset));
     this.in.initFromPage(valueCount, in, offset);
   }
   

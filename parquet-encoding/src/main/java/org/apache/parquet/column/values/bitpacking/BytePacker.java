@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
+import java.nio.ByteBuffer;
+
 /**
  * Packs and unpacks into bytes
  *
@@ -71,7 +73,15 @@ public abstract class BytePacker {
    * @param output the output values
    * @param outPos where to write to in output
    */
-  public abstract void unpack8Values(final byte[] input, final int inPos, final int[] output, final int outPos);
+  public abstract void unpack8Values(final ByteBuffer input, final int inPos, final int[] output, final int outPos);
+
+  /**
+   * Compatibility API
+   */
+  @Deprecated
+  public void unpack8Values(final byte[] input, final int inPos, final int[] output, final int outPos) {
+    unpack8Values(ByteBuffer.wrap(input), inPos, output, outPos);
+  }
 
   /**
    * unpack bitWidth * 4 bytes from input at inPos into 32 values in output at outPos.
@@ -81,6 +91,13 @@ public abstract class BytePacker {
    * @param output the output values
    * @param outPos where to write to in output
    */
-  public abstract void unpack32Values(byte[] input, int inPos, int[] output, int outPos);
+  public abstract void unpack32Values(ByteBuffer input, int inPos, int[] output, int outPos);
 
+  /**
+   * Compatibility API
+   */
+  @Deprecated
+  public void unpack32Values(byte[] input, int inPos, int[] output, int outPos) {
+    unpack32Values(ByteBuffer.wrap(input), inPos, output, outPos);
+  }
 }

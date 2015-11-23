@@ -19,13 +19,14 @@
 package org.apache.parquet.column.values.boundedint;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.parquet.io.ParquetDecodingException;
 
 class BitReader {
   private int currentByte = 0;
   private int currentPosition = 8;
-  private byte[] buf;
+  private ByteBuffer buf;
   private int currentBufferPosition = 0;
   private static final int[] byteGetValueMask = new int[8];
   private static final int[] readMask = new int[32];
@@ -50,7 +51,7 @@ class BitReader {
    * The array is not copied, so must not be mutated during the course of
    * reading.
    */
-  public void prepare(byte[] buf, int offset, int length) {
+  public void prepare(ByteBuffer buf, int offset, int length) {
     this.buf = buf;
     this.endBufferPosistion = offset + length;
     currentByte = 0;
@@ -87,7 +88,7 @@ class BitReader {
 
   private int getNextByte() {
     if (currentBufferPosition < endBufferPosistion) {
-      return buf[currentBufferPosition++] & 0xFF;
+      return buf.get(currentBufferPosition++) & 0xFF;
     }
     return 0;
   }

@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.plain;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -44,8 +45,8 @@ public class PlainValuesWriter extends ValuesWriter {
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
 
-  public PlainValuesWriter(int initialSize, int pageSize) {
-    arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize);
+  public PlainValuesWriter(int initialSize, int pageSize, ByteBufferAllocator allocator) {
+    arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, allocator);
     out = new LittleEndianDataOutputStream(arrayOut);
   }
 
@@ -123,6 +124,12 @@ public class PlainValuesWriter extends ValuesWriter {
   @Override
   public void reset() {
     arrayOut.reset();
+  }
+
+  @Override
+  public void close() {
+    arrayOut.close();
+    out.close();
   }
 
   @Override

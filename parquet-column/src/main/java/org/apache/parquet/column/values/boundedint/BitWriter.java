@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.boundedint;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -41,8 +42,8 @@ class BitWriter {
     }
   }
 
-  public BitWriter(int initialCapacity, int pageSize) {
-    this.baos = new CapacityByteArrayOutputStream(initialCapacity, pageSize);
+  public BitWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
+    this.baos = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
   }
 
   public void writeBit(boolean bit) {
@@ -155,5 +156,12 @@ class BitWriter {
 
   public String memUsageString(String prefix) {
     return baos.memUsageString(prefix);
+  }
+
+  public void close() {
+    currentByte = 0;
+    currentBytePosition = 0;
+    finished = false;
+    baos.close();
   }
 }

@@ -28,6 +28,7 @@ import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Version;
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
@@ -550,7 +551,7 @@ public class TestParquetFileWriter {
     FileStatus outputStatus = fs.getFileStatus(testDirPath);
     List<Footer> footers = ParquetFileReader.readFooters(configuration, outputStatus, false);
     validateFooters(footers);
-    ParquetFileWriter.writeMetadataFile(configuration, testDirPath, footers);
+    ParquetFileWriter.writeMetadataFile(configuration, testDirPath, footers, JobSummaryLevel.ALL);
 
     footers = ParquetFileReader.readFooters(configuration, outputStatus, false);
     validateFooters(footers);
@@ -759,7 +760,7 @@ public class TestParquetFileWriter {
     footers.add(footer);
 
     // This should not throw an exception
-    ParquetFileWriter.writeMetadataFile(conf, relativeRoot, footers);
+    ParquetFileWriter.writeMetadataFile(conf, relativeRoot, footers, JobSummaryLevel.ALL);
   }
 
 }

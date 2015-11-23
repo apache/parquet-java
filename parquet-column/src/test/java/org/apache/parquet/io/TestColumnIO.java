@@ -38,6 +38,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -288,10 +289,12 @@ public class TestColumnIO {
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(writtenSchema);
-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), writtenSchema);
+    RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
+    GroupWriter groupWriter = new GroupWriter(recordWriter, writtenSchema);
     for (Group group : groups) {
       groupWriter.write(group);
     }
+    recordWriter.flush();
     columns.flush();
   }
 
@@ -310,9 +313,12 @@ public class TestColumnIO {
     {
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(schema);
       log(columnIO);
-      GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
+      RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
+      GroupWriter groupWriter = new GroupWriter(recordWriter, schema);
       groupWriter.write(r1);
       groupWriter.write(r2);
+
+      recordWriter.flush();
       columns.flush();
       log(columns);
       log("=========");
@@ -461,11 +467,13 @@ public class TestColumnIO {
     log(columnIO);
 
     // Write groups.
+    RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     GroupWriter groupWriter =
-        new GroupWriter(columnIO.getRecordWriter(columns), messageSchema);
+        new GroupWriter(recordWriter, messageSchema);
     for (Group group : groups) {
       groupWriter.write(group);
     }
+    recordWriter.flush();
     columns.flush();
 
     // Read groups and verify.
@@ -508,7 +516,9 @@ public class TestColumnIO {
     MemPageStore memPageStore = new MemPageStore(1);
     ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
+    RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
+    new GroupWriter(recordWriter, schema).write(r1);
+    recordWriter.flush();
     columns.flush();
 
     RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectedEventsForR1, schema));
@@ -517,7 +527,7 @@ public class TestColumnIO {
   }
 
   private ColumnWriteStoreV1 newColumnWriteStore(MemPageStore memPageStore) {
-    return new ColumnWriteStoreV1(memPageStore, 800, 800, useDictionary, WriterVersion.PARQUET_1_0);
+    return new ColumnWriteStoreV1(memPageStore, 800, 800, useDictionary, WriterVersion.PARQUET_1_0, new HeapByteBufferAllocator());
   }
 
   @Test
@@ -584,10 +594,14 @@ public class TestColumnIO {
 
     ValidatingColumnWriteStore columns = new ValidatingColumnWriteStore(expected);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
+    RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
+    GroupWriter groupWriter = new GroupWriter(recordWriter, schema);
     groupWriter.write(r1);
     groupWriter.write(r2);
+    recordWriter.flush();
     columns.validate();
+    columns.flush();
+    columns.close();
   }
 }
 final class ValidatingColumnWriteStore implements ColumnWriteStore {
@@ -596,6 +610,11 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
 
   ValidatingColumnWriteStore(String[] expected) {
     this.expected = expected;
+  }
+
+  @Override
+  public void close() {
+
   }
 
   @Override
@@ -619,6 +638,11 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
       }
 
       @Override
+      public void write(float value, int repetitionLevel, int definitionLevel) {
+        validate(value, repetitionLevel, definitionLevel);
+      }
+
+      @Override
       public void write(boolean value, int repetitionLevel, int definitionLevel) {
         validate(value, repetitionLevel, definitionLevel);
       }
@@ -634,8 +658,13 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
       }
 
       @Override
-      public void write(float value, int repetitionLevel, int definitionLevel) {
-        validate(value, repetitionLevel, definitionLevel);
+      public void close() {
+
+      }
+
+      @Override
+      public long getBufferedSizeInMemory() {
+        throw new UnsupportedOperationException();
       }
 
       @Override

@@ -37,6 +37,8 @@ import org.apache.parquet.tools.Main;
 import org.apache.parquet.tools.util.MetadataUtils;
 import org.apache.parquet.tools.util.PrettyPrintWriter;
 
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+
 public class ShowSchemaCommand extends ArgsOnlyCommand {
   public static final String[] USAGE = new String[] {
     "<input>",
@@ -88,7 +90,7 @@ public class ShowSchemaCommand extends ArgsOnlyCommand {
     } else {
       file = path;
     }
-    metaData = ParquetFileReader.readFooter(conf, file);
+    metaData = ParquetFileReader.readFooter(conf, file, NO_FILTER);
     MessageType schema = metaData.getFileMetaData().getSchema();
 
     Main.out.println(schema);

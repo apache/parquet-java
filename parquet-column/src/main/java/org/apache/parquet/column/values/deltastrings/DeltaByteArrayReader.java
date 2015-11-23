@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.deltastrings;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.parquet.column.values.RequiresPreviousReader;
 import org.apache.parquet.column.values.ValuesReader;
@@ -45,13 +46,13 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset)
+  public void initFromPage(int valueCount, ByteBuffer page, int offset)
       throws IOException {
     prefixLengthReader.initFromPage(valueCount, page, offset);
     int next = prefixLengthReader.getNextOffset();
     suffixReader.initFromPage(valueCount, page, next);	
   }
-
+  
   @Override
   public void skip() {
     prefixLengthReader.skip();
