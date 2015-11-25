@@ -452,8 +452,24 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
                                 Collection<?> array) {
       if (array.size() > 0) {
         recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
-        for (Object elt : array) {
-          writeValue(schema.getType(0), avroSchema.getElementType(), elt);
+        try {
+          for (Object elt : array) {
+            writeValue(schema.getType(0), avroSchema.getElementType(), elt);
+          }
+        } catch (NullPointerException e) {
+          // find the null element and throw a better error message
+          int i = 0;
+          for (Object elt : array) {
+            if (elt == null) {
+              throw new NullPointerException(
+                  "Array contains a null element at " + i + "\n" +
+                  "Set parquet.avro.write-old-list-structure=false to turn " +
+                  "on support for arrays with null elements.");
+            }
+            i += 1;
+          }
+          // no element was null, throw the original exception
+          throw e;
         }
         recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
@@ -464,8 +480,22 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
                                     Object[] array) {
       if (array.length > 0) {
         recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
-        for (Object element : array) {
-          writeValue(type.getType(0), schema.getElementType(), element);
+        try {
+          for (Object element : array) {
+            writeValue(type.getType(0), schema.getElementType(), element);
+          }
+        } catch (NullPointerException e) {
+          // find the null element and throw a better error message
+          for (int i = 0; i < array.length; i += 1) {
+            if (array[i] == null) {
+              throw new NullPointerException(
+                  "Array contains a null element at " + i + "\n" +
+                  "Set parquet.avro.write-old-list-structure=false to turn " +
+                  "on support for arrays with null elements.");
+            }
+          }
+          // no element was null, throw the original exception
+          throw e;
         }
         recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
