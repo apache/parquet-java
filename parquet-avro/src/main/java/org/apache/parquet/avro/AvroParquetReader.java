@@ -70,7 +70,7 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
     super(conf, file, new AvroReadSupport<T>(), unboundRecordFilter);
   }
 
-  public static class Builder<T> extends ParquetReader.Builder {
+  public static class Builder<T> extends ParquetReader.Builder<T> {
 
     private GenericData model = null;
     private boolean enableCompatibility = true;
