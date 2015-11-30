@@ -48,11 +48,11 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
   private final WriterVersion writerVersion;
   private final ByteBufferAllocator allocator;
 
-  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
-    this(pageWriteStore, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, writerVersion);
+  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion, ByteBufferAllocator allocator) {
+    this(pageWriteStore, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, writerVersion, allocator);
   }
 
-  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, int initialRowCountForSizeCheck, boolean estimateNextSizeCheck, WriterVersion writerVersion) {
+  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, int initialRowCountForSizeCheck, boolean estimateNextSizeCheck, WriterVersion writerVersion, ByteBufferAllocator allocator) {
     super();
     this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;

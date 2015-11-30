@@ -87,7 +87,8 @@ class InternalParquetRecordWriter<T> {
           int dictionaryPageSize,
           boolean enableDictionary,
           boolean validating,
-          WriterVersion writerVersion) {
+          WriterVersion writerVersion,
+          ByteBufferAllocator allocator) {
     this(parquetFileWriter,
          writeSupport,
          schema,
@@ -100,7 +101,8 @@ class InternalParquetRecordWriter<T> {
          ParquetProperties.INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
          false,
          validating,
-         writerVersion);
+         writerVersion,
+         allocator);
   }
 
   /**

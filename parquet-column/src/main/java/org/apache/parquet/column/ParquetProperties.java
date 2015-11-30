@@ -90,6 +90,11 @@ public class ParquetProperties {
   }
 
   public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, ByteBufferAllocator allocator) {
+    this(dictPageSize, writerVersion, enableDict, INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
+        DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, allocator);
+  }
+
+  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, int initialRowCountForSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator) {
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
@@ -104,7 +109,7 @@ public class ParquetProperties {
       return new DevNullValuesWriter();
     } else {
       return new RunLengthBitPackingHybridValuesWriter(
-          getWidthFromMaxInt(maxLevel), initialSizePerCol, pageSize);
+          getWidthFromMaxInt(maxLevel), initialSizePerCol, pageSize, this.allocator);
     }
   }
 

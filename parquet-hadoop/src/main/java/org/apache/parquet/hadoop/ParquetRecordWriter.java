@@ -138,7 +138,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, initialRowCountForSizeCheck,
             estimateNextPageSizeCheck,
-        validating, writerVersion);
+        validating, writerVersion, new HeapByteBufferAllocator());
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(internalWriter, blockSize);
   }
