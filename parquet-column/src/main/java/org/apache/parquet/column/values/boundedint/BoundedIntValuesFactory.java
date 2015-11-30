@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.boundedint;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
 
@@ -26,7 +27,7 @@ public abstract class BoundedIntValuesFactory {
     return bound == 0 ? new ZeroIntegerValuesReader() : new BoundedIntValuesReader(bound);
   }
 
-  public static ValuesWriter getBoundedWriter(int bound, int initialCapacity, int pageSize) {
-    return bound == 0 ? new DevNullValuesWriter() : new BoundedIntValuesWriter(bound, initialCapacity, pageSize);
+  public static ValuesWriter getBoundedWriter(int bound, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
+    return bound == 0 ? new DevNullValuesWriter() : new BoundedIntValuesWriter(bound, initialCapacity, pageSize, allocator);
   }
 }

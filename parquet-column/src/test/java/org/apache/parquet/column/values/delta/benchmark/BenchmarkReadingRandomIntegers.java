@@ -25,6 +25,7 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
@@ -33,6 +34,7 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesReade
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Random;
 
 @AxisRange(min = 0, max = 1)
@@ -54,8 +56,8 @@ public class BenchmarkReadingRandomIntegers {
       data[i] = random.nextInt(100) - 200;
     }
 
-    ValuesWriter delta = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, 20000);
-    ValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(32, 100, 20000);
+    ValuesWriter delta = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
+    ValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(32, 100, 20000, new DirectByteBufferAllocator());
 
     for (int i = 0; i < data.length; i++) {
       delta.writeInteger(data[i]);
@@ -86,7 +88,7 @@ public class BenchmarkReadingRandomIntegers {
   }
 
   private void readData(ValuesReader reader, byte[] deltaBytes) throws IOException {
-    reader.initFromPage(data.length, deltaBytes, 0);
+    reader.initFromPage(data.length, ByteBuffer.wrap(deltaBytes), 0);
     for (int i = 0; i < data.length; i++) {
       reader.readInteger();
     }

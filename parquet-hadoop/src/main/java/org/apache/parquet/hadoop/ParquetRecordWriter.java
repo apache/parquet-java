@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,9 +20,11 @@ package org.apache.parquet.hadoop;
 
 import java.io.IOException;
 import java.util.Map;
+
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -72,7 +74,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       WriterVersion writerVersion) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
-        100, false, validating, writerVersion);
+        100, false, validating, writerVersion, new HeapByteBufferAllocator());
   }
 
     /**
@@ -102,7 +104,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
                 extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
                 INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-                validating, writerVersion);
+                validating, writerVersion, new HeapByteBufferAllocator());
         this.memoryManager = checkNotNull(memoryManager, "memoryManager");
         memoryManager.addWriter(internalWriter, blockSize);
     }

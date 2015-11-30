@@ -63,7 +63,7 @@ public class TestCapacityByteArrayOutputStream {
   }
 
   protected CapacityByteArrayOutputStream newCapacityBAOS(int initialSize) {
-    return new CapacityByteArrayOutputStream(10, 1000000);
+    return new CapacityByteArrayOutputStream(initialSize, 1000000, new HeapByteBufferAllocator());
   }
 
   @Test
@@ -129,12 +129,12 @@ public class TestCapacityByteArrayOutputStream {
       assertEquals(i % (v * 3), byteArray[i]);
     }
     // verifying we have not created 500 * 23 / 10 slabs
-    assertTrue("slab count: " + capacityByteArrayOutputStream.getSlabCount(),capacityByteArrayOutputStream.getSlabCount() <= 20);
+    assertTrue("slab count: " + capacityByteArrayOutputStream.getSlabCount(), capacityByteArrayOutputStream.getSlabCount() <= 20);
     capacityByteArrayOutputStream.reset();
     writeArraysOf3(capacityByteArrayOutputStream, v);
     validate(capacityByteArrayOutputStream, v * 3);
     // verifying we use less slabs now
-    assertTrue("slab count: " + capacityByteArrayOutputStream.getSlabCount(),capacityByteArrayOutputStream.getSlabCount() <= 2);
+    assertTrue("slab count: " + capacityByteArrayOutputStream.getSlabCount(), capacityByteArrayOutputStream.getSlabCount() <= 2);
   }
 
   @Test

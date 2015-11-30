@@ -27,6 +27,7 @@ import java.util.List;
 
 import org.apache.parquet.Version;
 import org.apache.parquet.VersionParser;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.junit.Test;
 
 import org.apache.parquet.column.ColumnDescriptor;

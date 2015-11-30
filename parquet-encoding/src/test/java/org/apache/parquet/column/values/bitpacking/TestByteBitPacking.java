@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.bitpacking;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -50,7 +51,7 @@ public class TestByteBitPacking {
     byte[] packed = new byte[packer.getBitWidth() * 4];
     packer.pack32Values(values, 0, packed, 0);
     LOG.debug("packed: " + TestBitPacking.toString(packed));
-    packer.unpack32Values(packed, 0, unpacked, 0);
+    packer.unpack32Values(ByteBuffer.wrap(packed), 0, unpacked, 0);
   }
 
   private int[] generateValues(int bitWidth) {
@@ -140,7 +141,7 @@ public class TestByteBitPacking {
         LOG.debug("Gener. out: " + TestBitPacking.toString(packedGenerated));
         Assert.assertEquals(pack.name() + " width " + i, TestBitPacking.toString(packedByLemireAsBytes), TestBitPacking.toString(packedGenerated));
 
-        bytePacker.unpack32Values(packedByLemireAsBytes, 0, unpacked, 0);
+        bytePacker.unpack32Values(ByteBuffer.wrap(packedByLemireAsBytes), 0, unpacked, 0);
         LOG.debug("Output: " + TestBitPacking.toString(unpacked));
 
         Assert.assertArrayEquals("width " + i, values, unpacked);

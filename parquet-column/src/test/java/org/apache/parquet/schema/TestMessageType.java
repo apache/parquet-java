@@ -146,17 +146,4 @@ public class TestMessageType {
     assertEquals(schema.toString(), schema2.toString());
   }
 
-  @Test
-  public void testEmptyGroup() {
-    try {
-      MessageType t5 = new MessageType("root1",
-          new GroupType(REQUIRED, "g1"),
-          new GroupType(REQUIRED, "g2",
-              new PrimitiveType(OPTIONAL, BINARY, "b")));
-      fail("should throw InvalidSchemaException when GroupType contains no child");
-    } catch (InvalidSchemaException e) {
-      assertEquals("A group type can not be empty. Parquet does not support empty group without leaves. Empty group: g1", e.getMessage());
-    }
-  }
-
 }

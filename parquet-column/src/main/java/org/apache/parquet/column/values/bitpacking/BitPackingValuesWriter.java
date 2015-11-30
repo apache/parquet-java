@@ -24,6 +24,7 @@ import static org.apache.parquet.column.values.bitpacking.BitPacking.getBitPacki
 
 import java.io.IOException;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
@@ -47,9 +48,9 @@ public class BitPackingValuesWriter extends ValuesWriter {
    * @param bound the maximum value stored by this column
    * @param pageSize
    */
-  public BitPackingValuesWriter(int bound, int initialCapacity, int pageSize) {
+  public BitPackingValuesWriter(int bound, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
-    this.out = new CapacityByteArrayOutputStream(initialCapacity, pageSize);
+    this.out = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
     init();
   }
 
@@ -101,6 +102,11 @@ public class BitPackingValuesWriter extends ValuesWriter {
   public void reset() {
     out.reset();
     init();
+  }
+
+  @Override
+  public void close() {
+    out.close();
   }
 
   /**

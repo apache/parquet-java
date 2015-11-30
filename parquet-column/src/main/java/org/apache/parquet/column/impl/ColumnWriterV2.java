@@ -25,6 +25,7 @@ import java.io.IOException;
 
 import org.apache.parquet.Ints;
 import org.apache.parquet.Log;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -69,8 +70,10 @@ final class ColumnWriterV2 implements ColumnWriter {
     this.pageWriter = pageWriter;
     resetStatistics();
 
-    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), MIN_SLAB_SIZE, pageSize);
-    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), MIN_SLAB_SIZE, pageSize);
+    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(
+        getWidthFromMaxInt(path.getMaxRepetitionLevel()), MIN_SLAB_SIZE, pageSize, parquetProps.getAllocator());
+    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(
+        getWidthFromMaxInt(path.getMaxDefinitionLevel()), MIN_SLAB_SIZE, pageSize, parquetProps.getAllocator());
 
     int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSize, 10);
     this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSize);
@@ -111,6 +114,22 @@ final class ColumnWriterV2 implements ColumnWriter {
     definitionLevel(definitionLevel);
     statistics.incrementNumNulls();
     ++ valueCount;
+  }
+
+  @Override
+  public void close() {
+    // Close the Values writers.
+    repetitionLevelColumn.close();
+    definitionLevelColumn.close();
+    dataColumn.close();
+  }
+
+  @Override
+  public long getBufferedSizeInMemory() {
+    return repetitionLevelColumn.getBufferedSize()
+      + definitionLevelColumn.getBufferedSize()
+      + dataColumn.getBufferedSize()
+      + pageWriter.getMemSize();
   }
 
   /**
@@ -208,7 +227,7 @@ final class ColumnWriterV2 implements ColumnWriter {
    * Is called right after writePage
    */
   public void finalizeColumnChunk() {
-    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
+    final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
       if (DEBUG) LOG.debug("write dictionary");
       try {
@@ -252,7 +271,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   }
 
   /**
-   * @param prefix a prefix to format lines
+   * @param indent a prefix to format lines
    * @return a formatted string showing how memory is used
    */
   public String memUsageString(String indent) {

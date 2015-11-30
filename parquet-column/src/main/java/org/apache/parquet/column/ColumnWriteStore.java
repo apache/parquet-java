@@ -58,4 +58,10 @@ public interface ColumnWriteStore {
    * @return a formated string representing memory usage per column
    */
   abstract public String memUsageString();
+
+  /**
+   * Close the related output stream and release any resources
+   */
+  abstract public void close();
+
 }

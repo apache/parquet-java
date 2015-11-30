@@ -25,6 +25,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
@@ -45,6 +46,7 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
   private final int initialRowCountForSizeCheck;
   private final boolean estimateNextSizeCheck;
   private final WriterVersion writerVersion;
+  private final ByteBufferAllocator allocator;
 
   public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
     this(pageWriteStore, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, writerVersion);
@@ -59,6 +61,7 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
     this.initialRowCountForSizeCheck = initialRowCountForSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
     this.writerVersion = writerVersion;
+    this.allocator = allocator;
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -76,7 +79,7 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
 
   private ColumnWriterV1 newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterV1(path, pageWriter, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, initialRowCountForSizeCheck, estimateNextSizeCheck, writerVersion);
+    return new ColumnWriterV1(path, pageWriter, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, initialRowCountForSizeCheck, estimateNextSizeCheck, writerVersion, allocator);
   }
 
   @Override
@@ -141,6 +144,13 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
   @Override
   public void endRecord() {
     // V1 does not take record boundaries into account
+  }
+
+  public void close() {
+    Collection<ColumnWriterV1> values = columns.values();
+    for (ColumnWriterV1 memColumn : values) {
+      memColumn.close();
+    }
   }
 
 }

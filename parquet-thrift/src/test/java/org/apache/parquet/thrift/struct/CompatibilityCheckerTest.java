@@ -116,7 +116,7 @@ public class CompatibilityCheckerTest {
   }
 
   private ThriftType.StructType struct(Class thriftClass) {
-    return new ThriftSchemaConverter().toStructType(thriftClass);
+    return ThriftSchemaConverter.toStructType(thriftClass);
   }
 
   private CompatibilityReport getCompatibilityReport(Class oldClass, Class newClass) {

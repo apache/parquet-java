@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.bitpacking;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.nio.ByteBuffer;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesUtils;
@@ -34,7 +35,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   private final BytePacker packer;
   private final int[] decoded = new int[VALUES_AT_A_TIME];
   private int decodedPosition = VALUES_AT_A_TIME - 1;
-  private byte[] encoded;
+  private ByteBuffer encoded;
   private int encodedPos;
   private int nextOffset;
 
@@ -47,8 +48,13 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   public int readInteger() {
     ++ decodedPosition;
     if (decodedPosition == decoded.length) {
-      if (encodedPos + bitWidth > encoded.length) {
-        packer.unpack8Values(Arrays.copyOfRange(encoded, encodedPos, encodedPos + bitWidth), 0, decoded, 0);
+      encoded.position(encodedPos);
+      if (encodedPos + bitWidth > encoded.limit()) {
+        // unpack8Values needs at least bitWidth bytes to read from,
+        // We have to fill in 0 byte at the end of encoded bytes.
+        byte[] tempEncode = new byte[bitWidth];
+        encoded.get(tempEncode, 0, encoded.limit() - encodedPos);
+        packer.unpack8Values(tempEncode, 0, decoded, 0);
       } else {
         packer.unpack8Values(encoded, encodedPos, decoded, 0);
       }
@@ -59,7 +65,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset)
+  public void initFromPage(int valueCount, ByteBuffer page, int offset)
       throws IOException {
     int effectiveBitLength = valueCount * bitWidth;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength); // ceil

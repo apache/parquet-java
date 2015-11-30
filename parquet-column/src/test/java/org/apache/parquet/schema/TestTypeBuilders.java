@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -155,39 +154,20 @@ public class TestTypeBuilders {
 
   @Test
   public void testEmptyGroup() {
-    assertThrows("Should complain that required group is empty",
-        IllegalStateException.class, new Callable<Type>() {
-          @Override
-          public Type call() throws Exception {
-            return Types.requiredGroup().named("g");
-          }
-        });
-    assertThrows("Should complain that optional group is empty",
-        IllegalStateException.class, new Callable<Type>() {
-          @Override
-          public Type call() throws Exception {
-            return Types.optionalGroup().named("g");
-          }
-        });
-    assertThrows("Should complain that repeated group is empty",
-        IllegalStateException.class, new Callable<Type>() {
-          @Override
-          public Type call() throws Exception {
-            return Types.repeatedGroup().named("g");
-          }
-        });
+    // empty groups are allowed to support selecting 0 columns (counting rows)
+    Assert.assertEquals("Should not complain about an empty required group",
+        Types.requiredGroup().named("g"), new GroupType(REQUIRED, "g"));
+    Assert.assertEquals("Should not complain about an empty required group",
+        Types.optionalGroup().named("g"), new GroupType(OPTIONAL, "g"));
+    Assert.assertEquals("Should not complain about an empty required group",
+        Types.repeatedGroup().named("g"), new GroupType(REPEATED, "g"));
   }
 
   @Test
-  @Ignore(value="Enforcing this breaks tests in parquet-thrift")
   public void testEmptyMessage() {
-    assertThrows("Should complain that message is empty",
-        IllegalStateException.class, new Callable<Type>() {
-          @Override
-          public Type call() throws Exception {
-            return Types.buildMessage().named("m");
-          }
-        });
+    // empty groups are allowed to support selecting 0 columns (counting rows)
+    Assert.assertEquals("Should not complain about an empty required group",
+        Types.buildMessage().named("m"), new MessageType("m"));
   }
 
   @Test(expected=IllegalArgumentException.class)

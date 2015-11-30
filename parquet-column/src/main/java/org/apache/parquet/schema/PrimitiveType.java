@@ -333,10 +333,9 @@ public final class PrimitiveType extends Type {
    * @param decimalMeta (optional) metadata about the decimal type
    * @param id the id of the field
    */
-  PrimitiveType(
-      Repetition repetition, PrimitiveTypeName primitive,
-      int length, String name, OriginalType originalType,
-      DecimalMetadata decimalMeta, ID id) {
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+                       int length, String name, OriginalType originalType,
+                       DecimalMetadata decimalMeta, ID id) {
     super(name, repetition, originalType, id);
     this.primitive = primitive;
     this.length = length;

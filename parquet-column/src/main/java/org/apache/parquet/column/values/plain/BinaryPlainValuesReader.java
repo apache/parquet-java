@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.plain;
 import static org.apache.parquet.Log.DEBUG;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesUtils;
@@ -30,7 +31,7 @@ import org.apache.parquet.io.api.Binary;
 
 public class BinaryPlainValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(BinaryPlainValuesReader.class);
-  private byte[] in;
+  private ByteBuffer in;
   private int offset;
 
   @Override
@@ -39,7 +40,7 @@ public class BinaryPlainValuesReader extends ValuesReader {
       int length = BytesUtils.readIntLittleEndian(in, offset);
       int start = offset + 4;
       offset = start + length;
-      return Binary.fromConstantByteArray(in, start, length);
+      return Binary.fromConstantByteBuffer(in, start, length);
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read bytes at offset " + offset, e);
     } catch (RuntimeException e) {
@@ -60,11 +61,10 @@ public class BinaryPlainValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset)
+  public void initFromPage(int valueCount, ByteBuffer in, int offset)
       throws IOException {
-    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
+    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.limit() - offset));
     this.in = in;
     this.offset = offset;
   }
-
 }

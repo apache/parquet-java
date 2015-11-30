@@ -78,7 +78,7 @@ public class HeadCommand extends ArgsOnlyCommand {
     ParquetReader<SimpleRecord> reader = null;
     try {
       PrintWriter writer = new PrintWriter(Main.out, true);
-      reader = new ParquetReader<SimpleRecord>(new Path(input), new SimpleReadSupport());
+      reader = ParquetReader.builder(new SimpleReadSupport(), new Path(input)).build();
       for (SimpleRecord value = reader.read(); value != null && num-- > 0; value = reader.read()) {
         value.prettyPrint(writer);
         writer.println();

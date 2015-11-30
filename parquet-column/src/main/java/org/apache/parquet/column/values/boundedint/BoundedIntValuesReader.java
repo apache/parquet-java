@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.boundedint;
 import static org.apache.parquet.Log.DEBUG;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesUtils;
@@ -70,8 +71,8 @@ class BoundedIntValuesReader extends ValuesReader {
   // bytes would have to be serialized). This is the flip-side
   // to BoundedIntColumnWriter.writeData(BytesOutput)
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
-    if (DEBUG) LOG.debug("reading size at "+ offset + ": " + in[offset] + " " + in[offset + 1] + " " + in[offset + 2] + " " + in[offset + 3] + " ");
+  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
+    if (DEBUG) LOG.debug("reading size at "+ offset + ": " + in.get(offset) + " " + in.get(offset + 1) + " " + in.get(offset + 2) + " " + in.get(offset + 3) + " ");
     int totalBytes = BytesUtils.readIntLittleEndian(in, offset);
     if (DEBUG) LOG.debug("will read "+ totalBytes + " bytes");
     currentValueCt = 0;
