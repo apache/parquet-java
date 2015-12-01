@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.pig.ExecType;
 import org.apache.pig.LoadPushDown.RequiredField;
@@ -175,11 +177,11 @@ public class TestParquetLoader {
     for (int i = 0; i < rows; i++) {
       list.add(Storage.tuple(i, "a"+i, i*2));
     }
-    data.set("in", "i:int, a:chararray, b:int", list );
+    data.set("in", "i:int, a:chararray, b:int", list);
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using " + ParquetStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '" + out + "' using " + ParquetStorer.class.getName() + "();");
     pigServer.executeBatch();
       
     //Test Null Padding at the end 
@@ -212,7 +214,7 @@ public class TestParquetLoader {
     for (int i = 0; i < rows; i++) {
       list.add(Storage.tuple(i, (long)i, (float)i, (double)i, Integer.toString(i), Boolean.TRUE));
     }
-    data.set("in", "i:int, l:long, f:float, d:double, s:chararray, b:boolean", list );
+    data.set("in", "i:int, l:long, f:float, d:double, s:chararray, b:boolean", list);
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
@@ -268,11 +270,11 @@ public class TestParquetLoader {
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using " + ParquetStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '" + out + "' using " + ParquetStorer.class.getName() + "();");
     pigServer.executeBatch();
       
     //Test Null Padding at the end 
-    pigServer.registerQuery("B = LOAD '" + out + "' using " + ParquetLoader.class.getName()+"('n1:int, n2:double, n3:long, n4:chararray', 'true');");
+    pigServer.registerQuery("B = LOAD '" + out + "' using " + ParquetLoader.class.getName() + "('n1:int, n2:double, n3:long, n4:chararray', 'true');");
     pigServer.registerQuery("STORE B into 'out' using mock.Storage();");
     pigServer.executeBatch();
     
@@ -285,7 +287,7 @@ public class TestParquetLoader {
       assertEquals(4, t.size());
       
       assertEquals(i, t.get(0));
-      assertEquals(i*1.0, t.get(1));
+      assertEquals(i * 1.0, t.get(1));
       assertEquals(i*2L, t.get(2));
       assertEquals("v"+i, t.get(3));
     }
@@ -306,10 +308,10 @@ public class TestParquetLoader {
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using " + ParquetStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '" + out + "' using " + ParquetStorer.class.getName() + "();");
     pigServer.executeBatch();
     
-    pigServer.registerQuery("B = LOAD '" + out + "' using " + ParquetLoader.class.getName()+"('n1:int, n2:double, n3:long, n4:chararray', 'true');");
+    pigServer.registerQuery("B = LOAD '" + out + "' using " + ParquetLoader.class.getName() + "('n1:int, n2:double, n3:long, n4:chararray', 'true');");
     pigServer.registerQuery("C = foreach B generate n1, n3;");
     pigServer.registerQuery("STORE C into 'out' using mock.Storage();");
     pigServer.executeBatch();
@@ -325,10 +327,37 @@ public class TestParquetLoader {
       assertEquals(i, t.get(0));
       assertEquals(i*2L, t.get(1));
     }
-  }  
-  
+  }
+
   @Test
-  public void testRead() {
-    
+  public void testPredicatePushdown() throws Exception {
+    Configuration conf = new Configuration();
+    conf.setBoolean(ParquetLoader.ENABLE_PREDICATE_FILTER_PUSHDOWN, true);
+
+    PigServer pigServer = new PigServer(ExecType.LOCAL);
+    pigServer.setValidateEachStatement(true);
+
+    String out = "target/out";
+    int rows = 10;
+    Data data = Storage.resetData(pigServer);
+    List<Tuple> list = new ArrayList<Tuple>();
+    for (int i = 0; i < rows; i++) {
+      list.add(Storage.tuple(i, i*1.0, i*2L, "v"+i));
+    }
+    data.set("in", "c1:int, c2:double, c3:long, c4:chararray", list);
+    pigServer.setBatchOn();
+    pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
+    pigServer.deleteFile(out);
+    pigServer.registerQuery("Store A into '"+out+"' using " + ParquetStorer.class.getName()+"();");
+    pigServer.executeBatch();
+
+    pigServer.registerQuery("B = LOAD '" + out + "' using " + ParquetLoader.class.getName()+"('c1:int, c2:double, c3:long, c4:chararray');");
+    pigServer.registerQuery("C = FILTER B by c1 == 1 or c1 == 5;");
+    pigServer.registerQuery("STORE C into 'out' using mock.Storage();");
+    pigServer.executeBatch();
+
+    List<Tuple> actualList = data.get("out");
+
+    assertEquals(2, actualList.size());
   }
 }
