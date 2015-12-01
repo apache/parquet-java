@@ -334,7 +334,7 @@ public class TestParquetLoader {
     Configuration conf = new Configuration();
     conf.setBoolean(ParquetLoader.ENABLE_PREDICATE_FILTER_PUSHDOWN, true);
 
-    PigServer pigServer = new PigServer(ExecType.LOCAL);
+    PigServer pigServer = new PigServer(ExecType.LOCAL, conf);
     pigServer.setValidateEachStatement(true);
 
     String out = "target/out";
