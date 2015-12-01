@@ -33,7 +33,7 @@ import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 
-import static org.apache.parquet.column.ParquetProperties.INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK;
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
 
 public class ColumnWriteStoreV1 implements ColumnWriteStore {
@@ -43,22 +43,22 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
   private final int pageSizeThreshold;
   private final int dictionaryPageSizeThreshold;
   private final boolean enableDictionary;
-  private final int initialRowCountForSizeCheck;
+  private final int initialRowCountForPageSizeCheck;
   private final boolean estimateNextSizeCheck;
   private final WriterVersion writerVersion;
   private final ByteBufferAllocator allocator;
 
   public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion, ByteBufferAllocator allocator) {
-    this(pageWriteStore, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, writerVersion, allocator);
+    this(pageWriteStore, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, writerVersion, allocator);
   }
 
-  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, int initialRowCountForSizeCheck, boolean estimateNextSizeCheck, WriterVersion writerVersion, ByteBufferAllocator allocator) {
+  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, WriterVersion writerVersion, ByteBufferAllocator allocator) {
     super();
     this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;
     this.dictionaryPageSizeThreshold = dictionaryPageSizeThreshold;
     this.enableDictionary = enableDictionary;
-    this.initialRowCountForSizeCheck = initialRowCountForSizeCheck;
+    this.initialRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
     this.writerVersion = writerVersion;
     this.allocator = allocator;
@@ -79,7 +79,7 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
 
   private ColumnWriterV1 newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterV1(path, pageWriter, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, initialRowCountForSizeCheck, estimateNextSizeCheck, writerVersion, allocator);
+    return new ColumnWriterV1(path, pageWriter, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, initialRowCountForPageSizeCheck, estimateNextSizeCheck, writerVersion, allocator);
   }
 
   @Override

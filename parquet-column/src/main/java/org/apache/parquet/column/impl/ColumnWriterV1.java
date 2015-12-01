@@ -56,7 +56,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   private ValuesWriter definitionLevelColumn;
   private ValuesWriter dataColumn;
   private int valueCount;
-  private int initialRowCountForSizeCheck;
+  private int initialRowCountForPageSizeCheck;
   private int valueCountForNextSizeCheck;
   private boolean estimateNextSizeCheck;
 
@@ -68,7 +68,7 @@ final class ColumnWriterV1 implements ColumnWriter {
       int pageSizeThreshold,
       int dictionaryPageSizeThreshold,
       boolean enableDictionary,
-      int initialRowCountForSizeCheck,
+      int initialRowCountForPageSizeCheck,
       boolean estimateNextSizeCheck,
       WriterVersion writerVersion,
       ByteBufferAllocator allocator) {
@@ -76,8 +76,8 @@ final class ColumnWriterV1 implements ColumnWriter {
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
     // initial check of memory usage. So that we have enough data to make an initial prediction
-    this.initialRowCountForSizeCheck = initialRowCountForSizeCheck;
-    this.valueCountForNextSizeCheck = initialRowCountForSizeCheck;
+    this.initialRowCountForPageSizeCheck = initialRowCountForPageSizeCheck;
+    this.valueCountForNextSizeCheck = initialRowCountForPageSizeCheck;
     // Do not attempt to predict next size check.  Prevents issues with rows that vary significantly in size.
     this.estimateNextSizeCheck = estimateNextSizeCheck;
 
@@ -121,14 +121,14 @@ final class ColumnWriterV1 implements ColumnWriter {
         if(estimateNextSizeCheck) {
           valueCountForNextSizeCheck = valueCount / 2;
         } else {
-          valueCountForNextSizeCheck = initialRowCountForSizeCheck;
+          valueCountForNextSizeCheck = initialRowCountForPageSizeCheck;
         }
         writePage();
       } else if (estimateNextSizeCheck) {
         // not reached the threshold, will check again midway
         valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * pageSizeThreshold / memSize)) / 2 + 1;
       } else {
-        valueCountForNextSizeCheck += initialRowCountForSizeCheck;
+        valueCountForNextSizeCheck += initialRowCountForPageSizeCheck;
       }
     }
   }

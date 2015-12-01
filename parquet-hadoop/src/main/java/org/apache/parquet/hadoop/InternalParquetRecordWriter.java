@@ -98,7 +98,8 @@ class InternalParquetRecordWriter<T> {
          compressor,
          dictionaryPageSize,
          enableDictionary,
-         ParquetProperties.INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
+         ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK,
+         ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
          false,
          validating,
          writerVersion,
@@ -123,7 +124,8 @@ class InternalParquetRecordWriter<T> {
       BytesCompressor compressor,
       int dictionaryPageSize,
       boolean enableDictionary,
-      int initialRowCountForSizeCheck,
+      int minRowCountForSizeCheck,
+      int maxRowCountForSizeCheck,
       boolean constantNextSizeCheck,
       boolean validating,
       WriterVersion writerVersion,
@@ -138,7 +140,8 @@ class InternalParquetRecordWriter<T> {
     this.pageSize = pageSize;
     this.compressor = compressor;
     this.validating = validating;
-    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary, initialRowCountForSizeCheck, constantNextSizeCheck, allocator);
+    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary,
+        minRowCountForSizeCheck, maxRowCountForSizeCheck, constantNextSizeCheck, allocator);
     initStore();
   }
 

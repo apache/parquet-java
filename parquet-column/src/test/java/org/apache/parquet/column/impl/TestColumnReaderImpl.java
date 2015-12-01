@@ -21,7 +21,8 @@ package org.apache.parquet.column.impl;
 import static junit.framework.Assert.assertEquals;
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
-import static org.apache.parquet.column.ParquetProperties.INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
 
 import java.util.List;
 
@@ -61,7 +62,9 @@ public class TestColumnReaderImpl {
     MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
     ColumnDescriptor col = schema.getColumns().get(0);
     MemPageWriter pageWriter = new MemPageWriter();
-    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter, new ParquetProperties(1024, PARQUET_2_0, true, INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, new HeapByteBufferAllocator()), 2048);
+    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter, new ParquetProperties(1024, PARQUET_2_0, true,
+        DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK, DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+        DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, new HeapByteBufferAllocator()), 2048);
     for (int i = 0; i < rows; i++) {
       columnWriterV2.write(Binary.fromString("bar" + i % 10), 0, 0);
       if ((i + 1) % 1000 == 0) {
@@ -96,7 +99,9 @@ public class TestColumnReaderImpl {
     MessageType schema = MessageTypeParser.parseMessageType("message test { optional binary foo; }");
     ColumnDescriptor col = schema.getColumns().get(0);
     MemPageWriter pageWriter = new MemPageWriter();
-    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter, new ParquetProperties(1024, PARQUET_2_0, true, INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, new HeapByteBufferAllocator()), 2048);
+    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter, new ParquetProperties(1024, PARQUET_2_0, true,
+        DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK, DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+        DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, new HeapByteBufferAllocator()), 2048);
     for (int i = 0; i < rows; i++) {
       columnWriterV2.writeNull(0, 0);
       if ((i + 1) % 1000 == 0) {

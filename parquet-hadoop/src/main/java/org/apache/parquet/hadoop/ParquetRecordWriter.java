@@ -31,7 +31,8 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.schema.MessageType;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
-import static org.apache.parquet.column.ParquetProperties.INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
 
 /**
@@ -74,40 +75,9 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       WriterVersion writerVersion) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
-        100, false, validating, writerVersion, new HeapByteBufferAllocator());
+        DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK, DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+        DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, validating, writerVersion, new HeapByteBufferAllocator());
   }
-
-    /**
-     *
-     * @param w the file to write to
-     * @param writeSupport the class to convert incoming records
-     * @param schema the schema of the records
-     * @param extraMetaData extra meta data to write in the footer of the file
-     * @param blockSize the size of a block in the file (this will be approximate)
-     * @param compressor the compressor used to compress the pages
-     * @param dictionaryPageSize the threshold for dictionary size
-     * @param enableDictionary to enable the dictionary
-     * @param validating if schema validation should be turned on
-     */
-    public ParquetRecordWriter(
-            ParquetFileWriter w,
-            WriteSupport<T> writeSupport,
-            MessageType schema,
-            Map<String, String> extraMetaData,
-            long blockSize, int pageSize,
-            BytesCompressor compressor,
-            int dictionaryPageSize,
-            boolean enableDictionary,
-            boolean validating,
-            WriterVersion writerVersion,
-            MemoryManager memoryManager) {
-        internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-                extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
-                INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-                validating, writerVersion, new HeapByteBufferAllocator());
-        this.memoryManager = checkNotNull(memoryManager, "memoryManager");
-        memoryManager.addWriter(internalWriter, blockSize);
-    }
 
   /**
    *
@@ -122,6 +92,40 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param validating if schema validation should be turned on
    */
   public ParquetRecordWriter(
+          ParquetFileWriter w,
+          WriteSupport<T> writeSupport,
+          MessageType schema,
+          Map<String, String> extraMetaData,
+          long blockSize, int pageSize,
+          BytesCompressor compressor,
+          int dictionaryPageSize,
+          boolean enableDictionary,
+          boolean validating,
+          WriterVersion writerVersion,
+          MemoryManager memoryManager) {
+      this(w, writeSupport, schema,
+              extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
+              DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK, DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+              DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
+              validating, writerVersion, memoryManager);
+    }
+
+  /**
+   *
+   * @param w the file to write to
+   * @param writeSupport the class to convert incoming records
+   * @param schema the schema of the records
+   * @param extraMetaData extra meta data to write in the footer of the file
+   * @param blockSize the size of a block in the file (this will be approximate)
+   * @param compressor the compressor used to compress the pages
+   * @param dictionaryPageSize the threshold for dictionary size
+   * @param enableDictionary to enable the dictionary
+   * @param minRowCountForSizeCheck min number of rows before page size check
+   * @param maxRowCountForSizeCheck max number of rows before page size check
+   * @param estimateNextPageSizeCheck dynamically estimate next page size check (min will be used if false)
+   * @param validating if schema validation should be turned on
+   */
+  public ParquetRecordWriter(
       ParquetFileWriter w,
       WriteSupport<T> writeSupport,
       MessageType schema,
@@ -130,14 +134,15 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       BytesCompressor compressor,
       int dictionaryPageSize,
       boolean enableDictionary,
-      int initialRowCountForSizeCheck,
+      int minRowCountForSizeCheck,
+      int maxRowCountForSizeCheck,
       boolean estimateNextPageSizeCheck,
       boolean validating,
       WriterVersion writerVersion,
       MemoryManager memoryManager) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, initialRowCountForSizeCheck,
-            estimateNextPageSizeCheck,
+        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, minRowCountForSizeCheck,
+        maxRowCountForSizeCheck, estimateNextPageSizeCheck,
         validating, writerVersion, new HeapByteBufferAllocator());
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(internalWriter, blockSize);

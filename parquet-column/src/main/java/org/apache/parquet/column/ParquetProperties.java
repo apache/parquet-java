@@ -55,8 +55,9 @@ import org.apache.parquet.schema.MessageType;
  */
 public class ParquetProperties {
 
-  public static final int INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK = 100;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
+  public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
+  public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
 
   public enum WriterVersion {
     PARQUET_1_0 ("v1"),
@@ -81,7 +82,8 @@ public class ParquetProperties {
   private final int dictionaryPageSizeThreshold;
   private final WriterVersion writerVersion;
   private final boolean enableDictionary;
-  private final int initialRowCountForSizeCheck;
+  private final int minRowCountForPageSizeCheck;
+  private final int maxRowCountForPageSizeCheck;
   private final boolean estimateNextSizeCheck;
   private final ByteBufferAllocator allocator;
 
@@ -90,15 +92,17 @@ public class ParquetProperties {
   }
 
   public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, ByteBufferAllocator allocator) {
-    this(dictPageSize, writerVersion, enableDict, INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
+    this(dictPageSize, writerVersion, enableDict, DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK, DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
         DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, allocator);
   }
 
-  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, int initialRowCountForSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator) {
+  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, int minRowCountForPageSizeCheck,
+                           int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator) {
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
-    this.initialRowCountForSizeCheck = initialRowCountForSizeCheck;
+    this.minRowCountForPageSizeCheck = minRowCountForPageSizeCheck;
+    this.maxRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
     Preconditions.checkNotNull(allocator, "ByteBufferAllocator");
     this.allocator = allocator;
@@ -257,7 +261,7 @@ public class ParquetProperties {
           pageSize,
           dictionaryPageSizeThreshold,
           enableDictionary,
-          initialRowCountForSizeCheck,
+          minRowCountForPageSizeCheck,
           estimateNextSizeCheck,
           writerVersion, 
           allocator);
@@ -266,9 +270,28 @@ public class ParquetProperties {
           schema,
           pageStore,
           pageSize,
-          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary, initialRowCountForSizeCheck, estimateNextSizeCheck, allocator));
+          new ParquetProperties(
+              dictionaryPageSizeThreshold,
+              writerVersion,
+              enableDictionary,
+              minRowCountForPageSizeCheck,
+              maxRowCountForPageSizeCheck,
+              estimateNextSizeCheck,
+              allocator));
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);
     }
+  }
+
+  public int getMinRowCountForPageSizeCheck() {
+    return minRowCountForPageSizeCheck;
+  }
+
+  public int getMaxRowCountForPageSizeCheck() {
+    return maxRowCountForPageSizeCheck;
+  }
+
+  public boolean isEstimateNextSizeCheck() {
+    return estimateNextSizeCheck;
   }
 }
