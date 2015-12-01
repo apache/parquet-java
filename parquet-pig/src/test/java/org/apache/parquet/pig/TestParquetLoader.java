@@ -29,12 +29,14 @@ import org.apache.pig.ExecType;
 import org.apache.pig.LoadPushDown.RequiredField;
 import org.apache.pig.LoadPushDown.RequiredFieldList;
 import org.apache.pig.PigServer;
+import org.apache.pig.backend.executionengine.ExecJob;
 import org.apache.pig.builtin.mock.Storage;
 import org.apache.pig.builtin.mock.Storage.Data;
 import org.apache.pig.data.DataType;
 import static org.apache.pig.data.DataType.*;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
+import org.apache.pig.tools.pigstats.JobStats;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertEquals;
@@ -338,6 +340,7 @@ public class TestParquetLoader {
     pigServer.setValidateEachStatement(true);
 
     String out = "target/out";
+    String out2 = "target/out2";
     int rows = 10;
     Data data = Storage.resetData(pigServer);
     List<Tuple> list = new ArrayList<Tuple>();
@@ -348,16 +351,17 @@ public class TestParquetLoader {
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using " + ParquetStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '" + out + "' using " + ParquetStorer.class.getName() + "();");
     pigServer.executeBatch();
 
-    pigServer.registerQuery("B = LOAD '" + out + "' using " + ParquetLoader.class.getName()+"('c1:int, c2:double, c3:long, c4:chararray');");
+    pigServer.deleteFile(out2);
+    pigServer.registerQuery("B = LOAD '" + out + "' using " + ParquetLoader.class.getName() + "('c1:int, c2:double, c3:long, c4:chararray');");
     pigServer.registerQuery("C = FILTER B by c1 == 1 or c1 == 5;");
-    pigServer.registerQuery("STORE C into 'out' using mock.Storage();");
-    pigServer.executeBatch();
+    pigServer.registerQuery("STORE C into '" + out2 +"' using mock.Storage();");
+    List<ExecJob> jobs = pigServer.executeBatch();
 
-    List<Tuple> actualList = data.get("out");
+    long recordsRead = jobs.get(0).getStatistics().getInputStats().get(0).getNumberRecords();
 
-    assertEquals(2, actualList.size());
+    assertEquals(2, recordsRead);
   }
 }
