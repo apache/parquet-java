@@ -372,11 +372,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     int maxPaddingSize = getMaxPaddingSize(conf);
     if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
     boolean estimateNextSizeCheck = getEstimatePageSizeCheck(conf);
-    if(INFO) LOG.info("Page size checking is: " + (estimateNextSizeCheck ? "estimated" : "constant"));
+    if (INFO) LOG.info("Page size checking is: " + (estimateNextSizeCheck ? "estimated" : "constant"));
     int minRowCountForPageSizeCheck = getMinRowCountForPageSizeCheck(conf);
-    if(INFO) LOG.info("Min row count for page size check is: " + minRowCountForPageSizeCheck);
+    if (INFO) LOG.info("Min row count for page size check is: " + minRowCountForPageSizeCheck);
     int maxRowCountForPageSizeCheck = getMaxRowCountForPageSizeCheck(conf);
-    if(INFO) LOG.info("Min row count for page size check is: " + maxRowCountForPageSizeCheck);
+    if (INFO) LOG.info("Min row count for page size check is: " + maxRowCountForPageSizeCheck);
 
     CodecFactory codecFactory = new CodecFactory(conf, pageSize);
 
