@@ -52,13 +52,13 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
     this(pageWriteStore, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK, DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, writerVersion, allocator);
   }
 
-  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, WriterVersion writerVersion, ByteBufferAllocator allocator) {
+  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, int initialRowCountForPageSizeCheck, boolean estimateNextSizeCheck, WriterVersion writerVersion, ByteBufferAllocator allocator) {
     super();
     this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;
     this.dictionaryPageSizeThreshold = dictionaryPageSizeThreshold;
     this.enableDictionary = enableDictionary;
-    this.initialRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
+    this.initialRowCountForPageSizeCheck = initialRowCountForPageSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
     this.writerVersion = writerVersion;
     this.allocator = allocator;
