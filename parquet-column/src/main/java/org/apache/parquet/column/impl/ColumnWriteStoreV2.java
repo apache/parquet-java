@@ -148,11 +148,6 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
   }
 
   private void sizeCheck() {
-    if(!parquetProperties.isEstimateNextSizeCheck()) {
-      rowCountForNextSizeCheck = rowCount + parquetProperties.getMinRowCountForPageSizeCheck();
-      return;
-    }
-
     long minRecordToWait = Long.MAX_VALUE;
     for (ColumnWriterV2 writer : writers) {
       long usedMem = writer.getCurrentPageBufferedSize();
@@ -173,11 +168,16 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
     if (minRecordToWait == Long.MAX_VALUE) {
       minRecordToWait = parquetProperties.getMinRowCountForPageSizeCheck();
     }
-    // will check again halfway
-    rowCountForNextSizeCheck = rowCount +
-        min(
-            max(minRecordToWait / 2, parquetProperties.getMinRowCountForPageSizeCheck()), // no less than MINIMUM_RECORD_COUNT_FOR_CHECK
-            parquetProperties.getMaxRowCountForPageSizeCheck()); // no more than MAXIMUM_RECORD_COUNT_FOR_CHECK
+
+    if(parquetProperties.isEstimateNextSizeCheck()) {
+      // will check again halfway
+      rowCountForNextSizeCheck = rowCount +
+          min(
+              max(minRecordToWait / 2, parquetProperties.getMinRowCountForPageSizeCheck()), // no less than MINIMUM_RECORD_COUNT_FOR_CHECK
+              parquetProperties.getMaxRowCountForPageSizeCheck()); // no more than MAXIMUM_RECORD_COUNT_FOR_CHECK
+    } else {
+      rowCountForNextSizeCheck = rowCount + parquetProperties.getMinRowCountForPageSizeCheck();
+    }
   }
 
 }
