@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.Log.INFO;
 import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
-import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
@@ -242,19 +241,23 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static boolean getEnableDictionary(Configuration configuration) {
-    return configuration.getBoolean(ENABLE_DICTIONARY, true);
+    return configuration.getBoolean(
+        ENABLE_DICTIONARY, ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED);
   }
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
-    return configuration.getInt(MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK, ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+    return configuration.getInt(MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
+        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
   }
 
   public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
-    return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK, ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+    return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
+        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
   }
 
   public static boolean getEstimatePageSizeCheck(Configuration configuration) {
-    return configuration.getBoolean(ESTIMATE_PAGE_SIZE_CHECK, ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK);
+    return configuration.getBoolean(ESTIMATE_PAGE_SIZE_CHECK,
+        ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK);
   }
 
   @Deprecated
@@ -267,15 +270,17 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static int getPageSize(Configuration configuration) {
-    return configuration.getInt(PAGE_SIZE, DEFAULT_PAGE_SIZE);
+    return configuration.getInt(PAGE_SIZE, ParquetProperties.DEFAULT_PAGE_SIZE);
   }
 
   public static int getDictionaryPageSize(Configuration configuration) {
-    return configuration.getInt(DICTIONARY_PAGE_SIZE, DEFAULT_PAGE_SIZE);
+    return configuration.getInt(
+        DICTIONARY_PAGE_SIZE, ParquetProperties.DEFAULT_DICTIONARY_PAGE_SIZE);
   }
 
   public static WriterVersion getWriterVersion(Configuration configuration) {
-    String writerVersion = configuration.get(WRITER_VERSION, WriterVersion.PARQUET_1_0.toString());
+    String writerVersion = configuration.get(
+        WRITER_VERSION, ParquetProperties.DEFAULT_WRITER_VERSION.toString());
     return WriterVersion.fromString(writerVersion);
   }
 
@@ -357,28 +362,32 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
-    long blockSize = getLongBlockSize(conf);
-    if (INFO) LOG.info("Parquet block size to " + blockSize);
-    int pageSize = getPageSize(conf);
-    if (INFO) LOG.info("Parquet page size to " + pageSize);
-    int dictionaryPageSize = getDictionaryPageSize(conf);
-    if (INFO) LOG.info("Parquet dictionary page size to " + dictionaryPageSize);
-    boolean enableDictionary = getEnableDictionary(conf);
-    if (INFO) LOG.info("Dictionary is " + (enableDictionary ? "on" : "off"));
-    boolean validating = getValidation(conf);
-    if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
-    WriterVersion writerVersion = getWriterVersion(conf);
-    if (INFO) LOG.info("Writer version is: " + writerVersion);
-    int maxPaddingSize = getMaxPaddingSize(conf);
-    if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
-    boolean estimateNextSizeCheck = getEstimatePageSizeCheck(conf);
-    if (INFO) LOG.info("Page size checking is: " + (estimateNextSizeCheck ? "estimated" : "constant"));
-    int minRowCountForPageSizeCheck = getMinRowCountForPageSizeCheck(conf);
-    if (INFO) LOG.info("Min row count for page size check is: " + minRowCountForPageSizeCheck);
-    int maxRowCountForPageSizeCheck = getMaxRowCountForPageSizeCheck(conf);
-    if (INFO) LOG.info("Min row count for page size check is: " + maxRowCountForPageSizeCheck);
+    ParquetProperties props = ParquetProperties.builder()
+        .withPageSize(getPageSize(conf))
+        .withDictionaryPageSize(getDictionaryPageSize(conf))
+        .withDictionaryEncoding(getEnableDictionary(conf))
+        .withWriterVersion(getWriterVersion(conf))
+        .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
+        .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
+        .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
+        .build();
 
-    CodecFactory codecFactory = new CodecFactory(conf, pageSize);
+    long blockSize = getLongBlockSize(conf);
+    int maxPaddingSize = getMaxPaddingSize(conf);
+    boolean validating = getValidation(conf);
+
+    if (INFO) LOG.info("Parquet block size to " + blockSize);
+    if (INFO) LOG.info("Parquet page size to " + props.getPageSizeThreshold());
+    if (INFO) LOG.info("Parquet dictionary page size to " + props.getDictionaryPageSizeThreshold());
+    if (INFO) LOG.info("Dictionary is " + (props.isEnableDictionary() ? "on" : "off"));
+    if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
+    if (INFO) LOG.info("Writer version is: " + props.getWriterVersion());
+    if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
+    if (INFO) LOG.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
+    if (INFO) LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
+    if (INFO) LOG.info("Min row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+
+    CodecFactory codecFactory = new CodecFactory(conf, props.getPageSizeThreshold());
 
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(
@@ -401,15 +410,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         writeSupport,
         init.getSchema(),
         init.getExtraMetaData(),
-        blockSize, pageSize,
+        blockSize,
         codecFactory.getCompressor(codec),
-        dictionaryPageSize,
-        enableDictionary,
-        minRowCountForPageSizeCheck,
-        maxRowCountForPageSizeCheck,
-        estimateNextSizeCheck,
         validating,
-        writerVersion,
+        props,
         memoryManager);
   }
 

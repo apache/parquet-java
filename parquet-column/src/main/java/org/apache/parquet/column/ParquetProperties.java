@@ -20,6 +20,7 @@ package org.apache.parquet.column;
 
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
@@ -44,6 +45,7 @@ import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
 import org.apache.parquet.column.values.plain.BooleanPlainValuesWriter;
 import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
+import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import org.apache.parquet.schema.MessageType;
 
@@ -55,9 +57,15 @@ import org.apache.parquet.schema.MessageType;
  */
 public class ParquetProperties {
 
+  public static final int DEFAULT_PAGE_SIZE = 1024 * 1024;
+  public static final int DEFAULT_DICTIONARY_PAGE_SIZE = DEFAULT_PAGE_SIZE;
+  public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
+  public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
+
+  private static final int MIN_SLAB_SIZE = 64;
 
   public enum WriterVersion {
     PARQUET_1_0 ("v1"),
@@ -79,6 +87,8 @@ public class ParquetProperties {
       return WriterVersion.valueOf(name);
     }
   }
+
+  private final int pageSizeThreshold;
   private final int dictionaryPageSizeThreshold;
   private final WriterVersion writerVersion;
   private final boolean enableDictionary;
@@ -87,56 +97,73 @@ public class ParquetProperties {
   private final boolean estimateNextSizeCheck;
   private final ByteBufferAllocator allocator;
 
-  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict) {
-    this(dictPageSize, writerVersion, enableDict, new HeapByteBufferAllocator());
-  }
+  private final int initialSlabSize;
 
-  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, ByteBufferAllocator allocator) {
-    this(dictPageSize, writerVersion, enableDict, DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK, DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
-        DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK, allocator);
-  }
-
-  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, int minRowCountForPageSizeCheck,
-                           int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator) {
+  private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
+                            int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator) {
+    this.pageSizeThreshold = pageSize;
+    this.initialSlabSize = CapacityByteArrayOutputStream
+        .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
     this.minRowCountForPageSizeCheck = minRowCountForPageSizeCheck;
     this.maxRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
-    Preconditions.checkNotNull(allocator, "ByteBufferAllocator");
     this.allocator = allocator;
   }
 
-  public ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol, int pageSize) {
+  public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
+    return newColumnDescriptorValuesWriter(path.getMaxRepetitionLevel());
+  }
+
+  public ValuesWriter newDefinitionLevelWriter(ColumnDescriptor path) {
+    return newColumnDescriptorValuesWriter(path.getMaxDefinitionLevel());
+  }
+
+  private ValuesWriter newColumnDescriptorValuesWriter(int maxLevel) {
     if (maxLevel == 0) {
       return new DevNullValuesWriter();
     } else {
       return new RunLengthBitPackingHybridValuesWriter(
-          getWidthFromMaxInt(maxLevel), initialSizePerCol, pageSize, this.allocator);
+          getWidthFromMaxInt(maxLevel), MIN_SLAB_SIZE, pageSizeThreshold, allocator);
     }
   }
 
-  private ValuesWriter plainWriter(ColumnDescriptor path, int initialSizePerCol, int pageSize) {
+  public RunLengthBitPackingHybridEncoder newRepetitionLevelEncoder(ColumnDescriptor path) {
+    return newLevelEncoder(path.getMaxRepetitionLevel());
+  }
+
+  public RunLengthBitPackingHybridEncoder newDefinitionLevelEncoder(ColumnDescriptor path) {
+    return newLevelEncoder(path.getMaxDefinitionLevel());
+  }
+
+  private RunLengthBitPackingHybridEncoder newLevelEncoder(int maxLevel) {
+    return new RunLengthBitPackingHybridEncoder(
+        getWidthFromMaxInt(maxLevel), MIN_SLAB_SIZE, pageSizeThreshold, allocator);
+  }
+
+  private ValuesWriter plainWriter(ColumnDescriptor path) {
     switch (path.getType()) {
     case BOOLEAN:
       return new BooleanPlainValuesWriter();
     case INT96:
-      return new FixedLenByteArrayPlainValuesWriter(12, initialSizePerCol, pageSize, this.allocator);
+      return new FixedLenByteArrayPlainValuesWriter(12, initialSlabSize, pageSizeThreshold, allocator);
     case FIXED_LEN_BYTE_ARRAY:
-      return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol, pageSize, this.allocator);
+      return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSlabSize, pageSizeThreshold, allocator);
     case BINARY:
     case INT32:
     case INT64:
     case DOUBLE:
     case FLOAT:
-      return new PlainValuesWriter(initialSizePerCol, pageSize, this.allocator);
+      return new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
     default:
       throw new IllegalArgumentException("Unknown type " + path.getType());
     }
   }
 
-  private DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path, int initialSizePerCol) {
+  @SuppressWarnings("deprecation")
+  private DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path) {
     Encoding encodingForDataPage;
     Encoding encodingForDictionaryPage;
     switch(writerVersion) {
@@ -173,24 +200,24 @@ public class ParquetProperties {
     }
   }
 
-  private ValuesWriter writerToFallbackTo(ColumnDescriptor path, int initialSizePerCol, int pageSize) {
+  private ValuesWriter writerToFallbackTo(ColumnDescriptor path) {
     switch(writerVersion) {
     case PARQUET_1_0:
-      return plainWriter(path, initialSizePerCol, pageSize);
+      return plainWriter(path);
     case PARQUET_2_0:
       switch (path.getType()) {
       case BOOLEAN:
-        return new RunLengthBitPackingHybridValuesWriter(1, initialSizePerCol, pageSize, this.allocator);
+        return new RunLengthBitPackingHybridValuesWriter(1, initialSlabSize, pageSizeThreshold, allocator);
       case BINARY:
       case FIXED_LEN_BYTE_ARRAY:
-        return new DeltaByteArrayWriter(initialSizePerCol, pageSize,this.allocator);
+        return new DeltaByteArrayWriter(initialSlabSize, pageSizeThreshold, allocator);
       case INT32:
-        return new DeltaBinaryPackingValuesWriter(initialSizePerCol, pageSize, this.allocator);
+        return new DeltaBinaryPackingValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
       case INT96:
       case INT64:
       case DOUBLE:
       case FLOAT:
-        return plainWriter(path, initialSizePerCol, pageSize);
+        return plainWriter(path);
       default:
         throw new IllegalArgumentException("Unknown type " + path.getType());
       }
@@ -199,27 +226,27 @@ public class ParquetProperties {
     }
   }
 
-  private ValuesWriter dictWriterWithFallBack(ColumnDescriptor path, int initialSizePerCol, int pageSize) {
-    ValuesWriter writerToFallBackTo = writerToFallbackTo(path, initialSizePerCol, pageSize);
+  private ValuesWriter dictWriterWithFallBack(ColumnDescriptor path) {
+    ValuesWriter writerToFallBackTo = writerToFallbackTo(path);
     if (enableDictionary) {
       return FallbackValuesWriter.of(
-          dictionaryWriter(path, initialSizePerCol),
+          dictionaryWriter(path),
           writerToFallBackTo);
     } else {
      return writerToFallBackTo;
     }
   }
 
-  public ValuesWriter getValuesWriter(ColumnDescriptor path, int initialSizePerCol, int pageSize) {
+  public ValuesWriter newValuesWriter(ColumnDescriptor path) {
     switch (path.getType()) {
     case BOOLEAN: // no dictionary encoding for boolean
-      return writerToFallbackTo(path, initialSizePerCol, pageSize);
+      return writerToFallbackTo(path);
     case FIXED_LEN_BYTE_ARRAY:
       // dictionary encoding for that type was not enabled in PARQUET 1.0
       if (writerVersion == WriterVersion.PARQUET_2_0) {
-        return dictWriterWithFallBack(path, initialSizePerCol, pageSize);
+        return dictWriterWithFallBack(path);
       } else {
-       return writerToFallbackTo(path, initialSizePerCol, pageSize);
+       return writerToFallbackTo(path);
       }
     case BINARY:
     case INT32:
@@ -227,10 +254,14 @@ public class ParquetProperties {
     case INT96:
     case DOUBLE:
     case FLOAT:
-      return dictWriterWithFallBack(path, initialSizePerCol, pageSize);
+      return dictWriterWithFallBack(path);
     default:
       throw new IllegalArgumentException("Unknown type " + path.getType());
     }
+  }
+
+  public int getPageSizeThreshold() {
+    return pageSizeThreshold;
   }
 
   public int getDictionaryPageSizeThreshold() {
@@ -249,35 +280,13 @@ public class ParquetProperties {
     return allocator;
   }
 
-  public ColumnWriteStore newColumnWriteStore(
-      MessageType schema,
-      PageWriteStore pageStore,
-      int pageSize,
-      ByteBufferAllocator allocator) {
+  public ColumnWriteStore newColumnWriteStore(MessageType schema,
+                                              PageWriteStore pageStore) {
     switch (writerVersion) {
     case PARQUET_1_0:
-      return new ColumnWriteStoreV1(
-          pageStore,
-          pageSize,
-          dictionaryPageSizeThreshold,
-          enableDictionary,
-          minRowCountForPageSizeCheck,
-          estimateNextSizeCheck,
-          writerVersion, 
-          allocator);
+      return new ColumnWriteStoreV1(pageStore, this);
     case PARQUET_2_0:
-      return new ColumnWriteStoreV2(
-          schema,
-          pageStore,
-          pageSize,
-          new ParquetProperties(
-              dictionaryPageSizeThreshold,
-              writerVersion,
-              enableDictionary,
-              minRowCountForPageSizeCheck,
-              maxRowCountForPageSizeCheck,
-              estimateNextSizeCheck,
-              allocator));
+      return new ColumnWriteStoreV2(schema, pageStore, this);
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);
     }
@@ -291,7 +300,119 @@ public class ParquetProperties {
     return maxRowCountForPageSizeCheck;
   }
 
-  public boolean isEstimateNextSizeCheck() {
+  public boolean estimateNextSizeCheck() {
     return estimateNextSizeCheck;
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static Builder copy(ParquetProperties toCopy) {
+    return new Builder(toCopy);
+  }
+
+  public static class Builder {
+    private int pageSize = DEFAULT_PAGE_SIZE;
+    private int dictPageSize = DEFAULT_DICTIONARY_PAGE_SIZE;
+    private boolean enableDict = DEFAULT_IS_DICTIONARY_ENABLED;
+    private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
+    private int minRowCountForPageSizeCheck = DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK;
+    private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
+    private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
+    private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
+
+    private Builder() {
+    }
+
+    private Builder(ParquetProperties toCopy) {
+      this.enableDict = toCopy.enableDictionary;
+      this.dictPageSize = toCopy.dictionaryPageSizeThreshold;
+      this.writerVersion = toCopy.writerVersion;
+      this.minRowCountForPageSizeCheck = toCopy.minRowCountForPageSizeCheck;
+      this.maxRowCountForPageSizeCheck = toCopy.maxRowCountForPageSizeCheck;
+      this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
+      this.allocator = toCopy.allocator;
+    }
+
+    /**
+     * Set the Parquet format page size.
+     *
+     * @param pageSize an integer size in bytes
+     * @return this builder for method chaining.
+     */
+    public Builder withPageSize(int pageSize) {
+      Preconditions.checkArgument(pageSize > 0,
+          "Invalid page size (negative): %s", pageSize);
+      this.pageSize = pageSize;
+      return this;
+    }
+
+    /**
+     * Enable or disable dictionary encoding.
+     *
+     * @param enableDictionary whether dictionary encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withDictionaryEncoding(boolean enableDictionary) {
+      this.enableDict = enableDictionary;
+      return this;
+    }
+
+    /**
+     * Set the Parquet format dictionary page size.
+     *
+     * @param dictionaryPageSize an integer size in bytes
+     * @return this builder for method chaining.
+     */
+    public Builder withDictionaryPageSize(int dictionaryPageSize) {
+      Preconditions.checkArgument(dictionaryPageSize > 0,
+          "Invalid dictionary page size (negative): %s", dictionaryPageSize);
+      this.dictPageSize = dictionaryPageSize;
+      return this;
+    }
+
+    /**
+     * Set the {@link WriterVersion format version}.
+     *
+     * @param version a {@code WriterVersion}
+     * @return this builder for method chaining.
+     */
+    public Builder withWriterVersion(WriterVersion version) {
+      this.writerVersion = version;
+      return this;
+    }
+
+    public Builder withMinRowCountForPageSizeCheck(int min) {
+      Preconditions.checkArgument(min > 0,
+          "Invalid row count for page size check (negative): %s", min);
+      this.minRowCountForPageSizeCheck = min;
+      return this;
+    }
+
+    public Builder withMaxRowCountForPageSizeCheck(int max) {
+      Preconditions.checkArgument(max > 0,
+          "Invalid row count for page size check (negative): %s", max);
+      this.maxRowCountForPageSizeCheck = max;
+      return this;
+    }
+
+    // Do not attempt to predict next size check.  Prevents issues with rows that vary significantly in size.
+    public Builder estimateRowCountForPageSizeCheck(boolean estimateNextSizeCheck) {
+      this.estimateNextSizeCheck = estimateNextSizeCheck;
+      return this;
+    }
+
+    public Builder withAllocator(ByteBufferAllocator allocator) {
+      Preconditions.checkNotNull(allocator, "ByteBufferAllocator");
+      this.allocator = allocator;
+      return this;
+    }
+
+    public ParquetProperties build() {
+      return new ParquetProperties(writerVersion, pageSize, dictPageSize,
+          enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
+          estimateNextSizeCheck, allocator);
+    }
   }
 }

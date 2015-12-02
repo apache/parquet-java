@@ -53,7 +53,12 @@ public class TestUtils {
       Assert.fail("No exception was thrown (" + message + "), expected: " +
           expected.getName());
     } catch (Exception actual) {
-      Assert.assertEquals(message, expected, actual.getClass());
+      try {
+        Assert.assertEquals(message, expected, actual.getClass());
+      } catch (AssertionError e) {
+        e.addSuppressed(actual);
+        throw e;
+      }
     }
   }
 }

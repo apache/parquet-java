@@ -23,12 +23,9 @@ import static org.apache.parquet.bytes.BytesInput.concat;
 import java.io.IOException;
 
 import org.apache.parquet.Log;
-import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
@@ -47,49 +44,33 @@ import static java.lang.Math.max;
 final class ColumnWriterV1 implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterV1.class);
   private static final boolean DEBUG = Log.DEBUG;
-  private static final int MIN_SLAB_SIZE = 64;
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
-  private final long pageSizeThreshold;
+  private final ParquetProperties props;
+
   private ValuesWriter repetitionLevelColumn;
   private ValuesWriter definitionLevelColumn;
   private ValuesWriter dataColumn;
   private int valueCount;
-  private int initialRowCountForPageSizeCheck;
   private int valueCountForNextSizeCheck;
-  private boolean estimateNextSizeCheck;
 
   private Statistics statistics;
 
-  public ColumnWriterV1(
-      ColumnDescriptor path,
-      PageWriter pageWriter,
-      int pageSizeThreshold,
-      int dictionaryPageSizeThreshold,
-      boolean enableDictionary,
-      int initialRowCountForPageSizeCheck,
-      boolean estimateNextSizeCheck,
-      WriterVersion writerVersion,
-      ByteBufferAllocator allocator) {
+  public ColumnWriterV1(ColumnDescriptor path, PageWriter pageWriter,
+                        ParquetProperties props) {
     this.path = path;
     this.pageWriter = pageWriter;
-    this.pageSizeThreshold = pageSizeThreshold;
+    this.props = props;
+
     // initial check of memory usage. So that we have enough data to make an initial prediction
-    this.initialRowCountForPageSizeCheck = initialRowCountForPageSizeCheck;
-    this.valueCountForNextSizeCheck = initialRowCountForPageSizeCheck;
-    // Do not attempt to predict next size check.  Prevents issues with rows that vary significantly in size.
-    this.estimateNextSizeCheck = estimateNextSizeCheck;
+    this.valueCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
 
     resetStatistics();
 
-    ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary, allocator);
-
-    this.repetitionLevelColumn = parquetProps.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
-    this.definitionLevelColumn = parquetProps.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
-
-    int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
-    this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSizeThreshold);
+    this.repetitionLevelColumn = props.newRepetitionLevelWriter(path);
+    this.definitionLevelColumn = props.newDefinitionLevelWriter(path);
+    this.dataColumn = props.newValuesWriter(path);
   }
 
   private void log(Object value, int r, int d) {
@@ -116,19 +97,19 @@ final class ColumnWriterV1 implements ColumnWriter {
       long memSize = repetitionLevelColumn.getBufferedSize()
           + definitionLevelColumn.getBufferedSize()
           + dataColumn.getBufferedSize();
-      if (memSize > pageSizeThreshold) {
+      if (memSize > props.getPageSizeThreshold()) {
         // we will write the current page and check again the size at the predicted middle of next page
-        if(estimateNextSizeCheck) {
+        if (props.estimateNextSizeCheck()) {
           valueCountForNextSizeCheck = valueCount / 2;
         } else {
-          valueCountForNextSizeCheck = initialRowCountForPageSizeCheck;
+          valueCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
         }
         writePage();
-      } else if (estimateNextSizeCheck) {
+      } else if (props.estimateNextSizeCheck()) {
         // not reached the threshold, will check again midway
-        valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * pageSizeThreshold / memSize)) / 2 + 1;
+        valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * props.getPageSizeThreshold() / memSize)) / 2 + 1;
       } else {
-        valueCountForNextSizeCheck += initialRowCountForPageSizeCheck;
+        valueCountForNextSizeCheck += props.getMinRowCountForPageSizeCheck();
       }
     }
   }
