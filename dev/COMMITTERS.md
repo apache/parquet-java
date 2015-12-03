@@ -35,6 +35,7 @@
 | Nong Li            | nong       | nongli         |             |
 | Remy Pecqueur      | rpecqueur  | Lordshinjo     |             |
 | Ryan Blue          | blue       | rdblue         |             |
+| Sergio Pena        | spena      | spena          | spena       |
 | Tianshuo Deng      | tianshuo   | tsdeng         |             |
 | Tom White          | tomwhite   | tomwhite       |             |
 | Wesley Graham Peck | wesleypeck | wesleypeck     |             |
