@@ -23,6 +23,7 @@
 |--------------------|------------|----------------|-------------|
 | Aniket Mokashi     | aniket486  | aniket486      |             |
 | Brock Noland       | brock      | brockn         |             |
+| Cheng Lian         | lian       | liancheng      | lian cheng  |
 | Chris Aniszczyk    | caniszczyk |                |             |
 | Dmitriy Ryaboy     | dvryaboy   | dvryaboy       |             |
 | Jake Farrell       | jfarrell   |                |             |
