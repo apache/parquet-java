@@ -43,6 +43,7 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -347,7 +348,8 @@ public class TestReadWriteOldListBehavior {
       writer.write(record);
       fail("Should not succeed writing an array with null values");
     } catch (Exception e) {
-      // expected
+      Assert.assertTrue("Error message should provide context and help",
+          e.getMessage().contains("parquet.avro.write-old-list-structure"));
     } finally {
       writer.close();
     }
