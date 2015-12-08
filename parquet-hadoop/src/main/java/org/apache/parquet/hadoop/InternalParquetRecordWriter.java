@@ -119,6 +119,10 @@ class InternalParquetRecordWriter<T> {
     flushRowGroupToStore();
     FinalizedWriteContext finalWriteContext = writeSupport.finalizeWrite();
     Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
+    String modelName = writeSupport.getName();
+    if (modelName != null) {
+      finalMetadata.put(ParquetWriter.OBJECT_MODEL_NAME_PROP, modelName);
+    }
     finalMetadata.putAll(finalWriteContext.getExtraMetaData());
     parquetFileWriter.end(finalMetadata);
   }

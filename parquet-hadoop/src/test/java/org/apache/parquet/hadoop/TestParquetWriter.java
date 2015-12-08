@@ -135,6 +135,9 @@ public class TestParquetWriter {
             }
           }
         }
+        assertEquals("Object model property should be example",
+            "example", footer.getFileMetaData().getKeyValueMetaData()
+                .get(ParquetWriter.OBJECT_MODEL_NAME_PROP));
       }
     }
   }

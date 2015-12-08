@@ -49,6 +49,11 @@ public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
     this.className = className;
   }
 
+  @Override
+  public String getName() {
+    return "thrift";
+  }
+
   @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
   public WriteContext init(Configuration configuration) {

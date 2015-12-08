@@ -64,6 +64,11 @@ public class GroupWriteSupport extends WriteSupport<Group> {
   }
 
   @Override
+  public String getName() {
+    return "example";
+  }
+
+  @Override
   public org.apache.parquet.hadoop.api.WriteSupport.WriteContext init(Configuration configuration) {
     // if present, prefer the schema passed to the constructor
     if (schema == null) {

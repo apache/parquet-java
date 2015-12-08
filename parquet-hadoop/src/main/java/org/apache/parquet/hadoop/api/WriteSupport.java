@@ -121,6 +121,18 @@ abstract public class WriteSupport<T> {
   public abstract void write(T record);
 
   /**
+   * Called to get a name to identify the WriteSupport object model.
+   * If not null, this is added to the file footer metadata.
+   * <p>
+   * Defining this method will be required in a future API version.
+   *
+   * @return a String name for file metadata.
+   */
+  public String getName() {
+    return null;
+  }
+
+  /**
    * called once in the end after the last record was written
    * @return information to be added in the file
    */

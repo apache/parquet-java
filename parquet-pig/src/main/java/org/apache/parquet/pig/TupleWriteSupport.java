@@ -67,6 +67,11 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
     this.rootPigSchema = pigSchema;
   }
 
+  @Override
+  public String getName() {
+    return "pig";
+  }
+
   public Schema getPigSchema() {
     return rootPigSchema;
   }

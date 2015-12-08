@@ -46,6 +46,11 @@ public class TBaseWriteSupport<T extends TBase<?, ?>> extends AbstractThriftWrit
   }
 
   @Override
+  public String getName() {
+    return "thrift";
+  }
+
+  @Override
   protected StructType getThriftStruct() {
     return ThriftSchemaConverter.toStructType(thriftClass);
   }

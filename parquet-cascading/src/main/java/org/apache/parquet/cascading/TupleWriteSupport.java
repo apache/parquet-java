@@ -42,6 +42,11 @@ public class TupleWriteSupport extends WriteSupport<TupleEntry> {
   public static final String PARQUET_CASCADING_SCHEMA = "parquet.cascading.schema";
 
   @Override
+  public String getName() {
+    return "cascading";
+  }
+
+  @Override
   public WriteContext init(Configuration configuration) {
     String schema = configuration.get(PARQUET_CASCADING_SCHEMA);
     rootSchema = MessageTypeParser.parseMessageType(schema);
