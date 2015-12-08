@@ -185,7 +185,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
     getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
     getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
-    SerializationUtil.writeObjectToConfAsBase64(ParquetInputFormat.FILTER_PREDICATE, getFromUDFContext(ParquetInputFormat.FILTER_PREDICATE), getConfiguration(job));
+    SerializationUtil.writeObjectToConfAsBase64(ParquetInputFormat.FILTER_PREDICATE,
+        getFromUDFContext(ParquetInputFormat.FILTER_PREDICATE), getConfiguration(job));
   }
 
   @Override
@@ -453,77 +454,91 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     if (e instanceof BinaryExpression) {
       Expression lhs = ((BinaryExpression) e).getLhs();
       Expression rhs = ((BinaryExpression) e).getRhs();
+      OpType op = e.getOpType();
 
-      switch (e.getOpType()) {
-        case OP_EQ: return eq(getColumn((Column) lhs), getValue(rhs));
-        case OP_GT: return gt(getColumn((Column) lhs), getValue(rhs));
-        case OP_GE: return gtEq(getColumn((Column) lhs), getValue(rhs));
-        case OP_LT: return lt(getColumn((Column) lhs), getValue(rhs));
-        case OP_LE: return ltEq(getColumn((Column) lhs), getValue(rhs));
-        case OP_AND: return and(buildFilter(lhs), buildFilter(rhs));
-        case OP_OR: return or(buildFilter(lhs), buildFilter(rhs));
+      FilterPredicate lfp;
+      FilterPredicate rfp;
+      switch (op) {
+        case OP_AND:
+          lfp = buildFilter(lhs);
+          rfp = buildFilter(rhs);
+          if (lfp == null || rfp == null) {
+            return null;
+          }
+          return and(lfp, rfp);
+        case OP_OR:
+          lfp = buildFilter(lhs);
+          rfp = buildFilter(rhs);
+          if (lfp == null || rfp == null) {
+            return null;
+          }
+          return or(lfp, rfp);
+      }
+
+      if (lhs instanceof Column && rhs instanceof Const) {
+        return buildFilter(op, (Column) lhs, (Const) rhs);
+      } else if (lhs instanceof Const && rhs instanceof Column) {
+        return buildFilter(op, (Column) rhs, (Const) lhs);
       }
     }
 
     return null;
   }
 
-  private ColumnWrapper getColumn(Column c) {
-    String column = c.getName();
-
+  private FilterPredicate buildFilter(OpType op, Column col, Const value) {
+    String name = col.getName();
     try {
-      FieldSchema f = schema.getField(column);
-
+      FieldSchema f = schema.getField(name);
       switch (f.type) {
-        case DataType.BOOLEAN: return new ColumnWrapper<Binary>(binaryColumn(f.alias));
-        case DataType.INTEGER: return new ColumnWrapper<Integer>(intColumn(f.alias));
-        case DataType.LONG: return new ColumnWrapper<Long>(longColumn(f.alias));
-        case DataType.FLOAT: return new ColumnWrapper<Float>(floatColumn(f.alias));
-        case DataType.DOUBLE: return new ColumnWrapper<Double>(doubleColumn(f.alias));
-        case DataType.CHARARRAY: return new ColumnWrapper<Binary>(binaryColumn(f.alias));
+//        case DataType.BOOLEAN:
+//          Operators.BooleanColumn col = booleanColumn(name);
+//          return op(op, col, value);
+        case DataType.INTEGER:
+          Operators.IntColumn intCol = intColumn(name);
+          return op(op, intCol, value);
+        case DataType.LONG:
+          Operators.LongColumn longCol = longColumn(name);
+          return op(op, longCol, value);
+        case DataType.FLOAT:
+          Operators.FloatColumn floatCol = floatColumn(name);
+          return op(op, floatCol, value);
+        case DataType.DOUBLE:
+          Operators.DoubleColumn doubleCol = doubleColumn(name);
+          return op(op, doubleCol, value);
+        case DataType.CHARARRAY:
+          Operators.BinaryColumn binaryCol = binaryColumn(name);
+          return op(op, binaryCol, value);
+
       }
 
     } catch (FrontendException e) {
-      throw new RuntimeException("Error processing pushdown for column:" + c , e);
+      throw new RuntimeException("Error processing pushdown for column:" + col, e);
     }
 
     return null;
   }
 
-  private static class ColumnWrapper<T extends Comparable<T>> extends Operators.Column<T> implements Operators.SupportsLtGt, Serializable {
-
-    Operators.Column<T> wrapped;
-
-    public ColumnWrapper(Operators.Column<T> wrapped) {
-      super(wrapped.getColumnPath(), wrapped.getColumnType());
-      this.wrapped = wrapped;
+  private <C extends Comparable<C>, COL extends Operators.Column<C> & Operators.SupportsLtGt>
+  FilterPredicate op(Expression.OpType op, COL col, Expression valueExpr) {
+    C value = getValue(valueExpr, col.getColumnType());
+    switch (op) {
+      case OP_EQ: return eq(col, value);
+      case OP_GT: return gt(col, value);
+      case OP_GE: return gtEq(col, value);
+      case OP_LT: return lt(col, value);
+      case OP_LE: return ltEq(col, value);
     }
-
-    @Override
-    public Class<T> getColumnType() {
-      return wrapped.getColumnType();
-    }
-
-    @Override
-    public ColumnPath getColumnPath() {
-      return wrapped.getColumnPath();
-    }
+    return null;
   }
 
-  private Comparable getValue(Expression expr) {
-    switch(expr.getOpType()) {
-      case TERM_COL:
-        //return ((Column) expr).getName();
-      case TERM_CONST:
-        Comparable value = (Comparable) ((Const) expr).getValue();
+  private <C extends Comparable<C>> C getValue(Expression expr, Class<C> type) {
+    Comparable value = (Comparable) ((Const) expr).getValue();
 
-        if(value instanceof String) {
-          value = Binary.fromString((String)value);
-        }
-        return value;
-      default:
-        throw new RuntimeException("Unsupported expression type: " + expr.getOpType() + " in " + expr);
+    if (value instanceof String) {
+      value = Binary.fromString((String) value);
     }
+
+    return type.cast(value);
   }
 
 }
