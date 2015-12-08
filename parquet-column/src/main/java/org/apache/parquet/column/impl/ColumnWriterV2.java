@@ -25,7 +25,6 @@ import java.io.IOException;
 
 import org.apache.parquet.Ints;
 import org.apache.parquet.Log;
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -49,7 +48,6 @@ import org.apache.parquet.io.api.Binary;
 final class ColumnWriterV2 implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterV2.class);
   private static final boolean DEBUG = Log.DEBUG;
-  private static final int MIN_SLAB_SIZE = 64;
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
@@ -64,19 +62,14 @@ final class ColumnWriterV2 implements ColumnWriter {
   public ColumnWriterV2(
       ColumnDescriptor path,
       PageWriter pageWriter,
-      ParquetProperties parquetProps,
-      int pageSize) {
+      ParquetProperties props) {
     this.path = path;
     this.pageWriter = pageWriter;
     resetStatistics();
 
-    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(
-        getWidthFromMaxInt(path.getMaxRepetitionLevel()), MIN_SLAB_SIZE, pageSize, parquetProps.getAllocator());
-    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(
-        getWidthFromMaxInt(path.getMaxDefinitionLevel()), MIN_SLAB_SIZE, pageSize, parquetProps.getAllocator());
-
-    int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSize, 10);
-    this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSize);
+    this.repetitionLevelColumn = props.newRepetitionLevelEncoder(path);
+    this.definitionLevelColumn = props.newDefinitionLevelEncoder(path);
+    this.dataColumn = props.newValuesWriter(path);
   }
 
   private void log(Object value, int r, int d) {

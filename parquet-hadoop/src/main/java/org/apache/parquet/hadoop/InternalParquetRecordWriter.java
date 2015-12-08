@@ -28,11 +28,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
@@ -54,10 +52,9 @@ class InternalParquetRecordWriter<T> {
   private final long rowGroupSize;
   private long rowGroupSizeThreshold;
   private long nextRowGroupSize;
-  private final int pageSize;
   private final BytesCompressor compressor;
   private final boolean validating;
-  private final ParquetProperties parquetProperties;
+  private final ParquetProperties props;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
@@ -66,7 +63,6 @@ class InternalParquetRecordWriter<T> {
   private ColumnWriteStore columnStore;
   private ColumnChunkPageWriteStore pageStore;
   private RecordConsumer recordConsumer;
-
 
   /**
    * @param parquetFileWriter the file to write to
@@ -82,13 +78,9 @@ class InternalParquetRecordWriter<T> {
       MessageType schema,
       Map<String, String> extraMetaData,
       long rowGroupSize,
-      int pageSize,
       BytesCompressor compressor,
-      int dictionaryPageSize,
-      boolean enableDictionary,
       boolean validating,
-      WriterVersion writerVersion,
-      ByteBufferAllocator allocator) {
+      ParquetProperties props) {
     this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
@@ -96,20 +88,15 @@ class InternalParquetRecordWriter<T> {
     this.rowGroupSize = rowGroupSize;
     this.rowGroupSizeThreshold = rowGroupSize;
     this.nextRowGroupSize = rowGroupSizeThreshold;
-    this.pageSize = pageSize;
     this.compressor = compressor;
     this.validating = validating;
-    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary, allocator);
+    this.props = props;
     initStore();
   }
 
   private void initStore() {
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, parquetProperties.getAllocator());
-    columnStore = parquetProperties.newColumnWriteStore(
-        schema,
-        pageStore,
-        pageSize,
-        parquetProperties.getAllocator());
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator());
+    columnStore = props.newColumnWriteStore(schema, pageStore);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);
     writeSupport.prepareForWrite(recordConsumer);

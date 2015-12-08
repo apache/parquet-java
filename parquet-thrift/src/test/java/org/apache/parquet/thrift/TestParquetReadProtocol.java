@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.column.ParquetProperties;
 import thrift.test.OneOfEach;
 
 import org.apache.thrift.TBase;
@@ -39,7 +39,6 @@ import org.apache.thrift.TException;
 import org.junit.Test;
 
 import org.apache.parquet.Log;
-import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.mem.MemPageStore;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -149,8 +148,11 @@ public class TestParquetReadProtocol {
     final MessageType schema = schemaConverter.convert(thriftClass);
     LOG.info(schema);
     final MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
-    final ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore, 10000, 10000, false,
-        WriterVersion.PARQUET_1_0, new HeapByteBufferAllocator());
+    final ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore,
+        ParquetProperties.builder()
+            .withPageSize(10000)
+            .withDictionaryEncoding(false)
+            .build());
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     final StructType thriftType = schemaConverter.toStructType(thriftClass);
     ParquetWriteProtocol parquetWriteProtocol = new ParquetWriteProtocol(recordWriter, columnIO, thriftType);
