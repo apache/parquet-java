@@ -21,11 +21,10 @@ package org.apache.parquet.io;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.junit.Test;
 
-import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.mem.MemPageStore;
 import org.apache.parquet.example.data.Group;
@@ -259,7 +258,12 @@ public class TestFiltered {
 
   private MemPageStore writeTestRecords(MessageColumnIO columnIO, int number) {
     MemPageStore memPageStore = new MemPageStore(number * 2);
-    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore, 800, 800, false, WriterVersion.PARQUET_1_0, new HeapByteBufferAllocator());
+    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(
+        memPageStore,
+        ParquetProperties.builder()
+            .withPageSize(800)
+            .withDictionaryEncoding(false)
+            .build());
 
     RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     GroupWriter groupWriter = new GroupWriter(recordWriter, schema);
