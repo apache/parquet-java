@@ -47,7 +47,6 @@ import static java.lang.Math.max;
 final class ColumnWriterV1 implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterV1.class);
   private static final boolean DEBUG = Log.DEBUG;
-  private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
   private static final int MIN_SLAB_SIZE = 64;
 
   private final ColumnDescriptor path;
@@ -57,7 +56,9 @@ final class ColumnWriterV1 implements ColumnWriter {
   private ValuesWriter definitionLevelColumn;
   private ValuesWriter dataColumn;
   private int valueCount;
+  private int initialRowCountForPageSizeCheck;
   private int valueCountForNextSizeCheck;
+  private boolean estimateNextSizeCheck;
 
   private Statistics statistics;
 
@@ -67,13 +68,19 @@ final class ColumnWriterV1 implements ColumnWriter {
       int pageSizeThreshold,
       int dictionaryPageSizeThreshold,
       boolean enableDictionary,
+      int initialRowCountForPageSizeCheck,
+      boolean estimateNextSizeCheck,
       WriterVersion writerVersion,
       ByteBufferAllocator allocator) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
     // initial check of memory usage. So that we have enough data to make an initial prediction
-    this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
+    this.initialRowCountForPageSizeCheck = initialRowCountForPageSizeCheck;
+    this.valueCountForNextSizeCheck = initialRowCountForPageSizeCheck;
+    // Do not attempt to predict next size check.  Prevents issues with rows that vary significantly in size.
+    this.estimateNextSizeCheck = estimateNextSizeCheck;
+
     resetStatistics();
 
     ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary, allocator);
@@ -111,11 +118,17 @@ final class ColumnWriterV1 implements ColumnWriter {
           + dataColumn.getBufferedSize();
       if (memSize > pageSizeThreshold) {
         // we will write the current page and check again the size at the predicted middle of next page
-        valueCountForNextSizeCheck = valueCount / 2;
+        if(estimateNextSizeCheck) {
+          valueCountForNextSizeCheck = valueCount / 2;
+        } else {
+          valueCountForNextSizeCheck = initialRowCountForPageSizeCheck;
+        }
         writePage();
-      } else {
+      } else if (estimateNextSizeCheck) {
         // not reached the threshold, will check again midway
         valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * pageSizeThreshold / memSize)) / 2 + 1;
+      } else {
+        valueCountForNextSizeCheck += initialRowCountForPageSizeCheck;
       }
     }
   }

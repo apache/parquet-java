@@ -37,6 +37,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import org.apache.parquet.Log;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -141,6 +142,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MEMORY_POOL_RATIO    = "parquet.memory.pool.ratio";
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
   public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
+  public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
+  public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
+  public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
 
   // default to no padding for now
   private static final int DEFAULT_MAX_PADDING_SIZE = 0;
@@ -239,6 +243,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static boolean getEnableDictionary(Configuration configuration) {
     return configuration.getBoolean(ENABLE_DICTIONARY, true);
+  }
+
+  public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
+    return configuration.getInt(MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK, ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+  }
+
+  public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
+    return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK, ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+  }
+
+  public static boolean getEstimatePageSizeCheck(Configuration configuration) {
+    return configuration.getBoolean(ESTIMATE_PAGE_SIZE_CHECK, ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK);
   }
 
   @Deprecated
@@ -355,6 +371,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Writer version is: " + writerVersion);
     int maxPaddingSize = getMaxPaddingSize(conf);
     if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
+    boolean estimateNextSizeCheck = getEstimatePageSizeCheck(conf);
+    if (INFO) LOG.info("Page size checking is: " + (estimateNextSizeCheck ? "estimated" : "constant"));
+    int minRowCountForPageSizeCheck = getMinRowCountForPageSizeCheck(conf);
+    if (INFO) LOG.info("Min row count for page size check is: " + minRowCountForPageSizeCheck);
+    int maxRowCountForPageSizeCheck = getMaxRowCountForPageSizeCheck(conf);
+    if (INFO) LOG.info("Min row count for page size check is: " + maxRowCountForPageSizeCheck);
 
     CodecFactory codecFactory = new CodecFactory(conf, pageSize);
 
@@ -383,6 +405,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         codecFactory.getCompressor(codec),
         dictionaryPageSize,
         enableDictionary,
+        minRowCountForPageSizeCheck,
+        maxRowCountForPageSizeCheck,
+        estimateNextSizeCheck,
         validating,
         writerVersion,
         memoryManager);

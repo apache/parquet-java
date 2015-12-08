@@ -77,6 +77,44 @@ class InternalParquetRecordWriter<T> {
    * @param compressor the codec used to compress
    */
   public InternalParquetRecordWriter(
+          ParquetFileWriter parquetFileWriter,
+          WriteSupport<T> writeSupport,
+          MessageType schema,
+          Map<String, String> extraMetaData,
+          long rowGroupSize,
+          int pageSize,
+          BytesCompressor compressor,
+          int dictionaryPageSize,
+          boolean enableDictionary,
+          boolean validating,
+          WriterVersion writerVersion,
+          ByteBufferAllocator allocator) {
+    this(parquetFileWriter,
+         writeSupport,
+         schema,
+         extraMetaData,
+         rowGroupSize,
+         pageSize,
+         compressor,
+         dictionaryPageSize,
+         enableDictionary,
+         ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK,
+         ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+         false,
+         validating,
+         writerVersion,
+         allocator);
+  }
+
+  /**
+   * @param parquetFileWriter the file to write to
+   * @param writeSupport the class to convert incoming records
+   * @param schema the schema of the records
+   * @param extraMetaData extra meta data to write in the footer of the file
+   * @param rowGroupSize the size of a block in the file (this will be approximate)
+   * @param compressor the codec used to compress
+   */
+  public InternalParquetRecordWriter(
       ParquetFileWriter parquetFileWriter,
       WriteSupport<T> writeSupport,
       MessageType schema,
@@ -86,6 +124,9 @@ class InternalParquetRecordWriter<T> {
       BytesCompressor compressor,
       int dictionaryPageSize,
       boolean enableDictionary,
+      int minRowCountForSizeCheck,
+      int maxRowCountForSizeCheck,
+      boolean constantNextSizeCheck,
       boolean validating,
       WriterVersion writerVersion,
       ByteBufferAllocator allocator) {
@@ -99,7 +140,8 @@ class InternalParquetRecordWriter<T> {
     this.pageSize = pageSize;
     this.compressor = compressor;
     this.validating = validating;
-    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary, allocator);
+    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary,
+        minRowCountForSizeCheck, maxRowCountForSizeCheck, constantNextSizeCheck, allocator);
     initStore();
   }
 

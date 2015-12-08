@@ -40,16 +40,14 @@ import org.apache.parquet.schema.MessageType;
 
 public class ColumnWriteStoreV2 implements ColumnWriteStore {
 
-  // will wait for at least that many records before checking again
-  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
-  private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
   // will flush even if size bellow the threshold by this much to facilitate page alignment
   private static final float THRESHOLD_TOLERANCE_RATIO = 0.1f; // 10 %
 
   private final Map<ColumnDescriptor, ColumnWriterV2> columns;
   private final Collection<ColumnWriterV2> writers;
+  private final ParquetProperties parquetProperties;
   private long rowCount;
-  private long rowCountForNextSizeCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
+  private long rowCountForNextSizeCheck;
   private final long thresholdTolerance;
   private final ByteBufferAllocator allocator;
 
@@ -61,6 +59,7 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
       int pageSizeThreshold,
       ParquetProperties parquetProps) {
     super();
+    this.parquetProperties = parquetProps;
     this.pageSizeThreshold = pageSizeThreshold;
     this.thresholdTolerance = (long)(pageSizeThreshold * THRESHOLD_TOLERANCE_RATIO);
     this.allocator = parquetProps.getAllocator();
@@ -71,6 +70,8 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
     }
     this.columns = unmodifiableMap(mcolumns);
     this.writers = this.columns.values();
+
+    this.rowCountForNextSizeCheck = parquetProperties.getMinRowCountForPageSizeCheck();
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -158,20 +159,25 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
       }
       long rowsToFillPage =
           usedMem == 0 ?
-              MAXIMUM_RECORD_COUNT_FOR_CHECK
+              parquetProperties.getMaxRowCountForPageSizeCheck()
               : (long)((float)rows) / usedMem * remainingMem;
       if (rowsToFillPage < minRecordToWait) {
         minRecordToWait = rowsToFillPage;
       }
     }
     if (minRecordToWait == Long.MAX_VALUE) {
-      minRecordToWait = MINIMUM_RECORD_COUNT_FOR_CHECK;
+      minRecordToWait = parquetProperties.getMinRowCountForPageSizeCheck();
     }
-    // will check again halfway
-    rowCountForNextSizeCheck = rowCount +
-        min(
-            max(minRecordToWait / 2, MINIMUM_RECORD_COUNT_FOR_CHECK), // no less than MINIMUM_RECORD_COUNT_FOR_CHECK
-            MAXIMUM_RECORD_COUNT_FOR_CHECK); // no more than MAXIMUM_RECORD_COUNT_FOR_CHECK
+
+    if(parquetProperties.isEstimateNextSizeCheck()) {
+      // will check again halfway
+      rowCountForNextSizeCheck = rowCount +
+          min(
+              max(minRecordToWait / 2, parquetProperties.getMinRowCountForPageSizeCheck()), // no less than MINIMUM_RECORD_COUNT_FOR_CHECK
+              parquetProperties.getMaxRowCountForPageSizeCheck()); // no more than MAXIMUM_RECORD_COUNT_FOR_CHECK
+    } else {
+      rowCountForNextSizeCheck = rowCount + parquetProperties.getMinRowCountForPageSizeCheck();
+    }
   }
 
 }
