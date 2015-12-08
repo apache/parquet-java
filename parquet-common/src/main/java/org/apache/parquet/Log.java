@@ -34,7 +34,6 @@ import java.util.logging.Level;
  * @author Julien Le Dem
  *
  */
-@Deprecated
 public class Log {
 
   /**
@@ -53,7 +52,6 @@ public class Log {
    * @return the corresponding logger
    * @deprecated will be removed in 2.0.0; use org.slf4j.LoggerFactory instead.
    */
-  @Deprecated
   public static Log getLog(Class<?> c) {
     return new Log(c);
   }
