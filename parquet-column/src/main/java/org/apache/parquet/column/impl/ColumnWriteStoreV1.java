@@ -28,6 +28,7 @@ import java.util.TreeMap;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
@@ -36,18 +37,12 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
 
   private final Map<ColumnDescriptor, ColumnWriterV1> columns = new TreeMap<ColumnDescriptor, ColumnWriterV1>();
   private final PageWriteStore pageWriteStore;
-  private final int pageSizeThreshold;
-  private final int dictionaryPageSizeThreshold;
-  private final boolean enableDictionary;
-  private final WriterVersion writerVersion;
+  private final ParquetProperties props;
 
-  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
-    super();
+  public ColumnWriteStoreV1(PageWriteStore pageWriteStore,
+                            ParquetProperties props) {
     this.pageWriteStore = pageWriteStore;
-    this.pageSizeThreshold = pageSizeThreshold;
-    this.dictionaryPageSizeThreshold = dictionaryPageSizeThreshold;
-    this.enableDictionary = enableDictionary;
-    this.writerVersion = writerVersion;
+    this.props = props;
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -65,7 +60,7 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
 
   private ColumnWriterV1 newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterV1(path, pageWriter, pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, writerVersion);
+    return new ColumnWriterV1(path, pageWriter, props);
   }
 
   @Override

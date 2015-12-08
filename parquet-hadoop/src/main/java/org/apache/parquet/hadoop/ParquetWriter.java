@@ -36,13 +36,15 @@ import org.apache.parquet.schema.MessageType;
 public class ParquetWriter<T> implements Closeable {
 
   public static final int DEFAULT_BLOCK_SIZE = 128 * 1024 * 1024;
-  public static final int DEFAULT_PAGE_SIZE = 1 * 1024 * 1024;
+  public static final int DEFAULT_PAGE_SIZE =
+      ParquetProperties.DEFAULT_PAGE_SIZE;
   public static final CompressionCodecName DEFAULT_COMPRESSION_CODEC_NAME =
       CompressionCodecName.UNCOMPRESSED;
-  public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
+  public static final boolean DEFAULT_IS_DICTIONARY_ENABLED =
+      ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED;
   public static final boolean DEFAULT_IS_VALIDATING_ENABLED = false;
   public static final WriterVersion DEFAULT_WRITER_VERSION =
-      WriterVersion.PARQUET_1_0;
+      ParquetProperties.DEFAULT_WRITER_VERSION;
 
   public static final String OBJECT_MODEL_NAME_PROP = "writer.model.name";
 
@@ -216,9 +218,14 @@ public class ParquetWriter<T> implements Closeable {
       boolean validating,
       WriterVersion writerVersion,
       Configuration conf) throws IOException {
-    this(file, mode, writeSupport, compressionCodecName, blockSize, pageSize,
-        dictionaryPageSize, enableDictionary, validating, writerVersion, conf,
-        MAX_PADDING_SIZE_DEFAULT);
+    this(file, mode, writeSupport, compressionCodecName, blockSize,
+        validating, conf, MAX_PADDING_SIZE_DEFAULT,
+        ParquetProperties.builder()
+            .withPageSize(pageSize)
+            .withDictionaryPageSize(dictionaryPageSize)
+            .withDictionaryEncoding(enableDictionary)
+            .withWriterVersion(writerVersion)
+            .build());
   }
 
   /**
@@ -254,13 +261,10 @@ public class ParquetWriter<T> implements Closeable {
       WriteSupport<T> writeSupport,
       CompressionCodecName compressionCodecName,
       int blockSize,
-      int pageSize,
-      int dictionaryPageSize,
-      boolean enableDictionary,
       boolean validating,
-      WriterVersion writerVersion,
       Configuration conf,
-      int maxPaddingSize) throws IOException {
+      int maxPaddingSize,
+      ParquetProperties encodingProps) throws IOException {
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
@@ -270,19 +274,17 @@ public class ParquetWriter<T> implements Closeable {
     fileWriter.start();
 
     CodecFactory codecFactory = new CodecFactory(conf);
-    CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(compressionCodecName, 0);
+    CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(
+        compressionCodecName, encodingProps.getPageSizeThreshold());
     this.writer = new InternalParquetRecordWriter<T>(
         fileWriter,
         writeSupport,
         schema,
         writeContext.getExtraMetaData(),
         blockSize,
-        pageSize,
         compressor,
-        dictionaryPageSize,
-        enableDictionary,
         validating,
-        writerVersion);
+        encodingProps);
   }
 
   public void write(T object) throws IOException {
@@ -324,12 +326,10 @@ public class ParquetWriter<T> implements Closeable {
     private ParquetFileWriter.Mode mode;
     private CompressionCodecName codecName = DEFAULT_COMPRESSION_CODEC_NAME;
     private int rowGroupSize = DEFAULT_BLOCK_SIZE;
-    private int pageSize = DEFAULT_PAGE_SIZE;
-    private int dictionaryPageSize = DEFAULT_PAGE_SIZE;
     private int maxPaddingSize = MAX_PADDING_SIZE_DEFAULT;
-    private boolean enableDictionary = DEFAULT_IS_DICTIONARY_ENABLED;
     private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
-    private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
+    private ParquetProperties.Builder encodingPropsBuilder =
+        ParquetProperties.builder();
 
     protected Builder(Path file) {
       this.file = file;
@@ -398,7 +398,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withPageSize(int pageSize) {
-      this.pageSize = pageSize;
+      encodingPropsBuilder.withPageSize(pageSize);
       return self();
     }
 
@@ -410,7 +410,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withDictionaryPageSize(int dictionaryPageSize) {
-      this.dictionaryPageSize = dictionaryPageSize;
+      encodingPropsBuilder.withDictionaryPageSize(dictionaryPageSize);
       return self();
     }
 
@@ -433,7 +433,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF enableDictionaryEncoding() {
-      this.enableDictionary = true;
+      encodingPropsBuilder.withDictionaryEncoding(true);
       return self();
     }
 
@@ -444,7 +444,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withDictionaryEncoding(boolean enableDictionary) {
-      this.enableDictionary = enableDictionary;
+      encodingPropsBuilder.withDictionaryEncoding(enableDictionary);
       return self();
     }
 
@@ -477,7 +477,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withWriterVersion(WriterVersion version) {
-      this.writerVersion = version;
+      encodingPropsBuilder.withWriterVersion(version);
       return self();
     }
 
@@ -489,8 +489,8 @@ public class ParquetWriter<T> implements Closeable {
      */
     public ParquetWriter<T> build() throws IOException {
       return new ParquetWriter<T>(file, mode, getWriteSupport(conf), codecName,
-          rowGroupSize, pageSize, dictionaryPageSize, enableDictionary,
-          enableValidation, writerVersion, conf, maxPaddingSize);
+          rowGroupSize, enableValidation, conf, maxPaddingSize,
+          encodingPropsBuilder.build());
     }
   }
 }

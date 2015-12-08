@@ -20,13 +20,13 @@ package org.apache.parquet.column.mem;
 
 import static org.junit.Assert.assertEquals;
 
+import org.apache.parquet.column.ParquetProperties;
 import org.junit.Test;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.ColumnWriter;
-import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.mem.MemPageStore;
@@ -160,6 +160,10 @@ public class TestMemColumn {
   }
 
   private ColumnWriteStoreV1 newColumnWriteStoreImpl(MemPageStore memPageStore) {
-    return new ColumnWriteStoreV1(memPageStore, 2048, 2048, false, WriterVersion.PARQUET_1_0);
+    return new ColumnWriteStoreV1(memPageStore,
+        ParquetProperties.builder()
+            .withPageSize(2048)
+            .withDictionaryEncoding(false)
+            .build());
   }
 }

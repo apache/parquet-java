@@ -66,7 +66,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     private Statistics totalStatistics;
 
-    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int pageSize) {
+    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor) {
       this.path = path;
       this.compressor = compressor;
       this.buf = new ConcatenatingByteArrayCollector();
@@ -220,10 +220,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int pageSize) {
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, pageSize));
+      writers.put(path,  new ColumnChunkPageWriter(path, compressor));
     }
   }
 

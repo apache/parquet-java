@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -68,9 +69,15 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       boolean enableDictionary,
       boolean validating,
       WriterVersion writerVersion) {
+    ParquetProperties props = ParquetProperties.builder()
+        .withPageSize(pageSize)
+        .withDictionaryPageSize(dictionaryPageSize)
+        .withDictionaryEncoding(enableDictionary)
+        .withWriterVersion(writerVersion)
+        .build();
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
-        validating, writerVersion);
+        extraMetaData, blockSize, compressor, validating, props);
+    this.memoryManager = null;
   }
 
   /**
@@ -85,6 +92,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param enableDictionary to enable the dictionary
    * @param validating if schema validation should be turned on
    */
+  @Deprecated
   public ParquetRecordWriter(
       ParquetFileWriter w,
       WriteSupport<T> writeSupport,
@@ -97,9 +105,39 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       boolean validating,
       WriterVersion writerVersion,
       MemoryManager memoryManager) {
+    this(w, writeSupport, schema, extraMetaData, blockSize, compressor,
+        validating, ParquetProperties.builder()
+            .withPageSize(pageSize)
+            .withDictionaryPageSize(dictionaryPageSize)
+            .withDictionaryEncoding(enableDictionary)
+            .withWriterVersion(writerVersion)
+            .build(),
+        memoryManager);
+  }
+
+  /**
+   *
+   * @param w the file to write to
+   * @param writeSupport the class to convert incoming records
+   * @param schema the schema of the records
+   * @param extraMetaData extra meta data to write in the footer of the file
+   * @param blockSize the size of a block in the file (this will be approximate)
+   * @param compressor the compressor used to compress the pages
+   * @param validating if schema validation should be turned on
+   * @param props parquet encoding properties
+   */
+  ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      long blockSize,
+      BytesCompressor compressor,
+      boolean validating,
+      ParquetProperties props,
+      MemoryManager memoryManager) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
-        validating, writerVersion);
+        extraMetaData, blockSize, compressor, validating, props);
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(internalWriter, blockSize);
   }

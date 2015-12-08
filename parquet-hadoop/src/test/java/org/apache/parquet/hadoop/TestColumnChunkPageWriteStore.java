@@ -65,7 +65,6 @@ import org.apache.parquet.schema.Types;
 public class TestColumnChunkPageWriteStore {
 
   private int pageSize = 1024;
-  private int initialSize = 1024;
   private Configuration conf;
 
   @Before
@@ -101,7 +100,7 @@ public class TestColumnChunkPageWriteStore {
       writer.start();
       writer.startBlock(rowCount);
       {
-        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor(GZIP), schema , initialSize);
+        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor(GZIP), schema);
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount, nullCount, valueCount,
@@ -159,7 +158,7 @@ public class TestColumnChunkPageWriteStore {
     BinaryStatistics fakeStats = new BinaryStatistics();
 
     ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
-        compressor(UNCOMPRESSED), schema, initialSize);
+        compressor(UNCOMPRESSED), schema);
 
     for (ColumnDescriptor col : schema.getColumns()) {
       PageWriter pageWriter = store.getPageWriter(col);
