@@ -19,11 +19,16 @@
 package org.apache.parquet.filter2.compat;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import com.google.common.base.Supplier;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
 import org.apache.parquet.filter2.compat.FilterCompat.Visitor;
+import org.apache.parquet.filter2.dictionarylevel.DictionaryFilter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
@@ -40,15 +45,34 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
   private final List<BlockMetaData> blocks;
   private final MessageType schema;
+  private final List<FilterLevel> levels;
+  private final Supplier<FSDataInputStream> streamSupplier;
+
+  public enum FilterLevel {
+    STATISTICS,
+    DICTIONARY
+  }
 
   public static List<BlockMetaData> filterRowGroups(Filter filter, List<BlockMetaData> blocks, MessageType schema) {
     checkNotNull(filter, "filter");
     return filter.accept(new RowGroupFilter(blocks, schema));
   }
 
+  public static List<BlockMetaData> filterRowGroups(List<FilterLevel> levels, Filter filter, List<BlockMetaData> blocks, MessageType schema, Supplier<FSDataInputStream> streamSupplier) {
+    checkNotNull(filter, "filter");
+    return filter.accept(new RowGroupFilter(levels, blocks, schema, streamSupplier));
+  }
+
+  @Deprecated
   private RowGroupFilter(List<BlockMetaData> blocks, MessageType schema) {
+    this(Collections.singletonList(FilterLevel.STATISTICS), blocks, schema, null);
+  }
+
+  private RowGroupFilter(List<FilterLevel> levels, List<BlockMetaData> blocks, MessageType schema, Supplier<FSDataInputStream> streamSupplier) {
     this.blocks = checkNotNull(blocks, "blocks");
     this.schema = checkNotNull(schema, "schema");
+    this.levels = levels;
+    this.streamSupplier = streamSupplier;
   }
 
   @Override
@@ -61,7 +85,18 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
     List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();
 
     for (BlockMetaData block : blocks) {
-      if (!StatisticsFilter.canDrop(filterPredicate, block.getColumns())) {
+      boolean drop = false;
+
+      if(levels.contains(FilterLevel.STATISTICS)) {
+        drop = StatisticsFilter.canDrop(filterPredicate, block.getColumns());
+      }
+
+      if(!drop && levels.contains(FilterLevel.DICTIONARY)) {
+        drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), streamSupplier.get());
+        IOUtils.closeStream(streamSupplier.get());
+      }
+
+      if(!drop) {
         filteredBlocks.add(block);
       }
     }
