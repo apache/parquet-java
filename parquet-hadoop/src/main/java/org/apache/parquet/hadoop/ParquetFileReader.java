@@ -458,6 +458,12 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
+  static ParquetFileReader open(Configuration conf, Path file) throws IOException {
+    ParquetMetadata footer = readFooter(conf, file, NO_FILTER);
+    return new ParquetFileReader(conf, footer.getFileMetaData(), file,
+        footer.getBlocks(), footer.getFileMetaData().getSchema().getColumns());
+  }
+
   private final CodecFactory codecFactory;
   private final List<BlockMetaData> blocks;
   private final FSDataInputStream f;
@@ -502,6 +508,9 @@ public class ParquetFileReader implements Closeable {
     this.allocator = new HeapByteBufferAllocator();
   }
 
+  public void appendTo(ParquetFileWriter writer) throws IOException {
+    writer.appendRowGroups(f, blocks, true);
+  }
 
   /**
    * Reads all the columns requested from the row group at the current file position.

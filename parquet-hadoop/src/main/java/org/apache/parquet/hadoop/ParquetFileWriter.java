@@ -24,6 +24,7 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,12 +35,14 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.Strings;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -103,21 +106,29 @@ public class ParquetFileWriter {
   private final MessageType schema;
   private final FSDataOutputStream out;
   private final AlignmentStrategy alignment;
-  private BlockMetaData currentBlock;
-  private long currentRecordCount;
+
+  // file data
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+
+  // row group data
+  private BlockMetaData currentBlock; // appended to by endColumn
+
+  // row group data set at the start of a row group
+  private long currentRecordCount; // set in startBlock
+
+  // column chunk data accumulated as pages are written
+  private Set<Encoding> currentEncodings;
   private long uncompressedLength;
   private long compressedLength;
-  private Set<Encoding> currentEncodings;
+  private Statistics currentStatistics; // accumulated in writePage(s)
 
-  private CompressionCodecName currentChunkCodec;
-  private ColumnPath currentChunkPath;
-  private PrimitiveTypeName currentChunkType;
-  private long currentChunkFirstDataPage;
-  private long currentChunkDictionaryPageOffset;
-  private long currentChunkValueCount;
-
-  private Statistics currentStatistics;
+  // column chunk data set at the start of a column
+  private CompressionCodecName currentChunkCodec; // set in startColumn
+  private ColumnPath currentChunkPath;            // set in startColumn
+  private PrimitiveTypeName currentChunkType;     // set in startColumn
+  private long currentChunkValueCount;            // set in startColumn
+  private long currentChunkFirstDataPage;         // set in startColumn (out.pos())
+  private long currentChunkDictionaryPageOffset;  // set in writeDictionaryPage
 
   /**
    * Captures the order in which methods should be called
@@ -456,6 +467,133 @@ public class ParquetFileWriter {
     currentBlock.setRowCount(currentRecordCount);
     blocks.add(currentBlock);
     currentBlock = null;
+  }
+
+  public void appendFile(Configuration conf, Path file) throws IOException {
+    ParquetFileReader.open(conf, file).appendTo(this);
+  }
+
+  public void appendRowGroups(FSDataInputStream file,
+                              List<BlockMetaData> rowGroups,
+                              boolean dropColumns) throws IOException {
+    for (BlockMetaData block : rowGroups) {
+      appendRowGroup(file, block, dropColumns);
+    }
+  }
+
+  public void appendRowGroup(FSDataInputStream from, BlockMetaData rowGroup,
+                             boolean dropColumns) throws IOException {
+    startBlock(rowGroup.getRowCount());
+
+    Map<String, ColumnChunkMetaData> columnsToCopy =
+        new HashMap<String, ColumnChunkMetaData>();
+    for (ColumnChunkMetaData chunk : rowGroup.getColumns()) {
+      columnsToCopy.put(chunk.getPath().toDotString(), chunk);
+    }
+
+    List<ColumnChunkMetaData> columnsInOrder =
+        new ArrayList<ColumnChunkMetaData>();
+
+    for (ColumnDescriptor descriptor : schema.getColumns()) {
+      String path = ColumnPath.get(descriptor.getPath()).toDotString();
+      ColumnChunkMetaData chunk = columnsToCopy.remove(path);
+      if (chunk != null) {
+        columnsInOrder.add(chunk);
+      } else {
+        throw new IllegalArgumentException(String.format(
+            "Missing column '%s', cannot copy row group: %s", path, rowGroup));
+      }
+    }
+
+    // complain if some columns would be dropped and that's not okay
+    if (!dropColumns && !columnsToCopy.isEmpty()) {
+      throw new IllegalArgumentException(String.format(
+          "Columns cannot be copied (missing from target schema): %s",
+          Strings.join(columnsToCopy.keySet(), ", ")));
+    }
+
+    // copy the data for all chunks
+    long start = -1;
+    long length = 0;
+    long blockCompressedSize = 0;
+    for (int i = 0; i < columnsInOrder.size(); i += 1) {
+      ColumnChunkMetaData chunk = columnsInOrder.get(i);
+
+      // get this chunk's start position in the new file
+      long newChunkStart = out.getPos() + length;
+
+      // add this chunk to be copied with any previous chunks
+      if (start < 0) {
+        // no previous chunk included, start at this chunk's starting pos
+        start = chunk.getStartingPos();
+      }
+      length += chunk.getTotalSize();
+
+      if ((i + 1) == columnsInOrder.size() ||
+          columnsInOrder.get(i + 1).getStartingPos() != (start + length)) {
+        // not contiguous. do the copy now.
+        copy(from, out, start, length);
+        // reset to start at the next column chunk
+        start = -1;
+        length = 0;
+      }
+
+      currentBlock.addColumn(ColumnChunkMetaData.get(
+          chunk.getPath(),
+          chunk.getType(),
+          chunk.getCodec(),
+          chunk.getEncodings(),
+          chunk.getStatistics(),
+          newChunkStart,
+          newChunkStart,
+          chunk.getValueCount(),
+          chunk.getTotalSize(),
+          chunk.getTotalUncompressedSize()));
+
+      blockCompressedSize += chunk.getTotalSize();
+    }
+
+    currentBlock.setTotalByteSize(blockCompressedSize);
+
+    endBlock();
+  }
+
+  // Buffers for the copy function.
+  private static final ThreadLocal<byte[]> COPY_BUFFER =
+      new ThreadLocal<byte[]>() {
+        @Override
+        protected byte[] initialValue() {
+          return new byte[8192];
+        }
+      };
+
+  /**
+   * Copy from a FS input stream to an output stream. Thread-safe
+   *
+   * @param from a {@link FSDataInputStream}
+   * @param to any {@link OutputStream}
+   * @param start where in the from stream to start copying
+   * @param length the number of bytes to copy
+   * @throws IOException
+   */
+  private static void copy(FSDataInputStream from, FSDataOutputStream to,
+                          long start, long length) throws IOException{
+    if (DEBUG) LOG.debug(
+        "Copying " + length + " bytes at " + start + " to " + to.getPos());
+    from.seek(start);
+    long bytesCopied = 0;
+    byte[] buffer = COPY_BUFFER.get();
+    while (bytesCopied < length) {
+      long bytesLeft = length - bytesCopied;
+      int bytesRead = from.read(buffer, 0,
+          (buffer.length < bytesLeft ? buffer.length : (int) bytesLeft));
+      if (bytesRead < 0) {
+        throw new IllegalArgumentException(
+            "Unexpected end of input file at " + start + bytesCopied);
+      }
+      to.write(buffer, 0, bytesRead);
+      bytesCopied += bytesRead;
+    }
   }
 
   /**
