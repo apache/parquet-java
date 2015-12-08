@@ -234,6 +234,42 @@ public class BytesUtils {
   }
 
   /**
+   * uses a trick mentioned in https://developers.google.com/protocol-buffers/docs/encoding to read zigZag encoded data
+   * TODO: the implementation is compatible with readZigZagVarInt. Is there a need for different functions?
+   * @param in
+   * @return
+   * @throws IOException
+   */
+  public static long readZigZagVarLong(InputStream in) throws IOException {
+    long raw = readUnsignedVarLong(in);
+    long temp = (((raw << 63) >> 63) ^ raw) >> 1;
+    return temp ^ (raw & (1L << 63));
+  }
+
+  public static long readUnsignedVarLong(InputStream in) throws IOException {
+    long value = 0;
+    int i = 0;
+    long b;
+    while (((b = in.read()) & 0x80) != 0) {
+      value |= (b & 0x7F) << i;
+      i += 7;
+    }
+    return value | (b << i);
+  }
+
+  public static void writeUnsignedVarLong(long value, OutputStream out) throws IOException {
+    while ((value & 0xFFFFFFFFFFFFFF80L) != 0L) {
+      out.write((int)((value & 0x7F) | 0x80));
+      value >>>= 7;
+    }
+    out.write((int)(value & 0x7F));
+  }
+
+  public static void writeZigZagVarLong(long longValue, OutputStream out) throws IOException{
+    writeUnsignedVarLong((longValue << 1) ^ (longValue >> 63), out);
+  }
+
+  /**
    * @param bitLength a count of bits
    * @return the corresponding byte count padded to the next byte
    */

@@ -21,6 +21,7 @@ package org.apache.parquet.column;
 import static org.apache.parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 
@@ -163,8 +164,8 @@ public enum Encoding {
   DELTA_BINARY_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      if(descriptor.getType() != INT32) {
-        throw new ParquetDecodingException("Encoding DELTA_BINARY_PACKED is only supported for type INT32");
+      if(descriptor.getType() != INT32 && descriptor.getType() != INT64) {
+        throw new ParquetDecodingException("Encoding DELTA_BINARY_PACKED is only supported for type INT32 and INT64");
       }
       return new DeltaBinaryPackingValuesReader();
     }
