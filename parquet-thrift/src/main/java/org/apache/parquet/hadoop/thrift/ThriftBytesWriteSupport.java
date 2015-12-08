@@ -93,6 +93,11 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   }
 
   @Override
+  public String getName() {
+    return "thrift";
+  }
+
+  @Override
   public WriteContext init(Configuration configuration) {
     if (this.protocolFactory == null) {
       try {

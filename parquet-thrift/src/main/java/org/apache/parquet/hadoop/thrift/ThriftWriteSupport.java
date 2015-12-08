@@ -59,6 +59,11 @@ public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
   }
 
   @Override
+  public String getName() {
+    return writeSupport.getName();
+  }
+
+  @Override
   public WriteContext init(Configuration configuration) {
     return this.writeSupport.init(configuration);
   }

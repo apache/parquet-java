@@ -44,6 +44,8 @@ public class ParquetWriter<T> implements Closeable {
   public static final WriterVersion DEFAULT_WRITER_VERSION =
       WriterVersion.PARQUET_1_0;
 
+  public static final String OBJECT_MODEL_NAME_PROP = "writer.model.name";
+
   // max size (bytes) to write as padding and the min size of a row group
   public static final int MAX_PADDING_SIZE_DEFAULT = 0;
 

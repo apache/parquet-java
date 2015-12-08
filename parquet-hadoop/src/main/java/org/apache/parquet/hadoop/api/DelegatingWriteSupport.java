@@ -55,6 +55,11 @@ public class DelegatingWriteSupport<T> extends WriteSupport<T> {
   }
 
   @Override
+  public String getName() {
+    return delegate.getName();
+  }
+
+  @Override
   public WriteSupport.FinalizedWriteContext finalizeWrite() {
     return delegate.finalizeWrite();
   }
