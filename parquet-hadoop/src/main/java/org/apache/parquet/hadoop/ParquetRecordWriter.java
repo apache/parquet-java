@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import java.io.IOException;
 import java.util.Map;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
@@ -28,6 +29,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
@@ -43,8 +45,9 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  */
 public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
-  private InternalParquetRecordWriter<T> internalWriter;
-  private MemoryManager memoryManager;
+  private final InternalParquetRecordWriter<T> internalWriter;
+  private final MemoryManager memoryManager;
+  private final CodecFactory codecFactory;
 
   /**
    *
@@ -79,6 +82,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, compressor, validating, props);
     this.memoryManager = null;
+    this.codecFactory = null;
   }
 
   /**
@@ -106,14 +110,17 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       boolean validating,
       WriterVersion writerVersion,
       MemoryManager memoryManager) {
-    this(w, writeSupport, schema, extraMetaData, blockSize, compressor,
-        validating, ParquetProperties.builder()
-            .withPageSize(pageSize)
-            .withDictionaryPageSize(dictionaryPageSize)
-            .withDictionaryEncoding(enableDictionary)
-            .withWriterVersion(writerVersion)
-            .build(),
-        memoryManager);
+    ParquetProperties props = ParquetProperties.builder()
+        .withPageSize(pageSize)
+        .withDictionaryPageSize(dictionaryPageSize)
+        .withDictionaryEncoding(enableDictionary)
+        .withWriterVersion(writerVersion)
+        .build();
+    internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
+        extraMetaData, blockSize, compressor, validating, props);
+    this.memoryManager = checkNotNull(memoryManager, "memoryManager");
+    memoryManager.addWriter(internalWriter, blockSize);
+    this.codecFactory = null;
   }
 
   /**
@@ -123,7 +130,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
    * @param blockSize the size of a block in the file (this will be approximate)
-   * @param compressor the compressor used to compress the pages
+   * @param codec the compression codec used to compress the pages
    * @param validating if schema validation should be turned on
    * @param props parquet encoding properties
    */
@@ -133,12 +140,15 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       MessageType schema,
       Map<String, String> extraMetaData,
       long blockSize,
-      BytesCompressor compressor,
+      CompressionCodecName codec,
       boolean validating,
       ParquetProperties props,
-      MemoryManager memoryManager) {
+      MemoryManager memoryManager,
+      Configuration conf) {
+    this.codecFactory = new CodecFactory(conf, props.getPageSizeThreshold());
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, compressor, validating, props);
+        extraMetaData, blockSize, codecFactory.getCompressor(codec), validating,
+        props);
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(internalWriter, blockSize);
   }
@@ -148,9 +158,16 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    */
   @Override
   public void close(TaskAttemptContext context) throws IOException, InterruptedException {
-    internalWriter.close();
-    if (memoryManager != null) {
-      memoryManager.removeWriter(internalWriter);
+    try {
+      internalWriter.close();
+      // release after the writer closes in case it is used for a last flush
+    } finally {
+      if (codecFactory != null) {
+        codecFactory.release();
+      }
+      if (memoryManager != null) {
+        memoryManager.removeWriter(internalWriter);
+      }
     }
   }
 
