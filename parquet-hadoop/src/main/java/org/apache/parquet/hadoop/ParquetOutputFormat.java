@@ -25,7 +25,6 @@ import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
 
-import org.apache.commons.math3.analysis.function.Add;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
@@ -337,8 +336,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
     if (INFO) LOG.info("Min row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
 
-    CodecFactory codecFactory = new CodecFactory(conf);
-
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(
         conf, init.getSchema(), file, Mode.CREATE, blockSize, maxPaddingSize);
@@ -361,10 +358,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         init.getSchema(),
         init.getExtraMetaData(),
         blockSize,
-        codecFactory.getCompressor(codec, props.getPageSizeThreshold()),
+        codec,
         validating,
         props,
-        memoryManager);
+        memoryManager,
+        conf);
   }
 
   /**
