@@ -266,6 +266,11 @@ public class Summary extends EvalFunc<String> implements Algebraic {
       throw new RuntimeException("Usage: B = FOREACH (GROUP A ALL) GENERATE Summary(A); Can not get schema from "+input, e);
     }
   }
+  
+  @Override
+  public Schema getInputSchema() {
+    return this.inputSchema;
+  }
 
   @Override
   public void setUDFContextSignature(String signature) {
