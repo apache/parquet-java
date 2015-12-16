@@ -262,7 +262,7 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testNullFieldMetadataDebugLogging() throws NoSuchFieldException, IllegalAccessException, IOException {
+  public void testNullFieldMetadataDebugLogging() {
     MessageType schema = parseMessageType("message test { optional binary some_null_field; }");
     org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData = new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
     List<BlockMetaData> blockMetaDataList = new ArrayList<BlockMetaData>();
@@ -271,6 +271,16 @@ public class TestParquetMetadataConverter {
     blockMetaDataList.add(blockMetaData);
     ParquetMetadata metadata = new ParquetMetadata(fileMetaData, blockMetaDataList);
     ParquetMetadata.toJSON(metadata);
+  }
+
+  @Test
+  public void testMetadataToJson() {
+    ParquetMetadata metadata = new ParquetMetadata(null, null);
+    assertEquals("{\"fileMetaData\":null,\"blocks\":null}", ParquetMetadata.toJSON(metadata));
+    assertEquals("{\n" +
+            "  \"fileMetaData\" : null,\n" +
+            "  \"blocks\" : null\n" +
+            "}", ParquetMetadata.toPrettyJSON(metadata));
   }
 
   private ColumnChunkMetaData createColumnChunkMetaData() {
