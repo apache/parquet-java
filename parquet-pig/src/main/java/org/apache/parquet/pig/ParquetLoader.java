@@ -185,7 +185,11 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
     getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
     getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
-    SerializationUtil.writeObjectToConfAsBase64(ParquetInputFormat.FILTER_PREDICATE, getFromUDFContext(ParquetInputFormat.FILTER_PREDICATE), getConfiguration(job));
+
+    FilterPredicate filterPredicate = (FilterPredicate) getFromUDFContext(ParquetInputFormat.FILTER_PREDICATE);
+    if(filterPredicate != null) {
+      ParquetInputFormat.setFilterPredicate(getConfiguration(job), filterPredicate);
+    }
   }
 
   @Override
@@ -462,10 +466,11 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         case OP_LE: return ltEq(getColumn((Column) lhs), getValue(rhs));
         case OP_AND: return and(buildFilter(lhs), buildFilter(rhs));
         case OP_OR: return or(buildFilter(lhs), buildFilter(rhs));
+        default: throw new RuntimeException("Unsupported operation type: " + e.getOpType());
       }
+    } else {
+      throw new RuntimeException("Unsupported expression type: " + e);
     }
-
-    return null;
   }
 
   private ColumnWrapper getColumn(Column c) {
@@ -475,19 +480,17 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       FieldSchema f = schema.getField(column);
 
       switch (f.type) {
-        case DataType.BOOLEAN: return new ColumnWrapper<Binary>(binaryColumn(f.alias));
+        case DataType.BOOLEAN: return new ColumnWrapper<Boolean>(booleanColumn(f.alias));
         case DataType.INTEGER: return new ColumnWrapper<Integer>(intColumn(f.alias));
         case DataType.LONG: return new ColumnWrapper<Long>(longColumn(f.alias));
         case DataType.FLOAT: return new ColumnWrapper<Float>(floatColumn(f.alias));
         case DataType.DOUBLE: return new ColumnWrapper<Double>(doubleColumn(f.alias));
         case DataType.CHARARRAY: return new ColumnWrapper<Binary>(binaryColumn(f.alias));
+        default: throw new RuntimeException("Error processing pushdown for column:" + c);
       }
-
     } catch (FrontendException e) {
       throw new RuntimeException("Error processing pushdown for column:" + c , e);
     }
-
-    return null;
   }
 
   private static class ColumnWrapper<T extends Comparable<T>> extends Operators.Column<T> implements Operators.SupportsLtGt, Serializable {
@@ -513,7 +516,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   private Comparable getValue(Expression expr) {
     switch(expr.getOpType()) {
       case TERM_COL:
-        //return ((Column) expr).getName();
+        throw new RuntimeException("Column comparison is unsupported: " + expr);
       case TERM_CONST:
         Comparable value = (Comparable) ((Const) expr).getValue();
 
