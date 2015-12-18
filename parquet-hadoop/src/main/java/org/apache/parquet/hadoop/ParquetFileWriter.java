@@ -29,6 +29,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -780,7 +781,7 @@ public class ParquetFileWriter {
     for (Entry<String, String> entry : toMerge.getKeyValueMetaData().entrySet()) {
       Set<String> values = newKeyValues.get(entry.getKey());
       if (values == null) {
-        values = new HashSet<String>();
+        values = new LinkedHashSet<String>();
         newKeyValues.put(entry.getKey(), values);
       }
       values.add(entry.getValue());
