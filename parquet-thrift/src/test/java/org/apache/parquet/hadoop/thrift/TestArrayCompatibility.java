@@ -20,9 +20,13 @@ package org.apache.parquet.hadoop.thrift;
 
 import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.thrift.test.compat.ListOfLists;
 import org.apache.thrift.TBase;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -473,6 +477,130 @@ public class TestArrayCompatibility extends DirectWriterTest {
     expected.addToLocations(new Location(-90.0, 0.0));
 
     assertReaderContains(reader(test, ListOfLocations.class), expected);
+  }
+
+  @Test
+  public void testAvroCompatListInList() throws Exception {
+    Path test = writeDirect(
+        "message AvroCompatListInList {" +
+            "  optional group listOfLists (LIST) {" +
+            "    repeated group array (LIST) {" +
+            "      repeated int32 array;" +
+            "    }" +
+            "  }" +
+            "}",
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+            rc.startField("locations", 0);
+
+            rc.startGroup();
+            rc.startField("array", 0); // start writing array contents
+
+            rc.startGroup();
+            rc.startField("array", 0); // start writing inner array contents
+
+            // write [34, 35, 36]
+            rc.addInteger(34);
+            rc.addInteger(35);
+            rc.addInteger(36);
+
+            rc.endField("array", 0); // finished writing inner array contents
+            rc.endGroup();
+
+            // write an empty list
+            rc.startGroup();
+            rc.endGroup();
+
+            rc.startGroup();
+            rc.startField("array", 0); // start writing inner array contents
+
+            // write [32, 33, 34]
+            rc.addInteger(32);
+            rc.addInteger(33);
+            rc.addInteger(34);
+
+            rc.endField("array", 0); // finished writing inner array contents
+            rc.endGroup();
+
+            rc.endField("array", 0); // finished writing array contents
+            rc.endGroup();
+
+            rc.endField("locations", 0);
+            rc.endMessage();
+          }
+        });
+
+    ListOfLists expected = new ListOfLists();
+    expected.addToListOfLists(Arrays.asList(34, 35, 36));
+    expected.addToListOfLists(Arrays.<Integer>asList());
+    expected.addToListOfLists(Arrays.asList(32, 33, 34));
+
+    // should detect the "array" name
+    assertReaderContains(reader(test, ListOfLists.class), expected);
+  }
+
+  @Test
+  public void testThriftCompatListInList() throws Exception {
+    Path test = writeDirect(
+        "message ThriftCompatListInList {" +
+            "  optional group listOfLists (LIST) {" +
+            "    repeated group listOfLists_tuple (LIST) {" +
+            "      repeated int32 listOfLists_tuple_tuple;" +
+            "    }" +
+            "  }" +
+            "}",
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+            rc.startField("locations", 0);
+
+            rc.startGroup();
+            rc.startField("listOfLists_tuple", 0); // start writing array contents
+
+            rc.startGroup();
+            rc.startField("listOfLists_tuple_tuple", 0); // start writing inner array contents
+
+            // write [34, 35, 36]
+            rc.addInteger(34);
+            rc.addInteger(35);
+            rc.addInteger(36);
+
+            rc.endField("listOfLists_tuple_tuple", 0); // finished writing inner array contents
+            rc.endGroup();
+
+            // write an empty list
+            rc.startGroup();
+            rc.endGroup();
+
+            rc.startGroup();
+            rc.startField("listOfLists_tuple_tuple", 0); // start writing inner array contents
+
+            // write [32, 33, 34]
+            rc.addInteger(32);
+            rc.addInteger(33);
+            rc.addInteger(34);
+
+            rc.endField("listOfLists_tuple_tuple", 0); // finished writing inner array contents
+            rc.endGroup();
+
+            rc.endField("listOfLists_tuple", 0); // finished writing array contents
+            rc.endGroup();
+
+            rc.endField("locations", 0);
+            rc.endMessage();
+          }
+        });
+
+    ListOfLists expected = new ListOfLists();
+    expected.addToListOfLists(Arrays.asList(34, 35, 36));
+    expected.addToListOfLists(Arrays.<Integer>asList());
+    expected.addToListOfLists(Arrays.asList(32, 33, 34));
+
+    // should detect the "_tuple" names
+    assertReaderContains(reader(test, ListOfLists.class), expected);
   }
 
   @Test

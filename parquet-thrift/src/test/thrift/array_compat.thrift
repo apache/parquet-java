@@ -47,3 +47,7 @@ struct ListOfSingleElementGroups {
 struct ListOfCounts {
   1: optional list<i64> single_element_groups;
 }
+
+struct ListOfLists {
+  1: optional list<list<i32>> listOfLists;
+}
