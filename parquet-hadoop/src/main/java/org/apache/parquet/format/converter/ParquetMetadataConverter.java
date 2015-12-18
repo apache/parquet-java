@@ -285,6 +285,10 @@ public class ParquetMetadataConverter {
   public static Statistics toParquetStatistics(
       org.apache.parquet.column.statistics.Statistics statistics) {
     Statistics stats = new Statistics();
+    // Don't write stats larger than the max size rather than truncating. The
+    // rationale is that some engines may use the minimum value in the page as
+    // the true minimum for aggregations and there is no way to mark that a
+    // value has been truncated and is a lower bound and not in the page.
     if (!statistics.isEmpty() && statistics.isSmallerThan(MAX_STATS_SIZE)) {
       stats.setNull_count(statistics.getNumNulls());
       if (statistics.hasNonNullValue()) {
