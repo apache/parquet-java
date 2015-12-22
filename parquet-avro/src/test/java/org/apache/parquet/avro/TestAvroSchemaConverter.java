@@ -20,16 +20,42 @@ package org.apache.parquet.avro;
 
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
-import java.util.Arrays;
-import java.util.Collections;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.apache.commons.math.stat.inference.TestUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.codehaus.jackson.node.NullNode;
-import org.junit.BeforeClass;
-import org.junit.Test;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
+import org.codehaus.jackson.node.NullNode;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.concurrent.Callable;
 
+import static org.apache.avro.Schema.Type.INT;
+import static org.apache.avro.Schema.Type.LONG;
+import static org.apache.parquet.schema.OriginalType.DATE;
+import static org.apache.parquet.schema.OriginalType.DECIMAL;
+import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MICROS;
+import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
+import static org.apache.parquet.schema.OriginalType.TIME_MICROS;
+import static org.apache.parquet.schema.OriginalType.TIME_MILLIS;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 
 public class TestAvroSchemaConverter {
@@ -131,7 +157,7 @@ public class TestAvroSchemaConverter {
 
   @Test(expected = IllegalArgumentException.class)
   public void testTopLevelMustBeARecord() {
-    new AvroSchemaConverter().convert(Schema.create(Schema.Type.INT));
+    new AvroSchemaConverter().convert(Schema.create(INT));
   }
 
   @Test
@@ -270,7 +296,7 @@ public class TestAvroSchemaConverter {
   @Test
   public void testOptionalFields() throws Exception {
     Schema schema = Schema.createRecord("record1", null, null, false);
-    Schema optionalInt = optional(Schema.create(Schema.Type.INT));
+    Schema optionalInt = optional(Schema.create(INT));
     schema.setFields(Arrays.asList(
         new Schema.Field("myint", optionalInt, null, NullNode.getInstance())
     ));
@@ -284,7 +310,7 @@ public class TestAvroSchemaConverter {
   @Test
   public void testOptionalMapValue() throws Exception {
     Schema schema = Schema.createRecord("record1", null, null, false);
-    Schema optionalIntMap = Schema.createMap(optional(Schema.create(Schema.Type.INT)));
+    Schema optionalIntMap = Schema.createMap(optional(Schema.create(INT)));
     schema.setFields(Arrays.asList(
         new Schema.Field("myintmap", optionalIntMap, null, null)
     ));
@@ -303,7 +329,7 @@ public class TestAvroSchemaConverter {
   @Test
   public void testOptionalArrayElement() throws Exception {
     Schema schema = Schema.createRecord("record1", null, null, false);
-    Schema optionalIntArray = Schema.createArray(optional(Schema.create(Schema.Type.INT)));
+    Schema optionalIntArray = Schema.createArray(optional(Schema.create(INT)));
     schema.setFields(Arrays.asList(
         new Schema.Field("myintarray", optionalIntArray, null, null)
     ));
@@ -323,7 +349,7 @@ public class TestAvroSchemaConverter {
     Schema schema = Schema.createRecord("record2", null, null, false);
     Schema multipleTypes = Schema.createUnion(Arrays.asList(Schema.create(Schema.Type
             .NULL),
-        Schema.create(Schema.Type.INT),
+        Schema.create(INT),
         Schema.create(Schema.Type.FLOAT)));
     schema.setFields(Arrays.asList(
         new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())));
@@ -396,7 +422,7 @@ public class TestAvroSchemaConverter {
   @Test
   public void testOldAvroListOfLists() throws Exception {
     Schema listOfLists = optional(Schema.createArray(Schema.createArray(
-        Schema.create(Schema.Type.INT))));
+        Schema.create(INT))));
     Schema schema = Schema.createRecord("AvroCompatListInList", null, null, false);
     schema.setFields(Lists.newArrayList(
         new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
@@ -425,7 +451,7 @@ public class TestAvroSchemaConverter {
   @Test
   public void testOldThriftListOfLists() throws Exception {
     Schema listOfLists = optional(Schema.createArray(Schema.createArray(
-        Schema.create(Schema.Type.INT))));
+        Schema.create(INT))));
     Schema schema = Schema.createRecord("ThriftCompatListInList", null, null, false);
     schema.setFields(Lists.newArrayList(
         new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
@@ -458,7 +484,7 @@ public class TestAvroSchemaConverter {
     // group's name, but it must be 2-level because the repeated group doesn't
     // contain an optional or repeated element as required for 3-level lists
     Schema listOfLists = optional(Schema.createArray(Schema.createArray(
-        Schema.create(Schema.Type.INT))));
+        Schema.create(INT))));
     Schema schema = Schema.createRecord("UnknownTwoLevelListInList", null, null, false);
     schema.setFields(Lists.newArrayList(
         new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
@@ -488,7 +514,7 @@ public class TestAvroSchemaConverter {
   @Test
   public void testParquetMapWithoutMapKeyValueAnnotation() throws Exception {
     Schema schema = Schema.createRecord("myrecord", null, null, false);
-    Schema map = Schema.createMap(Schema.create(Schema.Type.INT));
+    Schema map = Schema.createMap(Schema.create(INT));
     schema.setFields(Collections.singletonList(new Schema.Field("mymap", map, null, null)));
     String parquetSchema =
         "message myrecord {\n" +
@@ -504,9 +530,240 @@ public class TestAvroSchemaConverter {
     testParquetToAvroConversion(NEW_BEHAVIOR, schema, parquetSchema);
   }
 
+  @Test
+  public void testDecimalBytesType() throws Exception {
+    Schema schema = Schema.createRecord("myrecord", null, null, false);
+    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(
+        Schema.create(Schema.Type.BYTES));
+    schema.setFields(Collections.singletonList(
+        new Schema.Field("dec", decimal, null, null)));
+
+    testRoundTripConversion(schema,
+        "message myrecord {\n" +
+            "  required binary dec (DECIMAL(9,2));\n" +
+            "}\n");
+  }
+
+  @Test
+  public void testDecimalFixedType() throws Exception {
+    Schema schema = Schema.createRecord("myrecord", null, null, false);
+    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(
+        Schema.createFixed("dec", null, null, 8));
+    schema.setFields(Collections.singletonList(
+        new Schema.Field("dec", decimal, null, null)));
+
+    testRoundTripConversion(schema,
+        "message myrecord {\n" +
+            "  required fixed_len_byte_array(8) dec (DECIMAL(9,2));\n" +
+            "}\n");
+  }
+
+  @Test
+  public void testDecimalIntegerType() throws Exception {
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field(
+            "dec", Schema.create(INT), null, null)));
+
+    // the decimal portion is lost because it isn't valid in Avro
+    testParquetToAvroConversion(expected,
+        "message myrecord {\n" +
+            "  required int32 dec (DECIMAL(9,2));\n" +
+            "}\n");
+  }
+
+  @Test
+  public void testDecimalLongType() throws Exception {
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("dec", Schema.create(LONG), null, null)));
+
+    // the decimal portion is lost because it isn't valid in Avro
+    testParquetToAvroConversion(expected,
+        "message myrecord {\n" +
+            "  required int64 dec (DECIMAL(9,2));\n" +
+            "}\n");
+  }
+
+  @Test
+  public void testDateType() throws Exception {
+    Schema date = LogicalTypes.date().addToSchema(Schema.create(INT));
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("date", date, null, null)));
+
+    testRoundTripConversion(expected,
+        "message myrecord {\n" +
+            "  required int32 date (DATE);\n" +
+            "}\n");
+
+    for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
+        {INT64, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
+      final PrimitiveType type;
+      if (primitive == FIXED_LEN_BYTE_ARRAY) {
+        type = new PrimitiveType(REQUIRED, primitive, 12, "test", DATE);
+      } else {
+        type = new PrimitiveType(REQUIRED, primitive, "test", DATE);
+      }
+
+      assertThrows("Should not allow TIME_MICROS with " + primitive,
+          IllegalArgumentException.class, new Runnable() {
+            @Override
+            public void run() {
+              new AvroSchemaConverter().convert(message(type));
+            }
+          });
+    }
+  }
+
+  @Test
+  public void testTimeMillisType() throws Exception {
+    Schema date = LogicalTypes.timeMillis().addToSchema(Schema.create(INT));
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("time", date, null, null)));
+
+    testRoundTripConversion(expected,
+        "message myrecord {\n" +
+            "  required int32 time (TIME_MILLIS);\n" +
+            "}\n");
+
+    for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
+        {INT64, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
+      final PrimitiveType type;
+      if (primitive == FIXED_LEN_BYTE_ARRAY) {
+        type = new PrimitiveType(REQUIRED, primitive, 12, "test", TIME_MILLIS);
+      } else {
+        type = new PrimitiveType(REQUIRED, primitive, "test", TIME_MILLIS);
+      }
+
+      assertThrows("Should not allow TIME_MICROS with " + primitive,
+          IllegalArgumentException.class, new Runnable() {
+            @Override
+            public void run() {
+              new AvroSchemaConverter().convert(message(type));
+            }
+          });
+    }
+  }
+
+  @Test
+  public void testTimeMicrosType() throws Exception {
+    Schema date = LogicalTypes.timeMicros().addToSchema(Schema.create(LONG));
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("time", date, null, null)));
+
+    testRoundTripConversion(expected,
+        "message myrecord {\n" +
+            "  required int64 time (TIME_MICROS);\n" +
+            "}\n");
+
+    for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
+        {INT32, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
+      final PrimitiveType type;
+      if (primitive == FIXED_LEN_BYTE_ARRAY) {
+        type = new PrimitiveType(REQUIRED, primitive, 12, "test", TIME_MICROS);
+      } else {
+        type = new PrimitiveType(REQUIRED, primitive, "test", TIME_MICROS);
+      }
+
+      assertThrows("Should not allow TIME_MICROS with " + primitive,
+          IllegalArgumentException.class, new Runnable() {
+            @Override
+            public void run() {
+              new AvroSchemaConverter().convert(message(type));
+            }
+          });
+    }
+  }
+
+  @Test
+  public void testTimestampMillisType() throws Exception {
+    Schema date = LogicalTypes.timestampMillis().addToSchema(Schema.create(LONG));
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("timestamp", date, null, null)));
+
+    testRoundTripConversion(expected,
+        "message myrecord {\n" +
+            "  required int64 timestamp (TIMESTAMP_MILLIS);\n" +
+            "}\n");
+
+    for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
+        {INT32, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
+      final PrimitiveType type;
+      if (primitive == FIXED_LEN_BYTE_ARRAY) {
+        type = new PrimitiveType(REQUIRED, primitive, 12, "test", TIMESTAMP_MILLIS);
+      } else {
+        type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MILLIS);
+      }
+
+      assertThrows("Should not allow TIMESTAMP_MILLIS with " + primitive,
+          IllegalArgumentException.class, new Runnable() {
+            @Override
+            public void run() {
+              new AvroSchemaConverter().convert(message(type));
+            }
+          });
+    }
+  }
+
+  @Test
+  public void testTimestampMicrosType() throws Exception {
+    Schema date = LogicalTypes.timestampMicros().addToSchema(Schema.create(LONG));
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("timestamp", date, null, null)));
+
+    testRoundTripConversion(expected,
+        "message myrecord {\n" +
+            "  required int64 timestamp (TIMESTAMP_MICROS);\n" +
+            "}\n");
+
+    for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
+        {INT32, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
+      final PrimitiveType type;
+      if (primitive == FIXED_LEN_BYTE_ARRAY) {
+        type = new PrimitiveType(REQUIRED, primitive, 12, "test", TIMESTAMP_MICROS);
+      } else {
+        type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MICROS);
+      }
+
+      assertThrows("Should not allow TIMESTAMP_MICROS with " + primitive,
+          IllegalArgumentException.class, new Runnable() {
+            @Override
+            public void run() {
+              new AvroSchemaConverter().convert(message(type));
+            }
+          });
+    }
+  }
+
   public static Schema optional(Schema original) {
     return Schema.createUnion(Lists.newArrayList(
         Schema.create(Schema.Type.NULL),
         original));
+  }
+
+  public static MessageType message(PrimitiveType primitive) {
+    return Types.buildMessage()
+        .addField(primitive)
+        .named("myrecord");
+  }
+
+  /**
+   * A convenience method to avoid a large number of @Test(expected=...) tests
+   * @param message A String message to describe this assertion
+   * @param expected An Exception class that the Runnable should throw
+   * @param runnable A Runnable that is expected to throw the exception
+   */
+  public static void assertThrows(
+      String message, Class<? extends Exception> expected, Runnable runnable) {
+    try {
+      runnable.run();
+      Assert.fail("No exception was thrown (" + message + "), expected: " +
+          expected.getName());
+    } catch (Exception actual) {
+      try {
+        Assert.assertEquals(message, expected, actual.getClass());
+      } catch (AssertionError e) {
+        e.addSuppressed(actual);
+        throw e;
+      }
+    }
   }
 }

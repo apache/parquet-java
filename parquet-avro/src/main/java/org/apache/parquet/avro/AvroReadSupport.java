@@ -112,7 +112,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
     if (readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY) != null) {
       // use the Avro read schema provided by the user
-      avroSchema = new Schema.Parser().parse(readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY));
+      avroSchema = new Schema.Parser().parse(metadata.get(AVRO_READ_SCHEMA_METADATA_KEY));
     } else if (keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY) != null) {
       // use the Avro schema from the file metadata if present
       avroSchema = new Schema.Parser().parse(keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY));

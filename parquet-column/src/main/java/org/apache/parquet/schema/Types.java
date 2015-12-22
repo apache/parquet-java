@@ -331,9 +331,9 @@ public class Types {
      * @param length an int length
      * @return this builder for method chaining
      */
-    public BasePrimitiveBuilder<P, THIS> length(int length) {
+    public THIS length(int length) {
       this.length = length;
-      return this;
+      return self();
     }
 
     /**
@@ -346,9 +346,9 @@ public class Types {
      * @param precision an int precision value for the DECIMAL
      * @return this builder for method chaining
      */
-    public BasePrimitiveBuilder<P, THIS> precision(int precision) {
+    public THIS precision(int precision) {
       this.precision = precision;
-      return this;
+      return self();
     }
 
     /**
@@ -364,9 +364,9 @@ public class Types {
      * @param scale an int scale value for the DECIMAL
      * @return this builder for method chaining
      */
-    public BasePrimitiveBuilder<P, THIS> scale(int scale) {
+    public THIS scale(int scale) {
       this.scale = scale;
-      return this;
+      return self();
     }
 
     @Override
