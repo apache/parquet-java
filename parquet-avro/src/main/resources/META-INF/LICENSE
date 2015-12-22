@@ -184,35 +184,3 @@ Copyright: 2014 The Apache Software Foundation.
 Home page: https://avro.apache.org/
 License: http://www.apache.org/licenses/LICENSE-2.0
 
---------------------------------------------------------------------------------
-
-This project includes code from Daniel Lemire's JavaFastPFOR project. The
-"Lemire" bit packing source code produced by parquet-generator is derived from
-the JavaFastPFOR project.
-
-Copyright: 2013 Daniel Lemire
-Home page: http://lemire.me/en/
-Project page: https://github.com/lemire/JavaFastPFOR
-License: Apache License Version 2.0 http://www.apache.org/licenses/LICENSE-2.0
-
---------------------------------------------------------------------------------
-
-This product includes code from Apache Spark.
-
-* dev/merge_parquet_pr.py is based on Spark's dev/merge_spark_pr.py
-
-Copyright: 2014 The Apache Software Foundation.
-Home page: https://spark.apache.org/
-License: http://www.apache.org/licenses/LICENSE-2.0
-
---------------------------------------------------------------------------------
-
-This product includes code from Twitter's ElephantBird project.
-
-* parquet-hadoop's UnmaterializableRecordCounter.java includes code from
-  ElephantBird's LzoRecordReader.java
-
-Copyright: 2012-2014 Twitter
-Home page: https://github.com/twitter/elephant-bird
-License: http://www.apache.org/licenses/LICENSE-2.0
-
