@@ -33,7 +33,6 @@ import static org.apache.parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFi
 import static org.apache.parquet.filter2.predicate.FilterApi.*;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
@@ -49,8 +48,6 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.hadoop.util.SerializationUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.pig.Expression;
 import org.apache.pig.LoadFunc;
@@ -68,7 +65,10 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.parser.ParserException;
 
-import static org.apache.pig.Expression.*;
+import static org.apache.pig.Expression.BinaryExpression;
+import static org.apache.pig.Expression.Column;
+import static org.apache.pig.Expression.Const;
+import static org.apache.pig.Expression.OpType;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.ParquetInputFormat;
@@ -430,14 +430,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public List<Expression.OpType> getSupportedExpressionTypes() {
-    Expression.OpType supportedTypes [] = {
-        Expression.OpType.OP_EQ,
-        Expression.OpType.OP_GT,
-        Expression.OpType.OP_GE,
-        Expression.OpType.OP_LT,
-        Expression.OpType.OP_LE,
-        Expression.OpType.OP_AND,
-        Expression.OpType.OP_OR,
+    OpType supportedTypes [] = {
+        OpType.OP_EQ,
+        OpType.OP_GT,
+        OpType.OP_GE,
+        OpType.OP_LT,
+        OpType.OP_LE,
+        OpType.OP_AND,
+        OpType.OP_OR
     };
 
     return Arrays.asList(supportedTypes);
@@ -493,9 +493,12 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     try {
       FieldSchema f = schema.getField(name);
       switch (f.type) {
-//        case DataType.BOOLEAN:
-//          Operators.BooleanColumn col = booleanColumn(name);
-//          return op(op, col, value);
+        case DataType.BOOLEAN:
+          Operators.BooleanColumn boolCol = booleanColumn(name);
+          switch(op) {
+            case OP_EQ: return eq(boolCol, getValue(value, boolCol.getColumnType()));
+            case OP_NE: return notEq(boolCol, getValue(value, boolCol.getColumnType()));
+          }
         case DataType.INTEGER:
           Operators.IntColumn intCol = intColumn(name);
           return op(op, intCol, value);
