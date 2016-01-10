@@ -80,7 +80,7 @@ public abstract class ValuesWriter {
   }
 
   /**
-   * ( > {@link #getBufferedMemorySize} )
+   * ( > {@link #getBufferedSize} )
    * @return the allocated size of the buffer
    */
   abstract public long getAllocatedSize();
@@ -93,42 +93,42 @@ public abstract class ValuesWriter {
   }
 
   /**
-   * @param value the value to encode
+   * @param v the value to encode
    */
   public void writeBoolean(boolean v) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /**
-   * @param value the value to encode
+   * @param v the value to encode
    */
   public void writeBytes(Binary v) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /**
-   * @param value the value to encode
+   * @param v the value to encode
    */
   public void writeInteger(int v) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /**
-   * @param value the value to encode
+   * @param v the value to encode
    */
   public void writeLong(long v) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /**
-   * @param value the value to encode
+   * @param v the value to encode
    */
   public void writeDouble(double v) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /**
-   * @param value the value to encode
+   * @param v the value to encode
    */
   public void writeFloat(float v) {
     throw new UnsupportedOperationException(getClass().getName());

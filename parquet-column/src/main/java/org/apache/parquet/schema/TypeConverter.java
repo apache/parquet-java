@@ -22,7 +22,7 @@ import java.util.List;
 
 /**
  * to convert a MessageType tree
- * @see Type#convert(TypeConverter)
+ * @see Type#convert(List, TypeConverter)
  *
  * @author Julien Le Dem
  *

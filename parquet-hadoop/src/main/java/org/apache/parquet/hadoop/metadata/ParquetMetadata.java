@@ -101,7 +101,6 @@ public class ParquetMetadata {
    *
    * @param fileMetaData file level metadata
    * @param blocks block level metadata
-   * @param keyValueMetaData
    */
   public ParquetMetadata(FileMetaData fileMetaData, List<BlockMetaData> blocks) {
     this.fileMetaData = fileMetaData;
