@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.scrooge;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 
@@ -31,8 +32,16 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
 public class ScroogeRecordConverter<T extends ThriftStruct> extends ThriftRecordConverter<T> {
 
-
+  /**
+   * This is for compatibility only.
+   * @deprecated will be removed in 2.x
+   */
+  @Deprecated
   public ScroogeRecordConverter(final Class<T> thriftClass, MessageType parquetSchema, StructType thriftType) {
+    this(thriftClass, parquetSchema, thriftType, null);
+  }
+
+  public ScroogeRecordConverter(final Class<T> thriftClass, MessageType parquetSchema, StructType thriftType, Configuration conf) {
     super(new ThriftReader<T>() {
       @SuppressWarnings("unchecked")
       ThriftStructCodec<T> codec = (ThriftStructCodec<T>) getCodec(thriftClass);
@@ -40,7 +49,7 @@ public class ScroogeRecordConverter<T extends ThriftStruct> extends ThriftRecord
       public T readOneRecord(TProtocol protocol) throws TException {
           return codec.decode(protocol);
       }
-    }, thriftClass.getSimpleName(), parquetSchema, thriftType);
+    }, thriftClass.getSimpleName(), parquetSchema, thriftType, conf);
   }
 
   private static ThriftStructCodec<?> getCodec(Class<?> klass) {

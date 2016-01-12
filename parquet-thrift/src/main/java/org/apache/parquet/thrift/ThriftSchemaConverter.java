@@ -20,10 +20,13 @@ package org.apache.parquet.thrift;
 
 import com.twitter.elephantbird.thrift.TStructDescriptor;
 import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
 import org.apache.thrift.TUnion;
 
+import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.projection.FieldProjectionFilter;
 import org.apache.parquet.thrift.struct.ThriftField;
@@ -36,6 +39,8 @@ import org.apache.parquet.thrift.struct.ThriftTypeID;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 /**
  * Given a thrift class, this class converts it to parquet schema,
@@ -96,6 +101,39 @@ public class ThriftSchemaConverter {
       children.add(toThriftField(field.getName(), field, req));
     }
     return new StructType(children, structOrUnionType(struct.getThriftClass()));
+  }
+
+  /**
+   * Returns whether the given type is the element type of a list or is a
+   * synthetic group with one field that is the element type. This is
+   * determined by checking whether the type can be a synthetic group and by
+   * checking whether a potential synthetic group matches the expected
+   * ThriftField.
+   * <p>
+   * This method never guesses because the expected ThriftField is known.
+   *
+   * @param repeatedType a type that may be the element type
+   * @param thriftElement the expected Schema for list elements
+   * @return {@code true} if the repeatedType is the element schema
+   */
+  static boolean isListElementType(Type repeatedType,
+                                   ThriftField thriftElement) {
+    if (repeatedType.isPrimitive() ||
+        (repeatedType.asGroupType().getFieldCount() != 1) ||
+        (repeatedType.asGroupType().getType(0).isRepetition(REPEATED))) {
+      // The repeated type must be the element type because it is an invalid
+      // synthetic wrapper. Must be a group with one optional or required field
+      return true;
+    } else if (thriftElement != null && thriftElement.getType() instanceof StructType) {
+      Set<String> fieldNames = new HashSet<String>();
+      for (ThriftField field : ((StructType) thriftElement.getType()).getChildren()) {
+        fieldNames.add(field.getName());
+      }
+      // If the repeated type is a subset of the structure of the ThriftField,
+      // then it must be the element type.
+      return fieldNames.contains(repeatedType.asGroupType().getFieldName(0));
+    }
+    return false;
   }
 
   private static ThriftField toThriftField(String name, Field field, ThriftField.Requirement requirement) {
