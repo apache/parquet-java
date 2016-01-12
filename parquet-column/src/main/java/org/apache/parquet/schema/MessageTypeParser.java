@@ -106,14 +106,15 @@ public class MessageTypeParser {
     // Read type.
     String type = st.nextToken();
     if ("group".equalsIgnoreCase(type)) {
-      addGroupType(t, st, repetition, builder);
+      addGroupType(st, repetition, builder);
     } else {
-      addPrimitiveType(t, st, asPrimitive(type, st), repetition, builder);
+      addPrimitiveType(st, asPrimitive(type, st), repetition, builder);
     }
   }
 
-  private static void addGroupType(String t, Tokenizer st, Repetition r, GroupBuilder<?> builder) {
+  private static void addGroupType(Tokenizer st, Repetition r, GroupBuilder<?> builder) {
     GroupBuilder<?> childBuilder = builder.group(r);
+    String t;
     String name = st.nextToken();
 
     // Read annotation, if any.
@@ -138,8 +139,9 @@ public class MessageTypeParser {
     childBuilder.named(name);
   }
 
-  private static void addPrimitiveType(String t, Tokenizer st, PrimitiveTypeName type, Repetition r, Types.GroupBuilder<?> builder) {
+  private static void addPrimitiveType(Tokenizer st, PrimitiveTypeName type, Repetition r, Types.GroupBuilder<?> builder) {
     PrimitiveBuilder<?> childBuilder = builder.primitive(type, r);
+    String t;
 
     if (type == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
       t = st.nextToken();
