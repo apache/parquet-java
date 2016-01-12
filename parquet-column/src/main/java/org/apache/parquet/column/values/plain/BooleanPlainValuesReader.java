@@ -50,7 +50,7 @@ public class BooleanPlainValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see org.apache.parquet.column.values.ValuesReader#skipBoolean()
+   * @see org.apache.parquet.column.values.ValuesReader#skip()
    */
   @Override
   public void skip() {
@@ -59,7 +59,7 @@ public class BooleanPlainValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(byte[], int)
+   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int valueCount, ByteBuffer page, int offset)
    */
   @Override
   public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
