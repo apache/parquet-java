@@ -30,7 +30,7 @@ import org.apache.parquet.schema.MessageType;
  * An example output format
  *
  * must be provided the schema up front
- * @see ExampleOutputFormat#setSchema(Configuration, MessageType)
+ * @see ExampleOutputFormat#setSchema(Job, MessageType)
  * @see GroupWriteSupport#PARQUET_EXAMPLE_SCHEMA
  *
  * @author Julien Le Dem
@@ -40,8 +40,8 @@ public class ExampleOutputFormat extends ParquetOutputFormat<Group> {
 
   /**
    * set the schema being written to the job conf
+   * @param job
    * @param schema the schema of the data
-   * @param configuration the job configuration
    */
   public static void setSchema(Job job, MessageType schema) {
     GroupWriteSupport.setSchema(schema, ContextUtil.getConfiguration(job));
@@ -49,7 +49,7 @@ public class ExampleOutputFormat extends ParquetOutputFormat<Group> {
 
   /**
    * retrieve the schema from the conf
-   * @param configuration the job conf
+   * @param job
    * @return the schema
    */
   public static MessageType getSchema(Job job) {

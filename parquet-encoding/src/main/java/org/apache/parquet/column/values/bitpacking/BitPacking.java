@@ -109,7 +109,7 @@ public class BitPacking {
   /**
    *
    * @param bitLength the width in bits of the integers to read
-   * @param inthe stream to read the bytes from
+   * @param in the stream to read the bytes from
    * @return the correct implementation for the width
    */
   public static BitPackingReader createBitPackingReader(int bitLength, InputStream in, long valueCount) {
