@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.Log.INFO;
 import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
+import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_COLUMN_INFO_LOGGING;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
@@ -411,7 +412,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         validating,
         props,
         memoryManager,
-        conf);
+        conf,
+        DEFAULT_COLUMN_INFO_LOGGING);
   }
 
   /**
