@@ -62,6 +62,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private long compressedLength;
     private long totalValueCount;
     private int pageCount;
+    private boolean columnInfoLogging;
 
     private Set<Encoding> encodings = new HashSet<Encoding>();
 
@@ -70,10 +71,12 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     private ColumnChunkPageWriter(ColumnDescriptor path,
                                   BytesCompressor compressor,
-                                  ByteBufferAllocator allocator) {
+                                  ByteBufferAllocator allocator,
+                                  boolean columnInfoLogging) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
+      this.columnInfoLogging = columnInfoLogging;
       this.buf = new ConcatenatingByteArrayCollector();
       this.totalStatistics = getStatsBasedOnType(this.path.getType());
     }
@@ -186,7 +189,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       }
       writer.writeDataPages(buf, uncompressedLength, compressedLength, totalStatistics, new ArrayList<Encoding>(encodings));
       writer.endColumn();
-      if (INFO) {
+      if (INFO && columnInfoLogging) {
         LOG.info(
             String.format(
                 "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
@@ -226,10 +229,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator) {
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator, boolean columnInfoLogging) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator));
+      writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator, columnInfoLogging));
     }
   }
 
