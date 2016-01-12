@@ -41,10 +41,10 @@ public class DataPageV1 extends DataPage {
    * @param valuesEncoding the values encoding for this page
    * @param dlEncoding
    */
-  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, Statistics<?> stats, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
+  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
     super(Ints.checkedCast(bytes.size()), uncompressedSize, valueCount);
     this.bytes = bytes;
-    this.statistics = stats;
+    this.statistics = statistics;
     this.rlEncoding = rlEncoding;
     this.dlEncoding = dlEncoding;
     this.valuesEncoding = valuesEncoding;
