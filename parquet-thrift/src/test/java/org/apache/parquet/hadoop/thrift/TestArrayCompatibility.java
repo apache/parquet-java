@@ -16,44 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.avro;
+package org.apache.parquet.hadoop.thrift;
 
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.thrift.test.compat.ListOfLists;
+import org.apache.thrift.TBase;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.apache.parquet.DirectWriterTest;
+import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.thrift.ThriftParquetReader;
+import org.apache.parquet.thrift.ThriftRecordConverter;
+import org.apache.parquet.thrift.test.compat.ListOfCounts;
+import org.apache.parquet.thrift.test.compat.ListOfInts;
+import org.apache.parquet.thrift.test.compat.ListOfLocations;
+import org.apache.parquet.thrift.test.compat.ListOfSingleElementGroups;
+import org.apache.parquet.thrift.test.compat.Location;
+import org.apache.parquet.thrift.test.compat.SingleElementGroup;
 
-import static org.apache.parquet.avro.AvroTestUtil.array;
-import static org.apache.parquet.avro.AvroTestUtil.field;
-import static org.apache.parquet.avro.AvroTestUtil.instance;
-import static org.apache.parquet.avro.AvroTestUtil.optional;
-import static org.apache.parquet.avro.AvroTestUtil.optionalField;
-import static org.apache.parquet.avro.AvroTestUtil.primitive;
-import static org.apache.parquet.avro.AvroTestUtil.record;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TestArrayCompatibility extends DirectWriterTest {
 
-  public static final Configuration NEW_BEHAVIOR_CONF = new Configuration();
-
-  @BeforeClass
-  public static void setupNewBehaviorConfiguration() {
-    NEW_BEHAVIOR_CONF.setBoolean(
-        AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
-  }
-
   @Test
-  @Ignore(value="Not yet supported")
+  @Ignore("Not yet supported")
   public void testUnannotatedListOfPrimitives() throws Exception {
     Path test = writeDirect(
         "message UnannotatedListOfPrimitives {" +
@@ -73,20 +69,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
             rc.endMessage();
           }
         });
-
-    Schema expectedSchema = record("OldPrimitiveInList",
-        field("list_of_ints", array(primitive(Schema.Type.INT))));
-
-    GenericRecord expectedRecord = instance(expectedSchema,
-        "list_of_ints", Arrays.asList(34, 35, 36));
-
-    // both should behave the same way
-    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
-    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
   }
 
   @Test
-  @Ignore(value="Not yet supported")
+  @Ignore("Not yet supported")
   public void testUnannotatedListOfGroups() throws Exception {
     Path test = writeDirect(
         "message UnannotatedListOfGroups {" +
@@ -123,21 +109,6 @@ public class TestArrayCompatibility extends DirectWriterTest {
             rc.endMessage();
           }
         });
-
-    Schema point = record("?",
-        field("x", primitive(Schema.Type.FLOAT)),
-        field("y", primitive(Schema.Type.FLOAT)));
-    Schema expectedSchema = record("OldPrimitiveInList",
-        field("list_of_points", array(point)));
-
-    GenericRecord expectedRecord = instance(expectedSchema,
-        "list_of_points", Arrays.asList(
-            instance(point, "x", 1.0f, "y", 1.0f),
-            instance(point, "x", 2.0f, "y", 2.0f)));
-
-    // both should behave the same way
-    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
-    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
   }
 
   @Test
@@ -169,15 +140,9 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    Schema expectedSchema = record("RepeatedPrimitiveInList",
-        field("list_of_ints", array(Schema.create(Schema.Type.INT))));
-
-    GenericRecord expectedRecord = instance(expectedSchema,
-        "list_of_ints", Arrays.asList(34, 35, 36));
-
-    // both should behave the same way
-    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
-    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
+    ListOfInts expected = new ListOfInts(Lists.newArrayList(34, 35,36));
+    ListOfInts actual = reader(test, ListOfInts.class).read();
+    Assert.assertEquals("Should read record correctly", expected, actual);
   }
 
   @Test
@@ -227,25 +192,18 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    Schema location = record("element",
-        field("latitude", primitive(Schema.Type.DOUBLE)),
-        field("longitude", primitive(Schema.Type.DOUBLE)));
-    Schema expectedSchema = record("MultiFieldGroupInList",
-        optionalField("locations", array(location)));
+    ListOfLocations expected = new ListOfLocations();
+    expected.addToLocations(new Location(0.0, 0.0));
+    expected.addToLocations(new Location(0.0, 180.0));
 
-    GenericRecord expectedRecord = instance(expectedSchema,
-        "locations", Arrays.asList(
-            instance(location, "latitude", 0.0, "longitude", 0.0),
-            instance(location, "latitude", 0.0, "longitude", 180.0)));
-
-    // both should behave the same way
-    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
-    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(reader(test, ListOfLocations.class), expected);
   }
 
   @Test
   public void testSingleFieldGroupInList() throws Exception {
-    // this tests the case where non-avro older data has an ambiguous list
+    // this tests the case where older data has an ambiguous structure, but the
+    // correct interpretation can be determined from the thrift class
+
     Path test = writeDirect(
         "message SingleFieldGroupInList {" +
             "  optional group single_element_groups (LIST) {" +
@@ -283,91 +241,21 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    // can't tell from storage whether this should be a list of single-field
-    // records or if the single_field_group layer is synthetic.
+    // the behavior in this case depends on the thrift class used to read
 
-    // old behavior - assume that the repeated type is the element type
-    Schema singleElementGroupSchema = record("single_element_group",
-        field("count", primitive(Schema.Type.LONG)));
-    Schema oldSchema = record("SingleFieldGroupInList",
-        optionalField("single_element_groups", array(singleElementGroupSchema)));
-    GenericRecord oldRecord = instance(oldSchema,
-        "single_element_groups", Arrays.asList(
-            instance(singleElementGroupSchema, "count", 1234L),
-            instance(singleElementGroupSchema, "count", 2345L)));
+    // test a class with the extra single_element_group level
+    ListOfSingleElementGroups expectedOldBehavior = new ListOfSingleElementGroups();
+    expectedOldBehavior.addToSingle_element_groups(new SingleElementGroup(1234L));
+    expectedOldBehavior.addToSingle_element_groups(new SingleElementGroup(2345L));
 
-    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
+    assertReaderContains(reader(test, ListOfSingleElementGroups.class), expectedOldBehavior);
 
-    // new behavior - assume that single_element_group is synthetic (in spec)
-    Schema newSchema = record("SingleFieldGroupInList",
-        optionalField("single_element_groups", array(primitive(Schema.Type.LONG))));
-    GenericRecord newRecord = instance(newSchema,
-        "single_element_groups", Arrays.asList(1234L, 2345L));
+    // test a class without the extra level
+    ListOfCounts expectedNewBehavior = new ListOfCounts();
+    expectedNewBehavior.addToSingle_element_groups(1234L);
+    expectedNewBehavior.addToSingle_element_groups(2345L);
 
-    assertReaderContains(newBehaviorReader(test), newSchema, newRecord);
-  }
-
-  @Test
-  public void testSingleFieldGroupInListWithSchema() throws Exception {
-    // this tests the case where older data has an ambiguous structure, but the
-    // correct interpretation can be determined from the avro schema
-
-    Schema singleElementRecord = record("single_element_group",
-        field("count", primitive(Schema.Type.LONG)));
-
-    Schema expectedSchema = record("SingleFieldGroupInList",
-        optionalField("single_element_groups",
-            array(singleElementRecord)));
-
-    Map<String, String> metadata = new HashMap<String, String>();
-    metadata.put(AvroWriteSupport.AVRO_SCHEMA, expectedSchema.toString());
-
-    Path test = writeDirect(
-        "message SingleFieldGroupInList {" +
-            "  optional group single_element_groups (LIST) {" +
-            "    repeated group single_element_group {" +
-            "      required int64 count;" +
-            "    }" +
-            "  }" +
-            "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("single_element_groups", 0);
-
-            rc.startGroup();
-            rc.startField("single_element_group", 0); // start writing array contents
-
-            rc.startGroup();
-            rc.startField("count", 0);
-            rc.addLong(1234L);
-            rc.endField("count", 0);
-            rc.endGroup();
-
-            rc.startGroup();
-            rc.startField("count", 0);
-            rc.addLong(2345L);
-            rc.endField("count", 0);
-            rc.endGroup();
-
-            rc.endField("single_element_group", 0); // finished writing array contents
-            rc.endGroup();
-
-            rc.endField("single_element_groups", 0);
-            rc.endMessage();
-          }
-        },
-        metadata);
-
-    GenericRecord expectedRecord = instance(expectedSchema,
-        "single_element_groups", Arrays.asList(
-            instance(singleElementRecord, "count", 1234L),
-            instance(singleElementRecord, "count", 2345L)));
-
-    // both should behave the same way because the schema is present
-    assertReaderContains(oldBehaviorReader(test), expectedSchema, expectedRecord);
-    assertReaderContains(newBehaviorReader(test), expectedSchema, expectedRecord);
+    assertReaderContains(reader(test, ListOfCounts.class), expectedNewBehavior);
   }
 
   @Test
@@ -436,34 +324,21 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    Schema location = record("element",
-        field("latitude", primitive(Schema.Type.DOUBLE)),
-        field("longitude", primitive(Schema.Type.DOUBLE)));
+    ListOfLocations expected = new ListOfLocations();
+    expected.addToLocations(new Location(0.0, 0.0));
+    // null is not included because thrift does not allow null in lists
+    //expected.addToLocations(null);
+    expected.addToLocations(new Location(0.0, 180.0));
 
-    // old behavior - assume that the repeated type is the element type
-    Schema elementRecord = record("list", optionalField("element", location));
-    Schema oldSchema = record("NewOptionalGroupInList",
-        optionalField("locations", array(elementRecord)));
-    GenericRecord oldRecord = instance(oldSchema,
-        "locations", Arrays.asList(
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 0.0)),
-            instance(elementRecord),
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 180.0))));
+    try {
+      assertReaderContains(reader(test, ListOfLocations.class), expected);
+      fail("Should fail: locations are optional and not ignored");
+    } catch (RuntimeException e) {
+      // e is a RuntimeException wrapping the decoding exception
+      assertTrue(e.getCause().getCause().getMessage().contains("locations"));
+    }
 
-    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
-
-    // new behavior - assume that single_element_group is synthetic (in spec)
-    Schema newSchema = record("NewOptionalGroupInList",
-        optionalField("locations", array(optional(location))));
-    GenericRecord newRecord = instance(newSchema,
-        "locations", Arrays.asList(
-            instance(location, "latitude", 0.0, "longitude", 0.0),
-            null,
-            instance(location, "latitude", 0.0, "longitude", 180.0)));
-
-    assertReaderContains(newBehaviorReader(test), newSchema, newRecord);
+    assertReaderContains(readerIgnoreNulls(test, ListOfLocations.class), expected);
   }
 
   @Test
@@ -528,41 +403,20 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    Schema location = record("element",
-        field("latitude", primitive(Schema.Type.DOUBLE)),
-        field("longitude", primitive(Schema.Type.DOUBLE)));
+    ListOfLocations expected = new ListOfLocations();
+    expected.addToLocations(new Location(0.0, 180.0));
+    expected.addToLocations(new Location(0.0, 0.0));
 
-    // old behavior - assume that the repeated type is the element type
-    Schema elementRecord = record("list", field("element", location));
-    Schema oldSchema = record("NewRequiredGroupInList",
-        optionalField("locations", array(elementRecord)));
-    GenericRecord oldRecord = instance(oldSchema,
-        "locations", Arrays.asList(
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 180.0)),
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 0.0))));
-
-    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
-
-    // new behavior - assume that single_element_group is synthetic (in spec)
-    Schema newSchema = record("NewRequiredGroupInList",
-        optionalField("locations", array(location)));
-    GenericRecord newRecord = instance(newSchema,
-        "locations", Arrays.asList(
-            instance(location, "latitude", 0.0, "longitude", 180.0),
-            instance(location, "latitude", 0.0, "longitude", 0.0)));
-
-    assertReaderContains(newBehaviorReader(test), newSchema, newRecord);
+    assertReaderContains(reader(test, ListOfLocations.class), expected);
   }
 
   @Test
-  public void testAvroCompatOptionalGroupInList() throws Exception {
+  public void testAvroCompatRequiredGroupInList() throws Exception {
     Path test = writeDirect(
-        "message AvroCompatOptionalGroupInList {" +
+        "message AvroCompatRequiredGroupInList {" +
             "  optional group locations (LIST) {" +
             "    repeated group array {" +
-            "      optional group element {" +
+            "      required group element {" +
             "        required double latitude;" +
             "        required double longitude;" +
             "      }" +
@@ -584,7 +438,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
 
             rc.startGroup();
             rc.startField("latitude", 0);
-            rc.addDouble(0.0);
+            rc.addDouble(90.0);
             rc.endField("latitude", 0);
             rc.startField("longitude", 1);
             rc.addDouble(180.0);
@@ -600,7 +454,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
 
             rc.startGroup();
             rc.startField("latitude", 0);
-            rc.addDouble(0.0);
+            rc.addDouble(-90.0);
             rc.endField("latitude", 0);
             rc.startField("longitude", 1);
             rc.addDouble(0.0);
@@ -618,113 +472,11 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    Schema location = record("element",
-        field("latitude", primitive(Schema.Type.DOUBLE)),
-        field("longitude", primitive(Schema.Type.DOUBLE)));
+    ListOfLocations expected = new ListOfLocations();
+    expected.addToLocations(new Location(90.0, 180.0));
+    expected.addToLocations(new Location(-90.0, 0.0));
 
-    // old behavior - assume that the repeated type is the element type
-    Schema elementRecord = record("array", optionalField("element", location));
-    Schema oldSchema = record("AvroCompatOptionalGroupInList",
-        optionalField("locations", array(elementRecord)));
-    GenericRecord oldRecord = instance(oldSchema,
-        "locations", Arrays.asList(
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 180.0)),
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 0.0))));
-
-    // both should detect the "array" name
-    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
-    assertReaderContains(newBehaviorReader(test), oldSchema, oldRecord);
-  }
-
-  @Test
-  public void testAvroCompatOptionalGroupInListWithSchema() throws Exception {
-    Path test = writeDirect(
-        "message AvroCompatOptionalGroupInListWithSchema {" +
-            "  optional group locations (LIST) {" +
-            "    repeated group array {" +
-            "      optional group element {" +
-            "        required double latitude;" +
-            "        required double longitude;" +
-            "      }" +
-            "    }" +
-            "  }" +
-            "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
-
-            rc.startGroup();
-            rc.startField("array", 0); // start writing array contents
-
-            // write a non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
-
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(180.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
-
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
-
-            // write a second non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
-
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(0.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
-
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
-
-            rc.endField("array", 0); // finished writing array contents
-            rc.endGroup();
-
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
-
-    Schema location = record("element",
-        field("latitude", primitive(Schema.Type.DOUBLE)),
-        field("longitude", primitive(Schema.Type.DOUBLE)));
-
-    Schema newSchema = record("AvroCompatOptionalGroupInListWithSchema",
-        optionalField("locations", array(optional(location))));
-    GenericRecord newRecord = instance(newSchema,
-        "locations", Arrays.asList(
-            instance(location, "latitude", 0.0, "longitude", 180.0),
-            instance(location, "latitude", 0.0, "longitude", 0.0)));
-
-    Configuration oldConfWithSchema = new Configuration();
-    AvroReadSupport.setAvroReadSchema(oldConfWithSchema, newSchema);
-
-    // both should use the schema structure that is provided
-    assertReaderContains(
-        new AvroParquetReader<GenericRecord>(oldConfWithSchema, test),
-        newSchema, newRecord);
-
-    Configuration newConfWithSchema = new Configuration(NEW_BEHAVIOR_CONF);
-    AvroReadSupport.setAvroReadSchema(newConfWithSchema, newSchema);
-
-    assertReaderContains(
-        new AvroParquetReader<GenericRecord>(newConfWithSchema, test),
-        newSchema, newRecord);
+    assertReaderContains(reader(test, ListOfLocations.class), expected);
   }
 
   @Test
@@ -780,19 +532,13 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    Schema listOfLists = array(array(primitive(Schema.Type.INT)));
-    Schema oldSchema = record("AvroCompatListInList",
-        optionalField("listOfLists", listOfLists));
+    ListOfLists expected = new ListOfLists();
+    expected.addToListOfLists(Arrays.asList(34, 35, 36));
+    expected.addToListOfLists(Arrays.<Integer>asList());
+    expected.addToListOfLists(Arrays.asList(32, 33, 34));
 
-    GenericRecord oldRecord = instance(oldSchema,
-        "listOfLists", Arrays.asList(
-            Arrays.asList(34, 35, 36),
-            Arrays.asList(),
-            Arrays.asList(32, 33, 34)));
-
-    // both should detect the "array" name
-    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
-    assertReaderContains(newBehaviorReader(test), oldSchema, oldRecord);
+    // should detect the "array" name
+    assertReaderContains(reader(test, ListOfLists.class), expected);
   }
 
   @Test
@@ -848,28 +594,22 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    Schema listOfLists = array(array(primitive(Schema.Type.INT)));
-    Schema oldSchema = record("ThriftCompatListInList",
-        optionalField("listOfLists", listOfLists));
+    ListOfLists expected = new ListOfLists();
+    expected.addToListOfLists(Arrays.asList(34, 35, 36));
+    expected.addToListOfLists(Arrays.<Integer>asList());
+    expected.addToListOfLists(Arrays.asList(32, 33, 34));
 
-    GenericRecord oldRecord = instance(oldSchema,
-        "listOfLists", Arrays.asList(
-            Arrays.asList(34, 35, 36),
-            Arrays.asList(),
-            Arrays.asList(32, 33, 34)));
-
-    // both should detect the "_tuple" names
-    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
-    assertReaderContains(newBehaviorReader(test), oldSchema, oldRecord);
+    // should detect the "_tuple" names
+    assertReaderContains(reader(test, ListOfLists.class), expected);
   }
 
   @Test
-  public void testThriftCompatRequiredGroupInList() throws Exception {
+  public void testOldThriftCompatRequiredGroupInList() throws Exception {
     Path test = writeDirect(
-        "message ThriftCompatRequiredGroupInList {" +
+        "message OldThriftCompatRequiredGroupInList {" +
             "  optional group locations (LIST) {" +
             "    repeated group locations_tuple {" +
-            "      optional group element {" +
+            "      required group element {" +
             "        required double latitude;" +
             "        required double longitude;" +
             "      }" +
@@ -925,24 +665,11 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    Schema location = record("element",
-        field("latitude", primitive(Schema.Type.DOUBLE)),
-        field("longitude", primitive(Schema.Type.DOUBLE)));
+    ListOfLocations expected = new ListOfLocations();
+    expected.addToLocations(new Location(0.0, 180.0));
+    expected.addToLocations(new Location(0.0, 0.0));
 
-    // old behavior - assume that the repeated type is the element type
-    Schema elementRecord = record("locations_tuple", optionalField("element", location));
-    Schema oldSchema = record("ThriftCompatRequiredGroupInList",
-        optionalField("locations", array(elementRecord)));
-    GenericRecord oldRecord = instance(oldSchema,
-        "locations", Arrays.asList(
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 180.0)),
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 0.0))));
-
-    // both should detect the "array" name
-    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
-    assertReaderContains(newBehaviorReader(test), oldSchema, oldRecord);
+    assertReaderContains(reader(test, ListOfLocations.class), expected);
   }
 
   @Test
@@ -1007,57 +734,46 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    Schema location = record("element",
-        field("latitude", primitive(Schema.Type.DOUBLE)),
-        field("longitude", primitive(Schema.Type.DOUBLE)));
+    ListOfLocations expected = new ListOfLocations();
+    expected.addToLocations(new Location(0.0, 180.0));
+    expected.addToLocations(new Location(0.0, 0.0));
 
-    // old behavior - assume that the repeated type is the element type
-    Schema elementRecord = record("bag", optionalField("element", location));
-    Schema oldSchema = record("HiveCompatOptionalGroupInList",
-        optionalField("locations", array(elementRecord)));
-    GenericRecord oldRecord = instance(oldSchema,
-        "locations", Arrays.asList(
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 180.0)),
-            instance(elementRecord, "element",
-                instance(location, "latitude", 0.0, "longitude", 0.0))));
-
-    // both should detect the "array" name
-    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
-
-    Schema newSchema = record("HiveCompatOptionalGroupInList",
-        optionalField("locations", array(optional(location))));
-    GenericRecord newRecord = instance(newSchema,
-        "locations", Arrays.asList(
-            instance(location, "latitude", 0.0, "longitude", 180.0),
-            instance(location, "latitude", 0.0, "longitude", 0.0)));
-
-    assertReaderContains(newBehaviorReader(test), newSchema, newRecord);
-  }
-
-  public <T extends IndexedRecord> AvroParquetReader<T> oldBehaviorReader(
-      Path path) throws IOException {
-    return new AvroParquetReader<T>(path);
-  }
-
-  public <T extends IndexedRecord> AvroParquetReader<T> newBehaviorReader(
-      Path path) throws IOException {
-    return new AvroParquetReader<T>(NEW_BEHAVIOR_CONF, path);
-  }
-
-  public <T extends IndexedRecord> void assertReaderContains(
-      AvroParquetReader<T> reader, Schema expectedSchema, T... expectedRecords)
-      throws IOException {
-    for (T expectedRecord : expectedRecords) {
-      T actualRecord = reader.read();
-      Assert.assertEquals("Should match expected schema",
-          expectedSchema, actualRecord.getSchema());
-      Assert.assertEquals("Should match the expected record",
-          expectedRecord, actualRecord);
+    try {
+      assertReaderContains(reader(test, ListOfLocations.class), expected);
+      fail("Should fail: locations are optional and not ignored");
+    } catch (RuntimeException e) {
+      // e is a RuntimeException wrapping the decoding exception
+      assertTrue(e.getCause().getCause().getMessage().contains("locations"));
     }
-    Assert.assertNull("Should only contain " + expectedRecords.length +
-            " record" + (expectedRecords.length == 1 ? "" : "s"),
-        reader.read());
+
+    assertReaderContains(readerIgnoreNulls(test, ListOfLocations.class), expected);
   }
 
+  public <T extends TBase<?, ?>> ParquetReader<T> reader(
+      Path file, Class<T> thriftClass) throws IOException {
+    return ThriftParquetReader.<T>build(file)
+        .withThriftClass(thriftClass)
+        .build();
+  }
+
+  public <T extends TBase<?, ?>> ParquetReader<T> readerIgnoreNulls(
+      Path file, Class<T> thriftClass) throws IOException {
+    Configuration conf = new Configuration();
+    conf.setBoolean(ThriftRecordConverter.IGNORE_NULL_LIST_ELEMENTS, true);
+    return ThriftParquetReader.<T>build(file)
+        .withThriftClass(thriftClass)
+        .withConf(conf)
+        .build();
+  }
+
+  public <T> void assertReaderContains(ParquetReader<T> reader, T... expected)
+      throws IOException {
+    T record;
+    List<T> actual = Lists.newArrayList();
+    while ((record = reader.read()) != null) {
+      actual.add(record);
+    }
+    Assert.assertEquals("Should match exepected records",
+        Lists.newArrayList(expected), actual);
+  }
 }
