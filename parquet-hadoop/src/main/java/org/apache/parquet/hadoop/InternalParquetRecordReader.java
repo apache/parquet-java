@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,14 +31,20 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.Log;
+import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
+import org.apache.parquet.filter2.compat.FilterCompatColumnCollector;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators;
+import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -48,6 +55,7 @@ import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationExcepti
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
+import org.hsqldb.Column;
 
 import static java.lang.String.format;
 import static org.apache.parquet.Log.DEBUG;
@@ -174,12 +182,29 @@ class InternalParquetRecordReader<T> {
     this.columnIOFactory = new ColumnIOFactory(parquetFileMetadata.getCreatedBy());
     this.requestedSchema = readContext.getRequestedSchema();
     this.fileSchema = fileSchema;
+    final List<ColumnDescriptor> columns = requestedSchema.getColumns();
+
+    Set<Operators.Column> columnsInFilter = filter.accept(new FilterCompatColumnCollector());
+    Iterator<Operators.Column> columnsInFilterIt = columnsInFilter.iterator();
+    while(columnsInFilterIt.hasNext())
+    {
+      Operators.Column columnInFilter = columnsInFilterIt.next();
+      for (ColumnDescriptor column : columns) {
+        ColumnPath columnPath = ColumnPath.get(column.getPath());
+
+        boolean in = columnPath.equals(columnInFilter.getColumnPath());
+        System.out.println();
+        if (!in) {
+          throw new RuntimeException("See Parquet-426");
+        }
+      }
+    }
+
     this.file = file;
     this.columnCount = requestedSchema.getPaths().size();
     this.recordConverter = readSupport.prepareForRead(
         configuration, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
-    List<ColumnDescriptor> columns = requestedSchema.getColumns();
     reader = new ParquetFileReader(configuration, parquetFileMetadata, file, blocks, columns);
     for (BlockMetaData block : blocks) {
       total += block.getRowCount();
