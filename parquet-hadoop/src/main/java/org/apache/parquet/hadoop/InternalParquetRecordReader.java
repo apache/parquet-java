@@ -184,7 +184,7 @@ class InternalParquetRecordReader<T> {
     this.fileSchema = fileSchema;
     final List<ColumnDescriptor> columns = requestedSchema.getColumns();
 
-    Set<Operators.Column> columnsInFilter = filter.accept(new FilterCompatColumnCollector());
+    Set<Operators.Column> columnsInFilter = filter.accept(FilterCompatColumnCollector.INSTANCE);
     Iterator<Operators.Column> columnsInFilterIt = columnsInFilter.iterator();
     while(columnsInFilterIt.hasNext())
     {

@@ -26,11 +26,9 @@ public class InternalParquetRecordReaderModifier {
   }
 
   public static void main(String[] args) throws Exception {
-    final MessageType fileSchema = new MessageType("root",
-                                                   createPrimitiveType("a"),
-                                                   createPrimitiveType("b"));
-    final MessageType requestedSchema = new MessageType("root",
-                                                        createPrimitiveType("a"));
+    final MessageType fileSchema = new MessageType("root", createPrimitiveType("a"), createPrimitiveType("b"));
+    final MessageType requestedSchema = new MessageType("root", createPrimitiveType("a"));
+    FilterCompat.Filter filter = FilterCompat.get(FilterApi.eq(FilterApi.intColumn("b"), 1));
 
     ReadSupport<String> readSupport = new ReadSupport<String>() {
       @Override
@@ -47,13 +45,10 @@ public class InternalParquetRecordReaderModifier {
       }
     };
 
-    FilterCompat.Filter filter = FilterCompat.get(FilterApi.eq(FilterApi.intColumn("b"), 1));
 
-    InternalParquetRecordReader<String> reader =
-        new InternalParquetRecordReader<String>(readSupport, filter);
+    InternalParquetRecordReader<String> reader = new InternalParquetRecordReader<String>(readSupport, filter);
 
-    FileMetaData fileMetaData = new FileMetaData(fileSchema, new HashMap<String, String>(),
-                                                 "createdBy");
+    FileMetaData fileMetaData = new FileMetaData(fileSchema, new HashMap<String, String>(), "createdBy");
 
     reader.initialize(fileSchema, fileMetaData, null, null, null);
 

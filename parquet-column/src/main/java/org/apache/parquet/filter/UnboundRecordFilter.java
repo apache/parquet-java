@@ -19,6 +19,9 @@
 package org.apache.parquet.filter;
 
 import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+
+import java.util.Set;
 
 /**
  * Builder for a record filter. Idea is that each filter provides a create function
@@ -32,5 +35,10 @@ public interface UnboundRecordFilter {
   /**
    * Call to bind to actual columns and create filter.
    */
-  RecordFilter bind( Iterable<ColumnReader> readers);
+  RecordFilter bind(Iterable<ColumnReader> readers);
+
+  /**
+   * Call to collect column paths into the set
+   */
+  void collectColumnPaths(Set<ColumnPath> columnPathSet);
 }

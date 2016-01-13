@@ -28,6 +28,11 @@ import java.util.Set;
 
 public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Operators.Column>> {
 
+  public static final FilterCompatColumnCollector INSTANCE = new FilterCompatColumnCollector();
+
+  private FilterCompatColumnCollector() {
+  }
+
   @Override
   public Set<Operators.Column> visit(FilterCompat.FilterPredicateCompat filterPredicateCompat) {
     FilterPredicateColumnCollector collector = new FilterPredicateColumnCollector();
@@ -37,7 +42,8 @@ public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Ope
 
   @Override
   public Set<Operators.Column> visit(FilterCompat.UnboundRecordFilterCompat unboundRecordFilterCompat) {
-    throw new RuntimeException("not implemented");
+    /* we return null to implicitly ignore the   */
+    return null;
   }
 
   @Override
@@ -45,7 +51,10 @@ public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Ope
     return null;
   }
 
-  public static class FilterPredicateColumnCollector implements FilterPredicate.Visitor<Boolean> {
+  /**
+   * This class is stateful, and not thread-safe
+   */
+  private static class FilterPredicateColumnCollector implements FilterPredicate.Visitor<Boolean> {
 
     private final HashSet<Operators.Column> columnSet = new HashSet<Operators.Column>();
 
