@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,20 +30,14 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.Log;
-import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
-import org.apache.parquet.filter2.compat.FilterCompatColumnCollector;
-import org.apache.parquet.filter2.predicate.FilterPredicate;
-import org.apache.parquet.filter2.predicate.Operators;
-import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -55,7 +48,6 @@ import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationExcepti
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
-import org.hsqldb.Column;
 
 import static java.lang.String.format;
 import static org.apache.parquet.Log.DEBUG;
@@ -123,13 +115,13 @@ class InternalParquetRecordReader<T> {
       if (current != 0) {
         totalTimeSpentProcessingRecords += (System.currentTimeMillis() - startedAssemblingCurrentBlockAt);
         if (Log.INFO) {
-            LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
-            final long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
-            if (totalTime != 0) {
-                final long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
-                final long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
-                LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
-            }
+          LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
+          final long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
+          if (totalTime != 0) {
+            final long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
+            final long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
+            LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
+          }
         }
       }
 
@@ -163,7 +155,7 @@ class InternalParquetRecordReader<T> {
   }
 
   public T getCurrentValue() throws IOException,
-  InterruptedException {
+                                    InterruptedException {
     return currentValue;
   }
 
@@ -172,8 +164,8 @@ class InternalParquetRecordReader<T> {
   }
 
   public void initialize(MessageType fileSchema,
-      FileMetaData parquetFileMetadata,
-      Path file, List<BlockMetaData> blocks, Configuration configuration)
+                         FileMetaData parquetFileMetadata,
+                         Path file, List<BlockMetaData> blocks, Configuration configuration)
       throws IOException {
     // initialize a ReadContext for this file
     Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
@@ -182,39 +174,12 @@ class InternalParquetRecordReader<T> {
     this.columnIOFactory = new ColumnIOFactory(parquetFileMetadata.getCreatedBy());
     this.requestedSchema = readContext.getRequestedSchema();
     this.fileSchema = fileSchema;
-    final List<ColumnDescriptor> columns = requestedSchema.getColumns();
-
-    // we'll check if all the predicate columns are in projection
-    Set<ColumnPath> columnsInFilter = filter.accept(FilterCompatColumnCollector.INSTANCE);
-    if (columnsInFilter != null && columnsInFilter.size() > 0) {
-      Iterator<ColumnPath> columnsInFilterIt = columnsInFilter.iterator();
-      while (columnsInFilterIt.hasNext()) {
-        ColumnPath columnInFilter = columnsInFilterIt.next();
-        // we'll check if the predicate column is in projection
-        boolean predicateColumnInProjection = false;
-        for (ColumnDescriptor column : columns) {
-          ColumnPath columnPath = ColumnPath.get(column.getPath());
-          if (columnPath.equals(columnInFilter)) {
-            predicateColumnInProjection = true;
-            break;
-          }
-        }
-        // if predicateColumnInProjection is true, we are ok
-        // otherwise we throw this Exception to warn the upper application
-        if (!predicateColumnInProjection) {
-          String msg = "Warning: filter predicate contains columns not specified in projection! "
-                       + "This often indicates incorrect data filter due to Parquet-425; "
-                       + "for now please work around this by adding all predicates columns into the projection.";
-          throw new RuntimeException(msg);
-        }
-      }
-    }
-
     this.file = file;
     this.columnCount = requestedSchema.getPaths().size();
     this.recordConverter = readSupport.prepareForRead(
         configuration, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
+    List<ColumnDescriptor> columns = requestedSchema.getColumns();
     reader = new ParquetFileReader(configuration, parquetFileMetadata, file, blocks, columns);
     for (BlockMetaData block : blocks) {
       total += block.getRowCount();
