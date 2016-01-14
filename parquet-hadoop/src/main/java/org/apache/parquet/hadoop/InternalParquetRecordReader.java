@@ -203,7 +203,7 @@ class InternalParquetRecordReader<T> {
         // otherwise we throw this Exception to warn the upper application
         if (!predicateColumnInProjection) {
           String msg = "Warning: filter predicate contains columns not specified in projection! "
-                       + "This often indicates incorrect data filter due to Parquet-426; "
+                       + "This often indicates incorrect data filter due to Parquet-425; "
                        + "for now please work around this by adding all predicates columns into the projection.";
           throw new RuntimeException(msg);
         }

@@ -55,6 +55,7 @@ public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Col
 
   /**
    * This class is stateful, and not thread-safe
+   * So create an instance every time this is used
    */
   private static class FilterPredicateColumnCollector implements FilterPredicate.Visitor<Boolean> {
 
