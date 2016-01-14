@@ -115,13 +115,13 @@ class InternalParquetRecordReader<T> {
       if (current != 0) {
         totalTimeSpentProcessingRecords += (System.currentTimeMillis() - startedAssemblingCurrentBlockAt);
         if (Log.INFO) {
-          LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
-          final long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
-          if (totalTime != 0) {
-            final long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
-            final long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
-            LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
-          }
+            LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
+            final long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
+            if (totalTime != 0) {
+                final long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
+                final long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
+                LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
+            }
         }
       }
 
@@ -155,7 +155,7 @@ class InternalParquetRecordReader<T> {
   }
 
   public T getCurrentValue() throws IOException,
-                                    InterruptedException {
+  InterruptedException {
     return currentValue;
   }
 
@@ -164,8 +164,8 @@ class InternalParquetRecordReader<T> {
   }
 
   public void initialize(MessageType fileSchema,
-                         FileMetaData parquetFileMetadata,
-                         Path file, List<BlockMetaData> blocks, Configuration configuration)
+      FileMetaData parquetFileMetadata,
+      Path file, List<BlockMetaData> blocks, Configuration configuration)
       throws IOException {
     // initialize a ReadContext for this file
     Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
