@@ -21,12 +21,13 @@ package org.apache.parquet.filter2.compat;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 import java.util.HashSet;
 import java.util.Set;
 
 
-public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Operators.Column>> {
+public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<ColumnPath>> {
 
   public static final FilterCompatColumnCollector INSTANCE = new FilterCompatColumnCollector();
 
@@ -34,21 +35,21 @@ public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Ope
   }
 
   @Override
-  public Set<Operators.Column> visit(FilterCompat.FilterPredicateCompat filterPredicateCompat) {
+  public Set<ColumnPath> visit(FilterCompat.FilterPredicateCompat filterPredicateCompat) {
     FilterPredicateColumnCollector collector = new FilterPredicateColumnCollector();
     filterPredicateCompat.getFilterPredicate().accept(collector);
     return collector.getColumnSet();
   }
 
   @Override
-  public Set<Operators.Column> visit(FilterCompat.UnboundRecordFilterCompat unboundRecordFilterCompat) {
-    final HashSet<Operators.Column> columnSet = new HashSet<Operators.Column>();
+  public Set<ColumnPath> visit(FilterCompat.UnboundRecordFilterCompat unboundRecordFilterCompat) {
+    final HashSet<ColumnPath> columnSet = new HashSet<ColumnPath>();
     unboundRecordFilterCompat.getUnboundRecordFilter().collectColumnPaths(columnSet);
     return columnSet;
   }
 
   @Override
-  public Set<Operators.Column> visit(FilterCompat.NoOpFilter noOpFilter) {
+  public Set<ColumnPath> visit(FilterCompat.NoOpFilter noOpFilter) {
     return null;
   }
 
@@ -57,36 +58,36 @@ public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Ope
    */
   private static class FilterPredicateColumnCollector implements FilterPredicate.Visitor<Boolean> {
 
-    private final HashSet<Operators.Column> columnSet = new HashSet<Operators.Column>();
+    private final HashSet<ColumnPath> columnSet = new HashSet<ColumnPath>();
 
     @Override
     public <T extends Comparable<T>> Boolean visit(Operators.Eq<T> eq) {
-      return columnSet.add(eq.getColumn());
+      return columnSet.add(eq.getColumn().getColumnPath());
     }
 
     @Override
     public <T extends Comparable<T>> Boolean visit(Operators.NotEq<T> notEq) {
-      return columnSet.add(notEq.getColumn());
+      return columnSet.add(notEq.getColumn().getColumnPath());
     }
 
     @Override
     public <T extends Comparable<T>> Boolean visit(Operators.Lt<T> lt) {
-      return columnSet.add(lt.getColumn());
+      return columnSet.add(lt.getColumn().getColumnPath());
     }
 
     @Override
     public <T extends Comparable<T>> Boolean visit(Operators.LtEq<T> ltEq) {
-      return columnSet.add(ltEq.getColumn());
+      return columnSet.add(ltEq.getColumn().getColumnPath());
     }
 
     @Override
     public <T extends Comparable<T>> Boolean visit(Operators.Gt<T> gt) {
-      return columnSet.add(gt.getColumn());
+      return columnSet.add(gt.getColumn().getColumnPath());
     }
 
     @Override
     public <T extends Comparable<T>> Boolean visit(Operators.GtEq<T> gtEq) {
-      return columnSet.add(gtEq.getColumn());
+      return columnSet.add(gtEq.getColumn().getColumnPath());
     }
 
     @Override
@@ -109,7 +110,7 @@ public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Ope
     @Override
     public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(
         Operators.UserDefined<T, U> udp) {
-      return columnSet.add(udp.getColumn());
+      return columnSet.add(udp.getColumn().getColumnPath());
     }
 
     @Override
@@ -119,7 +120,7 @@ public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Ope
       return udp.getUserDefined().accept(this);
     }
 
-    public HashSet<Operators.Column> getColumnSet() {
+    public HashSet<ColumnPath> getColumnSet() {
       return columnSet;
     }
   }
