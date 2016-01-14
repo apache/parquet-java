@@ -118,11 +118,6 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.parquet</groupId>
-      <artifactId>parquet-generated</artifactId>
-      <version>1.8.2-SNAPSHOT</version>
-    </dependency>
-    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.10</version>
