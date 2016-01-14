@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -300,6 +301,11 @@ public class TestInputFormat {
     @Override
     public RecordFilter bind(Iterable<ColumnReader> readers) {
       return null;
+    }
+
+    @Override
+    public void collectColumnPaths(Set<ColumnPath> columnPathSet) {
+      // do nothing here
     }
   }
 

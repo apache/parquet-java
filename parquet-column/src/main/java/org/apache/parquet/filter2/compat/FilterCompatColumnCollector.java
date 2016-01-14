@@ -42,8 +42,9 @@ public class FilterCompatColumnCollector implements FilterCompat.Visitor<Set<Ope
 
   @Override
   public Set<Operators.Column> visit(FilterCompat.UnboundRecordFilterCompat unboundRecordFilterCompat) {
-    /* we return null to implicitly ignore the   */
-    return null;
+    final HashSet<Operators.Column> columnSet = new HashSet<Operators.Column>();
+    unboundRecordFilterCompat.getUnboundRecordFilter().collectColumnPaths(columnSet);
+    return columnSet;
   }
 
   @Override
