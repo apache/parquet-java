@@ -184,18 +184,28 @@ class InternalParquetRecordReader<T> {
     this.fileSchema = fileSchema;
     final List<ColumnDescriptor> columns = requestedSchema.getColumns();
 
-    Set<Operators.Column> columnsInFilter = filter.accept(FilterCompatColumnCollector.INSTANCE);
-    Iterator<Operators.Column> columnsInFilterIt = columnsInFilter.iterator();
-    while(columnsInFilterIt.hasNext())
-    {
-      Operators.Column columnInFilter = columnsInFilterIt.next();
-      for (ColumnDescriptor column : columns) {
-        ColumnPath columnPath = ColumnPath.get(column.getPath());
-
-        boolean in = columnPath.equals(columnInFilter.getColumnPath());
-        System.out.println();
-        if (!in) {
-          throw new RuntimeException("See Parquet-426");
+    // we'll check if all the predicate columns are in projection
+    Set<ColumnPath> columnsInFilter = filter.accept(FilterCompatColumnCollector.INSTANCE);
+    if (columnsInFilter != null && columnsInFilter.size() > 0) {
+      Iterator<ColumnPath> columnsInFilterIt = columnsInFilter.iterator();
+      while (columnsInFilterIt.hasNext()) {
+        ColumnPath columnInFilter = columnsInFilterIt.next();
+        // we'll check if the predicate column is in projection
+        boolean predicateColumnInProjection = false;
+        for (ColumnDescriptor column : columns) {
+          ColumnPath columnPath = ColumnPath.get(column.getPath());
+          if (columnPath.equals(columnInFilter)) {
+            predicateColumnInProjection = true;
+            break;
+          }
+        }
+        // if predicateColumnInProjection is true, we are ok
+        // otherwise we throw this Exception to warn the upper application
+        if (!predicateColumnInProjection) {
+          String msg = "Warning: filter predicate contains columns not specified in projection! "
+                       + "This often indicates incorrect data filter due to Parquet-426; "
+                       + "for now please work around this by adding all predicates columns into the projection.";
+          throw new RuntimeException(msg);
         }
       }
     }
