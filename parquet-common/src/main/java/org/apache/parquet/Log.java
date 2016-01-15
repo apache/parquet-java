@@ -63,6 +63,14 @@ public class Log {
   }
 
   /**
+   * Do we want the debug messages?
+   * @return If we want the debug messages. 
+   */
+  public boolean isDebugEnabled() {
+    return logger.isDebugEnabled();
+  }
+
+  /**
    * prints a debug message
    * @param m
    */
@@ -81,6 +89,14 @@ public class Log {
    */
   public void debug(Object m, Throwable t) {
     logger.debug(String.valueOf(m), t);
+  }
+
+  /**
+   * Do we want the info messages?
+   * @return If we want the info messages. 
+   */
+  public boolean isInfoEnabled() {
+    return logger.isInfoEnabled();
   }
 
   /**
@@ -105,6 +121,14 @@ public class Log {
   }
 
   /**
+   * Do we want the warning messages?
+   * @return If we want the warning messages. 
+   */
+  public boolean isWarnEnabled() {
+    return logger.isWarnEnabled();
+  }
+
+  /**
    * prints a warn message
    * @param m
    */
@@ -123,6 +147,14 @@ public class Log {
    */
   public void warn(Object m, Throwable t) {
     logger.warn(String.valueOf(m), t);
+  }
+
+  /**
+   * Do we want the error messages?
+   * @return If we want the error messages. 
+   */
+  public boolean isErrorEnabled() {
+    return logger.isErrorEnabled();
   }
 
   /**

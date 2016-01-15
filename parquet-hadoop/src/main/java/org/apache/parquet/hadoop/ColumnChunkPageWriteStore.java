@@ -186,8 +186,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       }
       writer.writeDataPages(buf, uncompressedLength, compressedLength, totalStatistics, new ArrayList<Encoding>(encodings));
       writer.endColumn();
-      if (INFO && columnInfoLogging) {
-        LOG.info(
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(
             String.format(
                 "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
                 buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, encodings)
