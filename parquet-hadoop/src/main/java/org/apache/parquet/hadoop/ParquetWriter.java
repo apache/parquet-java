@@ -45,7 +45,6 @@ public class ParquetWriter<T> implements Closeable {
   public static final boolean DEFAULT_IS_VALIDATING_ENABLED = false;
   public static final WriterVersion DEFAULT_WRITER_VERSION =
       ParquetProperties.DEFAULT_WRITER_VERSION;
-  public static final boolean DEFAULT_COLUMN_INFO_LOGGING = true;
 
   public static final String OBJECT_MODEL_NAME_PROP = "writer.model.name";
 
@@ -227,8 +226,7 @@ public class ParquetWriter<T> implements Closeable {
             .withDictionaryPageSize(dictionaryPageSize)
             .withDictionaryEncoding(enableDictionary)
             .withWriterVersion(writerVersion)
-            .build(),
-            DEFAULT_COLUMN_INFO_LOGGING);
+            .build());
   }
 
   /**
@@ -267,8 +265,7 @@ public class ParquetWriter<T> implements Closeable {
       boolean validating,
       Configuration conf,
       int maxPaddingSize,
-      ParquetProperties encodingProps,
-      boolean columnInfoLogging) throws IOException {
+      ParquetProperties encodingProps) throws IOException {
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
@@ -287,8 +284,7 @@ public class ParquetWriter<T> implements Closeable {
         blockSize,
         compressor,
         validating,
-        encodingProps,
-        columnInfoLogging);
+        encodingProps);
   }
 
   public void write(T object) throws IOException {
@@ -337,7 +333,6 @@ public class ParquetWriter<T> implements Closeable {
     private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
     private ParquetProperties.Builder encodingPropsBuilder =
         ParquetProperties.builder();
-    private boolean columnInfoLogging = DEFAULT_COLUMN_INFO_LOGGING;
 
     protected Builder(Path file) {
       this.file = file;
@@ -490,17 +485,6 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-    * Enable or disable logging information about the columns that have been written by the writer.
-    *
-    * @param columnInfoLogging whether this type of logging should be enabled
-    * @return this builder for method chaining.
-    */
-    public SELF withColumnInfoLogging(boolean columnInfoLogging) {
-      this.columnInfoLogging = columnInfoLogging;
-      return self();
-    }
-
-      /**
      * Build a {@link ParquetWriter} with the accumulated configuration.
      *
      * @return a configured {@code ParquetWriter} instance.
@@ -509,7 +493,7 @@ public class ParquetWriter<T> implements Closeable {
     public ParquetWriter<T> build() throws IOException {
       return new ParquetWriter<T>(file, mode, getWriteSupport(conf), codecName,
           rowGroupSize, enableValidation, conf, maxPaddingSize,
-          encodingPropsBuilder.build(), columnInfoLogging);
+          encodingPropsBuilder.build());
     }
   }
 }

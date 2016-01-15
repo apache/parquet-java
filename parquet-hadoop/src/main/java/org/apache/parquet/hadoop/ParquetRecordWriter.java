@@ -33,7 +33,6 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
-import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_COLUMN_INFO_LOGGING;
 
 /**
  * Writes records to a Parquet file
@@ -73,8 +72,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
-      WriterVersion writerVersion,
-      boolean columnInfoLogging) {
+      WriterVersion writerVersion) {
     ParquetProperties props = ParquetProperties.builder()
         .withPageSize(pageSize)
         .withDictionaryPageSize(dictionaryPageSize)
@@ -82,7 +80,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         .withWriterVersion(writerVersion)
         .build();
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, compressor, validating, props, columnInfoLogging);
+        extraMetaData, blockSize, compressor, validating, props);
     this.memoryManager = null;
     this.codecFactory = null;
   }
@@ -119,7 +117,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         .withWriterVersion(writerVersion)
         .build();
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, compressor, validating, props, DEFAULT_COLUMN_INFO_LOGGING);
+        extraMetaData, blockSize, compressor, validating, props);
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(internalWriter, blockSize);
     this.codecFactory = null;
@@ -146,12 +144,11 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       boolean validating,
       ParquetProperties props,
       MemoryManager memoryManager,
-      Configuration conf,
-      boolean columnInfoLogging) {
+      Configuration conf) {
     this.codecFactory = new CodecFactory(conf, props.getPageSizeThreshold());
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, codecFactory.getCompressor(codec), validating,
-        props, columnInfoLogging);
+        props);
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(internalWriter, blockSize);
   }

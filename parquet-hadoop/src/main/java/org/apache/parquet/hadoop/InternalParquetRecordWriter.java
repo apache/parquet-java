@@ -55,7 +55,6 @@ class InternalParquetRecordWriter<T> {
   private final BytesCompressor compressor;
   private final boolean validating;
   private final ParquetProperties props;
-  private final boolean columnInfoLogging;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
@@ -81,8 +80,7 @@ class InternalParquetRecordWriter<T> {
       long rowGroupSize,
       BytesCompressor compressor,
       boolean validating,
-      ParquetProperties props,
-      boolean columnInfoLogging) {
+      ParquetProperties props) {
     this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
@@ -93,12 +91,11 @@ class InternalParquetRecordWriter<T> {
     this.compressor = compressor;
     this.validating = validating;
     this.props = props;
-    this.columnInfoLogging = columnInfoLogging;
     initStore();
   }
 
   private void initStore() {
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator(), columnInfoLogging);
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator());
     columnStore = props.newColumnWriteStore(schema, pageStore);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);
