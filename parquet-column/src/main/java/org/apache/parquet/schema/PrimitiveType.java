@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.InvalidRecordException;
@@ -394,7 +395,7 @@ public final class PrimitiveType extends Type {
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     sb.append(indent)
-        .append(getRepetition().name().toLowerCase())
+        .append(getRepetition().name().toLowerCase(Locale.ENGLISH))
         .append(" ")
         .append(primitive.name().toLowerCase());
     if (primitive == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
