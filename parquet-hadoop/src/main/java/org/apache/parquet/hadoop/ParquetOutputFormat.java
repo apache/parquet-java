@@ -445,7 +445,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   /**
    * This memory manager is for all the real writers (InternalParquetRecordWriter) in one task.
    */
-  private static MemoryManager memoryManager;
+  private static volatile MemoryManager memoryManager;
 
   public static MemoryManager getMemoryManager() {
     return memoryManager;
