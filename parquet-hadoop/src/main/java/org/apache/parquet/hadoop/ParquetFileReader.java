@@ -96,6 +96,10 @@ public class ParquetFileReader implements Closeable {
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
+  //URI Schemes to blacklist for bytebuffer read.
+  public static final String PARQUET_BYTEBUFFER_BLACKLIST = "parquet.bytebuffer.fs.blacklist";
+  public static final String[] PARQUET_BYTEBUFFER_BLACKLIST_DEFAULT = {"s3", "s3n", "s3a"};
+
   private static ParquetMetadataConverter converter = new ParquetMetadataConverter();
 
   /**
@@ -472,6 +476,7 @@ public class ParquetFileReader implements Closeable {
   private final FileMetaData fileMetaData;
   private final String createdBy;
   private final ByteBufferAllocator allocator;
+  private final boolean disableByteBufferRead;
 
   private int currentBlock = 0;
 
@@ -506,6 +511,10 @@ public class ParquetFileReader implements Closeable {
     // the codec factory to get decompressors
     this.codecFactory = new CodecFactory(configuration, 0);
     this.allocator = new HeapByteBufferAllocator();
+
+    //Bypass ByteBuffer read path for S3 FileSystems.  See PARQUET-400.
+    List<String> fsBlackList = Arrays.asList(configuration.getStrings(PARQUET_BYTEBUFFER_BLACKLIST, PARQUET_BYTEBUFFER_BLACKLIST_DEFAULT));
+    this.disableByteBufferRead = fsBlackList.contains(filePath.toUri().getScheme());
   }
 
   public void appendTo(ParquetFileWriter writer) throws IOException {
@@ -814,10 +823,20 @@ public class ParquetFileReader implements Closeable {
     public List<Chunk> readAll(FSDataInputStream f) throws IOException {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
-      ByteBuffer chunksByteBuffer = allocator.allocate(length);
-      while (chunksByteBuffer.hasRemaining()) {
-        CompatibilityUtil.getBuf(f, chunksByteBuffer, chunksByteBuffer.remaining());
+
+      //Allocate the bytebuffer based on whether the FS can support it.
+      ByteBuffer chunksByteBuffer;
+      if(disableByteBufferRead) {
+        byte[] chunkBytes = new byte[length];
+        f.readFully(chunkBytes);
+        chunksByteBuffer = ByteBuffer.wrap(chunkBytes);
+      } else {
+        chunksByteBuffer = allocator.allocate(length);
+        while (chunksByteBuffer.hasRemaining()) {
+          CompatibilityUtil.getBuf(f, chunksByteBuffer, chunksByteBuffer.remaining());
+        }
       }
+
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
       int currentChunkOffset = 0;
