@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -514,16 +514,41 @@ public final class PrimitiveType extends Type {
     return union(toMerge, true);
   }
 
+  private void reportSchemaMergeError(Type toMerge) {
+    throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
+  }
+
   @Override
   protected Type union(Type toMerge, boolean strict) {
-    if (!toMerge.isPrimitive() || (strict && !primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName()))) {
-      throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
+    if (!toMerge.isPrimitive()) {
+      reportSchemaMergeError(toMerge);
     }
-    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(
-        primitive, toMerge.getRepetition());
+
+    if (strict) {
+      // Can't merge primitive fields of different type names
+      if (!primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())) {
+        reportSchemaMergeError(toMerge);
+      }
+
+      // Can't merge primitive fields of different original types
+      if (getOriginalType() == null && toMerge.getOriginalType() != null ||
+          getOriginalType() != null && !getOriginalType().equals(toMerge.getOriginalType())) {
+        reportSchemaMergeError(toMerge);
+      }
+
+      // Can't merge FIXED_LEN_BYTE_ARRAY fields of different lengths
+      int toMergeLength = toMerge.asPrimitiveType().getTypeLength();
+      if (primitive == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY && length != toMergeLength) {
+        reportSchemaMergeError(toMerge);
+      }
+    }
+
+    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive, toMerge.getRepetition());
+
     if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitive) {
       builder.length(length);
     }
-    return builder.named(getName());
+
+    return builder.as(getOriginalType()).named(getName());
   }
 }
