@@ -33,6 +33,7 @@ import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
 import org.apache.parquet.hadoop.thrift.TBaseWriteSupport;
 import org.apache.parquet.thrift.TBaseRecordConverter;
 
+@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being superseded with parquet-cascading3 for Cascading 3.x
 public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme<T> {
 
   // In the case of reads, we can read the thrift class from the file metadata

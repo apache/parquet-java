@@ -47,6 +47,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  * This is an abstract class; implementations are expected to set up their Input/Output Formats
  * correctly in the respective Init methods.
  */
+@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being superseded with parquet-cascading3 for Cascading 3.x
 public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
 
   public static final class Config<T> implements Serializable {
