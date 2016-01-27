@@ -62,12 +62,6 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-      <version>${log4j.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
       <version>${project.version}</version>
@@ -90,6 +84,69 @@
 
   <build>
     <plugins>
+        <!-- TEMPORARY UNTIL AFTER previous.version &gt;= 1.8.2
+
+        (enforcer checks against the API in 1.7.0, this module did not exist back then, therefore it can't succeed)
+        -->
+      <plugin>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>none</phase>
+          </execution>
+        </executions>
+        <configuration>
+          <skip>true</skip>
+        </configuration>
+      </plugin>
+
+        <!-- /TEMPORARY -->
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>1.7</version>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>../parquet-cascading-common23/src/main/java</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-test-source</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>../parquet-cascading-common23/src/test/java</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-test-resource</id>
+            <phase>generate-test-resources</phase>
+            <goals>
+              <goal>add-test-resource</goal>
+            </goals>
+            <configuration>
+              <resources>
+                <resource>
+                  <directory>../parquet-cascading-common23/src/test/resources</directory>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <artifactId>maven-enforcer-plugin</artifactId>
       </plugin>
@@ -103,6 +160,8 @@
         <version>0.1.10</version>
         <configuration>
           <thriftExecutable>${thrift.executable}</thriftExecutable>
+          <thriftSourceRoot>../parquet-cascading-common23/src/main/thrift</thriftSourceRoot>
+          <thriftTestSourceRoot>../parquet-cascading-common23/src/test/thrift</thriftTestSourceRoot>
         </configuration>
         <executions>
           <execution>

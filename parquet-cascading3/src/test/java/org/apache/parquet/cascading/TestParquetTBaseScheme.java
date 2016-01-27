@@ -59,7 +59,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class TestParquetTBaseScheme {
-  final String txtInputPath = "src/test/resources/names.txt";
+  final String txtInputPath = "target/test-classes/names.txt";
   final String parquetInputPath = "target/test/ParquetTBaseScheme/names-parquet-in";
   final String parquetOutputPath = "target/test/ParquetTBaseScheme/names-parquet-out";
   final String txtOutputPath = "target/test/ParquetTBaseScheme/names-txt-out";

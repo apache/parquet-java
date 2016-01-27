@@ -18,3 +18,4 @@ parquet-scrooge/.cache
 target/
 .cache
 *~
+mvn_install.log

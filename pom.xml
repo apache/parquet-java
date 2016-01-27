@@ -79,7 +79,7 @@
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
     <cascading.version>2.5.3</cascading.version>
-    <cascading3.version>3.0.2</cascading3.version>
+    <cascading3.version>3.0.3</cascading3.version>
     <parquet.format.version>2.3.1</parquet.format.version>
     <previous.version>1.7.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
