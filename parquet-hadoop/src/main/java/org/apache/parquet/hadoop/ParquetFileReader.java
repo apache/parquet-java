@@ -59,7 +59,6 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
-import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.DictionaryPageReader;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
@@ -472,7 +471,7 @@ public class ParquetFileReader implements Closeable {
    * @param columns the columns to read (their path)
    * @throws IOException if the file can not be opened
    */
-  public ParquetFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
+  public ParquetFileReader(Configuration configuration, FileMetaData fileMetaData, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
     this.configuration = configuration;
     this.filePath = filePath;
     this.fileMetaData = fileMetaData;
@@ -529,17 +528,17 @@ public class ParquetFileReader implements Closeable {
     return columnChunkPageReadStore;
   }
 
-  public static DictionaryPage getDictionary(Configuration conf, ColumnChunkMetaData meta, FSDataInputStream fin) throws IOException {
+  public static DictionaryPage readDictionary(Configuration conf, ColumnChunkMetaData meta, FSDataInputStream fin) throws IOException {
     if(fin.getPos() != meta.getStartingPos()) {
       fin.seek(meta.getStartingPos());
     }
 
     PageHeader pageHeader = Util.readPageHeader(fin);
 
-    return getDictionary(conf, pageHeader, meta, fin);
+    return readDictionary(conf, pageHeader, meta, fin);
   }
 
-  public static DictionaryPage getDictionary(Configuration conf, PageHeader pageHeader, ColumnChunkMetaData meta, FSDataInputStream fin) throws IOException {
+  public static DictionaryPage readDictionary(Configuration conf, PageHeader pageHeader, ColumnChunkMetaData meta, FSDataInputStream fin) throws IOException {
     DictionaryPageHeader dictHeader = pageHeader.getDictionary_page_header();
 
     int uncompressedPageSize = pageHeader.getUncompressed_page_size();
@@ -547,7 +546,7 @@ public class ParquetFileReader implements Closeable {
 
     byte [] dictPageBytes = new byte[compressedPageSize];
 
-    fin.read(dictPageBytes);
+    fin.readFully(dictPageBytes);
 
     BytesInput bin = BytesInput.from(dictPageBytes);
 
@@ -610,7 +609,7 @@ public class ParquetFileReader implements Closeable {
               throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
             }
 
-            dictionaryPage = getDictionary(configuration, pageHeader, descriptor.metadata, f);
+            dictionaryPage = readDictionary(configuration, pageHeader, descriptor.metadata, f);
             break;
           case DATA_PAGE:
             DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();

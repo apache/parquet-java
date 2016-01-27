@@ -72,13 +72,13 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   private <T extends Comparable<T>> Set<T> expandDictionary(ColumnChunkMetaData meta) throws IOException, ParquetRuntimeException {
-    DictionaryPage page = ParquetFileReader.getDictionary(conf, meta, f);
+    DictionaryPage page = ParquetFileReader.readDictionary(conf, meta, f);
 
     Dictionary dict = page.getEncoding().initDictionary(new ColumnDescriptor(null, meta.getType(), -1, -1), page);
 
     Set dictSet = new HashSet();
 
-    for(int i=0; i<dict.getMaxId(); i++) {
+    for(int i=0; i<=dict.getMaxId(); i++) {
       switch(meta.getType()) {
         case BINARY: dictSet.add(dict.decodeToBinary(i));
           break;
