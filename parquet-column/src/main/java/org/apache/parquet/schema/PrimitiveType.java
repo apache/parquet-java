@@ -525,14 +525,9 @@ public final class PrimitiveType extends Type {
     }
 
     if (strict) {
-      // Can't merge primitive fields of different type names
-      if (!primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())) {
-        reportSchemaMergeError(toMerge);
-      }
-
-      // Can't merge primitive fields of different original types
-      if (getOriginalType() == null && toMerge.getOriginalType() != null ||
-          getOriginalType() != null && !getOriginalType().equals(toMerge.getOriginalType())) {
+      // Can't merge primitive fields of different type names or different original types
+      if (!primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName()) ||
+          getOriginalType() != toMerge.getOriginalType()) {
         reportSchemaMergeError(toMerge);
       }
 
