@@ -424,7 +424,9 @@ public class Types {
             Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
                 originalType.toString() + " can only annotate INT32");
             break;
+          case TIME_MICROS:
           case TIMESTAMP_MILLIS:
+          case TIMESTAMP_MICROS:
           case UINT_64:
           case INT_64:
             Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,
