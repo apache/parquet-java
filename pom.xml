@@ -96,7 +96,7 @@
         <artifactId>maven-thrift-plugin</artifactId>
         <version>0.1.11</version>
         <configuration>
-          <thriftSourceRoot>src/thrift</thriftSourceRoot>
+          <thriftSourceRoot>src/main/thrift</thriftSourceRoot>
         </configuration>
         <executions>
           <execution>
