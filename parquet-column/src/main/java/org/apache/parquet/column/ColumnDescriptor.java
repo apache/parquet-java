@@ -117,14 +117,14 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   @Override
   public int compareTo(ColumnDescriptor o) {
-    // TODO(julien): this will fail if o.path.length < this.path.length
-    for (int i = 0; i < path.length; i++) {
+    int length = path.length < o.path.length ? path.length : o.path.length;
+    for (int i = 0; i < length; i++) {
       int compareTo = path[i].compareTo(o.path[i]);
       if (compareTo != 0) {
         return compareTo;
       }
     }
-    return 0;
+    return path.length - o.path.length;
   }
 
   @Override
