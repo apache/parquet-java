@@ -509,7 +509,7 @@ public class TestTypeBuilders {
   @Test
   public void testInt64Annotations() {
     OriginalType[] types = new OriginalType[] {
-        TIMESTAMP_MILLIS, UINT_64, INT_64};
+        TIME_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_MICROS, UINT_64, INT_64};
     for (OriginalType logicalType : types) {
       PrimitiveType expected = new PrimitiveType(REQUIRED, INT64, "col", logicalType);
       PrimitiveType date = Types.required(INT64).as(logicalType).named("col");
@@ -520,7 +520,7 @@ public class TestTypeBuilders {
   @Test
   public void testInt64AnnotationsRejectNonInt64() {
     OriginalType[] types = new OriginalType[] {
-        TIMESTAMP_MILLIS, UINT_64, INT_64};
+        TIME_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_MICROS, UINT_64, INT_64};
     for (final OriginalType logicalType : types) {
       PrimitiveTypeName[] nonInt64 = new PrimitiveTypeName[]{
           BOOLEAN, INT32, INT96, DOUBLE, FLOAT, BINARY

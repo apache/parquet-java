@@ -79,7 +79,7 @@
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
     <cascading.version>2.5.3</cascading.version>
-    <parquet.format.version>2.3.0-incubating</parquet.format.version>
+    <parquet.format.version>2.3.1</parquet.format.version>
     <previous.version>1.7.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <scala.version>2.10.4</scala.version>
