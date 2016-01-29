@@ -335,8 +335,12 @@ public class ParquetMetadataConverter {
         return OriginalType.DATE;
       case TIME_MILLIS:
         return OriginalType.TIME_MILLIS;
+      case TIME_MICROS:
+        return OriginalType.TIME_MICROS;
       case TIMESTAMP_MILLIS:
         return OriginalType.TIMESTAMP_MILLIS;
+      case TIMESTAMP_MICROS:
+        return OriginalType.TIMESTAMP_MICROS;
       case INTERVAL:
         return OriginalType.INTERVAL;
       case INT_8:
@@ -383,8 +387,12 @@ public class ParquetMetadataConverter {
         return ConvertedType.DATE;
       case TIME_MILLIS:
         return ConvertedType.TIME_MILLIS;
+      case TIME_MICROS:
+        return ConvertedType.TIME_MICROS;
       case TIMESTAMP_MILLIS:
         return ConvertedType.TIMESTAMP_MILLIS;
+      case TIMESTAMP_MICROS:
+        return ConvertedType.TIMESTAMP_MICROS;
       case INTERVAL:
         return ConvertedType.INTERVAL;
       case INT_8:
