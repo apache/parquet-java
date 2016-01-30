@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.ID;
+import org.slf4j.Logger;
 
 /**
  * This class provides fluent builders that produce Parquet schema Types.
@@ -305,6 +306,7 @@ public class Types {
   public abstract static class
       BasePrimitiveBuilder<P, THIS extends BasePrimitiveBuilder<P, THIS>>
       extends Builder<THIS, P> {
+    private final Logger log = org.slf4j.LoggerFactory.getLogger(BasePrimitiveBuilder.class);
     private static final long MAX_PRECISION_INT32 = maxPrecision(4);
     private static final long MAX_PRECISION_INT64 = maxPrecision(8);
     private final PrimitiveTypeName primitiveType;
@@ -406,6 +408,11 @@ public class Types {
                   meta.getPrecision() <= MAX_PRECISION_INT64,
                   "INT64 cannot store " + meta.getPrecision() + " digits " +
                   "(max " + MAX_PRECISION_INT64 + ")");
+              if (meta.getPrecision() <= MAX_PRECISION_INT32) {
+                String msg = String.format("Consider use INT32 instead of INT64 for storing %d digits; see %s for details.",
+                    precision, "https://github.com/Parquet/parquet-format/blob/master/LogicalTypes.md");
+                log.warn(msg);
+              }
             } else if (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
               Preconditions.checkState(
                   meta.getPrecision() <= maxPrecision(length),
