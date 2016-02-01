@@ -47,7 +47,6 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  * This is an abstract class; implementations are expected to set up their Input/Output Formats
  * correctly in the respective Init methods.
  */
-@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being superseded with parquet-cascading3 for Cascading 3.x
 public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
 
   public static final class Config<T> implements Serializable {
@@ -139,7 +138,7 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     }
   }
   @Override
-  public void sourceConfInit(FlowProcess<JobConf> jobConfFlowProcess, Tap<JobConf, RecordReader, OutputCollector> jobConfRecordReaderOutputCollectorTap, final JobConf jobConf) {
+  public void sourceConfInit(FlowProcess<? extends JobConf> jobConfFlowProcess, Tap<JobConf, RecordReader, OutputCollector> jobConfRecordReaderOutputCollectorTap, JobConf jobConf) {
     setPredicatePushdown(jobConf);
     setProjectionPushdown(jobConf);
     setStrictProjectionPushdown(jobConf);
@@ -154,7 +153,7 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
 
   @SuppressWarnings("unchecked")
   @Override
-  public boolean source(FlowProcess<JobConf> fp, SourceCall<Object[], RecordReader> sc)
+  public boolean source(FlowProcess<? extends JobConf> fp, SourceCall<Object[], RecordReader> sc)
       throws IOException {
     Container<T> value = (Container<T>) sc.getInput().createValue();
     boolean hasNext = sc.getInput().next(null, value);
@@ -169,7 +168,7 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
 
   @SuppressWarnings("unchecked")
   @Override
-  public void sink(FlowProcess<JobConf> fp, SinkCall<Object[], OutputCollector> sc)
+  public void sink(FlowProcess<? extends JobConf> fp, SinkCall<Object[], OutputCollector> sc)
       throws IOException {
     TupleEntry tuple = sc.getOutgoingEntry();
 

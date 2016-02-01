@@ -26,10 +26,10 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>parquet-cascading</artifactId>
+  <artifactId>parquet-cascading3</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Cascading</name>
+  <name>Apache Parquet Cascading (for Cascading 3.0 onwards)</name>
   <url>https://parquet.apache.org</url>
 
   <repositories>
@@ -51,15 +51,9 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.parquet</groupId>
-      <artifactId>parquet-thrift</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.thrift</groupId>
-      <artifactId>libthrift</artifactId>
-      <version>${thrift.version}</version>
-      <scope>provided</scope>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-thrift</artifactId>
+        <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -81,27 +75,33 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>cascading</groupId>
-      <artifactId>cascading-hadoop</artifactId>
-      <version>${cascading.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>${slf4j.version}</version>
-      <scope>test</scope>
+       <groupId>cascading</groupId>
+       <artifactId>cascading-hadoop</artifactId> <!-- building against cascading-hadoop for Hadoop1, but will use against any backend -->
+       <version>${cascading3.version}</version>
+       <scope>provided</scope>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
+        <!-- TEMPORARY UNTIL AFTER previous.version &gt;= 1.8.2
+
+        (enforcer checks against the API in 1.7.0, this module did not exist back then, therefore it can't succeed)
+        -->
+      <plugin>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>none</phase>
+          </execution>
+        </executions>
+        <configuration>
+          <skip>true</skip>
+        </configuration>
+      </plugin>
+
+        <!-- /TEMPORARY -->
+
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>

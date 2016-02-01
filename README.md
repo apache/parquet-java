@@ -62,7 +62,7 @@ sudo make install
 Once protobuf and thrift are available in your path, you can build the project by running:
 
 ```
-mvn clean install
+LC_ALL=C mvn clean install
 ```
 
 ## Features

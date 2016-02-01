@@ -147,4 +147,17 @@ scheme builder classes.
 ### 2.2 Projection Pushdown with Tuples
 When using ParquetTupleScheme, specifying projection pushdown is as simple as specifying fields as the parameter of the constructor of ParquetTupleScheme:
 
+
+3. Cascading 2.0 & Cascading 3.0
+================================
+Cascading 3.0 introduced a breaking interface change in the Scheme abstract class, which causes a breaking change in all scheme implementations.
+The parquet-cascading3 directory contains a separate library for use with Cascading 3.0
+
+A significant part of the code remains identical; this shared part is in the parquet-cascading-common23 directory, which is not a Maven module.
+
+You cannot use both parquet-cascading and parquet-cascading3 in the same Classloader, which should be fine as you cannot use both cascading-core 2.x and cascading-core 3.x in the same Classloader either.
+
+
+
+
 `Scheme sourceScheme = new ParquetTupleScheme(new Fields("age"));`
