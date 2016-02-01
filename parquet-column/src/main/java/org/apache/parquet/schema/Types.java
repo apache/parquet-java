@@ -59,7 +59,7 @@ import org.apache.parquet.schema.Type.ID;
  *   // }
  *   Types.requiredGroup()
  *            .required(INT64).named("id")
- *            .required(BINARY).as(UTF8).named("email")
+ *            .optional(BINARY).as(UTF8).named("email")
  *        .named("User")
  * </pre>
  * <p>
@@ -82,7 +82,7 @@ import org.apache.parquet.schema.Type.ID;
  *   // }
  *   Types.requiredGroup()
  *            .required(INT64).named("id")
- *            .required(BINARY).as(UTF8).named("email")
+ *            .optional(BINARY).as(UTF8).named("email")
  *            .optionalGroup()
  *                .required(BINARY).as(UTF8).named("street")
  *                .required(INT32).named("zipcode")
@@ -161,7 +161,7 @@ import org.apache.parquet.schema.Type.ID;
  *   // }
  *   Types.buildMessage()
  *            .required(INT64).named("id")
- *            .required(BINARY).as(UTF8).named("email")
+ *            .optional(BINARY).as(UTF8).named("email")
  *            .optionalGroup()
  *                .required(BINARY).as(UTF8).named("street")
  *                .required(INT32).named("zipcode")
