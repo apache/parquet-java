@@ -59,7 +59,6 @@ import static org.apache.parquet.Preconditions.checkNotNull;
   * @author Avi Bryant
   */
 
-@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being superseded with parquet-cascading3 for Cascading 3.x
 public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
 
   private static final long serialVersionUID = 0L;
@@ -102,7 +101,7 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
 
   @SuppressWarnings("rawtypes")
   @Override
-  public void sourceConfInit(FlowProcess<JobConf> fp,
+  public void sourceConfInit(FlowProcess<? extends JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
 
     if (filterPredicate != null) {
@@ -115,7 +114,7 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
  }
 
  @Override
- public Fields retrieveSourceFields(FlowProcess<JobConf> flowProcess, Tap tap) {
+ public Fields retrieveSourceFields(FlowProcess<? extends JobConf> flowProcess, Tap tap) {
     MessageType schema = readSchema(flowProcess, tap);
     SchemaIntersection intersection = new SchemaIntersection(schema, getSourceFields());
 
@@ -124,7 +123,7 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
     return getSourceFields();
   }
 
-  private MessageType readSchema(FlowProcess<JobConf> flowProcess, Tap tap) {
+  private MessageType readSchema(FlowProcess<? extends JobConf> flowProcess, Tap tap) {
     try {
       Hfs hfs;
 
@@ -145,7 +144,7 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
     }
   }
 
-   private List<Footer> getFooters(FlowProcess<JobConf> flowProcess, Hfs hfs) throws IOException {
+   private List<Footer> getFooters(FlowProcess<? extends JobConf> flowProcess, Hfs hfs) throws IOException {
      JobConf jobConf = flowProcess.getConfigCopy();
      DeprecatedParquetInputFormat format = new DeprecatedParquetInputFormat();
      format.addInputPath(jobConf, hfs.getPath());
@@ -154,7 +153,7 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
 
    @SuppressWarnings("unchecked")
   @Override
-  public boolean source(FlowProcess<JobConf> fp, SourceCall<Object[], RecordReader> sc)
+  public boolean source(FlowProcess<? extends JobConf> fp, SourceCall<Object[], RecordReader> sc)
       throws IOException {
     Container<Tuple> value = (Container<Tuple>) sc.getInput().createValue();
     boolean hasNext = sc.getInput().next(null, value);
@@ -170,7 +169,7 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
 
   @SuppressWarnings("rawtypes")
   @Override
-  public void sinkConfInit(FlowProcess<JobConf> fp,
+  public void sinkConfInit(FlowProcess<? extends JobConf> fp,
           Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
     DeprecatedParquetOutputFormat.setAsOutputFormat(jobConf);
     jobConf.set(TupleWriteSupport.PARQUET_CASCADING_SCHEMA, parquetSchema);
@@ -183,7 +182,7 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
   }
 
   @Override
-  public void sink(FlowProcess<JobConf> fp, SinkCall<Object[], OutputCollector> sink)
+  public void sink(FlowProcess<? extends JobConf> fp, SinkCall<Object[], OutputCollector> sink)
           throws IOException {
     TupleEntry tuple = sink.getOutgoingEntry();
     OutputCollector outputCollector = sink.getOutput();
