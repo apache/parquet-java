@@ -21,12 +21,14 @@ package org.apache.parquet.column.values.boundedint;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import static org.apache.parquet.bytes.BytesInput.concat;
 import static org.apache.parquet.column.Encoding.RLE;
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.BitPackingValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This is a special ColumnWriter for the case when you need to write
@@ -40,7 +42,7 @@ import org.apache.parquet.io.ParquetEncodingException;
  * values are expected.
  */
 class BoundedIntValuesWriter extends ValuesWriter {
-  private static final Log LOG = Log.getLog(BoundedIntValuesWriter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BoundedIntValuesWriter.class);
 
   private int currentValue = -1;
   private int currentValueCt = -1;
@@ -67,7 +69,7 @@ class BoundedIntValuesWriter extends ValuesWriter {
     this.bitWriter = new BitWriter(initialCapacity, pageSize, allocator);
     bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
     shouldRepeatThreshold = (bitsPerValue + 9)/(1 + bitsPerValue);
-    if (Log.DEBUG) LOG.debug("init column with bit width of " + bitsPerValue + " and repeat threshold of " + shouldRepeatThreshold);
+    LOGGER.debug("init column with bit width of {} and repeat threshold of {}", bitsPerValue, shouldRepeatThreshold);
   }
 
   @Override
@@ -84,7 +86,8 @@ class BoundedIntValuesWriter extends ValuesWriter {
   public BytesInput getBytes() {
     serializeCurrentValue();
     BytesInput buf = bitWriter.finish();
-    if (Log.DEBUG) LOG.debug("writing a buffer of size " + buf.size() + " + 4 bytes");
+    if (LOGGER.isDebugEnabled())
+      LOGGER.debug("writing a buffer of size {} + 4 bytes", buf.size());
     // We serialize the length so that on deserialization we can
     // deserialize as we go, instead of having to load everything
     // into memory

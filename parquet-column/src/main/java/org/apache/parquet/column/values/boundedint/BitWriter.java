@@ -19,12 +19,14 @@
 package org.apache.parquet.column.values.boundedint;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 class BitWriter {
-  private static final Log LOG = Log.getLog(BitWriter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BitWriter.class);
   private static final boolean DEBUG = false;//Log.DEBUG;
 
   private CapacityByteArrayOutputStream baos;
@@ -47,21 +49,25 @@ class BitWriter {
   }
 
   public void writeBit(boolean bit) {
-    if (DEBUG) LOG.debug("writing: " + (bit ? "1" : "0"));
+    if (LOGGER.isDebugEnabled())
+      LOGGER.debug("writing: {}", bit ? "1" : "0");
     currentByte = setBytePosition(currentByte, currentBytePosition++, bit);
     if (currentBytePosition == 8) {
       baos.write(currentByte);
-      if (DEBUG) LOG.debug("to buffer: " + toBinary(currentByte));
+      if (LOGGER.isDebugEnabled())
+        LOGGER.debug("to buffer: {}", toBinary(currentByte));
       currentByte = 0;
       currentBytePosition = 0;
     }
   }
 
   public void writeByte(int val) {
-    if (DEBUG) LOG.debug("writing: " + toBinary(val) + " (" + val + ")");
+    if (LOGGER.isDebugEnabled())
+      LOGGER.debug("writing: {} ({})", toBinary(val), val);
     currentByte |= ((val & 0xFF) << currentBytePosition);
     baos.write(currentByte);
-    if (DEBUG) LOG.debug("to buffer: " + toBinary(currentByte));
+    if (LOGGER.isDebugEnabled())
+      LOGGER.debug("to buffer: {}", toBinary(currentByte));
     currentByte >>>= 8;
   }
 
@@ -73,13 +79,15 @@ class BitWriter {
    * @param bitsToWrite the number of bits to use
    */
   public void writeNBitInteger(int val, int bitsToWrite) {
-    if (DEBUG) LOG.debug("writing: " + toBinary(val, bitsToWrite) + " (" + val + ")");
+    if (LOGGER.isDebugEnabled())
+      LOGGER.debug("writing: {} ({})", toBinary(val, bitsToWrite), val);
     val <<= currentBytePosition;
     int upperByte = currentBytePosition + bitsToWrite;
     currentByte |= val;
     while (upperByte >= 8) {
       baos.write(currentByte); //this only writes the lowest byte
-      if (DEBUG) LOG.debug("to buffer: " + toBinary(currentByte));
+      if (LOGGER.isDebugEnabled())
+        LOGGER.debug("to buffer: {}", toBinary(currentByte));
       upperByte -= 8;
       currentByte >>>= 8;
     }
@@ -102,7 +110,8 @@ class BitWriter {
     if (!finished) {
       if (currentBytePosition > 0) {
         baos.write(currentByte);
-        if (DEBUG) LOG.debug("to buffer: " + toBinary(currentByte));
+        if (LOGGER.isDebugEnabled())
+          LOGGER.debug("to buffer: {}", toBinary(currentByte));
       }
     }
     finished = true;
