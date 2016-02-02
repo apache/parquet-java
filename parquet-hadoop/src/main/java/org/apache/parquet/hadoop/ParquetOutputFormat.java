@@ -394,9 +394,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
     long minAllocation = conf.getLong(ParquetOutputFormat.MIN_MEMORY_ALLOCATION,
         MemoryManager.DEFAULT_MIN_MEMORY_ALLOCATION);
-    if (memoryManager == null) {
-      memoryManager = new MemoryManager(maxLoad, minAllocation);
-    } else if (memoryManager.getMemoryPoolRatio() != maxLoad) {
+    synchronized (ParquetOutputFormat.class) {
+      if (memoryManager == null) {
+        memoryManager = new MemoryManager(maxLoad, minAllocation);
+      }
+    }
+    if (memoryManager.getMemoryPoolRatio() != maxLoad) {
       LOG.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
           "be reset by the new value: " + maxLoad);
     }
@@ -447,7 +450,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    */
   private static volatile MemoryManager memoryManager;
 
-  public static MemoryManager getMemoryManager() {
+  /**
+   * This method is intended to ONLY be used in test codes
+   * */
+  @Deprecated
+  public synchronized static MemoryManager getMemoryManager() {
     return memoryManager;
   }
 }
