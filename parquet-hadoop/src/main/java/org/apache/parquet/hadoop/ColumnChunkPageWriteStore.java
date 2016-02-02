@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.Log.INFO;
 import static org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType;
 
 import java.io.ByteArrayOutputStream;
@@ -29,7 +28,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.ConcatenatingByteArrayCollector;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -44,8 +42,11 @@ import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 class ColumnChunkPageWriteStore implements PageWriteStore {
-  private static final Log LOG = Log.getLog(ColumnChunkPageWriteStore.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ColumnChunkPageWriteStore.class);
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
@@ -186,8 +187,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       }
       writer.writeDataPages(buf, uncompressedLength, compressedLength, totalStatistics, new ArrayList<Encoding>(encodings));
       writer.endColumn();
-      if (INFO) {
-        LOG.info(
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info(
             String.format(
                 "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
                 buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, encodings)
