@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.io;
 
-import static org.apache.parquet.Log.DEBUG;
 import org.apache.parquet.column.ColumnReadStore;
 import org.apache.parquet.io.RecordReaderImplementation.State;
 import org.apache.parquet.io.api.Binary;
