@@ -450,10 +450,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    */
   private static volatile MemoryManager memoryManager;
 
-  /**
-   * This method is intended to ONLY be used in test codes
-   * */
-  @Deprecated
   public synchronized static MemoryManager getMemoryManager() {
     return memoryManager;
   }
