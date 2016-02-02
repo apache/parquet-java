@@ -76,7 +76,8 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
   private static final String JAVA_CLASS_PROP = "java-class";
   private static final String JAVA_KEY_CLASS_PROP = "java-key-class";
 
-  protected T currentRecord;
+  protected T currentRecord = null;
+  private ParentValueContainer rootContainer = null;
   private final Converter[] converters;
 
   private final Schema avroSchema;
@@ -87,6 +88,15 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
   public AvroRecordConverter(MessageType parquetSchema, Schema avroSchema,
                              GenericData baseModel) {
     this(null, parquetSchema, avroSchema, baseModel);
+    LogicalType logicalType = avroSchema.getLogicalType();
+    Conversion<?> conversion = baseModel.getConversionFor(logicalType);
+    this.rootContainer = ParentValueContainer.getConversionContainer(new ParentValueContainer() {
+      @Override
+      @SuppressWarnings("unchecked")
+      public void add(Object value) {
+        AvroRecordConverter.this.currentRecord = (T) value;
+      }
+    }, conversion, avroSchema);
   }
 
   public AvroRecordConverter(ParentValueContainer parent,
@@ -394,6 +404,9 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     fillInDefaults();
     if (parent != null) {
       parent.add(currentRecord);
+    } else {
+      // this applies any converters needed for the root value
+      rootContainer.add(currentRecord);
     }
   }
 

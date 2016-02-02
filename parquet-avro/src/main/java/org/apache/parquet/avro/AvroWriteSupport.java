@@ -71,6 +71,8 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
   private Schema rootAvroSchema;
+  private LogicalType rootLogicalType;
+  private Conversion<?> rootConversion;
   private GenericData model;
   private ListWriter listWriter;
 
@@ -84,6 +86,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   public AvroWriteSupport(MessageType schema, Schema avroSchema) {
     this.rootSchema = schema;
     this.rootAvroSchema = avroSchema;
+    this.rootLogicalType = rootAvroSchema.getLogicalType();
     this.model = null;
   }
 
@@ -91,6 +94,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
                           GenericData model) {
     this.rootSchema = schema;
     this.rootAvroSchema = avroSchema;
+    this.rootLogicalType = rootAvroSchema.getLogicalType();
     this.model = model;
   }
 
@@ -138,16 +142,25 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   // overloaded version for backward compatibility
   @SuppressWarnings("unchecked")
   public void write(IndexedRecord record) {
-    recordConsumer.startMessage();
-    writeRecordFields(rootSchema, rootAvroSchema, record);
-    recordConsumer.endMessage();
+    write((T) record);
   }
 
   @Override
   public void write(T record) {
-    recordConsumer.startMessage();
-    writeRecordFields(rootSchema, rootAvroSchema, record);
-    recordConsumer.endMessage();
+    if (rootLogicalType != null) {
+      Conversion<?> conversion = model.getConversionByClass(
+          record.getClass(), rootLogicalType);
+
+      recordConsumer.startMessage();
+      writeRecordFields(rootSchema, rootAvroSchema,
+          convert(rootAvroSchema, rootLogicalType, conversion, record));
+      recordConsumer.endMessage();
+
+    } else {
+      recordConsumer.startMessage();
+      writeRecordFields(rootSchema, rootAvroSchema, record);
+      recordConsumer.endMessage();
+    }
   }
 
   private void writeRecord(GroupType schema, Schema avroSchema,
