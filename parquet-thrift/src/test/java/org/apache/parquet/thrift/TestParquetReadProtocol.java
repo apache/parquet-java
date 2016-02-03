@@ -38,7 +38,6 @@ import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.mem.MemPageStore;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -60,8 +59,11 @@ import com.twitter.elephantbird.thrift.test.TestPerson;
 import com.twitter.elephantbird.thrift.test.TestPhoneType;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class TestParquetReadProtocol {
-  private static final Log LOG = Log.getLog(TestParquetReadProtocol.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TestParquetReadProtocol.class);
 
   @Test
   public void testList() throws TException {
@@ -146,7 +148,7 @@ public class TestParquetReadProtocol {
     final MemPageStore memPageStore = new MemPageStore(1);
     final ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType schema = schemaConverter.convert(thriftClass);
-    LOG.info(schema);
+    LOGGER.info("{}", schema);
     final MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     final ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore,
         ParquetProperties.builder()
