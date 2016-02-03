@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.io.api.Converter;
@@ -378,7 +377,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   }
 
   private RecordConsumer wrap(RecordConsumer recordConsumer) {
-    if (Log.DEBUG) {
+    if (LOGGER.isDebugEnabled()) {
       return new RecordConsumerLoggingWrapper(recordConsumer);
     }
     return recordConsumer;
