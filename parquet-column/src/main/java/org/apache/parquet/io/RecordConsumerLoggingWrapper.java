@@ -19,9 +19,11 @@
 package org.apache.parquet.io;
 
 import java.util.Arrays;
-import org.apache.parquet.Log;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class can be used to wrap an actual RecordConsumer and log all calls
@@ -30,8 +32,7 @@ import org.apache.parquet.io.api.RecordConsumer;
  *
  */
 public class RecordConsumerLoggingWrapper extends RecordConsumer {
-    private static final Log logger = Log.getLog(RecordConsumerLoggingWrapper.class);
-    private static final boolean DEBUG = Log.DEBUG;
+    private static final Logger LOGGER = LoggerFactory.getLogger(RecordConsumerLoggingWrapper.class);
 
     private final RecordConsumer delegate;
 
@@ -50,7 +51,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void startField(String field, int index) {
-      if (DEBUG) logOpen(field);
+      if (LOGGER.isDebugEnabled()) {
+        logOpen(field);
+      }
       delegate.startField(field, index);
     }
 
@@ -67,7 +70,7 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
     }
 
     private void log(Object value) {
-      logger.debug(indent() + value);
+      LOGGER.debug(indent() + value);
     }
 
     /**
@@ -75,8 +78,12 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void startGroup() {
-      if (DEBUG) ++indent;
-      if (DEBUG) log("<!-- start group -->");
+      if (LOGGER.isDebugEnabled()) {
+        ++indent;
+      }
+      if (LOGGER.isDebugEnabled()) {
+        log("<!-- start group -->");
+      }
       delegate.startGroup();
     }
 
@@ -85,7 +92,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void addInteger(int value) {
-      if (DEBUG) log(value);
+      if (LOGGER.isDebugEnabled()) {
+        log(value);
+      }
       delegate.addInteger(value);
     }
 
@@ -94,7 +103,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void addLong(long value) {
-      if (DEBUG) log(value);
+      if (LOGGER.isDebugEnabled()) {
+        log(value);
+      }
       delegate.addLong(value);
     }
 
@@ -103,7 +114,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void addBoolean(boolean value) {
-      if (DEBUG) log(value);
+      if (LOGGER.isDebugEnabled()) {
+        log(value);
+      }
       delegate.addBoolean(value);
     }
 
@@ -112,7 +125,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void addBinary(Binary value) {
-      if (DEBUG) log(Arrays.toString(value.getBytesUnsafe()));
+      if (LOGGER.isDebugEnabled()) {
+        log(Arrays.toString(value.getBytesUnsafe()));
+      }
       delegate.addBinary(value);
     }
 
@@ -121,7 +136,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void addFloat(float value) {
-      if (DEBUG) log(value);
+      if (LOGGER.isDebugEnabled()) {
+        log(value);
+      }
       delegate.addFloat(value);
     }
 
@@ -130,7 +147,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void addDouble(double value) {
-      if (DEBUG) log(value);
+      if (LOGGER.isDebugEnabled()) {
+        log(value);
+      }
       delegate.addDouble(value);
     }
 
@@ -139,8 +158,12 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void endGroup() {
-      if (DEBUG) log("<!-- end group -->");
-      if (DEBUG) --indent;
+      if (LOGGER.isDebugEnabled()) {
+        log("<!-- end group -->");
+      }
+      if (LOGGER.isDebugEnabled()) {
+        --indent;
+      }
       delegate.endGroup();
     }
 
@@ -149,7 +172,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void endField(String field, int index) {
-      if (DEBUG) logClose(field);
+      if (LOGGER.isDebugEnabled()) {
+        logClose(field);
+      }
       delegate.endField(field, index);
     }
 
@@ -162,7 +187,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void startMessage() {
-      if (DEBUG) log("<!-- start message -->");
+      if (LOGGER.isDebugEnabled()) {
+        log("<!-- start message -->");
+      }
       delegate.startMessage();
     }
 
@@ -172,7 +199,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
     @Override
     public void endMessage() {
       delegate.endMessage();
-      if (DEBUG) log("<!-- end message -->");
+      if (LOGGER.isDebugEnabled()) {
+        log("<!-- end message -->");
+      }
     }
 
 }

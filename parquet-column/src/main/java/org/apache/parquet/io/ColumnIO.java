@@ -34,8 +34,6 @@ import org.apache.parquet.schema.Type.Repetition;
  */
 abstract public class ColumnIO {
 
-  static final boolean DEBUG = Log.DEBUG;
-
   private final GroupColumnIO parent;
   private final Type type;
   private final String name;
