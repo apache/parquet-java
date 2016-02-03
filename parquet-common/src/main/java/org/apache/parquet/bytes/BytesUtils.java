@@ -160,6 +160,7 @@ public class BytesUtils {
     out.write((v >>> 16) & 0xFF);
     out.write((v >>> 24) & 0xFF);
     if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("write le int: " + v + " => " + ((v >>> 0) & 0xFF) + " " + ((v >>> 8) & 0xFF) + " " + ((v >>> 16) & 0xFF) + " " + ((v >>> 24) & 0xFF));
     }
   }
 
