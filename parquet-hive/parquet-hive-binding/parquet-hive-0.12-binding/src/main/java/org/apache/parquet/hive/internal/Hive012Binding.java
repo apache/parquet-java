@@ -39,7 +39,8 @@ import org.apache.hadoop.hive.ql.plan.TableScanDesc;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.mapred.JobConf;
 
-import org.apache.parquet.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Hive 0.12 implementation of {@link org.apache.parquet.hive.HiveBinding HiveBinding}.
@@ -47,7 +48,7 @@ import org.apache.parquet.Log;
  * <a href="http://bit.ly/1a4tcrb">ManageJobConfig</a> class.
  */
 public class Hive012Binding extends AbstractHiveBinding {
-  private static final Log LOG = Log.getLog(Hive012Binding.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(Hive012Binding.class);
   private final Map<String, PartitionDesc> pathToPartitionInfo =
       new LinkedHashMap<String, PartitionDesc>();
   /**
@@ -77,10 +78,14 @@ public class Hive012Binding extends AbstractHiveBinding {
       final String splitPath, final String splitPathWithNoSchema) {
 
     if (mapWork == null) {
-      LOG.debug("Not pushing projections and filters because MapWork is null");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Not pushing projections and filters because MapWork is null");
+      }
       return;
     } else if (mapWork.getPathToAliases() == null) {
-      LOG.debug("Not pushing projections and filters because pathToAliases is null");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Not pushing projections and filters because pathToAliases is null");
+      }
       return;
     }
 
@@ -123,7 +128,9 @@ public class Hive012Binding extends AbstractHiveBinding {
 
     final TableScanDesc scanDesc = tableScan.getConf();
     if (scanDesc == null) {
-      LOG.debug("Not pushing filters because TableScanDesc is null");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Not pushing filters because TableScanDesc is null");
+      }
       return;
     }
 
@@ -133,7 +140,9 @@ public class Hive012Binding extends AbstractHiveBinding {
     // push down filters
     final ExprNodeDesc filterExpr = scanDesc.getFilterExpr();
     if (filterExpr == null) {
-      LOG.debug("Not pushing filters because FilterExpr is null");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Not pushing filters because FilterExpr is null");
+      }
       return;
     }
 
