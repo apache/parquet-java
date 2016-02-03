@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.filter2.compat;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;

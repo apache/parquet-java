@@ -27,7 +27,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.parquet.Log;
 import org.apache.parquet.proto.ProtoParquetOutputFormat;
 import org.apache.parquet.proto.TestUtils;
 

@@ -37,7 +37,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.filter.ColumnPredicates;
 import org.apache.parquet.filter.ColumnRecordFilter;

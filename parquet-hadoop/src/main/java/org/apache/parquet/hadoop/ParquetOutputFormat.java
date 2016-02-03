@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.Log.INFO;
 import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;

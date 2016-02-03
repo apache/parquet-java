@@ -45,7 +45,6 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.thrift.TBase;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.thrift.test.compat.StructV1;

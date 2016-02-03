@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.example.data;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
@@ -28,7 +27,6 @@ import org.slf4j.LoggerFactory;
 
 abstract public class Group extends GroupValueSource {
   private static final Logger LOGGER = LoggerFactory.getLogger(Group.class);
-  private static final boolean DEBUG = Log.DEBUG;
 
   public void add(String field, int value) {
     add(getType().getFieldIndex(field), value);

@@ -38,7 +38,6 @@ import org.xerial.snappy.Snappy;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.Log;
 import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.Preconditions;
 

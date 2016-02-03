@@ -53,7 +53,6 @@ import org.apache.parquet.filter2.predicate.FilterApi;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetInputFormat;
