@@ -21,11 +21,16 @@ package org.apache.parquet;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class TestLog {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TestLog.class);
 
   @Test
   public void test() {
     // Use a compile time log level of INFO for performance
-    Assert.assertFalse("Do not merge in log level DEBUG", Log.DEBUG);
+    Assert.assertFalse("Do not merge in log level DEBUG", LOGGER.isDebugEnabled());
   }
 }
