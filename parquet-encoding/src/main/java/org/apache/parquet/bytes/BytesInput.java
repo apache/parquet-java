@@ -29,8 +29,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.parquet.Log;
+
 
 /**
  * A source of bytes capable of writing itself to an output.
@@ -44,7 +44,8 @@ import org.slf4j.LoggerFactory;
  *
  */
 abstract public class BytesInput {
-  private static final Logger LOGGER = LoggerFactory.getLogger(BytesInput.class);
+  private static final Log LOG = Log.getLog(BytesInput.class);
+  private static final boolean DEBUG = false;//Log.DEBUG;
   private static final EmptyBytesInput EMPTY_BYTES_INPUT = new EmptyBytesInput();
 
   /**
@@ -89,13 +90,12 @@ abstract public class BytesInput {
    * @return a Bytes input that will write the given bytes
    */
   public static BytesInput from(byte[] in) {
-    if (LOGGER.isDebugEnabled())
-      LOGGER.debug("BytesInput from array of {} bytes", in.length);
+    if (DEBUG) LOG.debug("BytesInput from array of " + in.length + " bytes");
     return new ByteArrayBytesInput(in, 0 , in.length);
   }
 
   public static BytesInput from(byte[] in, int offset, int length) {
-    LOGGER.debug("BytesInput from array of {} bytes", length);
+    if (DEBUG) LOG.debug("BytesInput from array of " + length + " bytes");
     return new ByteArrayBytesInput(in, offset, length);
   }
 
@@ -172,8 +172,7 @@ abstract public class BytesInput {
   public byte[] toByteArray() throws IOException {
     BAOS baos = new BAOS((int)size());
     this.writeAllTo(baos);
-    if (LOGGER.isDebugEnabled())
-      LOGGER.debug("converted {} to byteArray of {} bytes", size(), baos.size());
+    if (DEBUG) LOG.debug("converted " + size() + " to byteArray of " + baos.size() + " bytes");
     return baos.getBuf();
   }
 
@@ -212,7 +211,7 @@ abstract public class BytesInput {
   }
 
   private static class StreamBytesInput extends BytesInput {
-    private static final Logger LOGGER = LoggerFactory.getLogger(BytesInput.StreamBytesInput.class);
+    private static final Log LOG = Log.getLog(BytesInput.StreamBytesInput.class);
     private final InputStream in;
     private final int byteCount;
 
@@ -224,13 +223,13 @@ abstract public class BytesInput {
 
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
-      LOGGER.debug("write All {} bytes", byteCount);
+      if (DEBUG) LOG.debug("write All "+ byteCount + " bytes");
       // TODO: more efficient
       out.write(this.toByteArray());
     }
 
     public byte[] toByteArray() throws IOException {
-      LOGGER.debug("read all {} bytes", byteCount);
+      if (DEBUG) LOG.debug("read all "+ byteCount + " bytes");
       byte[] buf = new byte[byteCount];
       new DataInputStream(in).readFully(buf);
       return buf;
@@ -244,7 +243,7 @@ abstract public class BytesInput {
   }
 
   private static class SequenceBytesIn extends BytesInput {
-    private static final Logger LOGGER = LoggerFactory.getLogger(BytesInput.SequenceBytesIn.class);
+    private static final Log LOG = Log.getLog(BytesInput.SequenceBytesIn.class);
 
     private final List<BytesInput> inputs;
     private final long size;
@@ -262,15 +261,10 @@ abstract public class BytesInput {
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       for (BytesInput input : inputs) {
-        if (LOGGER.isDebugEnabled())
-          LOGGER.debug("write {} bytes to out", input.size());
-        if (LOGGER.isDebugEnabled() && input instanceof SequenceBytesIn) {
-          LOGGER.debug("{");
-        }
+        if (DEBUG) LOG.debug("write " + input.size() + " bytes to out");
+        if (DEBUG && input instanceof SequenceBytesIn) LOG.debug("{");
         input.writeAllTo(out);
-        if (LOGGER.isDebugEnabled() && input instanceof SequenceBytesIn) {
-          LOGGER.debug("}");
-        }
+        if (DEBUG && input instanceof SequenceBytesIn) LOG.debug("}");
       }
     }
 
