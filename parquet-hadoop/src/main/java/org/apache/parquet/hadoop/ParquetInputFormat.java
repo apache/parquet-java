@@ -51,6 +51,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -72,9 +73,6 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * The input format to read a Parquet file.
  *
@@ -95,7 +93,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ParquetInputFormat.class);
+  private static final Log LOG = Log.getLog(ParquetInputFormat.class);
 
   /**
    * key to configure the ReadSupport implementation
@@ -366,7 +364,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         result.add(file);
       }
     }
-    LOGGER.info("Total input paths to process : {}", result.size());
+    LOG.info("Total input paths to process : " + result.size());
     return result;
   }
 
@@ -408,8 +406,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       FileStatusWrapper statusWrapper = new FileStatusWrapper(status);
       FootersCacheValue cacheEntry =
               footersCache.getCurrentValue(statusWrapper);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Cache entry " + (cacheEntry == null ? "not " : "")
+      if (Log.DEBUG) {
+        LOG.debug("Cache entry " + (cacheEntry == null ? "not " : "")
                 + " found for '" + status.getPath() + "'");
       }
       if (cacheEntry != null) {
@@ -420,8 +418,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         missingStatusesMap.put(status.getPath(), statusWrapper);
       }
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("found " + footersMap.size() + " footers in cache and adding up "
+    if (Log.DEBUG) {
+      LOG.debug("found " + footersMap.size() + " footers in cache and adding up "
               + "to " + missingStatuses.size() + " missing footers to the cache");
     }
 
@@ -464,7 +462,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public List<Footer> getFooters(Configuration configuration, Collection<FileStatus> statuses) throws IOException {
-    LOGGER.debug("reading {} files", statuses.size());
+    if (Log.DEBUG) LOG.debug("reading " + statuses.size() + " files");
     boolean taskSideMetaData = isTaskSideMetaData(configuration);
     return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, taskSideMetaData);
   }
@@ -497,8 +495,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     public boolean isCurrent(FileStatusWrapper key) {
       long currentModTime = key.getModificationTime();
       boolean isCurrent = modificationTime >= currentModTime;
-      if (LOGGER.isDebugEnabled() && !isCurrent) {
-        LOGGER.debug("The cache value for '" + key + "' is not current: "
+      if (Log.DEBUG && !isCurrent) {
+        LOG.debug("The cache value for '" + key + "' is not current: "
                 + "cached modification time=" + modificationTime + ", "
                 + "current modification time: " + currentModTime);
       }
@@ -673,7 +671,7 @@ class ClientSideMetadataSplitStrategy {
     }
   }
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ClientSideMetadataSplitStrategy.class);
+  private static final Log LOG = Log.getLog(ClientSideMetadataSplitStrategy.class);
 
   List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers,
       long maxSplitSize, long minSplitSize, ReadContext readContext)
@@ -686,7 +684,7 @@ class ClientSideMetadataSplitStrategy {
 
     for (Footer footer : footers) {
       final Path file = footer.getFile();
-      LOGGER.debug("{}",file);
+      LOG.debug(file);
       FileSystem fs = file.getFileSystem(configuration);
       FileStatus fileStatus = fs.getFileStatus(file);
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
@@ -717,9 +715,9 @@ class ClientSideMetadataSplitStrategy {
 
     if (rowGroupsDropped > 0 && totalRowGroups > 0) {
       int percentDropped = (int) ((((double) rowGroupsDropped) / totalRowGroups) * 100);
-      LOGGER.info("Dropping {} row groups that do not pass filter predicate! ({}%)", rowGroupsDropped, percentDropped);
+      LOG.info("Dropping " + rowGroupsDropped + " row groups that do not pass filter predicate! (" + percentDropped + "%)");
     } else {
-      LOGGER.info("There were no row groups that could be dropped due to filter predicates");
+      LOG.info("There were no row groups that could be dropped due to filter predicates");
     }
     return splits;
   }

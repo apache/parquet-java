@@ -38,8 +38,7 @@ import org.apache.hadoop.hive.ql.plan.TableScanDesc;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.mapred.JobConf;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.parquet.Log;
 
 /**
  * Hive 0.10 implementation of {@link org.apache.parquet.hive.HiveBinding HiveBinding}.
@@ -47,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * <a href="http://bit.ly/1a4tcrb">ManageJobConfig</a> class.
  */
 public class Hive010Binding extends AbstractHiveBinding {
-  private static final Logger LOGGER = LoggerFactory.getLogger(Hive010Binding.class);
+  private static final Log LOG = Log.getLog(Hive010Binding.class);
   private final Map<String, PartitionDesc> pathToPartitionInfo =
       new LinkedHashMap<String, PartitionDesc>();
   /**
@@ -76,10 +75,10 @@ public class Hive010Binding extends AbstractHiveBinding {
       final String splitPath, final String splitPathWithNoSchema) {
 
     if (mrwork == null) {
-      LOGGER.debug("Not pushing projections and filters because MapredWork is null");
+      LOG.debug("Not pushing projections and filters because MapredWork is null");
       return;
     } else if (mrwork.getPathToAliases() == null) {
-      LOGGER.debug("Not pushing projections and filters because pathToAliases is null");
+      LOG.debug("Not pushing projections and filters because pathToAliases is null");
       return;
     }
 
@@ -122,7 +121,7 @@ public class Hive010Binding extends AbstractHiveBinding {
 
     final TableScanDesc scanDesc = tableScan.getConf();
     if (scanDesc == null) {
-      LOGGER.debug("Not pushing filters because TableScanDesc is null");
+      LOG.debug("Not pushing filters because TableScanDesc is null");
       return;
     }
 
@@ -132,7 +131,7 @@ public class Hive010Binding extends AbstractHiveBinding {
     // push down filters
     final ExprNodeDesc filterExpr = scanDesc.getFilterExpr();
     if (filterExpr == null) {
-      LOGGER.debug("Not pushing filters because FilterExpr is null");
+      LOG.debug("Not pushing filters because FilterExpr is null");
       return;
     }
 
