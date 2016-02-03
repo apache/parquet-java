@@ -18,15 +18,16 @@
  */
 package org.apache.parquet.column.values.deltalengthbytearray;
 
+import static org.apache.parquet.Log.DEBUG;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.parquet.Log;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.io.api.Binary;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 /**
  * Reads binary data written by {@link DeltaLengthByteArrayValuesWriter}
  *
@@ -35,7 +36,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DeltaLengthByteArrayValuesReader extends ValuesReader {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DeltaLengthByteArrayValuesReader.class);
+  private static final Log LOG = Log.getLog(DeltaLengthByteArrayValuesReader.class);
   private ValuesReader lengthReader;
   private ByteBuffer in;
   private int offset;
@@ -47,9 +48,7 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valueCount, ByteBuffer in, int offset)
       throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("init from page at offset {} for length {}", offset, (in.limit() - offset));
-    }
+    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.limit() - offset));
     lengthReader.initFromPage(valueCount, in, offset);
     offset = lengthReader.getNextOffset();
     this.in = in;
