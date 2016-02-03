@@ -18,20 +18,20 @@
  */
 package org.apache.parquet.column.page.mem;
 
-import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.util.Iterator;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.io.ParquetDecodingException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MemPageReader implements PageReader {
-  private static final Log LOG = Log.getLog(MemPageReader.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemPageReader.class);
 
   private final long totalValueCount;
   private final Iterator<DataPage> pages;
@@ -54,7 +54,9 @@ public class MemPageReader implements PageReader {
   public DataPage readPage() {
     if (pages.hasNext()) {
       DataPage next = pages.next();
-      if (DEBUG) LOG.debug("read page " + next);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("read page " + next);
+      }
       return next;
     } else {
       throw new ParquetDecodingException("after last page");

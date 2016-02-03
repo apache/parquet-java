@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.UnknownColumnException;
 import org.apache.parquet.column.page.DataPage;
@@ -32,9 +31,11 @@ import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MemPageStore implements PageReadStore, PageWriteStore {
-  private static final Log LOG = Log.getLog(MemPageStore.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemPageStore.class);
 
   private Map<ColumnDescriptor, MemPageWriter> pageWriters = new HashMap<ColumnDescriptor, MemPageWriter>();
 
@@ -62,7 +63,9 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
       throw new UnknownColumnException(descriptor);
     }
     List<DataPage> pages = new ArrayList<DataPage>(pageWriter.getPages());
-    if (Log.DEBUG) LOG.debug("initialize page reader with "+ pageWriter.getTotalValueCount() + " values and " + pages.size() + " pages");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("initialize page reader with " + pageWriter.getTotalValueCount() + " values and " + pages.size() + " pages");
+    }
     return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage());
   }
 
