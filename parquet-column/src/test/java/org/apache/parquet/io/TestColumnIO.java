@@ -44,7 +44,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
@@ -68,9 +67,12 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RunWith(Parameterized.class)
 public class TestColumnIO {
-  private static final Log LOG = Log.getLog(TestColumnIO.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TestColumnIO.class);
 
   private static final String oneOfEach =
     "message Document {\n"
@@ -492,7 +494,7 @@ public class TestColumnIO {
   }
 
   private void log(Object o) {
-    LOG.info(o);
+    LOGGER.info("{}", o);
   }
 
   private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReaderImplementation<?> recordReader) {
