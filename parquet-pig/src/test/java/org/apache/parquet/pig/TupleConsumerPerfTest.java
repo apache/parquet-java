@@ -31,7 +31,6 @@ import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.mem.MemPageStore;
