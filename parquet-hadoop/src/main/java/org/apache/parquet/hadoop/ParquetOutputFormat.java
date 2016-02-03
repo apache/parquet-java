@@ -444,7 +444,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return committer;
   }
 
-
   /**
    * This memory manager is for all the real writers (InternalParquetRecordWriter) in one task.
    */
