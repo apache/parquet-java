@@ -51,7 +51,6 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
-import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -676,7 +675,7 @@ class ClientSideMetadataSplitStrategy {
     }
   }
 
-  private static final Log LOG = Log.getLog(ClientSideMetadataSplitStrategy.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClientSideMetadataSplitStrategy.class);
 
   List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers,
       long maxSplitSize, long minSplitSize, ReadContext readContext)
@@ -689,7 +688,9 @@ class ClientSideMetadataSplitStrategy {
 
     for (Footer footer : footers) {
       final Path file = footer.getFile();
-      LOG.debug(file);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("{}", file);
+      }
       FileSystem fs = file.getFileSystem(configuration);
       FileStatus fileStatus = fs.getFileStatus(file);
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
@@ -720,9 +721,13 @@ class ClientSideMetadataSplitStrategy {
 
     if (rowGroupsDropped > 0 && totalRowGroups > 0) {
       int percentDropped = (int) ((((double) rowGroupsDropped) / totalRowGroups) * 100);
-      LOG.info("Dropping " + rowGroupsDropped + " row groups that do not pass filter predicate! (" + percentDropped + "%)");
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info("Dropping " + rowGroupsDropped + " row groups that do not pass filter predicate! (" + percentDropped + "%)");
+      }
     } else {
-      LOG.info("There were no row groups that could be dropped due to filter predicates");
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info("There were no row groups that could be dropped due to filter predicates");
+      }
     }
     return splits;
   }

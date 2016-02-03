@@ -35,7 +35,6 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
@@ -44,6 +43,9 @@ import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -101,7 +103,7 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
  * @param <T> the type of the materialized records
  */
 public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
-  private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ParquetOutputFormat.class);
 
   public static enum JobSummaryLevel {
     /**
@@ -153,11 +155,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     String deprecatedFlag = conf.get(ENABLE_JOB_SUMMARY);
 
     if (deprecatedFlag != null) {
-      LOG.warn("Setting " + ENABLE_JOB_SUMMARY + " is deprecated, please use " + JOB_SUMMARY_LEVEL);
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn("Setting " + ENABLE_JOB_SUMMARY + " is deprecated, please use " + JOB_SUMMARY_LEVEL);
+      }
     }
 
     if (level != null && deprecatedFlag != null) {
-      LOG.warn("Both " + JOB_SUMMARY_LEVEL + " and " + ENABLE_JOB_SUMMARY + " are set! " + ENABLE_JOB_SUMMARY + " will be ignored.");
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn("Both " + JOB_SUMMARY_LEVEL + " and " + ENABLE_JOB_SUMMARY + " are set! " + ENABLE_JOB_SUMMARY + " will be ignored.");
+      }
     }
 
     if (level != null) {
@@ -374,16 +380,36 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     int maxPaddingSize = getMaxPaddingSize(conf);
     boolean validating = getValidation(conf);
 
-    if (INFO) LOG.info("Parquet block size to " + blockSize);
-    if (INFO) LOG.info("Parquet page size to " + props.getPageSizeThreshold());
-    if (INFO) LOG.info("Parquet dictionary page size to " + props.getDictionaryPageSizeThreshold());
-    if (INFO) LOG.info("Dictionary is " + (props.isEnableDictionary() ? "on" : "off"));
-    if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
-    if (INFO) LOG.info("Writer version is: " + props.getWriterVersion());
-    if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
-    if (INFO) LOG.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
-    if (INFO) LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
-    if (INFO) LOG.info("Min row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Parquet block size to " + blockSize);
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Parquet page size to " + props.getPageSizeThreshold());
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Parquet dictionary page size to " + props.getDictionaryPageSizeThreshold());
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Dictionary is " + (props.isEnableDictionary() ? "on" : "off"));
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Validation is " + (validating ? "on" : "off"));
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Writer version is: " + props.getWriterVersion());
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Min row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+    }
 
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(
@@ -397,8 +423,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (memoryManager == null) {
       memoryManager = new MemoryManager(maxLoad, minAllocation);
     } else if (memoryManager.getMemoryPoolRatio() != maxLoad) {
-      LOG.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
-          "be reset by the new value: " + maxLoad);
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
+                    "be reset by the new value: " + maxLoad);
+      }
     }
 
     return new ParquetRecordWriter<T>(
