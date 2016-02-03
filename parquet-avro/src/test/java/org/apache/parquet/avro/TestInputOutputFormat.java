@@ -75,7 +75,6 @@ public class TestInputOutputFormat {
     protected void map(Void key, GenericRecord value, Context context) throws IOException ,InterruptedException {
       context.write(null, new Text(value.toString()));
     }
-
   }
 
   @Test
