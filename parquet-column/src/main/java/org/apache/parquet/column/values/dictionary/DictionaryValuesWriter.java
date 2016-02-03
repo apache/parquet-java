@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.dictionary;
 
+import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.bytes.BytesInput.concat;
 import it.unimi.dsi.fastutil.doubles.Double2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.doubles.Double2IntMap;
@@ -40,6 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -54,9 +56,6 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Will attempt to encode values using a dictionary and fall back to plain encoding
  *  if the dictionary gets too big
@@ -65,7 +64,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public abstract class DictionaryValuesWriter extends ValuesWriter implements RequiresFallback {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DictionaryValuesWriter.class);
+  private static final Log LOG = Log.getLog(DictionaryValuesWriter.class);
 
   /* max entries allowed for the dictionary will fail over to plain encoding if reached */
   private static final int MAX_DICTIONARY_ENTRIES = Integer.MAX_VALUE - 1;
@@ -159,7 +158,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   @Override
   public BytesInput getBytes() {
     int maxDicId = getDictionarySize() - 1;
-    LOGGER.debug("max dic id {}", maxDicId);
+    if (DEBUG) LOG.debug("max dic id " + maxDicId);
     int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
     int initialSlabSize =
         CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_INITIAL_SLAB_SIZE, maxDictionaryByteSize, 10);
@@ -175,9 +174,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       // encodes the bit width
       byte[] bytesHeader = new byte[] { (byte) bitWidth };
       BytesInput rleEncodedBytes = encoder.toBytes();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("rle encoded bytes {}", rleEncodedBytes.size());
-      }
+      if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
       BytesInput bytes = concat(BytesInput.from(bytesHeader), rleEncodedBytes);
       // remember size of dictionary when we last wrote a page
       lastUsedDictionarySize = getDictionarySize();

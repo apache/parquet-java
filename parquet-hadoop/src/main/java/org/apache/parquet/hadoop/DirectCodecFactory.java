@@ -38,18 +38,16 @@ import org.xerial.snappy.Snappy;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.Log;
 import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.Preconditions;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Factory to produce compressors and decompressors that operate on java
  * direct memory, without requiring a copy into heap memory (where possible).
  */
 class DirectCodecFactory extends CodecFactory implements AutoCloseable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DirectCodecFactory.class);
+  private static final Log LOG = Log.getLog(DirectCodecFactory.class);
 
   private final ByteBufferAllocator allocator;
 
@@ -374,8 +372,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             cPools.put(com.getClass(), compressorPool);
             compressorPool.returnObject(com);
           } else {
-            if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor", codec.getClass().getName()));
+            if (Log.DEBUG) {
+              LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor", codec.getClass().getName()));
             }
           }
 
@@ -390,8 +388,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             dePools.put(decom.getClass(), decompressorPool);
             decompressorPool.returnObject(decom);
           } else {
-            if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "decompressor" + codec.getClass().getName()));
+            if (Log.DEBUG) {
+              LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "decompressor" + codec.getClass().getName()));
             }
           }
 
@@ -410,8 +408,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
             } else {
               supportDirectDecompressor = false;
-              if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor" + codec.getClass().getName()));
+              if (Log.DEBUG) {
+                LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor" + codec.getClass().getName()));
               }
             }
 
