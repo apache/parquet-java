@@ -29,7 +29,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 import java.util.List;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
@@ -41,6 +40,9 @@ import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * <p/>
  * Converts a Protocol Buffer Descriptor into a Parquet schema.
@@ -49,15 +51,19 @@ import com.twitter.elephantbird.util.Protobufs;
  */
 public class ProtoSchemaConverter {
 
-  private static final Log LOG = Log.getLog(ProtoSchemaConverter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ProtoSchemaConverter.class);
 
   public MessageType convert(Class<? extends Message> protobufClass) {
-    LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
+    }
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
     MessageType messageType =
         convertFields(Types.buildMessage(), descriptor.getFields())
         .named(descriptor.getFullName());
-    LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
+    }
     return messageType;
   }
 
