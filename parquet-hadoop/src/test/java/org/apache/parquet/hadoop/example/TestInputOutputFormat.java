@@ -66,8 +66,11 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.schema.MessageTypeParser;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class TestInputOutputFormat {
-  private static final Log LOG = Log.getLog(TestInputOutputFormat.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TestInputOutputFormat.class);
   private static final Charset UTF_8 = Charset.forName("UTF-8");
   final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
   final Path inputPath = new Path("src/test/java/org/apache/parquet/hadoop/example/TestInputOutputFormat.java");
@@ -348,10 +351,12 @@ public class TestInputOutputFormat {
 
   private void waitForJob(Job job) throws InterruptedException, IOException {
     while (!job.isComplete()) {
-      LOG.debug("waiting for job " + job.getJobName());
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("waiting for job " + job.getJobName());
+      }
       sleep(100);
     }
-    LOG.info("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
+    LOGGER.info("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
     if (!job.isSuccessful()) {
       throw new RuntimeException("job failed " + job.getJobName());
     }
