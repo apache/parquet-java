@@ -26,6 +26,7 @@ import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.ID;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class provides fluent builders that produce Parquet schema Types.
@@ -306,9 +307,11 @@ public class Types {
   public abstract static class
       BasePrimitiveBuilder<P, THIS extends BasePrimitiveBuilder<P, THIS>>
       extends Builder<THIS, P> {
-    private final Logger log = org.slf4j.LoggerFactory.getLogger(BasePrimitiveBuilder.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BasePrimitiveBuilder.class);
     private static final long MAX_PRECISION_INT32 = maxPrecision(4);
     private static final long MAX_PRECISION_INT64 = maxPrecision(8);
+    private static final String LOGICAL_TYPES_DOC_URL =
+        "https://github.com/apache/parquet-format/blob/master/LogicalTypes.md";
     private final PrimitiveTypeName primitiveType;
     private int length = NOT_SET;
     private int precision = NOT_SET;
@@ -409,9 +412,8 @@ public class Types {
                   "INT64 cannot store " + meta.getPrecision() + " digits " +
                   "(max " + MAX_PRECISION_INT64 + ")");
               if (meta.getPrecision() <= MAX_PRECISION_INT32) {
-                String msg = String.format("Consider use INT32 instead of INT64 for storing %d digits; see %s for details.",
-                    precision, "https://github.com/Parquet/parquet-format/blob/master/LogicalTypes.md");
-                log.warn(msg);
+                LOGGER.warn("Decimal with {} digits is stored in an INT64, but fits in an INT32. See {}.",
+                            precision, LOGICAL_TYPES_DOC_URL);
               }
             } else if (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
               Preconditions.checkState(
