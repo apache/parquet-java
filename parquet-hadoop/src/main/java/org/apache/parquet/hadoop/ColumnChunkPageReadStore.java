@@ -63,7 +63,7 @@ class ColumnChunkPageReadStore implements PageReadStore {
       this.decompressor = decompressor;
       this.compressedPages = new LinkedList<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
-      int count = 0;
+      long count = 0;
       for (DataPage p : compressedPages) {
         count += p.getValueCount();
       }
