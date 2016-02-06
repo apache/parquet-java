@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.schema;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
@@ -131,6 +132,33 @@ public class TestMessageType {
     } catch (IncompatibleSchemaModificationException e) {
       assertEquals("can not merge type optional int32 a into optional binary a", e.getMessage());
     }
+
+    MessageType t9 = Types.buildMessage()
+        .addField(Types.optional(BINARY).as(OriginalType.UTF8).named("a"))
+        .named("root1");
+    MessageType t10 = Types.buildMessage()
+        .addField(Types.optional(BINARY).named("a"))
+        .named("root1");
+    assertEquals(t9.union(t9), t9);
+    try {
+      t9.union(t10);
+      fail("moving from BINARY (UTF8) to BINARY");
+    } catch (IncompatibleSchemaModificationException e) {
+      assertEquals("can not merge type optional binary a into optional binary a (UTF8)", e.getMessage());
+    }
+
+    MessageType t11 = Types.buildMessage()
+        .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(10).named("a"))
+        .named("root1");
+    MessageType t12 = Types.buildMessage()
+        .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(20).named("a"))
+        .named("root2");
+    try {
+      t11.union(t12);
+      fail("moving from FIXED_LEN_BYTE_ARRAY(10) to FIXED_LEN_BYTE_ARRAY(20)");
+    } catch (IncompatibleSchemaModificationException e) {
+      assertEquals("can not merge type optional fixed_len_byte_array(20) a into optional fixed_len_byte_array(10) a", e.getMessage());
+    }
   }
 
   @Test
@@ -145,5 +173,4 @@ public class TestMessageType {
     assertEquals(schema, schema2);
     assertEquals(schema.toString(), schema2.toString());
   }
-
 }
