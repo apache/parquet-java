@@ -18,17 +18,18 @@
  */
 package org.apache.parquet.io;
 
-import static org.apache.parquet.Log.DEBUG;
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnReadStore;
 import org.apache.parquet.io.RecordReaderImplementation.State;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 // TODO(julien): this class appears to be unused -- can it be nuked? - todd
 public abstract class BaseRecordReader<T> extends RecordReader<T> {
-  private static final Log LOG = Log.getLog(BaseRecordReader.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BaseRecordReader.class);
 
   public RecordConsumer recordConsumer;
   public RecordMaterializer<T> recordMaterializer;
@@ -48,11 +49,15 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
   private int endIndex;
 
   protected void currentLevel(int currentLevel) {
-    if (DEBUG) LOG.debug("currentLevel: "+currentLevel);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("currentLevel: " + currentLevel);
+    }
   }
 
   protected void log(String message) {
-    if (DEBUG) LOG.debug("bc: "+message);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("bc: " + message);
+    }
   }
 
   final protected int getCaseId(int state, int currentLevel, int d, int nextR) {
@@ -62,18 +67,24 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
   final protected void startMessage() {
     // reset state
     endField = null;
-    if (DEBUG) LOG.debug("startMessage()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("startMessage()");
+    }
     recordConsumer.startMessage();
   }
 
   final protected void startGroup(String field, int index) {
     startField(field, index);
-    if (DEBUG) LOG.debug("startGroup()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("startGroup()");
+    }
     recordConsumer.startGroup();
   }
 
   private void startField(String field, int index) {
-    if (DEBUG) LOG.debug("startField("+field+","+index+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("startField(" + field + "," + index + ")");
+    }
     if (endField != null && index == endIndex) {
       // skip the close/open tag
       endField = null;
@@ -89,13 +100,17 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
 
   final protected void addPrimitiveINT64(String field, int index, long value) {
     startField(field, index);
-    if (DEBUG) LOG.debug("addLong("+value+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("addLong(" + value + ")");
+    }
     recordConsumer.addLong(value);
     endField(field, index);
   }
 
   private void endField(String field, int index) {
-    if (DEBUG) LOG.debug("endField("+field+","+index+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("endField(" + field + "," + index + ")");
+    }
     if (endField != null) {
       recordConsumer.endField(endField, endIndex);
     }
@@ -105,14 +120,18 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
 
   final protected void addPrimitiveBINARY(String field, int index, Binary value) {
     startField(field, index);
-    if (DEBUG) LOG.debug("addBinary("+value+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("addBinary(" + value + ")");
+    }
     recordConsumer.addBinary(value);
     endField(field, index);
   }
 
   final protected void addPrimitiveINT32(String field, int index, int value) {
     startField(field, index);
-    if (DEBUG) LOG.debug("addInteger("+value+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("addInteger(" + value + ")");
+    }
     recordConsumer.addInteger(value);
     endField(field, index);
   }
@@ -123,7 +142,9 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
       recordConsumer.endField(endField, endIndex);
       endField = null;
     }
-    if (DEBUG) LOG.debug("endGroup()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("endGroup()");
+    }
     recordConsumer.endGroup();
     endField(field, index);
   }
@@ -134,7 +155,9 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
       recordConsumer.endField(endField, endIndex);
       endField = null;
     }
-    if (DEBUG) LOG.debug("endMessage()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("endMessage()");
+    }
     recordConsumer.endMessage();
   }
 

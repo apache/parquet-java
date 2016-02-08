@@ -37,6 +37,8 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * used to read reassembled records
@@ -45,7 +47,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
  * @param <T> the type of the materialized record
  */
 class RecordReaderImplementation<T> extends RecordReader<T> {
-  private static final Log LOG = Log.getLog(RecordReaderImplementation.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RecordReaderImplementation.class);
 
   public static class Case {
 
@@ -430,7 +432,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   }
 
   private static void log(String string) {
-    LOG.debug(string);
+    LOGGER.debug(string);
   }
 
   int getNextReader(int current, int nextRepetitionLevel) {
