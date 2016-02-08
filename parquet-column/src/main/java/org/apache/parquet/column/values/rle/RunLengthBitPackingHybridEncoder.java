@@ -21,7 +21,6 @@ package org.apache.parquet.column.values.rle;
 import java.io.IOException;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -29,7 +28,8 @@ import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 
-import static org.apache.parquet.Log.DEBUG;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Encodes values using a combination of run length encoding and bit packing,
@@ -60,7 +60,7 @@ import static org.apache.parquet.Log.DEBUG;
  * @author Alex Levenson
  */
 public class RunLengthBitPackingHybridEncoder {
-  private static final Log LOG = Log.getLog(RunLengthBitPackingHybridEncoder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RunLengthBitPackingHybridEncoder.class);
 
   private final BytePacker packer;
 
@@ -118,8 +118,8 @@ public class RunLengthBitPackingHybridEncoder {
   private boolean toBytesCalled;
 
   public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    if (DEBUG) {
-      LOG.debug(String.format("Encoding: RunLengthBitPackingHybridEncoder with "
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(String.format("Encoding: RunLengthBitPackingHybridEncoder with "
         + "bithWidth: %d initialCapacity %d", bitWidth, initialCapacity));
     }
 
