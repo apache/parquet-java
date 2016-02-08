@@ -389,7 +389,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             decompressorPool.returnObject(decom);
           } else {
             if (Log.DEBUG) {
+<<<<<<< HEAD
               LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "decompressor", codec.getClass().getName()));
+=======
+              LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "decompressor" + codec.getClass().getName()));
+>>>>>>> parent of 01402bb... replace Log.java with slf4j for module [parquet-hadoop] part 2
             }
           }
 
@@ -409,7 +413,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             } else {
               supportDirectDecompressor = false;
               if (Log.DEBUG) {
+<<<<<<< HEAD
                 LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor", codec.getClass().getName()));
+=======
+                LOG.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor" + codec.getClass().getName()));
+>>>>>>> parent of 01402bb... replace Log.java with slf4j for module [parquet-hadoop] part 2
               }
             }
 
