@@ -25,13 +25,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import org.apache.parquet.io.ParquetDecodingException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * a column reader that packs the ints in the number of bits required based on the maximum size.
@@ -40,7 +38,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class BitPackingValuesReader extends ValuesReader {
-  private static final Logger LOGGER = LoggerFactory.getLogger(BitPackingValuesReader.class);
+  private static final Log LOG = Log.getLog(BitPackingValuesReader.class);
 
   private ByteBufferInputStream in;
   private BitPackingReader bitPackingReader;
@@ -75,9 +73,7 @@ public class BitPackingValuesReader extends ValuesReader {
   public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
     int effectiveBitLength = valueCount * bitsPerValue;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength);
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits.");
-    }
+    if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );
     this.in = new ByteBufferInputStream(in, offset, length);
     this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);
     this.nextOffset = offset + length;
