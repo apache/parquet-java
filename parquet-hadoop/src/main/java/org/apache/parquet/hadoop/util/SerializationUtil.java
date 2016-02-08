@@ -30,9 +30,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.conf.Configuration;
 
 import org.apache.parquet.Closeables;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.parquet.Log;
 
 /**
  * Serialization utils copied from:
@@ -41,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * TODO: Refactor elephant-bird so that we can depend on utils like this without extra baggage.
  */
 public final class SerializationUtil {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SerializationUtil.class);
+  private static final Log LOG = Log.getLog(SerializationUtil.class);
 
   private SerializationUtil() { }
 
