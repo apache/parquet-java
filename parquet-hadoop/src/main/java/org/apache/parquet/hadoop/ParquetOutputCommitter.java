@@ -29,14 +29,12 @@ import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
 
+import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.util.ContextUtil;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class ParquetOutputCommitter extends FileOutputCommitter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ParquetOutputCommitter.class);
+  private static final Log LOG = Log.getLog(ParquetOutputCommitter.class);
 
   private final Path outputPath;
 
@@ -84,9 +82,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
       try {
         ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers, level);
       } catch (Exception e) {
-        if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn("could not write summary file(s) for " + outputPath, e);
-        }
+        LOG.warn("could not write summary file(s) for " + outputPath, e);
 
         final Path metadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_METADATA_FILE);
 
@@ -95,9 +91,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
             fileSystem.delete(metadataPath, true);
           }
         } catch (Exception e2) {
-          if (LOGGER.isWarnEnabled()) {
-            LOGGER.warn("could not delete metadata file" + outputPath, e2);
-          }
+          LOG.warn("could not delete metadata file" + outputPath, e2);
         }
 
         try {
@@ -106,16 +100,12 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
             fileSystem.delete(commonMetadataPath, true);
           }
         } catch (Exception e2) {
-          if (LOGGER.isWarnEnabled()) {
-            LOGGER.warn("could not delete metadata file" + outputPath, e2);
-          }
+          LOG.warn("could not delete metadata file" + outputPath, e2);
         }
 
       }
     } catch (Exception e) {
-      if (LOGGER.isWarnEnabled()) {
-        LOGGER.warn("could not write summary file for " + outputPath, e);
-      }
+      LOG.warn("could not write summary file for " + outputPath, e);
     }
   }
 }

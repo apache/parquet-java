@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
@@ -57,6 +58,7 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.hadoop.util.CompatibilityUtil;
 
+import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
@@ -82,9 +84,6 @@ import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Internal implementation of the Parquet file reader as a block container
  *
@@ -93,7 +92,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ParquetFileReader implements Closeable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ParquetFileReader.class);
+  private static final Log LOG = Log.getLog(ParquetFileReader.class);
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
@@ -191,8 +190,8 @@ public class ParquetFileReader implements Closeable {
 
     if (toRead.size() > 0) {
       // read the footers of the files that did not have a summary file
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("reading another " + toRead.size() + " footers");
+      if (Log.INFO) {
+        LOG.info("reading another " + toRead.size() + " footers");
       }
       result.addAll(readAllFootersInParallel(configuration, toRead, skipRowGroups));
     }
@@ -201,9 +200,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   private static <T> List<T> runAllInParallel(int parallelism, List<Callable<T>> toRun) throws ExecutionException {
-    if (LOGGER.isInfoEnabled()) {
-      LOGGER.info("Initiating action with parallelism: " + parallelism);
-    }
+    LOG.info("Initiating action with parallelism: " + parallelism);
     ExecutorService threadPool = Executors.newFixedThreadPool(parallelism);
     try {
       List<Future<T>> futures = new ArrayList<Future<T>>();
@@ -349,13 +346,11 @@ public class ParquetFileReader implements Closeable {
     FileSystem fileSystem = basePath.getFileSystem(configuration);
     if (skipRowGroups && fileSystem.exists(commonMetaDataFile)) {
       // reading the summary file that does not contain the row groups
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("reading summary file: " + commonMetaDataFile);
-      }
+      if (Log.INFO) LOG.info("reading summary file: " + commonMetaDataFile);
       return readFooter(configuration, commonMetaDataFile, filter(skipRowGroups));
     } else if (fileSystem.exists(metadataFile)) {
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("reading summary file: " + metadataFile);
+      if (Log.INFO) {
+        LOG.info("reading summary file: " + metadataFile);
       }
       return readFooter(configuration, metadataFile, filter(skipRowGroups));
     } else {
@@ -430,16 +425,16 @@ public class ParquetFileReader implements Closeable {
     FSDataInputStream f = fileSystem.open(file.getPath());
     try {
       long l = file.getLen();
-      if (LOGGER.isDebugEnabled()){
-        LOGGER.debug("File length " + l);
+      if (Log.DEBUG) {
+        LOG.debug("File length " + l);
       }
       int FOOTER_LENGTH_SIZE = 4;
       if (l < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
         throw new RuntimeException(file.getPath() + " is not a Parquet file (too small)");
       }
       long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
-      if (LOGGER.isDebugEnabled()){
-        LOGGER.debug("reading footer index at " + footerLengthIndex);
+      if (Log.DEBUG) {
+        LOG.debug("reading footer index at " + footerLengthIndex);
       }
 
       f.seek(footerLengthIndex);
@@ -450,8 +445,8 @@ public class ParquetFileReader implements Closeable {
         throw new RuntimeException(file.getPath() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
       }
       long footerIndex = footerLengthIndex - footerLength;
-      if (LOGGER.isDebugEnabled()){
-        LOGGER.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
+      if (Log.DEBUG) {
+        LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
       }
       if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
         throw new RuntimeException("corrupted file: the footer index is not within the file");
@@ -658,8 +653,8 @@ public class ParquetFileReader implements Closeable {
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
             break;
           default:
-            if (LOGGER.isDebugEnabled()){
-              LOGGER.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
+            if (DEBUG) {
+              LOG.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
             }
             this.skip(compressedPageSize);
             break;
@@ -731,9 +726,7 @@ public class ParquetFileReader implements Closeable {
         // usually 13 to 19 bytes are missing
         // if the last page is smaller than this, the page header itself is truncated in the buffer.
         this.byteBuf.rewind(); // resetting the buffer to the position before we got the error
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info("completing the column chunk to read the page header");
-        }
+        LOG.info("completing the column chunk to read the page header");
         pageHeader = Util.readPageHeader(new SequenceInputStream(this, f)); // trying again from the buffer + remainder of the stream.
       }
       return pageHeader;
@@ -747,9 +740,7 @@ public class ParquetFileReader implements Closeable {
         // usually 13 to 19 bytes are missing
         int l1 = initPos + count - pos();
         int l2 = size - l1;
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info("completed the column chunk with " + l2 + " bytes");
-        }
+        LOG.info("completed the column chunk with " + l2 + " bytes");
         return BytesInput.concat(super.readAsBytesInput(l1), BytesInput.copy(BytesInput.from(f, l2)));
       }
       return super.readAsBytesInput(size);
