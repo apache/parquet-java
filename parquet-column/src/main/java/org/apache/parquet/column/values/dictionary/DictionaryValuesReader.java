@@ -18,19 +18,19 @@
  */
 package org.apache.parquet.column.values.dictionary;
 
-import static org.apache.parquet.Log.DEBUG;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Reads values that have been dictionary encoded
@@ -39,7 +39,7 @@ import org.apache.parquet.io.api.Binary;
  *
  */
 public class DictionaryValuesReader extends ValuesReader {
-  private static final Log LOG = Log.getLog(DictionaryValuesReader.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DictionaryValuesReader.class);
 
   private ByteBufferInputStream in;
 
@@ -56,10 +56,13 @@ public class DictionaryValuesReader extends ValuesReader {
       throws IOException {
     this.in = new ByteBufferInputStream(page, offset, page.limit() - offset);
     if (page.limit() - offset > 0) {
-      if (DEBUG)
-        LOG.debug("init from page at offset " + offset + " for length " + (page.limit() - offset));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("init from page at offset " + offset + " for length " + (page.limit() - offset));
+      }
       int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
-      if (DEBUG) LOG.debug("bit width " + bitWidth);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("bit width " + bitWidth);
+      }
       decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
     } else {
       decoder = new RunLengthBitPackingHybridDecoder(1, in) {

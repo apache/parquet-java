@@ -21,11 +21,13 @@ package org.apache.parquet.schema;
 import java.util.Arrays;
 import java.util.StringTokenizer;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types.GroupBuilder;
 import org.apache.parquet.schema.Types.PrimitiveBuilder;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Parses a schema from a textual format similar to that described in the Dremel paper.
@@ -33,7 +35,7 @@ import org.apache.parquet.schema.Types.PrimitiveBuilder;
  * @author Julien Le Dem
  */
 public class MessageTypeParser {
-  private static final Log LOG = Log.getLog(MessageTypeParser.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MessageTypeParser.class);
 
   private static class Tokenizer {
 

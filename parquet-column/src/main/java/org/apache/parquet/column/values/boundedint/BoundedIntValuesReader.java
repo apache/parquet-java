@@ -18,21 +18,21 @@
  */
 package org.apache.parquet.column.values.boundedint;
 
-import static org.apache.parquet.Log.DEBUG;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @see BoundedIntValuesWriter
  */
 class BoundedIntValuesReader extends ValuesReader {
-  private static final Log LOG = Log.getLog(BoundedIntValuesReader.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BoundedIntValuesReader.class);
 
   private int currentValueCt = 0;
   private int currentValue = 0;
@@ -72,13 +72,19 @@ class BoundedIntValuesReader extends ValuesReader {
   // to BoundedIntColumnWriter.writeData(BytesOutput)
   @Override
   public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
-    if (DEBUG) LOG.debug("reading size at "+ offset + ": " + in.get(offset) + " " + in.get(offset + 1) + " " + in.get(offset + 2) + " " + in.get(offset + 3) + " ");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("reading size at " + offset + ": " + in.get(offset) + " " + in.get(offset + 1) + " " + in.get(offset + 2) + " " + in.get(offset + 3) + " ");
+    }
     int totalBytes = BytesUtils.readIntLittleEndian(in, offset);
-    if (DEBUG) LOG.debug("will read "+ totalBytes + " bytes");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("will read " + totalBytes + " bytes");
+    }
     currentValueCt = 0;
     currentValue = 0;
     bitReader.prepare(in, offset + 4, totalBytes);
-    if (DEBUG) LOG.debug("will read next from " + (offset + totalBytes + 4));
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("will read next from " + (offset + totalBytes + 4));
+    }
     this.nextOffset = offset + totalBytes + 4;
   }
   
