@@ -73,6 +73,9 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * The input format to read a Parquet file.
  *
@@ -93,7 +96,7 @@ import org.apache.parquet.schema.MessageTypeParser;
  */
 public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
-  private static final Log LOG = Log.getLog(ParquetInputFormat.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ParquetInputFormat.class);
 
   /**
    * key to configure the ReadSupport implementation
@@ -364,7 +367,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         result.add(file);
       }
     }
-    LOG.info("Total input paths to process : " + result.size());
+    LOGGER.info("Total input paths to process : " + result.size());
     return result;
   }
 
@@ -406,8 +409,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       FileStatusWrapper statusWrapper = new FileStatusWrapper(status);
       FootersCacheValue cacheEntry =
               footersCache.getCurrentValue(statusWrapper);
-      if (Log.DEBUG) {
-        LOG.debug("Cache entry " + (cacheEntry == null ? "not " : "")
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Cache entry " + (cacheEntry == null ? "not " : "")
                 + " found for '" + status.getPath() + "'");
       }
       if (cacheEntry != null) {
@@ -418,8 +421,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         missingStatusesMap.put(status.getPath(), statusWrapper);
       }
     }
-    if (Log.DEBUG) {
-      LOG.debug("found " + footersMap.size() + " footers in cache and adding up "
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("found " + footersMap.size() + " footers in cache and adding up "
               + "to " + missingStatuses.size() + " missing footers to the cache");
     }
 
@@ -462,7 +465,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public List<Footer> getFooters(Configuration configuration, Collection<FileStatus> statuses) throws IOException {
-    if (Log.DEBUG) LOG.debug("reading " + statuses.size() + " files");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("reading " + statuses.size() + " files");
+    }
     boolean taskSideMetaData = isTaskSideMetaData(configuration);
     return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, taskSideMetaData);
   }
@@ -495,8 +500,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     public boolean isCurrent(FileStatusWrapper key) {
       long currentModTime = key.getModificationTime();
       boolean isCurrent = modificationTime >= currentModTime;
-      if (Log.DEBUG && !isCurrent) {
-        LOG.debug("The cache value for '" + key + "' is not current: "
+      if (LOGGER.isDebugEnabled() && !isCurrent) {
+        LOGGER.debug("The cache value for '" + key + "' is not current: "
                 + "cached modification time=" + modificationTime + ", "
                 + "current modification time: " + currentModTime);
       }

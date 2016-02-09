@@ -21,14 +21,12 @@ package org.apache.parquet.hadoop;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.String.format;
-import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
@@ -39,8 +37,11 @@ import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 class InternalParquetRecordWriter<T> {
-  private static final Log LOG = Log.getLog(InternalParquetRecordWriter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(InternalParquetRecordWriter.class);
 
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
@@ -134,7 +135,7 @@ class InternalParquetRecordWriter<T> {
       // flush the row group if it is within ~2 records of the limit
       // it is much better to be slightly under size than to be over at all
       if (memSize > (nextRowGroupSize - 2 * recordSize)) {
-        LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, nextRowGroupSize, recordCount));
+        LOGGER.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, nextRowGroupSize, recordCount));
         flushRowGroupToStore();
         initStore();
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
@@ -144,8 +145,8 @@ class InternalParquetRecordWriter<T> {
             max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(nextRowGroupSize / ((float)recordSize))) / 2), // will check halfway
             recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK // will not look more than max records ahead
             );
-        if (DEBUG) {
-          LOG.debug(format("Checked mem at %,d will check again at: %,d ", recordCount, recordCountForNextMemCheck));
+        if (LOGGER.isDebugEnabled()){
+          LOGGER.debug(format("Checked mem at %,d will check again at: %,d ", recordCount, recordCountForNextMemCheck));
         }
       }
     }
@@ -154,9 +155,9 @@ class InternalParquetRecordWriter<T> {
   private void flushRowGroupToStore()
       throws IOException {
     recordConsumer.flush();
-    LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.getAllocatedSize()));
+    LOGGER.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.getAllocatedSize()));
     if (columnStore.getAllocatedSize() > (3 * rowGroupSizeThreshold)) {
-      LOG.warn("Too much memory used: " + columnStore.memUsageString());
+      LOGGER.warn("Too much memory used: " + columnStore.memUsageString());
     }
 
     if (recordCount > 0) {

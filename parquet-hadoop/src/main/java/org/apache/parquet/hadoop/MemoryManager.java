@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.Preconditions;
 
@@ -26,6 +25,9 @@ import java.lang.management.ManagementFactory;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implements a memory manager that keeps a global context of how many Parquet
@@ -40,7 +42,7 @@ import java.util.Map;
  * When the sum exceeds, decrease each writer's allocation size by a ratio.
  */
 public class MemoryManager {
-  private static final Log LOG = Log.getLog(MemoryManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryManager.class);
   static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
   static final long DEFAULT_MIN_MEMORY_ALLOCATION = 1 * 1024 * 1024; // 1MB
   private final float memoryPoolRatio;
@@ -59,7 +61,9 @@ public class MemoryManager {
     minMemoryAllocation = minAllocation;
     totalMemoryPool = Math.round((double) ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * ratio);
-    LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
+    }
   }
 
   private void checkRatio(float ratio) {
@@ -111,7 +115,7 @@ public class MemoryManager {
       scale = 1.0;
     } else {
       scale = (double) totalMemoryPool / totalAllocations;
-      LOG.warn(String.format(
+      LOGGER.warn(String.format(
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
           "Scaling row group sizes to %.2f%% for %d writers",
           100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
@@ -134,8 +138,10 @@ public class MemoryManager {
               newSize, minMemoryAllocation)){};
       }
       entry.getKey().setRowGroupSizeThreshold(newSize);
-      LOG.debug(String.format("Adjust block size from %,d to %,d for writer: %s",
-            entry.getValue(), newSize, entry.getKey()));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(String.format("Adjust block size from %,d to %,d for writer: %s",
+                                   entry.getValue(), newSize, entry.getKey()));
+      }
     }
   }
 
