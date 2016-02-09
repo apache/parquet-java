@@ -22,6 +22,7 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
 
+import org.apache.parquet.Log;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
@@ -31,9 +32,6 @@ import org.apache.parquet.schema.Type.Repetition;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Wraps a record consumer
  * Validates the record written against the schema and pass down the event to the wrapped consumer
@@ -42,7 +40,8 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class ValidatingRecordConsumer extends RecordConsumer {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ValidatingRecordConsumer.class);
+  private static final Log LOG = Log.getLog(ValidatingRecordConsumer.class);
+  private static final boolean DEBUG = Log.DEBUG;
 
   private final RecordConsumer delegate;
 
@@ -136,9 +135,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     Type currentType = types.peek().asGroupType().getType(fields.peek());
     int c = fieldValueCount.pop() + 1;
     fieldValueCount.push(c);
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("validate " + p + " for " + currentType.getName());
-    }
+    if (DEBUG) LOG.debug("validate " + p + " for " + currentType.getName());
     switch (currentType.getRepetition()) {
       case OPTIONAL:
       case REQUIRED:
@@ -160,9 +157,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     Type currentType = types.peek().asGroupType().getType(fields.peek());
     int c = fieldValueCount.pop() + 1;
     fieldValueCount.push(c);
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("validate " + Arrays.toString(ptypes) + " for " + currentType.getName());
-    }
+    if (DEBUG) LOG.debug("validate " + Arrays.toString(ptypes) + " for " + currentType.getName());
     switch (currentType.getRepetition()) {
       case OPTIONAL:
       case REQUIRED:
