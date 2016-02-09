@@ -42,6 +42,7 @@ import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.parquet.CorruptDeltaByteArrays;
+import org.apache.parquet.Log;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -56,9 +57,6 @@ import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Reads the records from a block of a Parquet file
  *
@@ -70,7 +68,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ParquetRecordReader.class);
+  private static final Log LOG = Log.getLog(ParquetRecordReader.class);
   private final InternalParquetRecordReader<T> internalReader;
 
   /**
@@ -140,7 +138,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     if (context instanceof TaskInputOutputContext<?, ?, ?, ?>) {
       BenchmarkCounter.initCounterFromContext((TaskInputOutputContext<?, ?, ?, ?>) context);
     } else {
-      LOGGER.error("Can not initialize counter due to context is not a instance of TaskInputOutputContext, but is "
+      LOG.error("Can not initialize counter due to context is not a instance of TaskInputOutputContext, but is "
               + context.getClass().getCanonicalName());
     }
 
