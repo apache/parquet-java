@@ -18,11 +18,10 @@
  */
 package org.apache.parquet.hadoop;
 
+import org.apache.parquet.Log;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A basic implementation of an LRU cache.  Besides evicting the least recently
@@ -36,7 +35,7 @@ import org.slf4j.LoggerFactory;
  *           so that the "staleness" of the value can be easily determined.
  */
 final class LruCache<K, V extends LruCache.Value<K, V>> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(LruCache.class);
+  private static final Log LOG = Log.getLog(LruCache.class);
 
   private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
@@ -66,8 +65,8 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
               public boolean removeEldestEntry(final Map.Entry<K, V> eldest) {
                 boolean result = size() > maxSize;
                 if (result) {
-                  if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Removing eldest entry in cache: "
+                  if (Log.DEBUG) {
+                    LOG.debug("Removing eldest entry in cache: "
                             + eldest.getKey());
                   }
                 }
@@ -85,8 +84,8 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
   public V remove(final K key) {
     V oldValue = cacheMap.remove(key);
     if (oldValue != null) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Removed cache entry for '" + key + "'");
+      if (Log.DEBUG) {
+        LOG.debug("Removed cache entry for '" + key + "'");
       }
     }
     return oldValue;
@@ -102,8 +101,8 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
    */
   public void put(final K key, final V newValue) {
     if (newValue == null || !newValue.isCurrent(key)) {
-      if (LOGGER.isWarnEnabled()) {
-        LOGGER.warn("Ignoring new cache entry for '" + key + "' because it is "
+      if (Log.WARN) {
+        LOG.warn("Ignoring new cache entry for '" + key + "' because it is "
                 + (newValue == null ? "null" : "not current"));
       }
       return;
@@ -111,8 +110,8 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
 
     V oldValue = cacheMap.get(key);
     if (oldValue != null && oldValue.isNewerThan(newValue)) {
-      if (LOGGER.isWarnEnabled()) {
-        LOGGER.warn("Ignoring new cache entry for '" + key + "' because "
+      if (Log.WARN) {
+        LOG.warn("Ignoring new cache entry for '" + key + "' because "
                 + "existing cache entry is newer");
       }
       return;
@@ -120,11 +119,11 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
 
     // no existing value or new value is newer than old value
     oldValue = cacheMap.put(key, newValue);
-    if (LOGGER.isDebugEnabled()) {
+    if (Log.DEBUG) {
       if (oldValue == null) {
-        LOGGER.debug("Added new cache entry for '" + key + "'");
+        LOG.debug("Added new cache entry for '" + key + "'");
       } else {
-        LOGGER.debug("Overwrote existing cache entry for '" + key + "'");
+        LOG.debug("Overwrote existing cache entry for '" + key + "'");
       }
     }
   }
@@ -146,8 +145,8 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
    */
   public V getCurrentValue(final K key) {
     V value = cacheMap.get(key);
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Value for '" + key + "' " + (value == null ? "not " : "")
+    if (Log.DEBUG) {
+      LOG.debug("Value for '" + key + "' " + (value == null ? "not " : "")
               + "in cache");
     }
     if (value != null && !value.isCurrent(key)) {
