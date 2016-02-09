@@ -26,9 +26,6 @@ import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Parquet currently has two ways to specify a filter for dropping records at read time.
  * The first way, that only supports filtering records during record assembly, is found
@@ -43,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * codebase.
  */
 public class FilterCompat {
-  private static final Logger LOGGER = LoggerFactory.getLogger(FilterCompat.class);
+  private static final Log LOG = Log.getLog(FilterCompat.class);
 
   /**
    * Anyone wanting to use a {@link Filter} need only implement this interface,
@@ -70,13 +67,13 @@ public class FilterCompat {
   public static Filter get(FilterPredicate filterPredicate) {
     checkNotNull(filterPredicate, "filterPredicate");
 
-    LOGGER.info("Filtering using predicate: " + filterPredicate);
+    LOG.info("Filtering using predicate: " + filterPredicate);
 
     // rewrite the predicate to not include the not() operator
     FilterPredicate collapsedPredicate = LogicalInverseRewriter.rewrite(filterPredicate);
 
     if (!filterPredicate.equals(collapsedPredicate)) {
-      LOGGER.info("Predicate has been collapsed to: " + collapsedPredicate);
+      LOG.info("Predicate has been collapsed to: " + collapsedPredicate);
     }
 
     return new FilterPredicateCompat(collapsedPredicate);
