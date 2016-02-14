@@ -487,7 +487,9 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
 
-    //should flush null for all groups
+    /**
+     * Flush null for all groups
+     */
     @Override
     public void flush() {
       flushCachedNulls(MessageColumnIO.this);
