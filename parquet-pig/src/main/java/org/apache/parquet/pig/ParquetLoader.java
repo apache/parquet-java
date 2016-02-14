@@ -137,7 +137,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
-    if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
+    if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", job)");
 
     setInput(location, job);
   }
@@ -240,14 +240,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public String[] getPartitionKeys(String location, Job job) throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + job + ")");
+    if (DEBUG) LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", job)");
     setInput(location, job);
     return null;
   }
 
   @Override
   public ResourceSchema getSchema(String location, Job job) throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.getSchema(" + location + ", " + job + ")");
+    if (DEBUG) LOG.debug("LoadMetadata.getSchema(" + location + ", job)");
     setInput(location, job);
     return new ResourceSchema(schema);
   }
@@ -289,7 +289,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.getStatistics(" + location + ", " + job + ")");
+    if (DEBUG) LOG.debug("LoadMetadata.getStatistics(" + location + ", job)");
     /* We need to call setInput since setLocation is not
        guaranteed to be called before this */
     setInput(location, job);
