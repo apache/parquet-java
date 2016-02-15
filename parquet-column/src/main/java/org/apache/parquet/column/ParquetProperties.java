@@ -31,7 +31,6 @@ import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.statistics.StatisticsOpts;
-import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.boundedint.DevNullValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
@@ -329,7 +328,7 @@ public class ParquetProperties {
     private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
     private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
-    private StatisticsOpts statisticsOpts = new StatisticsOpts(new BloomFilterOpts());
+    private StatisticsOpts statisticsOpts = new StatisticsOpts(null);
 
     private Builder() {
     }

@@ -377,7 +377,7 @@ public class ParquetMetadataConverter {
       if (statistics.isSetMax() && statistics.isSetMin()) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
       }
-      
+
       // update data for bloom filter statistics
       if (statistics.getBloom_filter()!=null && stats instanceof BloomFilterStatistics) {
         ((BloomFilterStatistics) stats).getBloomFilter().setBitSet(
@@ -484,8 +484,6 @@ public class ParquetMetadataConverter {
         return OriginalType.JSON;
       case BSON:
         return OriginalType.BSON;
-      case TIMESTAMP_MICROS:
-        return OriginalType.TIMESTAMP_MICROS;
       default:
         throw new RuntimeException("Unknown converted type " + type);
     }
