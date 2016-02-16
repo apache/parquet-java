@@ -19,6 +19,7 @@
 package org.apache.parquet.schema;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.StringTokenizer;
 
 import org.apache.parquet.Log;
@@ -195,7 +196,7 @@ public class MessageTypeParser {
 
   private static PrimitiveTypeName asPrimitive(String t, Tokenizer st) {
     try {
-      return PrimitiveTypeName.valueOf(t.toUpperCase());
+      return PrimitiveTypeName.valueOf(t.toUpperCase(Locale.ENGLISH));
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException("expected one of " + Arrays.toString(PrimitiveTypeName.values())  +" got " + t + " at " + st.getLocationString(), e);
     }
@@ -203,7 +204,7 @@ public class MessageTypeParser {
 
   private static Repetition asRepetition(String t, Tokenizer st) {
     try {
-      return Repetition.valueOf(t.toUpperCase());
+      return Repetition.valueOf(t.toUpperCase(Locale.ENGLISH));
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException("expected one of " + Arrays.toString(Repetition.values())  +" got " + t + " at " + st.getLocationString(), e);
     }
