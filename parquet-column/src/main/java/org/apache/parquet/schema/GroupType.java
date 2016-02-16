@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.apache.parquet.io.InvalidRecordException;
@@ -208,7 +209,7 @@ public class GroupType extends Type {
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     sb.append(indent)
-        .append(getRepetition().name().toLowerCase())
+        .append(getRepetition().name().toLowerCase(Locale.ENGLISH))
         .append(" group ")
         .append(getName())
         .append(getOriginalType() == null ? "" : " (" + getOriginalType() +")")

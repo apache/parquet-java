@@ -21,6 +21,8 @@ package org.apache.parquet.hadoop.metadata;
 import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.hadoop.codec.CompressionCodecNotSupportedException;
 
+import java.util.Locale;
+
 public enum CompressionCodecName {
   UNCOMPRESSED(null, CompressionCodec.UNCOMPRESSED, ""),
   SNAPPY("org.apache.parquet.hadoop.codec.SnappyCodec", CompressionCodec.SNAPPY, ".snappy"),
@@ -31,7 +33,7 @@ public enum CompressionCodecName {
      if (name == null) {
        return UNCOMPRESSED;
      }
-     return valueOf(name.toUpperCase());
+     return valueOf(name.toUpperCase(Locale.ENGLISH));
   }
 
   public static CompressionCodecName fromCompressionCodec(Class<?> clazz) {
