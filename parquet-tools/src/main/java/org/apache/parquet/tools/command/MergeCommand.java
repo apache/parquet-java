@@ -88,17 +88,45 @@ public class MergeCommand extends ArgsOnlyCommand {
    * @return ordered input files.
    */
   private List<Path> getInputFiles(List<String> input) throws IOException {
+    List<Path> inputFiles = null;
+
     if (input.size() == 1) {
       Path p = new Path(input.get(0));
       FileSystem fs = p.getFileSystem(conf);
       FileStatus status = fs.getFileStatus(p);
 
       if (status.isDir()) {
-        return getInputFilesFromDirection(status);
+        inputFiles = getInputFilesFromDirectory(status);
       }
+    } else {
+      inputFiles = parseInputFiles(input);
     }
 
-    return parseInputFiles(input);
+    checkParquetFiles(inputFiles);
+
+    return inputFiles;
+  }
+
+  /**
+   * Check input files basically.
+   * ParquetFileReader will throw exception when reading an illegal parquet file.
+   *
+   * @param inputFiles files to be merged.
+   * @throws IOException
+   */
+  private void checkParquetFiles(List<Path> inputFiles) throws IOException {
+    if (inputFiles == null || inputFiles.size() <= 1) {
+      throw new IllegalArgumentException("Not enough files to merge");
+    }
+
+    for (Path inputFile: inputFiles) {
+      FileSystem fs = inputFile.getFileSystem(conf);
+      FileStatus status = fs.getFileStatus(inputFile);
+
+      if (status.isDir()) {
+        throw new IllegalArgumentException("Illegal parquet file: " + inputFile.toUri());
+      }
+    }
   }
 
   /**
@@ -106,7 +134,7 @@ public class MergeCommand extends ArgsOnlyCommand {
    * @param partitionDir partition directory.
    * @return parquet files to be merged.
    */
-  private List<Path> getInputFilesFromDirection(FileStatus partitionDir) throws IOException {
+  private List<Path> getInputFilesFromDirectory(FileStatus partitionDir) throws IOException {
     FileSystem fs = partitionDir.getPath().getFileSystem(conf);
     FileStatus[] inputFiles = fs.listStatus(partitionDir.getPath(), HiddenFileFilter.INSTANCE);
 
