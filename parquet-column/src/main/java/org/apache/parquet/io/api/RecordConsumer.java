@@ -126,8 +126,11 @@ abstract public class RecordConsumer {
   abstract public void addDouble(double value);
 
   /**
-   * subclass class should implement its own flushing logic
+   * NoOps by default
+   * Subclass class can implement its own flushing logic
    */
-  abstract public void flush();
+  //TODO: make this abstract in 2.0
+  public void flush(){
+  }
 
 }
