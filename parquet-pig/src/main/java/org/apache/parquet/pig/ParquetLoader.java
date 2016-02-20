@@ -47,9 +47,13 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.io.api.Binary;
 import org.apache.pig.Expression;
+import org.apache.pig.Expression.BetweenExpression;
+import org.apache.pig.Expression.InExpression;
+import org.apache.pig.Expression.UnaryExpression;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.LoadMetadata;
 import org.apache.pig.LoadPredicatePushdown;
@@ -432,12 +436,16 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public List<Expression.OpType> getSupportedExpressionTypes() {
     OpType supportedTypes [] = {
         OpType.OP_EQ,
+        OpType.OP_NE,
         OpType.OP_GT,
         OpType.OP_GE,
         OpType.OP_LT,
         OpType.OP_LE,
         OpType.OP_AND,
-        OpType.OP_OR
+        OpType.OP_OR,
+        OpType.OP_BETWEEN,
+        OpType.OP_IN,
+        OpType.OP_NOT
     };
 
     return Arrays.asList(supportedTypes);
@@ -454,28 +462,33 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   }
 
   private FilterPredicate buildFilter(Expression e) {
+    OpType op = e.getOpType();
+
     if (e instanceof BinaryExpression) {
       Expression lhs = ((BinaryExpression) e).getLhs();
       Expression rhs = ((BinaryExpression) e).getRhs();
-      OpType op = e.getOpType();
 
-      FilterPredicate lfp;
-      FilterPredicate rfp;
       switch (op) {
         case OP_AND:
-          lfp = buildFilter(lhs);
-          rfp = buildFilter(rhs);
-          if (lfp == null || rfp == null) {
-            return null;
-          }
-          return and(lfp, rfp);
+          return and(buildFilter(lhs), buildFilter(rhs));
         case OP_OR:
-          lfp = buildFilter(lhs);
-          rfp = buildFilter(rhs);
-          if (lfp == null || rfp == null) {
-            return null;
+          return or(buildFilter(lhs), buildFilter(rhs));
+        case OP_BETWEEN:
+          BetweenExpression between = (BetweenExpression) rhs;
+          return and(
+              buildFilter(OpType.OP_GE, (Column) lhs, (Const) between.getLower()),
+              buildFilter(OpType.OP_LE, (Column) lhs, (Const) between.getUpper()));
+        case OP_IN:
+          FilterPredicate current = null;
+          for (Object value : ((InExpression) rhs).getValues()) {
+            FilterPredicate next = buildFilter(OpType.OP_EQ, (Column) lhs, (Const) value);
+            if (current != null) {
+              current = or(current, next);
+            } else {
+              current = next;
+            }
           }
-          return or(lfp, rfp);
+          return current;
       }
 
       if (lhs instanceof Column && rhs instanceof Const) {
@@ -483,9 +496,12 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       } else if (lhs instanceof Const && rhs instanceof Column) {
         return buildFilter(op, (Column) rhs, (Const) lhs);
       }
+    } else if (e instanceof UnaryExpression && op == OpType.OP_NOT) {
+      return LogicalInverseRewriter.rewrite(
+          not(buildFilter(((UnaryExpression) e).getExpression())));
     }
 
-    return null;
+    throw new RuntimeException("Could not build filter for expression: " + e);
   }
 
   private FilterPredicate buildFilter(OpType op, Column col, Const value) {
@@ -498,6 +514,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
           switch(op) {
             case OP_EQ: return eq(boolCol, getValue(value, boolCol.getColumnType()));
             case OP_NE: return notEq(boolCol, getValue(value, boolCol.getColumnType()));
+            default: throw new RuntimeException(
+                "Operation " + op + " not supported for boolean column: " + name);
           }
         case DataType.INTEGER:
           Operators.IntColumn intCol = intColumn(name);
@@ -514,20 +532,20 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         case DataType.CHARARRAY:
           Operators.BinaryColumn binaryCol = binaryColumn(name);
           return op(op, binaryCol, value);
-
+        default:
+          throw new RuntimeException("Unsupported type " + f.type + " for field: " + name);
       }
     } catch (FrontendException e) {
       throw new RuntimeException("Error processing pushdown for column:" + col, e);
     }
-
-    return null;
   }
 
   private <C extends Comparable<C>, COL extends Operators.Column<C> & Operators.SupportsLtGt>
-  FilterPredicate op(Expression.OpType op, COL col, Expression valueExpr) {
+  FilterPredicate op(Expression.OpType op, COL col, Const valueExpr) {
     C value = getValue(valueExpr, col.getColumnType());
     switch (op) {
       case OP_EQ: return eq(col, value);
+      case OP_NE: return notEq(col, value);
       case OP_GT: return gt(col, value);
       case OP_GE: return gtEq(col, value);
       case OP_LT: return lt(col, value);
@@ -536,8 +554,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     return null;
   }
 
-  private <C extends Comparable<C>> C getValue(Expression expr, Class<C> type) {
-    Comparable value = (Comparable) ((Const) expr).getValue();
+  private <C extends Comparable<C>> C getValue(Const valueExpr, Class<C> type) {
+    Object value = valueExpr.getValue();
 
     if (value instanceof String) {
       value = Binary.fromString((String) value);
