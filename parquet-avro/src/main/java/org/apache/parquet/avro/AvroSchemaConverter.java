@@ -286,7 +286,7 @@ public class AvroSchemaConverter {
             }
           });
 
-      LogicalType logicalType = convertLogicalType(
+      LogicalType logicalType = convertOriginalType(
           annotation, asPrimitive.getDecimalMetadata());
       if (logicalType != null && (annotation != DECIMAL ||
           parquetPrimitiveTypeName == BINARY ||
@@ -377,7 +377,7 @@ public class AvroSchemaConverter {
     return null;
   }
 
-  private LogicalType convertLogicalType(OriginalType annotation, DecimalMetadata meta) {
+  private LogicalType convertOriginalType(OriginalType annotation, DecimalMetadata meta) {
     if (annotation == null) {
       return null;
     }
