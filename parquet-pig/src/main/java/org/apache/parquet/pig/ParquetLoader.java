@@ -137,7 +137,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
-    if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
+    if (DEBUG) {
+      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
+      LOG.debug("LoadFunc.setLocation(" + location + ", " + jobToString + ")");
+    }
 
     setInput(location, job);
   }
@@ -240,14 +243,20 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public String[] getPartitionKeys(String location, Job job) throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + job + ")");
+    if (DEBUG) {
+      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
+      LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + jobToString + ")");
+    }
     setInput(location, job);
     return null;
   }
 
   @Override
   public ResourceSchema getSchema(String location, Job job) throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.getSchema(" + location + ", " + job + ")");
+    if (DEBUG) {
+      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
+      LOG.debug("LoadMetadata.getSchema(" + location + ", " + jobToString + ")");
+    }
     setInput(location, job);
     return new ResourceSchema(schema);
   }
@@ -289,7 +298,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.getStatistics(" + location + ", " + job + ")");
+    if (DEBUG) {
+      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
+      LOG.debug("LoadMetadata.getStatistics(" + location + ", " + jobToString + ")");
+    }
     /* We need to call setInput since setLocation is not
        guaranteed to be called before this */
     setInput(location, job);
