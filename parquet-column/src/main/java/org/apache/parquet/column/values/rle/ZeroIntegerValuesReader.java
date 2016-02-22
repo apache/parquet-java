@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.values.boundedint;
+package org.apache.parquet.column.values.rle;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

@@ -31,7 +31,7 @@ import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesReader;
-import org.apache.parquet.column.values.boundedint.ZeroIntegerValuesReader;
+import org.apache.parquet.column.values.rle.ZeroIntegerValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
