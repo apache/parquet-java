@@ -56,25 +56,24 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
     return filter.accept(new RowGroupFilter(blocks, schema));
   }
 
-  public static List<BlockMetaData> filterRowGroups(List<FilterLevel> levels, Filter filter, List<BlockMetaData> blocks, MessageType schema, ParquetFileReader reader) {
+  public static List<BlockMetaData> filterRowGroups(List<FilterLevel> levels, Filter filter, List<BlockMetaData> blocks, ParquetFileReader reader) {
     checkNotNull(filter, "filter");
-    return filter.accept(new RowGroupFilter(levels, blocks, schema, reader));
+    return filter.accept(new RowGroupFilter(levels, blocks, reader));
   }
 
   @Deprecated
   private RowGroupFilter(List<BlockMetaData> blocks, MessageType schema) {
-    this(Collections.singletonList(FilterLevel.STATISTICS), blocks, schema, null);
-  }
-
-  private RowGroupFilter(List<FilterLevel> levels, List<BlockMetaData> blocks, MessageType schema, ParquetFileReader reader) {
     this.blocks = checkNotNull(blocks, "blocks");
     this.schema = checkNotNull(schema, "schema");
+    this.levels = Collections.singletonList(FilterLevel.STATISTICS);
+    this.reader = null;
+  }
+
+  private RowGroupFilter(List<FilterLevel> levels, List<BlockMetaData> blocks, ParquetFileReader reader) {
+    this.blocks = checkNotNull(blocks, "blocks");
+    this.reader = checkNotNull(reader, "reader");
+    this.schema = reader.getFileMetaData().getSchema();
     this.levels = levels;
-    this.reader = reader;
-    if (reader == null && levels.contains(FilterLevel.DICTIONARY)) {
-      throw new NullPointerException(
-          "Cannot filter by dictionaries with a null ParquetFileReader");
-    }
   }
 
   @Override

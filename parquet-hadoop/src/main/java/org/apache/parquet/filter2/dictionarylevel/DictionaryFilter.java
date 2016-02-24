@@ -21,6 +21,7 @@ package org.apache.parquet.filter2.dictionarylevel;
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
@@ -30,7 +31,11 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
@@ -42,6 +47,8 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   private static final Log LOG = Log.getLog(DictionaryFilter.class);
+  private static final boolean BLOCK_MIGHT_MATCH = false;
+  private static final boolean BLOCK_CANNOT_MATCH = true;
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
     checkNotNull(pred, "pred");
@@ -104,46 +111,67 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   public <T extends Comparable<T>> Boolean visit(Eq<T> eq) {
     Column<T> filterColumn = eq.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    // if the chunk has non-dictionary pages, don't bother decoding the
+    // dictionary because the row group can't be eliminated.
+    if (hasNonDictionaryPages(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = eq.getValue();
 
     filterColumn.getColumnPath();
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-      if (dictSet != null) {
-        return !dictSet.contains(value);
+      if (dictSet != null && !dictSet.contains(value)) {
+        return BLOCK_CANNOT_MATCH;
       }
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
-    return false; // cannot drop the row group based on this dictionary
+    return BLOCK_MIGHT_MATCH; // cannot drop the row group based on this dictionary
   }
 
   @Override
   public <T extends Comparable<T>> Boolean visit(NotEq<T> notEq) {
     Column<T> filterColumn = notEq.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    // if the chunk has non-dictionary pages, don't bother decoding the
+    // dictionary because the row group can't be eliminated.
+    if (hasNonDictionaryPages(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = notEq.getValue();
 
     filterColumn.getColumnPath();
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-      if (dictSet != null) {
-        return dictSet.size() == 1 && dictSet.contains(value);
+      if (dictSet != null && dictSet.size() == 1 && dictSet.contains(value)) {
+        return BLOCK_CANNOT_MATCH;
       }
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
-    return false;
+    return BLOCK_MIGHT_MATCH;
   }
 
   @Override
   public <T extends Comparable<T>> Boolean visit(Lt<T> lt) {
     Column<T> filterColumn = lt.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    // if the chunk has non-dictionary pages, don't bother decoding the
+    // dictionary because the row group can't be eliminated.
+    if (hasNonDictionaryPages(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = lt.getValue();
 
     filterColumn.getColumnPath();
@@ -151,27 +179,34 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     try {
       Set<T> dictSet = expandDictionary(meta);
       if (dictSet == null) {
-        return false;
+        return BLOCK_MIGHT_MATCH;
       }
 
       for(T entry : dictSet) {
         if(value.compareTo(entry) > 0) {
-          return false;
+          return BLOCK_MIGHT_MATCH;
         }
       }
 
-      return true;
+      return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
-    return false;
+    return BLOCK_MIGHT_MATCH;
   }
 
   @Override
   public <T extends Comparable<T>> Boolean visit(LtEq<T> ltEq) {
     Column<T> filterColumn = ltEq.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    // if the chunk has non-dictionary pages, don't bother decoding the
+    // dictionary because the row group can't be eliminated.
+    if (hasNonDictionaryPages(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = ltEq.getValue();
 
     filterColumn.getColumnPath();
@@ -179,27 +214,34 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     try {
       Set<T> dictSet = expandDictionary(meta);
       if (dictSet == null) {
-        return false;
+        return BLOCK_MIGHT_MATCH;
       }
 
       for(T entry : dictSet) {
         if(value.compareTo(entry) >= 0) {
-          return false;
+          return BLOCK_MIGHT_MATCH;
         }
       }
 
-      return true;
+      return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
-    return false;
+    return BLOCK_MIGHT_MATCH;
   }
 
   @Override
   public <T extends Comparable<T>> Boolean visit(Gt<T> gt) {
     Column<T> filterColumn = gt.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    // if the chunk has non-dictionary pages, don't bother decoding the
+    // dictionary because the row group can't be eliminated.
+    if (hasNonDictionaryPages(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = gt.getValue();
 
     filterColumn.getColumnPath();
@@ -207,27 +249,34 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     try {
       Set<T> dictSet = expandDictionary(meta);
       if (dictSet == null) {
-        return false;
+        return BLOCK_MIGHT_MATCH;
       }
 
       for(T entry : dictSet) {
         if(value.compareTo(entry) < 0) {
-          return false;
+          return BLOCK_MIGHT_MATCH;
         }
       }
 
-      return true;
+      return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
-    return false;
+    return BLOCK_MIGHT_MATCH;
   }
 
   @Override
   public <T extends Comparable<T>> Boolean visit(GtEq<T> gtEq) {
     Column<T> filterColumn = gtEq.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    // if the chunk has non-dictionary pages, don't bother decoding the
+    // dictionary because the row group can't be eliminated.
+    if (hasNonDictionaryPages(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = gtEq.getValue();
 
     filterColumn.getColumnPath();
@@ -235,21 +284,21 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     try {
       Set<T> dictSet = expandDictionary(meta);
       if (dictSet == null) {
-        return false;
+        return BLOCK_MIGHT_MATCH;
       }
 
       for(T entry : dictSet) {
         if(value.compareTo(entry) <= 0) {
-          return false;
+          return BLOCK_MIGHT_MATCH;
         }
       }
 
-      return true;
+      return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
-    return false;
+    return BLOCK_MIGHT_MATCH;
   }
 
   @Override
@@ -278,4 +327,30 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     throw new UnsupportedOperationException("UDP not supported with dictionary evaluation.");
   }
 
+  @SuppressWarnings("deprecation")
+  private static boolean hasNonDictionaryPages(ColumnChunkMetaData meta) {
+    // without EncodingStats, fall back to testing the encoding list
+    Set<Encoding> encodings = new HashSet<Encoding>(meta.getEncodings());
+    if (encodings.remove(Encoding.PLAIN_DICTIONARY)) {
+      // if remove returned true, PLAIN_DICTIONARY was present, which means at
+      // least one page was dictionary encoded and 1.0 encodings are used
+
+      // RLE and BIT_PACKED are only used for repetition or definition levels
+      encodings.remove(Encoding.RLE);
+      encodings.remove(Encoding.BIT_PACKED);
+
+      if (encodings.isEmpty()) {
+        return false; // no encodings other than dictionary or rep/def levels
+      }
+
+      return true;
+
+    } else {
+      // if PLAIN_DICTIONARY wasn't present, then either the column is not
+      // dictionary-encoded, or the 2.0 encoding, RLE_DICTIONARY, was used.
+      // for 2.0, this cannot determine whether a page fell back without
+      // page encoding stats
+      return true;
+    }
+  }
 }
