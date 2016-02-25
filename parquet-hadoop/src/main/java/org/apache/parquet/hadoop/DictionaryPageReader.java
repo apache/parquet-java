@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import org.apache.parquet.Strings;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -28,6 +29,10 @@ import org.apache.parquet.io.ParquetDecodingException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+
+import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
+import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 
 /**
  * A {@link DictionaryPageReadStore} implementation that reads dictionaries from
@@ -41,6 +46,7 @@ class DictionaryPageReader implements DictionaryPageReadStore {
 
   private final ParquetFileReader reader;
   private final Map<String, ColumnChunkMetaData> columns;
+  private final Map<String, DictionaryPage> cache = new HashMap<String, DictionaryPage>();
   private ColumnChunkPageReadStore rowGroup = null;
 
   DictionaryPageReader(ParquetFileReader reader, BlockMetaData block) {
@@ -77,13 +83,28 @@ class DictionaryPageReader implements DictionaryPageReadStore {
           "Cannot load dictionary, unknown column: " + dotPath);
     }
 
+    if (cache.containsKey(dotPath)) {
+      return cache.get(dotPath);
+    }
+
     try {
-      // TODO: cache dictionary pages. filters may call this multiple times
-      return reader.readDictionary(column);
+      synchronized (cache) {
+        // check the cache again in case this thread waited on another reading the same page
+        if (!cache.containsKey(dotPath)) {
+          DictionaryPage dict = hasDictionaryPage(column) ? reader.readDictionary(column) : null;
+          cache.put(dotPath, dict);
+        }
+      }
+
+      return cache.get(dotPath);
     } catch (IOException e) {
       throw new ParquetDecodingException(
           "Failed to read dictionary", e);
     }
   }
 
+  private boolean hasDictionaryPage(ColumnChunkMetaData column) {
+    Set<Encoding> encodings = column.getEncodings();
+    return (encodings.contains(PLAIN_DICTIONARY) || encodings.contains(RLE_DICTIONARY));
+  }
 }
