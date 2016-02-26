@@ -443,8 +443,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         OpType.OP_LE,
         OpType.OP_AND,
         OpType.OP_OR,
-        OpType.OP_BETWEEN,
-        OpType.OP_IN,
+        //OpType.OP_BETWEEN, // not implemented in Pig yet
+        //OpType.OP_IN,      // not implemented in Pig yet
         OpType.OP_NOT
     };
 
@@ -540,7 +540,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     }
   }
 
-  private <C extends Comparable<C>, COL extends Operators.Column<C> & Operators.SupportsLtGt>
+  private static <C extends Comparable<C>, COL extends Operators.Column<C> & Operators.SupportsLtGt>
   FilterPredicate op(Expression.OpType op, COL col, Const valueExpr) {
     C value = getValue(valueExpr, col.getColumnType());
     switch (op) {
@@ -554,7 +554,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     return null;
   }
 
-  private <C extends Comparable<C>> C getValue(Const valueExpr, Class<C> type) {
+  private static <C extends Comparable<C>> C getValue(Const valueExpr, Class<C> type) {
     Object value = valueExpr.getValue();
 
     if (value instanceof String) {
