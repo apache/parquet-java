@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop.metadata;
 import java.util.Set;
 
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -42,37 +43,33 @@ abstract public class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
-    // to save space we store those always positive longs in ints when they fit.
-    if (positiveLongFitsInAnInt(firstDataPage)
-        && positiveLongFitsInAnInt(dictionaryPageOffset)
-        && positiveLongFitsInAnInt(valueCount)
-        && positiveLongFitsInAnInt(totalSize)
-        && positiveLongFitsInAnInt(totalUncompressedSize)) {
-      return new IntColumnChunkMetaData(
-          path, type, codec, encodings,
-          new BooleanStatistics(),
-          firstDataPage,
-          dictionaryPageOffset,
-          valueCount,
-          totalSize,
-          totalUncompressedSize);
-    } else {
-      return new LongColumnChunkMetaData(
-          path, type, codec, encodings,
-          new BooleanStatistics(),
-          firstDataPage,
-          dictionaryPageOffset,
-          valueCount,
-          totalSize,
-          totalUncompressedSize);
-    }
+    return get(
+        path, type, codec, null, encodings, new BooleanStatistics(), firstDataPage,
+        dictionaryPageOffset, valueCount, totalSize, totalUncompressedSize);
   }
 
+  @Deprecated
+  public static ColumnChunkMetaData get(
+      ColumnPath path,
+      PrimitiveTypeName type,
+      CompressionCodecName codec,
+      Set<Encoding> encodings,
+      Statistics statistics,
+      long firstDataPage,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
+      long totalUncompressedSize) {
+    return get(
+        path, type, codec, null, encodings, statistics, firstDataPage, dictionaryPageOffset,
+        valueCount, totalSize, totalUncompressedSize);
+  }
 
   public static ColumnChunkMetaData get(
       ColumnPath path,
       PrimitiveTypeName type,
       CompressionCodecName codec,
+      EncodingStats encodingStats,
       Set<Encoding> encodings,
       Statistics statistics,
       long firstDataPage,
@@ -87,7 +84,8 @@ abstract public class ColumnChunkMetaData {
         && positiveLongFitsInAnInt(totalSize)
         && positiveLongFitsInAnInt(totalUncompressedSize)) {
       return new IntColumnChunkMetaData(
-          path, type, codec, encodings,
+          path, type, codec,
+          encodingStats, encodings,
           statistics,
           firstDataPage,
           dictionaryPageOffset,
@@ -96,7 +94,8 @@ abstract public class ColumnChunkMetaData {
           totalUncompressedSize);
     } else {
       return new LongColumnChunkMetaData(
-          path, type, codec, encodings,
+          path, type, codec,
+          encodingStats, encodings,
           statistics,
           firstDataPage,
           dictionaryPageOffset,
@@ -129,10 +128,17 @@ abstract public class ColumnChunkMetaData {
     return (value >= 0) && (value + Integer.MIN_VALUE <= Integer.MAX_VALUE);
   }
 
+  private final EncodingStats encodingStats;
+
   // we save 3 references by storing together the column properties that have few distinct values
   private final ColumnChunkProperties properties;
 
   protected ColumnChunkMetaData(ColumnChunkProperties columnChunkProperties) {
+    this(null, columnChunkProperties);
+  }
+
+  protected ColumnChunkMetaData(EncodingStats encodingStats, ColumnChunkProperties columnChunkProperties) {
+    this.encodingStats = encodingStats;
     this.properties = columnChunkProperties;
   }
 
@@ -192,6 +198,9 @@ abstract public class ColumnChunkMetaData {
     return properties.getEncodings();
   }
 
+  public EncodingStats getEncodingStats() {
+    return encodingStats;
+  }
 
   @Override
   public String toString() {
@@ -224,6 +233,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
       ColumnPath path,
       PrimitiveTypeName type,
       CompressionCodecName codec,
+      EncodingStats encodingStats,
       Set<Encoding> encodings,
       Statistics statistics,
       long firstDataPage,
@@ -231,7 +241,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
-    super(ColumnChunkProperties.get(path, type, codec, encodings));
+    super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
     this.firstDataPage = positiveLongToInt(firstDataPage);
     this.dictionaryPageOffset = positiveLongToInt(dictionaryPageOffset);
     this.valueCount = positiveLongToInt(valueCount);
@@ -328,6 +338,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
       ColumnPath path,
       PrimitiveTypeName type,
       CompressionCodecName codec,
+      EncodingStats encodingStats,
       Set<Encoding> encodings,
       Statistics statistics,
       long firstDataPageOffset,
@@ -335,7 +346,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
-    super(ColumnChunkProperties.get(path, type, codec, encodings));
+    super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
     this.firstDataPageOffset = firstDataPageOffset;
     this.dictionaryPageOffset = dictionaryPageOffset;
     this.valueCount = valueCount;
