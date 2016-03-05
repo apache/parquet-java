@@ -126,6 +126,10 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     types.pop();
     previousField.pop();
   }
+
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void flush(){
     delegate.flush();
