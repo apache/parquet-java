@@ -100,5 +100,13 @@ final public class ExpectationValidatingRecordConsumer extends
     validate("addDouble("+value+")");
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() {
+    validate("flush()");
+  }
+
 }
 
