@@ -19,18 +19,47 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilter;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
 
-public class LongStatistics extends Statistics<Long> {
-
+public class LongStatistics extends Statistics<Long> implements BloomFilterStatistics<Long> {
   private long max;
   private long min;
+  private BloomFilter bloomFilter;
+  private boolean isBloomFilterEnabled = false;
 
-  @Override
+  public LongStatistics(ColumnStatisticsOpts columnStatisticsOpts){
+    super();
+    if (columnStatisticsOpts != null) {
+      updateBloomFilterOptions(columnStatisticsOpts.getBloomFilterOpts());
+    }
+  }
+
+  private void updateBloomFilterOptions(BloomFilterOpts.BloomFilterEntry statisticsOpts) {
+    if (statisticsOpts != null) {
+      bloomFilter =
+          new BloomFilter(statisticsOpts.getNumBits(), statisticsOpts.getNumHashFunctions());
+      isBloomFilterEnabled = true;
+    }
+  }
+
   public void updateStats(long value) {
     if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
+    }
+
+    if (isBloomFilterEnabled) {
+      add(value);
+    }
+  }
+
+  @Override
+  void mergeBloomFilters(Statistics stats) {
+    if (isBloomFilterEnabled && stats instanceof BloomFilterStatistics) {
+      this.bloomFilter.merge(((BloomFilterStatistics) stats).getBloomFilter());
     }
   }
 
@@ -104,5 +133,25 @@ public class LongStatistics extends Statistics<Long> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public void add(Long value) {
+    bloomFilter.addLong(value);
+  }
+
+  @Override
+  public BloomFilter getBloomFilter() {
+    return bloomFilter;
+  }
+
+  @Override
+  public boolean test(Long value) {
+    return bloomFilter.testLong(value);
+  }
+
+  @Override
+  public boolean isBloomFilterEnabled() {
+    return isBloomFilterEnabled;
   }
 }

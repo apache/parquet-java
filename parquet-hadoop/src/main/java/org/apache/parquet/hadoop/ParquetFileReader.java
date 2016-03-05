@@ -378,6 +378,11 @@ public class ParquetFileReader implements Closeable {
     return result;
   }
 
+  public static final ParquetMetadata readFooterWithBF(Configuration configuration, Path file)
+      throws IOException {
+    return readFooter(configuration, file, NO_FILTER, true);
+  }
+
   /**
    * Reads the meta data block in the footer of the file
    * @param configuration
@@ -387,7 +392,7 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public static final ParquetMetadata readFooter(Configuration configuration, Path file) throws IOException {
-    return readFooter(configuration, file, NO_FILTER);
+    return readFooter(configuration, file, NO_FILTER, false);
   }
 
   /**
@@ -399,17 +404,36 @@ public class ParquetFileReader implements Closeable {
    * @return the metadata with row groups filtered.
    * @throws IOException  if an error occurs while reading the file
    */
-  public static ParquetMetadata readFooter(Configuration configuration, Path file, MetadataFilter filter) throws IOException {
+  public static ParquetMetadata readFooter(
+      Configuration configuration,
+      Path file,
+      MetadataFilter filter,
+      boolean includeBF) throws IOException {
     FileSystem fileSystem = file.getFileSystem(configuration);
-    return readFooter(configuration, fileSystem.getFileStatus(file), filter);
+    return readFooter(configuration, fileSystem.getFileStatus(file), filter, includeBF);
+  }
+
+  public static ParquetMetadata readFooter(
+      Configuration configuration,
+      Path file,
+      MetadataFilter filter) throws IOException {
+    return readFooter(configuration, file, filter, false);
+  }
+
+  public static final ParquetMetadata readFooter(
+      Configuration configuration,
+      FileStatus file,
+      MetadataFilter filter) throws IOException {
+    return readFooter(configuration, file, filter, false);
   }
 
   /**
-   * @deprecated use {@link ParquetFileReader#readFooter(Configuration, FileStatus, MetadataFilter)}
+   * @deprecated use {@link ParquetFileReader#readFooter(Configuration, FileStatus,
+   * MetadataFilter, includeBF)}
    */
   @Deprecated
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file) throws IOException {
-    return readFooter(configuration, file, NO_FILTER);
+    return readFooter(configuration, file, NO_FILTER, false);
   }
 
   /**
@@ -417,10 +441,15 @@ public class ParquetFileReader implements Closeable {
    * @param configuration
    * @param file the parquet File
    * @param filter the filter to apply to row groups
+   * @param includeBF whether to include bloom filter
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file, MetadataFilter filter) throws IOException {
+  public static final ParquetMetadata readFooter(
+      Configuration configuration,
+      FileStatus file,
+      MetadataFilter filter,
+      boolean includeBF) throws IOException {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
     FSDataInputStream f = fileSystem.open(file.getPath());
     try {
@@ -452,7 +481,7 @@ public class ParquetFileReader implements Closeable {
         throw new RuntimeException("corrupted file: the footer index is not within the file");
       }
       f.seek(footerIndex);
-      return converter.readParquetMetadata(f, filter);
+      return converter.readParquetMetadata(f, filter, includeBF);
     } finally {
       f.close();
     }
@@ -621,9 +650,7 @@ public class ParquetFileReader implements Closeable {
                     this.readAsBytesInput(compressedPageSize),
                     dataHeaderV1.getNum_values(),
                     uncompressedPageSize,
-                    fromParquetStatistics(
-                        createdBy,
-                        dataHeaderV1.getStatistics(),
+                    fromParquetStatistics(createdBy, dataHeaderV1.getStatistics(),
                         descriptor.col.getType()),
                     converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
                     converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
@@ -644,9 +671,7 @@ public class ParquetFileReader implements Closeable {
                     converter.getEncoding(dataHeaderV2.getEncoding()),
                     this.readAsBytesInput(dataSize),
                     uncompressedPageSize,
-                    fromParquetStatistics(
-                        createdBy,
-                        dataHeaderV2.getStatistics(),
+                    fromParquetStatistics(createdBy, dataHeaderV2.getStatistics(),
                         descriptor.col.getType()),
                     dataHeaderV2.isIs_compressed()
                     ));

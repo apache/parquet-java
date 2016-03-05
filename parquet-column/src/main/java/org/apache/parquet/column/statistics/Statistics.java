@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,7 +22,6 @@ import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import java.util.Arrays;
-
 
 /**
  * Statistics class to keep track of statistics in parquet pages and column chunks
@@ -42,26 +41,29 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Returns the typed statistics object based on the passed type parameter
    * @param type PrimitiveTypeName type of the column
+   * @param statisticsOpts the options for statistics filter
    * @return instance of a typed statistics class
    */
-  public static Statistics getStatsBasedOnType(PrimitiveTypeName type) {
+  public static Statistics getStatsBasedOnType(
+      PrimitiveTypeName type,
+      ColumnStatisticsOpts statisticsOpts) {
     switch(type) {
     case INT32:
-      return new IntStatistics();
+      return new IntStatistics(statisticsOpts);
     case INT64:
-      return new LongStatistics();
+      return new LongStatistics(statisticsOpts);
     case FLOAT:
-      return new FloatStatistics();
+      return new FloatStatistics(statisticsOpts);
     case DOUBLE:
-      return new DoubleStatistics();
+      return new DoubleStatistics(statisticsOpts);
     case BOOLEAN:
       return new BooleanStatistics();
     case BINARY:
-      return new BinaryStatistics();
+      return new BinaryStatistics(statisticsOpts);
     case INT96:
-      return new BinaryStatistics();
+      return new BinaryStatistics(statisticsOpts);
     case FIXED_LEN_BYTE_ARRAY:
-      return new BinaryStatistics();
+      return new BinaryStatistics(statisticsOpts);
     default:
       throw new UnknownColumnTypeException(type);
     }
@@ -159,7 +161,10 @@ public abstract class Statistics<T extends Comparable<T>> {
     } else {
       throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
     }
+    mergeBloomFilters(stats);
   }
+
+  abstract void mergeBloomFilters(Statistics stats);
 
   /**
    * Abstract method to merge this statistics min and max with the values
@@ -194,7 +199,6 @@ public abstract class Statistics<T extends Comparable<T>> {
    * toString() to display min, max, num_nulls in a string
    */
   abstract public String toString();
-
 
   /**
    * Increments the null count by one
@@ -242,11 +246,11 @@ public abstract class Statistics<T extends Comparable<T>> {
   public boolean hasNonNullValue() {
     return hasNonNullValue;
   }
- 
+
   /**
    * Sets the page/column as having a valid non-null value
    * kind of misnomer here
-   */ 
+   */
   protected void markAsNotEmpty() {
     hasNonNullValue = true;
   }

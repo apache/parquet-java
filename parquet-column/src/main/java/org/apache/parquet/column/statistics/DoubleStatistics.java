@@ -19,11 +19,31 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilter;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
 
-public class DoubleStatistics extends Statistics<Double> {
+public class DoubleStatistics extends Statistics<Double> implements BloomFilterStatistics<Double>{
 
   private double max;
   private double min;
+  private BloomFilter bloomFilter;
+  private boolean isBloomFilterEnabled = false;
+
+  public DoubleStatistics(ColumnStatisticsOpts statisticsOpts){
+    super();
+    if(statisticsOpts!=null){
+      updateBloomFilterOptions(statisticsOpts.getBloomFilterOpts());
+    }
+  }
+
+  private void updateBloomFilterOptions(BloomFilterOpts.BloomFilterEntry statisticsOpts) {
+    if (statisticsOpts != null) {
+      bloomFilter =
+          new BloomFilter(statisticsOpts.getNumBits(), statisticsOpts.getNumHashFunctions());
+      isBloomFilterEnabled = true;
+    }
+  }
 
   @Override
   public void updateStats(double value) {
@@ -31,6 +51,17 @@ public class DoubleStatistics extends Statistics<Double> {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
+    }
+
+    if (isBloomFilterEnabled) {
+      add(value);
+    }
+  }
+
+  @Override
+  void mergeBloomFilters(Statistics stats) {
+    if (isBloomFilterEnabled && stats instanceof BloomFilterStatistics) {
+      this.bloomFilter.merge(((BloomFilterStatistics) stats).getBloomFilter());
     }
   }
 
@@ -104,5 +135,25 @@ public class DoubleStatistics extends Statistics<Double> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public void add(Double value) {
+    bloomFilter.addDouble(value);
+  }
+
+  @Override
+  public BloomFilter getBloomFilter() {
+    return bloomFilter;
+  }
+
+  @Override
+  public boolean test(Double value) {
+    return bloomFilter.testDouble(value);
+  }
+
+  @Override
+  public boolean isBloomFilterEnabled() {
+    return isBloomFilterEnabled;
   }
 }

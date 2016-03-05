@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -52,6 +52,10 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
+import org.apache.parquet.column.statistics.StatisticsOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilter;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOptBuilder;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -122,6 +126,7 @@ public class ParquetFileWriter {
   private long uncompressedLength;
   private long compressedLength;
   private Statistics currentStatistics; // accumulated in writePage(s)
+  private StatisticsOpts statisticsOpts;
 
   // column chunk data set at the start of a column
   private CompressionCodecName currentChunkCodec; // set in startColumn
@@ -239,6 +244,7 @@ public class ParquetFileWriter {
       this.alignment = NoAlignment.get(rowGroupSize);
       this.out = fs.create(file, overwriteFlag);
     }
+    buildBloomFilterOpts(configuration);
   }
 
   /**
@@ -259,6 +265,19 @@ public class ParquetFileWriter {
         rowAndBlockSize, rowAndBlockSize, maxPaddingSize);
     this.out = fs.create(file, true, DFS_BUFFER_SIZE_DEFAULT,
         fs.getDefaultReplication(file), rowAndBlockSize);
+    buildBloomFilterOpts(configuration);
+  }
+
+  private void buildBloomFilterOpts(Configuration conf) {
+    String colNamesWithBloomFilter = conf.get(ParquetOutputFormat.ENABLE_BLOOM_FILTER_COL_NAME, "");
+    String expectedEntries = conf.get(ParquetOutputFormat.EXPECTED_ENTRIES, "");
+    String FPPs = conf.get(ParquetOutputFormat.FALSE_POSITIVE_PROBABILITY, "");
+    LOG.info("FPP: " + FPPs + " expectedEntries:  " + expectedEntries + "colNamesWithBloomFilter:"
+        + colNamesWithBloomFilter);
+    BloomFilterOpts bloomFilterOpts =
+        new BloomFilterOptBuilder().enableCols(colNamesWithBloomFilter)
+            .expectedEntries(expectedEntries).falsePositiveProbabilities(FPPs).build(schema);
+    statisticsOpts = new StatisticsOpts(bloomFilterOpts);
   }
 
   /**
@@ -308,7 +327,8 @@ public class ParquetFileWriter {
     uncompressedLength = 0;
     // need to know what type of stats to initialize to
     // better way to do this?
-    currentStatistics = Statistics.getStatsBasedOnType(currentChunkType);
+    currentStatistics =
+        Statistics.getStatsBasedOnType(currentChunkType, statisticsOpts.getStatistics(descriptor));
   }
 
   /**
@@ -442,17 +462,10 @@ public class ParquetFileWriter {
   public void endColumn() throws IOException {
     state = state.endColumn();
     if (DEBUG) LOG.debug(out.getPos() + ": end column");
-    currentBlock.addColumn(ColumnChunkMetaData.get(
-        currentChunkPath,
-        currentChunkType,
-        currentChunkCodec,
-        currentEncodings,
-        currentStatistics,
-        currentChunkFirstDataPage,
-        currentChunkDictionaryPageOffset,
-        currentChunkValueCount,
-        compressedLength,
-        uncompressedLength));
+    currentBlock.addColumn(ColumnChunkMetaData
+        .get(currentChunkPath, currentChunkType, currentChunkCodec, currentEncodings,
+            currentStatistics, currentChunkFirstDataPage, currentChunkDictionaryPageOffset,
+            currentChunkValueCount, compressedLength, uncompressedLength));
     this.currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + uncompressedLength);
     this.uncompressedLength = 0;
     this.compressedLength = 0;
@@ -606,14 +619,17 @@ public class ParquetFileWriter {
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
     if (DEBUG) LOG.debug(out.getPos() + ": end");
-    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
+    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION),
+        blocks);
     serializeFooter(footer, out);
     out.close();
   }
 
   private static void serializeFooter(ParquetMetadata footer, FSDataOutputStream out) throws IOException {
     long footerIndex = out.getPos();
-    org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
+    org.apache.parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter()
+        .toParquetMetadata(
+        CURRENT_VERSION, footer);
     writeFileMetaData(parquetMetadata, out);
     if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
     BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
@@ -750,6 +766,10 @@ public class ParquetFileWriter {
     return fileMetaData;
   }
 
+  public StatisticsOpts getStatisticsOpts() {
+    return statisticsOpts;
+  }
+
   /**
    * Will return the result of merging toMerge into mergedMetadata
    * @param toMerge the metadata toMerge
@@ -852,8 +872,10 @@ public class ParquetFileWriter {
   private static class PaddingAlignment implements AlignmentStrategy {
     private static final byte[] zeros = new byte[4096];
 
-    public static PaddingAlignment get(long dfsBlockSize, long rowGroupSize,
-                                       int maxPaddingSize) {
+    public static PaddingAlignment get(
+        long dfsBlockSize,
+        long rowGroupSize,
+        int maxPaddingSize) {
       return new PaddingAlignment(dfsBlockSize, rowGroupSize, maxPaddingSize);
     }
 
@@ -861,8 +883,10 @@ public class ParquetFileWriter {
     protected final long rowGroupSize;
     protected final int maxPaddingSize;
 
-    private PaddingAlignment(long dfsBlockSize, long rowGroupSize,
-                             int maxPaddingSize) {
+    private PaddingAlignment(
+        long dfsBlockSize,
+        long rowGroupSize,
+        int maxPaddingSize) {
       this.dfsBlockSize = dfsBlockSize;
       this.rowGroupSize = rowGroupSize;
       this.maxPaddingSize = maxPaddingSize;
@@ -873,9 +897,10 @@ public class ParquetFileWriter {
       long remaining = dfsBlockSize - (out.getPos() % dfsBlockSize);
 
       if (isPaddingNeeded(remaining)) {
-        if (DEBUG) LOG.debug("Adding " + remaining + " bytes of padding (" +
-            "row group size=" + rowGroupSize + "B, " +
-            "block size=" + dfsBlockSize + "B)");
+        if (DEBUG)
+          LOG.debug("Adding " + remaining + " bytes of padding (" +
+              "row group size=" + rowGroupSize + "B, " +
+              "block size=" + dfsBlockSize + "B)");
         for (; remaining > 0; remaining -= zeros.length) {
           out.write(zeros, 0, (int) Math.min((long) zeros.length, remaining));
         }

@@ -41,7 +41,7 @@ public class TestMemPageStore {
   public void test() throws IOException {
     MemPageStore memPageStore = new MemPageStore(10);
     ColumnDescriptor col = new ColumnDescriptor(path , PrimitiveTypeName.INT64, 2, 2);
-    LongStatistics stats = new LongStatistics();
+    LongStatistics stats = new LongStatistics(null);
     PageWriter pageWriter = memPageStore.getPageWriter(col);
     pageWriter.writePage(BytesInput.from(new byte[735]), 209, stats, BIT_PACKED, BIT_PACKED, PLAIN);
     pageWriter.writePage(BytesInput.from(new byte[743]), 209, stats, BIT_PACKED, BIT_PACKED, PLAIN);
