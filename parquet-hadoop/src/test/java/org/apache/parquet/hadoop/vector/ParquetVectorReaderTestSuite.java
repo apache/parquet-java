@@ -16,27 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.io;
+package org.apache.parquet.hadoop.vector;
 
-/**
- * used to read reassembled records
- * @author Julien Le Dem
- *
- * @param <T> the type of the materialized record
- */
-public abstract class RecordReader<T> {
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 
-  /**
-   * Reads one record and returns it.
-   * @return the materialized record
-   */
-  public abstract T read();
-
-  /**
-   * Returns whether the current record should be skipped (dropped)
-   * Will be called *after* read()
-   */
-  public boolean shouldSkipCurrentRecord() {
-    return false;
-  }
+@RunWith(Suite.class)
+@Suite.SuiteClasses({
+        TestParquetVectorReaderUNCOMPRESSED.class,
+        TestParquetVectorReaderUNCOMPRESSEDV2.class,
+        TestParquetVectorReaderGZIP.class,
+        TestParquetVectorReaderGZIPV2.class,
+        TestParquetVectorReaderSNAPPY.class,
+        TestParquetVectorReaderSNAPPYV2.class,
+        TestParquetComplexTypeVectorReader.class,
+})
+public class ParquetVectorReaderTestSuite  {
 }

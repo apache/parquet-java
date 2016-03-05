@@ -32,7 +32,7 @@ import java.io.IOException;
 public class ReadBenchmarks {
   private void read(Path parquetFile, int nRows, Blackhole blackhole) throws IOException
   {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), parquetFile).withConf(configuration).build();
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), parquetFile).withConf(defaultConfiguration).build();
     for (int i = 0; i < nRows; i++) {
       Group group = reader.read();
       blackhole.consume(group.getBinary("binary_field", 0));

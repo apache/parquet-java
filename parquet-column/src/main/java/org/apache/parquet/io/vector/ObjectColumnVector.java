@@ -16,27 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.io;
+package org.apache.parquet.io.vector;
+
+import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.io.ColumnVector;
+
+import static java.lang.reflect.Array.newInstance;
 
 /**
- * used to read reassembled records
- * @author Julien Le Dem
- *
- * @param <T> the type of the materialized record
+ * Vector for holding complex and application dependent types
  */
-public abstract class RecordReader<T> {
+public class ObjectColumnVector<T> extends ColumnVector
+{
+  public final T[] values;
 
-  /**
-   * Reads one record and returns it.
-   * @return the materialized record
-   */
-  public abstract T read();
+  public ObjectColumnVector(Class<T> clazz) {
+    this.valueType = clazz;
+    values = (T[]) newInstance(clazz, MAX_VECTOR_LENGTH);
+  }
 
-  /**
-   * Returns whether the current record should be skipped (dropped)
-   * Will be called *after* read()
-   */
-  public boolean shouldSkipCurrentRecord() {
-    return false;
+  @Override
+  public void doReadFrom(ColumnReader reader, int index) {
   }
 }

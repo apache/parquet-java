@@ -18,6 +18,19 @@
  */
 package org.apache.parquet.io;
 
+import org.apache.parquet.Log;
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.column.impl.ColumnReadStoreImpl;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.io.vector.ObjectColumnVector;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,16 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.parquet.Log;
-import org.apache.parquet.column.ColumnReader;
-import org.apache.parquet.column.impl.ColumnReadStoreImpl;
-import org.apache.parquet.io.api.Converter;
-import org.apache.parquet.io.api.GroupConverter;
-import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.io.api.RecordMaterializer;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import static org.apache.parquet.Log.DEBUG;
 
 
 /**
@@ -376,7 +380,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   }
 
   private RecordConsumer wrap(RecordConsumer recordConsumer) {
-    if (Log.DEBUG) {
+    if (DEBUG) {
       return new RecordConsumerLoggingWrapper(recordConsumer);
     }
     return recordConsumer;
@@ -424,13 +428,66 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     return record;
   }
 
+  private State getState(MessageType schema) {
+    for (State state : states) {
+        if (schema.containsField(state.fieldPath[0])) {
+          return state;
+        }
+    }
+    throw new IllegalArgumentException("Couldn't find state for schema " + schema);
+  }
+
+  protected void readVectors(ColumnVector[] vectors, MessageType[] columnSchemas, long current, long total) {
+      for (int i = 0 ; i < columnSchemas.length; i++) {
+        MessageType schema  = columnSchemas[i];
+        State state = getState(schema);
+        readVector(state.column, vectors[i], current, total);
+      }
+  }
+
+  protected void readVector(ObjectColumnVector<T> vector, long current, long total) {
+    int index = 0;
+    for ( ; index < ColumnVector.MAX_VECTOR_LENGTH; index++, current++) {
+
+      if (current >= total) {
+        ((ColumnVector) vector).setNumberOfValues(index);
+        return;
+      }
+
+      T record = read();
+
+      if (shouldSkipCurrentRecord) {
+        if (DEBUG) {
+          LOG.debug("skipping record");
+        }
+        vector.isNull[index] = true;
+      }
+      vector.values[index] = record;
+    }
+
+    ((ColumnVector) vector).setNumberOfValues(index);
+  }
+
+  private void readVector(ColumnReader reader, ColumnVector vector, long current, long total) {
+    ColumnDescriptor column = reader.getDescriptor();
+    int maxDefinitionLevel = column.getMaxDefinitionLevel();
+
+    int index = 0;
+    for ( ; index < ColumnVector.MAX_VECTOR_LENGTH && current < total; index++, current++) {
+      if (reader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
+        vector.readFrom(reader, index);
+        vector.isNull[index] = false;
+      } else {
+        vector.isNull[index] = true;
+      }
+      reader.consume();
+    }
+    vector.setNumberOfValues(index);
+  }
+
   @Override
   public boolean shouldSkipCurrentRecord() {
     return shouldSkipCurrentRecord;
-  }
-
-  private static void log(String string) {
-    LOG.debug(string);
   }
 
   int getNextReader(int current, int nextRepetitionLevel) {

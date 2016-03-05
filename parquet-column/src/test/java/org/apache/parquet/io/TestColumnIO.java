@@ -276,7 +276,7 @@ public class TestColumnIO {
   private List<Group> readGroups(MemPageStore memPageStore, MessageType fileSchema, MessageType requestedSchema, int n) {
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema);
-    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, requestedSchema, memPageStore);
+    RecordReader<Group> recordReader = getRecordReader(columnIO, requestedSchema, memPageStore);
     List<Group> groups = new ArrayList<Group>();
     for (int i = 0; i < n; i++) {
       groups.add(recordReader.read());
@@ -322,7 +322,7 @@ public class TestColumnIO {
       log(columns);
       log("=========");
 
-      RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, schema, memPageStore);
+      RecordReader<Group> recordReader = getRecordReader(columnIO, schema, memPageStore);
 
       validateFSA(expectedFSA, columnIO, recordReader);
 
@@ -342,7 +342,7 @@ public class TestColumnIO {
       MessageColumnIO columnIO2 = columnIOFactory.getColumnIO(schema2);
 
       List<Group> records = new ArrayList<Group>();
-      RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO2, schema2, memPageStore);
+      RecordReader<Group> recordReader = getRecordReader(columnIO2, schema2, memPageStore);
 
       validateFSA(expectedFSA2, columnIO2, recordReader);
 
@@ -476,26 +476,26 @@ public class TestColumnIO {
     columns.flush();
 
     // Read groups and verify.
-    RecordReaderImplementation<Group> recordReader =
+    RecordReader<Group> recordReader =
         getRecordReader(columnIO, messageSchema, memPageStore);
     for (Group group : groups) {
       final Group got = recordReader.read();
       assertEquals("deserialization does not display the same result",
-                   group.toString(), got.toString());
+                   group.toString(), got == null ? "" : got.toString());
     }
   }
 
-  private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
+  private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
 
-    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConverter);
+    return columnIO.getRecordReader(pageReadStore, recordConverter);
   }
 
   private void log(Object o) {
     LOG.info(o);
   }
 
-  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReaderImplementation<?> recordReader) {
+  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader<?> recordReader) {
     log("FSA: ----");
     List<PrimitiveColumnIO> leaves = columnIO.getLeaves();
     for (int i = 0; i < leaves.size(); ++i) {
@@ -503,8 +503,8 @@ public class TestColumnIO {
       log(Arrays.toString(primitiveColumnIO.getFieldPath()));
       for (int r = 0; r < expectedFSA[i].length; r++) {
         int next = expectedFSA[i][r];
-        log(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath()))+": "+recordReader.getNextLevel(i, r));
-        assertEquals(Arrays.toString(primitiveColumnIO.getFieldPath())+": "+r+" -> ", next, recordReader.getNextReader(i, r));
+        log(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath()))+": "+((VectorizedRecordReaderImplementation)recordReader).getRecordReaderImplementation().getNextLevel(i, r));
+        assertEquals(Arrays.toString(primitiveColumnIO.getFieldPath()) + ": " + r + " -> ", next, ((VectorizedRecordReaderImplementation) recordReader).getRecordReaderImplementation().getNextReader(i, r));
       }
     }
     log("----");

@@ -35,7 +35,7 @@ import java.util.Arrays;
 import static java.util.UUID.randomUUID;
 import static org.apache.parquet.benchmarks.BenchmarkUtils.deleteIfExists;
 import static org.apache.parquet.benchmarks.BenchmarkUtils.exists;
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
@@ -47,18 +47,20 @@ public class DataGenerator {
 
   public void generateAll() {
     try {
-      generateData(file_1M, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, UNCOMPRESSED, ONE_MILLION);
 
       //generate data for different block and page sizes
-      generateData(file_1M_BS256M_PS4M, configuration, PARQUET_2_0, BLOCK_SIZE_256M, PAGE_SIZE_4M, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
-      generateData(file_1M_BS256M_PS8M, configuration, PARQUET_2_0, BLOCK_SIZE_256M, PAGE_SIZE_8M, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
-      generateData(file_1M_BS512M_PS4M, configuration, PARQUET_2_0, BLOCK_SIZE_512M, PAGE_SIZE_4M, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
-      generateData(file_1M_BS512M_PS8M, configuration, PARQUET_2_0, BLOCK_SIZE_512M, PAGE_SIZE_8M, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M_BS256M_PS4M, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_256M, PAGE_SIZE_4M, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M_BS256M_PS8M, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_256M, PAGE_SIZE_8M, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M_BS512M_PS4M, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_512M, PAGE_SIZE_4M, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M_BS512M_PS8M, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_512M, PAGE_SIZE_8M, UNCOMPRESSED, ONE_MILLION);
 
       //generate data for different codecs
-//      generateData(parquetFile_1M_LZO, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, LZO, ONE_MILLION);
-      generateData(file_1M_SNAPPY, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, SNAPPY, ONE_MILLION);
-      generateData(file_1M_GZIP, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, GZIP, ONE_MILLION);
+//      generateData(parquetFile_1M_LZO, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, LZO, ONE_MILLION);
+
+      generateData(file_1M_SNAPPY, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, SNAPPY, ONE_MILLION);
+      generateData(file_1M_GZIP, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, GZIP, ONE_MILLION);
+      generateData(file_10M_GZIP, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, GZIP, TEN_MILLION);
     }
     catch (IOException e) {
       throw new RuntimeException(e);
@@ -66,7 +68,7 @@ public class DataGenerator {
   }
 
   public void generateData(Path outFile, Configuration configuration, ParquetProperties.WriterVersion version,
-                           int blockSize, int pageSize, int fixedLenByteArraySize, CompressionCodecName codec, int nRows)
+                           int blockSize, int pageSize, CompressionCodecName codec, int nRows)
           throws IOException
   {
     if (exists(configuration, outFile)) {
@@ -84,7 +86,7 @@ public class DataGenerator {
                     + "required boolean boolean_field; "
                     + "required float float_field; "
                     + "required double double_field; "
-                    + "required fixed_len_byte_array(" + fixedLenByteArraySize +") flba_field; "
+                    + "required fixed_len_byte_array(" + FIXED_LEN_BYTEARRAY_SIZE +") flba_field; "
                     + "required int96 int96_field; "
                     + "} ");
 
@@ -94,7 +96,7 @@ public class DataGenerator {
                                                            pageSize, DICT_PAGE_SIZE, true, false, version, configuration);
 
     //generate some data for the fixed len byte array field
-    char[] chars = new char[fixedLenByteArraySize];
+    char[] chars = new char[FIXED_LEN_BYTEARRAY_SIZE];
     Arrays.fill(chars, '*');
 
     for (int i = 0; i < nRows; i++) {
@@ -115,14 +117,15 @@ public class DataGenerator {
 
   public void cleanup()
   {
-    deleteIfExists(configuration, file_1M);
-    deleteIfExists(configuration, file_1M_BS256M_PS4M);
-    deleteIfExists(configuration, file_1M_BS256M_PS8M);
-    deleteIfExists(configuration, file_1M_BS512M_PS4M);
-    deleteIfExists(configuration, file_1M_BS512M_PS8M);
-//    deleteIfExists(configuration, parquetFile_1M_LZO);
-    deleteIfExists(configuration, file_1M_SNAPPY);
-    deleteIfExists(configuration, file_1M_GZIP);
+    deleteIfExists(defaultConfiguration, file_1M);
+    deleteIfExists(defaultConfiguration, file_1M_BS256M_PS4M);
+    deleteIfExists(defaultConfiguration, file_1M_BS256M_PS8M);
+    deleteIfExists(defaultConfiguration, file_1M_BS512M_PS4M);
+    deleteIfExists(defaultConfiguration, file_1M_BS512M_PS8M);
+//    deleteIfExists(defaultConfiguration, parquetFile_1M_LZO);
+    deleteIfExists(defaultConfiguration, file_1M_SNAPPY);
+    deleteIfExists(defaultConfiguration, file_1M_GZIP);
+    deleteIfExists(defaultConfiguration, file_10M_GZIP);
   }
 
   public static void main(String[] args) {

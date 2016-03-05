@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.Closeable;
@@ -25,6 +26,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -32,14 +35,22 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.Preconditions;
+
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
+import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.hadoop.api.ReadSupport.ReadContext;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
+import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.io.vector.ObjectColumnVector;
+import org.apache.parquet.io.vector.RowBatch;
 
 /**
  * Read records from a Parquet file.
@@ -51,6 +62,7 @@ public class ParquetReader<T> implements Closeable {
   private final Configuration conf;
   private final Iterator<Footer> footersIterator;
   private final Filter filter;
+  private final ReadContext readContext;
 
   private InternalParquetRecordReader<T> reader;
 
@@ -114,6 +126,10 @@ public class ParquetReader<T> implements Closeable {
     List<FileStatus> statuses = Arrays.asList(fs.listStatus(file, HiddenFileFilter.INSTANCE));
     List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses, false);
     this.footersIterator = footers.iterator();
+    GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
+    MessageType schema = globalMetaData.getSchema();
+    Map<String, Set<String>> extraMetadata = globalMetaData.getKeyValueMetaData();
+    readContext = readSupport.init(new InitContext(conf, extraMetadata, schema));
   }
 
   /**
@@ -132,6 +148,87 @@ public class ParquetReader<T> implements Closeable {
       throw new IOException(e);
     }
   }
+
+  private boolean readVectors(ColumnVector[] vectors, MessageType[] columns) throws IOException {
+    if (reader != null && reader.nextBatch(vectors, columns)) {
+      return true;
+    } else {
+      initReader();
+      if (reader == null) {
+        return false;
+      } else {
+        return readVectors(vectors, columns);
+      }
+    }
+  }
+
+  private boolean readVector(ObjectColumnVector<T> vector) throws IOException {
+    if (reader != null && reader.nextBatch(vector)) {
+      return true;
+    } else {
+      initReader();
+      if (reader == null) {
+        return false;
+      } else {
+        return readVector(vector);
+      }
+    }
+  }
+
+  /**
+   * Reads the next batch of rows. This method is used for reading complex types
+   * or arbitrary objects and calls the converters eventually to materialize the record.
+   * @param previous a row batch object to be reused by the reader if possible
+   * @param clazz the class of the record type that will be filled into the column vector
+   * @return the row batch that was read
+   * @throws java.io.IOException
+   */
+  public RowBatch nextBatch(RowBatch previous, Class<T> clazz) throws IOException {
+    RowBatch rowBatch = previous;
+    if (rowBatch == null) {
+      rowBatch = new RowBatch(new ColumnVector[] { ColumnVector.ofType(clazz) } );
+    }
+
+    return readVector((ObjectColumnVector<T>) rowBatch.getColumns()[0]) ? rowBatch : null;
+  }
+
+  /**
+   * Reads the next batch of rows. This method is used for reading primitive types
+   * and does not call the converters at all.
+   * @param previous a row batch object to be reused by the reader if possible
+   * @return the row batch that was read
+   * @throws java.io.IOException
+   */
+   public RowBatch nextBatch(RowBatch previous) throws IOException {
+     MessageType requestedSchema = readContext.getRequestedSchema();
+     List<ColumnDescriptor> columns = requestedSchema.getColumns();
+     int nColumns = columns.size();
+     ColumnVector[] columnVectors;
+
+     RowBatch rowBatch = previous;
+     if (rowBatch == null) {
+       rowBatch = new RowBatch(new ColumnVector[nColumns]);
+     }
+
+     columnVectors = rowBatch.getColumns();
+
+     checkArgument(columns.size() == columnVectors.length,
+             "Number of columns in the requested schema and the previous row batch don't match.");
+
+     MessageType[] columnSchemas = new MessageType[nColumns];
+     for (int i = 0; i < nColumns; i++) {
+       ColumnVector columnVector = columnVectors[i];
+       columnSchemas[i] = new MessageType(requestedSchema.getFieldName(i), requestedSchema.getType(i));
+
+       if (columnVector == null) {
+         columnVector = ColumnVector.from(columns.get(i));
+       }
+
+       rowBatch.getColumns()[i] = columnVector;
+     }
+
+     return readVectors(rowBatch.getColumns(), columnSchemas) ? rowBatch : null;
+   }
 
   private void initReader() throws IOException {
     if (reader != null) {

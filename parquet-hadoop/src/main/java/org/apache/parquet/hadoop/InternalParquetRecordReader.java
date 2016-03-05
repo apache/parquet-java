@@ -41,16 +41,20 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ColumnIOFactory;
+import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.VectorizedRecordReader;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationException;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.io.vector.ObjectColumnVector;
 
 import static java.lang.String.format;
 import static org.apache.parquet.Log.DEBUG;
+import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 
@@ -246,7 +250,7 @@ class InternalParquetRecordReader<T> {
     return true;
   }
 
-  private static <K, V> Map<K, Set<V>> toSetMultiMap(Map<K, V> map) {
+  protected static <K, V> Map<K, Set<V>> toSetMultiMap(Map<K, V> map) {
     Map<K, Set<V>> setMultiMap = new HashMap<K, Set<V>>();
     for (Map.Entry<K, V> entry : map.entrySet()) {
       Set<V> set = new HashSet<V>();
@@ -254,6 +258,66 @@ class InternalParquetRecordReader<T> {
       setMultiMap.put(entry.getKey(), Collections.unmodifiableSet(set));
     }
     return Collections.unmodifiableMap(setMultiMap);
+  }
+
+  //TODO maintain unmaterializableRecordCounter properly
+  public boolean nextBatch(ObjectColumnVector<T> vector) throws IOException {
+    boolean recordFound = false;
+
+    while (!recordFound) {
+      // no more records left
+      if (current >= total) { return false; }
+
+      try {
+        checkRead();
+        ((VectorizedRecordReader) recordReader).readVector(vector, current, totalCountLoadedSoFar);
+        current += vector.size();
+
+        //TODO filtering records while batch reading
+        //TODO how to handle this case?
+//        if (currentValue == null) {
+//          // only happens with FilteredRecordReader at end of block
+//          current = totalCountLoadedSoFar;
+//          if (DEBUG) LOG.debug("filtered record reader reached end of block");
+//          continue;
+//        }
+
+        recordFound = true;
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, file), e);
+      }
+    }
+    return true;
+  }
+
+  //TODO maintain unmaterializableRecordCounter properly
+  public boolean nextBatch(ColumnVector[] vectors, MessageType[] columns) throws IOException {
+    boolean recordFound = false;
+
+    while (!recordFound) {
+      // no more records left
+      if (current >= total) { return false; }
+
+      try {
+        checkRead();
+        ((VectorizedRecordReader) recordReader).readVectors(vectors, columns, current, totalCountLoadedSoFar);
+        current += vectors[0].size();
+
+        //TODO filtering records while batch reading
+        //TODO how to handle this case?
+//        if (currentValue == null) {
+//          // only happens with FilteredRecordReader at end of block
+//          current = totalCountLoadedSoFar;
+//          if (DEBUG) LOG.debug("filtered record reader reached end of block");
+//          continue;
+//        }
+
+        recordFound = true;
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, file), e);
+      }
+    }
+    return true;
   }
 
 }

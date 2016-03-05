@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.filterRowGroups;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
@@ -41,12 +43,15 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.Log;
-import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
+import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -54,8 +59,10 @@ import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
+import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.io.vector.RowBatch;
 
 /**
  * Reads the records from a block of a Parquet file
@@ -70,6 +77,8 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   private static final Log LOG = Log.getLog(ParquetRecordReader.class);
   private final InternalParquetRecordReader<T> internalReader;
+  private ReadSupport readSupport;
+  private ReadSupport.ReadContext readContext;
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
@@ -84,6 +93,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    */
   public ParquetRecordReader(ReadSupport<T> readSupport, Filter filter) {
     internalReader = new InternalParquetRecordReader<T>(readSupport, filter);
+    this.readSupport = readSupport;
   }
 
   /**
@@ -198,6 +208,10 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     }
 
     MessageType fileSchema = footer.getFileMetaData().getSchema();
+    Map<String, String> fileMetaData = footer.getFileMetaData().getKeyValueMetaData();
+    readContext = readSupport.init(new InitContext(configuration, InternalParquetRecordReader
+        .toSetMultiMap(fileMetaData), fileSchema));
+
     internalReader.initialize(
         fileSchema, footer.getFileMetaData(), path, filteredBlocks, configuration);
   }
@@ -225,6 +239,49 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
     return internalReader.nextKeyValue();
+  }
+
+  /**
+   * Reads the next batch of rows. This method is used for reading primitive types
+   * and does not call the converters at all.
+   * @param previous a row batch object to be reused by the reader if possible
+   * @return the row batch that was read
+   * @throws java.io.IOException
+   */
+  public RowBatch nextBatch(RowBatch previous) throws IOException {
+    MessageType requestedSchema = readContext.getRequestedSchema();
+    List<ColumnDescriptor> columns = requestedSchema.getColumns();
+    int nColumns = columns.size();
+    ColumnVector[] columnVectors;
+
+    RowBatch rowBatch = previous;
+    if (rowBatch == null) {
+      rowBatch = new RowBatch(new ColumnVector[nColumns]);
+    }
+
+    columnVectors = rowBatch.getColumns();
+
+    checkArgument(columns.size() == columnVectors.length,
+            "Number of columns in the requested schema and the previous row batch don't match.");
+
+    MessageType[] columnSchemas = new MessageType[nColumns];
+    for (int i = 0; i < nColumns; i++) {
+      ColumnVector columnVector = columnVectors[i];
+      columnSchemas[i] = new MessageType(requestedSchema.getFieldName(i), requestedSchema.getType(i));
+
+      if (columnVector == null) {
+        columnVector = ColumnVector.from(columns.get(i));
+      }
+
+      rowBatch.getColumns()[i] = columnVector;
+    }
+
+    boolean hasMoreRecords = readVectors(rowBatch.getColumns(), columnSchemas);
+    return hasMoreRecords ? rowBatch : null;
+  }
+
+  private boolean readVectors(ColumnVector[] vectors, MessageType[] columns) throws IOException {
+    return internalReader.nextBatch(vectors, columns);
   }
 
   private ParquetInputSplit toParquetSplit(InputSplit split) throws IOException {
