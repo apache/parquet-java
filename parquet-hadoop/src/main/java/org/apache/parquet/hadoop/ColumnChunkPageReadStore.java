@@ -139,6 +139,10 @@ class ColumnChunkPageReadStore implements PageReadStore {
         throw new RuntimeException(e); // TODO: cleanup
       }
     }
+
+    public DictionaryPage getCompressedDictionaryPage() {
+      return compressedDictionaryPage;
+    }
   }
 
   private final Map<ColumnDescriptor, ColumnChunkPageReader> readers = new HashMap<ColumnDescriptor, ColumnChunkPageReader>();

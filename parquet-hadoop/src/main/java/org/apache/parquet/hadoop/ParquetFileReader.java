@@ -61,9 +61,13 @@ import org.apache.parquet.hadoop.util.CompatibilityUtil;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
+import org.apache.parquet.column.page.DictionaryPageReader;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -71,10 +75,12 @@ import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
 import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.PageType;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import org.apache.parquet.hadoop.CodecFactory.BytesDecompressor;
+import org.apache.parquet.hadoop.ColumnChunkDictionaryPageReadStore.ColumnChunkDictionaryPageReader;
 import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -83,6 +89,7 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.schema.MessageType;
 
 /**
  * Internal implementation of the Parquet file reader as a block container
@@ -554,7 +561,74 @@ public class ParquetFileReader implements Closeable {
     return columnChunkPageReadStore;
   }
 
+  /**
+   * Reads the requested predicate columns dictionaries from the row group at the current file position.
+   * Not reading all the requested columns, only read predicate columns.
+   * eg. select columnA, columnB, columnC from table where columnC > 10
+   *     only reads columnC's dictionary
+   * @param requestedSchema the predicate columns to read
+   * @throws IOException if an error occurs while reading
+   * @return the DictionaryPageReadStore which can provide DictionaryPageReaders for each column.
+   */
+  public DictionaryPageReadStore getCurrentRowGroupDictionaries(MessageType requestedSchema) throws IOException {
+    if (currentBlock == blocks.size()) {
+      return null;
+    }
+    BlockMetaData block = blocks.get(currentBlock);
+    if (block.getRowCount() == 0) {
+      throw new RuntimeException("Illegal row group of 0 rows");
+    }
 
+    Map<ColumnDescriptor, ColumnChunkDictionaryPageReader> dictionaryReaders = new HashMap<ColumnDescriptor, ColumnChunkDictionaryPageReader>();
+    for (ColumnChunkMetaData columnChunkMetaData : block.getColumns()) {
+      for (ColumnDescriptor columnDescriptor : requestedSchema.getColumns()) {
+        if (columnChunkMetaData.getPath().equals(ColumnPath.get(columnDescriptor.getPath())) &&
+            isOnlyDictionaryEncodingPages(columnChunkMetaData.getEncodings())) {
+          long startingPosition = columnChunkMetaData.getStartingPos();
+          this.f.seek(startingPosition);
+
+          int totalSize = (int) columnChunkMetaData.getTotalSize();
+          byte[] buffer = new byte[totalSize];
+          // TODO: set read size to be (page header size + compressed dictionary page size)
+          this.f.readFully(buffer);
+
+          ChunkDescriptor chunkDescriptor = new ChunkDescriptor(columnDescriptor,
+                                                                columnChunkMetaData,
+                                                                startingPosition,
+                                                                totalSize);
+          Chunk chunk = new Chunk(chunkDescriptor, buffer, 0);
+          DictionaryPage compressedPage = chunk.readDictionaryPage();
+          if (compressedPage == null) {
+            dictionaryReaders.put(columnDescriptor, null);
+            break;
+          }
+
+          BytesDecompressor decompressor = codecFactory.getDecompressor(columnChunkMetaData.getCodec());
+          ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, new ArrayList<DataPage>(), compressedPage);
+          ColumnChunkDictionaryPageReader dictionaryPageReader = new ColumnChunkDictionaryPageReader(columnChunkPageReader);
+          dictionaryReaders.put(columnDescriptor, dictionaryPageReader);
+        }
+      }
+    }
+    return new ColumnChunkDictionaryPageReadStore(dictionaryReaders);
+  }
+
+  // are all the value pages dictionary encoded
+  private boolean isOnlyDictionaryEncodingPages(Set<Encoding> encodings) {
+    // if values have more than one encodings, definitely not dictionary encoding only
+    if (encodings.size() > 3) {
+      return false;
+    }
+    // heuristics: definition level, repetition level are not dictionary encoded
+    // if there is dictionary encoding, it must be values
+    // TODO: use PageEncodingStats to determine whether all value pages are dictionary encoded
+    for (Encoding encoding : encodings) {
+      if (encoding.usesDictionary()) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   @Override
   public void close() throws IOException {
@@ -572,6 +646,8 @@ public class ParquetFileReader implements Closeable {
 
     private final ChunkDescriptor descriptor;
 
+    private PageHeader pageHeader;
+
     /**
      *
      * @param descriptor descriptor for the chunk
@@ -588,6 +664,26 @@ public class ParquetFileReader implements Closeable {
     }
 
     /**
+     * Read only dictionary page in a given column chunk.
+     * readDictionaryPage should not be used interleaving with readAllPages
+     * either read only dictionary page, or read all pages
+     * @return dictionary page
+     */
+    public DictionaryPage readDictionaryPage() throws IOException {
+      this.pageHeader = readPageHeader();
+      int uncompressedPageSize = pageHeader.getUncompressed_page_size();
+      int compressedPageSize = pageHeader.getCompressed_page_size();
+      if (pageHeader.type == PageType.DICTIONARY_PAGE) {
+        DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
+        return new DictionaryPage(this.readAsBytesInput(compressedPageSize),
+                                uncompressedPageSize,
+                                dicHeader.getNum_values(),
+                                converter.getEncoding(dicHeader.getEncoding()));
+      }
+      return null;
+    }
+
+    /**
      * Read all of the pages in a given column chunk.
      * @return the list of pages
      */
@@ -596,24 +692,14 @@ public class ParquetFileReader implements Closeable {
       DictionaryPage dictionaryPage = null;
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
-        PageHeader pageHeader = readPageHeader();
-        int uncompressedPageSize = pageHeader.getUncompressed_page_size();
-        int compressedPageSize = pageHeader.getCompressed_page_size();
+        DictionaryPage nextDictionaryPage = readDictionaryPage();
+        if (dictionaryPage != null && nextDictionaryPage != null) {
+          throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
+        }
+        dictionaryPage = nextDictionaryPage;
+        int uncompressedPageSize = this.pageHeader.getUncompressed_page_size();
+        int compressedPageSize = this.pageHeader.getCompressed_page_size();
         switch (pageHeader.type) {
-          case DICTIONARY_PAGE:
-            // there is only one dictionary page per column chunk
-            if (dictionaryPage != null) {
-              throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
-            }
-          DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
-          dictionaryPage =
-                new DictionaryPage(
-                    this.readAsBytesInput(compressedPageSize),
-                    uncompressedPageSize,
-                    dicHeader.getNum_values(),
-                    converter.getEncoding(dicHeader.getEncoding())
-                    );
-            break;
           case DATA_PAGE:
             DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
             pagesInChunk.add(
@@ -652,6 +738,8 @@ public class ParquetFileReader implements Closeable {
                     ));
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
             break;
+          case DICTIONARY_PAGE:
+            throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
           default:
             if (DEBUG) {
               LOG.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
@@ -840,5 +928,4 @@ public class ParquetFileReader implements Closeable {
     }
 
   }
-
 }
