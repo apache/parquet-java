@@ -18,8 +18,11 @@
  */
 package org.apache.parquet.io.api;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -29,6 +32,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public class TestBinary {
 
@@ -227,6 +231,22 @@ public class TestBinary {
     assertArrayEquals(testString.getBytes(UTF8), copy.copy().getBytes());
   }
 
+  private void testSerializable(BinaryFactory bf, boolean reused) throws Exception {
+    BinaryAndOriginal bao = bf.get("polygon".getBytes(UTF8), reused);
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ObjectOutputStream out = new ObjectOutputStream(baos);
+    out.writeObject(bao.binary);
+    out.close();
+    baos.close();
+
+    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(
+        baos.toByteArray()));
+    Object object = in.readObject();
+    assertTrue(object instanceof Binary);
+    assertEquals(bao.binary, object);
+  }
+
   private void testBinary(BinaryFactory bf, boolean reused) throws Exception {
     testSlice(bf, reused);
 
@@ -236,5 +256,6 @@ public class TestBinary {
       testConstantCopy(bf);
     }
 
+    testSerializable(bf, reused);
   }
 }

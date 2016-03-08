@@ -19,6 +19,7 @@
 package org.apache.parquet.filter2.predicate;
 
 import java.io.Serializable;
+import java.util.Locale;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
@@ -129,7 +130,7 @@ public final class Operators {
       // null in their own constructors.
       this.value = value;
 
-      String name = getClass().getSimpleName().toLowerCase();
+      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + value + ")";
     }
 
@@ -258,7 +259,7 @@ public final class Operators {
     protected BinaryLogicalFilterPredicate(FilterPredicate left, FilterPredicate right) {
       this.left = checkNotNull(left, "left");
       this.right = checkNotNull(right, "right");
-      String name = getClass().getSimpleName().toLowerCase();
+      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + left + ", " + right + ")";
     }
 
@@ -386,7 +387,7 @@ public final class Operators {
     UserDefinedByClass(Column<T> column, Class<U> udpClass) {
       super(column);
       this.udpClass = checkNotNull(udpClass, "udpClass");
-      String name = getClass().getSimpleName().toLowerCase();
+      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
 
       // defensively try to instantiate the class early to make sure that it's possible
@@ -442,7 +443,7 @@ public final class Operators {
     UserDefinedByInstance(Column<T> column, U udpInstance) {
       super(column);
       this.udpInstance = checkNotNull(udpInstance, "udpInstance");
-      String name = getClass().getSimpleName().toLowerCase();
+      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpInstance + ")";
     }
 

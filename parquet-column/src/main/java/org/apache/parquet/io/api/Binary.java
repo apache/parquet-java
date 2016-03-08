@@ -355,9 +355,9 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   private static class ByteBufferBackedBinary extends Binary {
     private ByteBuffer value;
-    private byte[] cachedBytes;
-    private final int offset;
-    private final int length;
+    private transient byte[] cachedBytes;
+    private int offset;
+    private int length;
 
     public ByteBufferBackedBinary(ByteBuffer value, int offset, int length, boolean isBackingBytesReused) {
       this.value = value;
@@ -502,6 +502,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       byte[] bytes = new byte[length];
       in.readFully(bytes, 0, length);
       this.value = ByteBuffer.wrap(bytes);
+      this.offset = 0;
+      this.length = length;
     }
 
     private void readObjectNoData() throws ObjectStreamException {

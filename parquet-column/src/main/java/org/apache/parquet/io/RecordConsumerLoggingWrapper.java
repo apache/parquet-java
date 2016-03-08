@@ -157,6 +157,17 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      * {@inheritDoc}
      */
     @Override
+    public void flush() {
+      if (LOGGER.isDebugEnabled()) {
+        log("<!-- flush -->");
+      }
+      delegate.flush();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void endGroup() {
       if (LOGGER.isDebugEnabled()) {
         log("<!-- end group -->");

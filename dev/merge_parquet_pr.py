@@ -81,9 +81,9 @@ def fail(msg):
 def run_cmd(cmd):
     try:       
         if isinstance(cmd, list):
-            return subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            return subprocess.check_output(cmd)
         else:
-            return subprocess.check_output(cmd.split(" "), stderr = subprocess.STDOUT)          
+            return subprocess.check_output(cmd.split(" "))
     except subprocess.CalledProcessError as e:
         # this avoids hiding the stdout / stderr of failed processes
         print 'Command failed: %s' % cmd
