@@ -26,7 +26,6 @@ import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.TextFormat;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.InvalidRecordException;
@@ -42,13 +41,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Implementation of {@link WriteSupport} for writing Protocol Buffers.
  * @author Lukas Nalezenec
  */
 public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<T> {
 
-  private static final Log LOG = Log.getLog(ProtoWriteSupport.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ProtoWriteSupport.class);
   public static final String PB_CLASS_WRITE = "parquet.proto.writeClass";
 
   private RecordConsumer recordConsumer;
@@ -82,7 +84,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       messageWriter.writeTopLevelMessage(record);
     } catch (RuntimeException e) {
       Message m = (record instanceof Message.Builder) ? ((Message.Builder) record).build() : (Message) record;
-      LOG.error("Cannot write message " + e.getMessage() + " : " + m);
+      LOGGER.error("Cannot write message " + e.getMessage() + " : " + m);
       throw e;
     }
     recordConsumer.endMessage();

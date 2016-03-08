@@ -19,11 +19,13 @@
 package org.apache.parquet.thrift;
 import java.util.*;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.thrift.TBase;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -33,7 +35,7 @@ import org.apache.thrift.TBase;
  *
  */
 public class ThriftMetaData {
-  private static final Log LOG = Log.getLog(ThriftMetaData.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ThriftMetaData.class);
 
   private static final String THRIFT_CLASS = "thrift.class";
   private static final String THRIFT_DESCRIPTOR = "thrift.descriptor";

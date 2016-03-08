@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.thrift;
 
-import static org.apache.parquet.Log.DEBUG;
-
 import java.nio.ByteBuffer;
 
 import org.apache.thrift.TException;
@@ -32,7 +30,6 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.io.ColumnIO;
 import org.apache.parquet.io.GroupColumnIO;
 import org.apache.parquet.io.MessageColumnIO;
@@ -48,6 +45,9 @@ import org.apache.parquet.thrift.struct.ThriftType.ListType;
 import org.apache.parquet.thrift.struct.ThriftType.MapType;
 import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ParquetWriteProtocol extends ParquetProtocol {
 
@@ -409,7 +409,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   }
 
-  private static final Log LOG = Log.getLog(ParquetWriteProtocol.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ParquetWriteProtocol.class);
 
 
   private final RecordConsumer recordConsumer;
@@ -438,7 +438,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeMessageBegin(TMessage message) throws TException {
-    if (DEBUG) LOG.debug("writeMessageBegin("+message+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeMessageBegin(" + message + ")");
+    }
     currentProtocol.writeMessageBegin(message);
   }
 
@@ -448,7 +450,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeMessageEnd() throws TException {
-    if (DEBUG) LOG.debug("writeMessageEnd()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeMessageEnd()");
+    }
     currentProtocol.writeMessageEnd();
   }
 
@@ -458,7 +462,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeStructBegin(TStruct struct) throws TException {
-    if (DEBUG) LOG.debug("writeStructBegin("+toString(struct)+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeStructBegin(" + toString(struct) + ")");
+    }
     currentProtocol.writeStructBegin(struct);
   }
 
@@ -468,7 +474,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeStructEnd() throws TException {
-    if (DEBUG) LOG.debug("writeStructEnd()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeStructEnd()");
+    }
     currentProtocol.writeStructEnd();
   }
 
@@ -478,7 +486,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeFieldBegin(TField field) throws TException {
-    if (DEBUG) LOG.debug("writeFieldBegin("+field+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeFieldBegin(" + field + ")");
+    }
     currentProtocol.writeFieldBegin(field);
   }
 
@@ -488,7 +498,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeFieldEnd() throws TException {
-    if (DEBUG) LOG.debug("writeFieldEnd()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeFieldEnd()");
+    }
     currentProtocol.writeFieldEnd();
   }
 
@@ -498,7 +510,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeFieldStop() throws TException {
-    if (DEBUG) LOG.debug("writeFieldStop()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeFieldStop()");
+    }
     currentProtocol.writeFieldStop();
   }
 
@@ -508,7 +522,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeMapBegin(TMap map) throws TException {
-    if (DEBUG) LOG.debug("writeMapBegin("+toString(map)+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeMapBegin(" + toString(map) + ")");
+    }
     currentProtocol.writeMapBegin(map);
   }
 
@@ -518,7 +534,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeMapEnd() throws TException {
-    if (DEBUG) LOG.debug("writeMapEnd()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeMapEnd()");
+    }
     currentProtocol.writeMapEnd();
   }
 
@@ -528,7 +546,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeListBegin(TList list) throws TException {
-    if (DEBUG) LOG.debug("writeListBegin("+toString(list)+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeListBegin(" + toString(list) + ")");
+    }
     currentProtocol.writeListBegin(list);
   }
 
@@ -539,7 +559,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeListEnd() throws TException {
-    if (DEBUG) LOG.debug("writeListEnd()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeListEnd()");
+    }
     currentProtocol.writeListEnd();
   }
 
@@ -550,7 +572,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeSetBegin(TSet set) throws TException {
-    if (DEBUG) LOG.debug("writeSetBegin("+set+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeSetBegin(" + set + ")");
+    }
     currentProtocol.writeSetBegin(set);
   }
 
@@ -560,7 +584,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeSetEnd() throws TException {
-    if (DEBUG) LOG.debug("writeSetEnd()");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeSetEnd()");
+    }
     currentProtocol.writeSetEnd();
   }
 
@@ -570,7 +596,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeBool(boolean b) throws TException {
-    if (DEBUG) LOG.debug("writeBool("+b+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeBool(" + b + ")");
+    }
     currentProtocol.writeBool(b);
   }
 
@@ -580,7 +608,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeByte(byte b) throws TException {
-    if (DEBUG) LOG.debug("writeByte("+b+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeByte(" + b + ")");
+    }
     currentProtocol.writeByte(b);
   }
 
@@ -590,7 +620,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeI16(short i16) throws TException {
-    if (DEBUG) LOG.debug("writeI16("+i16+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeI16(" + i16 + ")");
+    }
     currentProtocol.writeI16(i16);
   }
 
@@ -600,7 +632,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeI32(int i32) throws TException {
-    if (DEBUG) LOG.debug("writeI32("+i32+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeI32(" + i32 + ")");
+    }
     currentProtocol.writeI32(i32);
   }
 
@@ -610,7 +644,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeI64(long i64) throws TException {
-    if (DEBUG) LOG.debug("writeI64("+i64+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeI64(" + i64 + ")");
+    }
     currentProtocol.writeI64(i64);
   }
 
@@ -620,7 +656,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeDouble(double dub) throws TException {
-    if (DEBUG) LOG.debug("writeDouble("+dub+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeDouble(" + dub + ")");
+    }
     currentProtocol.writeDouble(dub);
   }
 
@@ -630,7 +668,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeString(String str) throws TException {
-    if (DEBUG) LOG.debug("writeString("+str+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeString(" + str + ")");
+    }
     currentProtocol.writeString(str);
   }
 
@@ -640,7 +680,9 @@ public class ParquetWriteProtocol extends ParquetProtocol {
    */
   @Override
   public void writeBinary(ByteBuffer buf) throws TException {
-    if (DEBUG) LOG.debug("writeBinary("+buf+")");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("writeBinary(" + buf + ")");
+    }
     currentProtocol.writeBinary(buf);
   }
 
