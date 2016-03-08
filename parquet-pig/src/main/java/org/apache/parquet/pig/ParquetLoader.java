@@ -472,10 +472,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setPushdownPredicate(Expression e) throws IOException {
-    LOG.info("Pig pushdown expression: " + e);
+    LOGGER.info("Pig pushdown expression: " + e);
 
     FilterPredicate pred = buildFilter(e);
-    LOG.info("Parquet filter predicate expression: " + pred);
+    LOGGER.info("Parquet filter predicate expression: " + pred);
 
     storeInUDFContext(ParquetInputFormat.FILTER_PREDICATE, pred);
   }
