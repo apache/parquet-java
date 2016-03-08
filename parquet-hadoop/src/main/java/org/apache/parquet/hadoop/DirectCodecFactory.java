@@ -391,7 +391,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             decompressorPool.returnObject(decom);
           } else {
             if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "decompressor" + codec.getClass().getName()));
+              LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "decompressor", codec.getClass().getName()));
             }
           }
 
@@ -411,7 +411,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             } else {
               supportDirectDecompressor = false;
               if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor" + codec.getClass().getName()));
+                LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor", codec.getClass().getName()));
               }
             }
 

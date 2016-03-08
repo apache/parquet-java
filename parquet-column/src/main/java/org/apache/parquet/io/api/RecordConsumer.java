@@ -129,6 +129,7 @@ abstract public class RecordConsumer {
    * NoOps by default
    * Subclass class can implement its own flushing logic
    */
+  //TODO: make this abstract in 2.0
   public void flush() {
   }
 

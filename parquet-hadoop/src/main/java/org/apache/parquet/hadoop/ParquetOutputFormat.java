@@ -419,9 +419,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
     long minAllocation = conf.getLong(ParquetOutputFormat.MIN_MEMORY_ALLOCATION,
         MemoryManager.DEFAULT_MIN_MEMORY_ALLOCATION);
-    if (memoryManager == null) {
-      memoryManager = new MemoryManager(maxLoad, minAllocation);
-    } else if (memoryManager.getMemoryPoolRatio() != maxLoad) {
+    synchronized (ParquetOutputFormat.class) {
+      if (memoryManager == null) {
+        memoryManager = new MemoryManager(maxLoad, minAllocation);
+      }
+    }
+    if (memoryManager.getMemoryPoolRatio() != maxLoad) {
       if (LOGGER.isWarnEnabled()) {
         LOGGER.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
                     "be reset by the new value: " + maxLoad);
@@ -468,13 +471,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return committer;
   }
 
-
   /**
    * This memory manager is for all the real writers (InternalParquetRecordWriter) in one task.
    */
   private static MemoryManager memoryManager;
 
-  public static MemoryManager getMemoryManager() {
+  public synchronized static MemoryManager getMemoryManager() {
     return memoryManager;
   }
 }
