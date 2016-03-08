@@ -158,7 +158,9 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void flush() {
-      if (DEBUG) log("<!-- flush -->");
+      if (LOGGER.isDebugEnabled()) {
+        log("<!-- flush -->");
+      }
       delegate.flush();
     }
 
