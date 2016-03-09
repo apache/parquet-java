@@ -22,22 +22,18 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.Log;
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
-import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -45,9 +41,7 @@ import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationException;
-import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.Type;
 
 import static java.lang.String.format;
 import static org.apache.parquet.Log.DEBUG;
@@ -81,7 +75,6 @@ class InternalParquetRecordReader<T> {
 
   private long totalCountLoadedSoFar = 0;
 
-  private Path file;
   private UnmaterializableRecordCounter unmaterializableRecordCounter;
 
   /**
@@ -163,44 +156,24 @@ class InternalParquetRecordReader<T> {
     return (float) current / total;
   }
 
-  public void initialize(MessageType fileSchema,
-      FileMetaData parquetFileMetadata,
-      Path file, List<BlockMetaData> blocks, Configuration configuration)
+  public void initialize(ParquetFileReader reader, Configuration configuration)
       throws IOException {
     // initialize a ReadContext for this file
+    this.reader = reader;
+    FileMetaData parquetFileMetadata = reader.getFooter().getFileMetaData();
+    this.fileSchema = parquetFileMetadata.getSchema();
     Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
     ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
         configuration, toSetMultiMap(fileMetadata), fileSchema));
     this.columnIOFactory = new ColumnIOFactory(parquetFileMetadata.getCreatedBy());
     this.requestedSchema = readContext.getRequestedSchema();
-    this.fileSchema = fileSchema;
-    this.file = file;
     this.columnCount = requestedSchema.getPaths().size();
     this.recordConverter = readSupport.prepareForRead(
         configuration, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
-    List<ColumnDescriptor> columns = requestedSchema.getColumns();
-    reader = new ParquetFileReader(configuration, parquetFileMetadata, file, blocks, columns);
-    for (BlockMetaData block : blocks) {
-      total += block.getRowCount();
-    }
+    this.total = reader.getRecordCount();
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(configuration, total);
     LOG.info("RecordReader initialized will read a total of " + total + " records.");
-  }
-
-  private boolean contains(GroupType group, String[] path, int index) {
-    if (index == path.length) {
-      return false;
-    }
-    if (group.containsField(path[index])) {
-      Type type = group.getType(path[index]);
-      if (type.isPrimitive()) {
-        return index + 1 == path.length;
-      } else {
-        return contains(type.asGroupType(), path, index + 1);
-      }
-    }
-    return false;
   }
 
   public boolean nextKeyValue() throws IOException, InterruptedException {
@@ -240,7 +213,7 @@ class InternalParquetRecordReader<T> {
 
         if (DEBUG) LOG.debug("read value: " + currentValue);
       } catch (RuntimeException e) {
-        throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, file), e);
+        throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, reader.getPath()), e);
       }
     }
     return true;
