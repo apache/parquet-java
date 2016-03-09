@@ -31,6 +31,7 @@ import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.hadoop.CodecFactory.BytesDecompressor;
@@ -42,7 +43,7 @@ import org.apache.parquet.io.ParquetDecodingException;
  * in our format: columns, chunks, and pages
  *
  */
-class ColumnChunkPageReadStore implements PageReadStore {
+class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore {
   private static final Log LOG = Log.getLog(ColumnChunkPageReadStore.class);
 
   /**
@@ -136,7 +137,7 @@ class ColumnChunkPageReadStore implements PageReadStore {
             compressedDictionaryPage.getDictionarySize(),
             compressedDictionaryPage.getEncoding());
       } catch (IOException e) {
-        throw new RuntimeException(e); // TODO: cleanup
+        throw new ParquetDecodingException("Could not decompress dictionary page", e);
       }
     }
   }
@@ -159,6 +160,11 @@ class ColumnChunkPageReadStore implements PageReadStore {
       throw new IllegalArgumentException(path + " is not in the store: " + readers.keySet() + " " + rowCount);
     }
     return readers.get(path);
+  }
+
+  @Override
+  public DictionaryPage readDictionaryPage(ColumnDescriptor descriptor) {
+    return readers.get(descriptor).readDictionaryPage();
   }
 
   void addColumn(ColumnDescriptor path, ColumnChunkPageReader reader) {
