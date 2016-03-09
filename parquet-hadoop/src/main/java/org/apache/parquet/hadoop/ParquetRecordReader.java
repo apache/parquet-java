@@ -18,10 +18,9 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.filter2.compat.RowGroupFilter.filterRowGroups;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.*;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.offsets;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
-import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 import static org.apache.parquet.hadoop.ParquetInputFormat.SPLIT_FILES;
 import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
 
@@ -47,15 +46,15 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
+import org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel;
+import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.apache.parquet.schema.MessageType;
 
 /**
  * Reads the records from a block of a Parquet file
@@ -154,52 +153,38 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private void initializeInternalReader(ParquetInputSplit split, Configuration configuration) throws IOException {
     Path path = split.getPath();
     long[] rowGroupOffsets = split.getRowGroupOffsets();
-    List<BlockMetaData> filteredBlocks;
-    ParquetMetadata footer;
+
     // if task.side.metadata is set, rowGroupOffsets is null
-    if (rowGroupOffsets == null) {
-      // then we need to apply the predicate push down filter
-      footer = readFooter(configuration, path, range(split.getStart(), split.getEnd()));
-      MessageType fileSchema = footer.getFileMetaData().getSchema();
-      Filter filter = getFilter(configuration);
-      filteredBlocks = filterRowGroups(filter, footer.getBlocks(), fileSchema);
-    } else {
-      // otherwise we find the row groups that were selected on the client
-      footer = readFooter(configuration, path, NO_FILTER);
-      Set<Long> offsets = new HashSet<Long>();
-      for (long offset : rowGroupOffsets) {
-        offsets.add(offset);
-      }
-      filteredBlocks = new ArrayList<BlockMetaData>();
-      for (BlockMetaData block : footer.getBlocks()) {
-        if (offsets.contains(block.getStartingPos())) {
-          filteredBlocks.add(block);
-        }
-      }
-      // verify we found them all
-      if (filteredBlocks.size() != rowGroupOffsets.length) {
-        long[] foundRowGroupOffsets = new long[footer.getBlocks().size()];
-        for (int i = 0; i < foundRowGroupOffsets.length; i++) {
-          foundRowGroupOffsets[i] = footer.getBlocks().get(i).getStartingPos();
-        }
-        // this should never happen.
-        // provide a good error message in case there's a bug
+    MetadataFilter metadataFilter = (rowGroupOffsets != null ?
+        offsets(rowGroupOffsets) :
+        range(split.getStart(), split.getEnd()));
+
+    // open a reader with the metadata filter
+    ParquetFileReader reader = ParquetFileReader.open(
+        configuration, path, metadataFilter);
+
+    if (rowGroupOffsets != null) {
+      // verify a row group was found for each offset
+      List<BlockMetaData> blocks = reader.getFooter().getBlocks();
+      if (blocks.size() != rowGroupOffsets.length) {
         throw new IllegalStateException(
-            "All the offsets listed in the split should be found in the file."
+            "All of the offsets in the split should be found in the file."
             + " expected: " + Arrays.toString(rowGroupOffsets)
-            + " found: " + filteredBlocks
-            + " out of: " + Arrays.toString(foundRowGroupOffsets)
-            + " in range " + split.getStart() + ", " + split.getEnd());
+            + " found: " + blocks);
       }
+
+    } else {
+      // apply data filters
+      reader.filterRowGroups(getFilter(configuration));
     }
 
-    if (!filteredBlocks.isEmpty()) {
-      checkDeltaByteArrayProblem(footer.getFileMetaData(), configuration, filteredBlocks.get(0));
+    if (!reader.getRowGroups().isEmpty()) {
+      checkDeltaByteArrayProblem(
+          reader.getFooter().getFileMetaData(), configuration,
+          reader.getRowGroups().get(0));
     }
 
-    MessageType fileSchema = footer.getFileMetaData().getSchema();
-    internalReader.initialize(
-        fileSchema, footer.getFileMetaData(), path, filteredBlocks, configuration);
+    internalReader.initialize(reader, configuration);
   }
 
   private void checkDeltaByteArrayProblem(FileMetaData meta, Configuration conf, BlockMetaData block) {
