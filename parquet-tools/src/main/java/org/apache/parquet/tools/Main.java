@@ -150,11 +150,12 @@ public class Main {
     }
 
     if (usage) {
-      if (name != null && command != null) {
-        showUsage(name, command);
-      } else {
-        showUsage(name, command);
-      }
+    	if (name == null && command == null) {
+    		showUsage();
+    	}
+    	else {
+    		showUsage(name, command);
+    	}
     }
 
     System.exit(1);
