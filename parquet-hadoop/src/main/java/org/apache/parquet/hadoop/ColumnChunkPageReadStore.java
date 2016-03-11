@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  * in our format: columns, chunks, and pages
  *
  */
-class ColumnChunkPageReadStore implements PageReadStore {
+class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore {
   private static final Logger LOGGER = LoggerFactory.getLogger(ColumnChunkPageReadStore.class);
 
   /**
