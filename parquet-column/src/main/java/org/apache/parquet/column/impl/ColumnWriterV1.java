@@ -45,6 +45,10 @@ import org.slf4j.LoggerFactory;
  */
 final class ColumnWriterV1 implements ColumnWriter {
   private static final Logger LOGGER = LoggerFactory.getLogger(ColumnWriterV1.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
@@ -144,7 +148,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   private void writePage() {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("write page");
     }
     try {
@@ -167,7 +171,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void writeNull(int repetitionLevel, int definitionLevel) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       log(null, repetitionLevel, definitionLevel);
     }
     repetitionLevelColumn.writeInteger(repetitionLevel);
@@ -178,7 +182,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(double value, int repetitionLevel, int definitionLevel) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       log(value, repetitionLevel, definitionLevel);
     }
     repetitionLevelColumn.writeInteger(repetitionLevel);
@@ -190,7 +194,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(float value, int repetitionLevel, int definitionLevel) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       log(value, repetitionLevel, definitionLevel);
     }
     repetitionLevelColumn.writeInteger(repetitionLevel);
@@ -202,7 +206,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(Binary value, int repetitionLevel, int definitionLevel) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       log(value, repetitionLevel, definitionLevel);
     }
     repetitionLevelColumn.writeInteger(repetitionLevel);
@@ -214,7 +218,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       log(value, repetitionLevel, definitionLevel);
     }
     repetitionLevelColumn.writeInteger(repetitionLevel);
@@ -226,7 +230,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(int value, int repetitionLevel, int definitionLevel) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       log(value, repetitionLevel, definitionLevel);
     }
     repetitionLevelColumn.writeInteger(repetitionLevel);
@@ -238,7 +242,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(long value, int repetitionLevel, int definitionLevel) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       log(value, repetitionLevel, definitionLevel);
     }
     repetitionLevelColumn.writeInteger(repetitionLevel);
@@ -254,7 +258,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     }
     final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("write dictionary");
       }
       try {
