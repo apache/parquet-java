@@ -61,6 +61,10 @@ import org.slf4j.LoggerFactory;
  */
 public class MessageColumnIO extends GroupColumnIO {
   private static final Logger LOGGER = LoggerFactory.getLogger(MessageColumnIO.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private List<PrimitiveColumnIO> leaves;
 
@@ -279,14 +283,14 @@ public class MessageColumnIO extends GroupColumnIO {
 
     @Override
     public void startMessage() {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("< MESSAGE START >");
       }
       currentColumnIO = MessageColumnIO.this;
       r[0] = 0;
       int numberOfFieldsToVisit = ((GroupColumnIO) currentColumnIO).getChildrenCount();
       fieldsWritten[0].reset(numberOfFieldsToVisit);
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
@@ -295,10 +299,10 @@ public class MessageColumnIO extends GroupColumnIO {
     public void endMessage() {
       writeNullForMissingFieldsAtCurrentLevel();
       columns.endRecord();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("< MESSAGE END >");
       }
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
@@ -306,12 +310,12 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void startField(String field, int index) {
       try {
-        if (LOGGER.isDebugEnabled()) {
+        if (DEBUG_ENABLED) {
           log("startField(" + field + ", " + index + ")");
         }
         currentColumnIO = ((GroupColumnIO) currentColumnIO).getChild(index);
         emptyField = true;
-        if (LOGGER.isDebugEnabled()) {
+        if (DEBUG_ENABLED) {
           printState();
         }
       } catch (RuntimeException e) {
@@ -321,7 +325,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     @Override
     public void endField(String field, int index) {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("endField(" + field + ", " + index + ")");
       }
       currentColumnIO = currentColumnIO.getParent();
@@ -330,7 +334,7 @@ public class MessageColumnIO extends GroupColumnIO {
       }
       fieldsWritten[currentLevel].markWritten(index);
       r[currentLevel] = currentLevel == 0 ? 0 : r[currentLevel - 1];
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
@@ -342,7 +346,7 @@ public class MessageColumnIO extends GroupColumnIO {
           try {
             ColumnIO undefinedField = ((GroupColumnIO) currentColumnIO).getChild(i);
             int d = currentColumnIO.getDefinitionLevel();
-            if (LOGGER.isDebugEnabled()) {
+            if (DEBUG_ENABLED) {
               log(Arrays.toString(undefinedField.getFieldPath()) + ".writeNull(" + r[currentLevel] + "," + d + ")");
             }
             writeNull(undefinedField, r[currentLevel], d);
@@ -389,14 +393,14 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private void setRepetitionLevel() {
       r[currentLevel] = currentColumnIO.getRepetitionLevel();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("r: " + r[currentLevel]);
       }
     }
 
     @Override
     public void startGroup() {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("startGroup()");
       }
       GroupColumnIO group = (GroupColumnIO) currentColumnIO;
@@ -411,7 +415,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
       int fieldsCount = ((GroupColumnIO) currentColumnIO).getChildrenCount();
       fieldsWritten[currentLevel].reset(fieldsCount);
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
@@ -436,7 +440,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     @Override
     public void endGroup() {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("endGroup()");
       }
       emptyField = false;
@@ -444,7 +448,7 @@ public class MessageColumnIO extends GroupColumnIO {
       --currentLevel;
 
       setRepetitionLevel();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
@@ -455,84 +459,84 @@ public class MessageColumnIO extends GroupColumnIO {
 
     @Override
     public void addInteger(int value) {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("addInt(" + value + ")");
       }
       emptyField = false;
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
 
     @Override
     public void addLong(long value) {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("addLong(" + value + ")");
       }
       emptyField = false;
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
 
     @Override
     public void addBoolean(boolean value) {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("addBoolean(" + value + ")");
       }
       emptyField = false;
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
 
     @Override
     public void addBinary(Binary value) {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("addBinary(" + value.length() + " bytes)");
       }
       emptyField = false;
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
 
     @Override
     public void addFloat(float value) {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("addFloat(" + value + ")");
       }
       emptyField = false;
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
 
     @Override
     public void addDouble(double value) {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         log("addDouble(" + value + ")");
       }
       emptyField = false;
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         printState();
       }
     }
@@ -549,7 +553,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
   public RecordConsumer getRecordWriter(ColumnWriteStore columns) {
     RecordConsumer recordWriter = new MessageColumnIORecordConsumer(columns);
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       recordWriter = new RecordConsumerLoggingWrapper(recordWriter);
     }
     return validating ? new ValidatingRecordConsumer(recordWriter, getType()) : recordWriter;

@@ -40,6 +40,10 @@ import org.slf4j.LoggerFactory;
  */
 public class RunLengthBitPackingHybridDecoder {
   private static final Logger LOGGER = LoggerFactory.getLogger(RunLengthBitPackingHybridDecoder.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private static enum MODE { RLE, PACKED }
 
@@ -53,7 +57,7 @@ public class RunLengthBitPackingHybridDecoder {
   private int[] currentBuffer;
 
   public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("decoding bitWidth " + bitWidth);
     }
 
@@ -89,7 +93,7 @@ public class RunLengthBitPackingHybridDecoder {
     switch (mode) {
     case RLE:
       currentCount = header >>> 1;
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("reading " + currentCount + " values RLE");
       }
       currentValue = BytesUtils.readIntLittleEndianPaddedOnBitWidth(in, bitWidth);
@@ -97,7 +101,7 @@ public class RunLengthBitPackingHybridDecoder {
     case PACKED:
       int numGroups = header >>> 1;
       currentCount = numGroups * 8;
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("reading " + currentCount + " values BIT PACKED");
       }
       currentBuffer = new int[currentCount]; // TODO: reuse a buffer

@@ -41,6 +41,10 @@ import org.slf4j.LoggerFactory;
  */
 public class PlainValuesWriter extends ValuesWriter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PlainValuesWriter.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
@@ -119,7 +123,7 @@ public class PlainValuesWriter extends ValuesWriter {
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page", e);
     }
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("writing a buffer of size " + arrayOut.size());
     }
     return BytesInput.from(arrayOut);

@@ -27,6 +27,10 @@ import org.slf4j.LoggerFactory;
 
 class BitWriter {
   private static final Logger LOGGER = LoggerFactory.getLogger(BitWriter.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private CapacityByteArrayOutputStream baos;
   private int currentByte = 0;
@@ -48,13 +52,13 @@ class BitWriter {
   }
 
   public void writeBit(boolean bit) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("writing: " + (bit ? "1" : "0"));
     }
     currentByte = setBytePosition(currentByte, currentBytePosition++, bit);
     if (currentBytePosition == 8) {
       baos.write(currentByte);
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("to buffer: " + toBinary(currentByte));
       }
       currentByte = 0;
@@ -63,12 +67,12 @@ class BitWriter {
   }
 
   public void writeByte(int val) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("writing: " + toBinary(val) + " (" + val + ")");
     }
     currentByte |= ((val & 0xFF) << currentBytePosition);
     baos.write(currentByte);
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("to buffer: " + toBinary(currentByte));
     }
     currentByte >>>= 8;
@@ -82,7 +86,7 @@ class BitWriter {
    * @param bitsToWrite the number of bits to use
    */
   public void writeNBitInteger(int val, int bitsToWrite) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("writing: " + toBinary(val, bitsToWrite) + " (" + val + ")");
     }
     val <<= currentBytePosition;
@@ -90,7 +94,7 @@ class BitWriter {
     currentByte |= val;
     while (upperByte >= 8) {
       baos.write(currentByte); //this only writes the lowest byte
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("to buffer: " + toBinary(currentByte));
       }
       upperByte -= 8;
@@ -115,7 +119,7 @@ class BitWriter {
     if (!finished) {
       if (currentBytePosition > 0) {
         baos.write(currentByte);
-        if (LOGGER.isDebugEnabled()) {
+        if (DEBUG_ENABLED) {
           LOGGER.debug("to buffer: " + toBinary(currentByte));
         }
       }

@@ -57,6 +57,10 @@ import org.slf4j.LoggerFactory;
 
 class InternalParquetRecordReader<T> {
   private static final Logger LOGGER = LoggerFactory.getLogger(InternalParquetRecordReader.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private ColumnIOFactory columnIOFactory = null;
   private final Filter filter;
@@ -115,7 +119,7 @@ class InternalParquetRecordReader<T> {
     if (current == totalCountLoadedSoFar) {
       if (current != 0) {
         totalTimeSpentProcessingRecords += (System.currentTimeMillis() - startedAssemblingCurrentBlockAt);
-        if (LOGGER.isInfoEnabled()) {
+        if (INFO_ENABLED) {
             LOGGER.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
             final long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
             if (totalTime != 0) {
@@ -135,10 +139,10 @@ class InternalParquetRecordReader<T> {
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       BenchmarkCounter.incrementTime(timeSpentReading);
-      if (LOGGER.isInfoEnabled()) {
+      if (INFO_ENABLED) {
         LOGGER.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       }
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("initializing Record assembly with requested schema " + requestedSchema);
       }
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);
@@ -224,7 +228,7 @@ class InternalParquetRecordReader<T> {
         } catch (RecordMaterializationException e) {
           // this might throw, but it's fatal if it does.
           unmaterializableRecordCounter.incErrors(e);
-          if (LOGGER.isDebugEnabled()) {
+          if (DEBUG_ENABLED) {
             LOGGER.debug("skipping a corrupt record");
           }
           continue;
@@ -232,7 +236,7 @@ class InternalParquetRecordReader<T> {
 
         if (recordReader.shouldSkipCurrentRecord()) {
           // this record is being filtered via the filter2 package
-          if (LOGGER.isDebugEnabled()) {
+          if (DEBUG_ENABLED) {
             LOGGER.debug("skipping record");
           }
           continue;
@@ -241,7 +245,7 @@ class InternalParquetRecordReader<T> {
         if (currentValue == null) {
           // only happens with FilteredRecordReader at end of block
           current = totalCountLoadedSoFar;
-          if (LOGGER.isDebugEnabled()) {
+          if (DEBUG_ENABLED) {
             LOGGER.debug("filtered record reader reached end of block");
           }
           continue;
@@ -249,7 +253,7 @@ class InternalParquetRecordReader<T> {
 
         recordFound = true;
 
-        if (LOGGER.isDebugEnabled()) {
+        if (DEBUG_ENABLED) {
           LOGGER.debug("read value: " + currentValue);
         }
       } catch (RuntimeException e) {

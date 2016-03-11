@@ -74,6 +74,11 @@ import org.slf4j.LoggerFactory;
  */
 public class ParquetFileWriter {
   private static final Logger LOGGER = LoggerFactory.getLogger(ParquetFileWriter.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
+
 
   private static ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
 
@@ -268,7 +273,7 @@ public class ParquetFileWriter {
    */
   public void start() throws IOException {
     state = state.start();
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": start");
     }
     out.write(MAGIC);
@@ -281,7 +286,7 @@ public class ParquetFileWriter {
    */
   public void startBlock(long recordCount) throws IOException {
     state = state.startBlock();
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": start block");
     }
 //    out.write(MAGIC); // TODO: add a magic delimiter
@@ -322,7 +327,7 @@ public class ParquetFileWriter {
    */
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
     state = state.write();
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": write dictionary page: " + dictionaryPage.getDictionarySize() + " values");
     }
     currentChunkDictionaryPageOffset = out.getPos();
@@ -337,7 +342,7 @@ public class ParquetFileWriter {
     long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
     this.uncompressedLength += uncompressedSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": write dictionary page content " + compressedPageSize);
     }
     dictionaryPage.getBytes().writeAllTo(out);
@@ -363,7 +368,7 @@ public class ParquetFileWriter {
       Encoding valuesEncoding) throws IOException {
     state = state.write();
     long beforeHeader = out.getPos();
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(beforeHeader + ": write data page: " + valueCount + " values");
     }
     int compressedPageSize = (int)bytes.size();
@@ -377,7 +382,7 @@ public class ParquetFileWriter {
     long headerSize = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedPageSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": write data page content " + compressedPageSize);
     }
     bytes.writeAllTo(out);
@@ -404,7 +409,7 @@ public class ParquetFileWriter {
       Encoding valuesEncoding) throws IOException {
     state = state.write();
     long beforeHeader = out.getPos();
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(beforeHeader + ": write data page: " + valueCount + " values");
     }
     int compressedPageSize = (int)bytes.size();
@@ -419,7 +424,7 @@ public class ParquetFileWriter {
     long headerSize = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedPageSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": write data page content " + compressedPageSize);
     }
     bytes.writeAllTo(out);
@@ -442,13 +447,13 @@ public class ParquetFileWriter {
                        Statistics totalStats,
                        List<Encoding> encodings) throws IOException {
     state = state.write();
-     if (LOGGER.isDebugEnabled()) {
+     if (DEBUG_ENABLED) {
        LOGGER.debug(out.getPos() + ": write data pages");
      }
     long headersSize = bytes.size() - compressedTotalPageSize;
     this.uncompressedLength += uncompressedTotalPageSize + headersSize;
     this.compressedLength += compressedTotalPageSize + headersSize;
-     if (LOGGER.isDebugEnabled()) {
+     if (DEBUG_ENABLED) {
        LOGGER.debug(out.getPos() + ": write data pages content");
      }
     bytes.writeAllTo(out);
@@ -462,7 +467,7 @@ public class ParquetFileWriter {
    */
   public void endColumn() throws IOException {
     state = state.endColumn();
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": end column");
     }
     currentBlock.addColumn(ColumnChunkMetaData.get(
@@ -487,7 +492,7 @@ public class ParquetFileWriter {
    */
   public void endBlock() throws IOException {
     state = state.endBlock();
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": end block");
     }
     currentBlock.setRowCount(currentRecordCount);
@@ -604,7 +609,7 @@ public class ParquetFileWriter {
    */
   private static void copy(FSDataInputStream from, FSDataOutputStream to,
                           long start, long length) throws IOException{
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("Copying " + length + " bytes at " + start + " to " + to.getPos());
     }
     from.seek(start);
@@ -631,7 +636,7 @@ public class ParquetFileWriter {
    */
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": end");
     }
     ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
@@ -643,7 +648,7 @@ public class ParquetFileWriter {
     long footerIndex = out.getPos();
     org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
     writeFileMetaData(parquetMetadata, out);
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
     }
     BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
@@ -903,7 +908,7 @@ public class ParquetFileWriter {
       long remaining = dfsBlockSize - (out.getPos() % dfsBlockSize);
 
       if (isPaddingNeeded(remaining)) {
-        if (LOGGER.isDebugEnabled()) {
+        if (DEBUG_ENABLED) {
           LOGGER.debug("Adding " + remaining + " bytes of padding (" +
                        "row group size=" + rowGroupSize + "B, " +
                        "block size=" + dfsBlockSize + "B)");

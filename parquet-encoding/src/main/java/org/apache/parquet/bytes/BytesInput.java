@@ -45,6 +45,11 @@ import org.slf4j.LoggerFactory;
  */
 abstract public class BytesInput {
   private static final Logger LOGGER = LoggerFactory.getLogger(BytesInput.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
+
   private static final EmptyBytesInput EMPTY_BYTES_INPUT = new EmptyBytesInput();
 
   /**
@@ -89,14 +94,14 @@ abstract public class BytesInput {
    * @return a Bytes input that will write the given bytes
    */
   public static BytesInput from(byte[] in) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("BytesInput from array of " + in.length + " bytes");
     }
     return new ByteArrayBytesInput(in, 0 , in.length);
   }
 
   public static BytesInput from(byte[] in, int offset, int length) {
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("BytesInput from array of " + length + " bytes");
     }
     return new ByteArrayBytesInput(in, offset, length);
@@ -175,7 +180,7 @@ abstract public class BytesInput {
   public byte[] toByteArray() throws IOException {
     BAOS baos = new BAOS((int)size());
     this.writeAllTo(baos);
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("converted " + size() + " to byteArray of " + baos.size() + " bytes");
     }
     return baos.getBuf();
@@ -228,7 +233,7 @@ abstract public class BytesInput {
 
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("write All " + byteCount + " bytes");
       }
       // TODO: more efficient
@@ -236,7 +241,7 @@ abstract public class BytesInput {
     }
 
     public byte[] toByteArray() throws IOException {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("read all " + byteCount + " bytes");
       }
       byte[] buf = new byte[byteCount];
@@ -270,14 +275,14 @@ abstract public class BytesInput {
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       for (BytesInput input : inputs) {
-        if (LOGGER.isDebugEnabled()) {
+        if (DEBUG_ENABLED) {
           LOGGER.debug("write " + input.size() + " bytes to out");
         }
-        if (LOGGER.isDebugEnabled() && input instanceof SequenceBytesIn) {
+        if (DEBUG_ENABLED && input instanceof SequenceBytesIn) {
           LOGGER.debug("{");
         }
         input.writeAllTo(out);
-        if (LOGGER.isDebugEnabled() && input instanceof SequenceBytesIn) {
+        if (DEBUG_ENABLED && input instanceof SequenceBytesIn) {
           LOGGER.debug("}");
         }
       }

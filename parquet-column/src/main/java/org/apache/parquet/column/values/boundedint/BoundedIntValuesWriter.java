@@ -43,6 +43,10 @@ import org.slf4j.LoggerFactory;
  */
 class BoundedIntValuesWriter extends ValuesWriter {
   private static final Logger LOGGER = LoggerFactory.getLogger(BoundedIntValuesWriter.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private int currentValue = -1;
   private int currentValueCt = -1;
@@ -69,7 +73,7 @@ class BoundedIntValuesWriter extends ValuesWriter {
     this.bitWriter = new BitWriter(initialCapacity, pageSize, allocator);
     bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
     shouldRepeatThreshold = (bitsPerValue + 9)/(1 + bitsPerValue);
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("init column with bit width of " + bitsPerValue + " and repeat threshold of " + shouldRepeatThreshold);
     }
   }
@@ -88,7 +92,7 @@ class BoundedIntValuesWriter extends ValuesWriter {
   public BytesInput getBytes() {
     serializeCurrentValue();
     BytesInput buf = bitWriter.finish();
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("writing a buffer of size " + buf.size() + " + 4 bytes");
     }
     // We serialize the length so that on deserialization we can

@@ -37,6 +37,10 @@ import org.slf4j.LoggerFactory;
  */
 final class LruCache<K, V extends LruCache.Value<K, V>> {
   private static final Logger LOGGER = LoggerFactory.getLogger(LruCache.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
@@ -66,7 +70,7 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
               public boolean removeEldestEntry(final Map.Entry<K, V> eldest) {
                 boolean result = size() > maxSize;
                 if (result) {
-                  if (LOGGER.isDebugEnabled()) {
+                  if (DEBUG_ENABLED) {
                     LOGGER.debug("Removing eldest entry in cache: "
                             + eldest.getKey());
                   }
@@ -85,7 +89,7 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
   public V remove(final K key) {
     V oldValue = cacheMap.remove(key);
     if (oldValue != null) {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("Removed cache entry for '" + key + "'");
       }
     }
@@ -102,7 +106,7 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
    */
   public void put(final K key, final V newValue) {
     if (newValue == null || !newValue.isCurrent(key)) {
-      if (LOGGER.isWarnEnabled()) {
+      if (WARN_ENABLED) {
         LOGGER.warn("Ignoring new cache entry for '" + key + "' because it is "
                 + (newValue == null ? "null" : "not current"));
       }
@@ -111,7 +115,7 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
 
     V oldValue = cacheMap.get(key);
     if (oldValue != null && oldValue.isNewerThan(newValue)) {
-      if (LOGGER.isWarnEnabled()) {
+      if (WARN_ENABLED) {
         LOGGER.warn("Ignoring new cache entry for '" + key + "' because "
                 + "existing cache entry is newer");
       }
@@ -120,7 +124,7 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
 
     // no existing value or new value is newer than old value
     oldValue = cacheMap.put(key, newValue);
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       if (oldValue == null) {
         LOGGER.debug("Added new cache entry for '" + key + "'");
       } else {
@@ -146,7 +150,7 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
    */
   public V getCurrentValue(final K key) {
     V value = cacheMap.get(key);
-    if (LOGGER.isDebugEnabled()) {
+    if (DEBUG_ENABLED) {
       LOGGER.debug("Value for '" + key + "' " + (value == null ? "not " : "")
               + "in cache");
     }

@@ -39,6 +39,10 @@ import org.slf4j.LoggerFactory;
 
 public class TestMemColumn {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestMemColumn.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   @Test
   public void testMemColumn() throws Exception {
@@ -136,7 +140,7 @@ public class TestMemColumn {
     for (int i = 0; i < 837; i++) {
       int r = rs[i % rs.length];
       int d = ds[i % ds.length];
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("write i: " + i);
       }
       if (d == 2) {
@@ -152,7 +156,7 @@ public class TestMemColumn {
     for (int j = 0; j < columnReader.getTotalValueCount(); j++) {
       int r = rs[i % rs.length];
       int d = ds[i % ds.length];
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("read i: " + i);
       }
       assertEquals("r row " + i, r, columnReader.getCurrentRepetitionLevel());
