@@ -381,32 +381,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Parquet block size to " + blockSize);
-    }
-    if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Parquet page size to " + props.getPageSizeThreshold());
-    }
-    if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Parquet dictionary page size to " + props.getDictionaryPageSizeThreshold());
-    }
-    if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Dictionary is " + (props.isEnableDictionary() ? "on" : "off"));
-    }
-    if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Validation is " + (validating ? "on" : "off"));
-    }
-    if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Writer version is: " + props.getWriterVersion());
-    }
-    if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
-    }
-    if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
-    }
-    if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
-    }
-    if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Min row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
     }
 

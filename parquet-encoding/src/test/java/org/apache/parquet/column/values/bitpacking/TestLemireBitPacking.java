@@ -40,8 +40,6 @@ public class TestLemireBitPacking {
     for (Packer packer : Packer.values()) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("");
-      }
-      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("testPackUnPack");
       }
       for (int i = 1; i < 32; i++) {
@@ -95,8 +93,6 @@ public class TestLemireBitPacking {
   public void testPackUnPackAgainstHandWritten() throws IOException {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("");
-    }
-    if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("testPackUnPackAgainstHandWritten");
     }
     for (int i = 1; i < 8; i++) {

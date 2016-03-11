@@ -610,9 +610,7 @@ public class TestParquetFileWriter {
   }
 
   private void validateFooters(final List<Footer> metadata) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("{}", metadata);
-    }
+    LOGGER.debug("{}", metadata);
     assertEquals(String.valueOf(metadata), 3, metadata.size());
     for (Footer footer : metadata) {
       final File file = new File(footer.getFile().toUri());

@@ -89,9 +89,7 @@ public abstract class CodecConfig {
     } else if (isHadoopCompressionSet()) { // from hadoop config
       codec = getHadoopCompressionCodec();
     } else {
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("Compression set to false");
-      }
+      LOGGER.info("Compression set to false");
       codec = CompressionCodecName.UNCOMPRESSED;
     }
 

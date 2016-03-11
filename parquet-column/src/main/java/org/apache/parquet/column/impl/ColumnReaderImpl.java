@@ -524,9 +524,7 @@ public class ColumnReaderImpl implements ColumnReader {
   private void checkRead() {
     if (isPageFullyConsumed()) {
       if (isFullyConsumed()) {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("end reached");
-        }
+        LOGGER.debug("end reached");
         repetitionLevel = 0; // the next repetition level
         return;
       }
@@ -536,9 +534,7 @@ public class ColumnReaderImpl implements ColumnReader {
   }
 
   private void readPage() {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("loading page");
-    }
+    LOGGER.debug("loading page");
     DataPage page = pageReader.readPage();
     page.accept(new DataPage.Visitor<Void>() {
       @Override
@@ -597,8 +593,6 @@ public class ColumnReaderImpl implements ColumnReader {
       ByteBuffer bytes = page.getBytes().toByteBuffer();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("page size " + bytes.remaining() + " bytes and " + pageValueCount + " records");
-      }
-      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("reading repetition levels at 0");
       }
       rlReader.initFromPage(pageValueCount, bytes, 0);

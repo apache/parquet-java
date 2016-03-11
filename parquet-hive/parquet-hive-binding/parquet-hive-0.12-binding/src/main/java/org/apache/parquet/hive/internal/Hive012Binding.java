@@ -78,14 +78,10 @@ public class Hive012Binding extends AbstractHiveBinding {
       final String splitPath, final String splitPathWithNoSchema) {
 
     if (mapWork == null) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Not pushing projections and filters because MapWork is null");
-      }
+      LOGGER.debug("Not pushing projections and filters because MapWork is null");
       return;
     } else if (mapWork.getPathToAliases() == null) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Not pushing projections and filters because pathToAliases is null");
-      }
+      LOGGER.debug("Not pushing projections and filters because pathToAliases is null");
       return;
     }
 
@@ -128,9 +124,7 @@ public class Hive012Binding extends AbstractHiveBinding {
 
     final TableScanDesc scanDesc = tableScan.getConf();
     if (scanDesc == null) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Not pushing filters because TableScanDesc is null");
-      }
+      LOGGER.debug("Not pushing filters because TableScanDesc is null");
       return;
     }
 
@@ -140,9 +134,7 @@ public class Hive012Binding extends AbstractHiveBinding {
     // push down filters
     final ExprNodeDesc filterExpr = scanDesc.getFilterExpr();
     if (filterExpr == null) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Not pushing filters because FilterExpr is null");
-      }
+      LOGGER.debug("Not pushing filters because FilterExpr is null");
       return;
     }
 

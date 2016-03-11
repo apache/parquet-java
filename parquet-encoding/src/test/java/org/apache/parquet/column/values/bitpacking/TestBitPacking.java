@@ -173,8 +173,6 @@ public class TestBitPacking {
     byte[] bytes = baos.toByteArray();
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("vals (" + bitLength + "): " + toString(vals));
-    }
-    if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("bytes: " + toString(bytes));
     }
     Assert.assertEquals(expected, toString(bytes));

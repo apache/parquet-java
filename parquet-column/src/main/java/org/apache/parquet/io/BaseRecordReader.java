@@ -71,17 +71,13 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
   final protected void startMessage() {
     // reset state
     endField = null;
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("startMessage()");
-    }
+    LOGGER.debug("startMessage()");
     recordConsumer.startMessage();
   }
 
   final protected void startGroup(String field, int index) {
     startField(field, index);
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("startGroup()");
-    }
+    LOGGER.debug("startGroup()");
     recordConsumer.startGroup();
   }
 
@@ -146,9 +142,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
       recordConsumer.endField(endField, endIndex);
       endField = null;
     }
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("endGroup()");
-    }
+    LOGGER.debug("endGroup()");
     recordConsumer.endGroup();
     endField(field, index);
   }
@@ -159,9 +153,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
       recordConsumer.endField(endField, endIndex);
       endField = null;
     }
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("endMessage()");
-    }
+    LOGGER.debug("endMessage()");
     recordConsumer.endMessage();
   }
 

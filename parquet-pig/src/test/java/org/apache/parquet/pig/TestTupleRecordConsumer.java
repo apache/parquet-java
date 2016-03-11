@@ -129,9 +129,7 @@ public class TestTupleRecordConsumer {
     RecordMaterializer<Tuple> recordConsumer = newPigRecordConsumer(pigSchemaString);
     TupleWriteSupport tupleWriter = newTupleWriter(pigSchemaString, recordConsumer);
     for (Tuple tuple : input) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("{}", tuple);
-      }
+      LOGGER.debug("{}", tuple);
       tupleWriter.write(tuple);
       tuples.add(recordConsumer.getCurrentRecord());
     }
@@ -164,9 +162,7 @@ public class TestTupleRecordConsumer {
     GroupRecordConverter recordConsumer = new GroupRecordConverter(schema);
     TupleWriteSupport tupleWriter = newTupleWriter(pigSchemaString, recordConsumer);
     for (Tuple t : tuples) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("{}", t);
-      }
+      LOGGER.debug("{}", t);
       tupleWriter.write(t);
       groups.add(recordConsumer.getCurrentRecord());
     }
@@ -174,9 +170,7 @@ public class TestTupleRecordConsumer {
     assertEquals(input.size(), groups.size());
     for (int i = 0; i < input.size(); i++) {
       Group in = input.get(i);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("{}", in);
-      }
+      LOGGER.debug("{}", in);
       Group out = groups.get(i);
       assertEquals(in.toString(), out.toString());
     }

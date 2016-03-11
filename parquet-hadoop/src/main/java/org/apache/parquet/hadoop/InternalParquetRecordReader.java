@@ -135,8 +135,6 @@ class InternalParquetRecordReader<T> {
       BenchmarkCounter.incrementTime(timeSpentReading);
       if (INFO_ENABLED) {
         LOGGER.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
-      }
-      if (DEBUG_ENABLED) {
         LOGGER.debug("initializing Record assembly with requested schema " + requestedSchema);
       }
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);

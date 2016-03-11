@@ -39,8 +39,6 @@ public class TestByteBitPacking {
   public void testPackUnPack() {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("");
-    }
-    if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("testPackUnPack");
     }
     for (int i = 1; i < 32; i++) {
@@ -81,8 +79,6 @@ public class TestByteBitPacking {
   public void testPackUnPackAgainstHandWritten() throws IOException {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("");
-    }
-    if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("testPackUnPackAgainstHandWritten");
     }
     for (int i = 1; i < 8; i++) {
@@ -130,8 +126,6 @@ public class TestByteBitPacking {
     for (Packer pack: Packer.values()) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("");
-      }
-      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("testPackUnPackAgainstLemire " + pack.name());
       }
       for (int i = 1; i < 32; i++) {

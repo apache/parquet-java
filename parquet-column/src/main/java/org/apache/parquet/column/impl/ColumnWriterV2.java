@@ -241,9 +241,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   public void finalizeColumnChunk() {
     final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
-      if (DEBUG_ENABLED) {
-        LOGGER.debug("write dictionary");
-      }
+      LOGGER.debug("write dictionary");
       try {
         pageWriter.writeDictionaryPage(dictionaryPage);
       } catch (IOException e) {
@@ -310,9 +308,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   public void writePage(long rowCount) {
     int pageRowCount = Ints.checkedCast(rowCount - rowsWrittenSoFar);
     this.rowsWrittenSoFar = rowCount;
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("write page");
-    }
+    LOGGER.debug("write page");
     try {
       // TODO: rework this API. Those must be called *in that order*
       BytesInput bytes = dataColumn.getBytes();

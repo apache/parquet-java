@@ -301,8 +301,6 @@ public class MessageColumnIO extends GroupColumnIO {
       columns.endRecord();
       if (DEBUG_ENABLED) {
         log("< MESSAGE END >");
-      }
-      if (DEBUG_ENABLED) {
         printState();
       }
     }

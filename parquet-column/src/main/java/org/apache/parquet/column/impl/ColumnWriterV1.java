@@ -148,9 +148,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   private void writePage() {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("write page");
-    }
+    LOGGER.debug("write page");
     try {
       pageWriter.writePage(
           concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
@@ -258,9 +256,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     }
     final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
-      if (DEBUG_ENABLED) {
-        LOGGER.debug("write dictionary");
-      }
+      LOGGER.debug("write dictionary");
       try {
         pageWriter.writeDictionaryPage(dictionaryPage);
       } catch (IOException e) {
