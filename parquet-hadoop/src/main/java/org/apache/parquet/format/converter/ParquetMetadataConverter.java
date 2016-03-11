@@ -431,13 +431,14 @@ public class ParquetMetadataConverter {
   private static interface MetadataFilterVisitor<T, E extends Throwable> {
     T visit(NoFilter filter) throws E;
     T visit(SkipMetadataFilter filter) throws E;
-    T visit(RangeMetadataFilter filter) throws E;
+    T visit(OffsetMetadataFilter filter) throws E;
   }
 
   public abstract static class MetadataFilter {
     private MetadataFilter() {}
     abstract <T, E extends Throwable> T accept(MetadataFilterVisitor<T, E> visitor) throws E;
   }
+
   /**
    * [ startOffset, endOffset )
    * @param startOffset
@@ -447,6 +448,15 @@ public class ParquetMetadataConverter {
   public static MetadataFilter range(long startOffset, long endOffset) {
     return new RangeMetadataFilter(startOffset, endOffset);
   }
+
+  public static MetadataFilter offsets(long... offsets) {
+    Set<Long> set = new HashSet<Long>();
+    for (long offset : offsets) {
+      set.add(offset);
+    }
+    return new OffsetListMetadataFilter(set);
+  }
+
   private static final class NoFilter extends MetadataFilter {
     private NoFilter() {}
     @Override
@@ -469,29 +479,56 @@ public class ParquetMetadataConverter {
       return "SKIP_ROW_GROUPS";
     }
   }
+
+  interface OffsetMetadataFilter {
+    boolean contains(long offset);
+  }
+
   /**
    * [ startOffset, endOffset )
    * @author Julien Le Dem
    */
   // Visible for testing
-  static final class RangeMetadataFilter extends MetadataFilter {
+  static final class RangeMetadataFilter extends MetadataFilter implements OffsetMetadataFilter {
     final long startOffset;
     final long endOffset;
+
     RangeMetadataFilter(long startOffset, long endOffset) {
       super();
       this.startOffset = startOffset;
       this.endOffset = endOffset;
     }
+
     @Override
     <T, E extends Throwable> T accept(MetadataFilterVisitor<T, E> visitor) throws E {
       return visitor.visit(this);
     }
-    boolean contains(long offset) {
+
+    @Override
+    public boolean contains(long offset) {
       return offset >= this.startOffset && offset < this.endOffset;
     }
+
     @Override
     public String toString() {
       return "range(s:" + startOffset + ", e:" + endOffset + ")";
+    }
+  }
+
+  static final class OffsetListMetadataFilter extends MetadataFilter implements OffsetMetadataFilter {
+    private final Set<Long> offsets;
+
+    public OffsetListMetadataFilter(Set<Long> offsets) {
+      this.offsets = offsets;
+    }
+
+    public boolean contains(long offset) {
+      return offsets.contains(offset);
+    }
+
+    @Override
+    <T, E extends Throwable> T accept(MetadataFilterVisitor<T, E> visitor) throws E {
+      return visitor.visit(this);
     }
   }
 
@@ -501,7 +538,7 @@ public class ParquetMetadataConverter {
   }
 
   // Visible for testing
-  static FileMetaData filterFileMetaData(FileMetaData metaData, RangeMetadataFilter filter) {
+  static FileMetaData filterFileMetaData(FileMetaData metaData, OffsetMetadataFilter filter) {
     List<RowGroup> rowGroups = metaData.getRow_groups();
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
     for (RowGroup rowGroup : rowGroups) {
@@ -546,7 +583,7 @@ public class ParquetMetadataConverter {
       }
 
       @Override
-      public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
+      public FileMetaData visit(OffsetMetadataFilter filter) throws IOException {
         return filterFileMetaData(readFileMetaData(from), filter);
       }
     });
