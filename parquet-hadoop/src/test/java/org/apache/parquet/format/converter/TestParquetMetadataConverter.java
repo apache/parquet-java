@@ -27,7 +27,7 @@ import static org.apache.parquet.format.CompressionCodec.UNCOMPRESSED;
 import static org.apache.parquet.format.Type.INT32;
 import static org.apache.parquet.format.Util.readPageHeader;
 import static org.apache.parquet.format.Util.writePageHeader;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaData;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaDataByMidpoint;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.getOffset;
 
 import java.io.ByteArrayInputStream;
@@ -170,7 +170,8 @@ public class TestParquetMetadataConverter {
   }
 
   private FileMetaData filter(FileMetaData md, long start, long end) {
-    return filterFileMetaData(new FileMetaData(md), new ParquetMetadataConverter.RangeMetadataFilter(start, end));
+    return filterFileMetaDataByMidpoint(new FileMetaData(md),
+        new ParquetMetadataConverter.RangeMetadataFilter(start, end));
   }
 
   private void verifyMD(FileMetaData md, long... offsets) {
