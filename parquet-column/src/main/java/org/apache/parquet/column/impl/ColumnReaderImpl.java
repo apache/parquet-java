@@ -61,6 +61,10 @@ import org.slf4j.LoggerFactory;
  */
 public class ColumnReaderImpl implements ColumnReader {
   private static final Logger LOGGER = LoggerFactory.getLogger(ColumnReaderImpl.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
+  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
+  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
+  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   /**
    * binds the lower level page decoder to the record converter materializing the records
@@ -524,7 +528,9 @@ public class ColumnReaderImpl implements ColumnReader {
   private void checkRead() {
     if (isPageFullyConsumed()) {
       if (isFullyConsumed()) {
-        LOGGER.debug("end reached");
+        if (DEBUG_ENABLED) {
+          LOGGER.debug("end reached");
+        }
         repetitionLevel = 0; // the next repetition level
         return;
       }
@@ -534,7 +540,9 @@ public class ColumnReaderImpl implements ColumnReader {
   }
 
   private void readPage() {
-    LOGGER.debug("loading page");
+    if (DEBUG_ENABLED) {
+      LOGGER.debug("loading page");
+    }
     DataPage page = pageReader.readPage();
     page.accept(new DataPage.Visitor<Void>() {
       @Override
@@ -591,18 +599,18 @@ public class ColumnReaderImpl implements ColumnReader {
     this.definitionLevelColumn = new ValuesReaderIntIterator(dlReader);
     try {
       ByteBuffer bytes = page.getBytes().toByteBuffer();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("page size " + bytes.remaining() + " bytes and " + pageValueCount + " records");
         LOGGER.debug("reading repetition levels at 0");
       }
       rlReader.initFromPage(pageValueCount, bytes, 0);
       int next = rlReader.getNextOffset();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("reading definition levels at " + next);
       }
       dlReader.initFromPage(pageValueCount, bytes, next);
       next = dlReader.getNextOffset();
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("reading data at " + next);
       }
       initDataReader(page.getValueEncoding(), bytes, next, page.getValueCount());
@@ -615,7 +623,7 @@ public class ColumnReaderImpl implements ColumnReader {
     this.repetitionLevelColumn = newRLEIterator(path.getMaxRepetitionLevel(), page.getRepetitionLevels());
     this.definitionLevelColumn = newRLEIterator(path.getMaxDefinitionLevel(), page.getDefinitionLevels());
     try {
-      if (LOGGER.isDebugEnabled()) {
+      if (DEBUG_ENABLED) {
         LOGGER.debug("page data size " + page.getData().size() + " bytes and " + pageValueCount + " records");
       }
       initDataReader(page.getDataEncoding(), page.getData().toByteBuffer(), 0, page.getValueCount());
