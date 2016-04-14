@@ -58,7 +58,7 @@ public class IntList {
     }
 
     /**
-     * @return wether there is a next value
+     * @return whether there is a next value
      */
     public boolean hasNext() {
       return current < count;
@@ -80,11 +80,11 @@ public class IntList {
   private int currentSlabPos;
 
   /**
-   * construct an empty list
+   * Construct an empty list
+   * Lazy initialize currentSlab only when needed to save on memory in cases where items might
+   * not be added
    */
-  public IntList() {
-    initSlab();
-  }
+  public IntList() {}
 
   private void initSlab() {
     currentSlab = new int[SLAB_SIZE];
@@ -95,10 +95,13 @@ public class IntList {
    * @param i value to append to the end of the list
    */
   public void add(int i) {
-    if (currentSlabPos == currentSlab.length) {
+    if (currentSlab == null) {
+      initSlab();
+    } else if (currentSlabPos == currentSlab.length) {
       slabs.add(currentSlab);
       initSlab();
     }
+
     currentSlab[currentSlabPos] = i;
     ++ currentSlabPos;
   }
@@ -108,6 +111,10 @@ public class IntList {
    * @return an IntIterator on the content
    */
   public IntIterator iterator() {
+    if (currentSlab == null) {
+      initSlab();
+    }
+
     int[][] itSlabs = slabs.toArray(new int[slabs.size() + 1][]);
     itSlabs[slabs.size()] = currentSlab;
     return new IntIterator(itSlabs, SLAB_SIZE * slabs.size() + currentSlabPos);
