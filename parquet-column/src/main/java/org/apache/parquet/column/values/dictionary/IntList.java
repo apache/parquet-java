@@ -76,15 +76,11 @@ public class IntList {
   }
 
   private List<int[]> slabs = new ArrayList<int[]>();
+
+  // Lazy initialize currentSlab only when needed to save on memory in cases where items might
+  // not be added
   private int[] currentSlab;
   private int currentSlabPos;
-
-  /**
-   * Construct an empty list
-   * Lazy initialize currentSlab only when needed to save on memory in cases where items might
-   * not be added
-   */
-  public IntList() {}
 
   private void initSlab() {
     currentSlab = new int[SLAB_SIZE];
