@@ -252,7 +252,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
     return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+        ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK);
   }
 
   public static boolean getEstimatePageSizeCheck(Configuration configuration) {
@@ -383,7 +383,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
     if (INFO) LOG.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
     if (INFO) LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
-    if (INFO) LOG.info("Min row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+    if (INFO) LOG.info("Max row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
 
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(
