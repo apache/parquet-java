@@ -19,6 +19,7 @@
 package org.apache.parquet.format.converter;
 
 import static java.util.Collections.emptyList;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaDataByStart;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
@@ -43,6 +44,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.google.common.collect.Sets;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -174,6 +176,18 @@ public class TestParquetMetadataConverter {
         new ParquetMetadataConverter.RangeMetadataFilter(start, end));
   }
 
+  private FileMetaData find(FileMetaData md, Long... blockStart) {
+    return filterFileMetaDataByStart(new FileMetaData(md),
+        new ParquetMetadataConverter.OffsetMetadataFilter(
+            Sets.newHashSet((Long[]) blockStart)));
+  }
+
+  private FileMetaData find(FileMetaData md, long blockStart) {
+    return filterFileMetaDataByStart(new FileMetaData(md),
+        new ParquetMetadataConverter.OffsetMetadataFilter(
+            Sets.newHashSet(blockStart)));
+  }
+
   private void verifyMD(FileMetaData md, long... offsets) {
     assertEquals(offsets.length, md.row_groups.size());
     for (int i = 0; i < offsets.length; i++) {
@@ -241,6 +255,18 @@ public class TestParquetMetadataConverter {
     verifyAllFilters(metadata(11, 9, 10), 10);
     verifyAllFilters(metadata(11, 9, 10), 9);
     verifyAllFilters(metadata(11, 9, 10), 8);
+  }
+
+  @Test
+  public void testFindRowGroups() {
+    verifyMD(find(metadata(50, 50, 50), 0), 0);
+    verifyMD(find(metadata(50, 50, 50), 50), 50);
+    verifyMD(find(metadata(50, 50, 50), 100), 100);
+    verifyMD(find(metadata(50, 50, 50), 0L, 50L), 0, 50);
+    verifyMD(find(metadata(50, 50, 50), 0L, 50L, 100L), 0, 50, 100);
+    verifyMD(find(metadata(50, 50, 50), 50L, 100L), 50, 100);
+    // doesn't find an offset that isn't the start of a row group.
+    verifyMD(find(metadata(50, 50, 50), 10));
   }
 
   @Test
