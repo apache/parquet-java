@@ -257,7 +257,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
     return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+        ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK);
   }
 
   public static boolean getEstimatePageSizeCheck(Configuration configuration) {
