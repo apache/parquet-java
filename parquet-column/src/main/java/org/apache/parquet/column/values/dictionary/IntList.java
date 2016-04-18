@@ -31,7 +31,13 @@ import java.util.List;
  */
 public class IntList {
 
-  private static final int SLAB_SIZE = 64 * 1024;
+  private static final int MAX_SLAB_SIZE = 64 * 1024;
+  private static final int INITIAL_SLAB_SIZE = 4 * 1024;
+
+  //Double slab size till we reach the max slab size. At that point we just add slabs of size
+  //MAX_SLAB_SIZE. This ensures we don't allocate very large slabs from the start if we don't have
+  //too much data.
+  private int currentSlabSize = INITIAL_SLAB_SIZE / 2;
 
   /**
    * to iterate on the content of the list
@@ -43,14 +49,17 @@ public class IntList {
   public static class IntIterator {
 
     private final int[][] slabs;
-    private int current;
     private final int count;
+
+    private int current;
+    private int currentRow;
+    private int currentCol;
 
     /**
      * slabs will be iterated in order up to the provided count
      * as the last slab may not be full
      * @param slabs contain the ints
-     * @param count total count of ints
+     * @param count count of ints
      */
     public IntIterator(int[][] slabs, int count) {
       this.slabs = slabs;
@@ -68,11 +77,19 @@ public class IntList {
      * @return the next int
      */
     public int next() {
-      final int result = slabs[current / SLAB_SIZE][current % SLAB_SIZE];
-      ++ current;
+      final int result = slabs[currentRow][currentCol];
+      incrementPosition();
       return result;
     }
 
+    private void incrementPosition() {
+      current++;
+      currentCol++;
+      if(currentCol >= slabs[currentRow].length) {
+        currentCol = 0;
+        currentRow++;
+      }
+    }
   }
 
   private List<int[]> slabs = new ArrayList<int[]>();
@@ -83,8 +100,19 @@ public class IntList {
   private int currentSlabPos;
 
   private void initSlab() {
-    currentSlab = new int[SLAB_SIZE];
+    updateCurrentSlabSize();
+    currentSlab = new int[currentSlabSize];
     currentSlabPos = 0;
+  }
+
+  //Double slab size up to the MAX_SLAB_SIZE limit
+  private void updateCurrentSlabSize() {
+    if(currentSlabSize < MAX_SLAB_SIZE) {
+      currentSlabSize *= 2;
+      if(currentSlabSize > MAX_SLAB_SIZE) {
+        currentSlabSize = MAX_SLAB_SIZE;
+      }
+    }
   }
 
   /**
@@ -113,14 +141,19 @@ public class IntList {
 
     int[][] itSlabs = slabs.toArray(new int[slabs.size() + 1][]);
     itSlabs[slabs.size()] = currentSlab;
-    return new IntIterator(itSlabs, SLAB_SIZE * slabs.size() + currentSlabPos);
+    return new IntIterator(itSlabs, size());
   }
 
   /**
    * @return the current size of the list
    */
   public int size() {
-    return SLAB_SIZE * slabs.size() + currentSlabPos;
+    int size = currentSlabPos;
+    for(int [] slab : slabs) {
+      size += slab.length;
+    }
+
+    return size;
   }
 
 }
