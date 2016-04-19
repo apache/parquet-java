@@ -150,9 +150,10 @@ public class Main {
     }
 
     if (usage) {
-      if (name != null && command != null) {
-        showUsage(name, command);
-      } else {
+      if (name == null && command == null) {
+        showUsage();
+      }
+      else {
         showUsage(name, command);
       }
     }
