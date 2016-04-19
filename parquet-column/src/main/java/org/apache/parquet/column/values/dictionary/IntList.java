@@ -31,13 +31,20 @@ import java.util.List;
  */
 public class IntList {
 
-  public static final int MAX_SLAB_SIZE = 64 * 1024;
-  public static final int INITIAL_SLAB_SIZE = 4 * 1024;
+  static final int MAX_SLAB_SIZE = 64 * 1024;
+  static final int INITIAL_SLAB_SIZE = 4 * 1024;
 
-  //Double slab size till we reach the max slab size. At that point we just add slabs of size
-  //MAX_SLAB_SIZE. This ensures we don't allocate very large slabs from the start if we don't have
-  //too much data.
-  private int currentSlabSize = INITIAL_SLAB_SIZE / 2;
+  // Double slab size till we reach the max slab size. At that point we just add slabs of size
+  // MAX_SLAB_SIZE. This ensures we don't allocate very large slabs from the start if we don't have
+  // too much data.
+  private int currentSlabSize = INITIAL_SLAB_SIZE;
+
+  /**
+   * Visible for testing to verify the current slab size
+   */
+  int getCurrentSlabSize() {
+    return currentSlabSize;
+  }
 
   /**
    * to iterate on the content of the list
@@ -85,7 +92,7 @@ public class IntList {
     private void incrementPosition() {
       current++;
       currentCol++;
-      if(currentCol >= slabs[currentRow].length) {
+      if (currentCol >= slabs[currentRow].length) {
         currentCol = 0;
         currentRow++;
       }
@@ -99,17 +106,16 @@ public class IntList {
   private int[] currentSlab;
   private int currentSlabPos;
 
-  private void initSlab() {
-    updateCurrentSlabSize();
+  private void allocateSlab() {
     currentSlab = new int[currentSlabSize];
     currentSlabPos = 0;
   }
 
-  //Double slab size up to the MAX_SLAB_SIZE limit
+  // Double slab size up to the MAX_SLAB_SIZE limit
   private void updateCurrentSlabSize() {
-    if(currentSlabSize < MAX_SLAB_SIZE) {
+    if (currentSlabSize < MAX_SLAB_SIZE) {
       currentSlabSize *= 2;
-      if(currentSlabSize > MAX_SLAB_SIZE) {
+      if (currentSlabSize > MAX_SLAB_SIZE) {
         currentSlabSize = MAX_SLAB_SIZE;
       }
     }
@@ -120,10 +126,11 @@ public class IntList {
    */
   public void add(int i) {
     if (currentSlab == null) {
-      initSlab();
+      allocateSlab();
     } else if (currentSlabPos == currentSlab.length) {
       slabs.add(currentSlab);
-      initSlab();
+      updateCurrentSlabSize();
+      allocateSlab();
     }
 
     currentSlab[currentSlabPos] = i;
@@ -136,7 +143,7 @@ public class IntList {
    */
   public IntIterator iterator() {
     if (currentSlab == null) {
-      initSlab();
+      allocateSlab();
     }
 
     int[][] itSlabs = slabs.toArray(new int[slabs.size() + 1][]);
@@ -149,7 +156,7 @@ public class IntList {
    */
   public int size() {
     int size = currentSlabPos;
-    for(int [] slab : slabs) {
+    for (int [] slab : slabs) {
       size += slab.length;
     }
 

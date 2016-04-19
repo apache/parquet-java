@@ -30,7 +30,7 @@ public class IntListTest {
   @Test
   public void testSmallList() {
     int testSize = IntList.INITIAL_SLAB_SIZE - 100;
-    doTestIntList(testSize);
+    doTestIntList(testSize, IntList.INITIAL_SLAB_SIZE);
   }
 
   /**
@@ -39,7 +39,7 @@ public class IntListTest {
   @Test
   public void testListGreaterThanInitialSlabSize() {
     int testSize = IntList.INITIAL_SLAB_SIZE + 100;
-    doTestIntList(testSize);
+    doTestIntList(testSize, IntList.INITIAL_SLAB_SIZE * 2);
   }
 
   /**
@@ -49,14 +49,17 @@ public class IntListTest {
   @Test
   public void testListGreaterThanMaxSlabSize() {
     int testSize = IntList.MAX_SLAB_SIZE * 4 + 100;
-    doTestIntList(testSize);
+    doTestIntList(testSize, IntList.MAX_SLAB_SIZE);
   }
 
-  private void doTestIntList(int testSize) {
+  private void doTestIntList(int testSize, int expectedSlabSize) {
     IntList testList = new IntList();
     populateList(testList, testSize);
 
     verifyIteratorResults(testSize, testList);
+
+    // confirm the size of the current slab
+    Assert.assertEquals(expectedSlabSize, testList.getCurrentSlabSize());
   }
 
   private void populateList(IntList testList, int size) {
@@ -75,7 +78,7 @@ public class IntListTest {
       expected++;
     }
 
-    //ensure we have the correct final value of expected
+    // ensure we have the correct final value of expected
     Assert.assertEquals(testSize, expected);
   }
 }
