@@ -31,8 +31,8 @@ import java.util.List;
  */
 public class IntList {
 
-  private static final int MAX_SLAB_SIZE = 64 * 1024;
-  private static final int INITIAL_SLAB_SIZE = 4 * 1024;
+  public static final int MAX_SLAB_SIZE = 64 * 1024;
+  public static final int INITIAL_SLAB_SIZE = 4 * 1024;
 
   //Double slab size till we reach the max slab size. At that point we just add slabs of size
   //MAX_SLAB_SIZE. This ensures we don't allocate very large slabs from the start if we don't have

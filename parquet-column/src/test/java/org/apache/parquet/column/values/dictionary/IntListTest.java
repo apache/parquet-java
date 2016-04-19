@@ -25,30 +25,30 @@ import junit.framework.Assert;
 public class IntListTest {
 
   /**
-   * Test IntList of fairly small size (< 4K), this tests a single slab being created
+   * Test IntList of fairly small size (< INITIAL_SLAB_SIZE), this tests a single slab being created
    */
   @Test
   public void testSmallList() {
-    int testSize = 100;
+    int testSize = IntList.INITIAL_SLAB_SIZE - 100;
     doTestIntList(testSize);
   }
 
   /**
-   * Test IntList > 4K so that we have multiple slabs being created
+   * Test IntList > INITIAL_SLAB_SIZE so that we have multiple slabs being created
    */
   @Test
-  public void testListGreaterThan4K() {
-    int testSize = 6000;
+  public void testListGreaterThanInitialSlabSize() {
+    int testSize = IntList.INITIAL_SLAB_SIZE + 100;
     doTestIntList(testSize);
   }
 
   /**
-   * Test IntList of a fairly large size (> 300K) so that we have multiple slabs
+   * Test IntList of a fairly large size (> MAX_SLAB_SIZE) so that we have multiple slabs
    * created of varying sizes
    */
   @Test
-  public void testListGreaterThan300K() {
-    int testSize = 310000;
+  public void testListGreaterThanMaxSlabSize() {
+    int testSize = IntList.MAX_SLAB_SIZE * 4 + 100;
     doTestIntList(testSize);
   }
 
