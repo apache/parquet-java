@@ -76,7 +76,7 @@ public class CompatibilityUtil {
     }
   }
 
-  public static int getBuf(FSDataInputStream f, ByteBuffer readBuf, int maxSize) throws IOException {
+  public static int getBuf(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
     int res;
     if (useV21) {
       try {
@@ -88,7 +88,7 @@ public class CompatibilityUtil {
           // be a reasonable check to make to see if the interface is
           // present but not implemented and we should be falling back
           useV21 = false;
-          return getBuf(f, readBuf, maxSize);
+          return getBuf(f, readBuf);
         } else if (e.getCause() instanceof IOException) {
           throw (IOException) e.getCause();
         } else {
@@ -105,7 +105,7 @@ public class CompatibilityUtil {
         throw new ShouldNeverHappenException(e);
       }
     } else {
-      byte[] buf = new byte[maxSize];
+      byte[] buf = new byte[readBuf.remaining()];
       res = f.read(buf);
       readBuf.put(buf, 0, res);
     }

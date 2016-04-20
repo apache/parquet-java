@@ -833,7 +833,7 @@ public class ParquetFileReader implements Closeable {
       } else {
         chunksByteBuffer = allocator.allocate(length);
         while (chunksByteBuffer.hasRemaining()) {
-          CompatibilityUtil.getBuf(f, chunksByteBuffer, chunksByteBuffer.remaining());
+          CompatibilityUtil.getBuf(f, chunksByteBuffer);
         }
       }
 
