@@ -32,10 +32,6 @@
   <name>Apache Parquet Avro</name>
   <url>https://parquet.apache.org</url>
 
-  <properties>
-    <avro.version>1.7.6</avro.version>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
