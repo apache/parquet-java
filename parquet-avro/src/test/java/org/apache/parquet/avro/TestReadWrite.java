@@ -19,18 +19,23 @@
 package org.apache.parquet.avro;
 
 import com.google.common.base.Charsets;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import java.io.File;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import org.apache.avro.Conversions;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericFixed;
@@ -39,12 +44,16 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -223,6 +232,113 @@ public class TestReadWrite {
 
     assertNotNull(nextRecord);
     assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
+  }
+
+  @Rule
+  public TemporaryFolder temp = new TemporaryFolder();
+
+  @Test
+  public void testDecimalValues() throws Exception {
+    Schema decimalSchema = Schema.createRecord("myrecord", null, null, false);
+    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(
+        Schema.create(Schema.Type.BYTES));
+    decimalSchema.setFields(Collections.singletonList(
+        new Schema.Field("dec", decimal, null, null)));
+
+    // add the decimal conversion to a generic data model
+    GenericData decimalSupport = new GenericData();
+    decimalSupport.addLogicalTypeConversion(new Conversions.DecimalConversion());
+
+    File file = temp.newFile("decimal.parquet");
+    file.delete();
+    Path path = new Path(file.toString());
+
+    ParquetWriter<GenericRecord> writer = AvroParquetWriter
+        .<GenericRecord>builder(path)
+        .withDataModel(decimalSupport)
+        .withSchema(decimalSchema)
+        .build();
+
+    Random random = new Random(34L);
+    GenericRecordBuilder builder = new GenericRecordBuilder(decimalSchema);
+    List<GenericRecord> expected = Lists.newArrayList();
+    for (int i = 0; i < 1000; i += 1) {
+      BigDecimal dec = new BigDecimal(new BigInteger(31, random), 2);
+      builder.set("dec", dec);
+
+      GenericRecord rec = builder.build();
+      expected.add(rec);
+      writer.write(builder.build());
+    }
+    writer.close();
+
+    ParquetReader<GenericRecord> reader = AvroParquetReader
+        .<GenericRecord>builder(path)
+        .withDataModel(decimalSupport)
+        .disableCompatibility()
+        .build();
+    List<GenericRecord> records = Lists.newArrayList();
+    GenericRecord rec;
+    while ((rec = reader.read()) != null) {
+      records.add(rec);
+    }
+    reader.close();
+
+    Assert.assertTrue("dec field should be a BigDecimal instance",
+        records.get(0).get("dec") instanceof BigDecimal);
+    Assert.assertEquals("Content should match", expected, records);
+  }
+
+  @Test
+  public void testFixedDecimalValues() throws Exception {
+    Schema decimalSchema = Schema.createRecord("myrecord", null, null, false);
+    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(
+        Schema.createFixed("dec", null, null, 4));
+    decimalSchema.setFields(Collections.singletonList(
+        new Schema.Field("dec", decimal, null, null)));
+
+    // add the decimal conversion to a generic data model
+    GenericData decimalSupport = new GenericData();
+    decimalSupport.addLogicalTypeConversion(new Conversions.DecimalConversion());
+
+    File file = temp.newFile("decimal.parquet");
+    file.delete();
+    Path path = new Path(file.toString());
+
+    ParquetWriter<GenericRecord> writer = AvroParquetWriter
+        .<GenericRecord>builder(path)
+        .withDataModel(decimalSupport)
+        .withSchema(decimalSchema)
+        .build();
+
+    Random random = new Random(34L);
+    GenericRecordBuilder builder = new GenericRecordBuilder(decimalSchema);
+    List<GenericRecord> expected = Lists.newArrayList();
+    for (int i = 0; i < 1000; i += 1) {
+      BigDecimal dec = new BigDecimal(new BigInteger(31, random), 2);
+      builder.set("dec", dec);
+
+      GenericRecord rec = builder.build();
+      expected.add(rec);
+      writer.write(builder.build());
+    }
+    writer.close();
+
+    ParquetReader<GenericRecord> reader = AvroParquetReader
+        .<GenericRecord>builder(path)
+        .withDataModel(decimalSupport)
+        .disableCompatibility()
+        .build();
+    List<GenericRecord> records = Lists.newArrayList();
+    GenericRecord rec;
+    while ((rec = reader.read()) != null) {
+      records.add(rec);
+    }
+    reader.close();
+
+    Assert.assertTrue("dec field should be a BigDecimal instance",
+        records.get(0).get("dec") instanceof BigDecimal);
+    Assert.assertEquals("Content should match", expected, records);
   }
 
   @Test

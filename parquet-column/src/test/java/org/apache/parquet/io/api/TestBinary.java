@@ -198,16 +198,6 @@ public class TestBinary {
     Binary copy = bao.binary.copy();
 
     assertSame(copy, bao.binary);
-
-    mutate(bao.original);
-
-    byte[] expected = testString.getBytes(UTF8);
-    mutate(expected);
-
-    assertArrayEquals(expected, copy.getBytes());
-    assertArrayEquals(expected, copy.getBytesUnsafe());
-    assertArrayEquals(expected, copy.copy().getBytesUnsafe());
-    assertArrayEquals(expected, copy.copy().getBytes());
   }
 
   private void testReusedCopy(BinaryFactory bf) throws Exception {
