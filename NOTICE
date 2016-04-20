@@ -43,3 +43,14 @@ with the following copyright notice:
   See the License for the specific language governing permissions and
   limitations under the License.
 
+--------------------------------------------------------------------------------
+
+This product includes code from Apache Avro, which includes the following in
+its NOTICE file:
+
+  Apache Avro
+  Copyright 2010-2015 The Apache Software Foundation
+
+  This product includes software developed at
+  The Apache Software Foundation (http://www.apache.org/).
+

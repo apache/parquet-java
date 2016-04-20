@@ -47,7 +47,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import sun.net.www.content.text.Generic;
 
 import static org.apache.parquet.avro.AvroTestUtil.array;
 import static org.apache.parquet.avro.AvroTestUtil.optional;
