@@ -66,16 +66,6 @@ public class CompatibilityUtil {
     }
   }
 
-  private static Object invoke(Method method, String errorMsg, Object instance, Object... args) {
-    try {
-      return method.invoke(instance, args);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException(errorMsg, e);
-    } catch (InvocationTargetException e) {
-      throw new IllegalArgumentException(errorMsg, e);
-    }
-  }
-
   public static int getBuf(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
     int res;
     if (useV21) {
@@ -105,9 +95,13 @@ public class CompatibilityUtil {
         throw new ShouldNeverHappenException(e);
       }
     } else {
-      byte[] buf = new byte[readBuf.remaining()];
-      res = f.read(buf);
-      readBuf.put(buf, 0, res);
+      if (readBuf.hasArray()) {
+        res = f.read(readBuf.array(), readBuf.arrayOffset(), readBuf.remaining());
+      } else {
+        byte[] buf = new byte[readBuf.remaining()];
+        res = f.read(buf);
+        readBuf.put(buf, 0, res);
+      }
     }
     return res;
   }
