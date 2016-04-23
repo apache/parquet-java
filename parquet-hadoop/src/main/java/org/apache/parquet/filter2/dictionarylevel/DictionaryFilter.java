@@ -22,6 +22,7 @@ import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
@@ -329,6 +330,11 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   @SuppressWarnings("deprecation")
   private static boolean hasNonDictionaryPages(ColumnChunkMetaData meta) {
+    EncodingStats stats = meta.getEncodingStats();
+    if (stats != null) {
+      return stats.hasNonDictionaryEncodedPages();
+    }
+
     // without EncodingStats, fall back to testing the encoding list
     Set<Encoding> encodings = new HashSet<Encoding>(meta.getEncodings());
     if (encodings.remove(Encoding.PLAIN_DICTIONARY)) {

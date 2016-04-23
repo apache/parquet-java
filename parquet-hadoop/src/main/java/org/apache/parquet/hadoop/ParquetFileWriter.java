@@ -48,6 +48,7 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -115,6 +116,7 @@ public class ParquetFileWriter {
   private long currentRecordCount; // set in startBlock
 
   // column chunk data accumulated as pages are written
+  private EncodingStats.Builder encodingStatsBuilder;
   private Set<Encoding> currentEncodings;
   private long uncompressedLength;
   private long compressedLength;
@@ -236,6 +238,8 @@ public class ParquetFileWriter {
       this.alignment = NoAlignment.get(rowGroupSize);
       this.out = fs.create(file, overwriteFlag);
     }
+
+    this.encodingStatsBuilder = new EncodingStats.Builder();
   }
 
   /**
@@ -256,6 +260,7 @@ public class ParquetFileWriter {
         rowAndBlockSize, rowAndBlockSize, maxPaddingSize);
     this.out = fs.create(file, true, DFS_BUFFER_SIZE_DEFAULT,
         fs.getDefaultReplication(file), rowAndBlockSize);
+    this.encodingStatsBuilder = new EncodingStats.Builder();
   }
 
   /**
@@ -295,6 +300,7 @@ public class ParquetFileWriter {
                           long valueCount,
                           CompressionCodecName compressionCodecName) throws IOException {
     state = state.startColumn();
+    encodingStatsBuilder.clear();
     currentEncodings = new HashSet<Encoding>();
     currentChunkPath = ColumnPath.get(descriptor.getPath());
     currentChunkType = descriptor.getType();
@@ -329,6 +335,7 @@ public class ParquetFileWriter {
     this.compressedLength += compressedPageSize + headerSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page content " + compressedPageSize);
     dictionaryPage.getBytes().writeAllTo(out);
+    encodingStatsBuilder.addDictEncoding(dictionaryPage.getEncoding());
     currentEncodings.add(dictionaryPage.getEncoding());
   }
 
@@ -365,6 +372,7 @@ public class ParquetFileWriter {
     this.compressedLength += compressedPageSize + headerSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
     bytes.writeAllTo(out);
+    encodingStatsBuilder.addDataEncoding(valuesEncoding);
     currentEncodings.add(rlEncoding);
     currentEncodings.add(dlEncoding);
     currentEncodings.add(valuesEncoding);
@@ -404,6 +412,7 @@ public class ParquetFileWriter {
     if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
     bytes.writeAllTo(out);
     currentStatistics.mergeStatistics(statistics);
+    encodingStatsBuilder.addDataEncoding(valuesEncoding);
     currentEncodings.add(rlEncoding);
     currentEncodings.add(dlEncoding);
     currentEncodings.add(valuesEncoding);
@@ -416,11 +425,13 @@ public class ParquetFileWriter {
    * @param compressedTotalPageSize total compressed size (without page headers)
    * @throws IOException
    */
-   void writeDataPages(BytesInput bytes,
-                       long uncompressedTotalPageSize,
-                       long compressedTotalPageSize,
-                       Statistics totalStats,
-                       List<Encoding> encodings) throws IOException {
+  void writeDataPages(BytesInput bytes,
+                      long uncompressedTotalPageSize,
+                      long compressedTotalPageSize,
+                      Statistics totalStats,
+                      Set<Encoding> rlEncodings,
+                      Set<Encoding> dlEncodings,
+                      List<Encoding> dataEncodings) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages");
     long headersSize = bytes.size() - compressedTotalPageSize;
@@ -428,7 +439,13 @@ public class ParquetFileWriter {
     this.compressedLength += compressedTotalPageSize + headersSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages content");
     bytes.writeAllTo(out);
-    currentEncodings.addAll(encodings);
+    encodingStatsBuilder.addDataEncodings(dataEncodings);
+    if (rlEncodings.isEmpty()) {
+      encodingStatsBuilder.withV2Pages();
+    }
+    currentEncodings.addAll(rlEncodings);
+    currentEncodings.addAll(dlEncodings);
+    currentEncodings.addAll(dataEncodings);
     currentStatistics = totalStats;
   }
 
@@ -443,6 +460,7 @@ public class ParquetFileWriter {
         currentChunkPath,
         currentChunkType,
         currentChunkCodec,
+        encodingStatsBuilder.build(),
         currentEncodings,
         currentStatistics,
         currentChunkFirstDataPage,
@@ -540,6 +558,7 @@ public class ParquetFileWriter {
           chunk.getPath(),
           chunk.getType(),
           chunk.getCodec(),
+          chunk.getEncodingStats(),
           chunk.getEncodings(),
           chunk.getStatistics(),
           newChunkStart,

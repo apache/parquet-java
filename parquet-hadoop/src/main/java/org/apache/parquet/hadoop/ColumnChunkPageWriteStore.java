@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -62,7 +63,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private long totalValueCount;
     private int pageCount;
 
-    private Set<Encoding> encodings = new HashSet<Encoding>();
+    // repetition and definition level encodings are used only for v1 pages and don't change
+    private Set<Encoding> rlEncodings = new HashSet<Encoding>();
+    private Set<Encoding> dlEncodings = new HashSet<Encoding>();
+    private List<Encoding> dataEncodings = new ArrayList<Encoding>();
 
     private Statistics totalStatistics;
 
@@ -111,9 +115,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       // by concatenating before collecting instead of collecting twice,
       // we only allocate one buffer to copy into instead of multiple.
       buf.collect(BytesInput.concat(BytesInput.from(tempOutputStream), compressedBytes));
-      encodings.add(rlEncoding);
-      encodings.add(dlEncoding);
-      encodings.add(valuesEncoding);
+      rlEncodings.add(rlEncoding);
+      dlEncodings.add(dlEncoding);
+      dataEncodings.add(valuesEncoding);
     }
 
     @Override
@@ -156,7 +160,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
             definitionLevels,
             compressedData)
       );
-      encodings.add(dataEncoding);
+      dataEncodings.add(dataEncoding);
     }
 
     private int toIntWithCheck(long size) {
@@ -177,21 +181,24 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       writer.startColumn(path, totalValueCount, compressor.getCodecName());
       if (dictionaryPage != null) {
         writer.writeDictionaryPage(dictionaryPage);
-        encodings.add(dictionaryPage.getEncoding());
+        // tracking the dictionary encoding is handled in writeDictionaryPage
       }
-      writer.writeDataPages(buf, uncompressedLength, compressedLength, totalStatistics, new ArrayList<Encoding>(encodings));
+      writer.writeDataPages(buf, uncompressedLength, compressedLength, totalStatistics,
+          rlEncodings, dlEncodings, dataEncodings);
       writer.endColumn();
       if (INFO) {
         LOG.info(
             String.format(
                 "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
-                buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, encodings)
-            + (dictionaryPage != null ? String.format(
-                    ", dic { %,d entries, %,dB raw, %,dB comp}",
-                    dictionaryPage.getDictionarySize(), dictionaryPage.getUncompressedSize(), dictionaryPage.getDictionarySize())
-                    : ""));
+                buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, new HashSet<Encoding>(dataEncodings))
+                + (dictionaryPage != null ? String.format(
+                ", dic { %,d entries, %,dB raw, %,dB comp}",
+                dictionaryPage.getDictionarySize(), dictionaryPage.getUncompressedSize(), dictionaryPage.getDictionarySize())
+                : ""));
       }
-      encodings.clear();
+      rlEncodings.clear();
+      dlEncodings.clear();
+      dataEncodings.clear();
       pageCount = 0;
     }
 
