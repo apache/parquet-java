@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Log;
+import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
@@ -58,6 +59,7 @@ import org.apache.parquet.format.Type;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.GroupType;
@@ -183,6 +185,9 @@ public class ParquetMetadataConverter {
       if (!columnMetaData.getStatistics().isEmpty()) {
         columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
       }
+      if (columnMetaData.getEncodingStats() != null) {
+        columnChunk.meta_data.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
+      }
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
 
@@ -230,6 +235,50 @@ public class ParquetMetadataConverter {
 
   public Encoding getEncoding(org.apache.parquet.column.Encoding encoding) {
     return Encoding.valueOf(encoding.name());
+  }
+
+  public EncodingStats convertEncodingStats(List<PageEncodingStats> stats) {
+    if (stats == null) {
+      return null;
+    }
+
+    EncodingStats.Builder builder = new EncodingStats.Builder();
+    for (PageEncodingStats stat : stats) {
+      switch (stat.getPage_type()) {
+        case DATA_PAGE_V2:
+          builder.withV2Pages();
+          // falls through
+        case DATA_PAGE:
+          builder.addDataEncoding(
+              getEncoding(stat.getEncoding()), stat.getCount());
+          break;
+        case DICTIONARY_PAGE:
+          builder.addDictEncoding(
+              getEncoding(stat.getEncoding()), stat.getCount());
+          break;
+      }
+    }
+    return builder.build();
+  }
+
+  public List<PageEncodingStats> convertEncodingStats(EncodingStats stats) {
+    if (stats == null) {
+      return null;
+    }
+
+    List<PageEncodingStats> formatStats = new ArrayList<PageEncodingStats>();
+    for (org.apache.parquet.column.Encoding encoding : stats.getDictionaryEncodings()) {
+      formatStats.add(new PageEncodingStats(
+          PageType.DICTIONARY_PAGE, getEncoding(encoding),
+          stats.getNumDictionaryPagesEncodedAs(encoding)));
+    }
+    PageType dataPageType = (stats.usesV2Pages() ? PageType.DATA_PAGE_V2 : PageType.DATA_PAGE);
+    for (org.apache.parquet.column.Encoding encoding : stats.getDataEncodings()) {
+      formatStats.add(new PageEncodingStats(
+          dataPageType, getEncoding(encoding),
+          stats.getNumDataPagesEncodedAs(encoding)));
+    }
+    return formatStats;
   }
 
   public static Statistics toParquetStatistics(
@@ -613,6 +662,7 @@ public class ParquetMetadataConverter {
               path,
               messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
               CompressionCodecName.fromParquet(metaData.codec),
+              convertEncodingStats(metaData.getEncoding_stats()),
               fromFormatEncodings(metaData.encodings),
               fromParquetStatistics(
                   parquetMetadata.getCreated_by(),
