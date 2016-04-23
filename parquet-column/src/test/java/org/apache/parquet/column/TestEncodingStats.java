@@ -19,13 +19,11 @@
 
 package org.apache.parquet.column;
 
-import org.apache.parquet.example.data.Group;
 import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;

@@ -29,6 +29,12 @@ import java.util.Set;
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 
+/**
+ * EncodingStats track dictionary and data page encodings for a single column within a row group.
+ * These are used when filtering row groups. For example, to filter a row group based on a column's
+ * dictionary, all of the data pages in that column must be dictionary-encoded. This class provides
+ * convenience methods for those checks, like {@link #hasNonDictionaryEncodedPages()}.
+ */
 public class EncodingStats {
   final Map<Encoding, Integer> dictStats;
   final Map<Encoding, Integer> dataStats;
@@ -99,6 +105,9 @@ public class EncodingStats {
     return usesV2Pages;
   }
 
+  /**
+   * Used to build {@link EncodingStats} from metadata or to accumulate stats as pages are written.
+   */
   public static class Builder {
     private final Map<Encoding, Integer> dictStats = new LinkedHashMap<Encoding, Integer>();
     private final Map<Encoding, Integer> dataStats = new LinkedHashMap<Encoding, Integer>();
@@ -122,11 +131,7 @@ public class EncodingStats {
 
     public Builder addDictEncoding(Encoding encoding, int numPages) {
       Integer pages = dictStats.get(encoding);
-      if (pages != null) {
-        dictStats.put(encoding, numPages + pages);
-      } else {
-        dictStats.put(encoding, numPages);
-      }
+      dictStats.put(encoding, numPages + (pages != null ? pages : 0));
       return this;
     }
 
@@ -143,11 +148,7 @@ public class EncodingStats {
 
     public Builder addDataEncoding(Encoding encoding, int numPages) {
       Integer pages = dataStats.get(encoding);
-      if (pages != null) {
-        dataStats.put(encoding, numPages + pages);
-      } else {
-        dataStats.put(encoding, numPages);
-      }
+      dataStats.put(encoding, numPages + (pages != null ? pages : 0));
       return this;
     }
 
