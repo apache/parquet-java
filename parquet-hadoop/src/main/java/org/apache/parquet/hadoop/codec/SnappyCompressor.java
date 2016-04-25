@@ -113,7 +113,7 @@ public class SnappyCompressor implements Compressor {
   }
 
   @Override
-  public void finish() {
+  public synchronized void finish() {
     finishCalled = true;
   }
 
