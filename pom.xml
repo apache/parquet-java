@@ -234,6 +234,7 @@
                      <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> <!-- made public -->
                      <exclude>org/apache/parquet/io/ColumnIOFactory$ColumnIOCreatorVisitor</exclude> <!-- removed non-API class -->
                      <exclude>org/apache/parquet/io/ColumnIOFactory/**</exclude> <!-- removed non-API class and methods-->
+		     <exclude>org/apache/parquet/hadoop/codec/SnappyCompressor</exclude> <!-- added synchronized modifier -->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
