@@ -59,43 +59,100 @@ public class ValuesWriterFactory {
 
   public ValuesWriter newValuesWriter(ColumnDescriptor path) {
     switch (path.getType()) {
-      case BOOLEAN: // no dictionary encoding for boolean
-        return writerToFallbackTo(path);
+      case BOOLEAN:
+        return getBooleanValuesWriter();
       case FIXED_LEN_BYTE_ARRAY:
-        // dictionary encoding for that type was not enabled in PARQUET 1.0
-        if (writerVersion == WriterVersion.PARQUET_2_0) {
-          return dictWriterWithFallBack(path);
-        } else {
-          return writerToFallbackTo(path);
-        }
+        return getFixedLenByteArrayValuesWriter(path);
       case BINARY:
+        return getBinaryValuesWriter(path);
       case INT32:
+        return getInt32ValuesWriter(path);
       case INT64:
+        return getInt64ValuesWriter(path);
       case INT96:
+        return getInt96ValuesWriter(path);
       case DOUBLE:
+        return getDoubleValuesWriter(path);
       case FLOAT:
-        return dictWriterWithFallBack(path);
+        return getFloatValuesWriter(path);
       default:
         throw new IllegalArgumentException("Unknown type " + path.getType());
     }
   }
 
-  private ValuesWriter plainWriter(ColumnDescriptor path) {
-    switch (path.getType()) {
-      case BOOLEAN:
-        return new BooleanPlainValuesWriter();
-      case INT96:
-        return new FixedLenByteArrayPlainValuesWriter(12, initialSlabSize, pageSizeThreshold, allocator);
-      case FIXED_LEN_BYTE_ARRAY:
-        return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSlabSize, pageSizeThreshold, allocator);
-      case BINARY:
-      case INT32:
-      case INT64:
-      case DOUBLE:
-      case FLOAT:
-        return new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
-      default:
-        throw new IllegalArgumentException("Unknown type " + path.getType());
+  private ValuesWriter getBooleanValuesWriter() {
+    // no dictionary encoding for boolean
+    if(writerVersion == WriterVersion.PARQUET_1_0) {
+      return new BooleanPlainValuesWriter();
+    } else {
+      return new RunLengthBitPackingHybridValuesWriter(1, initialSlabSize, pageSizeThreshold, allocator);
+    }
+  }
+
+  private ValuesWriter getFixedLenByteArrayValuesWriter(ColumnDescriptor path) {
+    if (writerVersion == WriterVersion.PARQUET_1_0) {
+      // dictionary encoding was not enabled in PARQUET 1.0
+      return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSlabSize, pageSizeThreshold, allocator);
+    } else {
+      ValuesWriter fallbackWriter = new DeltaByteArrayWriter(initialSlabSize, pageSizeThreshold, allocator);
+      return dictWriterWithFallBack(path, fallbackWriter);
+    }
+  }
+
+  private ValuesWriter getBinaryValuesWriter(ColumnDescriptor path) {
+    if(writerVersion == WriterVersion.PARQUET_1_0) {
+      ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
+      return dictWriterWithFallBack(path, fallbackWriter);
+    } else {
+      ValuesWriter fallbackWriter = new DeltaByteArrayWriter(initialSlabSize, pageSizeThreshold, allocator);
+      return dictWriterWithFallBack(path, fallbackWriter);
+    }
+  }
+
+  private ValuesWriter getInt32ValuesWriter(ColumnDescriptor path) {
+    if(writerVersion == WriterVersion.PARQUET_1_0) {
+      ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
+      return dictWriterWithFallBack(path, fallbackWriter);
+    } else {
+      ValuesWriter fallbackWriter = new DeltaBinaryPackingValuesWriterForInteger(initialSlabSize, pageSizeThreshold, allocator);
+      return dictWriterWithFallBack(path, fallbackWriter);
+    }
+  }
+
+  private ValuesWriter getInt64ValuesWriter(ColumnDescriptor path) {
+    if(writerVersion == WriterVersion.PARQUET_1_0) {
+      ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
+      return dictWriterWithFallBack(path, fallbackWriter);
+    } else {
+      ValuesWriter fallbackWriter = new DeltaBinaryPackingValuesWriterForLong(initialSlabSize, pageSizeThreshold, allocator);
+      return dictWriterWithFallBack(path, fallbackWriter);
+    }
+  }
+
+  private ValuesWriter getInt96ValuesWriter(ColumnDescriptor path) {
+    ValuesWriter fallbackWriter = new FixedLenByteArrayPlainValuesWriter(12, initialSlabSize, pageSizeThreshold, allocator);
+    if(writerVersion == WriterVersion.PARQUET_1_0) {
+      return dictWriterWithFallBack(path, fallbackWriter);
+    } else {
+      return dictWriterWithFallBack(path, fallbackWriter);
+    }
+  }
+
+  private ValuesWriter getDoubleValuesWriter(ColumnDescriptor path) {
+    ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
+    if(writerVersion == WriterVersion.PARQUET_1_0) {
+      return dictWriterWithFallBack(path, fallbackWriter);
+    } else {
+      return dictWriterWithFallBack(path, fallbackWriter);
+    }
+  }
+
+  private ValuesWriter getFloatValuesWriter(ColumnDescriptor path) {
+    ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
+    if(writerVersion == WriterVersion.PARQUET_1_0) {
+      return dictWriterWithFallBack(path, fallbackWriter);
+    } else {
+      return dictWriterWithFallBack(path, fallbackWriter);
     }
   }
 
@@ -137,35 +194,7 @@ public class ValuesWriterFactory {
     }
   }
 
-  private ValuesWriter writerToFallbackTo(ColumnDescriptor path) {
-    switch(writerVersion) {
-      case PARQUET_1_0:
-        return plainWriter(path);
-      case PARQUET_2_0:
-        switch (path.getType()) {
-          case BOOLEAN:
-            return new RunLengthBitPackingHybridValuesWriter(1, initialSlabSize, pageSizeThreshold, allocator);
-          case BINARY:
-          case FIXED_LEN_BYTE_ARRAY:
-            return new DeltaByteArrayWriter(initialSlabSize, pageSizeThreshold, allocator);
-          case INT32:
-            return new DeltaBinaryPackingValuesWriterForInteger(initialSlabSize, pageSizeThreshold, allocator);
-          case INT64:
-            return new DeltaBinaryPackingValuesWriterForLong(initialSlabSize, pageSizeThreshold, allocator);
-          case INT96:
-          case DOUBLE:
-          case FLOAT:
-            return plainWriter(path);
-          default:
-            throw new IllegalArgumentException("Unknown type " + path.getType());
-        }
-      default:
-        throw new IllegalArgumentException("Unknown version: " + writerVersion);
-    }
-  }
-
-  private ValuesWriter dictWriterWithFallBack(ColumnDescriptor path) {
-    ValuesWriter writerToFallBackTo = writerToFallbackTo(path);
+  private ValuesWriter dictWriterWithFallBack(ColumnDescriptor path, ValuesWriter writerToFallBackTo) {
     if (enableDictionary) {
       return FallbackValuesWriter.of(
         dictionaryWriter(path),
