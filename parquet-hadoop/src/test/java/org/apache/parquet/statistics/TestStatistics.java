@@ -282,6 +282,15 @@ public class TestStatistics {
       PrimitiveConverter converter = getValidatingConverter(page, desc.getType());
       Statistics stats = getStatisticsFromPageHeader(page);
 
+      if (stats.isEmpty()) {
+        // stats are empty if num nulls = 0 and there are no non-null values
+        // this happens if stats are not written (e.g., when stats are too big)
+        System.err.println(String.format(
+            "No stats written for page=%s col=%s",
+            page, Arrays.toString(desc.getPath())));
+        return;
+      }
+
       long numNulls = 0;
       ColumnReaderImpl column = new ColumnReaderImpl(desc, reader, converter, null);
       for (int i = 0; i < reader.getTotalValueCount(); i += 1) {
