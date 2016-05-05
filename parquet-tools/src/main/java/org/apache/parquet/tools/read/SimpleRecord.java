@@ -111,6 +111,7 @@ public class SimpleRecord {
     for (NameValue value : values) {
       result.put(value.getName(), toJsonValue(value.getValue()));
     }
+
     return result;
   }
 
