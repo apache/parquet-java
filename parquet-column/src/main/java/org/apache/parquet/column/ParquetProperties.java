@@ -181,6 +181,10 @@ public class ParquetProperties {
     return maxRowCountForPageSizeCheck;
   }
 
+  public ValuesWriterFactory getValuesWriterFactory() {
+    return valuesWriterFactory;
+  }
+
   public boolean estimateNextSizeCheck() {
     return estimateNextSizeCheck;
   }

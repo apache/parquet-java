@@ -335,6 +335,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     Class<? extends ValuesWriterFactory> factoryOverride =
       (Class<? extends ValuesWriterFactory>) ConfigurationUtil.getClassFromConfig(conf, WRITER_FACTORY_OVERRIDE, ValuesWriterFactory.class);
     if (factoryOverride == null) {
+      // no override specified, fall back to default
       factoryOverride = ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY;
     }
 
@@ -413,6 +414,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
       LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
       LOG.info("Max row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+      LOG.info("ValueWriterFactory chosen is: " + props.getValuesWriterFactory());
     }
 
     WriteContext init = writeSupport.init(conf);
