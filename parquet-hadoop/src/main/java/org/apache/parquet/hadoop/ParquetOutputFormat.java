@@ -366,7 +366,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         Encoding encoding = Encoding.valueOf(override.toUpperCase());
         encodings.add(encoding);
       } catch(IllegalArgumentException e) {
-        throw new BadConfigurationException("For type: " + typeName + "Invalid encoding type chosen: " + override);
+        throw new BadConfigurationException("For type: " + typeName + " Invalid encoding type chosen: " + override);
       }
     }
 
