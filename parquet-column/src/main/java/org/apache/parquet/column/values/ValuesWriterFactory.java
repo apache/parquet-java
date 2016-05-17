@@ -100,7 +100,7 @@ public class ValuesWriterFactory {
   }
 
   private ValuesWriter getBinaryValuesWriter(ColumnDescriptor path) {
-    if(writerVersion == WriterVersion.PARQUET_1_0) {
+    if (writerVersion == WriterVersion.PARQUET_1_0) {
       ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
       return dictWriterWithFallBack(path, fallbackWriter);
     } else {
@@ -110,7 +110,7 @@ public class ValuesWriterFactory {
   }
 
   private ValuesWriter getInt32ValuesWriter(ColumnDescriptor path) {
-    if(writerVersion == WriterVersion.PARQUET_1_0) {
+    if (writerVersion == WriterVersion.PARQUET_1_0) {
       ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
       return dictWriterWithFallBack(path, fallbackWriter);
     } else {
@@ -120,7 +120,7 @@ public class ValuesWriterFactory {
   }
 
   private ValuesWriter getInt64ValuesWriter(ColumnDescriptor path) {
-    if(writerVersion == WriterVersion.PARQUET_1_0) {
+    if (writerVersion == WriterVersion.PARQUET_1_0) {
       ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
       return dictWriterWithFallBack(path, fallbackWriter);
     } else {
@@ -131,29 +131,17 @@ public class ValuesWriterFactory {
 
   private ValuesWriter getInt96ValuesWriter(ColumnDescriptor path) {
     ValuesWriter fallbackWriter = new FixedLenByteArrayPlainValuesWriter(12, initialSlabSize, pageSizeThreshold, allocator);
-    if(writerVersion == WriterVersion.PARQUET_1_0) {
-      return dictWriterWithFallBack(path, fallbackWriter);
-    } else {
-      return dictWriterWithFallBack(path, fallbackWriter);
-    }
+    return dictWriterWithFallBack(path, fallbackWriter);
   }
 
   private ValuesWriter getDoubleValuesWriter(ColumnDescriptor path) {
     ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
-    if(writerVersion == WriterVersion.PARQUET_1_0) {
-      return dictWriterWithFallBack(path, fallbackWriter);
-    } else {
-      return dictWriterWithFallBack(path, fallbackWriter);
-    }
+    return dictWriterWithFallBack(path, fallbackWriter);
   }
 
   private ValuesWriter getFloatValuesWriter(ColumnDescriptor path) {
     ValuesWriter fallbackWriter = new PlainValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
-    if(writerVersion == WriterVersion.PARQUET_1_0) {
-      return dictWriterWithFallBack(path, fallbackWriter);
-    } else {
-      return dictWriterWithFallBack(path, fallbackWriter);
-    }
+    return dictWriterWithFallBack(path, fallbackWriter);
   }
 
   @SuppressWarnings("deprecation")
@@ -176,19 +164,19 @@ public class ValuesWriterFactory {
       case BOOLEAN:
         throw new IllegalArgumentException("no dictionary encoding for BOOLEAN");
       case BINARY:
-        return new DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
+        return new DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, allocator);
       case INT32:
-        return new DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
+        return new DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, allocator);
       case INT64:
-        return new DictionaryValuesWriter.PlainLongDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
+        return new DictionaryValuesWriter.PlainLongDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, allocator);
       case INT96:
-        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, 12, encodingForDataPage, encodingForDictionaryPage, this.allocator);
+        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, 12, encodingForDataPage, encodingForDictionaryPage, allocator);
       case DOUBLE:
-        return new DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
+        return new DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, allocator);
       case FLOAT:
-        return new DictionaryValuesWriter.PlainFloatDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
+        return new DictionaryValuesWriter.PlainFloatDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, allocator);
       case FIXED_LEN_BYTE_ARRAY:
-        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, path.getTypeLength(), encodingForDataPage, encodingForDictionaryPage, this.allocator);
+        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, path.getTypeLength(), encodingForDataPage, encodingForDictionaryPage, allocator);
       default:
         throw new IllegalArgumentException("Unknown type " + path.getType());
     }
