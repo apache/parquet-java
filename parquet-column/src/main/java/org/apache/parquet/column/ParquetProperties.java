@@ -18,10 +18,7 @@
  */
 package org.apache.parquet.column;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -32,12 +29,13 @@ import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
-import org.apache.parquet.column.values.ValuesWriterFactory;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ValuesWriterFactoryParams;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * This class represents all the configurable Parquet properties.
@@ -56,6 +54,8 @@ public class ParquetProperties {
   public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
 
   private static final int MIN_SLAB_SIZE = 64;
+
+  private static final Log LOG = Log.getLog(ParquetProperties.class);
 
   public enum WriterVersion {
     PARQUET_1_0 ("v1"),
@@ -86,12 +86,11 @@ public class ParquetProperties {
   private final int maxRowCountForPageSizeCheck;
   private final boolean estimateNextSizeCheck;
   private final ByteBufferAllocator allocator;
-
   private final ValuesWriterFactory valuesWriterFactory;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
-                            Map<PrimitiveTypeName, List<Encoding>> encodingOverrides) {
+                            Class<? extends ValuesWriterFactory> factoryOverride) {
     this.pageSizeThreshold = pageSize;
     int initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
@@ -102,9 +101,23 @@ public class ParquetProperties {
     this.maxRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
     this.allocator = allocator;
-    this.valuesWriterFactory =
-      new ValuesWriterFactory(writerVersion, initialSlabSize, pageSizeThreshold, allocator,
-        dictionaryPageSizeThreshold, enableDictionary, encodingOverrides);
+
+    ValuesWriterFactoryParams params =
+      new ValuesWriterFactoryParams(writerVersion, initialSlabSize, pageSizeThreshold, allocator,
+        enableDictionary, dictionaryPageSizeThreshold);
+    this.valuesWriterFactory = initValuesWriterFactory(factoryOverride, params);
+  }
+
+  private ValuesWriterFactory initValuesWriterFactory(Class<? extends ValuesWriterFactory> factoryOverride, ValuesWriterFactoryParams params) {
+   ValuesWriterFactory factory;
+    try {
+      factory = factoryOverride.newInstance();
+    } catch (Exception e) {
+      LOG.error("Falling back to default values writer as we're unable to instantiate ValuesWriterFactory: " + factoryOverride, e);
+      factory = new DefaultValuesWriterFactory();
+    }
+    factory.initialize(params);
+    return factory;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -202,8 +215,7 @@ public class ParquetProperties {
     private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
     private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
-    private Map<PrimitiveTypeName, List<Encoding>> encodingOverrides =
-      new HashMap<PrimitiveTypeName, List<Encoding>>();
+    private Class<? extends ValuesWriterFactory> factoryOverride = DefaultValuesWriterFactory.class;
 
     private Builder() {
     }
@@ -292,15 +304,15 @@ public class ParquetProperties {
       return this;
     }
 
-    public Builder withEncodingOverrides(Map<PrimitiveTypeName, List<Encoding>> encodingOverrides) {
-      this.encodingOverrides = encodingOverrides;
+    public Builder withFactoryOverride(Class<? extends ValuesWriterFactory> factoryOverride) {
+      this.factoryOverride = factoryOverride;
       return this;
     }
 
     public ParquetProperties build() {
       return new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, encodingOverrides);
+          estimateNextSizeCheck, allocator, factoryOverride);
     }
 
   }

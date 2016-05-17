@@ -24,12 +24,7 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
@@ -41,16 +36,16 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import org.apache.parquet.Log;
-import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -153,18 +148,16 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
 
   /**
-   * Used to override the writer encodings for various types.
-   * See {@link org.apache.parquet.column.Encoding} for a list of valid Encoding choices to use.
-   * For e.g. "parquet.writer.encoding-override.boolean" = "plain" will ensure that we use
-   * {@link org.apache.parquet.column.Encoding.PLAIN} for boolean values.
-   * We can also specify fallbacks:
-   * parquet.writer.encoding-override.binary = "plain_dictionary,plain". This results in a
-   * {@link org.apache.parquet.column.values.fallback.FallbackValuesWriter} with Plain dictionary as
-   * the initial writer and Plain encoding used as the fallback for binary values.
-   * Note: If fallbacks are specified, the initial writer must implement
-   * {@link org.apache.parquet.column.values.RequiresFallback}.
+   * Used to override the value writer factory used to create Values Writers.
+   * This allows users to plug in their own factory class to create custom ValuesWriters rather
+   * use the Parquet provided default - {@link org.apache.parquet.column.values.factory.DefaultValuesWriterFactory}.
+   * Factory classes provided must implement {@link org.apache.parquet.column.values.factory.ValuesWriterFactory}.
+   *
+   * For e.g. "parquet.writer.factory-override" = "org.apache.parquet.column.values.factory.MyValuesWriterFactory"
+   * will ensure that we use MyValuesWriterFactory to create ValuesWriters for writing out data.
+   * See the documentation for ValuesWriterFactory for more details.
    */
-  public static final String WRITER_ENCODING_OVERRIDE_PREFIX = "parquet.writer.encoding-override.";
+  public static final String WRITER_FACTORY_OVERRIDE = "parquet.writer.factory-override";
 
   // default to no padding for now
   private static final int DEFAULT_MAX_PADDING_SIZE = 0;
@@ -338,39 +331,16 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
   }
 
-  public static Map<PrimitiveTypeName, List<Encoding>> getEncodingOverrides(Configuration conf) {
-    Map<PrimitiveTypeName, List<Encoding>> typeToEncoding = new HashMap<PrimitiveTypeName, List<Encoding>>();
-
-    for(PrimitiveTypeName name : PrimitiveTypeName.values()) {
-      String typeOverride = conf.get(WRITER_ENCODING_OVERRIDE_PREFIX + name.name().toLowerCase());
-      typeToEncoding.put(name, getEncodingOverridesForType(name, typeOverride));
+  public static Class<? extends ValuesWriterFactory> getFactoryOverride(Configuration conf) {
+    Class<? extends ValuesWriterFactory> factoryClass = DefaultValuesWriterFactory.class;
+    try {
+      factoryClass = conf.getClass(WRITER_FACTORY_OVERRIDE, DefaultValuesWriterFactory.class, ValuesWriterFactory.class);
+    } catch (Exception e) {
+      // can be due to the class not being found / incorrect parent interface
+      LOG.warn("Unable to load factory override. Falling back to default factory", e);
     }
 
-    return typeToEncoding;
-  }
-
-  private static List<Encoding> getEncodingOverridesForType(PrimitiveTypeName typeName, String typeOverride) {
-    List<Encoding> encodings = new ArrayList<Encoding>();
-    if( StringUtils.isEmpty(typeOverride) ) {
-      return encodings;
-    }
-
-    String [] overrides = typeOverride.split(",");
-    if( overrides.length > 2 ) {
-      //maybe in the future we could chain more
-      throw new BadConfigurationException("For : " + typeName + " too many overrides specified, must not be more than 2");
-    }
-
-    for(String override : overrides) {
-      try {
-        Encoding encoding = Encoding.valueOf(override.toUpperCase());
-        encodings.add(encoding);
-      } catch(IllegalArgumentException e) {
-        throw new BadConfigurationException("For type: " + typeName + " Invalid encoding type chosen: " + override);
-      }
-    }
-
-    return encodings;
+    return factoryClass;
   }
 
   private WriteSupport<T> writeSupport;
@@ -423,7 +393,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
-        .withEncodingOverrides(getEncodingOverrides(conf))
+        .withFactoryOverride(getFactoryOverride(conf))
         .build();
 
     long blockSize = getLongBlockSize(conf);

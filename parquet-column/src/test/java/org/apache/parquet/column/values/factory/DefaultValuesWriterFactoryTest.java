@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.values;
+package org.apache.parquet.column.values.factory;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForLong;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
@@ -39,7 +40,7 @@ import static junit.framework.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class ValuesWriterFactoryTest {
+public class DefaultValuesWriterFactoryTest {
 
   @Test
   public void testBoolean() {
@@ -304,15 +305,15 @@ public class ValuesWriterFactoryTest {
 
   private void doTestValueWriter(PrimitiveTypeName typeName, WriterVersion version, boolean enableDictionary, Class<? extends ValuesWriter> expectedValueWriterClass) {
     ColumnDescriptor mockPath = getMockColumn(typeName);
-    ValuesWriterFactory factory = getFactory(version, enableDictionary);
-    ValuesWriter writer = factory.newValuesWriter(mockPath);
+    ValuesWriterFactory selectionStrategy = getDefaultFactory(version, enableDictionary);
+    ValuesWriter writer = selectionStrategy.newValuesWriter(mockPath);
 
     validateWriterType(writer, expectedValueWriterClass);
   }
 
   private void doTestValueWriter(PrimitiveTypeName typeName, WriterVersion version, boolean enableDictionary, Class<? extends ValuesWriter> initialValueWriterClass, Class<? extends ValuesWriter> fallbackValueWriterClass) {
     ColumnDescriptor mockPath = getMockColumn(typeName);
-    ValuesWriterFactory factory = getFactory(version, enableDictionary);
+    ValuesWriterFactory factory = getDefaultFactory(version, enableDictionary);
     ValuesWriter writer = factory.newValuesWriter(mockPath);
 
     validateFallbackWriter(writer, initialValueWriterClass, fallbackValueWriterClass);
@@ -324,8 +325,10 @@ public class ValuesWriterFactoryTest {
     return mockPath;
   }
 
-  private ValuesWriterFactory getFactory(WriterVersion writerVersion, boolean enableDictionary) {
-    return new ValuesWriterFactory(writerVersion, 128, ParquetProperties.DEFAULT_PAGE_SIZE, null, 0, enableDictionary);
+  private ValuesWriterFactory getDefaultFactory(WriterVersion writerVersion, boolean enableDictionary) {
+    ValuesWriterFactory factory = new DefaultValuesWriterFactory();
+    factory.initialize(new ValuesWriterFactoryParams(writerVersion, 128, ParquetProperties.DEFAULT_PAGE_SIZE, null, enableDictionary, 0));
+    return factory;
   }
 
   private void validateWriterType(ValuesWriter writer, Class<? extends ValuesWriter> valuesWriterClass) {
