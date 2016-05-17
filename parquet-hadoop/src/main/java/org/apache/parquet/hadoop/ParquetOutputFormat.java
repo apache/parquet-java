@@ -331,16 +331,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
   }
 
-  public static Class<? extends ValuesWriterFactory> getFactoryOverride(Configuration conf) {
-    Class<? extends ValuesWriterFactory> factoryClass = DefaultValuesWriterFactory.class;
-    try {
-      factoryClass = conf.getClass(WRITER_FACTORY_OVERRIDE, DefaultValuesWriterFactory.class, ValuesWriterFactory.class);
-    } catch (Exception e) {
-      // can be due to the class not being found / incorrect parent interface
-      LOG.warn("Unable to load factory override. Falling back to default factory", e);
+  public static ValuesWriterFactory getValuesWriterFactory(Configuration conf) {
+    Class<? extends ValuesWriterFactory> factoryOverride =
+      (Class<? extends ValuesWriterFactory>) ConfigurationUtil.getClassFromConfig(conf, WRITER_FACTORY_OVERRIDE, ValuesWriterFactory.class);
+    if (factoryOverride == null) {
+      factoryOverride = ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY;
     }
 
-    return factoryClass;
+    try {
+      return factoryOverride.newInstance();
+    } catch (Exception e) {
+      throw new BadConfigurationException("Unable to instantiate ValuesWriterFactory: " + factoryOverride, e);
+    }
   }
 
   private WriteSupport<T> writeSupport;
@@ -393,7 +395,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
-        .withFactoryOverride(getFactoryOverride(conf))
+        .withValuesWriterFactory(getValuesWriterFactory(conf))
         .build();
 
     long blockSize = getLongBlockSize(conf);

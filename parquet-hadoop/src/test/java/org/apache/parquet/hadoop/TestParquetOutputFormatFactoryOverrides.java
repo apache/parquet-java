@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -29,31 +30,33 @@ public class TestParquetOutputFormatFactoryOverrides {
   @Test
   public void testMissingOverrideParam() {
     Configuration conf = new Configuration();
-    Class<?> factoryOverride = ParquetOutputFormat.getFactoryOverride(conf);
-    assertEquals("Incorrect default factory override", DefaultValuesWriterFactory.class, factoryOverride);
+    ValuesWriterFactory factory = ParquetOutputFormat.getValuesWriterFactory(conf);
+    assertEquals("Incorrect default factory override", DefaultValuesWriterFactory.class, factory.getClass());
   }
 
-  @Test
+  @Test(expected = BadConfigurationException.class)
   public void testMissingFactoryOverrideClass() {
     Configuration conf = new Configuration();
     conf.set(ParquetOutputFormat.WRITER_FACTORY_OVERRIDE, "MyMissingFactory");
-    Class<?> factoryOverride = ParquetOutputFormat.getFactoryOverride(conf);
-    assertEquals("Incorrect default factory override", DefaultValuesWriterFactory.class, factoryOverride);
+
+    // should throw as we can't find MyMissingFactory
+    ParquetOutputFormat.getValuesWriterFactory(conf);
   }
 
-  @Test
+  @Test(expected = BadConfigurationException.class)
   public void testFactoryClassIncorrectInterface() {
     Configuration conf = new Configuration();
     conf.set(ParquetOutputFormat.WRITER_FACTORY_OVERRIDE, "org.apache.parquet.column.values.factory.ValuesWriterFactoryParams");
-    Class<?> factoryOverride = ParquetOutputFormat.getFactoryOverride(conf);
-    assertEquals("Incorrect default factory override", DefaultValuesWriterFactory.class, factoryOverride);
+
+    // should throw as ValuesWriterFactoryParams isn't implementing ValuesWriterFactory
+    ParquetOutputFormat.getValuesWriterFactory(conf);
   }
 
   @Test
   public void testValidFactoryOverride() {
     Configuration conf = new Configuration();
     conf.set(ParquetOutputFormat.WRITER_FACTORY_OVERRIDE, "org.apache.parquet.hadoop.StubValuesWriterFactory");
-    Class<?> factoryOverride = ParquetOutputFormat.getFactoryOverride(conf);
-    assertEquals("Incorrect factory override chosen", StubValuesWriterFactory.class, factoryOverride);
+    ValuesWriterFactory factory = ParquetOutputFormat.getValuesWriterFactory(conf);
+    assertEquals("Incorrect factory override chosen", StubValuesWriterFactory.class, factory.getClass());
   }
 }
