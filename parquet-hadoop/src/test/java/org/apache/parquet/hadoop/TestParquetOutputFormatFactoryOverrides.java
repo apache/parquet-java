@@ -19,11 +19,13 @@
 package org.apache.parquet.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.column.values.factory.ConfigurableFactory;
 import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class TestParquetOutputFormatFactoryOverrides {
 
@@ -58,5 +60,19 @@ public class TestParquetOutputFormatFactoryOverrides {
     conf.set(ParquetOutputFormat.WRITER_FACTORY_OVERRIDE, "org.apache.parquet.hadoop.StubValuesWriterFactory");
     ValuesWriterFactory factory = ParquetOutputFormat.getValuesWriterFactory(conf);
     assertEquals("Incorrect factory override chosen", StubValuesWriterFactory.class, factory.getClass());
+  }
+
+  @Test
+  public void testFactoryOverrideWithCfg() {
+    Configuration conf = new Configuration();
+    conf.set("foo", "bar");
+    conf.set(ParquetOutputFormat.WRITER_FACTORY_OVERRIDE, "org.apache.parquet.hadoop.StubConfigurableValuesWriterFactory");
+
+    ValuesWriterFactory factory = ParquetOutputFormat.getValuesWriterFactory(conf);
+    assertEquals("Incorrect factory override chosen", StubConfigurableValuesWriterFactory.class, factory.getClass());
+
+    ConfigurableFactory configurable = (ConfigurableFactory) factory;
+    assertNotNull("Not a ConfigurableFactory", configurable);
+    assertEquals("Incorrect config value found", "bar", configurable.getConfiguration().get("foo"));
   }
 }

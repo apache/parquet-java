@@ -305,8 +305,8 @@ public class DefaultValuesWriterFactoryTest {
 
   private void doTestValueWriter(PrimitiveTypeName typeName, WriterVersion version, boolean enableDictionary, Class<? extends ValuesWriter> expectedValueWriterClass) {
     ColumnDescriptor mockPath = getMockColumn(typeName);
-    ValuesWriterFactory selectionStrategy = getDefaultFactory(version, enableDictionary);
-    ValuesWriter writer = selectionStrategy.newValuesWriter(mockPath);
+    ValuesWriterFactory factory = getDefaultFactory(version, enableDictionary);
+    ValuesWriter writer = factory.newValuesWriter(mockPath);
 
     validateWriterType(writer, expectedValueWriterClass);
   }

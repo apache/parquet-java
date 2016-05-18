@@ -38,7 +38,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ConfigurableFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -340,7 +340,13 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
 
     try {
-      return factoryOverride.newInstance();
+      ValuesWriterFactory factory = factoryOverride.newInstance();
+      if (factory instanceof ConfigurableFactory) {
+        ConfigurableFactory configurableFactory = (ConfigurableFactory) factory;
+        configurableFactory.setConfiguration(conf);
+      }
+
+      return factory;
     } catch (Exception e) {
       throw new BadConfigurationException("Unable to instantiate ValuesWriterFactory: " + factoryOverride, e);
     }
