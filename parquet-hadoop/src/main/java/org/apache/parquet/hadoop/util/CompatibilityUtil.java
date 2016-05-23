@@ -96,7 +96,9 @@ public class CompatibilityUtil {
       }
     } else {
       if (readBuf.hasArray()) {
+        int initPos = readBuf.position();
         res = f.read(readBuf.array(), readBuf.arrayOffset(), readBuf.remaining());
+        readBuf.position(initPos + res);
       } else {
         byte[] buf = new byte[readBuf.remaining()];
         res = f.read(buf);
