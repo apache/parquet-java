@@ -178,6 +178,14 @@
 
 --------------------------------------------------------------------------------
 
+This product includes code from Apache Avro.
+
+Copyright: 2014 The Apache Software Foundation.
+Home page: https://avro.apache.org/
+License: http://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
 This project includes code from Daniel Lemire's JavaFastPFOR project. The
 "Lemire" bit packing source code produced by parquet-generator is derived from
 the JavaFastPFOR project.

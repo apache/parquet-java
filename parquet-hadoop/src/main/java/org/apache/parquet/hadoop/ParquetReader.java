@@ -35,11 +35,8 @@ import org.apache.parquet.Preconditions;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
-import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.hadoop.api.ReadSupport;
-import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
-import org.apache.parquet.schema.MessageType;
 
 /**
  * Read records from a Parquet file.
@@ -141,17 +138,15 @@ public class ParquetReader<T> implements Closeable {
     if (footersIterator.hasNext()) {
       Footer footer = footersIterator.next();
 
-      List<BlockMetaData> blocks = footer.getParquetMetadata().getBlocks();
+      ParquetFileReader fileReader = ParquetFileReader.open(
+          conf, footer.getFile(), footer.getParquetMetadata());
 
-      MessageType fileSchema = footer.getParquetMetadata().getFileMetaData().getSchema();
-
-      List<BlockMetaData> filteredBlocks = RowGroupFilter.filterRowGroups(
-          filter, blocks, fileSchema);
+      // apply data filters
+      fileReader.filterRowGroups(filter);
 
       reader = new InternalParquetRecordReader<T>(readSupport, filter);
-      reader.initialize(fileSchema,
-          footer.getParquetMetadata().getFileMetaData(),
-          footer.getFile(), filteredBlocks, conf);
+
+      reader.initialize(fileReader, conf);
     }
   }
 

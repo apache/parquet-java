@@ -25,6 +25,8 @@ import java.util.List;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.ID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class provides fluent builders that produce Parquet schema Types.
@@ -59,7 +61,7 @@ import org.apache.parquet.schema.Type.ID;
  *   // }
  *   Types.requiredGroup()
  *            .required(INT64).named("id")
- *            .required(BINARY).as(UTF8).named("email")
+ *            .optional(BINARY).as(UTF8).named("email")
  *        .named("User")
  * </pre>
  * <p>
@@ -82,7 +84,7 @@ import org.apache.parquet.schema.Type.ID;
  *   // }
  *   Types.requiredGroup()
  *            .required(INT64).named("id")
- *            .required(BINARY).as(UTF8).named("email")
+ *            .optional(BINARY).as(UTF8).named("email")
  *            .optionalGroup()
  *                .required(BINARY).as(UTF8).named("street")
  *                .required(INT32).named("zipcode")
@@ -161,7 +163,7 @@ import org.apache.parquet.schema.Type.ID;
  *   // }
  *   Types.buildMessage()
  *            .required(INT64).named("id")
- *            .required(BINARY).as(UTF8).named("email")
+ *            .optional(BINARY).as(UTF8).named("email")
  *            .optionalGroup()
  *                .required(BINARY).as(UTF8).named("street")
  *                .required(INT32).named("zipcode")
@@ -305,8 +307,11 @@ public class Types {
   public abstract static class
       BasePrimitiveBuilder<P, THIS extends BasePrimitiveBuilder<P, THIS>>
       extends Builder<THIS, P> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(BasePrimitiveBuilder.class);
     private static final long MAX_PRECISION_INT32 = maxPrecision(4);
     private static final long MAX_PRECISION_INT64 = maxPrecision(8);
+    private static final String LOGICAL_TYPES_DOC_URL =
+        "https://github.com/apache/parquet-format/blob/master/LogicalTypes.md";
     private final PrimitiveTypeName primitiveType;
     private int length = NOT_SET;
     private int precision = NOT_SET;
@@ -331,9 +336,9 @@ public class Types {
      * @param length an int length
      * @return this builder for method chaining
      */
-    public BasePrimitiveBuilder<P, THIS> length(int length) {
+    public THIS length(int length) {
       this.length = length;
-      return this;
+      return self();
     }
 
     /**
@@ -346,9 +351,9 @@ public class Types {
      * @param precision an int precision value for the DECIMAL
      * @return this builder for method chaining
      */
-    public BasePrimitiveBuilder<P, THIS> precision(int precision) {
+    public THIS precision(int precision) {
       this.precision = precision;
-      return this;
+      return self();
     }
 
     /**
@@ -364,9 +369,9 @@ public class Types {
      * @param scale an int scale value for the DECIMAL
      * @return this builder for method chaining
      */
-    public BasePrimitiveBuilder<P, THIS> scale(int scale) {
+    public THIS scale(int scale) {
       this.scale = scale;
-      return this;
+      return self();
     }
 
     @Override
@@ -406,6 +411,10 @@ public class Types {
                   meta.getPrecision() <= MAX_PRECISION_INT64,
                   "INT64 cannot store " + meta.getPrecision() + " digits " +
                   "(max " + MAX_PRECISION_INT64 + ")");
+              if (meta.getPrecision() <= MAX_PRECISION_INT32) {
+                LOGGER.warn("Decimal with {} digits is stored in an INT64, but fits in an INT32. See {}.",
+                            precision, LOGICAL_TYPES_DOC_URL);
+              }
             } else if (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
               Preconditions.checkState(
                   meta.getPrecision() <= maxPrecision(length),
@@ -424,7 +433,9 @@ public class Types {
             Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
                 originalType.toString() + " can only annotate INT32");
             break;
+          case TIME_MICROS:
           case TIMESTAMP_MILLIS:
+          case TIMESTAMP_MICROS:
           case UINT_64:
           case INT_64:
             Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,

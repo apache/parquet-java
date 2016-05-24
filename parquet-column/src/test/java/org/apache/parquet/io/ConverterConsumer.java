@@ -114,4 +114,12 @@ public class ConverterConsumer extends RecordConsumer {
     currentPrimitive.addDouble(value);
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() {
+    // do nothing
+  }
+
 }

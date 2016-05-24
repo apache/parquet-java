@@ -252,7 +252,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
     return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+        ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK);
   }
 
   public static boolean getEstimatePageSizeCheck(Configuration configuration) {
@@ -383,7 +383,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
     if (INFO) LOG.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
     if (INFO) LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
-    if (INFO) LOG.info("Min row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+    if (INFO) LOG.info("Max row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
 
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(
@@ -394,9 +394,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
     long minAllocation = conf.getLong(ParquetOutputFormat.MIN_MEMORY_ALLOCATION,
         MemoryManager.DEFAULT_MIN_MEMORY_ALLOCATION);
-    if (memoryManager == null) {
-      memoryManager = new MemoryManager(maxLoad, minAllocation);
-    } else if (memoryManager.getMemoryPoolRatio() != maxLoad) {
+    synchronized (ParquetOutputFormat.class) {
+      if (memoryManager == null) {
+        memoryManager = new MemoryManager(maxLoad, minAllocation);
+      }
+    }
+    if (memoryManager.getMemoryPoolRatio() != maxLoad) {
       LOG.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
           "be reset by the new value: " + maxLoad);
     }
@@ -441,13 +444,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return committer;
   }
 
-
   /**
    * This memory manager is for all the real writers (InternalParquetRecordWriter) in one task.
    */
   private static MemoryManager memoryManager;
 
-  public static MemoryManager getMemoryManager() {
+  public synchronized static MemoryManager getMemoryManager() {
     return memoryManager;
   }
 }

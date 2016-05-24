@@ -191,6 +191,14 @@ public abstract class Statistics<T extends Comparable<T>> {
   abstract public byte[] getMinBytes();
 
   /**
+   * Abstract method to return whether the min and max values fit in the given
+   * size.
+   * @param size a size in bytes
+   * @return true iff the min and max values are less than size bytes
+   */
+  abstract public boolean isSmallerThan(long size);
+
+  /**
    * toString() to display min, max, num_nulls in a string
    */
   abstract public String toString();

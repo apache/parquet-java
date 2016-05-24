@@ -62,6 +62,11 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
+  public boolean isSmallerThan(long size) {
+    return !hasNonNullValue() || (16 < size);
+  }
+
+  @Override
   public String toString() {
     if (this.hasNonNullValue())
       return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());

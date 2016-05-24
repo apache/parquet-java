@@ -32,7 +32,8 @@ import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.boundedint.DevNullValuesWriter;
-import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForLong;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
@@ -212,9 +213,10 @@ public class ParquetProperties {
       case FIXED_LEN_BYTE_ARRAY:
         return new DeltaByteArrayWriter(initialSlabSize, pageSizeThreshold, allocator);
       case INT32:
-        return new DeltaBinaryPackingValuesWriter(initialSlabSize, pageSizeThreshold, allocator);
-      case INT96:
+        return new DeltaBinaryPackingValuesWriterForInteger(initialSlabSize, pageSizeThreshold, allocator);
       case INT64:
+        return new DeltaBinaryPackingValuesWriterForLong(initialSlabSize, pageSizeThreshold, allocator);
+      case INT96:
       case DOUBLE:
       case FLOAT:
         return plainWriter(path);

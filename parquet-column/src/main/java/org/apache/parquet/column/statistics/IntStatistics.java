@@ -62,6 +62,11 @@ public class IntStatistics extends Statistics<Integer> {
   }
 
   @Override
+  public boolean isSmallerThan(long size) {
+    return !hasNonNullValue() || (8 < size);
+  }
+
+  @Override
   public String toString() {
     if (this.hasNonNullValue())
       return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());

@@ -58,8 +58,9 @@ import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being superseded with parquet-cascading3 for Cascading 3.x
 public class TestParquetTBaseScheme {
-  final String txtInputPath = "src/test/resources/names.txt";
+  final String txtInputPath = "target/test-classes/names.txt";
   final String parquetInputPath = "target/test/ParquetTBaseScheme/names-parquet-in";
   final String parquetOutputPath = "target/test/ParquetTBaseScheme/names-parquet-out";
   final String txtOutputPath = "target/test/ParquetTBaseScheme/names-txt-out";

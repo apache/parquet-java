@@ -59,6 +59,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
   * @author Avi Bryant
   */
 
+@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being superseded with parquet-cascading3 for Cascading 3.x
 public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
 
   private static final long serialVersionUID = 0L;

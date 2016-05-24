@@ -62,6 +62,11 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
+  public boolean isSmallerThan(long size) {
+    return !hasNonNullValue() || (16 < size);
+  }
+
+  @Override
   public String toString() {
     if(this.hasNonNullValue())
       return String.format("min: %.5f, max: %.5f, num_nulls: %d", min, max, this.getNumNulls());

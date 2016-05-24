@@ -30,9 +30,13 @@ import static org.apache.parquet.pig.TupleReadSupport.PARQUET_PIG_REQUIRED_FIELD
 import static org.apache.parquet.pig.TupleReadSupport.PARQUET_COLUMN_INDEX_ACCESS;
 import static org.apache.parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
+import static org.apache.parquet.filter2.predicate.FilterApi.*;
+
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -42,9 +46,17 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
+import org.apache.parquet.filter2.predicate.Operators;
+import org.apache.parquet.io.api.Binary;
 import org.apache.pig.Expression;
+import org.apache.pig.Expression.BetweenExpression;
+import org.apache.pig.Expression.InExpression;
+import org.apache.pig.Expression.UnaryExpression;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.LoadMetadata;
+import org.apache.pig.LoadPredicatePushdown;
 import org.apache.pig.LoadPushDown;
 import org.apache.pig.ResourceSchema;
 import org.apache.pig.ResourceStatistics;
@@ -56,6 +68,11 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.parser.ParserException;
+
+import static org.apache.pig.Expression.BinaryExpression;
+import static org.apache.pig.Expression.Column;
+import static org.apache.pig.Expression.Const;
+import static org.apache.pig.Expression.OpType;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.ParquetInputFormat;
@@ -70,8 +87,11 @@ import org.apache.parquet.io.ParquetDecodingException;
  * @author Julien Le Dem
  *
  */
-public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown {
+public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown, LoadPredicatePushdown {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
+
+  public static final String ENABLE_PREDICATE_FILTER_PUSHDOWN = "parquet.pig.predicate.pushdown.enable";
+  private static final boolean DEFAULT_PREDICATE_PUSHDOWN_ENABLED = false;
 
   // Using a weak hash map will ensure that the cache will be gc'ed when there is memory pressure
   static final Map<String, Reference<ParquetInputFormat<Tuple>>> inputFormatCache = new WeakHashMap<String, Reference<ParquetInputFormat<Tuple>>>();
@@ -137,7 +157,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
-    if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
+    if (DEBUG) {
+      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
+      LOG.debug("LoadFunc.setLocation(" + location + ", " + jobToString + ")");
+    }
 
     setInput(location, job);
   }
@@ -169,6 +192,11 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
     getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
     getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
+
+    FilterPredicate filterPredicate = (FilterPredicate) getFromUDFContext(ParquetInputFormat.FILTER_PREDICATE);
+    if(filterPredicate != null) {
+      ParquetInputFormat.setFilterPredicate(getConfiguration(job), filterPredicate);
+    }
   }
 
   @Override
@@ -240,14 +268,20 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public String[] getPartitionKeys(String location, Job job) throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + job + ")");
+    if (DEBUG) {
+      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
+      LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + jobToString + ")");
+    }
     setInput(location, job);
     return null;
   }
 
   @Override
   public ResourceSchema getSchema(String location, Job job) throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.getSchema(" + location + ", " + job + ")");
+    if (DEBUG) {
+      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
+      LOG.debug("LoadMetadata.getSchema(" + location + ", " + jobToString + ")");
+    }
     setInput(location, job);
     return new ResourceSchema(schema);
   }
@@ -289,7 +323,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.getStatistics(" + location + ", " + job + ")");
+    if (DEBUG) {
+      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
+      LOG.debug("LoadMetadata.getStatistics(" + location + ", " + jobToString + ")");
+    }
     /* We need to call setInput since setLocation is not
        guaranteed to be called before this */
     setInput(location, job);
@@ -378,6 +415,165 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       }
     }
     return s;
+  }
+
+  @Override
+  public List<String> getPredicateFields(String s, Job job) throws IOException {
+    if(!job.getConfiguration().getBoolean(ENABLE_PREDICATE_FILTER_PUSHDOWN, DEFAULT_PREDICATE_PUSHDOWN_ENABLED)) {
+      return null;
+    }
+
+    List<String> fields = new ArrayList<String>();
+
+    for(FieldSchema field : schema.getFields()) {
+      switch(field.type) {
+        case DataType.BOOLEAN:
+        case DataType.INTEGER:
+        case DataType.LONG:
+        case DataType.FLOAT:
+        case DataType.DOUBLE:
+        case DataType.CHARARRAY:
+          fields.add(field.alias);
+          break;
+        default:
+          // Skip BYTEARRAY, TUPLE, MAP, BAG, DATETIME, BIGINTEGER, BIGDECIMAL
+          break;
+      }
+    }
+
+    return fields;
+  }
+
+  @Override
+  public List<Expression.OpType> getSupportedExpressionTypes() {
+    OpType supportedTypes [] = {
+        OpType.OP_EQ,
+        OpType.OP_NE,
+        OpType.OP_GT,
+        OpType.OP_GE,
+        OpType.OP_LT,
+        OpType.OP_LE,
+        OpType.OP_AND,
+        OpType.OP_OR,
+        //OpType.OP_BETWEEN, // not implemented in Pig yet
+        //OpType.OP_IN,      // not implemented in Pig yet
+        OpType.OP_NOT
+    };
+
+    return Arrays.asList(supportedTypes);
+  }
+
+  @Override
+  public void setPushdownPredicate(Expression e) throws IOException {
+    LOG.info("Pig pushdown expression: " + e);
+
+    FilterPredicate pred = buildFilter(e);
+    LOG.info("Parquet filter predicate expression: " + pred);
+
+    storeInUDFContext(ParquetInputFormat.FILTER_PREDICATE, pred);
+  }
+
+  private FilterPredicate buildFilter(Expression e) {
+    OpType op = e.getOpType();
+
+    if (e instanceof BinaryExpression) {
+      Expression lhs = ((BinaryExpression) e).getLhs();
+      Expression rhs = ((BinaryExpression) e).getRhs();
+
+      switch (op) {
+        case OP_AND:
+          return and(buildFilter(lhs), buildFilter(rhs));
+        case OP_OR:
+          return or(buildFilter(lhs), buildFilter(rhs));
+        case OP_BETWEEN:
+          BetweenExpression between = (BetweenExpression) rhs;
+          return and(
+              buildFilter(OpType.OP_GE, (Column) lhs, (Const) between.getLower()),
+              buildFilter(OpType.OP_LE, (Column) lhs, (Const) between.getUpper()));
+        case OP_IN:
+          FilterPredicate current = null;
+          for (Object value : ((InExpression) rhs).getValues()) {
+            FilterPredicate next = buildFilter(OpType.OP_EQ, (Column) lhs, (Const) value);
+            if (current != null) {
+              current = or(current, next);
+            } else {
+              current = next;
+            }
+          }
+          return current;
+      }
+
+      if (lhs instanceof Column && rhs instanceof Const) {
+        return buildFilter(op, (Column) lhs, (Const) rhs);
+      } else if (lhs instanceof Const && rhs instanceof Column) {
+        return buildFilter(op, (Column) rhs, (Const) lhs);
+      }
+    } else if (e instanceof UnaryExpression && op == OpType.OP_NOT) {
+      return LogicalInverseRewriter.rewrite(
+          not(buildFilter(((UnaryExpression) e).getExpression())));
+    }
+
+    throw new RuntimeException("Could not build filter for expression: " + e);
+  }
+
+  private FilterPredicate buildFilter(OpType op, Column col, Const value) {
+    String name = col.getName();
+    try {
+      FieldSchema f = schema.getField(name);
+      switch (f.type) {
+        case DataType.BOOLEAN:
+          Operators.BooleanColumn boolCol = booleanColumn(name);
+          switch(op) {
+            case OP_EQ: return eq(boolCol, getValue(value, boolCol.getColumnType()));
+            case OP_NE: return notEq(boolCol, getValue(value, boolCol.getColumnType()));
+            default: throw new RuntimeException(
+                "Operation " + op + " not supported for boolean column: " + name);
+          }
+        case DataType.INTEGER:
+          Operators.IntColumn intCol = intColumn(name);
+          return op(op, intCol, value);
+        case DataType.LONG:
+          Operators.LongColumn longCol = longColumn(name);
+          return op(op, longCol, value);
+        case DataType.FLOAT:
+          Operators.FloatColumn floatCol = floatColumn(name);
+          return op(op, floatCol, value);
+        case DataType.DOUBLE:
+          Operators.DoubleColumn doubleCol = doubleColumn(name);
+          return op(op, doubleCol, value);
+        case DataType.CHARARRAY:
+          Operators.BinaryColumn binaryCol = binaryColumn(name);
+          return op(op, binaryCol, value);
+        default:
+          throw new RuntimeException("Unsupported type " + f.type + " for field: " + name);
+      }
+    } catch (FrontendException e) {
+      throw new RuntimeException("Error processing pushdown for column:" + col, e);
+    }
+  }
+
+  private static <C extends Comparable<C>, COL extends Operators.Column<C> & Operators.SupportsLtGt>
+  FilterPredicate op(Expression.OpType op, COL col, Const valueExpr) {
+    C value = getValue(valueExpr, col.getColumnType());
+    switch (op) {
+      case OP_EQ: return eq(col, value);
+      case OP_NE: return notEq(col, value);
+      case OP_GT: return gt(col, value);
+      case OP_GE: return gtEq(col, value);
+      case OP_LT: return lt(col, value);
+      case OP_LE: return ltEq(col, value);
+    }
+    return null;
+  }
+
+  private static <C extends Comparable<C>> C getValue(Const valueExpr, Class<C> type) {
+    Object value = valueExpr.getValue();
+
+    if (value instanceof String) {
+      value = Binary.fromString((String) value);
+    }
+
+    return type.cast(value);
   }
 
 }
