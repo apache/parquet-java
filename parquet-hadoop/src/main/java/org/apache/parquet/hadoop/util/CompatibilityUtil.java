@@ -79,7 +79,7 @@ public class CompatibilityUtil {
     int res;
     if (useV21) {
       try {
-        LOG.info("Trying to use v21 apis");
+        LOG.info("Trying to use v21 apis, initPos: " + readBuf.position() + " remaining: " + readBuf.remaining());
         res = (Integer) fileAPI.PROVIDE_BUF_READ_METHOD.invoke(f, readBuf);
       } catch (InvocationTargetException e) {
         if (e.getCause() instanceof UnsupportedOperationException) {
