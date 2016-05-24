@@ -490,7 +490,6 @@ public class ParquetFileReader implements Closeable {
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<ColumnPath, ColumnDescriptor>();
   private final FileMetaData fileMetaData; // may be null
   private final ByteBufferAllocator allocator;
-  private final boolean disableByteBufferRead;
   private final Configuration conf;
 
   // not final. in some cases, this may be lazily loaded for backward-compat.
@@ -534,10 +533,6 @@ public class ParquetFileReader implements Closeable {
     // the codec factory to get decompressors
     this.codecFactory = new CodecFactory(configuration, 0);
     this.allocator = new HeapByteBufferAllocator();
-
-    //Bypass ByteBuffer read path for S3 FileSystems.  See PARQUET-400.
-    List<String> fsBlackList = Arrays.asList(configuration.getStrings(PARQUET_BYTEBUFFER_BLACKLIST, PARQUET_BYTEBUFFER_BLACKLIST_DEFAULT));
-    this.disableByteBufferRead = fsBlackList.contains(filePath.toUri().getScheme());
   }
 
   /**
@@ -1050,17 +1045,8 @@ public class ParquetFileReader implements Closeable {
       f.seek(offset);
 
       //Allocate the bytebuffer based on whether the FS can support it.
-      ByteBuffer chunksByteBuffer;
-      if(disableByteBufferRead) {
-        byte[] chunkBytes = new byte[length];
-        f.readFully(chunkBytes);
-        chunksByteBuffer = ByteBuffer.wrap(chunkBytes);
-      } else {
-        chunksByteBuffer = allocator.allocate(length);
-        while (chunksByteBuffer.hasRemaining()) {
-          CompatibilityUtil.getBuf(f, chunksByteBuffer);
-        }
-      }
+      ByteBuffer chunksByteBuffer = allocator.allocate(length);
+      CompatibilityUtil.getBuf(f, chunksByteBuffer);
 
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);

@@ -66,6 +66,12 @@ public class CompatibilityUtil {
     }
   }
 
+  /**
+   * This method attempts to read into the provided readBuffer, readBuffer.remaining() bytes.
+   * If the underlying InputStream supports read directly into ByteBuffer we go ahead and invoke that.
+   * Else we fall back to directly calling readFully() on the underlying stream.
+   * @return Number of bytes read - should be readBuf.remaining()
+   */
   public static int getBuf(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
     int res;
     if (useV21) {
@@ -97,11 +103,13 @@ public class CompatibilityUtil {
     } else {
       if (readBuf.hasArray()) {
         int initPos = readBuf.position();
-        res = f.read(readBuf.array(), readBuf.arrayOffset(), readBuf.remaining());
+        res = readBuf.remaining();
+        f.readFully(readBuf.array(), readBuf.arrayOffset(), readBuf.remaining());
         readBuf.position(initPos + res);
       } else {
         byte[] buf = new byte[readBuf.remaining()];
-        res = f.read(buf);
+        res = readBuf.remaining();
+        f.readFully(buf);
         readBuf.put(buf, 0, res);
       }
     }
