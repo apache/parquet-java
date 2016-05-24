@@ -19,7 +19,6 @@
 package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.Log;
 import org.apache.parquet.ShouldNeverHappenException;
 
 import java.io.IOException;
@@ -33,8 +32,6 @@ public class CompatibilityUtil {
   // the 2.x APIs, in particular reading using a provided ByteBuffer
   private static boolean useV21;
   public static final V21FileAPI fileAPI;
-
-  private static final Log LOG = Log.getLog(CompatibilityUtil.class);
 
   private static class V21FileAPI {
     private final Method PROVIDE_BUF_READ_METHOD;
@@ -79,15 +76,16 @@ public class CompatibilityUtil {
     int res;
     if (useV21) {
       try {
-        LOG.info("Trying to use v21 apis, initPos: " + readBuf.position() + " remaining: " + readBuf.remaining());
-        res = (Integer) fileAPI.PROVIDE_BUF_READ_METHOD.invoke(f, readBuf);
+        res = readBuf.remaining();
+        while (readBuf.hasRemaining()) {
+          fileAPI.PROVIDE_BUF_READ_METHOD.invoke(f, readBuf);
+        }
       } catch (InvocationTargetException e) {
         if (e.getCause() instanceof UnsupportedOperationException) {
           // the FSDataInputStream docs say specifically that implementations
           // can choose to throw UnsupportedOperationException, so this should
           // be a reasonable check to make to see if the interface is
           // present but not implemented and we should be falling back
-          LOG.info("Failed to read data using v21 APIs: ", e);
           useV21 = false;
           return getBuf(f, readBuf);
         } else if (e.getCause() instanceof IOException) {
@@ -109,13 +107,11 @@ public class CompatibilityUtil {
       if (readBuf.hasArray()) {
         int initPos = readBuf.position();
         res = readBuf.remaining();
-        LOG.info("Reading into readBuf's array. initPos: " + initPos + " remaining: " + readBuf.remaining());
         f.readFully(readBuf.array(), readBuf.arrayOffset(), readBuf.remaining());
         readBuf.position(initPos + res);
       } else {
         byte[] buf = new byte[readBuf.remaining()];
         res = readBuf.remaining();
-        LOG.info("Reading into new array. remaining: " + readBuf.remaining());
         f.readFully(buf);
         readBuf.put(buf, 0, res);
       }

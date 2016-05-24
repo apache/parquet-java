@@ -1046,10 +1046,7 @@ public class ParquetFileReader implements Closeable {
 
       //Allocate the bytebuffer based on whether the FS can support it.
       ByteBuffer chunksByteBuffer = allocator.allocate(length);
-      while (chunksByteBuffer.hasRemaining()) {
-        int res = CompatibilityUtil.getBuf(f, chunksByteBuffer);
-        LOG.info("Requested to read: " + length + " ended up reading: " + res);
-      }
+      CompatibilityUtil.getBuf(f, chunksByteBuffer);
 
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
