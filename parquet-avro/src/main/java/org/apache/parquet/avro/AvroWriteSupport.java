@@ -364,7 +364,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
       Utf8 utf8 = (Utf8) value;
       return Binary.fromReusedByteArray(utf8.getBytes(), 0, utf8.getByteLength());
     }
-    return Binary.fromString((CharSequence) value);
+    return Binary.fromString(value.toString());
   }
 
   private static GenericData getDataModel(Configuration conf) {
