@@ -102,9 +102,12 @@ public class ParquetFileReader implements Closeable {
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
-  // configure if we want to use Hadoop's V2 read(bytebuffer). If true, we try to read using the
-  // new Hadoop read(ByteBuffer) api. Else, we skip.
-  public static String PARQUET_HADOOP_BYTEBUFFER_READ = "parquet.read.useByteBuffer";
+  // configure if we want to use Hadoop's V2 read(bytebuffer) API.
+  // If true, we try to read using the new Hadoop read(ByteBuffer) api. This reads data into the provided
+  // byteBuffer and allows us to potentially take advantage zero-copy read path in Hadoop.
+  // Else, we skip and either read into the byteBuffer's array (if its present) or allocate one and copy
+  // into it.
+  public static String PARQUET_HADOOP_BYTEBUFFER_READ = "parquet.read.use.byte.buffer";
 
   private static ParquetMetadataConverter converter = new ParquetMetadataConverter();
 

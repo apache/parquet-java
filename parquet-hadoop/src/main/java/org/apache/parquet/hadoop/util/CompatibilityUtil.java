@@ -138,14 +138,14 @@ public class CompatibilityUtil {
   private int readWithExistingArray(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
     int initPos = readBuf.position();
     int remaining = readBuf.remaining();
-    f.readFully(readBuf.array(), readBuf.arrayOffset(), readBuf.remaining());
+    f.readFully(readBuf.array(), readBuf.arrayOffset(), remaining);
     readBuf.position(initPos + remaining);
     return remaining;
   }
 
   private int readWithNewArray(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
     int remaining = readBuf.remaining();
-    byte[] buf = new byte[readBuf.remaining()];
+    byte[] buf = new byte[remaining];
     f.readFully(buf);
     readBuf.put(buf, 0, remaining);
     return remaining;
