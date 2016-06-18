@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.factory;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * Encapsulates parameters needed to create new ValuesWriter classes as part of
@@ -34,41 +35,41 @@ public class ValuesWriterFactoryParams {
     ByteBufferAllocator allocator,
     boolean enableDictionary,
     int maxDictionaryByteSize) {
-
-    this.writerVersion = writerVersion;
+    this.writerVersion = checkNotNull(writerVersion, "writerVersion");
     this.initialCapacity = initialCapacity;
     this.pageSize = pageSize;
-    this.allocator = allocator;
+    this.allocator = checkNotNull(allocator, "allocator");
     this.enableDictionary = enableDictionary;
     this.maxDictionaryByteSize = maxDictionaryByteSize;
   }
 
-  private WriterVersion writerVersion;
+  private final WriterVersion writerVersion;
+  private final boolean enableDictionary;
+  private final int initialCapacity;
+  private final int pageSize;
+  private final ByteBufferAllocator allocator;
+  private final int maxDictionaryByteSize;
+
   public WriterVersion getWriterVersion() {
     return writerVersion;
   }
 
-  private int initialCapacity;
   public int getInitialCapacity() {
     return initialCapacity;
   }
 
-  private int pageSize;
   public int getPageSize() {
     return pageSize;
   }
 
-  private ByteBufferAllocator allocator;
   public ByteBufferAllocator getAllocator() {
     return allocator;
   }
 
-  private int maxDictionaryByteSize;
   public int getMaxDictionaryByteSize() {
     return maxDictionaryByteSize;
   }
 
-  private boolean enableDictionary;
   public boolean getEnableDictionary() {
     return enableDictionary;
   }

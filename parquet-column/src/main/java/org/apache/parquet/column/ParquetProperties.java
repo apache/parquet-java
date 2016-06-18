@@ -29,9 +29,9 @@ import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
+import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactoryParams;
 import org.apache.parquet.schema.MessageType;
@@ -51,7 +51,8 @@ public class ParquetProperties {
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
-  public static final Class<? extends ValuesWriterFactory> DEFAULT_VALUES_WRITER_FACTORY = DefaultValuesWriterFactory.class;
+
+  public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
   private static final int MIN_SLAB_SIZE = 64;
 
@@ -206,7 +207,7 @@ public class ParquetProperties {
     private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
     private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
-    private ValuesWriterFactory valuesWriterFactory = new DefaultValuesWriterFactory();
+    private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
 
     private Builder() {
     }
@@ -296,6 +297,7 @@ public class ParquetProperties {
     }
 
     public Builder withValuesWriterFactory(ValuesWriterFactory factory) {
+      Preconditions.checkNotNull(factory, "ValuesWriterFactory");
       this.valuesWriterFactory = factory;
       return this;
     }

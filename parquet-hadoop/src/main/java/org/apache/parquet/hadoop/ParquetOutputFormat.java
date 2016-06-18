@@ -25,6 +25,7 @@ import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
 
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
@@ -38,7 +39,6 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.column.values.factory.ConfigurableFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -153,11 +153,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    * use the Parquet provided default - {@link org.apache.parquet.column.values.factory.DefaultValuesWriterFactory}.
    * Factory classes provided must implement {@link org.apache.parquet.column.values.factory.ValuesWriterFactory}.
    *
-   * For e.g. "parquet.writer.factory-override" = "org.apache.parquet.column.values.factory.MyValuesWriterFactory"
+   * For e.g. "parquet.write.value.writer.factory" = "org.apache.parquet.column.values.factory.MyValuesWriterFactory"
    * will ensure that we use MyValuesWriterFactory to create ValuesWriters for writing out data.
    * See the documentation for ValuesWriterFactory for more details.
    */
-  public static final String WRITER_FACTORY_OVERRIDE = "parquet.writer.factory-override";
+  public static final String WRITER_FACTORY_OVERRIDE = "parquet.write.value.writer.factory";
 
   // default to no padding for now
   private static final int DEFAULT_MAX_PADDING_SIZE = 0;
@@ -334,20 +334,20 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static ValuesWriterFactory getValuesWriterFactory(Configuration conf) {
     Class<? extends ValuesWriterFactory> factoryOverride =
       (Class<? extends ValuesWriterFactory>) ConfigurationUtil.getClassFromConfig(conf, WRITER_FACTORY_OVERRIDE, ValuesWriterFactory.class);
-    if (factoryOverride == null) {
-      // no override specified, fall back to default
-      factoryOverride = ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY;
-    }
 
     try {
-      ValuesWriterFactory factory = factoryOverride.newInstance();
-      if (factory instanceof ConfigurableFactory) {
-        ConfigurableFactory configurableFactory = (ConfigurableFactory) factory;
-        configurableFactory.setConfiguration(conf);
+      ValuesWriterFactory factory =
+        factoryOverride == null ? ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY : factoryOverride.newInstance() ;
+
+      if (factory instanceof Configurable) {
+        Configurable configurableFactory = (Configurable) factory;
+        configurableFactory.setConf(conf);
       }
 
       return factory;
-    } catch (Exception e) {
+    } catch (InstantiationException e) {
+      throw new BadConfigurationException("Unable to instantiate ValuesWriterFactory: " + factoryOverride, e);
+    } catch (IllegalAccessException e) {
       throw new BadConfigurationException("Unable to instantiate ValuesWriterFactory: " + factoryOverride, e);
     }
   }

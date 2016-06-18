@@ -18,27 +18,27 @@
  */
 package org.apache.parquet.hadoop;
 
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.values.ValuesWriter;
-import org.apache.parquet.column.values.factory.ConfigurableFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactoryParams;
 
 /**
  * ValuesWriter factory test class for verifying overrides and configuration
  */
-public class StubConfigurableValuesWriterFactory implements ValuesWriterFactory, ConfigurableFactory {
+public class StubConfigurableValuesWriterFactory implements ValuesWriterFactory, Configurable {
 
   private Configuration config;
 
   @Override
-  public void setConfiguration(Configuration config) {
+  public void setConf(Configuration config) {
     this.config = config;
   }
 
   @Override
-  public Configuration getConfiguration() {
+  public Configuration getConf() {
     return config;
   }
 

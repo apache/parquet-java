@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.values.factory;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
@@ -41,6 +43,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class DefaultValuesWriterFactoryTest {
+
+  private static final ByteBufferAllocator ALLOCATOR = new HeapByteBufferAllocator();
 
   @Test
   public void testBoolean() {
@@ -327,7 +331,7 @@ public class DefaultValuesWriterFactoryTest {
 
   private ValuesWriterFactory getDefaultFactory(WriterVersion writerVersion, boolean enableDictionary) {
     ValuesWriterFactory factory = new DefaultValuesWriterFactory();
-    factory.initialize(new ValuesWriterFactoryParams(writerVersion, 128, ParquetProperties.DEFAULT_PAGE_SIZE, null, enableDictionary, 0));
+    factory.initialize(new ValuesWriterFactoryParams(writerVersion, 128, ParquetProperties.DEFAULT_PAGE_SIZE, ALLOCATOR, enableDictionary, 0));
     return factory;
   }
 

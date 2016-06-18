@@ -24,7 +24,14 @@ import org.apache.parquet.column.values.ValuesWriter;
 /**
  * Can be overridden to allow users to specify how they want their ValuesWriters to be created.
  * ValuesWriterFactories are created using reflection in {@link org.apache.parquet.column.ParquetProperties}.
- * ValuesWriterFactories can in turn read additional config to create appropriate ValuesWriters.
+ * Due to this, they must provide a default constructor.
+ * Lifecycle of ValuesWriterFactories is:
+ * 1) Created via reflection while creating a {@link org.apache.parquet.column.ParquetProperties}
+ * 2) If the factory is Configurable (needs Hadoop conf), that is set, initialize is also called. This is done
+ * just once for the lifetime of the factory. As Hadoop config can be set, ValuesWriterFactories can
+ * read additional config to create appropriate ValuesWriters.
+ * 3) newValuesWriter is called once per column for every block of data.
+ *
  */
 public interface ValuesWriterFactory {
 

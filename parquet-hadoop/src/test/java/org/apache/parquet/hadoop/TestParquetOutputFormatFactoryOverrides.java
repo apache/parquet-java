@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.hadoop;
 
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.column.values.factory.ConfigurableFactory;
 import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.junit.Test;
@@ -71,8 +71,8 @@ public class TestParquetOutputFormatFactoryOverrides {
     ValuesWriterFactory factory = ParquetOutputFormat.getValuesWriterFactory(conf);
     assertEquals("Incorrect factory override chosen", StubConfigurableValuesWriterFactory.class, factory.getClass());
 
-    ConfigurableFactory configurable = (ConfigurableFactory) factory;
+    Configurable configurable = (Configurable) factory;
     assertNotNull("Not a ConfigurableFactory", configurable);
-    assertEquals("Incorrect config value found", "bar", configurable.getConfiguration().get("foo"));
+    assertEquals("Incorrect config value found", "bar", configurable.getConf().get("foo"));
   }
 }
