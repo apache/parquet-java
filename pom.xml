@@ -78,6 +78,7 @@
     <jackson.package>org.codehaus.jackson</jackson.package>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
+    <hadoop2.version>2.3.0</hadoop2.version>
     <cascading.version>2.5.3</cascading.version>
     <cascading3.version>3.0.3</cascading3.version>
     <parquet.format.version>2.3.1</parquet.format.version>
@@ -117,6 +118,7 @@
     <module>parquet-hive</module>
     <module>parquet-hive-bundle</module>
     <module>parquet-tools</module>
+    <module>parquet-hadoop2</module>
   </modules>
 
   <dependencies>
