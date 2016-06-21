@@ -45,6 +45,11 @@
             <version>${hadoop2.version}</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

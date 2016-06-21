@@ -62,6 +62,7 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
+import org.apache.parquet.hadoop.util.CompatibilityReader;
 import org.apache.parquet.hadoop.util.CompatibilityUtil;
 
 import org.apache.parquet.Log;
@@ -494,7 +495,7 @@ public class ParquetFileReader implements Closeable {
   private final FileMetaData fileMetaData; // may be null
   private final ByteBufferAllocator allocator;
   private final Configuration conf;
-  private final CompatibilityUtil compatibilityUtil;
+  private final CompatibilityReader compatibilityReader;
 
   // not final. in some cases, this may be lazily loaded for backward-compat.
   private ParquetMetadata footer;
@@ -537,7 +538,7 @@ public class ParquetFileReader implements Closeable {
     // the codec factory to get decompressors
     this.codecFactory = new CodecFactory(configuration, 0);
     this.allocator = new HeapByteBufferAllocator();
-    this.compatibilityUtil = new CompatibilityUtil(conf.getBoolean(PARQUET_HADOOP_BYTEBUFFER_READ, true));
+    this.compatibilityReader = CompatibilityUtil.getHadoopReader(conf.getBoolean(PARQUET_HADOOP_BYTEBUFFER_READ, true));
   }
 
   /**
@@ -570,7 +571,7 @@ public class ParquetFileReader implements Closeable {
     // the codec factory to get decompressors
     this.codecFactory = new CodecFactory(conf, 0);
     this.allocator = new HeapByteBufferAllocator();
-    this.compatibilityUtil = new CompatibilityUtil(conf.getBoolean(PARQUET_HADOOP_BYTEBUFFER_READ, true));
+    this.compatibilityReader = CompatibilityUtil.getHadoopReader(conf.getBoolean(PARQUET_HADOOP_BYTEBUFFER_READ, true));
   }
 
   /**
@@ -594,7 +595,7 @@ public class ParquetFileReader implements Closeable {
     // the codec factory to get decompressors
     this.codecFactory = new CodecFactory(conf, 0);
     this.allocator = new HeapByteBufferAllocator();
-    this.compatibilityUtil = new CompatibilityUtil(conf.getBoolean(PARQUET_HADOOP_BYTEBUFFER_READ, true));
+    this.compatibilityReader = CompatibilityUtil.getHadoopReader(conf.getBoolean(PARQUET_HADOOP_BYTEBUFFER_READ, true));
   }
 
   public ParquetMetadata getFooter() {
@@ -1053,7 +1054,7 @@ public class ParquetFileReader implements Closeable {
 
       //Allocate the bytebuffer based on whether the FS can support it.
       ByteBuffer chunksByteBuffer = allocator.allocate(length);
-      compatibilityUtil.getBuf(f, chunksByteBuffer);
+      compatibilityReader.readBuf(f, chunksByteBuffer);
 
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);

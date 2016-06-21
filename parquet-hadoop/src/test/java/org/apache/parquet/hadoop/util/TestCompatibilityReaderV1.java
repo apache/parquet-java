@@ -29,7 +29,7 @@ import org.junit.Test;
 
 import junit.framework.Assert;
 
-public class TestCompatibilityUtil {
+public class TestCompatibilityReaderV1 {
 
   private static final byte [] TEST_ARRAY = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
@@ -48,46 +48,61 @@ public class TestCompatibilityUtil {
     public boolean seekToNewSource(long targetPos) { return false; }
   }
 
+  // confirm writer version when flag = false
   @Test
-  public void testGetBufWithArray() throws Exception {
-    CompatibilityUtil compatibilityUtil = new CompatibilityUtil(true);
+  public void testReaderFlagOff() {
+    CompatibilityReader reader = CompatibilityUtil.getHadoopReader(false);
+    Assert.assertEquals("Incorrect CompatibilityReader instantiated", CompatibilityReaderV1.class, reader.getClass());
+  }
+
+  // confirm writer version when flag is true but we're on hadoop 1.x
+  @Test
+  public void testReaderFlagTrueHadoopV1() {
+    CompatibilityReader reader = CompatibilityUtil.getHadoopReader(true);
+    Assert.assertEquals("Incorrect CompatibilityReader instantiated", CompatibilityReaderV1.class, reader.getClass());
+  }
+
+  @Test
+  public void testReadBufWithArray() throws Exception {
+    CompatibilityReader reader = CompatibilityUtil.getHadoopReader(false);
     ByteBuffer byteBuffer = ByteBuffer.allocate(10);
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
-    int readCount = compatibilityUtil.getBuf(fsDataInputStream, byteBuffer);
+    int readCount = reader.readBuf(fsDataInputStream, byteBuffer);
     Assert.assertEquals("Mismatching no of chars read", 10, readCount);
     Assert.assertFalse("Byte buffer not full", byteBuffer.hasRemaining());
   }
 
   @Test
-  public void testGetBufWithoutArray() throws Exception {
-    CompatibilityUtil compatibilityUtil = new CompatibilityUtil(true);
+  public void testReadBufWithoutArray() throws Exception {
+    CompatibilityReader reader = CompatibilityUtil.getHadoopReader(false);
     ByteBuffer byteBuffer = ByteBuffer.allocateDirect(10);
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
-    int readCount = compatibilityUtil.getBuf(fsDataInputStream, byteBuffer);
+    int readCount = reader.readBuf(fsDataInputStream, byteBuffer);
     Assert.assertEquals("Mismatching no of chars read", 10, readCount);
     Assert.assertFalse("Byte buffer not full", byteBuffer.hasRemaining());
   }
 
   @Test
-  public void testGetBufWithSmallerBuffer() throws Exception {
-    CompatibilityUtil compatibilityUtil = new CompatibilityUtil(true);
+  public void testReadBufWithSmallerBuffer() throws Exception {
+    CompatibilityReader reader = CompatibilityUtil.getHadoopReader(false);
     ByteBuffer byteBuffer = ByteBuffer.allocate(5);
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
-    int readCount = compatibilityUtil.getBuf(fsDataInputStream, byteBuffer);
+    int readCount = reader.readBuf(fsDataInputStream, byteBuffer);
     Assert.assertEquals("Mismatching no of chars read", 5, readCount);
     Assert.assertFalse("Byte buffer not full", byteBuffer.hasRemaining());
   }
 
   @Test(expected = EOFException.class)
-  public void testGetBufWithLargerBuffer() throws Exception {
-    CompatibilityUtil compatibilityUtil = new CompatibilityUtil(true);
+  public void testReadBufWithLargerBuffer() throws Exception {
+    CompatibilityReader reader = CompatibilityUtil.getHadoopReader(false);
     ByteBuffer byteBuffer = ByteBuffer.allocate(50);
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
     // this throws an exception as we are trying to read 50 chars and have only 10
-    compatibilityUtil.getBuf(fsDataInputStream, byteBuffer);
+    reader.readBuf(fsDataInputStream, byteBuffer);
   }
+
 }
