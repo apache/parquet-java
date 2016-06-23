@@ -387,11 +387,10 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public String toStringUsingUTF8() {
-      String ret = null;
+      String ret;
       if (value.hasArray()) {
         try {
-          byte [] bytes = getBytes();
-          ret = new String(bytes, "UTF-8");
+          ret = new String(value.array(), value.arrayOffset() + offset, length, "UTF-8");
         } catch (UnsupportedEncodingException e) {
           throw new ParquetDecodingException("UTF-8 not supported");
         }
