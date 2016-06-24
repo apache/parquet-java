@@ -68,7 +68,7 @@ public class TestCompatibilityReaderV1 {
     ByteBuffer byteBuffer = ByteBuffer.allocate(10);
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
-    int readCount = reader.readBuf(fsDataInputStream, byteBuffer);
+    int readCount = reader.readFully(fsDataInputStream, byteBuffer);
     Assert.assertEquals("Mismatching no of chars read", 10, readCount);
     Assert.assertFalse("Byte buffer not full", byteBuffer.hasRemaining());
   }
@@ -79,7 +79,7 @@ public class TestCompatibilityReaderV1 {
     ByteBuffer byteBuffer = ByteBuffer.allocateDirect(10);
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
-    int readCount = reader.readBuf(fsDataInputStream, byteBuffer);
+    int readCount = reader.readFully(fsDataInputStream, byteBuffer);
     Assert.assertEquals("Mismatching no of chars read", 10, readCount);
     Assert.assertFalse("Byte buffer not full", byteBuffer.hasRemaining());
   }
@@ -90,7 +90,7 @@ public class TestCompatibilityReaderV1 {
     ByteBuffer byteBuffer = ByteBuffer.allocate(5);
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
-    int readCount = reader.readBuf(fsDataInputStream, byteBuffer);
+    int readCount = reader.readFully(fsDataInputStream, byteBuffer);
     Assert.assertEquals("Mismatching no of chars read", 5, readCount);
     Assert.assertFalse("Byte buffer not full", byteBuffer.hasRemaining());
   }
@@ -102,7 +102,7 @@ public class TestCompatibilityReaderV1 {
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
     // this throws an exception as we are trying to read 50 chars and have only 10
-    reader.readBuf(fsDataInputStream, byteBuffer);
+    reader.readFully(fsDataInputStream, byteBuffer);
   }
 
 }

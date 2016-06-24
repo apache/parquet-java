@@ -34,9 +34,9 @@ public interface CompatibilityReader {
 
   /**
    * This method attempts to read into the provided readBuffer, readBuffer.remaining() bytes.
-   * @return Number of bytes read - should be readBuf.remaining()
+   * @return Number of bytes read - should be readBuffer.remaining()
    * @throws EOFException if readBuf.remaining() is greater than the number of bytes available to
    * read on the FSDataInputStream f.
    */
-  int readBuf(FSDataInputStream f, ByteBuffer readBuf) throws IOException;
+  int readFully(FSDataInputStream f, ByteBuffer readBuffer) throws IOException;
 }

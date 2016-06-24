@@ -79,7 +79,7 @@ public class TestCompatibilityReaderV2 {
     ByteBuffer byteBuffer = ByteBuffer.allocate(10);
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
-    int readCount = reader.readBuf(fsDataInputStream, byteBuffer);
+    int readCount = reader.readFully(fsDataInputStream, byteBuffer);
     Assert.assertEquals("Mismatching no of chars read", 10, readCount);
     Assert.assertFalse("Byte buffer not full", byteBuffer.hasRemaining());
   }
@@ -90,7 +90,7 @@ public class TestCompatibilityReaderV2 {
     ByteBuffer byteBuffer = ByteBuffer.allocate(5);
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
-    int readCount = reader.readBuf(fsDataInputStream, byteBuffer);
+    int readCount = reader.readFully(fsDataInputStream, byteBuffer);
     Assert.assertEquals("Mismatching no of chars read", 5, readCount);
     Assert.assertFalse("Byte buffer not full", byteBuffer.hasRemaining());
   }
@@ -102,6 +102,6 @@ public class TestCompatibilityReaderV2 {
     FSDataInputStream fsDataInputStream = new FSDataInputStream(new MockInputStream(TEST_ARRAY));
 
     // if we're trying to read 50 chars and have only 10, we end up with an EOFException
-    reader.readBuf(fsDataInputStream, byteBuffer);
+    reader.readFully(fsDataInputStream, byteBuffer);
   }
 }

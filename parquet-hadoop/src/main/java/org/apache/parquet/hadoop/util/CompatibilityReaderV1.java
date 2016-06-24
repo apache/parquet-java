@@ -29,7 +29,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 public class CompatibilityReaderV1 implements CompatibilityReader {
 
   @Override
-  public int readBuf(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
+  public int readFully(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
     int res;
     if (readBuf.hasArray()) {
       res = readWithExistingArray(f, readBuf);

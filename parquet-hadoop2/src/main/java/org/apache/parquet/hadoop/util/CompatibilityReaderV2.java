@@ -30,12 +30,12 @@ import org.apache.hadoop.fs.FSDataInputStream;
 public class CompatibilityReaderV2 implements CompatibilityReader {
 
   @Override
-  public int readBuf(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
+  public int readFully(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
     int remaining = readBuf.remaining();
     while (readBuf.hasRemaining()) {
       int readCount = f.read(readBuf);
       if (readCount == -1) {
-        // this is probably a bug in the ParquetReader. We shouldn't have called readBuf with a buffer
+        // this is probably a bug in the ParquetReader. We shouldn't have called readFully with a buffer
         // that has more remaining than the amount of data in the stream.
         throw new EOFException("Reached the end of stream. Still have: " + readBuf.remaining() + " bytes left");
       }
