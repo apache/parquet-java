@@ -32,6 +32,9 @@ public class CompatibilityReaderV2 implements CompatibilityReader {
   @Override
   public int readFully(FSDataInputStream f, ByteBuffer readBuf) throws IOException {
     int remaining = readBuf.remaining();
+    // unfortunately the Hadoop APIs seem to not have a 'readFully' equivalent for the byteBuffer read
+    // calls. The read(ByteBuffer) call might read fewer than byteBuffer.hasRemaining() bytes. Thus we
+    // have to loop to ensure we read them.
     while (readBuf.hasRemaining()) {
       int readCount = f.read(readBuf);
       if (readCount == -1) {
