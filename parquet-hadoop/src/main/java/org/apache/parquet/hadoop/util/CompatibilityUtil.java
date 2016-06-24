@@ -18,97 +18,46 @@
  */
 package org.apache.parquet.hadoop.util;
 
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.ShouldNeverHappenException;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import org.apache.parquet.Log;
 
 public class CompatibilityUtil {
 
-  // Will be set to true if the implementation of FSDataInputSteam supports
-  // the 2.x APIs, in particular reading using a provided ByteBuffer
-  private static boolean useV21;
-  public static final V21FileAPI fileAPI;
+  private static final String READER_V2_CLASS = "org.apache.parquet.hadoop.util.CompatibilityReaderV2";
 
-  private static class V21FileAPI {
-    private final Method PROVIDE_BUF_READ_METHOD;
-    private final Class<?> FSDataInputStreamCls;
+  private static final Log LOG = Log.getLog(CompatibilityUtil.class);
 
-    private V21FileAPI() throws ReflectiveOperationException {
-      final String PACKAGE = "org.apache.hadoop";
-      FSDataInputStreamCls = Class.forName(PACKAGE + ".fs.FSDataInputStream");
-      PROVIDE_BUF_READ_METHOD = FSDataInputStreamCls.getMethod("read", ByteBuffer.class);
+  public static CompatibilityReader getHadoopReader(boolean useV2) {
+    if (!useV2) {
+      return new CompatibilityReaderV1();
     }
+
+    if (!isHadoop2x()) {
+      LOG.info("Can't read Hadoop 2x classes, will be using 1x read APIs");
+      return new CompatibilityReaderV1();
+    }
+
+    return newV2Reader();
   }
-  
-  static {
-    // Test to see if a class from the Hadoop 2.x API is available
-    boolean v21 = true;
+
+  // Test to see if a class from the Hadoop 2.x API is available
+  // If it is, we try to instantiate the V2 CompatibilityReader.
+  private static boolean isHadoop2x() {
+    boolean v2 = true;
     try {
       Class.forName("org.apache.hadoop.io.compress.DirectDecompressor");
     } catch (ClassNotFoundException cnfe) {
-      v21 = false;
+      v2 = false;
     }
+    return v2;
+  }
 
-    useV21 = v21;
+  private static CompatibilityReader newV2Reader() {
     try {
-      if (v21) {
-        fileAPI = new V21FileAPI();
-      } else {
-        fileAPI = null;
-      }
-
+      Class<?> reader = Class.forName(READER_V2_CLASS);
+      return (CompatibilityReader)reader.newInstance();
     } catch (ReflectiveOperationException e) {
-      throw new IllegalArgumentException("Error finding appropriate interfaces using reflection.", e);
+      LOG.warn("Unable to instantiate Hadoop V2 compatibility reader class: " + READER_V2_CLASS + " , will be using 1x read APIs", e);
+      return new CompatibilityReaderV1();
     }
-  }
-
-  private static Object invoke(Method method, String errorMsg, Object instance, Object... args) {
-    try {
-      return method.invoke(instance, args);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException(errorMsg, e);
-    } catch (InvocationTargetException e) {
-      throw new IllegalArgumentException(errorMsg, e);
-    }
-  }
-
-  public static int getBuf(FSDataInputStream f, ByteBuffer readBuf, int maxSize) throws IOException {
-    int res;
-    if (useV21) {
-      try {
-        res = (Integer) fileAPI.PROVIDE_BUF_READ_METHOD.invoke(f, readBuf);
-      } catch (InvocationTargetException e) {
-        if (e.getCause() instanceof UnsupportedOperationException) {
-          // the FSDataInputStream docs say specifically that implementations
-          // can choose to throw UnsupportedOperationException, so this should
-          // be a reasonable check to make to see if the interface is
-          // present but not implemented and we should be falling back
-          useV21 = false;
-          return getBuf(f, readBuf, maxSize);
-        } else if (e.getCause() instanceof IOException) {
-          throw (IOException) e.getCause();
-        } else {
-          // To handle any cases where a Runtime exception occurs and provide
-          // some additional context information. A stacktrace would just give
-          // a line number, this at least tells them we were using the version
-          // of the read method designed for using a ByteBuffer.
-          throw new IOException("Error reading out of an FSDataInputStream " +
-              "using the Hadoop 2 ByteBuffer based read method.", e.getCause());
-        }
-      } catch (IllegalAccessException e) {
-        // This method is public because it is defined in an interface,
-        // there should be no problems accessing it
-        throw new ShouldNeverHappenException(e);
-      }
-    } else {
-      byte[] buf = new byte[maxSize];
-      res = f.read(buf);
-      readBuf.put(buf, 0, res);
-    }
-    return res;
   }
 }

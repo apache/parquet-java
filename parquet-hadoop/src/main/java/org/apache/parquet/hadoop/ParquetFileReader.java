@@ -62,6 +62,7 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
+import org.apache.parquet.hadoop.util.CompatibilityReader;
 import org.apache.parquet.hadoop.util.CompatibilityUtil;
 
 import org.apache.parquet.Log;
@@ -101,6 +102,13 @@ public class ParquetFileReader implements Closeable {
   private static final Log LOG = Log.getLog(ParquetFileReader.class);
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
+
+  // configure if we want to use Hadoop's V2 read(bytebuffer) API.
+  // If true, we try to read using the new Hadoop read(ByteBuffer) api. This reads data into the provided
+  // byteBuffer and allows us to potentially take advantage zero-copy read path in Hadoop.
+  // Else, we skip and either read into the byteBuffer's array (if its present) or allocate one and copy
+  // into it.
+  public static String PARQUET_HADOOP_BYTEBUFFER_READ = "parquet.read.use.byte.buffer";
 
   private static ParquetMetadataConverter converter = new ParquetMetadataConverter();
 
@@ -487,6 +495,7 @@ public class ParquetFileReader implements Closeable {
   private final FileMetaData fileMetaData; // may be null
   private final ByteBufferAllocator allocator;
   private final Configuration conf;
+  private final CompatibilityReader compatibilityReader;
 
   // not final. in some cases, this may be lazily loaded for backward-compat.
   private ParquetMetadata footer;
@@ -529,6 +538,7 @@ public class ParquetFileReader implements Closeable {
     // the codec factory to get decompressors
     this.codecFactory = new CodecFactory(configuration, 0);
     this.allocator = new HeapByteBufferAllocator();
+    this.compatibilityReader = CompatibilityUtil.getHadoopReader(conf.getBoolean(PARQUET_HADOOP_BYTEBUFFER_READ, true));
   }
 
   /**
@@ -561,6 +571,7 @@ public class ParquetFileReader implements Closeable {
     // the codec factory to get decompressors
     this.codecFactory = new CodecFactory(conf, 0);
     this.allocator = new HeapByteBufferAllocator();
+    this.compatibilityReader = CompatibilityUtil.getHadoopReader(conf.getBoolean(PARQUET_HADOOP_BYTEBUFFER_READ, true));
   }
 
   /**
@@ -584,6 +595,7 @@ public class ParquetFileReader implements Closeable {
     // the codec factory to get decompressors
     this.codecFactory = new CodecFactory(conf, 0);
     this.allocator = new HeapByteBufferAllocator();
+    this.compatibilityReader = CompatibilityUtil.getHadoopReader(conf.getBoolean(PARQUET_HADOOP_BYTEBUFFER_READ, true));
   }
 
   public ParquetMetadata getFooter() {
@@ -950,7 +962,7 @@ public class ParquetFileReader implements Closeable {
         // to allow reading older files (using dictionary) we need this.
         // usually 13 to 19 bytes are missing
         // if the last page is smaller than this, the page header itself is truncated in the buffer.
-        this.byteBuf.rewind(); // resetting the buffer to the position before we got the error
+        this.byteBuf.position(initialPos); // resetting the buffer to the position before we got the error
         LOG.info("completing the column chunk to read the page header");
         pageHeader = Util.readPageHeader(new SequenceInputStream(this, f)); // trying again from the buffer + remainder of the stream.
       }
@@ -1039,8 +1051,11 @@ public class ParquetFileReader implements Closeable {
     public List<Chunk> readAll(FSDataInputStream f) throws IOException {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
+
+      //Allocate the bytebuffer based on whether the FS can support it.
       ByteBuffer chunksByteBuffer = allocator.allocate(length);
-      CompatibilityUtil.getBuf(f, chunksByteBuffer, length);
+      compatibilityReader.readFully(f, chunksByteBuffer);
+
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
       int currentChunkOffset = 0;
