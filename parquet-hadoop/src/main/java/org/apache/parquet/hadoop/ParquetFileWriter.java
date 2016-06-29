@@ -61,6 +61,7 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopInputStreams;
 import org.apache.parquet.hadoop.util.SeekableInputStream;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
@@ -496,7 +497,7 @@ public class ParquetFileWriter {
   public void appendRowGroups(FSDataInputStream file,
                               List<BlockMetaData> rowGroups,
                               boolean dropColumns) throws IOException {
-    appendRowGroups(SeekableInputStream.wrap(file), rowGroups, dropColumns);
+    appendRowGroups(HadoopInputStreams.wrap(file), rowGroups, dropColumns);
   }
 
   public void appendRowGroups(SeekableInputStream file,
