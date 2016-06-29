@@ -22,12 +22,13 @@ package org.apache.parquet.hadoop.util;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.Log;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.SeekableInputStream;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 
-public class HadoopInputStreams {
+public class HadoopStreams {
 
   private static final Log LOG = Log.getLog(SeekableInputStream.class);
 

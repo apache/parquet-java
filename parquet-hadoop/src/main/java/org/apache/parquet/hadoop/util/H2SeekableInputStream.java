@@ -22,6 +22,7 @@ package org.apache.parquet.hadoop.util;
 import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.io.SeekableInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;

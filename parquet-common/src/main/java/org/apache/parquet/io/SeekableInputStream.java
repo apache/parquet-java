@@ -17,7 +17,7 @@
  *  under the License.
  */
 
-package org.apache.parquet.hadoop.util;
+package org.apache.parquet.io;
 
 import java.io.IOException;
 import java.io.InputStream;

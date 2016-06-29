@@ -89,8 +89,8 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
-import org.apache.parquet.hadoop.util.HadoopInputStreams;
-import org.apache.parquet.hadoop.util.SeekableInputStream;
+import org.apache.parquet.hadoop.util.HadoopStreams;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
 
@@ -439,7 +439,7 @@ public class ParquetFileReader implements Closeable {
    */
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file, MetadataFilter filter) throws IOException {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
-    SeekableInputStream in = HadoopInputStreams.wrap(fileSystem.open(file.getPath()));
+    SeekableInputStream in = HadoopStreams.wrap(fileSystem.open(file.getPath()));
     try {
       return readFooter(file.getLen(), file.getPath().toString(), in, filter);
     } finally {
@@ -538,7 +538,7 @@ public class ParquetFileReader implements Closeable {
     this.conf = configuration;
     this.fileMetaData = fileMetaData;
     FileSystem fs = filePath.getFileSystem(configuration);
-    this.f = HadoopInputStreams.wrap(fs.open(filePath));
+    this.f = HadoopStreams.wrap(fs.open(filePath));
     this.fileStatus = fs.getFileStatus(filePath);
     this.blocks = blocks;
     for (ColumnDescriptor col : columns) {
@@ -569,7 +569,7 @@ public class ParquetFileReader implements Closeable {
     this.conf = conf;
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
-    this.f = HadoopInputStreams.wrap(fs.open(file));
+    this.f = HadoopStreams.wrap(fs.open(file));
     this.footer = readFooter(fileStatus.getLen(), fileStatus.getPath().toString(), f, filter);
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = footer.getBlocks();
@@ -592,7 +592,7 @@ public class ParquetFileReader implements Closeable {
     this.conf = conf;
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
-    this.f = HadoopInputStreams.wrap(fs.open(file));
+    this.f = HadoopStreams.wrap(fs.open(file));
     this.footer = footer;
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = footer.getBlocks();
