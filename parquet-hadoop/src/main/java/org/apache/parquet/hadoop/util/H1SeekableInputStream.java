@@ -89,20 +89,25 @@ public class H1SeekableInputStream extends SeekableInputStream {
     }
   }
 
-  // Visisble for testing
+  // Visible for testing
   static int readHeapBuffer(FSDataInputStream f, ByteBuffer buf) throws IOException {
     int bytesRead = f.read(buf.array(), buf.arrayOffset() + buf.position(), buf.remaining());
-    buf.position(buf.position() + bytesRead);
-    return bytesRead;
+    if (bytesRead < 0) {
+      // if this resulted in EOF, don't update position
+      return bytesRead;
+    } else {
+      buf.position(buf.position() + bytesRead);
+      return bytesRead;
+    }
   }
 
-  // Visisble for testing
+  // Visible for testing
   static void readFullyHeapBuffer(FSDataInputStream f, ByteBuffer buf) throws IOException {
     f.readFully(buf.array(), buf.arrayOffset() + buf.position(), buf.remaining());
     buf.position(buf.limit());
   }
 
-  // Visisble for testing
+  // Visible for testing
   static int readDirectBuffer(FSDataInputStream f, ByteBuffer buf, byte[] temp) throws IOException {
     // copy all the bytes that return immediately, stopping at the first
     // read that doesn't return a full buffer.
@@ -127,14 +132,16 @@ public class H1SeekableInputStream extends SeekableInputStream {
     }
   }
 
-  // Visisble for testing
+  // Visible for testing
   static void readFullyDirectBuffer(FSDataInputStream f, ByteBuffer buf, byte[] temp) throws IOException {
     int nextReadLength = Math.min(buf.remaining(), temp.length);
     int bytesRead = 0;
-    while (nextReadLength > 0 && (bytesRead = f.read(temp, 0, nextReadLength)) > 0) {
+
+    while (nextReadLength > 0 && (bytesRead = f.read(temp, 0, nextReadLength)) >= 0) {
       buf.put(temp, 0, bytesRead);
       nextReadLength = Math.min(buf.remaining(), temp.length);
     }
+
     if (bytesRead < 0 && buf.remaining() > 0) {
       throw new EOFException(
           "Reached the end of stream. Still have: " + buf.remaining() + " bytes left");
