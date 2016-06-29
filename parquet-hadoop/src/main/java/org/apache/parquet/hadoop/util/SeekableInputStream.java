@@ -43,7 +43,8 @@ public abstract class SeekableInputStream extends InputStream {
 
   public static SeekableInputStream wrap(FSDataInputStream stream) {
     if (byteBufferReadableClass != null && h2SeekableConstructor != null &&
-        byteBufferReadableClass.isInstance(stream)) {
+        byteBufferReadableClass.isInstance(stream) &&
+        supportsByteBufferReads(stream)) {
       try {
         return h2SeekableConstructor.newInstance(stream);
       } catch (InstantiationException e) {
@@ -72,6 +73,23 @@ public abstract class SeekableInputStream extends InputStream {
   public abstract int read(ByteBuffer buf) throws IOException;
 
   public abstract void readFully(ByteBuffer buf) throws IOException;
+
+  private static final ByteBuffer ZERO_LEN_BYTE_BUFFER = ByteBuffer.wrap(new byte[0]);
+
+  private static boolean supportsByteBufferReads(FSDataInputStream stream) {
+    // FSDataInputStream implements ByteBufferReadable, but may throw
+    // UnsupportedOperationException if it isn't actually supported. This tests
+    // whether the method throws by trying to read a 0-length buffer, which has
+    // no effect on the stream when it is supported.
+    try {
+      stream.read(ZERO_LEN_BYTE_BUFFER);
+      return true;
+    } catch (UnsupportedOperationException e) {
+      return false;
+    } catch (IOException e) {
+      return false;
+    }
+  }
 
   private static Class<?> getReadableClass() {
     try {
