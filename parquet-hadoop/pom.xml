@@ -75,6 +75,11 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>org.meteogroup.jbrotli</groupId>
+      <artifactId>jbrotli</artifactId>
+      <version>${brotli.version}</version>
+    </dependency>
+    <dependency>
       <groupId>commons-pool</groupId>
       <artifactId>commons-pool</artifactId>
       <version>1.5.4</version>
