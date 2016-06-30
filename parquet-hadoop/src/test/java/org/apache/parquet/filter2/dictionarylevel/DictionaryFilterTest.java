@@ -193,6 +193,9 @@ public class DictionaryFilterTest {
 
     assertTrue("Should drop block for upper case letters",
         canDrop(eq(b, Binary.fromString("A")), ccmd, dictionaries));
+
+    assertFalse("Should not drop block for null",
+        canDrop(eq(b, null), ccmd, dictionaries));
   }
 
   @Test
@@ -211,6 +214,9 @@ public class DictionaryFilterTest {
 
     assertFalse("Should not drop block with a known value",
         canDrop(notEq(b, Binary.fromString("B")), ccmd, dictionaries));
+
+    assertFalse("Should not drop block for null",
+        canDrop(notEq(b, null), ccmd, dictionaries));
   }
 
   @Test
