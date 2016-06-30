@@ -25,8 +25,12 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetEncoder;
 import java.util.Arrays;
 
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.ParquetEncodingException;
 
 import static org.apache.parquet.bytes.BytesUtils.UTF8;
@@ -195,18 +199,46 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   }
 
-  private static class FromStringBinary extends ByteArrayBackedBinary {
+  private static class FromStringBinary extends ByteBufferBackedBinary {
     public FromStringBinary(String value) {
-      // reused is false, because we do not
-      // hold on to the underlying bytes,
-      // and nobody else has a handle to them
+      // reused is false, because we do not hold on to the buffer after
+      // conversion, and nobody else has a handle to it
       super(encodeUTF8(value), false);
     }
 
-    private static byte[] encodeUTF8(String value) {
+    @Override
+    public String toString() {
+      return "Binary{\"" + toStringUsingUTF8() + "\"}";
+    }
+
+    private static ByteBuffer encodeUTF8(String value) {
       try {
-        return value.getBytes("UTF-8");
+        return ByteBuffer.wrap(value.getBytes("UTF-8"));
       } catch (UnsupportedEncodingException e) {
+        throw new ParquetEncodingException("UTF-8 not supported.", e);
+      }
+    }
+  }
+
+  private static class FromCharSequenceBinary extends ByteBufferBackedBinary {
+    public FromCharSequenceBinary(CharSequence value) {
+      // reused is false, because we do not hold on to the buffer after
+      // conversion, and nobody else has a handle to it
+      super(encodeUTF8(value), false);
+    }
+
+    private static final ThreadLocal<CharsetEncoder> ENCODER =
+      new ThreadLocal<CharsetEncoder>() {
+        @Override
+        protected CharsetEncoder initialValue() {
+          return UTF8.newEncoder();
+        }
+      };
+
+    private static ByteBuffer encodeUTF8(CharSequence value) {
+      try {
+        return ENCODER.get().encode(CharBuffer.wrap(value));
+      } catch (CharacterCodingException e) {
         throw new ParquetEncodingException("UTF-8 not supported.", e);
       }
     }
@@ -340,7 +372,18 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public String toStringUsingUTF8() {
-      return UTF8.decode(value).toString();
+      String ret;
+      if (value.hasArray()) {
+        try {
+          ret = new String(value.array(), value.arrayOffset() + value.position(), value.remaining(), "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+          throw new ParquetDecodingException("UTF-8 not supported");
+        }
+      } else {
+        ret = UTF8.decode(value.duplicate()).toString();
+      }
+
+      return ret;
     }
 
     @Override
@@ -472,8 +515,12 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return fromReusedByteBuffer(value); // Assume producer intends to reuse byte[]
   }
 
-  public static Binary fromString(final String value) {
+  public static Binary fromString(String value) {
     return new FromStringBinary(value);
+  }
+
+  public static Binary fromCharSequence(CharSequence value) {
+    return new FromCharSequenceBinary(value);
   }
 
   /**
