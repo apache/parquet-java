@@ -123,6 +123,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     filterColumn.getColumnPath();
 
+    if (value == null) {
+      // the dictionary contains only non-null values so isn't helpful. this
+      // could check the column stats, but the StatisticsFilter is responsible
+      return BLOCK_MIGHT_MATCH;
+    }
+
     try {
       Set<T> dictSet = expandDictionary(meta);
       if (dictSet != null && !dictSet.contains(value)) {
@@ -149,6 +155,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     T value = notEq.getValue();
 
     filterColumn.getColumnPath();
+
+    if (value == null) {
+      // the dictionary contains only non-null values so isn't helpful. this
+      // could check the column stats, but the StatisticsFilter is responsible
+      return BLOCK_MIGHT_MATCH;
+    }
 
     try {
       Set<T> dictSet = expandDictionary(meta);
