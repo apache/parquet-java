@@ -25,7 +25,11 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class H1SeekableInputStream extends SeekableInputStream {
+/**
+ * SeekableInputStream implementation that implements read(ByteBuffer) for
+ * Hadoop 1 FSDataInputStream.
+ */
+class H1SeekableInputStream extends SeekableInputStream {
 
   private final int COPY_BUFFER_SIZE = 8192;
   private final byte[] temp = new byte[COPY_BUFFER_SIZE];

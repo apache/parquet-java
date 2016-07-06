@@ -27,7 +27,11 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class H2SeekableInputStream extends SeekableInputStream {
+/**
+ * SeekableInputStream implementation for FSDataInputStream that implements
+ * ByteBufferReadable in Hadoop 2.
+ */
+class H2SeekableInputStream extends SeekableInputStream {
 
   private final FSDataInputStream stream;
 
@@ -74,11 +78,15 @@ public class H2SeekableInputStream extends SeekableInputStream {
 
   @Override
   public void readFully(ByteBuffer buf) throws IOException {
+    readFully(stream, buf);
+  }
+
+  public static void readFully(FSDataInputStream stream, ByteBuffer buf) throws IOException {
     // unfortunately the Hadoop APIs seem to not have a 'readFully' equivalent for the byteBuffer read
     // calls. The read(ByteBuffer) call might read fewer than byteBuffer.hasRemaining() bytes. Thus we
     // have to loop to ensure we read them.
     while (buf.hasRemaining()) {
-      int readCount = read(buf);
+      int readCount = stream.read(buf);
       if (readCount == -1) {
         // this is probably a bug in the ParquetReader. We shouldn't have called readFully with a buffer
         // that has more remaining than the amount of data in the stream.

@@ -23,28 +23,29 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.Log;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.SeekableInputStream;
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.nio.ByteBuffer;
 
+/**
+ * Convenience methods to get Parquet abstractions for Hadoop data streams.
+ */
 public class HadoopStreams {
 
   private static final Log LOG = Log.getLog(SeekableInputStream.class);
 
-  private static final Class<?> byteBufferReadableClass;
+  private static final Class<?> byteBufferReadableClass = getReadableClass();
+  private static final Constructor<SeekableInputStream> h2SeekableConstructor = getH2SeekableConstructor();
 
-  private static final Constructor<SeekableInputStream> h2SeekableConstructor;
-
-  static {
-    byteBufferReadableClass = getReadableClass();
-    h2SeekableConstructor = getH2SeekableConstructor();
-  }
-
+  /**
+   * Wraps a {@link FSDataInputStream} in a {@link SeekableInputStream}
+   * implementation for Parquet readers.
+   *
+   * @param stream a Hadoop FSDataInputStream
+   * @return a SeekableInputStream
+   */
   public static SeekableInputStream wrap(FSDataInputStream stream) {
     if (byteBufferReadableClass != null && h2SeekableConstructor != null &&
-        byteBufferReadableClass.isInstance(stream) &&
-        supportsByteBufferReads(stream)) {
+        byteBufferReadableClass.isInstance(stream.getWrappedStream())) {
       try {
         return h2SeekableConstructor.newInstance(stream);
       } catch (InstantiationException e) {
@@ -59,23 +60,6 @@ public class HadoopStreams {
       }
     } else {
       return new H1SeekableInputStream(stream);
-    }
-  }
-
-  private static final ByteBuffer ZERO_LEN_BYTE_BUFFER = ByteBuffer.wrap(new byte[0]);
-
-  private static boolean supportsByteBufferReads(FSDataInputStream stream) {
-    // FSDataInputStream implements ByteBufferReadable, but may throw
-    // UnsupportedOperationException if it isn't actually supported. This tests
-    // whether the method throws by trying to read a 0-length buffer, which has
-    // no effect on the stream when it is supported.
-    try {
-      stream.read(ZERO_LEN_BYTE_BUFFER);
-      return true;
-    } catch (UnsupportedOperationException e) {
-      return false;
-    } catch (IOException e) {
-      return false;
     }
   }
 
