@@ -31,7 +31,7 @@ import java.lang.reflect.InvocationTargetException;
  */
 public class HadoopStreams {
 
-  private static final Log LOG = Log.getLog(SeekableInputStream.class);
+  private static final Log LOG = Log.getLog(HadoopStreams.class);
 
   private static final Class<?> byteBufferReadableClass = getReadableClass();
   private static final Constructor<SeekableInputStream> h2SeekableConstructor = getH2SeekableConstructor();
