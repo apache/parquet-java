@@ -144,7 +144,7 @@
       <plugin>
         <groupId>org.apache.thrift.tools</groupId>
         <artifactId>maven-thrift-plugin</artifactId>
-        <version>0.1.11</version>
+        <version>${maven-thrift-plugin.version}</version>
         <configuration>
           <thriftExecutable>${thrift.executable}</thriftExecutable>
         </configuration>
