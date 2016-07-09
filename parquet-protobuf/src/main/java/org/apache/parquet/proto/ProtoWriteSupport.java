@@ -156,7 +156,6 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       List<Descriptors.FieldDescriptor> fields = descriptor.getFields();
       fieldWriters = (FieldWriter[]) Array.newInstance(FieldWriter.class, fields.size());
 
-      int i = 0;
       for (Descriptors.FieldDescriptor fieldDescriptor: fields) {
         String name = fieldDescriptor.getName();
         Type type = schema.getType(name);
@@ -169,8 +168,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         writer.setFieldName(name);
         writer.setIndex(schema.getFieldIndex(name));
 
-        fieldWriters[i] = writer;
-        i++;
+        fieldWriters[fieldDescriptor.getIndex()] = writer;
       }
     }
 
