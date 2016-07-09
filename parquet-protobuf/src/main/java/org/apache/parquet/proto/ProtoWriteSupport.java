@@ -276,7 +276,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   }
 
   class IntWriter extends FieldWriter {
-  @Override
+    @Override
     final void writeRawValue(Object value) {
       recordConsumer.addInteger((Integer) value);
     }
