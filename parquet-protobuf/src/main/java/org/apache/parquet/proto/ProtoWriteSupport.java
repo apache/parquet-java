@@ -218,6 +218,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
       for (Map.Entry<Descriptors.FieldDescriptor, Object> entry : changedPbFields.entrySet()) {
         Descriptors.FieldDescriptor fieldDescriptor = entry.getKey();
+
+        if(fieldDescriptor.isExtension()) {
+          // Field index of an extension field might overlap with a base field.
+          throw new UnsupportedOperationException(
+                  "Cannot convert Protobuf message with extension field(s)");
+        }
+
         int fieldIndex = fieldDescriptor.getIndex();
         fieldWriters[fieldIndex].writeField(entry.getValue());
       }
