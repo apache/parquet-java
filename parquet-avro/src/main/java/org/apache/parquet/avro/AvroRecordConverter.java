@@ -42,9 +42,11 @@ import org.apache.avro.AvroTypeException;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaCompatibility;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.reflect.AvroIgnore;
 import org.apache.avro.reflect.AvroName;
+import org.apache.avro.reflect.AvroSchema;
 import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.reflect.Stringable;
 import org.apache.avro.specific.SpecificData;
@@ -52,6 +54,7 @@ import org.apache.avro.util.ClassUtils;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.avro.AvroConverters.FieldStringConverter;
 import org.apache.parquet.avro.AvroConverters.FieldStringableConverter;
+import org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
@@ -59,6 +62,8 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
+import static org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
+import static org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
@@ -827,6 +832,14 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
   }
 
+  // Converter used to test whether a requested schema is a 2-level schema.
+  // This is used to convert the file's type assuming that the file uses
+  // 2-level lists and the result is checked to see if it matches the requested
+  // element type. This should always convert assuming 2-level lists because
+  // 2-level and 3-level can't be mixed.
+  private static final AvroSchemaConverter CONVERTER =
+      new AvroSchemaConverter(true);
+
   /**
    * Returns whether the given type is the element type of a list or is a
    * synthetic group with one field that is the element type. This is
@@ -849,13 +862,11 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       return true;
     } else if (elementSchema != null &&
         elementSchema.getType() == Schema.Type.RECORD) {
-      Set<String> fieldNames = new HashSet<String>();
-      for (Schema.Field field : elementSchema.getFields()) {
-        fieldNames.add(field.name());
+      Schema schemaFromRepeated = CONVERTER.convert(repeatedType.asGroupType());
+      if (checkReaderWriterCompatibility(elementSchema, schemaFromRepeated)
+          .getType() == COMPATIBLE) {
+        return true;
       }
-      // The repeated type must be the element type because it matches the
-      // structure of the Avro element's schema.
-      return fieldNames.contains(repeatedType.asGroupType().getFieldName(0));
     }
     return false;
   }
