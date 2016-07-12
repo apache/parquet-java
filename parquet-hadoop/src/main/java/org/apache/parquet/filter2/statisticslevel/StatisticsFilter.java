@@ -64,6 +64,9 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 // TODO: (https://issues.apache.org/jira/browse/PARQUET-38)
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
+  private static final boolean BLOCK_MIGHT_MATCH = false;
+  private static final boolean BLOCK_CANNOT_MATCH = true;
+
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
     checkNotNull(pred, "pred");
     checkNotNull(columns, "columns");
@@ -79,9 +82,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   private ColumnChunkMetaData getColumnChunk(ColumnPath columnPath) {
-    ColumnChunkMetaData c = columns.get(columnPath);
-    checkArgument(c != null, "Column " + columnPath.toDotString() + " not found in schema!");
-    return c;
+    return columns.get(columnPath);
   }
 
   // is this column chunk composed entirely of nulls?
@@ -97,27 +98,39 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T extends Comparable<T>> Boolean visit(Eq<T> eq) {
     Column<T> filterColumn = eq.getColumn();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
     T value = eq.getValue();
-    ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    Statistics<T> stats = columnChunk.getStatistics();
+
+    if (meta == null) {
+      // the column isn't in this file so all values are null.
+      if (value != null) {
+        // non-null is never null
+        return BLOCK_CANNOT_MATCH;
+      }
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    Statistics<T> stats = meta.getStatistics();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
-      return false;
+      return BLOCK_MIGHT_MATCH;
     }
 
     if (value == null) {
       // we are looking for records where v eq(null)
       // so drop if there are no nulls in this chunk
-      return !hasNulls(columnChunk);
+      return !hasNulls(meta);
     }
 
-    if (isAllNulls(columnChunk)) {
+    if (isAllNulls(meta)) {
       // we are looking for records where v eq(someNonNull)
       // and this is a column of all nulls, so drop it
-      return true;
+      return BLOCK_CANNOT_MATCH;
     }
 
     // drop if value < min || value > max
@@ -125,27 +138,38 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T extends Comparable<T>> Boolean visit(NotEq<T> notEq) {
     Column<T> filterColumn = notEq.getColumn();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
     T value = notEq.getValue();
-    ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    Statistics<T> stats = columnChunk.getStatistics();
+
+    if (meta == null) {
+      if (value == null) {
+        // null is always equal to null
+        return BLOCK_CANNOT_MATCH;
+      }
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    Statistics<T> stats = meta.getStatistics();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
-      return false;
+      return BLOCK_MIGHT_MATCH;
     }
 
     if (value == null) {
       // we are looking for records where v notEq(null)
       // so, if this is a column of all nulls, we can drop it
-      return isAllNulls(columnChunk);
+      return isAllNulls(meta);
     }
 
-    if (hasNulls(columnChunk)) {
+    if (hasNulls(meta)) {
       // we are looking for records where v notEq(someNonNull)
       // but this chunk contains nulls, we cannot drop it
-      return false;
+      return BLOCK_MIGHT_MATCH;
     }
 
     // drop if this is a column where min = max = value
@@ -153,88 +177,124 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T extends Comparable<T>> Boolean visit(Lt<T> lt) {
     Column<T> filterColumn = lt.getColumn();
-    T value = lt.getValue();
-    ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    Statistics<T> stats = columnChunk.getStatistics();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    if (meta == null) {
+      // the column is missing and always null, which is never less than a
+      // value. for all x, null is never < x.
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    Statistics<T> stats = meta.getStatistics();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
-      return false;
+      return BLOCK_MIGHT_MATCH;
     }
 
-    if (isAllNulls(columnChunk)) {
+    if (isAllNulls(meta)) {
       // we are looking for records where v < someValue
       // this chunk is all nulls, so we can drop it
-      return true;
+      return BLOCK_CANNOT_MATCH;
     }
+
+    T value = lt.getValue();
 
     // drop if value <= min
     return  value.compareTo(stats.genericGetMin()) <= 0;
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T extends Comparable<T>> Boolean visit(LtEq<T> ltEq) {
     Column<T> filterColumn = ltEq.getColumn();
-    T value = ltEq.getValue();
-    ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    Statistics<T> stats = columnChunk.getStatistics();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    if (meta == null) {
+      // the column is missing and always null, which is never less than or
+      // equal to a value. for all x, null is never <= x.
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    Statistics<T> stats = meta.getStatistics();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
-      return false;
+      return BLOCK_MIGHT_MATCH;
     }
 
-    if (isAllNulls(columnChunk)) {
+    if (isAllNulls(meta)) {
       // we are looking for records where v <= someValue
       // this chunk is all nulls, so we can drop it
-      return true;
+      return BLOCK_CANNOT_MATCH;
     }
+
+    T value = ltEq.getValue();
 
     // drop if value < min
     return value.compareTo(stats.genericGetMin()) < 0;
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T extends Comparable<T>> Boolean visit(Gt<T> gt) {
     Column<T> filterColumn = gt.getColumn();
-    T value = gt.getValue();
-    ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    Statistics<T> stats = columnChunk.getStatistics();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    if (meta == null) {
+      // the column is missing and always null, which is never greater than a
+      // value. for all x, null is never > x.
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    Statistics<T> stats = meta.getStatistics();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
-      return false;
+      return BLOCK_MIGHT_MATCH;
     }
 
-    if (isAllNulls(columnChunk)) {
+    if (isAllNulls(meta)) {
       // we are looking for records where v > someValue
       // this chunk is all nulls, so we can drop it
-      return true;
+      return BLOCK_CANNOT_MATCH;
     }
+
+    T value = gt.getValue();
 
     // drop if value >= max
     return value.compareTo(stats.genericGetMax()) >= 0;
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T extends Comparable<T>> Boolean visit(GtEq<T> gtEq) {
     Column<T> filterColumn = gtEq.getColumn();
-    T value = gtEq.getValue();
-    ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    Statistics<T> stats = columnChunk.getStatistics();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    if (meta == null) {
+      // the column is missing and always null, which is never greater than or
+      // equal to a value. for all x, null is never >= x.
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    Statistics<T> stats = meta.getStatistics();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
-      return false;
+      return BLOCK_MIGHT_MATCH;
     }
 
-    if (isAllNulls(columnChunk)) {
+    if (isAllNulls(meta)) {
       // we are looking for records where v >= someValue
       // this chunk is all nulls, so we can drop it
-      return true;
+      return BLOCK_CANNOT_MATCH;
     }
+
+    T value = gtEq.getValue();
 
     // drop if value >= max
     return value.compareTo(stats.genericGetMax()) > 0;
