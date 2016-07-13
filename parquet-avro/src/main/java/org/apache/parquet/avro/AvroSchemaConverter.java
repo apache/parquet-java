@@ -54,7 +54,7 @@ public class AvroSchemaConverter {
 
   public static final String ADD_LIST_ELEMENT_RECORDS =
       "parquet.avro.add-list-element-records";
-  private static final boolean ADD_LIST_ELEMENT_RECORDS_DEFAULT = false;
+  private static final boolean ADD_LIST_ELEMENT_RECORDS_DEFAULT = true;
 
   private final boolean assumeRepeatedIsListElement;
   private final boolean writeOldListStructure;
