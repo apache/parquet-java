@@ -28,6 +28,10 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.fromP
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
+import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED_DEFAULT;
+import static org.apache.parquet.hadoop.ParquetInputFormat.STATS_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.STATS_FILTERING_ENABLED_DEFAULT;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -621,11 +625,13 @@ public class ParquetFileReader implements Closeable {
     // set up data filters based on configured levels
     List<RowGroupFilter.FilterLevel> levels = new ArrayList<RowGroupFilter.FilterLevel>();
 
-    if (conf.getBoolean("parquet.filter.statistics.enabled", true)) {
+    if (conf.getBoolean(
+        STATS_FILTERING_ENABLED, STATS_FILTERING_ENABLED_DEFAULT)) {
       levels.add(STATISTICS);
     }
 
-    if (conf.getBoolean("parquet.filter.dictionary.enabled", false)) {
+    if (conf.getBoolean(
+        DICTIONARY_FILTERING_ENABLED, DICTIONARY_FILTERING_ENABLED_DEFAULT)) {
       levels.add(DICTIONARY);
     }
 
