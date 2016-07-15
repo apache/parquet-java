@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
+import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
 
 import org.apache.parquet.column.Encoding;
@@ -30,6 +31,7 @@ import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
+import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Statistics;
@@ -38,6 +40,8 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
+import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.io.api.Binary.fromString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -78,6 +82,7 @@ public class TestStatisticsFilter {
 
   private static final IntColumn intColumn = intColumn("int.column");
   private static final DoubleColumn doubleColumn = doubleColumn("double.column");
+  private static final BinaryColumn missingColumn = binaryColumn("missing");
 
   private static final IntStatistics intStats = new IntStatistics();
   private static final IntStatistics nullIntStats = new IntStatistics();
@@ -109,6 +114,7 @@ public class TestStatisticsFilter {
 
     // drop columns of all nulls when looking for non-null value
     assertTrue(canDrop(eq(intColumn, 0), nullColumnMetas));
+    assertTrue(canDrop(eq(missingColumn, fromString("any")), columnMetas));
   }
 
   @Test
@@ -129,6 +135,7 @@ public class TestStatisticsFilter {
         getIntColumnMeta(statsSomeNulls, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
 
+    assertFalse(canDrop(eq(missingColumn, null), columnMetas));
   }
 
   @Test
@@ -144,6 +151,17 @@ public class TestStatisticsFilter {
         getIntColumnMeta(allSevens, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
 
+    allSevens.setNumNulls(100L);
+    assertFalse(canDrop(notEq(intColumn, 7), Arrays.asList(
+        getIntColumnMeta(allSevens, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    allSevens.setNumNulls(177L);
+    assertFalse(canDrop(notEq(intColumn, 7), Arrays.asList(
+        getIntColumnMeta(allSevens, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(notEq(missingColumn, fromString("any")), columnMetas));
   }
 
   @Test
@@ -171,6 +189,8 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(notEq(intColumn, null), Arrays.asList(
         getIntColumnMeta(statsAllNulls, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertTrue(canDrop(notEq(missingColumn, null), columnMetas));
   }
 
   @Test
@@ -182,6 +202,8 @@ public class TestStatisticsFilter {
 
     assertTrue(canDrop(lt(intColumn, 0), nullColumnMetas));
     assertTrue(canDrop(lt(intColumn, 7), nullColumnMetas));
+
+    assertTrue(canDrop(lt(missingColumn, fromString("any")), columnMetas));
   }
 
   @Test
@@ -193,6 +215,8 @@ public class TestStatisticsFilter {
 
     assertTrue(canDrop(ltEq(intColumn, 0), nullColumnMetas));
     assertTrue(canDrop(ltEq(intColumn, 7), nullColumnMetas));
+
+    assertTrue(canDrop(ltEq(missingColumn, fromString("any")), columnMetas));
   }
 
   @Test
@@ -204,6 +228,8 @@ public class TestStatisticsFilter {
 
     assertTrue(canDrop(gt(intColumn, 0), nullColumnMetas));
     assertTrue(canDrop(gt(intColumn, 7), nullColumnMetas));
+
+    assertTrue(canDrop(gt(missingColumn, fromString("any")), columnMetas));
   }
 
   @Test
@@ -215,6 +241,8 @@ public class TestStatisticsFilter {
 
     assertTrue(canDrop(gtEq(intColumn, 0), nullColumnMetas));
     assertTrue(canDrop(gtEq(intColumn, 7), nullColumnMetas));
+
+    assertTrue(canDrop(gtEq(missingColumn, fromString("any")), columnMetas));
   }
 
   @Test
@@ -308,17 +336,6 @@ public class TestStatisticsFilter {
     } catch (IllegalArgumentException e) {
       assertEquals("This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter?"
           + " not(eq(double.column, 12.0))", e.getMessage());
-    }
-  }
-
-  @Test
-  public void testMissingColumn() {
-    List<ColumnChunkMetaData> columnMetas = Arrays.asList(getIntColumnMeta(new IntStatistics(), 0L));
-    try {
-      canDrop(and(eq(doubleColumn, 12.0), eq(intColumn, 17)), columnMetas);
-      fail("This should throw");
-    } catch (IllegalArgumentException e) {
-      assertEquals("Column double.column not found in schema!", e.getMessage());
     }
   }
 
