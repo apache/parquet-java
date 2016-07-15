@@ -111,8 +111,8 @@ Avro conversion is implemented via the [parquet-avro](https://github.com/apache/
 * the ParquetInputFormat can be provided a ReadSupport to materialize your own objects by implementing a RecordMaterializer
 
 See the APIs:
-* [Record conversion API](https://github.com/apache/parquet-mr/tree/master/parquet-column/src/main/java/parquet/io/api)
-* [Hadoop API](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/parquet/hadoop/api)
+* [Record conversion API](https://github.com/apache/parquet-mr/tree/master/parquet-column/src/main/java/org/apache/parquet/io/api)
+* [Hadoop API](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/api)
 
 ## Apache Pig integration
 A [Loader](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetLoader.java) and a [Storer](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetStorer.java) are provided to read and write Parquet files with Apache Pig
