@@ -57,15 +57,6 @@
     </developer>
   </developers>
 
-  <!-- this is needed for maven-thrift-plugin, would like to remove this.
-   see: https://issues.apache.org/jira/browse/THRIFT-1536  -->
-  <pluginRepositories>
-    <pluginRepository>
-      <id>Twitter public Maven repo</id>
-      <url>http://maven.twttr.com</url>
-    </pluginRepository>
-  </pluginRepositories>
-
   <properties>
     <targetJavaVersion>1.6</targetJavaVersion>
     <maven.compiler.source>1.6</maven.compiler.source>
@@ -73,6 +64,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
+    <maven-thrift-plugin.version>0.1.11</maven-thrift-plugin.version>
     <jackson.groupId>org.codehaus.jackson</jackson.groupId>
     <jackson.version>1.9.11</jackson.version>
     <jackson.package>org.codehaus.jackson</jackson.package>
