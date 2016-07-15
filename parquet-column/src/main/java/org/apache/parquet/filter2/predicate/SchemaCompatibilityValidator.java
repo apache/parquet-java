@@ -167,6 +167,11 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
     }
 
     ColumnDescriptor descriptor = getColumnDescriptor(path);
+    if (descriptor == null) {
+      // the column is missing from the schema. evaluation uses calls
+      // updateNull() a value is missing, so this will be handled correctly.
+      return;
+    }
 
     if (descriptor.getMaxRepetitionLevel() > 0) {
       throw new IllegalArgumentException("FilterPredicates do not currently support repeated columns. "
@@ -177,8 +182,6 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   private ColumnDescriptor getColumnDescriptor(ColumnPath columnPath) {
-    ColumnDescriptor cd = columnsAccordingToSchema.get(columnPath);
-    checkArgument(cd != null, "Column " + columnPath + " was not found in schema!");
-    return cd;
+    return columnsAccordingToSchema.get(columnPath);
   }
 }
