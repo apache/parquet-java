@@ -64,6 +64,17 @@ public class AvroSchemaConverter {
     this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
   }
 
+  /**
+   * Constructor used by {@link AvroRecordConverter#isElementType}, which always
+   * uses the 2-level list conversion.
+   *
+   * @param assumeRepeatedIsListElement whether to assume 2-level lists
+   */
+  AvroSchemaConverter(boolean assumeRepeatedIsListElement) {
+    this.assumeRepeatedIsListElement = assumeRepeatedIsListElement;
+    this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
+  }
+
   public AvroSchemaConverter(Configuration conf) {
     this.assumeRepeatedIsListElement = conf.getBoolean(
         ADD_LIST_ELEMENT_RECORDS, ADD_LIST_ELEMENT_RECORDS_DEFAULT);
@@ -217,6 +228,10 @@ public class AvroSchemaConverter {
   }
 
   public Schema convert(MessageType parquetSchema) {
+    return convertFields(parquetSchema.getName(), parquetSchema.getFields());
+  }
+
+  Schema convert(GroupType parquetSchema) {
     return convertFields(parquetSchema.getName(), parquetSchema.getFields());
   }
 
