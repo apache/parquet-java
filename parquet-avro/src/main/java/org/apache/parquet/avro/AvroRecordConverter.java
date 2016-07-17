@@ -57,6 +57,8 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
+import static org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
+import static org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
@@ -825,6 +827,14 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
   }
 
+  // Converter used to test whether a requested schema is a 2-level schema.
+  // This is used to convert the file's type assuming that the file uses
+  // 2-level lists and the result is checked to see if it matches the requested
+  // element type. This should always convert assuming 2-level lists because
+  // 2-level and 3-level can't be mixed.
+  private static final AvroSchemaConverter CONVERTER =
+      new AvroSchemaConverter(true);
+
   /**
    * Returns whether the given type is the element type of a list or is a
    * synthetic group with one field that is the element type. This is
@@ -846,13 +856,12 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       // synthetic wrapper. Must be a group with one optional or required field
       return true;
     } else if (elementSchema != null &&
-        elementSchema.getType() == Schema.Type.RECORD &&
-        elementSchema.getFields().size() == 1 &&
-        elementSchema.getFields().get(0).name().equals(
-            repeatedType.asGroupType().getFieldName(0))) {
-      // The repeated type must be the element type because it matches the
-      // structure of the Avro element's schema.
-      return true;
+        elementSchema.getType() == Schema.Type.RECORD) {
+      Schema schemaFromRepeated = CONVERTER.convert(repeatedType.asGroupType());
+      if (checkReaderWriterCompatibility(elementSchema, schemaFromRepeated)
+          .getType() == COMPATIBLE) {
+        return true;
+      }
     }
     return false;
   }
