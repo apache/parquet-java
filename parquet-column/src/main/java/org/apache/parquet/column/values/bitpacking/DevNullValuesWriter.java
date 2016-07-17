@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.values.boundedint;
+package org.apache.parquet.column.values.bitpacking;
 
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import org.apache.parquet.bytes.BytesInput;
