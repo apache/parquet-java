@@ -31,7 +31,7 @@ import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
-import org.apache.parquet.column.values.boundedint.DevNullValuesWriter;
+import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForLong;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
