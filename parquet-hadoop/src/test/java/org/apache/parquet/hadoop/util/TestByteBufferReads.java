@@ -24,6 +24,7 @@ import org.apache.parquet.hadoop.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import java.io.EOFException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Callable;
 
@@ -37,6 +38,29 @@ public class TestByteBufferReads {
       return new byte[8192];
     }
   };
+
+  /**
+   * This mimics ByteBuffer reads from streams in Hadoop 2
+   */
+  private static class MockBufferReader implements H2SeekableInputStream.Reader {
+    private final FSDataInputStream stream;
+
+    public MockBufferReader(FSDataInputStream stream) {
+      this.stream = stream;
+    }
+
+    @Override
+    public int read(ByteBuffer buf) throws IOException {
+      // this is inefficient, but simple for correctness tests of
+      // readFully(ByteBuffer)
+      byte[] temp = new byte[buf.remaining()];
+      int bytesRead = stream.read(temp, 0, temp.length);
+      if (bytesRead > 0) {
+        buf.put(temp, 0, bytesRead);
+      }
+      return bytesRead;
+    }
+  }
 
   @Test
   public void testH1HeapRead() throws Exception {
@@ -759,4 +783,351 @@ public class TestByteBufferReads {
         ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 
+  @Test
+  public void testH2HeapReadFullySmallBuffer() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocate(8);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(8, readBuffer.position());
+    Assert.assertEquals(8, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(8, readBuffer.position());
+    Assert.assertEquals(8, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+  }
+
+  @Test
+  public void testH2HeapReadFullyLargeBuffer() throws Exception {
+    final ByteBuffer readBuffer = ByteBuffer.allocate(20);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    final MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    TestUtils.assertThrows("Should throw EOFException",
+        EOFException.class, new Callable() {
+          @Override
+          public Object call() throws Exception {
+            H2SeekableInputStream.readFully(reader, readBuffer);
+            return null;
+          }
+        });
+
+    // NOTE: This behavior differs from readFullyHeapBuffer because direct uses
+    // several read operations that will read up to the end of the input. This
+    // is a correct value because the bytes in the buffer are valid. This
+    // behavior can't be implemented for the heap buffer without using the read
+    // method instead of the readFully method on the underlying
+    // FSDataInputStream.
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(20, readBuffer.limit());
+  }
+
+  @Test
+  public void testH2HeapReadFullyJustRight() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocate(10);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    // reads all of the bytes available without EOFException
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    // trying to read 0 more bytes doesn't result in EOFException
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+  }
+
+  @Test
+  public void testH2HeapReadFullySmallReads() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocate(10);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+  }
+
+  @Test
+  public void testH2HeapReadFullyPosition() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocate(10);
+    readBuffer.position(3);
+    readBuffer.mark();
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.reset();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+  }
+
+  @Test
+  public void testH2HeapReadFullyLimit() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocate(10);
+    readBuffer.limit(7);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(7, readBuffer.position());
+    Assert.assertEquals(7, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(7, readBuffer.position());
+    Assert.assertEquals(7, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+
+    readBuffer.position(7);
+    readBuffer.limit(10);
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+  }
+
+  @Test
+  public void testH2HeapReadFullyPositionAndLimit() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocate(10);
+    readBuffer.position(3);
+    readBuffer.limit(7);
+    readBuffer.mark();
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(7, readBuffer.position());
+    Assert.assertEquals(7, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(7, readBuffer.position());
+    Assert.assertEquals(7, readBuffer.limit());
+
+    readBuffer.reset();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+
+    readBuffer.position(7);
+    readBuffer.limit(10);
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.reset();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+  }
+
+  @Test
+  public void testH2DirectReadFullySmallBuffer() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocateDirect(8);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(8, readBuffer.position());
+    Assert.assertEquals(8, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(8, readBuffer.position());
+    Assert.assertEquals(8, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+  }
+
+  @Test
+  public void testH2DirectReadFullyLargeBuffer() throws Exception {
+    final ByteBuffer readBuffer = ByteBuffer.allocateDirect(20);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    final MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    TestUtils.assertThrows("Should throw EOFException",
+        EOFException.class, new Callable() {
+          @Override
+          public Object call() throws Exception {
+            H2SeekableInputStream.readFully(reader, readBuffer);
+            return null;
+          }
+        });
+
+    // NOTE: This behavior differs from readFullyHeapBuffer because direct uses
+    // several read operations that will read up to the end of the input. This
+    // is a correct value because the bytes in the buffer are valid. This
+    // behavior can't be implemented for the heap buffer without using the read
+    // method instead of the readFully method on the underlying
+    // FSDataInputStream.
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(20, readBuffer.limit());
+  }
+
+  @Test
+  public void testH2DirectReadFullyJustRight() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    // reads all of the bytes available without EOFException
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    // trying to read 0 more bytes doesn't result in EOFException
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+  }
+
+  @Test
+  public void testH2DirectReadFullySmallReads() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+  }
+
+  @Test
+  public void testH2DirectReadFullyPosition() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
+    readBuffer.position(3);
+    readBuffer.mark();
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.reset();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+  }
+
+  @Test
+  public void testH2DirectReadFullyLimit() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
+    readBuffer.limit(7);
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    H2SeekableInputStream.Reader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(7, readBuffer.position());
+    Assert.assertEquals(7, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(7, readBuffer.position());
+    Assert.assertEquals(7, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+
+    readBuffer.position(7);
+    readBuffer.limit(10);
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.flip();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+  }
+
+  @Test
+  public void testH2DirectReadFullyPositionAndLimit() throws Exception {
+    ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
+    readBuffer.position(3);
+    readBuffer.limit(7);
+    readBuffer.mark();
+
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockBufferReader reader = new MockBufferReader(hadoopStream);
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(7, readBuffer.position());
+    Assert.assertEquals(7, readBuffer.limit());
+
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(7, readBuffer.position());
+    Assert.assertEquals(7, readBuffer.limit());
+
+    readBuffer.reset();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+
+    readBuffer.position(7);
+    readBuffer.limit(10);
+    H2SeekableInputStream.readFully(reader, readBuffer);
+    Assert.assertEquals(10, readBuffer.position());
+    Assert.assertEquals(10, readBuffer.limit());
+
+    readBuffer.reset();
+    Assert.assertEquals("Buffer contents should match",
+        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+  }
 }

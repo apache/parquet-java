@@ -34,7 +34,7 @@ public class HadoopStreams {
   private static final Log LOG = Log.getLog(HadoopStreams.class);
 
   private static final Class<?> byteBufferReadableClass = getReadableClass();
-  private static final Constructor<SeekableInputStream> h2SeekableConstructor = getH2SeekableConstructor();
+  static final Constructor<SeekableInputStream> h2SeekableConstructor = getH2SeekableConstructor();
 
   /**
    * Wraps a {@link FSDataInputStream} in a {@link SeekableInputStream}

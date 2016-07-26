@@ -19,9 +19,7 @@
 
 package org.apache.parquet.hadoop.util;
 
-import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.SeekableInputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -33,12 +31,17 @@ import java.nio.ByteBuffer;
  */
 class H2SeekableInputStream extends SeekableInputStream {
 
+  // Visible for testing
+  interface Reader {
+    int read(ByteBuffer buf) throws IOException;
+  }
+
   private final FSDataInputStream stream;
+  private final Reader reader;
 
   public H2SeekableInputStream(FSDataInputStream stream) {
-    Preconditions.checkArgument(stream instanceof ByteBufferReadable,
-        "Input stream must be ByteBufferReadable. Try using H1SeekableInputStream");
     this.stream = stream;
+    this.reader = new H2Reader();
   }
 
   @Override
@@ -78,10 +81,17 @@ class H2SeekableInputStream extends SeekableInputStream {
 
   @Override
   public void readFully(ByteBuffer buf) throws IOException {
-    readFully(stream, buf);
+    readFully(reader, buf);
   }
 
-  public static void readFully(FSDataInputStream stream, ByteBuffer buf) throws IOException {
+  private class H2Reader implements Reader {
+    @Override
+    public int read(ByteBuffer buf) throws IOException {
+      return stream.read(buf);
+    }
+  }
+
+  public static void readFully(Reader stream, ByteBuffer buf) throws IOException {
     // unfortunately the Hadoop APIs seem to not have a 'readFully' equivalent for the byteBuffer read
     // calls. The read(ByteBuffer) call might read fewer than byteBuffer.hasRemaining() bytes. Thus we
     // have to loop to ensure we read them.
