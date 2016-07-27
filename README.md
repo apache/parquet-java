@@ -202,16 +202,7 @@ Thank you for getting involved!
 
 ## Authors and contributors
 
-* Julien Le Dem [@J_](http://twitter.com/J_) <https://github.com/julienledem>
-* Tom White <https://github.com/tomwhite>
-* Mickaël Lacour <https://github.com/mickaellcr>
-* Remy Pecqueur <https://github.com/Lordshinjo>
-* Avi Bryant <https://github.com/avibryant>
-* Dmitriy Ryaboy [@squarecog](https://twitter.com/squarecog) <https://github.com/dvryaboy>
-* Jonathan Coveney <http://twitter.com/jco>
-* Brock Noland <https://github.com/brockn>
-* Tianshuo Deng <https://github.com/tsdeng>
-* and many others -- see the [Contributor report]( https://github.com/apache/parquet-mr/contributors)
+Please see: [Apache Parquet Committers and PMC](http://people.apache.org/committers-by-project.html#parquet)
 
 ## Code of Conduct
 
