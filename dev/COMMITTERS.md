@@ -17,30 +17,11 @@
   ~ under the License.
   -->
 
-# Committers (in aplhabetical order):
+# Committers (in alphabetical order):
 
-| Name               | Apache Id  | github id      | JIRA id     |
-|--------------------|------------|----------------|-------------|
-| Aniket Mokashi     | aniket486  | aniket486      |             |
-| Brock Noland       | brock      | brockn         |             |
-| Cheng Lian         | lian       | liancheng      | lian cheng  |
-| Chris Aniszczyk    | caniszczyk |                |             |
-| Dmitriy Ryaboy     | dvryaboy   | dvryaboy       |             |
-| Jake Farrell       | jfarrell   |                |             |
-| Jonathan Coveney   | jcoveney   | jcoveney       |             |
-| Julien Le Dem      | julien     | julienledem    | julienledem |
-| Lukas Nalezenec    | lukas      | lukasnalezenec |             |
-| Marcel Kornacker   | marcel     |                |             |
-| Mickael Lacour     | mlacour    | mickaellcr     |             |
-| Nong Li            | nong       | nongli         |             |
-| Remy Pecqueur      | rpecqueur  | Lordshinjo     |             |
-| Ryan Blue          | blue       | rdblue         |             |
-| Sergio Pena        | spena      | spena          | spena       |
-| Tianshuo Deng      | tianshuo   | tsdeng         |             |
-| Tom White          | tomwhite   | tomwhite       |             |
-| Wesley Graham Peck | wesleypeck | wesleypeck     |             |
+Please see: [Apache Parquet Committers and PMC](http://people.apache.org/committers-by-project.html#parquet)
 
-Reviewing guidelines:
+# Reviewing guidelines:
 Committers have the responsibility to give constructive and timely feedback on the pull requests.
 Anybody can give feedback on a pull request but only committers can merge it.
 
