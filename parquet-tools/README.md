@@ -99,9 +99,10 @@ where option is one of:
     -c,--column <arg>  Dump only the given column, can be specified more than
                        once
     -d,--disable-data  Do not dump column data
-       --debug         Disable color output even if supported
+       --debug         Enable debug output
     -h,--help          Show this help string
     -m,--disable-meta  Do not dump row group and page metadata
+    -n,--disable-crop  Do not crop the output based on console width
        --no-color      Disable color output even if supported
 where <input> is the parquet file to print to stdout
 ```
