@@ -150,7 +150,7 @@ public class ColumnReaderImpl implements ColumnReader {
   private int dictionaryId;
 
   private long endOfPageValueCount;
-  private int readValues = 0;
+  private long readValues = 0;
   private int pageValueCount = 0;
 
   private final PrimitiveConverter converter;
@@ -352,8 +352,8 @@ public class ColumnReaderImpl implements ColumnReader {
       this.dictionary = null;
     }
     this.totalValueCount = pageReader.getTotalValueCount();
-    if (totalValueCount == 0) {
-      throw new ParquetDecodingException("totalValueCount == 0");
+    if (totalValueCount <= 0) {
+      throw new ParquetDecodingException("totalValueCount '" + totalValueCount + "' <= 0");
     }
     consume();
   }
