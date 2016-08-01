@@ -66,14 +66,14 @@ To run it on hadoop, you should use "hadoop jar" instead of "java jar"
 ```sh
 usage: java -jar ./parquet-tools-<VERSION>.jar cat [option...] <input>
 where option is one of:
-       --debug     Disable color output even if supported
+       --debug     Enable debug output
     -h,--help      Show this help string
        --no-color  Disable color output even if supported
 where <input> is the parquet file to print to stdout
 
 usage: java -jar ./parquet-tools-<VERSION>.jar head [option...] <input>
 where option is one of:
-       --debug          Disable color output even if supported
+       --debug          Enable debug output
     -h,--help           Show this help string
     -n,--records <arg>  The number of records to show (default: 5)
        --no-color       Disable color output even if supported
@@ -82,14 +82,14 @@ where <input> is the parquet file to print to stdout
 usage: java -jar ./parquet-tools-<VERSION>.jar schema [option...] <input>
 where option is one of:
     -d,--detailed <arg>  Show detailed information about the schema.
-       --debug           Disable color output even if supported
+       --debug           Enable debug output
     -h,--help            Show this help string
        --no-color        Disable color output even if supported
 where <input> is the parquet file containing the schema to show
 
 usage: java -jar ./parquet-tools-<VERSION>.jar meta [option...] <input>
 where option is one of:
-       --debug     Disable color output even if supported
+       --debug     Enable debug output
     -h,--help      Show this help string
        --no-color  Disable color output even if supported
 where <input> is the parquet file to print to stdout
