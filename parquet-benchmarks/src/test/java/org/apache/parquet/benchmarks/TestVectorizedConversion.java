@@ -27,7 +27,9 @@ import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.COArrayInc;
 import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.COArrayInc2;
 import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.COBaseLine;
 import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.COBinaryInc;
+import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.COBinaryInc1;
 import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.COBinaryInc2;
+import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.COBinaryInc3;
 import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.COBinaryIncU;
 import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.COTernaryInc;
 import org.apache.parquet.benchmarks.VectorizedConversionBenchmark.ComputeOffset;
@@ -41,7 +43,9 @@ public class TestVectorizedConversion {
       new COArrayInc(),
       new COArrayInc2(),
       new COBinaryInc(),
+      new COBinaryInc1(),
       new COBinaryInc2(),
+      new COBinaryInc3(),
       new COBinaryIncU(),
       new COTernaryInc()
       };

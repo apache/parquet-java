@@ -73,9 +73,10 @@ public class VectorizedConversionBenchmark {
   public static class COArrayInc implements ComputeOffset {
     // will work only for max rl 2
     // precompute the increment to avoid branching
-    int[][] toAdd = computeIncArray(2);
+    final int[][] toAdd = computeIncArray(2);
 
     public void computeOffsets(int[] rl, int[][] offset) {
+      final int[][] toAdd = this.toAdd;
       int[] currentIndex = new int[offset.length + 1];
       for (int i = 0; i < rl.length; i++) {
         int r = rl[i]; // clearly iterating on array length, so should not bound check
@@ -117,20 +118,20 @@ public class VectorizedConversionBenchmark {
   @State(Benchmark)
   public static class COArrayInc2 extends COArrayInc {
 
-    public void computeOffsets(int[] rl, int[][] offset) {
+    public void computeOffsets(final int[] rl, final int[][] offset) {
       int currentIndex0 = 0;
       int currentIndex1 = 0;
       int currentIndex2 = 0;
-      int[] toAdd0 = toAdd[0];
-      int[] toAdd1 = toAdd[1];
-      int[] offset0 = offset[0];
-      int[] offset1 = offset[1];
+      final int[] toAdd0 = toAdd[0];
+      final int[] toAdd1 = toAdd[1];
+      final int[] offset0 = offset[0];
+      final int[] offset1 = offset[1];
       for (int i = 0; i < rl.length; i++) {
-        int r = rl[i]; // clearly iterating on array length, so should not bound check
+        final int r = rl[i]; // clearly iterating on array length, so should not bound check
         currentIndex0 += toAdd0[r];
         currentIndex1 += toAdd1[r];
-        currentIndex2 += 1; // always increment
         offset0[currentIndex0] = currentIndex1;
+        currentIndex2 += 1; // always increment
         offset1[currentIndex1] = currentIndex2;
       }
     }
@@ -142,22 +143,46 @@ public class VectorizedConversionBenchmark {
    */
   @State(Benchmark)
   public static class COBinaryInc implements ComputeOffset {
-    public  void computeOffsets(int[] rl, int[][] offset) {
+    public  void computeOffsets(final int[] rl, final int[][] offset) {
       int currentIndex0 = 0;
       int currentIndex1 = 0;
       int currentIndex2 = 0;
-      int[] o0 = offset[0];
-      int[] o1 = offset[1];
+      final int[] o0 = offset[0];
+      final int[] o1 = offset[1];
 
       for (int i = 0; i < rl.length; i++) {
-        int r = rl[i]; // clearly iterating on array length, so should not bound check
+        final int r = rl[i]; // clearly iterating on array length, so should not bound check
         // instead of the array lookup approach, we figure out a formula
         currentIndex0 += (((r & 1) | (r >>> 1)) ^ 1); // inc if r == 0 only
         currentIndex1 += ((r >>> 1) ^ 1); // inc if r == 0 or 1
-        currentIndex2 += 1; // inc if r == 0, 1 or 2
-
-        // TODO: check if we can remove bound checks here
         o0[currentIndex0] = currentIndex1;
+        currentIndex2 += 1; // inc if r == 0, 1 or 2
+        o1[currentIndex1] = currentIndex2;
+      }
+    }
+  }
+
+  /**
+   * Produce a binary formula instead of an array lookup
+   */
+  @State(Benchmark)
+  public static class COBinaryInc1 implements ComputeOffset {
+    public  void computeOffsets(final int[] rl, final int[][] offset) {
+      int currentIndex0 = 0;
+      int currentIndex1 = 0;
+      int currentIndex2 = 0;
+      final int[] o0 = offset[0];
+      final int[] o1 = offset[1];
+
+      for (int i = 0; i < rl.length; i++) {
+        final int r = rl[i]; // clearly iterating on array length, so should not bound check
+        // instead of the array lookup approach, we figure out a formula
+        final int bit1 = r >>> 1;
+        final int bit0 = r & 1;
+        currentIndex0 += ((bit0 | bit1) ^ 1); // inc if r == 0 only
+        currentIndex1 += (bit1 ^ 1); // inc if r == 0 or 1
+        o0[currentIndex0] = currentIndex1;
+        currentIndex2 += 1; // inc if r == 0, 1 or 2
         o1[currentIndex1] = currentIndex2;
       }
     }
@@ -169,22 +194,45 @@ public class VectorizedConversionBenchmark {
   @State(Benchmark)
   public static class COBinaryInc2 implements ComputeOffset {
 
-    public  void computeOffsets(int[] rl, int[][] offset) {
+    public  void computeOffsets(final int[] rl, final int[][] offset) {
       int currentIndex0 = 0;
       int currentIndex1 = 0;
       int currentIndex2 = 0;
-      int[] o0 = offset[0];
-      int[] o1 = offset[1];
+      final int[] o0 = offset[0];
+      final int[] o1 = offset[1];
 
       for (int i = 0; i < rl.length; i++) {
-        int r = rl[i]; // clearly iterating on array length, so should not bound check
+        final int r = rl[i]; // clearly iterating on array length, so should not bound check
         // instead of the array lookup approach, we figure out a formula
         currentIndex0 += (1 >>> r) & 1; // inc if r == 0 only
-        currentIndex1 += (3 >>> r) & 1; // inc if r == 0 or 1
-        currentIndex2 += 1; // inc if r == 0, 1 or 2. Which is always since max rl = 2
-
-        // TODO: check if we can remove bound checks here
+        currentIndex1 += (3 >>> r) & 1; // inc if r == 0 or 1 but not 2
         o0[currentIndex0] = currentIndex1;
+        currentIndex2 += 1; // inc if r == 0, 1 or 2. Which is always since max rl = 2
+        o1[currentIndex1] = currentIndex2;
+      }
+    }
+  }
+
+  /**
+   * another approach to COBinaryInc
+   */
+  @State(Benchmark)
+  public static class COBinaryInc3 implements ComputeOffset {
+
+    public  void computeOffsets(final int[] rl, final int[][] offset) {
+      int currentIndex0 = 0;
+      int currentIndex1 = 0;
+      int currentIndex2 = 0;
+      final int[] o0 = offset[0];
+      final int[] o1 = offset[1];
+
+      for (int i = 0; i < rl.length; i++) {
+        final int r = rl[i]; // clearly iterating on array length, so should not bound check
+        // instead of the array lookup approach, we figure out a formula
+        currentIndex0 += (r - 1) >>> 31; // inc if r < 1
+        currentIndex1 += (r - 2) >>> 31; // inc if r < 2
+        o0[currentIndex0] = currentIndex1;
+        currentIndex2 += 1; // inc if r == 0, 1 or 2. Which is always since max rl = 2
         o1[currentIndex1] = currentIndex2;
       }
     }
@@ -195,7 +243,7 @@ public class VectorizedConversionBenchmark {
    */
   @State(Benchmark)
   public static class COBinaryIncU implements ComputeOffset {
-    sun.misc.Unsafe unsafe;
+    final sun.misc.Unsafe unsafe;
     {
       try {
         Field f = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
@@ -205,23 +253,23 @@ public class VectorizedConversionBenchmark {
         throw new RuntimeException(e);
       }
     }
-    int arrayBaseOffset = unsafe.arrayBaseOffset(int[].class);
+    final int arrayBaseOffset = unsafe.arrayBaseOffset(int[].class);
 
-    public  void computeOffsets(int[] rl, int[][] offset) {
+    public  void computeOffsets(final int[] rl, final int[][] offset) {
       int currentIndex0 = 0;
       int currentIndex1 = 0;
       int currentIndex2 = 0;
-      int[] o0 = offset[0];
-      int[] o1 = offset[1];
+      final int[] o0 = offset[0];
+      final int[] o1 = offset[1];
+      final int base = arrayBaseOffset;
 
       for (int i = 0; i < rl.length; i++) {
-        int r = rl[i]; // clearly iterating on array length, so should not bound check
+        final int r = rl[i]; // clearly iterating on array length, so should not bound check
         currentIndex0 += (((r & 1) | (r >>> 1)) ^ 1); // inc if r == 0 only
         currentIndex1 += ((r >>> 1) ^ 1); // inc if r == 0 or 1
+        unsafe.putInt(o0, base + currentIndex0 * 4, currentIndex1);
         currentIndex2 += 1; // inc if r == 0, 1 or 2
-
-        unsafe.putInt(o0, arrayBaseOffset + currentIndex0 * 4, currentIndex1);
-        unsafe.putInt(o1, arrayBaseOffset + currentIndex1 * 4, currentIndex2);
+        unsafe.putInt(o1, base + currentIndex1 * 4, currentIndex2);
       }
     }
   }
@@ -231,15 +279,15 @@ public class VectorizedConversionBenchmark {
    */
   @State(Benchmark)
   public static class COTernaryInc implements ComputeOffset {
-    public void computeOffsets(int[] rl, int[][] offset) {
+    public void computeOffsets(final int[] rl, final int[][] offset) {
       int currentIndex0 = 0;
       int currentIndex1 = 0;
       int currentIndex2 = 0;
-      int[] o0 = offset[0];
-      int[] o1 = offset[1];
+      final int[] o0 = offset[0];
+      final int[] o1 = offset[1];
 
       for (int i = 0; i < rl.length; i++) {
-        int r = rl[i]; // clearly iterating on array length, so should not bound check
+        final int r = rl[i]; // clearly iterating on array length, so should not bound check
         currentIndex0 += r == 0 ? 1 : 0;
         currentIndex1 += r <= 1 ? 1 : 0;
         currentIndex2 += 1;
@@ -277,37 +325,47 @@ public class VectorizedConversionBenchmark {
   }
 
   @Benchmark
-  public void baseLine(COBaseLine c) throws IOException {
+  public void t0_baseLine(COBaseLine c) throws IOException {
     c.computeOffsets(RL, OFFSET);
   }
 
   @Benchmark
-  public void arrayInc(COArrayInc c) throws IOException {
+  public void t1_arrayInc(COArrayInc c) throws IOException {
     c.computeOffsets(RL, OFFSET);
   }
 
   @Benchmark
-  public void arrayInc2(COArrayInc2 c) throws IOException {
+  public void t2_arrayInc2(COArrayInc2 c) throws IOException {
     c.computeOffsets(RL, OFFSET);
   }
 
   @Benchmark
-  public void binaryInc(COBinaryInc c) throws IOException {
+  public void t3_binaryInc(COBinaryInc c) throws IOException {
     c.computeOffsets(RL, OFFSET);
   }
 
   @Benchmark
-  public void binaryInc2(COBinaryInc2 c) throws IOException {
+  public void t4_binaryInc1(COBinaryInc1 c) throws IOException {
     c.computeOffsets(RL, OFFSET);
   }
 
   @Benchmark
-  public void binaryIncU(COBinaryIncU c) throws IOException {
+  public void t5_binaryInc2(COBinaryInc2 c) throws IOException {
     c.computeOffsets(RL, OFFSET);
   }
 
   @Benchmark
-  public void ternaryInc(COTernaryInc c) throws IOException {
+  public void t6_binaryInc3(COBinaryInc3 c) throws IOException {
+    c.computeOffsets(RL, OFFSET);
+  }
+
+  @Benchmark
+  public void t7_binaryIncU(COBinaryIncU c) throws IOException {
+    c.computeOffsets(RL, OFFSET);
+  }
+
+  @Benchmark
+  public void t8_ternaryInc(COTernaryInc c) throws IOException {
     c.computeOffsets(RL, OFFSET);
   }
 
