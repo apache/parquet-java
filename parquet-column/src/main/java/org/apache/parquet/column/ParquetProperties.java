@@ -33,7 +33,6 @@ import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
-import org.apache.parquet.column.values.factory.ValuesWriterFactoryParams;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -77,6 +76,7 @@ public class ParquetProperties {
     }
   }
 
+  private final int initialSlabSize;
   private final int pageSizeThreshold;
   private final int dictionaryPageSizeThreshold;
   private final WriterVersion writerVersion;
@@ -91,7 +91,7 @@ public class ParquetProperties {
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
                             ValuesWriterFactory writerFactory) {
     this.pageSizeThreshold = pageSize;
-    int initialSlabSize = CapacityByteArrayOutputStream
+    this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
@@ -101,11 +101,7 @@ public class ParquetProperties {
     this.estimateNextSizeCheck = estimateNextSizeCheck;
     this.allocator = allocator;
 
-    ValuesWriterFactoryParams params =
-      new ValuesWriterFactoryParams(writerVersion, initialSlabSize, pageSizeThreshold, allocator,
-        enableDictionary, dictionaryPageSizeThreshold);
-    valuesWriterFactory = writerFactory;
-    valuesWriterFactory.initialize(params);
+    this.valuesWriterFactory = writerFactory;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -144,6 +140,10 @@ public class ParquetProperties {
 
   public int getPageSizeThreshold() {
     return pageSizeThreshold;
+  }
+
+  public int getInitialSlabSize() {
+    return initialSlabSize;
   }
 
   public int getDictionaryPageSizeThreshold() {
@@ -303,9 +303,17 @@ public class ParquetProperties {
     }
 
     public ParquetProperties build() {
-      return new ParquetProperties(writerVersion, pageSize, dictPageSize,
+      ParquetProperties properties =
+        new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
           estimateNextSizeCheck, allocator, valuesWriterFactory);
+      // we pass a constructed but uninitialized factory to ParquetProperties above as currently
+      // creation of ValuesWriters is invoked from within ParquetProperties. In the future
+      // we'd like to decouple that and won't need to pass an object to properties and then pass the
+      // properties to the object.
+      valuesWriterFactory.initialize(properties);
+
+      return properties;
     }
 
   }

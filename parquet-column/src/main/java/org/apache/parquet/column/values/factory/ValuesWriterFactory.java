@@ -19,28 +19,29 @@
 package org.apache.parquet.column.values.factory;
 
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.ValuesWriter;
 
 /**
- * Can be overridden to allow users to specify how they want their ValuesWriters to be created.
- * ValuesWriterFactories are created using reflection in {@link org.apache.parquet.column.ParquetProperties}.
- * Due to this, they must provide a default constructor.
- * Lifecycle of ValuesWriterFactories is:
- * 1) Created via reflection while creating a {@link org.apache.parquet.column.ParquetProperties}
- * 2) If the factory is Configurable (needs Hadoop conf), that is set by calling setConfig().
+ * Can be overridden to allow users to manually test different strategies to create ValuesWriters.
+ * To do this, the ValuesWriterFactory to be used must be passed to the {@link org.apache.parquet.column.ParquetProperties.Builder}.
+ * <ul>Lifecycle of ValuesWriterFactories is:
+ * <li> Initialized while creating a {@link org.apache.parquet.column.ParquetProperties} using the Builder</li>
+ * <li> If the factory is Configurable (needs Hadoop conf), that is set by calling setConfig().
  * initialize() is also called. This is done just once for the lifetime of the factory. As Hadoop
- * config can be set, ValuesWriterFactories can read additional config to create appropriate ValuesWriters.
- * 3) newValuesWriter is called once per column for every block of data.
+ * config can be set, ValuesWriterFactories can read additional config to create appropriate ValuesWriters.</li>
+ * <li> newValuesWriter is called once per column for every block of data.</li>
+ * </ul>
  */
 public interface ValuesWriterFactory {
 
   /**
    * Used to initialize the factory. This method is called before newValuesWriter()
    */
-  void initialize(ValuesWriterFactoryParams params);
+  void initialize(ParquetProperties parquetProperties);
 
   /**
-   * Creates a ValuesWriter to help write the given column.
+   * Creates a ValuesWriter to write values for the given column.
    */
   ValuesWriter newValuesWriter(ColumnDescriptor descriptor);
 }

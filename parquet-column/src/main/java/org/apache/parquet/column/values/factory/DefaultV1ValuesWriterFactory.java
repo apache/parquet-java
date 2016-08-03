@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.factory;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.plain.BooleanPlainValuesWriter;
 import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
@@ -29,11 +30,11 @@ import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 
 public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
-  private ValuesWriterFactoryParams selectionParams;
+  private ParquetProperties parquetProperties;
 
   @Override
-  public void initialize(ValuesWriterFactoryParams params) {
-    this.selectionParams = params;
+  public void initialize(ParquetProperties properties) {
+    this.parquetProperties = properties;
   }
 
   private Encoding getEncodingForDataPage() {
@@ -75,36 +76,36 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getFixedLenByteArrayValuesWriter(ColumnDescriptor path) {
     // dictionary encoding was not enabled in PARQUET 1.0
-    return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), selectionParams.getInitialCapacity(), selectionParams.getPageSize(), selectionParams.getAllocator());
+    return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), parquetProperties.getInitialSlabSize(), parquetProperties.getPageSizeThreshold(), parquetProperties.getAllocator());
   }
 
   private ValuesWriter getBinaryValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new PlainValuesWriter(selectionParams.getInitialCapacity(), selectionParams.getPageSize(), selectionParams.getAllocator());
-    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, selectionParams, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
+    ValuesWriter fallbackWriter = new PlainValuesWriter(parquetProperties.getInitialSlabSize(), parquetProperties.getPageSizeThreshold(), parquetProperties.getAllocator());
+    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }
 
   private ValuesWriter getInt32ValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new PlainValuesWriter(selectionParams.getInitialCapacity(), selectionParams.getPageSize(), selectionParams.getAllocator());
-    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, selectionParams, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
+    ValuesWriter fallbackWriter = new PlainValuesWriter(parquetProperties.getInitialSlabSize(), parquetProperties.getPageSizeThreshold(), parquetProperties.getAllocator());
+    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }
 
   private ValuesWriter getInt64ValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new PlainValuesWriter(selectionParams.getInitialCapacity(), selectionParams.getPageSize(), selectionParams.getAllocator());
-    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, selectionParams, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
+    ValuesWriter fallbackWriter = new PlainValuesWriter(parquetProperties.getInitialSlabSize(), parquetProperties.getPageSizeThreshold(), parquetProperties.getAllocator());
+    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }
 
   private ValuesWriter getInt96ValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new FixedLenByteArrayPlainValuesWriter(12, selectionParams.getInitialCapacity(), selectionParams.getPageSize(), selectionParams.getAllocator());
-    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, selectionParams, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
+    ValuesWriter fallbackWriter = new FixedLenByteArrayPlainValuesWriter(12, parquetProperties.getInitialSlabSize(), parquetProperties.getPageSizeThreshold(), parquetProperties.getAllocator());
+    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }
 
   private ValuesWriter getDoubleValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new PlainValuesWriter(selectionParams.getInitialCapacity(), selectionParams.getPageSize(), selectionParams.getAllocator());
-    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, selectionParams, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
+    ValuesWriter fallbackWriter = new PlainValuesWriter(parquetProperties.getInitialSlabSize(), parquetProperties.getPageSizeThreshold(), parquetProperties.getAllocator());
+    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }
 
   private ValuesWriter getFloatValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new PlainValuesWriter(selectionParams.getInitialCapacity(), selectionParams.getPageSize(), selectionParams.getAllocator());
-    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, selectionParams, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
+    ValuesWriter fallbackWriter = new PlainValuesWriter(parquetProperties.getInitialSlabSize(), parquetProperties.getPageSizeThreshold(), parquetProperties.getAllocator());
+    return DefaultValuesWriterFactory.dictWriterWithFallBack(path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }
 }

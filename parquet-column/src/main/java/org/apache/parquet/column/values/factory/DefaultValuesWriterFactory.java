@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.factory;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
@@ -30,22 +31,20 @@ import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
  */
 public class DefaultValuesWriterFactory implements ValuesWriterFactory {
 
-  private ValuesWriterFactoryParams selectionParams;
   private ValuesWriterFactory delegateFactory;
 
   private static final ValuesWriterFactory DEFAULT_V1_WRITER_FACTORY = new DefaultV1ValuesWriterFactory();
   private static final ValuesWriterFactory DEFAULT_V2_WRITER_FACTORY = new DefaultV2ValuesWriterFactory();
 
   @Override
-  public void initialize(ValuesWriterFactoryParams params) {
-    this.selectionParams = params;
-    if (selectionParams.getWriterVersion() == WriterVersion.PARQUET_1_0) {
+  public void initialize(ParquetProperties properties) {
+    if (properties.getWriterVersion() == WriterVersion.PARQUET_1_0) {
       delegateFactory = DEFAULT_V1_WRITER_FACTORY;
     } else {
       delegateFactory = DEFAULT_V2_WRITER_FACTORY;
     }
 
-    delegateFactory.initialize(params);
+    delegateFactory.initialize(properties);
   }
 
   @Override
@@ -53,33 +52,33 @@ public class DefaultValuesWriterFactory implements ValuesWriterFactory {
     return delegateFactory.newValuesWriter(descriptor);
   }
 
-  public static DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path, ValuesWriterFactoryParams selectionParams, Encoding dictPageEncoding, Encoding dataPageEncoding) {
+  static DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path, ParquetProperties properties, Encoding dictPageEncoding, Encoding dataPageEncoding) {
     switch (path.getType()) {
       case BOOLEAN:
         throw new IllegalArgumentException("no dictionary encoding for BOOLEAN");
       case BINARY:
-        return new DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter(selectionParams.getMaxDictionaryByteSize(), dataPageEncoding, dictPageEncoding, selectionParams.getAllocator());
+        return new DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
       case INT32:
-        return new DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter(selectionParams.getMaxDictionaryByteSize(), dataPageEncoding, dictPageEncoding, selectionParams.getAllocator());
+        return new DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
       case INT64:
-        return new DictionaryValuesWriter.PlainLongDictionaryValuesWriter(selectionParams.getMaxDictionaryByteSize(), dataPageEncoding, dictPageEncoding, selectionParams.getAllocator());
+        return new DictionaryValuesWriter.PlainLongDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
       case INT96:
-        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(selectionParams.getMaxDictionaryByteSize(), 12, dataPageEncoding, dictPageEncoding, selectionParams.getAllocator());
+        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), 12, dataPageEncoding, dictPageEncoding, properties.getAllocator());
       case DOUBLE:
-        return new DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter(selectionParams.getMaxDictionaryByteSize(), dataPageEncoding, dictPageEncoding, selectionParams.getAllocator());
+        return new DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
       case FLOAT:
-        return new DictionaryValuesWriter.PlainFloatDictionaryValuesWriter(selectionParams.getMaxDictionaryByteSize(), dataPageEncoding, dictPageEncoding, selectionParams.getAllocator());
+        return new DictionaryValuesWriter.PlainFloatDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
       case FIXED_LEN_BYTE_ARRAY:
-        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(selectionParams.getMaxDictionaryByteSize(), path.getTypeLength(), dataPageEncoding, dictPageEncoding, selectionParams.getAllocator());
+        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), path.getTypeLength(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
       default:
         throw new IllegalArgumentException("Unknown type " + path.getType());
     }
   }
 
-  public static ValuesWriter dictWriterWithFallBack(ColumnDescriptor path, ValuesWriterFactoryParams selectionParams, Encoding dictPageEncoding, Encoding dataPageEncoding, ValuesWriter writerToFallBackTo) {
-    if (selectionParams.getEnableDictionary()) {
+  static ValuesWriter dictWriterWithFallBack(ColumnDescriptor path, ParquetProperties parquetProperties, Encoding dictPageEncoding, Encoding dataPageEncoding, ValuesWriter writerToFallBackTo) {
+    if (parquetProperties.isEnableDictionary()) {
       return FallbackValuesWriter.of(
-        dictionaryWriter(path, selectionParams, dictPageEncoding, dataPageEncoding),
+        dictionaryWriter(path, parquetProperties, dictPageEncoding, dataPageEncoding),
         writerToFallBackTo);
     } else {
       return writerToFallBackTo;

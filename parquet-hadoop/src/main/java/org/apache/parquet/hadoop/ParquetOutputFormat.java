@@ -147,18 +147,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
 
-  /**
-   * Used to override the value writer factory used to create Values Writers.
-   * This allows users to plug in their own factory class to create custom ValuesWriters rather
-   * use the Parquet provided default - {@link org.apache.parquet.column.values.factory.DefaultValuesWriterFactory}.
-   * Factory classes provided must implement {@link org.apache.parquet.column.values.factory.ValuesWriterFactory}.
-   *
-   * For e.g. "parquet.write.value.writer.factory" = "org.apache.parquet.column.values.factory.MyValuesWriterFactory"
-   * will ensure that we use MyValuesWriterFactory to create ValuesWriters for writing out data.
-   * See the documentation for ValuesWriterFactory for more details.
-   */
-  public static final String WRITER_FACTORY_OVERRIDE = "parquet.write.value.writer.factory";
-
   // default to no padding for now
   private static final int DEFAULT_MAX_PADDING_SIZE = 0;
 
@@ -332,24 +320,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static ValuesWriterFactory getValuesWriterFactory(Configuration conf) {
-    Class<? extends ValuesWriterFactory> factoryOverride =
-      (Class<? extends ValuesWriterFactory>) ConfigurationUtil.getClassFromConfig(conf, WRITER_FACTORY_OVERRIDE, ValuesWriterFactory.class);
+    ValuesWriterFactory factory = ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY;
 
-    try {
-      ValuesWriterFactory factory =
-        factoryOverride == null ? ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY : factoryOverride.newInstance() ;
-
-      if (factory instanceof Configurable) {
-        Configurable configurableFactory = (Configurable) factory;
-        configurableFactory.setConf(conf);
-      }
-
-      return factory;
-    } catch (InstantiationException e) {
-      throw new BadConfigurationException("Unable to instantiate ValuesWriterFactory: " + factoryOverride, e);
-    } catch (IllegalAccessException e) {
-      throw new BadConfigurationException("Unable to instantiate ValuesWriterFactory: " + factoryOverride, e);
+    if (factory instanceof Configurable) {
+      Configurable configurableFactory = (Configurable) factory;
+      configurableFactory.setConf(conf);
     }
+
+    return factory;
   }
 
   private WriteSupport<T> writeSupport;
@@ -394,6 +372,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
+    ValuesWriterFactory valuesWriterFactory = getValuesWriterFactory(conf);
+
     ParquetProperties props = ParquetProperties.builder()
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
@@ -402,7 +382,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
-        .withValuesWriterFactory(getValuesWriterFactory(conf))
+        .withValuesWriterFactory(valuesWriterFactory)
         .build();
 
     long blockSize = getLongBlockSize(conf);
@@ -420,7 +400,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
       LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
       LOG.info("Max row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
-      LOG.info("ValueWriterFactory chosen is: " + props.getValuesWriterFactory());
     }
 
     WriteContext init = writeSupport.init(conf);
