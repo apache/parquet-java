@@ -85,6 +85,10 @@ public class DumpCommand extends ArgsOnlyCommand {
                                  .withDescription("Do not dump column data")
                                  .create('d');
 
+        Option nocrop = OptionBuilder.withLongOpt("disable-crop")
+                                 .withDescription("Do not crop the output based on console width")
+                                 .create('n');
+
         Option cl = OptionBuilder.withLongOpt("column")
                                  .withDescription("Dump only the given column, can be specified more than once")
                                  .hasArgs()
@@ -92,6 +96,7 @@ public class DumpCommand extends ArgsOnlyCommand {
 
         OPTIONS.addOption(md);
         OPTIONS.addOption(dt);
+        OPTIONS.addOption(nocrop);
         OPTIONS.addOption(cl);
     }
 
@@ -122,17 +127,9 @@ public class DumpCommand extends ArgsOnlyCommand {
         ParquetMetadata metaData = ParquetFileReader.readFooter(conf, inpath, NO_FILTER);
         MessageType schema = metaData.getFileMetaData().getSchema();
 
-        PrettyPrintWriter out = PrettyPrintWriter.stdoutPrettyPrinter()
-                                                 .withAutoColumn()
-                                                 .withAutoCrop()
-                                                 .withWhitespaceHandler(WhiteSpaceHandler.ELIMINATE_NEWLINES)
-                                                 .withColumnPadding(1)
-                                                 .withMaxBufferedLines(1000000)
-                                                 .withFlushOnTab()
-                                                 .build();
-
         boolean showmd = !options.hasOption('m');
         boolean showdt = !options.hasOption('d');
+        boolean cropoutput = !options.hasOption('n');
 
         Set<String> showColumns = null;
         if (options.hasOption('c')) {
@@ -140,6 +137,7 @@ public class DumpCommand extends ArgsOnlyCommand {
             showColumns = new HashSet<String>(Arrays.asList(cols));
         }
 
+        PrettyPrintWriter out = prettyPrintWriter(cropoutput);
         dump(out, metaData, schema, inpath, showmd, showdt, showColumns);
     }
 
@@ -344,6 +342,21 @@ public class DumpCommand extends ArgsOnlyCommand {
         if (data == null) return null;
 
         return new BigInteger(data);
+    }
+
+    private static PrettyPrintWriter prettyPrintWriter(boolean cropOutput) {
+        PrettyPrintWriter.Builder builder = PrettyPrintWriter.stdoutPrettyPrinter()
+                .withAutoColumn()
+                .withWhitespaceHandler(WhiteSpaceHandler.ELIMINATE_NEWLINES)
+                .withColumnPadding(1)
+                .withMaxBufferedLines(1000000)
+                .withFlushOnTab();
+
+        if (cropOutput) {
+            builder.withAutoCrop();
+        }
+
+        return builder.build();
     }
 
     private static final class DumpGroupConverter extends GroupConverter {
