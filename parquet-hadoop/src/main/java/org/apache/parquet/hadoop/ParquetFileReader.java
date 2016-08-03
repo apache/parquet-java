@@ -434,22 +434,30 @@ public class ParquetFileReader implements Closeable {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
     FSDataInputStream in = fileSystem.open(file.getPath());
     try {
-      return readFooter(file, in, filter);
+      return readFooter(file.getLen(), file.getPath().toString(), in, filter);
     } finally {
       in.close();
     }
   }
 
-  private static final ParquetMetadata readFooter(FileStatus file, FSDataInputStream f, MetadataFilter filter) throws IOException {
-    long l = file.getLen();
+  /**
+   * Reads the meta data block in the footer of the file using provided input stream
+   * @param fileLen length of the file
+   * @param filePath file location
+   * @param f input stream for the file
+   * @param filter the filter to apply to row groups
+   * @return the metadata blocks in the footer
+   * @throws IOException if an error occurs while reading the file
+   */
+  public static final ParquetMetadata readFooter(long fileLen, String filePath, FSDataInputStream f, MetadataFilter filter) throws IOException {
     if (Log.DEBUG) {
-      LOG.debug("File length " + l);
+      LOG.debug("File length " + fileLen);
     }
     int FOOTER_LENGTH_SIZE = 4;
-    if (l < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
-      throw new RuntimeException(file.getPath() + " is not a Parquet file (too small)");
+    if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
+      throw new RuntimeException(filePath + " is not a Parquet file (too small)");
     }
-    long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
+    long footerLengthIndex = fileLen - FOOTER_LENGTH_SIZE - MAGIC.length;
     if (Log.DEBUG) {
       LOG.debug("reading footer index at " + footerLengthIndex);
     }
@@ -459,7 +467,7 @@ public class ParquetFileReader implements Closeable {
     byte[] magic = new byte[MAGIC.length];
     f.readFully(magic);
     if (!Arrays.equals(MAGIC, magic)) {
-      throw new RuntimeException(file.getPath() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+      throw new RuntimeException(filePath + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
     }
     long footerIndex = footerLengthIndex - footerLength;
     if (Log.DEBUG) {
@@ -555,7 +563,7 @@ public class ParquetFileReader implements Closeable {
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
     this.f = fs.open(file);
-    this.footer = readFooter(fileStatus, f, filter);
+    this.footer = readFooter(fileStatus.getLen(), fileStatus.getPath().toString(), f, filter);
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = footer.getBlocks();
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
@@ -594,7 +602,7 @@ public class ParquetFileReader implements Closeable {
     if (footer == null) {
       try {
         // don't read the row groups because this.blocks is always set
-        this.footer = readFooter(fileStatus, f, SKIP_ROW_GROUPS);
+        this.footer = readFooter(fileStatus.getLen(), fileStatus.getPath().toString(), f, SKIP_ROW_GROUPS);
       } catch (IOException e) {
         throw new ParquetDecodingException("Unable to read file footer", e);
       }
