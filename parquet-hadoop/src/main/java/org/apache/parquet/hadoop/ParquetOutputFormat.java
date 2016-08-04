@@ -319,7 +319,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
   }
 
-  public static ValuesWriterFactory getValuesWriterFactory(Configuration conf) {
+  public ValuesWriterFactory getValuesWriterFactory(Configuration conf) {
     ValuesWriterFactory factory = ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY;
 
     if (factory instanceof Configurable) {
