@@ -25,7 +25,6 @@ import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
 
-import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
@@ -39,7 +38,6 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
@@ -319,17 +317,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
   }
 
-  public ValuesWriterFactory getValuesWriterFactory(Configuration conf) {
-    ValuesWriterFactory factory = ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY;
-
-    if (factory instanceof Configurable) {
-      Configurable configurableFactory = (Configurable) factory;
-      configurableFactory.setConf(conf);
-    }
-
-    return factory;
-  }
-
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
 
@@ -372,8 +359,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
-    ValuesWriterFactory valuesWriterFactory = getValuesWriterFactory(conf);
-
     ParquetProperties props = ParquetProperties.builder()
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
@@ -382,7 +367,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
-        .withValuesWriterFactory(valuesWriterFactory)
         .build();
 
     long blockSize = getLongBlockSize(conf);

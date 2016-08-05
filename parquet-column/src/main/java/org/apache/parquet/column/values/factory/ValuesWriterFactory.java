@@ -27,9 +27,9 @@ import org.apache.parquet.column.values.ValuesWriter;
  * To do this, the ValuesWriterFactory to be used must be passed to the {@link org.apache.parquet.column.ParquetProperties.Builder}.
  * <ul>Lifecycle of ValuesWriterFactories is:
  * <li> Initialized while creating a {@link org.apache.parquet.column.ParquetProperties} using the Builder</li>
- * <li> If the factory is Configurable (needs Hadoop conf), that is set by calling setConfig().
- * initialize() is also called. This is done just once for the lifetime of the factory. As Hadoop
- * config can be set, ValuesWriterFactories can read additional config to create appropriate ValuesWriters.</li>
+ * <li> If the factory must read Hadoop config, it needs to implement the Configurable interface.
+ * In addition to that, ParquetOutputFormat needs to be updated to pass in the Hadoop config via the setConf()
+ * method on the Configurable interface.</li>
  * <li> newValuesWriter is called once per column for every block of data.</li>
  * </ul>
  */
