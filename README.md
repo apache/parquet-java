@@ -202,7 +202,8 @@ Thank you for getting involved!
 
 ## Authors and contributors
 
-Please see: [Apache Parquet Committers and PMC](http://people.apache.org/committers-by-project.html#parquet)
+* [Contributors](https://github.com/apache/parquet-mr/graphs/contributors)
+* [Committers](dev/COMMITTERS.md)
 
 ## Code of Conduct
 
