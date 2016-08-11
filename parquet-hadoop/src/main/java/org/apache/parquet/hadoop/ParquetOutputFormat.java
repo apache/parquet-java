@@ -317,7 +317,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
   }
 
-
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
 
@@ -374,16 +373,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     int maxPaddingSize = getMaxPaddingSize(conf);
     boolean validating = getValidation(conf);
 
-    if (INFO) LOG.info("Parquet block size to " + blockSize);
-    if (INFO) LOG.info("Parquet page size to " + props.getPageSizeThreshold());
-    if (INFO) LOG.info("Parquet dictionary page size to " + props.getDictionaryPageSizeThreshold());
-    if (INFO) LOG.info("Dictionary is " + (props.isEnableDictionary() ? "on" : "off"));
-    if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
-    if (INFO) LOG.info("Writer version is: " + props.getWriterVersion());
-    if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
-    if (INFO) LOG.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
-    if (INFO) LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
-    if (INFO) LOG.info("Max row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+    if (INFO) {
+      LOG.info("Parquet block size to " + blockSize);
+      LOG.info("Parquet page size to " + props.getPageSizeThreshold());
+      LOG.info("Parquet dictionary page size to " + props.getDictionaryPageSizeThreshold());
+      LOG.info("Dictionary is " + (props.isEnableDictionary() ? "on" : "off"));
+      LOG.info("Validation is " + (validating ? "on" : "off"));
+      LOG.info("Writer version is: " + props.getWriterVersion());
+      LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
+      LOG.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
+      LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
+      LOG.info("Max row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+    }
 
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(
