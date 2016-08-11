@@ -86,6 +86,8 @@
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.5</slf4j.version>
     <avro.version>1.8.0</avro.version>
+    <guava.version>11.0</guava.version>
+    <mockito.version>1.9.5</mockito.version>
   </properties>
 
   <modules>
