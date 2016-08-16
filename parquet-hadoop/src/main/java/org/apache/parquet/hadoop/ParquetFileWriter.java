@@ -59,6 +59,8 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopStreams;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -492,6 +494,12 @@ public class ParquetFileWriter {
   public void appendRowGroups(FSDataInputStream file,
                               List<BlockMetaData> rowGroups,
                               boolean dropColumns) throws IOException {
+    appendRowGroups(HadoopStreams.wrap(file), rowGroups, dropColumns);
+  }
+
+  public void appendRowGroups(SeekableInputStream file,
+                              List<BlockMetaData> rowGroups,
+                              boolean dropColumns) throws IOException {
     for (BlockMetaData block : rowGroups) {
       appendRowGroup(file, block, dropColumns);
     }
@@ -499,6 +507,11 @@ public class ParquetFileWriter {
 
   public void appendRowGroup(FSDataInputStream from, BlockMetaData rowGroup,
                              boolean dropColumns) throws IOException {
+    appendRowGroup(from, rowGroup, dropColumns);
+  }
+
+  public void appendRowGroup(SeekableInputStream from, BlockMetaData rowGroup,
+    boolean dropColumns) throws IOException {
     startBlock(rowGroup.getRowCount());
 
     Map<String, ColumnChunkMetaData> columnsToCopy =
@@ -593,8 +606,8 @@ public class ParquetFileWriter {
    * @param length the number of bytes to copy
    * @throws IOException
    */
-  private static void copy(FSDataInputStream from, FSDataOutputStream to,
-                          long start, long length) throws IOException{
+  private static void copy(SeekableInputStream from, FSDataOutputStream to,
+                           long start, long length) throws IOException{
     if (DEBUG) LOG.debug(
         "Copying " + length + " bytes at " + start + " to " + to.getPos());
     from.seek(start);
