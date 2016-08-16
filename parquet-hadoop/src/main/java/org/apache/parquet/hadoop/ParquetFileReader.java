@@ -54,7 +54,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -66,7 +65,6 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
-import org.apache.parquet.hadoop.util.CompatibilityUtil;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
@@ -91,6 +89,8 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
+import org.apache.parquet.hadoop.util.HadoopStreams;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
 
@@ -432,7 +432,7 @@ public class ParquetFileReader implements Closeable {
    */
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file, MetadataFilter filter) throws IOException {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
-    FSDataInputStream in = fileSystem.open(file.getPath());
+    SeekableInputStream in = HadoopStreams.wrap(fileSystem.open(file.getPath()));
     try {
       return readFooter(file.getLen(), file.getPath().toString(), in, filter);
     } finally {
@@ -449,7 +449,7 @@ public class ParquetFileReader implements Closeable {
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final ParquetMetadata readFooter(long fileLen, String filePath, FSDataInputStream f, MetadataFilter filter) throws IOException {
+  public static final ParquetMetadata readFooter(long fileLen, String filePath, SeekableInputStream f, MetadataFilter filter) throws IOException {
     if (Log.DEBUG) {
       LOG.debug("File length " + fileLen);
     }
@@ -493,7 +493,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   private final CodecFactory codecFactory;
-  private final FSDataInputStream f;
+  private final SeekableInputStream f;
   private final FileStatus fileStatus;
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<ColumnPath, ColumnDescriptor>();
   private final FileMetaData fileMetaData; // may be null
@@ -531,7 +531,7 @@ public class ParquetFileReader implements Closeable {
     this.conf = configuration;
     this.fileMetaData = fileMetaData;
     FileSystem fs = filePath.getFileSystem(configuration);
-    this.f = fs.open(filePath);
+    this.f = HadoopStreams.wrap(fs.open(filePath));
     this.fileStatus = fs.getFileStatus(filePath);
     this.blocks = blocks;
     for (ColumnDescriptor col : columns) {
@@ -562,7 +562,7 @@ public class ParquetFileReader implements Closeable {
     this.conf = conf;
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
-    this.f = fs.open(file);
+    this.f = HadoopStreams.wrap(fs.open(file));
     this.footer = readFooter(fileStatus.getLen(), fileStatus.getPath().toString(), f, filter);
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = footer.getBlocks();
@@ -585,7 +585,7 @@ public class ParquetFileReader implements Closeable {
     this.conf = conf;
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
-    this.f = fs.open(file);
+    this.f = HadoopStreams.wrap(fs.open(file));
     this.footer = footer;
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = footer.getBlocks();
@@ -772,7 +772,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   private static DictionaryPage readCompressedDictionary(
-      PageHeader pageHeader, FSDataInputStream fin) throws IOException {
+      PageHeader pageHeader, SeekableInputStream fin) throws IOException {
     DictionaryPageHeader dictHeader = pageHeader.getDictionary_page_header();
 
     int uncompressedPageSize = pageHeader.getUncompressed_page_size();
@@ -940,7 +940,7 @@ public class ParquetFileReader implements Closeable {
    */
   private class WorkaroundChunk extends Chunk {
 
-    private final FSDataInputStream f;
+    private final SeekableInputStream f;
 
     /**
      * @param descriptor the descriptor of the chunk
@@ -948,7 +948,7 @@ public class ParquetFileReader implements Closeable {
      * @param offset where the chunk starts in data
      * @param f the file stream positioned at the end of this chunk
      */
-    private WorkaroundChunk(ChunkDescriptor descriptor, ByteBuffer byteBuf, int offset, FSDataInputStream f) {
+    private WorkaroundChunk(ChunkDescriptor descriptor, ByteBuffer byteBuf, int offset, SeekableInputStream f) {
       super(descriptor, byteBuf, offset);
       this.f = f;
     }
@@ -964,7 +964,7 @@ public class ParquetFileReader implements Closeable {
         // to allow reading older files (using dictionary) we need this.
         // usually 13 to 19 bytes are missing
         // if the last page is smaller than this, the page header itself is truncated in the buffer.
-        this.byteBuf.rewind(); // resetting the buffer to the position before we got the error
+        this.byteBuf.position(initialPos); // resetting the buffer to the position before we got the error
         LOG.info("completing the column chunk to read the page header");
         pageHeader = Util.readPageHeader(new SequenceInputStream(this, f)); // trying again from the buffer + remainder of the stream.
       }
@@ -1050,11 +1050,14 @@ public class ParquetFileReader implements Closeable {
      * @return the chunks
      * @throws IOException
      */
-    public List<Chunk> readAll(FSDataInputStream f) throws IOException {
+    public List<Chunk> readAll(SeekableInputStream f) throws IOException {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
+
+      // Allocate the bytebuffer based on whether the FS can support it.
       ByteBuffer chunksByteBuffer = allocator.allocate(length);
-      CompatibilityUtil.getBuf(f, chunksByteBuffer, length);
+      f.readFully(chunksByteBuffer);
+
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
       int currentChunkOffset = 0;
