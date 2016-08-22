@@ -101,6 +101,15 @@ public class TestFilterApiMethods {
   }
 
   @Test
+  public void testQuotedColumnNames() {
+    IntColumn c1 = intColumn("a.b.`foo bar`");
+    IntColumn c2 = intColumn("a.b.`foo.bar`");
+    IntColumn c3 = intColumn("`a.b.foo.bar`");
+    FilterPredicate pred = or(eq(c1, 10), or(eq(c2, 20), eq(c3, 30)));
+    assertEquals("or(eq(a.b.`foo bar`, 10), or(eq(a.b.`foo.bar`, 20), eq(`a.b.foo.bar`, 30)))", pred.toString());
+  }
+
+  @Test
   public void testUdp() {
     FilterPredicate predicate = or(eq(doubleColumn, 12.0), userDefined(intColumn, DummyUdp.class));
     assertTrue(predicate instanceof Or);

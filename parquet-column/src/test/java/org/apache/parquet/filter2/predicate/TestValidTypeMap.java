@@ -90,7 +90,7 @@ public class TestValidTypeMap {
       assertTypeValid(invalidColumn, PrimitiveTypeName.INT32);
       fail("This should throw!");
     } catch (IllegalArgumentException e) {
-      assertEquals("Column invalid.column was declared as type: "
+      assertEquals("Column `invalid.column` was declared as type: "
           + "org.apache.parquet.filter2.predicate.TestValidTypeMap$InvalidColumnType which is not supported "
           + "in FilterPredicates. Supported types for this column are: [class java.lang.Integer]", e.getMessage());
     }

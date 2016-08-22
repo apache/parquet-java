@@ -457,6 +457,22 @@ public class TestColumnIO {
     }
   }
 
+  @Test
+  public void testQuotedColumnName() {
+    MessageType schema = MessageTypeParser.parseMessageType(
+        "message Document {\n"
+            + "  required group foo {\n"
+            + "    required int64 `bar?@`;\n"
+            + "  }\n"
+            + "}\n");
+
+    GroupFactory gf = new SimpleGroupFactory(schema);
+    Group g1 = gf.newGroup();
+    g1.addGroup("foo").append("bar?@", 2l);
+
+    testSchema(schema, Arrays.asList(g1));
+  }
+
   private void testSchema(MessageType messageSchema, List<Group> groups) {
     MemPageStore memPageStore = new MemPageStore(groups.size());
     ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);

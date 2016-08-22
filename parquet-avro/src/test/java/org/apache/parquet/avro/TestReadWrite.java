@@ -426,7 +426,7 @@ public class TestReadWrite {
     assertEquals(emptyMap, nextRecord.get("myemptymap"));
     assertEquals(genericFixed, nextRecord.get("myfixed"));
   }
-
+  
   @Test
   public void testAllUsingDefaultAvroSchema() throws Exception {
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");

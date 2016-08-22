@@ -21,6 +21,8 @@ package org.apache.parquet.schema;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.parquet.io.InvalidRecordException;
 
@@ -114,6 +116,11 @@ abstract public class Type {
   private final ID id;
 
   /**
+   * Pattern for matching column names that need to wrapped in backquotes.
+   */
+  private static final Pattern pattern = Pattern.compile("[^a-zA-Z\\.\\d_-]");
+
+  /**
    * @param name the name of the type
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    */
@@ -140,8 +147,14 @@ abstract public class Type {
    */
   Type(String name, Repetition repetition, OriginalType originalType, ID id) {
     super();
-    this.name = checkNotNull(name, "name");
+
+    name = checkNotNull(name, "name");
+    if (name.charAt(0) == '`') {
+      name = name.substring(1, name.length() - 1).replace("``", "`");
+    }
+
     this.repetition = checkNotNull(repetition, "repetition");
+    this.name = name;
     this.originalType = originalType;
     this.id = id;
   }
@@ -157,6 +170,13 @@ abstract public class Type {
    */
   public String getName() {
     return name;
+  }
+
+  /**
+   * @return the name of the type, possibly wrapped in backquotes.
+   */
+  public String getQuotedName() {
+    return pattern.matcher(name).find() ? "`" + name.replace("`", "``") + "`" : name;
   }
 
   /**

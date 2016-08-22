@@ -211,7 +211,7 @@ public class GroupType extends Type {
     sb.append(indent)
         .append(getRepetition().name().toLowerCase(Locale.ENGLISH))
         .append(" group ")
-        .append(getName())
+        .append(getQuotedName())
         .append(getOriginalType() == null ? "" : " (" + getOriginalType() +")")
         .append(getId() == null ? "" : " = " + getId())
         .append(" {\n");

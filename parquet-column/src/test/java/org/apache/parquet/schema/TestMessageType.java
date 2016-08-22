@@ -173,4 +173,16 @@ public class TestMessageType {
     assertEquals(schema, schema2);
     assertEquals(schema.toString(), schema2.toString());
   }
+
+  @Test
+  public void testQuotedIdentifiers() throws Exception {
+    MessageType schema = new MessageType("test",
+        new PrimitiveType(REQUIRED, BINARY, "foo bar"),
+        new PrimitiveType(REQUIRED, BINARY, "foo()`bar"),
+        new PrimitiveType(REQUIRED, BINARY, "foo@#$%^bar")
+    );
+    MessageType schema2 = MessageTypeParser.parseMessageType(schema.toString());
+    assertEquals(schema, schema2);
+    assertEquals(schema.toString(), schema2.toString());
+  }
 }

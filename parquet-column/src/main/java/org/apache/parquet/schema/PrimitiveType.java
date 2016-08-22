@@ -18,15 +18,18 @@
  */
 package org.apache.parquet.schema;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
 
 
 /**
@@ -401,7 +404,7 @@ public final class PrimitiveType extends Type {
     if (primitive == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
       sb.append("(" + length + ")");
     }
-    sb.append(" ").append(getName());
+    sb.append(" ").append(getQuotedName());
     if (getOriginalType() != null) {
       sb.append(" (").append(getOriginalType());
       DecimalMetadata meta = getDecimalMetadata();
