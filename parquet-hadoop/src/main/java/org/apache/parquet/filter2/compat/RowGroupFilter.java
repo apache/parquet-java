@@ -18,9 +18,7 @@
  */
 package org.apache.parquet.filter2.compat;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
@@ -31,6 +29,7 @@ import org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
@@ -71,9 +70,9 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
 
   private RowGroupFilter(List<FilterLevel> levels, List<BlockMetaData> blocks, ParquetFileReader reader) {
     this.blocks = checkNotNull(blocks, "blocks");
-    this.reader = checkNotNull(reader, "reader");
     this.schema = reader.getFileMetaData().getSchema();
     this.levels = levels;
+    this.reader = checkNotNull(reader, "reader");
   }
 
   @Override

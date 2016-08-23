@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Log;
+import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
@@ -295,6 +296,12 @@ public class ParquetMetadataConverter {
         stats.setMax(statistics.getMaxBytes());
         stats.setMin(statistics.getMinBytes());
       }
+      // In newer versions of the format, we allow columns to distinguish between a signed and unsigned interpretation.
+      // Add these fields to make them available to the reader.
+      stats.setUnsigned_max(statistics.getMaxBytesUnsigned());
+      stats.setUnsigned_min(statistics.getMinBytesUnsigned());
+      stats.setSigned_max(statistics.getMaxBytesSigned());
+      stats.setSigned_min(statistics.getMinBytesSigned());
     }
     return stats;
   }
@@ -318,6 +325,18 @@ public class ParquetMetadataConverter {
     if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type)) {
       if (statistics.isSetMax() && statistics.isSetMin()) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
+      }
+      // If the signed_min and signed_max are set, we use those, otherwise we fall back to min and max fields.
+      if (statistics.isSetSigned_max() && statistics.isSetSigned_min()) {
+        stats.setMinMaxSignedFromBytes(statistics.signed_min.array(), statistics.signed_max.array());
+      } else if (statistics.isSetMax() && statistics.isSetMin()) {
+        stats.setMinMaxSignedFromBytes(statistics.min.array(), statistics.max.array());
+      }
+      // We use unsigned_min and unsigned_max if available, otherwise we once again default to the signed min and max.
+      if (statistics.isSetUnsigned_max() && statistics.isSetUnsigned_min()) {
+        stats.setMinMaxUnsignedFromBytes(statistics.unsigned_min.array(), statistics.unsigned_max.array());
+      } else if (statistics.isSetMax() && statistics.isSetMin()) {
+        stats.setMinMaxUnsignedFromBytes(statistics.min.array(), statistics.max.array());
       }
       stats.setNumNulls(statistics.null_count);
     }

@@ -676,17 +676,18 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     if (array1 == null && buf == null) return 0;
     int min_length = (length1 < length2) ? length1 : length2;
     for (int i = 0; i < min_length; i++) {
-      if (array1[i + offset1] < buf.get(i + offset2)) {
-        return 1;
-      }
-      if (array1[i + offset1] > buf.get(i + offset2)) {
-        return -1;
+      int value1 = array1[i + offset1];
+      int value2 = buf.get(i + offset2);
+      if (value1 != value2) {
+        return value2 - value1;
       }
     }
     // check remainder
-    if (length1 == length2) { return 0; }
-    else if (length1 < length2) { return 1;}
-    else { return -1; }
+    if (length1 == length2) {
+      return 0;
+    } else {
+      return length2 - length1;
+    }
   }
 
   private static final int compareTwoByteBuffers(ByteBuffer buf1, int offset1, int length1,
@@ -694,17 +695,18 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     if (buf1 == null && buf2 == null) return 0;
     int min_length = (length1 < length2) ? length1 : length2;
     for (int i = 0; i < min_length; i++) {
-      if (buf1.get(i + offset1) < buf2.get(i + offset2)) {
-        return 1;
-      }
-      if (buf1.get(i + offset1) > buf2.get(i + offset2)) {
-        return -1;
+      int value1 = buf1.get(i + offset1);
+      int value2 = buf2.get(i + offset2);
+      if (value1 != value2) {
+        return value2 - value1;
       }
     }
     // check remainder
-    if (length1 == length2) { return 0; }
-    else if (length1 < length2) { return 1;}
-    else { return -1; }
+    if (length1 == length2) {
+      return 0;
+    } else {
+      return length2 - length1;
+    }
   }
 
   private static final int compareTwoByteArrays(byte[] array1, int offset1, int length1,
@@ -713,16 +715,40 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     if (array1 == array2 && offset1 == offset2 && length1 == length2) return 0;
     int min_length = (length1 < length2) ? length1 : length2;
     for (int i = 0; i < min_length; i++) {
-      if (array1[i + offset1] < array2[i + offset2]) {
-        return 1;
-      }
-      if (array1[i + offset1] > array2[i + offset2]) {
-        return -1;
+      int value1 = array1[i + offset1];
+      int value2 = array2[i + offset2];
+      if (value1 != value2) {
+        return value2 - value1;
       }
     }
     // check remainder
-    if (length1 == length2) { return 0; }
-    else if (length1 < length2) { return 1;}
-    else { return -1; }
+    if (length1 == length2) {
+      return 0;
+    } else {
+      return length2 - length1;
+    }
+  }
+
+  public static final int compareTwoBinaryUnsigned(Binary first, Binary second) {
+    byte[] array1 = first.getBytes();
+    byte[] array2 = second.getBytes();
+    if ((array1 == null) && (array2 == null)) return 0;
+    if (array1 == array2) return 0;
+    int length1 = array1.length;
+    int length2 = array2.length;
+    int min_length = (length1 < length2) ? length1 : length2;
+    for (int i = 0; i < min_length; i++) {
+      int value1 = array1[i] & 0xFF;
+      int value2 = array2[i] & 0xFF;
+      if (value1 != value2) {
+        return value1 - value2;
+      }
+    }
+    // check remainder
+    if (length1 == length2) {
+      return 0;
+    } else {
+      return length1 - length2;
+    }
   }
 }

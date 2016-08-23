@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,10 +18,10 @@
  */
 package org.apache.parquet.filter2.statisticslevel;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
+import org.apache.parquet.column.statistics.BinaryStatistics;
+import org.apache.parquet.filter2.predicate.*;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
 
@@ -29,23 +29,15 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.DoubleStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.filter2.predicate.FilterPredicate;
-import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
-import org.apache.parquet.filter2.predicate.Statistics;
-import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.io.api.Binary.fromString;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
@@ -59,6 +51,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.statisticslevel.StatisticsFilter.canDrop;
+import static org.junit.Assert.*;
 
 public class TestStatisticsFilter {
 
@@ -80,17 +73,31 @@ public class TestStatisticsFilter {
         0L, 0L, valueCount, 0L, 0L);
   }
 
+  private static ColumnChunkMetaData getBinaryColumnMeta(BinaryStatistics stats, long valueCount) {
+    return ColumnChunkMetaData.get(ColumnPath.get("binary", "column"),
+            PrimitiveTypeName.BINARY,
+            CompressionCodecName.GZIP,
+            new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
+            stats,
+            0L, 0L, valueCount, 0L, 0L);
+  }
+
   private static final IntColumn intColumn = intColumn("int.column");
   private static final DoubleColumn doubleColumn = doubleColumn("double.column");
   private static final BinaryColumn missingColumn = binaryColumn("missing");
+  private static final BinaryColumn binaryColumn = binaryColumn("binary.column");
 
   private static final IntStatistics intStats = new IntStatistics();
   private static final IntStatistics nullIntStats = new IntStatistics();
   private static final DoubleStatistics doubleStats = new DoubleStatistics();
+  private static final BinaryStatistics binaryStats = new BinaryStatistics();
 
   static {
     intStats.setMinMax(10, 100);
     doubleStats.setMinMax(10, 100);
+    // Statistics should be correct here
+    binaryStats.updateStats(Binary.fromString("b"));
+    binaryStats.updateStats(Binary.fromString("é"));
 
     nullIntStats.setMinMax(0, 0);
     nullIntStats.setNumNulls(177);
@@ -98,12 +105,12 @@ public class TestStatisticsFilter {
 
   private static final List<ColumnChunkMetaData> columnMetas = Arrays.asList(
       getIntColumnMeta(intStats, 177L),
-      getDoubleColumnMeta(doubleStats, 177L));
+      getDoubleColumnMeta(doubleStats, 177L),
+      getBinaryColumnMeta(binaryStats, 177L));
 
   private static final List<ColumnChunkMetaData> nullColumnMetas = Arrays.asList(
       getIntColumnMeta(nullIntStats, 177L), // column of all nulls
       getDoubleColumnMeta(doubleStats, 177L));
-
 
   @Test
   public void testEqNonNull() {
@@ -111,6 +118,11 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(eq(intColumn, 10), columnMetas));
     assertFalse(canDrop(eq(intColumn, 100), columnMetas));
     assertTrue(canDrop(eq(intColumn, 101), columnMetas));
+
+    // Won't be able to drop "a" due to signed comparison against "é"
+    assertFalse(canDrop(eq(binaryColumn, fromString("a")), columnMetas));
+    // Will drop when bytes are compared unsigned
+    assertTrue(canDrop(eq(binaryColumn, fromString("a"), ByteSignedness.UNSIGNED), columnMetas));
 
     // drop columns of all nulls when looking for non-null value
     assertTrue(canDrop(eq(intColumn, 0), nullColumnMetas));
@@ -204,6 +216,11 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(lt(intColumn, 7), nullColumnMetas));
 
     assertTrue(canDrop(lt(missingColumn, fromString("any")), columnMetas));
+
+    // When comparing signed, "b" cannot be ruled out
+    assertFalse(canDrop(lt(binaryColumn, fromString("b")), columnMetas));
+    // When unsigned it is dropped because "b" = min
+    assertTrue(canDrop(lt(binaryColumn, fromString("b"), ByteSignedness.UNSIGNED), columnMetas));
   }
 
   @Test
@@ -217,6 +234,11 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(ltEq(intColumn, 7), nullColumnMetas));
 
     assertTrue(canDrop(ltEq(missingColumn, fromString("any")), columnMetas));
+
+    // When comparing signed, "a" cannot be ruled out because "a" > "é"
+    assertFalse(canDrop(ltEq(binaryColumn, fromString("a")), columnMetas));
+    // When unsigned "a" can be dropped
+    assertTrue(canDrop(ltEq(binaryColumn, fromString("a"), ByteSignedness.UNSIGNED), columnMetas));
   }
 
   @Test
@@ -230,6 +252,13 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(gt(intColumn, 7), nullColumnMetas));
 
     assertTrue(canDrop(gt(missingColumn, fromString("any")), columnMetas));
+
+    // When comparing signed, "binary.column > b" will drop this group
+    assertTrue(canDrop(gt(binaryColumn, fromString("b")), columnMetas));
+    assertFalse(canDrop(gt(binaryColumn, fromString("é")), columnMetas));
+    // Flipped when unsigned
+    assertFalse(canDrop(gt(binaryColumn, fromString("b"), ByteSignedness.UNSIGNED), columnMetas));
+    assertTrue(canDrop(gt(binaryColumn, fromString("é"), ByteSignedness.UNSIGNED), columnMetas));
   }
 
   @Test
@@ -243,6 +272,11 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(gtEq(intColumn, 7), nullColumnMetas));
 
     assertTrue(canDrop(gtEq(missingColumn, fromString("any")), columnMetas));
+
+    // "binary.column >= b" cannot rule out b when signed, can when unsigned
+    assertFalse(canDrop(gtEq(binaryColumn, fromString("b")), columnMetas));
+    assertFalse(canDrop(gtEq(binaryColumn, fromString("é" + 1)), columnMetas));
+    assertTrue(canDrop(gtEq(binaryColumn, fromString("é" + 1), ByteSignedness.UNSIGNED), columnMetas));
   }
 
   @Test

@@ -18,11 +18,10 @@
  */
 package org.apache.parquet.filter2.statisticslevel;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.filter2.predicate.ByteSignedness;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
@@ -40,7 +39,6 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 
-import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
@@ -68,8 +66,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
-    checkNotNull(pred, "pred");
-    checkNotNull(columns, "columns");
+    checkNotNull(pred, "predicate cannot be null");
+    checkNotNull(columns, "columns cannot be null");
     return pred.accept(new StatisticsFilter(columns));
   }
 
@@ -134,7 +132,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     // drop if value < min || value > max
-    return value.compareTo(stats.genericGetMin()) < 0 || value.compareTo(stats.genericGetMax()) > 0;
+    ByteSignedness signedness = eq.getSignedness();
+    return stats.compareValueToMin(value, signedness) < 0 || stats.compareValueToMax(value, signedness) > 0;
   }
 
   @Override
@@ -173,7 +172,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     // drop if this is a column where min = max = value
-    return value.compareTo(stats.genericGetMin()) == 0 && value.compareTo(stats.genericGetMax()) == 0;
+    ByteSignedness signedness = notEq.getSignedness();
+    return stats.compareValueToMin(value, signedness) == 0 && stats.compareValueToMax(value, signedness) == 0;
   }
 
   @Override
@@ -204,7 +204,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = lt.getValue();
 
     // drop if value <= min
-    return  value.compareTo(stats.genericGetMin()) <= 0;
+    ByteSignedness signedness = lt.getSignedness();
+    return  stats.compareValueToMin(value, signedness) <= 0;
   }
 
   @Override
@@ -235,7 +236,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = ltEq.getValue();
 
     // drop if value < min
-    return value.compareTo(stats.genericGetMin()) < 0;
+    ByteSignedness signedness = ltEq.getSignedness();
+    return stats.compareValueToMin(value, signedness) < 0;
   }
 
   @Override
@@ -266,7 +268,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = gt.getValue();
 
     // drop if value >= max
-    return value.compareTo(stats.genericGetMax()) >= 0;
+    ByteSignedness signedness = gt.getSignedness();
+    return stats.compareValueToMax(value, signedness) >= 0;
   }
 
   @Override
@@ -297,7 +300,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = gtEq.getValue();
 
     // drop if value >= max
-    return value.compareTo(stats.genericGetMax()) > 0;
+    ByteSignedness signedness = gtEq.getSignedness();
+    return stats.compareValueToMax(value, signedness) > 0;
   }
 
   @Override

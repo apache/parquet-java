@@ -405,6 +405,40 @@ public class TestParquetMetadataConverter {
         Version.FULL_VERSION, formatStats, PrimitiveTypeName.BINARY);
 
     Assert.assertTrue(roundTripStats.isEmpty());
+
+    // Test conversion back and forth.
+    stats = new BinaryStatistics();
+    min = new byte[] {-1, 0, 0};
+    max = new byte[] {1, 0, 0};
+    stats.updateStats(Binary.fromConstantByteArray(min));
+    stats.updateStats(Binary.fromConstantByteArray(max));
+    formatStats = ParquetMetadataConverter.toParquetStatistics(stats);
+    Assert.assertTrue(formatStats.isSetSigned_max());
+    Assert.assertTrue(formatStats.isSetSigned_min());
+    Assert.assertTrue(formatStats.isSetUnsigned_max());
+    Assert.assertTrue(formatStats.isSetUnsigned_min());
+    stats = (BinaryStatistics) ParquetMetadataConverter
+        .fromParquetStatistics("test-thing version 1.0", formatStats, PrimitiveTypeName.BINARY);
+    Assert.assertArrayEquals(min, stats.getMinBytes());
+    Assert.assertArrayEquals(max, stats.getMaxBytes());
+    Assert.assertArrayEquals(min, stats.getMinBytesSigned());
+    Assert.assertArrayEquals(max, stats.getMaxBytesSigned());
+    Assert.assertArrayEquals(min, stats.getMaxBytesUnsigned());
+    Assert.assertArrayEquals(max, stats.getMinBytesUnsigned());
+
+    // Backwards compatibility check: min and max should take the place of signed min/max and unsigned min/max
+    // when those aren't specified.
+    org.apache.parquet.format.Statistics stats2 = new org.apache.parquet.format.Statistics();
+    stats2.setMin(min);
+    stats2.setMax(max);
+    BinaryStatistics minMaxOnlyStats = (BinaryStatistics) ParquetMetadataConverter
+            .fromParquetStatistics("test-thing version 1.0", stats2, PrimitiveTypeName.BINARY);
+    Assert.assertArrayEquals(min, minMaxOnlyStats.getMinBytes());
+    Assert.assertArrayEquals(max, minMaxOnlyStats.getMaxBytes());
+    Assert.assertArrayEquals(min, minMaxOnlyStats.getMinBytesSigned());
+    Assert.assertArrayEquals(max, minMaxOnlyStats.getMaxBytesSigned());
+    Assert.assertArrayEquals(min, minMaxOnlyStats.getMinBytesUnsigned());
+    Assert.assertArrayEquals(max, minMaxOnlyStats.getMaxBytesUnsigned());
   }
 
   @Test

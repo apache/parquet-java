@@ -19,6 +19,7 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.column.UnknownColumnTypeException;
+import org.apache.parquet.filter2.predicate.ByteSignedness;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import java.util.Arrays;
@@ -175,8 +176,48 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
+  public void setMinMaxSignedFromBytes(byte[] minBytes, byte[] maxBytes) {
+    setMinMaxFromBytes(minBytes, maxBytes);
+  }
+
+  public void setMinMaxUnsignedFromBytes(byte[] minBytes, byte[] maxBytes) {
+    setMinMaxFromBytes(minBytes, maxBytes);
+  }
+
   abstract public T genericGetMin();
   abstract public T genericGetMax();
+
+  public T genericGetMinSigned() {
+    return genericGetMin();
+  }
+  public T genericGetMaxSigned() {
+    return genericGetMax();
+  }
+
+  public T genericGetMinUnsigned() {
+    return genericGetMin();
+  }
+
+  public T genericGetMaxUnsigned() {
+    return genericGetMax();
+  }
+
+  public int compareValueToMin(T value, ByteSignedness signedness) {
+    if (signedness == ByteSignedness.SIGNED) {
+      return value.compareTo(genericGetMinSigned());
+    } else {
+      return value.compareTo(genericGetMinUnsigned());
+    }
+  }
+
+  public int compareValueToMax(T value, ByteSignedness signedness) {
+    if (signedness == ByteSignedness.SIGNED) {
+      return value.compareTo(genericGetMaxSigned());
+    } else {
+      return value.compareTo(genericGetMaxUnsigned());
+    }
+  }
+
 
   /**
    * Abstract method to return the max value as a byte array
@@ -189,6 +230,22 @@ public abstract class Statistics<T extends Comparable<T>> {
    * @return byte array corresponding to the min value
    */
   abstract public byte[] getMinBytes();
+
+  public byte[] getMinBytesSigned() {
+    return getMinBytes();
+  }
+
+  public byte[] getMaxBytesSigned() {
+    return getMaxBytes();
+  }
+
+  public byte[] getMinBytesUnsigned() {
+    return getMinBytes();
+  }
+
+  public byte[] getMaxBytesUnsigned() {
+    return getMaxBytes();
+  }
 
   /**
    * Abstract method to return whether the min and max values fit in the given

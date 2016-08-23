@@ -384,6 +384,19 @@ public class TestStatistics {
   }
 
   @Test
+  public void testBinaryMinMaxUnsigned() {
+    stringArray = new String[] {"é", "a", "b", "c"};
+    BinaryStatistics stats = new BinaryStatistics();
+
+    for (String s: stringArray) {
+      stats.updateStats(Binary.fromString(s));
+    }
+
+    assertEquals(stats.genericGetMaxUnsigned(), Binary.fromString("é"));
+    assertEquals(stats.genericGetMinUnsigned(), Binary.fromString("a"));
+  }
+
+  @Test
   public void testBinaryMinMaxForReusedBackingByteArray() {
     BinaryStatistics stats = new BinaryStatistics();
 

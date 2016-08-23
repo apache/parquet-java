@@ -122,8 +122,14 @@ public final class Operators {
     private final Column<T> column;
     private final T value;
     private final String toString;
+    private final ByteSignedness signedness;
 
     protected ColumnFilterPredicate(Column<T> column, T value) {
+      // Default is to assume signed comparisons when not specified.
+      this(column, value, ByteSignedness.SIGNED);
+    }
+
+    protected ColumnFilterPredicate(Column<T> column, T value, ByteSignedness signedness) {
       this.column = checkNotNull(column, "column");
 
       // Eq and NotEq allow value to be null, Lt, Gt, LtEq, GtEq however do not, so they guard against
@@ -132,6 +138,8 @@ public final class Operators {
 
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + value + ")";
+
+      this.signedness = signedness;
     }
 
     public Column<T> getColumn() {
@@ -140,6 +148,10 @@ public final class Operators {
 
     public T getValue() {
       return value;
+    }
+
+    public ByteSignedness getSignedness() {
+      return signedness;
     }
 
     @Override
@@ -176,6 +188,11 @@ public final class Operators {
       super(column, value);
     }
 
+    // value can be null
+    Eq(Column<T> column, T value, ByteSignedness signedness) {
+      super(column, value, signedness);
+    }
+
     @Override
     public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
@@ -190,6 +207,12 @@ public final class Operators {
       super(column, value);
     }
 
+    // value can be null
+    NotEq(Column<T> column, T value, ByteSignedness signedness) {
+      super(column, value, signedness);
+    }
+
+
     @Override
     public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
@@ -201,7 +224,12 @@ public final class Operators {
 
     // value cannot be null
     Lt(Column<T> column, T value) {
-      super(column, checkNotNull(value, "value"));
+      super(column, value);
+    }
+
+    // value cannot be null
+    Lt(Column<T> column, T value, ByteSignedness signedness) {
+      super(column, checkNotNull(value, "value"), signedness);
     }
 
     @Override
@@ -215,6 +243,11 @@ public final class Operators {
     // value cannot be null
     LtEq(Column<T> column, T value) {
       super(column, checkNotNull(value, "value"));
+    }
+
+    // value cannot be null
+    LtEq(Column<T> column, T value, ByteSignedness signedness) {
+      super(column, checkNotNull(value, "value"), signedness);
     }
 
     @Override
@@ -231,6 +264,12 @@ public final class Operators {
       super(column, checkNotNull(value, "value"));
     }
 
+    // value cannot be null
+    Gt(Column<T> column, T value, ByteSignedness signedness) {
+      super(column, checkNotNull(value, "value"), signedness);
+    }
+
+
     @Override
     public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
@@ -242,6 +281,11 @@ public final class Operators {
     // value cannot be null
     GtEq(Column<T> column, T value) {
       super(column, checkNotNull(value, "value"));
+    }
+
+    // value cannot be null
+    GtEq(Column<T> column, T value, ByteSignedness signedness) {
+      super(column, checkNotNull(value, "value"), signedness);
     }
 
     @Override
