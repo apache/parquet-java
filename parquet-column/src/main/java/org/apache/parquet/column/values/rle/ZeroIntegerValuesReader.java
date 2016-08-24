@@ -16,18 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.values.boundedint;
+package org.apache.parquet.column.values.rle;
 
-import org.apache.parquet.bytes.ByteBufferAllocator;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 import org.apache.parquet.column.values.ValuesReader;
-import org.apache.parquet.column.values.ValuesWriter;
 
-public abstract class BoundedIntValuesFactory {
-  public static ValuesReader getBoundedReader(int bound) {
-    return bound == 0 ? new ZeroIntegerValuesReader() : new BoundedIntValuesReader(bound);
+/**
+ * ColumnReader which does not read any actual data, but rather simply produces
+ * an endless stream of constant values.
+ * Mainly used to read definition levels when the only possible value is 0
+ */
+public class ZeroIntegerValuesReader extends ValuesReader {
+  
+  private int nextOffset;
+
+  public int readInteger() {
+    return 0;
   }
 
-  public static ValuesWriter getBoundedWriter(int bound, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    return bound == 0 ? new DevNullValuesWriter() : new BoundedIntValuesWriter(bound, initialCapacity, pageSize, allocator);
+  @Override
+  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
+    this.nextOffset = offset;
   }
+  
+  @Override
+  public int getNextOffset() {
+    return nextOffset;
+  }
+
+  @Override
+  public void skip() {
+  }
+
 }

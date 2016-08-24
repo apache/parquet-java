@@ -19,6 +19,7 @@
 package org.apache.parquet.format.converter;
 
 import static java.util.Collections.emptyList;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaDataByStart;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
@@ -27,7 +28,7 @@ import static org.apache.parquet.format.CompressionCodec.UNCOMPRESSED;
 import static org.apache.parquet.format.Type.INT32;
 import static org.apache.parquet.format.Util.readPageHeader;
 import static org.apache.parquet.format.Util.writePageHeader;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaData;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaDataByMidpoint;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.getOffset;
 
 import java.io.ByteArrayInputStream;
@@ -43,12 +44,22 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.google.common.collect.Sets;
+import org.apache.parquet.Version;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.statistics.BinaryStatistics;
+import org.apache.parquet.column.statistics.BooleanStatistics;
+import org.apache.parquet.column.statistics.DoubleStatistics;
+import org.apache.parquet.column.statistics.FloatStatistics;
+import org.apache.parquet.column.statistics.IntStatistics;
+import org.apache.parquet.column.statistics.LongStatistics;
+import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.io.api.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -170,7 +181,20 @@ public class TestParquetMetadataConverter {
   }
 
   private FileMetaData filter(FileMetaData md, long start, long end) {
-    return filterFileMetaData(new FileMetaData(md), new ParquetMetadataConverter.RangeMetadataFilter(start, end));
+    return filterFileMetaDataByMidpoint(new FileMetaData(md),
+        new ParquetMetadataConverter.RangeMetadataFilter(start, end));
+  }
+
+  private FileMetaData find(FileMetaData md, Long... blockStart) {
+    return filterFileMetaDataByStart(new FileMetaData(md),
+        new ParquetMetadataConverter.OffsetMetadataFilter(
+            Sets.newHashSet((Long[]) blockStart)));
+  }
+
+  private FileMetaData find(FileMetaData md, long blockStart) {
+    return filterFileMetaDataByStart(new FileMetaData(md),
+        new ParquetMetadataConverter.OffsetMetadataFilter(
+            Sets.newHashSet(blockStart)));
   }
 
   private void verifyMD(FileMetaData md, long... offsets) {
@@ -240,6 +264,18 @@ public class TestParquetMetadataConverter {
     verifyAllFilters(metadata(11, 9, 10), 10);
     verifyAllFilters(metadata(11, 9, 10), 9);
     verifyAllFilters(metadata(11, 9, 10), 8);
+  }
+
+  @Test
+  public void testFindRowGroups() {
+    verifyMD(find(metadata(50, 50, 50), 0), 0);
+    verifyMD(find(metadata(50, 50, 50), 50), 50);
+    verifyMD(find(metadata(50, 50, 50), 100), 100);
+    verifyMD(find(metadata(50, 50, 50), 0L, 50L), 0, 50);
+    verifyMD(find(metadata(50, 50, 50), 0L, 50L, 100L), 0, 50, 100);
+    verifyMD(find(metadata(50, 50, 50), 50L, 100L), 50, 100);
+    // doesn't find an offset that isn't the start of a row group.
+    verifyMD(find(metadata(50, 50, 50), 10));
   }
 
   @Test
@@ -330,5 +366,153 @@ public class TestParquetMetadataConverter {
     assertEquals("java.util.Collections$UnmodifiableSet", res1.getClass().getName());
     assertEquals("java.util.Collections$UnmodifiableSet", res2.getClass().getName());
     assertEquals("java.util.Collections$UnmodifiableSet", res3.getClass().getName());
-  }  
+  }
+
+  @Test
+  public void testBinaryStats() {
+    // make fake stats and verify the size check
+    BinaryStatistics stats = new BinaryStatistics();
+    stats.incrementNumNulls(3004);
+    byte[] min = new byte[904];
+    byte[] max = new byte[2388];
+    stats.updateStats(Binary.fromConstantByteArray(min));
+    stats.updateStats(Binary.fromConstantByteArray(max));
+    long totalLen = min.length + max.length;
+    Assert.assertFalse("Should not be smaller than min + max size",
+        stats.isSmallerThan(totalLen));
+    Assert.assertTrue("Should be smaller than min + max size + 1",
+        stats.isSmallerThan(totalLen + 1));
+
+    org.apache.parquet.format.Statistics formatStats =
+        ParquetMetadataConverter.toParquetStatistics(stats);
+
+    Assert.assertArrayEquals("Min should match", min, formatStats.getMin());
+    Assert.assertArrayEquals("Max should match", max, formatStats.getMax());
+    Assert.assertEquals("Num nulls should match",
+        3004, formatStats.getNull_count());
+
+    // convert to empty stats because the values are too large
+    stats.setMinMaxFromBytes(max, max);
+
+    formatStats = ParquetMetadataConverter.toParquetStatistics(stats);
+
+    Assert.assertFalse("Min should not be set", formatStats.isSetMin());
+    Assert.assertFalse("Max should not be set", formatStats.isSetMax());
+    Assert.assertFalse("Num nulls should not be set",
+        formatStats.isSetNull_count());
+
+    Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatistics(
+        Version.FULL_VERSION, formatStats, PrimitiveTypeName.BINARY);
+
+    Assert.assertTrue(roundTripStats.isEmpty());
+  }
+
+  @Test
+  public void testIntegerStats() {
+    // make fake stats and verify the size check
+    IntStatistics stats = new IntStatistics();
+    stats.incrementNumNulls(3004);
+    int min = Integer.MIN_VALUE;
+    int max = Integer.MAX_VALUE;
+    stats.updateStats(min);
+    stats.updateStats(max);
+
+    org.apache.parquet.format.Statistics formatStats =
+        ParquetMetadataConverter.toParquetStatistics(stats);
+
+    Assert.assertEquals("Min should match",
+        min, BytesUtils.bytesToInt(formatStats.getMin()));
+    Assert.assertEquals("Max should match",
+        max, BytesUtils.bytesToInt(formatStats.getMax()));
+    Assert.assertEquals("Num nulls should match",
+        3004, formatStats.getNull_count());
+  }
+
+  @Test
+  public void testLongStats() {
+    // make fake stats and verify the size check
+    LongStatistics stats = new LongStatistics();
+    stats.incrementNumNulls(3004);
+    long min = Long.MIN_VALUE;
+    long max = Long.MAX_VALUE;
+    stats.updateStats(min);
+    stats.updateStats(max);
+
+    org.apache.parquet.format.Statistics formatStats =
+        ParquetMetadataConverter.toParquetStatistics(stats);
+
+    Assert.assertEquals("Min should match",
+        min, BytesUtils.bytesToLong(formatStats.getMin()));
+    Assert.assertEquals("Max should match",
+        max, BytesUtils.bytesToLong(formatStats.getMax()));
+    Assert.assertEquals("Num nulls should match",
+        3004, formatStats.getNull_count());
+  }
+
+  @Test
+  public void testFloatStats() {
+    // make fake stats and verify the size check
+    FloatStatistics stats = new FloatStatistics();
+    stats.incrementNumNulls(3004);
+    float min = Float.MIN_VALUE;
+    float max = Float.MAX_VALUE;
+    stats.updateStats(min);
+    stats.updateStats(max);
+
+    org.apache.parquet.format.Statistics formatStats =
+        ParquetMetadataConverter.toParquetStatistics(stats);
+
+    Assert.assertEquals("Min should match",
+        min, Float.intBitsToFloat(BytesUtils.bytesToInt(formatStats.getMin())),
+        0.000001);
+    Assert.assertEquals("Max should match",
+        max, Float.intBitsToFloat(BytesUtils.bytesToInt(formatStats.getMax())),
+        0.000001);
+    Assert.assertEquals("Num nulls should match",
+        3004, formatStats.getNull_count());
+  }
+
+  @Test
+  public void testDoubleStats() {
+    // make fake stats and verify the size check
+    DoubleStatistics stats = new DoubleStatistics();
+    stats.incrementNumNulls(3004);
+    double min = Double.MIN_VALUE;
+    double max = Double.MAX_VALUE;
+    stats.updateStats(min);
+    stats.updateStats(max);
+
+    org.apache.parquet.format.Statistics formatStats =
+        ParquetMetadataConverter.toParquetStatistics(stats);
+
+    Assert.assertEquals("Min should match",
+        min, Double.longBitsToDouble(BytesUtils.bytesToLong(formatStats.getMin())),
+        0.000001);
+    Assert.assertEquals("Max should match",
+        max, Double.longBitsToDouble(BytesUtils.bytesToLong(formatStats.getMax())),
+        0.000001);
+    Assert.assertEquals("Num nulls should match",
+        3004, formatStats.getNull_count());
+  }
+
+  @Test
+  public void testBooleanStats() {
+    // make fake stats and verify the size check
+    BooleanStatistics stats = new BooleanStatistics();
+    stats.incrementNumNulls(3004);
+    boolean min = Boolean.FALSE;
+    boolean max = Boolean.TRUE;
+    stats.updateStats(min);
+    stats.updateStats(max);
+
+    org.apache.parquet.format.Statistics formatStats =
+        ParquetMetadataConverter.toParquetStatistics(stats);
+
+    Assert.assertEquals("Min should match",
+        min, BytesUtils.bytesToBool(formatStats.getMin()));
+    Assert.assertEquals("Max should match",
+        max, BytesUtils.bytesToBool(formatStats.getMax()));
+    Assert.assertEquals("Num nulls should match",
+        3004, formatStats.getNull_count());
+  }
 }

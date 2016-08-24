@@ -57,6 +57,8 @@ class InternalParquetRecordWriter<T> {
   private final boolean validating;
   private final ParquetProperties props;
 
+  private boolean closed;
+
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
   private long lastRowGroupEndPos = 0;
@@ -104,15 +106,18 @@ class InternalParquetRecordWriter<T> {
   }
 
   public void close() throws IOException, InterruptedException {
-    flushRowGroupToStore();
-    FinalizedWriteContext finalWriteContext = writeSupport.finalizeWrite();
-    Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
-    String modelName = writeSupport.getName();
-    if (modelName != null) {
-      finalMetadata.put(ParquetWriter.OBJECT_MODEL_NAME_PROP, modelName);
+    if (!closed) {
+      flushRowGroupToStore();
+      FinalizedWriteContext finalWriteContext = writeSupport.finalizeWrite();
+      Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
+      String modelName = writeSupport.getName();
+      if (modelName != null) {
+        finalMetadata.put(ParquetWriter.OBJECT_MODEL_NAME_PROP, modelName);
+      }
+      finalMetadata.putAll(finalWriteContext.getExtraMetaData());
+      parquetFileWriter.end(finalMetadata);
+      closed = true;
     }
-    finalMetadata.putAll(finalWriteContext.getExtraMetaData());
-    parquetFileWriter.end(finalMetadata);
   }
 
   public void write(T value) throws IOException, InterruptedException {

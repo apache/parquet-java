@@ -45,6 +45,8 @@ import org.apache.parquet.schema.MessageType;
 
 import static java.lang.String.format;
 import static org.apache.parquet.Preconditions.checkNotNull;
+import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED_DEFAULT;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 
 import org.slf4j.Logger;
@@ -59,6 +61,7 @@ class InternalParquetRecordReader<T> {
 
   private ColumnIOFactory columnIOFactory = null;
   private final Filter filter;
+  private boolean filterRecords = true;
 
   private MessageType requestedSchema;
   private MessageType fileSchema;
@@ -138,7 +141,8 @@ class InternalParquetRecordReader<T> {
         LOGGER.debug("initializing Record assembly with requested schema " + requestedSchema);
       }
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);
-      recordReader = columnIO.getRecordReader(pages, recordConverter, filter);
+      recordReader = columnIO.getRecordReader(pages, recordConverter,
+          filterRecords ? filter : FilterCompat.NOOP);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
       ++ currentBlock;
@@ -181,6 +185,8 @@ class InternalParquetRecordReader<T> {
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
     this.total = reader.getRecordCount();
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(configuration, total);
+    this.filterRecords = configuration.getBoolean(
+        RECORD_FILTERING_ENABLED, RECORD_FILTERING_ENABLED_DEFAULT);
     LOGGER.info("RecordReader initialized will read a total of " + total + " records.");
   }
 

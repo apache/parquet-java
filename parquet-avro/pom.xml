@@ -32,10 +32,6 @@
   <name>Apache Parquet Avro</name>
   <url>https://parquet.apache.org</url>
 
-  <properties>
-    <avro.version>1.7.6</avro.version>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -71,7 +67,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>11.0</version>
+      <version>${guava.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

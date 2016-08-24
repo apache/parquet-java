@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.parquet.CorruptStatistics;
+import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
@@ -57,6 +58,7 @@ import org.apache.parquet.format.Type;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.GroupType;
@@ -77,6 +79,7 @@ public class ParquetMetadataConverter {
 
   public static final MetadataFilter NO_FILTER = new NoFilter();
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
+  public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ParquetMetadataConverter.class);
 
@@ -185,6 +188,9 @@ public class ParquetMetadataConverter {
       if (!columnMetaData.getStatistics().isEmpty()) {
         columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
       }
+      if (columnMetaData.getEncodingStats() != null) {
+        columnChunk.meta_data.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
+      }
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
 
@@ -234,10 +240,58 @@ public class ParquetMetadataConverter {
     return Encoding.valueOf(encoding.name());
   }
 
+  public EncodingStats convertEncodingStats(List<PageEncodingStats> stats) {
+    if (stats == null) {
+      return null;
+    }
+
+    EncodingStats.Builder builder = new EncodingStats.Builder();
+    for (PageEncodingStats stat : stats) {
+      switch (stat.getPage_type()) {
+        case DATA_PAGE_V2:
+          builder.withV2Pages();
+          // falls through
+        case DATA_PAGE:
+          builder.addDataEncoding(
+              getEncoding(stat.getEncoding()), stat.getCount());
+          break;
+        case DICTIONARY_PAGE:
+          builder.addDictEncoding(
+              getEncoding(stat.getEncoding()), stat.getCount());
+          break;
+      }
+    }
+    return builder.build();
+  }
+
+  public List<PageEncodingStats> convertEncodingStats(EncodingStats stats) {
+    if (stats == null) {
+      return null;
+    }
+
+    List<PageEncodingStats> formatStats = new ArrayList<PageEncodingStats>();
+    for (org.apache.parquet.column.Encoding encoding : stats.getDictionaryEncodings()) {
+      formatStats.add(new PageEncodingStats(
+          PageType.DICTIONARY_PAGE, getEncoding(encoding),
+          stats.getNumDictionaryPagesEncodedAs(encoding)));
+    }
+    PageType dataPageType = (stats.usesV2Pages() ? PageType.DATA_PAGE_V2 : PageType.DATA_PAGE);
+    for (org.apache.parquet.column.Encoding encoding : stats.getDataEncodings()) {
+      formatStats.add(new PageEncodingStats(
+          dataPageType, getEncoding(encoding),
+          stats.getNumDataPagesEncodedAs(encoding)));
+    }
+    return formatStats;
+  }
+
   public static Statistics toParquetStatistics(
       org.apache.parquet.column.statistics.Statistics statistics) {
     Statistics stats = new Statistics();
-    if (!statistics.isEmpty()) {
+    // Don't write stats larger than the max size rather than truncating. The
+    // rationale is that some engines may use the minimum value in the page as
+    // the true minimum for aggregations and there is no way to mark that a
+    // value has been truncated and is a lower bound and not in the page.
+    if (!statistics.isEmpty() && statistics.isSmallerThan(MAX_STATS_SIZE)) {
       stats.setNull_count(statistics.getNumNulls());
       if (statistics.hasNonNullValue()) {
         stats.setMax(statistics.getMaxBytes());
@@ -246,6 +300,7 @@ public class ParquetMetadataConverter {
     }
     return stats;
   }
+
   /**
    * @deprecated Replaced by {@link #fromParquetStatistics(
    * String createdBy, Statistics statistics, PrimitiveTypeName type)}
@@ -431,6 +486,7 @@ public class ParquetMetadataConverter {
   private static interface MetadataFilterVisitor<T, E extends Throwable> {
     T visit(NoFilter filter) throws E;
     T visit(SkipMetadataFilter filter) throws E;
+    T visit(RangeMetadataFilter filter) throws E;
     T visit(OffsetMetadataFilter filter) throws E;
   }
 
@@ -454,7 +510,7 @@ public class ParquetMetadataConverter {
     for (long offset : offsets) {
       set.add(offset);
     }
-    return new OffsetListMetadataFilter(set);
+    return new OffsetMetadataFilter(set);
   }
 
   private static final class NoFilter extends MetadataFilter {
@@ -480,16 +536,12 @@ public class ParquetMetadataConverter {
     }
   }
 
-  interface OffsetMetadataFilter {
-    boolean contains(long offset);
-  }
-
   /**
    * [ startOffset, endOffset )
    * @author Julien Le Dem
    */
   // Visible for testing
-  static final class RangeMetadataFilter extends MetadataFilter implements OffsetMetadataFilter {
+  static final class RangeMetadataFilter extends MetadataFilter {
     final long startOffset;
     final long endOffset;
 
@@ -504,7 +556,6 @@ public class ParquetMetadataConverter {
       return visitor.visit(this);
     }
 
-    @Override
     public boolean contains(long offset) {
       return offset >= this.startOffset && offset < this.endOffset;
     }
@@ -515,10 +566,10 @@ public class ParquetMetadataConverter {
     }
   }
 
-  static final class OffsetListMetadataFilter extends MetadataFilter implements OffsetMetadataFilter {
+  static final class OffsetMetadataFilter extends MetadataFilter {
     private final Set<Long> offsets;
 
-    public OffsetListMetadataFilter(Set<Long> offsets) {
+    public OffsetMetadataFilter(Set<Long> offsets) {
       this.offsets = offsets;
     }
 
@@ -538,7 +589,7 @@ public class ParquetMetadataConverter {
   }
 
   // Visible for testing
-  static FileMetaData filterFileMetaData(FileMetaData metaData, OffsetMetadataFilter filter) {
+  static FileMetaData filterFileMetaDataByMidpoint(FileMetaData metaData, RangeMetadataFilter filter) {
     List<RowGroup> rowGroups = metaData.getRow_groups();
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
     for (RowGroup rowGroup : rowGroups) {
@@ -557,6 +608,19 @@ public class ParquetMetadataConverter {
   }
 
   // Visible for testing
+  static FileMetaData filterFileMetaDataByStart(FileMetaData metaData, OffsetMetadataFilter filter) {
+    List<RowGroup> rowGroups = metaData.getRow_groups();
+    List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
+    for (RowGroup rowGroup : rowGroups) {
+      long startIndex = getOffset(rowGroup.getColumns().get(0));
+      if (filter.contains(startIndex)) {
+        newRowGroups.add(rowGroup);
+      }
+    }
+    metaData.setRow_groups(newRowGroups);
+    return metaData;
+  }
+
   static long getOffset(RowGroup rowGroup) {
     return getOffset(rowGroup.getColumns().get(0));
   }
@@ -584,7 +648,12 @@ public class ParquetMetadataConverter {
 
       @Override
       public FileMetaData visit(OffsetMetadataFilter filter) throws IOException {
-        return filterFileMetaData(readFileMetaData(from), filter);
+        return filterFileMetaDataByStart(readFileMetaData(from), filter);
+      }
+
+      @Override
+      public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
+        return filterFileMetaDataByMidpoint(readFileMetaData(from), filter);
       }
     });
     if (LOGGER.isDebugEnabled()) {
@@ -619,6 +688,7 @@ public class ParquetMetadataConverter {
               path,
               messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
               CompressionCodecName.fromParquet(metaData.codec),
+              convertEncodingStats(metaData.getEncoding_stats()),
               fromFormatEncodings(metaData.encodings),
               fromParquetStatistics(
                   parquetMetadata.getCreated_by(),

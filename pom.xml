@@ -57,27 +57,20 @@
     </developer>
   </developers>
 
-  <!-- this is needed for maven-thrift-plugin, would like to remove this.
-   see: https://issues.apache.org/jira/browse/THRIFT-1536  -->
-  <pluginRepositories>
-    <pluginRepository>
-      <id>Twitter public Maven repo</id>
-      <url>http://maven.twttr.com</url>
-    </pluginRepository>
-  </pluginRepositories>
-
   <properties>
-    <targetJavaVersion>1.6</targetJavaVersion>
-    <maven.compiler.source>1.6</maven.compiler.source>
+    <targetJavaVersion>1.7</targetJavaVersion>
+    <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>${targetJavaVersion}</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
+    <maven-thrift-plugin.version>0.1.11</maven-thrift-plugin.version>
     <jackson.groupId>org.codehaus.jackson</jackson.groupId>
     <jackson.version>1.9.11</jackson.version>
     <jackson.package>org.codehaus.jackson</jackson.package>
     <shade.prefix>shaded.parquet</shade.prefix>
-    <hadoop.version>1.1.0</hadoop.version>
+    <hadoop.version>2.3.0</hadoop.version>
+    <hadoop1.version>1.1.0</hadoop1.version>
     <cascading.version>2.5.3</cascading.version>
     <cascading3.version>3.0.3</cascading3.version>
     <parquet.format.version>2.3.1</parquet.format.version>
@@ -88,11 +81,14 @@
     <scala.binary.version>2.10</scala.binary.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.14.0</pig.version>
-    <pig.classifier/>
+    <pig.classifier>h2</pig.classifier>
     <thrift.version>0.7.0</thrift.version>
     <fastutil.version>6.5.7</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.5</slf4j.version>
+    <avro.version>1.8.0</avro.version>
+    <guava.version>11.0</guava.version>
+    <mockito.version>1.9.5</mockito.version>
   </properties>
 
   <modules>
@@ -244,6 +240,7 @@
                      <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> <!-- made public -->
                      <exclude>org/apache/parquet/io/ColumnIOFactory$ColumnIOCreatorVisitor</exclude> <!-- removed non-API class -->
                      <exclude>org/apache/parquet/io/ColumnIOFactory/**</exclude> <!-- removed non-API class and methods-->
+		     <exclude>org/apache/parquet/hadoop/codec/SnappyCompressor</exclude> <!-- added synchronized modifier -->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
@@ -513,19 +510,18 @@
     </profile>
 
     <profile>
-      <id>hadoop-2</id>
+      <id>hadoop-1</id>
       <activation>
         <property>
           <name>hadoop.profile</name>
-          <value>hadoop2</value>
+          <value>hadoop1</value>
         </property>
       </activation>
       <properties>
         <!-- test hadoop-1 with the same jars that were produced for default profile -->
         <maven.main.skip>true</maven.main.skip>
-        <hadoop.version>2.3.0</hadoop.version>
-        <pig.version>0.14.0</pig.version>
-        <pig.classifier>h2</pig.classifier>
+        <hadoop.version>${hadoop1.version}</hadoop.version>
+        <pig.classifier/>
       </properties>
     </profile>
     <profile>

@@ -77,7 +77,7 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-all</artifactId>
-      <version>1.9.5</version>
+      <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -157,7 +157,7 @@
       <plugin>
         <groupId>org.apache.thrift.tools</groupId>
         <artifactId>maven-thrift-plugin</artifactId>
-        <version>0.1.10</version>
+        <version>${maven-thrift-plugin.version}</version>
         <configuration>
           <thriftExecutable>${thrift.executable}</thriftExecutable>
           <thriftSourceRoot>../parquet-cascading-common23/src/main/thrift</thriftSourceRoot>

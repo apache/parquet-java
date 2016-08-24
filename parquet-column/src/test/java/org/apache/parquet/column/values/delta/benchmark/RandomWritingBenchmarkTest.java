@@ -18,18 +18,21 @@
  */
 package org.apache.parquet.column.values.delta.benchmark;
 
+import java.util.Random;
+
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
+import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
+import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+
 import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
 import com.carrotsearch.junitbenchmarks.BenchmarkRule;
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
 import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.apache.parquet.bytes.DirectByteBufferAllocator;
-import org.apache.parquet.column.values.ValuesWriter;
-import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
-import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import java.util.Random;
 
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-writing-random")
@@ -51,7 +54,8 @@ public class RandomWritingBenchmarkTest extends BenchMarkTest{
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
   public void writeDeltaPackingTest(){
-    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
+    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriterForInteger(
+        blockSize, miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }
 
@@ -65,7 +69,8 @@ public class RandomWritingBenchmarkTest extends BenchMarkTest{
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
   public void writeDeltaPackingTest2(){
-    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
+    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriterForInteger(
+        blockSize, miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }
 }

@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Random;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -54,6 +55,24 @@ public class TestByteBitPacking {
       Assert.assertArrayEquals("width "+i, values, unpacked);
     }
   }
+  
+  @Test
+  public void testPackUnPackLong() {
+    LOGGER.debug("");
+    LOGGER.debug("testPackUnPackLong");
+    for (int i = 1; i < 64; i++) {
+      LOGGER.debug("Width: " + i);
+      long[] unpacked32 = new long[32];
+      long[] unpacked8 = new long[32];
+      long[] values = generateValuesLong(i);
+      packUnpack32(Packer.BIG_ENDIAN.newBytePackerForLong(i), values, unpacked32);
+      LOGGER.debug("Output 32: " + TestBitPacking.toString(unpacked32));
+      Assert.assertArrayEquals("width "+i, values, unpacked32);
+      packUnpack8(Packer.BIG_ENDIAN.newBytePackerForLong(i), values, unpacked8);
+      LOGGER.debug("Output 8: " + TestBitPacking.toString(unpacked8));
+      Assert.assertArrayEquals("width "+i, values, unpacked8);
+    }
+  }
 
   private void packUnpack(BytePacker packer, int[] values, int[] unpacked) {
     byte[] packed = new byte[packer.getBitWidth() * 4];
@@ -64,6 +83,24 @@ public class TestByteBitPacking {
     packer.unpack32Values(ByteBuffer.wrap(packed), 0, unpacked, 0);
   }
 
+  private void packUnpack32(BytePackerForLong packer, long[] values, long[] unpacked) {
+    byte[] packed = new byte[packer.getBitWidth() * 4];
+    packer.pack32Values(values, 0, packed, 0);
+    LOGGER.debug("packed: " + TestBitPacking.toString(packed));
+    packer.unpack32Values(packed, 0, unpacked, 0);
+  }
+
+  private void packUnpack8(BytePackerForLong packer, long[] values, long[] unpacked) {
+    byte[] packed = new byte[packer.getBitWidth() * 4];
+    for (int i = 0; i < 4; i++) {
+      packer.pack8Values(values,  8 * i, packed, packer.getBitWidth() * i);
+    }
+    LOGGER.debug("packed: " + TestBitPacking.toString(packed));
+    for (int i = 0; i < 4; i++) {
+      packer.unpack8Values(packed, packer.getBitWidth() * i, unpacked, 8 * i);
+    }
+  }
+
   private int[] generateValues(int bitWidth) {
     int[] values = new int[32];
     for (int j = 0; j < values.length; j++) {
@@ -72,6 +109,16 @@ public class TestByteBitPacking {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Input:  " + TestBitPacking.toString(values));
     }
+    return values;
+  }
+
+  private long[] generateValuesLong(int bitWidth) {
+    long[] values = new long[32];
+    Random random = new Random(0);
+    for (int j = 0; j < values.length; j++) {
+      values[j] = random.nextLong() & ((1l << bitWidth) - 1l);
+    }
+    LOGGER.debug("Input:  " + TestBitPacking.toString(values));
     return values;
   }
 

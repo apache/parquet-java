@@ -68,6 +68,11 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
+  public boolean isSmallerThan(long size) {
+    return !hasNonNullValue() || ((min.length() + max.length()) < size);
+  }
+
+  @Override
   public String toString() {
     if (this.hasNonNullValue())
       return String.format("min: %s, max: %s, num_nulls: %d", min.toStringUsingUTF8(), max.toStringUsingUTF8(), this.getNumNulls());
@@ -77,11 +82,19 @@ public class BinaryStatistics extends Statistics<Binary> {
       return "no stats for this column";
   }
 
+  /**
+   * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
+   */
+  @Deprecated
   public void updateStats(Binary min_value, Binary max_value) {
     if (min.compareTo(min_value) > 0) { min = min_value.copy(); }
     if (max.compareTo(max_value) < 0) { max = max_value.copy(); }
   }
 
+  /**
+   * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
+   */
+  @Deprecated
   public void initializeStats(Binary min_value, Binary max_value) {
       min = min_value.copy();
       max = max_value.copy();
@@ -98,14 +111,26 @@ public class BinaryStatistics extends Statistics<Binary> {
     return max;
   }
 
+  /**
+   * @deprecated use {@link #genericGetMax()}, will be removed in 2.0.0
+   */
+  @Deprecated
   public Binary getMax() {
     return max;
   }
 
+  /**
+   * @deprecated use {@link #genericGetMin()}, will be removed in 2.0.0
+   */
+  @Deprecated
   public Binary getMin() {
     return min;
   }
 
+  /**
+   * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
+   */
+  @Deprecated
   public void setMinMax(Binary min, Binary max) {
     this.max = max;
     this.min = min;

@@ -22,6 +22,7 @@ import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
@@ -70,9 +71,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   private ColumnChunkMetaData getColumnChunk(ColumnPath columnPath) {
-    ColumnChunkMetaData c = columns.get(columnPath);
-    checkArgument(c != null, "Column " + columnPath.toDotString() + " not found in schema!");
-    return c;
+    return columns.get(columnPath);
   }
 
   @SuppressWarnings("unchecked")
@@ -111,18 +110,28 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   @Override
   public <T extends Comparable<T>> Boolean visit(Eq<T> eq) {
+    T value = eq.getValue();
+
+    if (value == null) {
+      // the dictionary contains only non-null values so isn't helpful. this
+      // could check the column stats, but the StatisticsFilter is responsible
+      return BLOCK_MIGHT_MATCH;
+    }
+
     Column<T> filterColumn = eq.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    if (meta == null) {
+      // the column isn't in this file so all values are null, but the value
+      // must be non-null because of the above check.
+      return BLOCK_CANNOT_MATCH;
+    }
 
     // if the chunk has non-dictionary pages, don't bother decoding the
     // dictionary because the row group can't be eliminated.
     if (hasNonDictionaryPages(meta)) {
       return BLOCK_MIGHT_MATCH;
     }
-
-    T value = eq.getValue();
-
-    filterColumn.getColumnPath();
 
     try {
       Set<T> dictSet = expandDictionary(meta);
@@ -141,15 +150,31 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = notEq.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
 
+    T value = notEq.getValue();
+
+    if (value == null && meta == null) {
+      // the predicate value is null and all rows have a null value, so the
+      // predicate is always false (null != null)
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    if (value == null) {
+      // the dictionary contains only non-null values so isn't helpful. this
+      // could check the column stats, but the StatisticsFilter is responsible
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (meta == null) {
+      // column is missing from this file and is always null and not equal to
+      // the non-null test value, so the predicate is true for all rows
+      return BLOCK_MIGHT_MATCH;
+    }
+
     // if the chunk has non-dictionary pages, don't bother decoding the
     // dictionary because the row group can't be eliminated.
     if (hasNonDictionaryPages(meta)) {
       return BLOCK_MIGHT_MATCH;
     }
-
-    T value = notEq.getValue();
-
-    filterColumn.getColumnPath();
 
     try {
       Set<T> dictSet = expandDictionary(meta);
@@ -168,6 +193,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = lt.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
 
+    if (meta == null) {
+      // the column is missing and always null, which is never less than a
+      // value. for all x, null is never < x.
+      return BLOCK_CANNOT_MATCH;
+    }
+
     // if the chunk has non-dictionary pages, don't bother decoding the
     // dictionary because the row group can't be eliminated.
     if (hasNonDictionaryPages(meta)) {
@@ -175,8 +206,6 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     T value = lt.getValue();
-
-    filterColumn.getColumnPath();
 
     try {
       Set<T> dictSet = expandDictionary(meta);
@@ -202,6 +231,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   public <T extends Comparable<T>> Boolean visit(LtEq<T> ltEq) {
     Column<T> filterColumn = ltEq.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    if (meta == null) {
+      // the column is missing and always null, which is never less than or
+      // equal to a value. for all x, null is never <= x.
+      return BLOCK_CANNOT_MATCH;
+    }
 
     // if the chunk has non-dictionary pages, don't bother decoding the
     // dictionary because the row group can't be eliminated.
@@ -238,6 +273,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = gt.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
 
+    if (meta == null) {
+      // the column is missing and always null, which is never greater than a
+      // value. for all x, null is never > x.
+      return BLOCK_CANNOT_MATCH;
+    }
+
     // if the chunk has non-dictionary pages, don't bother decoding the
     // dictionary because the row group can't be eliminated.
     if (hasNonDictionaryPages(meta)) {
@@ -245,8 +286,6 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     T value = gt.getValue();
-
-    filterColumn.getColumnPath();
 
     try {
       Set<T> dictSet = expandDictionary(meta);
@@ -272,6 +311,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   public <T extends Comparable<T>> Boolean visit(GtEq<T> gtEq) {
     Column<T> filterColumn = gtEq.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    if (meta == null) {
+      // the column is missing and always null, which is never greater than or
+      // equal to a value. for all x, null is never >= x.
+      return BLOCK_CANNOT_MATCH;
+    }
 
     // if the chunk has non-dictionary pages, don't bother decoding the
     // dictionary because the row group can't be eliminated.
@@ -331,6 +376,11 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   @SuppressWarnings("deprecation")
   private static boolean hasNonDictionaryPages(ColumnChunkMetaData meta) {
+    EncodingStats stats = meta.getEncodingStats();
+    if (stats != null) {
+      return stats.hasNonDictionaryEncodedPages();
+    }
+
     // without EncodingStats, fall back to testing the encoding list
     Set<Encoding> encodings = new HashSet<Encoding>(meta.getEncodings());
     if (encodings.remove(Encoding.PLAIN_DICTIONARY)) {

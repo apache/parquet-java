@@ -18,20 +18,26 @@
  */
 package org.apache.parquet.avro;
 
-import java.util.*;
-
+import org.apache.avro.LogicalType;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 
 import org.apache.hadoop.conf.Configuration;
-import org.codehaus.jackson.node.NullNode;
 import org.apache.parquet.schema.ConversionPatterns;
+import org.apache.parquet.schema.DecimalMetadata;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.apache.avro.JsonProperties.NULL_VALUE;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT;
 import static org.apache.parquet.schema.OriginalType.*;
@@ -55,6 +61,17 @@ public class AvroSchemaConverter {
 
   public AvroSchemaConverter() {
     this.assumeRepeatedIsListElement = ADD_LIST_ELEMENT_RECORDS_DEFAULT;
+    this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
+  }
+
+  /**
+   * Constructor used by {@link AvroRecordConverter#isElementType}, which always
+   * uses the 2-level list conversion.
+   *
+   * @param assumeRepeatedIsListElement whether to assume 2-level lists
+   */
+  AvroSchemaConverter(boolean assumeRepeatedIsListElement) {
+    this.assumeRepeatedIsListElement = assumeRepeatedIsListElement;
     this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
   }
 
@@ -113,26 +130,28 @@ public class AvroSchemaConverter {
     return convertField(fieldName, schema, Type.Repetition.REQUIRED);
   }
 
+  @SuppressWarnings("deprecation")
   private Type convertField(String fieldName, Schema schema, Type.Repetition repetition) {
+    Types.PrimitiveBuilder<PrimitiveType> builder;
     Schema.Type type = schema.getType();
     if (type.equals(Schema.Type.BOOLEAN)) {
-      return primitive(fieldName, BOOLEAN, repetition);
+      builder = Types.primitive(BOOLEAN, repetition);
     } else if (type.equals(Schema.Type.INT)) {
-      return primitive(fieldName, INT32, repetition);
+      builder = Types.primitive(INT32, repetition);
     } else if (type.equals(Schema.Type.LONG)) {
-      return primitive(fieldName, INT64, repetition);
+      builder = Types.primitive(INT64, repetition);
     } else if (type.equals(Schema.Type.FLOAT)) {
-      return primitive(fieldName, FLOAT, repetition);
+      builder = Types.primitive(FLOAT, repetition);
     } else if (type.equals(Schema.Type.DOUBLE)) {
-      return primitive(fieldName, DOUBLE, repetition);
+      builder = Types.primitive(DOUBLE, repetition);
     } else if (type.equals(Schema.Type.BYTES)) {
-      return primitive(fieldName, BINARY, repetition);
+      builder = Types.primitive(BINARY, repetition);
     } else if (type.equals(Schema.Type.STRING)) {
-      return primitive(fieldName, BINARY, repetition, UTF8);
+      builder = Types.primitive(BINARY, repetition).as(UTF8);
     } else if (type.equals(Schema.Type.RECORD)) {
       return new GroupType(repetition, fieldName, convertFields(schema.getFields()));
     } else if (type.equals(Schema.Type.ENUM)) {
-      return primitive(fieldName, BINARY, repetition, ENUM);
+      builder = Types.primitive(BINARY, repetition).as(ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
       if (writeOldListStructure) {
         return ConversionPatterns.listType(repetition, fieldName,
@@ -146,16 +165,36 @@ public class AvroSchemaConverter {
       // avro map key type is always string
       return ConversionPatterns.stringKeyMapType(repetition, fieldName, valType);
     } else if (type.equals(Schema.Type.FIXED)) {
-      return primitive(fieldName, FIXED_LEN_BYTE_ARRAY, repetition,
-                       schema.getFixedSize(), null);
+      builder = Types.primitive(FIXED_LEN_BYTE_ARRAY, repetition)
+          .length(schema.getFixedSize());
     } else if (type.equals(Schema.Type.UNION)) {
       return convertUnion(fieldName, schema, repetition);
+    } else {
+      throw new UnsupportedOperationException("Cannot convert Avro type " + type);
     }
-    throw new UnsupportedOperationException("Cannot convert Avro type " + type);
+
+    // schema translation can only be done for known logical types because this
+    // creates an equivalence
+    LogicalType logicalType = schema.getLogicalType();
+    if (logicalType != null) {
+      if (logicalType instanceof LogicalTypes.Decimal) {
+        builder = builder.as(DECIMAL)
+            .precision(((LogicalTypes.Decimal) logicalType).getPrecision())
+            .scale(((LogicalTypes.Decimal) logicalType).getScale());
+
+      } else {
+        OriginalType annotation = convertLogicalType(logicalType);
+        if (annotation != null) {
+          builder.as(annotation);
+        }
+      }
+    }
+
+    return builder.named(fieldName);
   }
 
   private Type convertUnion(String fieldName, Schema schema, Type.Repetition repetition) {
-    List<Schema> nonNullSchemas = new ArrayList(schema.getTypes().size());
+    List<Schema> nonNullSchemas = new ArrayList<Schema>(schema.getTypes().size());
     for (Schema childSchema : schema.getTypes()) {
       if (childSchema.getType().equals(Schema.Type.NULL)) {
         if (Type.Repetition.REQUIRED == repetition) {
@@ -175,7 +214,7 @@ public class AvroSchemaConverter {
         return convertField(fieldName, nonNullSchemas.get(0), repetition);
 
       default: // complex union type
-        List<Type> unionTypes = new ArrayList(nonNullSchemas.size());
+        List<Type> unionTypes = new ArrayList<Type>(nonNullSchemas.size());
         int index = 0;
         for (Schema childSchema : nonNullSchemas) {
           unionTypes.add( convertField("member" + index++, childSchema, Type.Repetition.OPTIONAL));
@@ -188,25 +227,11 @@ public class AvroSchemaConverter {
     return convertField(field.name(), field.schema());
   }
 
-  private PrimitiveType primitive(String name,
-      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition,
-      int typeLength, OriginalType originalType) {
-    return new PrimitiveType(repetition, primitive, typeLength, name,
-                             originalType);
-  }
-
-  private PrimitiveType primitive(String name,
-      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition,
-      OriginalType originalType) {
-    return new PrimitiveType(repetition, primitive, name, originalType);
-  }
-
-  private PrimitiveType primitive(String name,
-      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition) {
-    return new PrimitiveType(repetition, primitive, name, null);
-  }
-
   public Schema convert(MessageType parquetSchema) {
+    return convertFields(parquetSchema.getName(), parquetSchema.getFields());
+  }
+
+  Schema convert(GroupType parquetSchema) {
     return convertFields(parquetSchema.getName(), parquetSchema.getFields());
   }
 
@@ -217,10 +242,11 @@ public class AvroSchemaConverter {
       if (parquetType.isRepetition(REPEATED)) {
         throw new UnsupportedOperationException("REPEATED not supported outside LIST or MAP. Type: " + parquetType);
       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
-        fields.add(new Schema.Field(parquetType.getName(), optional(fieldSchema), null,
-            NullNode.getInstance()));
+        fields.add(new Schema.Field(
+            parquetType.getName(), optional(fieldSchema), null, NULL_VALUE));
       } else { // REQUIRED
-        fields.add(new Schema.Field(parquetType.getName(), fieldSchema, null, null));
+        fields.add(new Schema.Field(
+            parquetType.getName(), fieldSchema, null, (Object) null));
       }
     }
     Schema schema = Schema.createRecord(name, null, null, false);
@@ -230,10 +256,11 @@ public class AvroSchemaConverter {
 
   private Schema convertField(final Type parquetType) {
     if (parquetType.isPrimitive()) {
+      final PrimitiveType asPrimitive = parquetType.asPrimitiveType();
       final PrimitiveTypeName parquetPrimitiveTypeName =
-          parquetType.asPrimitiveType().getPrimitiveTypeName();
-      final OriginalType originalType = parquetType.getOriginalType();
-      return parquetPrimitiveTypeName.convert(
+          asPrimitive.getPrimitiveTypeName();
+      final OriginalType annotation = parquetType.getOriginalType();
+      Schema schema = parquetPrimitiveTypeName.convert(
           new PrimitiveType.PrimitiveTypeNameConverter<Schema, RuntimeException>() {
             @Override
             public Schema convertBOOLEAN(PrimitiveTypeName primitiveTypeName) {
@@ -266,13 +293,24 @@ public class AvroSchemaConverter {
             }
             @Override
             public Schema convertBINARY(PrimitiveTypeName primitiveTypeName) {
-              if (originalType == OriginalType.UTF8 || originalType == OriginalType.ENUM) {
+              if (annotation == OriginalType.UTF8 || annotation == OriginalType.ENUM) {
                 return Schema.create(Schema.Type.STRING);
               } else {
                 return Schema.create(Schema.Type.BYTES);
               }
             }
           });
+
+      LogicalType logicalType = convertOriginalType(
+          annotation, asPrimitive.getDecimalMetadata());
+      if (logicalType != null && (annotation != DECIMAL ||
+          parquetPrimitiveTypeName == BINARY ||
+          parquetPrimitiveTypeName == FIXED_LEN_BYTE_ARRAY)) {
+        schema = logicalType.addToSchema(schema);
+      }
+
+      return schema;
+
     } else {
       GroupType parquetGroupType = parquetType.asGroupType();
       OriginalType originalType = parquetGroupType.getOriginalType();
@@ -333,6 +371,46 @@ public class AvroSchemaConverter {
         return convertFields(parquetGroupType.getName(), parquetGroupType.getFields());
       }
     }
+  }
+
+  private OriginalType convertLogicalType(LogicalType logicalType) {
+    if (logicalType == null) {
+      return null;
+    } else if (logicalType instanceof LogicalTypes.Decimal) {
+      return OriginalType.DECIMAL;
+    } else if (logicalType instanceof LogicalTypes.Date) {
+      return OriginalType.DATE;
+    } else if (logicalType instanceof LogicalTypes.TimeMillis) {
+      return OriginalType.TIME_MILLIS;
+    } else if (logicalType instanceof LogicalTypes.TimeMicros) {
+      return OriginalType.TIME_MICROS;
+    } else if (logicalType instanceof LogicalTypes.TimestampMillis) {
+      return OriginalType.TIMESTAMP_MILLIS;
+    } else if (logicalType instanceof LogicalTypes.TimestampMicros) {
+      return OriginalType.TIMESTAMP_MICROS;
+    }
+    return null;
+  }
+
+  private LogicalType convertOriginalType(OriginalType annotation, DecimalMetadata meta) {
+    if (annotation == null) {
+      return null;
+    }
+    switch (annotation) {
+      case DECIMAL:
+        return LogicalTypes.decimal(meta.getPrecision(), meta.getScale());
+      case DATE:
+        return LogicalTypes.date();
+      case TIME_MILLIS:
+        return LogicalTypes.timeMillis();
+      case TIME_MICROS:
+        return LogicalTypes.timeMicros();
+      case TIMESTAMP_MILLIS:
+        return LogicalTypes.timestampMillis();
+      case TIMESTAMP_MICROS:
+        return LogicalTypes.timestampMicros();
+    }
+    return null;
   }
 
   /**

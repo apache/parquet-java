@@ -24,12 +24,16 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.tools.Main;
 import org.apache.parquet.tools.read.SimpleReadSupport;
 import org.apache.parquet.tools.read.SimpleRecord;
+import org.apache.parquet.tools.json.JsonRecordFormatter;
 
 public class CatCommand extends ArgsOnlyCommand {
   public static final String[] USAGE = new String[] {
@@ -71,9 +75,12 @@ public class CatCommand extends ArgsOnlyCommand {
     try {
       PrintWriter writer = new PrintWriter(Main.out, true);
       reader = ParquetReader.builder(new SimpleReadSupport(), new Path(input)).build();
+      ParquetMetadata metadata = ParquetFileReader.readFooter(new Configuration(), new Path(input));
+      JsonRecordFormatter.JsonGroupFormatter formatter = JsonRecordFormatter.fromSchema(metadata.getFileMetaData().getSchema());
+
       for (SimpleRecord value = reader.read(); value != null; value = reader.read()) {
         if (options.hasOption('j')) {
-          value.prettyPrintJson(writer);
+          writer.write(formatter.formatRecord(value));
         } else {
           value.prettyPrint(writer);
         }

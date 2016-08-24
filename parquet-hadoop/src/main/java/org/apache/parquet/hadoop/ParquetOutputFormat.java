@@ -322,7 +322,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
   }
 
-
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
 
@@ -389,7 +388,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOGGER.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
       LOGGER.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
       LOGGER.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
-      LOGGER.info("Min row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+      LOGGER.info("Max row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
     }
 
     WriteContext init = writeSupport.init(conf);

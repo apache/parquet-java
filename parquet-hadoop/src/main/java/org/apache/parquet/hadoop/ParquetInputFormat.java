@@ -118,6 +118,24 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String FILTER_PREDICATE = "parquet.private.read.filter.predicate";
 
   /**
+   * key to configure whether record-level filtering is enabled
+   */
+  public static final String RECORD_FILTERING_ENABLED = "parquet.filter.record-level.enabled";
+  static final boolean RECORD_FILTERING_ENABLED_DEFAULT = true;
+
+  /**
+   * key to configure whether row group stats filtering is enabled
+   */
+  public static final String STATS_FILTERING_ENABLED = "parquet.filter.stats.enabled";
+  static final boolean STATS_FILTERING_ENABLED_DEFAULT = true;
+
+  /**
+   * key to configure whether row group dictionary filtering is enabled
+   */
+  public static final String DICTIONARY_FILTERING_ENABLED = "parquet.filter.dictionary.enabled";
+  static final boolean DICTIONARY_FILTERING_ENABLED_DEFAULT = false;
+
+  /**
    * key to turn on or off task side metadata loading (default true)
    * if true then metadata is read on the task side and some tasks may finish immediately.
    * if false metadata is read on the client which is slower if there is a lot of metadata but tasks will only be spawn if there is work to do.

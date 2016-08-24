@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import org.apache.parquet.Strings;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -104,6 +105,12 @@ class DictionaryPageReader implements DictionaryPageReadStore {
   }
 
   private boolean hasDictionaryPage(ColumnChunkMetaData column) {
+    EncodingStats stats = column.getEncodingStats();
+    if (stats != null) {
+      // ensure there is a dictionary page and that it is used to encode data pages
+      return stats.hasDictionaryPages() && stats.hasDictionaryEncodedPages();
+    }
+
     Set<Encoding> encodings = column.getEncodings();
     return (encodings.contains(PLAIN_DICTIONARY) || encodings.contains(RLE_DICTIONARY));
   }

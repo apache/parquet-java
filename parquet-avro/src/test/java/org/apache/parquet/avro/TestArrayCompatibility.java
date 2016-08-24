@@ -27,6 +27,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.schema.MessageType;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -44,10 +46,13 @@ import static org.apache.parquet.avro.AvroTestUtil.record;
 
 public class TestArrayCompatibility extends DirectWriterTest {
 
+  public static final Configuration OLD_BEHAVIOR_CONF = new Configuration();
   public static final Configuration NEW_BEHAVIOR_CONF = new Configuration();
 
   @BeforeClass
   public static void setupNewBehaviorConfiguration() {
+    OLD_BEHAVIOR_CONF.setBoolean(
+        AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, true);
     NEW_BEHAVIOR_CONF.setBoolean(
         AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
   }
@@ -1035,14 +1040,155 @@ public class TestArrayCompatibility extends DirectWriterTest {
     assertReaderContains(newBehaviorReader(test), newSchema, newRecord);
   }
 
+  @Test
+  public void testListOfSingleElementStructsWithElementField()
+      throws Exception {
+    Path test = writeDirect(
+        "message ListOfSingleElementStructsWithElementField {" +
+            "  optional group list_of_structs (LIST) {" +
+            "    repeated group list {" +
+            "      required group element {" +
+            "        required float element;" +
+            "      }" +
+            "    }" +
+            "  }" +
+            "}",
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+            rc.startField("list_of_structs", 0);
+
+            rc.startGroup();
+            rc.startField("list", 0); // start writing array contents
+
+            // write a non-null element
+            rc.startGroup(); // array level
+            rc.startField("element", 0);
+
+            // the inner element field
+            rc.startGroup();
+            rc.startField("element", 0);
+            rc.addFloat(33.0F);
+            rc.endField("element", 0);
+            rc.endGroup();
+
+            rc.endField("element", 0);
+            rc.endGroup(); // array level
+
+            // write a second non-null element
+            rc.startGroup(); // array level
+            rc.startField("element", 0);
+
+            // the inner element field
+            rc.startGroup();
+            rc.startField("element", 0);
+            rc.addFloat(34.0F);
+            rc.endField("element", 0);
+            rc.endGroup();
+
+            rc.endField("element", 0);
+            rc.endGroup(); // array level
+
+            rc.endField("list", 0); // finished writing array contents
+            rc.endGroup();
+
+            rc.endField("list_of_structs", 0);
+            rc.endMessage();
+          }
+        });
+
+    Schema structWithElementField = record("element",
+        field("element", primitive(Schema.Type.FLOAT)));
+
+    // old behavior - assume that the repeated type is the element type
+    Schema elementRecord = record("list",
+        field("element", structWithElementField));
+    Schema oldSchema = record("ListOfSingleElementStructsWithElementField",
+        optionalField("list_of_structs", array(elementRecord)));
+    GenericRecord oldRecord = instance(oldSchema,
+        "list_of_structs", Arrays.asList(
+            instance(elementRecord, "element",
+                instance(structWithElementField, "element", 33.0F)),
+            instance(elementRecord, "element",
+                instance(structWithElementField, "element", 34.0F))));
+
+    // check the schema
+    ParquetFileReader reader = ParquetFileReader
+        .open(new Configuration(), test);
+    MessageType fileSchema = reader.getFileMetaData().getSchema();
+    Assert.assertEquals("Converted schema should assume 2-layer structure",
+        oldSchema,
+        new AvroSchemaConverter(OLD_BEHAVIOR_CONF).convert(fileSchema));
+
+    // both should default to the 2-layer structure
+    assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
+
+    Schema newSchema = record("ListOfSingleElementStructsWithElementField",
+        optionalField("list_of_structs", array(structWithElementField)));
+    GenericRecord newRecord = instance(newSchema,
+        "list_of_structs", Arrays.asList(
+            instance(structWithElementField, "element", 33.0F),
+            instance(structWithElementField, "element", 34.0F)));
+
+    // check the schema
+    Assert.assertEquals("Converted schema should assume 3-layer structure",
+        newSchema,
+        new AvroSchemaConverter(NEW_BEHAVIOR_CONF).convert(fileSchema));
+    assertReaderContains(newBehaviorReader(test), newSchema, newRecord);
+
+    // check that this works with compatible nested schemas
+
+    Schema structWithDoubleElementField = record("element",
+        field("element", primitive(Schema.Type.DOUBLE)));
+
+    Schema doubleElementRecord = record("list",
+        field("element", structWithDoubleElementField));
+    Schema oldDoubleSchema = record(
+        "ListOfSingleElementStructsWithElementField",
+        optionalField("list_of_structs", array(doubleElementRecord)));
+    GenericRecord oldDoubleRecord = instance(oldDoubleSchema,
+        "list_of_structs", Arrays.asList(
+            instance(doubleElementRecord, "element",
+                instance(structWithDoubleElementField, "element", 33.0)),
+            instance(doubleElementRecord, "element",
+                instance(structWithDoubleElementField, "element", 34.0))));
+    assertReaderContains(oldBehaviorReader(test, oldDoubleSchema),
+        oldDoubleSchema, oldDoubleRecord);
+
+    Schema newDoubleSchema = record(
+        "ListOfSingleElementStructsWithElementField",
+        optionalField("list_of_structs", array(structWithDoubleElementField)));
+    GenericRecord newDoubleRecord = instance(newDoubleSchema,
+        "list_of_structs", Arrays.asList(
+            instance(structWithDoubleElementField, "element", 33.0),
+            instance(structWithDoubleElementField, "element", 34.0)));
+    assertReaderContains(newBehaviorReader(test, newDoubleSchema),
+        newDoubleSchema, newDoubleRecord);
+  }
+
   public <T extends IndexedRecord> AvroParquetReader<T> oldBehaviorReader(
       Path path) throws IOException {
-    return new AvroParquetReader<T>(path);
+    return new AvroParquetReader<T>(OLD_BEHAVIOR_CONF, path);
+  }
+
+  public <T extends IndexedRecord> AvroParquetReader<T> oldBehaviorReader(
+      Path path, Schema expectedSchema) throws IOException {
+    Configuration conf = new Configuration(OLD_BEHAVIOR_CONF);
+    AvroReadSupport.setAvroReadSchema(conf, expectedSchema);
+    return new AvroParquetReader<T>(conf, path);
   }
 
   public <T extends IndexedRecord> AvroParquetReader<T> newBehaviorReader(
       Path path) throws IOException {
     return new AvroParquetReader<T>(NEW_BEHAVIOR_CONF, path);
+  }
+
+  public <T extends IndexedRecord> AvroParquetReader<T> newBehaviorReader(
+      Path path, Schema expectedSchema) throws IOException {
+    Configuration conf = new Configuration(NEW_BEHAVIOR_CONF);
+    AvroReadSupport.setAvroReadSchema(conf, expectedSchema);
+    return new AvroParquetReader<T>(conf, path);
   }
 
   public <T extends IndexedRecord> void assertReaderContains(

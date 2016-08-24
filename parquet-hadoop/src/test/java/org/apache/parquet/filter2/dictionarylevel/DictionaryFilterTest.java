@@ -193,6 +193,9 @@ public class DictionaryFilterTest {
 
     assertTrue("Should drop block for upper case letters",
         canDrop(eq(b, Binary.fromString("A")), ccmd, dictionaries));
+
+    assertFalse("Should not drop block for null",
+        canDrop(eq(b, null), ccmd, dictionaries));
   }
 
   @Test
@@ -211,6 +214,9 @@ public class DictionaryFilterTest {
 
     assertFalse("Should not drop block with a known value",
         canDrop(notEq(b, Binary.fromString("B")), ccmd, dictionaries));
+
+    assertFalse("Should not drop block for null",
+        canDrop(notEq(b, null), ccmd, dictionaries));
   }
 
   @Test
@@ -375,6 +381,60 @@ public class DictionaryFilterTest {
         canDrop(notEq(plain, nElements + 10), ccmd, dictionaryStore));
 
     verifyZeroInteractions(dictionaryStore);
+  }
+
+  @Test
+  public void testEqMissingColumn() throws Exception {
+    BinaryColumn b = binaryColumn("missing_column");
+
+    assertTrue("Should drop block for non-null query",
+        canDrop(eq(b, Binary.fromString("any")), ccmd, dictionaries));
+
+    assertFalse("Should not drop block null query",
+        canDrop(eq(b, null), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testNotEqMissingColumn() throws Exception {
+    BinaryColumn b = binaryColumn("missing_column");
+
+    assertFalse("Should not drop block for non-null query",
+        canDrop(notEq(b, Binary.fromString("any")), ccmd, dictionaries));
+
+    assertTrue("Should not drop block null query",
+        canDrop(notEq(b, null), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testLtMissingColumn() throws Exception {
+    BinaryColumn b = binaryColumn("missing_column");
+
+    assertTrue("Should drop block for any non-null query",
+        canDrop(lt(b, Binary.fromString("any")), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testLtEqMissingColumn() throws Exception {
+    BinaryColumn b = binaryColumn("missing_column");
+
+    assertTrue("Should drop block for any non-null query",
+        canDrop(ltEq(b, Binary.fromString("any")), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testGtMissingColumn() throws Exception {
+    BinaryColumn b = binaryColumn("missing_column");
+
+    assertTrue("Should drop block for any non-null query",
+        canDrop(gt(b, Binary.fromString("any")), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testGtEqMissingColumn() throws Exception {
+    BinaryColumn b = binaryColumn("missing_column");
+
+    assertTrue("Should drop block for any non-null query",
+        canDrop(gtEq(b, Binary.fromString("any")), ccmd, dictionaries));
   }
 
   private static double toDouble(int value) {

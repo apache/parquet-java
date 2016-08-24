@@ -202,6 +202,20 @@ public class TestBitPacking {
     return sb.toString();
   }
 
+  public static String toString(long[] vals) {
+    StringBuilder sb = new StringBuilder();
+    boolean first = true;
+    for (long i : vals) {
+      if (first) {
+        first = false;
+      } else {
+        sb.append(" ");
+      }
+      sb.append(i);
+    }
+    return sb.toString();
+  }
+
   public static String toString(byte[] bytes) {
     StringBuilder sb = new StringBuilder();
     boolean first = true;

@@ -111,8 +111,8 @@ Avro conversion is implemented via the [parquet-avro](https://github.com/apache/
 * the ParquetInputFormat can be provided a ReadSupport to materialize your own objects by implementing a RecordMaterializer
 
 See the APIs:
-* [Record conversion API](https://github.com/apache/parquet-mr/tree/master/parquet-column/src/main/java/parquet/io/api)
-* [Hadoop API](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/parquet/hadoop/api)
+* [Record conversion API](https://github.com/apache/parquet-mr/tree/master/parquet-column/src/main/java/org/apache/parquet/io/api)
+* [Hadoop API](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/api)
 
 ## Apache Pig integration
 A [Loader](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetLoader.java) and a [Storer](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetStorer.java) are provided to read and write Parquet files with Apache Pig
@@ -202,16 +202,8 @@ Thank you for getting involved!
 
 ## Authors and contributors
 
-* Julien Le Dem [@J_](http://twitter.com/J_) <https://github.com/julienledem>
-* Tom White <https://github.com/tomwhite>
-* Mickaël Lacour <https://github.com/mickaellcr>
-* Remy Pecqueur <https://github.com/Lordshinjo>
-* Avi Bryant <https://github.com/avibryant>
-* Dmitriy Ryaboy [@squarecog](https://twitter.com/squarecog) <https://github.com/dvryaboy>
-* Jonathan Coveney <http://twitter.com/jco>
-* Brock Noland <https://github.com/brockn>
-* Tianshuo Deng <https://github.com/tsdeng>
-* and many others -- see the [Contributor report]( https://github.com/apache/parquet-mr/contributors)
+* [Contributors](https://github.com/apache/parquet-mr/graphs/contributors)
+* [Committers](dev/COMMITTERS.md)
 
 ## Code of Conduct
 

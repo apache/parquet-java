@@ -18,11 +18,13 @@
  */
 package org.apache.parquet.column.values.delta;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
-import org.apache.parquet.column.values.bitpacking.BytePacker;
+import org.apache.parquet.column.values.bitpacking.BytePackerForLong;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
 
@@ -40,12 +42,12 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * values read by the caller
    */
   private int valuesRead;
-  private int minDeltaInCurrentBlock;
+  private long minDeltaInCurrentBlock;
   private ByteBuffer page;
   /**
    * stores the decoded values including the first value which is written to the header
    */
-  private int[] valuesBuffer;
+  private long[] valuesBuffer;
   /**
    * values loaded to the buffer, it could be bigger than the totalValueCount
    * when data is not aligned to mini block, which means padding 0s are in the buffer
@@ -74,7 +76,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     bitWidths = new int[config.miniBlockNumInABlock];
 
     //read first value from header
-    valuesBuffer[valuesBuffered++] = BytesUtils.readZigZagVarInt(in);
+    valuesBuffer[valuesBuffered++] = BytesUtils.readZigZagVarLong(in);
 
     while (valuesBuffered < totalValueCount) { //values Buffered could be more than totalValueCount, since we flush on a mini block basis
       loadNewBlockToBuffer();
@@ -94,7 +96,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private void allocateValuesBuffer() {
     int totalMiniBlockCount = (int) Math.ceil((double) totalValueCount / config.miniBlockSizeInValues);
     //+ 1 because first value written to header is also stored in values buffer
-    valuesBuffer = new int[totalMiniBlockCount * config.miniBlockSizeInValues + 1];
+    valuesBuffer = new long[totalMiniBlockCount * config.miniBlockSizeInValues + 1];
   }
 
   @Override
@@ -105,6 +107,12 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
   @Override
   public int readInteger() {
+    // TODO: probably implement it separately
+    return (int) readLong();
+  }
+
+  @Override
+  public long readLong() {
     checkRead();
     return valuesBuffer[valuesRead++];
   }
@@ -117,7 +125,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
   private void loadNewBlockToBuffer() {
     try {
-      minDeltaInCurrentBlock = BytesUtils.readZigZagVarInt(in);
+      minDeltaInCurrentBlock = BytesUtils.readZigZagVarLong(in);
     } catch (IOException e) {
       throw new ParquetDecodingException("can not read min delta in current block", e);
     }
@@ -127,7 +135,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     // mini block is atomic for reading, we read a mini block when there are more values left
     int i;
     for (i = 0; i < config.miniBlockNumInABlock && valuesBuffered < totalValueCount; i++) {
-      BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidths[i]);
+      BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidths[i]);
       unpackMiniBlock(packer);
     }
 
@@ -144,13 +152,13 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    *
    * @param packer the packer created from bitwidth of current mini block
    */
-  private void unpackMiniBlock(BytePacker packer) {
+  private void unpackMiniBlock(BytePackerForLong packer) {
     for (int j = 0; j < config.miniBlockSizeInValues; j += 8) {
       unpack8Values(packer);
     }
   }
 
-  private void unpack8Values(BytePacker packer) {
+  private void unpack8Values(BytePackerForLong packer) {
     //calculate the pos because the packer api uses array not stream
     int pos = page.limit() - in.available();
     packer.unpack8Values(page, pos, valuesBuffer, valuesBuffered);
