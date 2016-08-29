@@ -4,7 +4,7 @@ before_install:
   - sudo apt-get install build-essential
   - mkdir protobuf_install
   - pushd protobuf_install
-  - wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
+  - wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
   - tar xzf protobuf-2.5.0.tar.gz
   - cd  protobuf-2.5.0
   - ./configure
