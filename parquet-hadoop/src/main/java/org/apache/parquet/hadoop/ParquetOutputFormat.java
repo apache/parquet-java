@@ -38,12 +38,15 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.statistics.StatisticsOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOptBuilder;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
+import org.apache.parquet.schema.MessageType;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -145,12 +148,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
   public static final String ENABLE_BLOOM_FILTER  = "parquet.enable.bloom.filter";
-  public static final String EXPACTED_ENTRIES     = "parquet.expected.entries";
   public static final String IS_FPP_PROVIDED      = "parquet.bloom.filter.fpp.provided";
   public static final String FPP_VALUE            = "parquet.bloom.filter.value";
   public static final String EXPECTED_ENTRIES     = "parquet.bloom.filter.expected.entries";
-  public static final String ENABLE_BLOOM_FILTER_COL_NAME =
-      "parquet.bloom.filter.enable.column.names";
+  public static final String BLOOM_FILTER_COL_NAME = "parquet.bloom.filter.enable.column.names";
   public static final String FALSE_POSITIVE_PROBABILITY =
       "parquet.bloom.filter.false.positive.probability";
 
@@ -250,13 +251,13 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static boolean getEnableDictionary(Configuration configuration) {
-    return configuration.getBoolean(
-        ENABLE_DICTIONARY, ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED);
+    return configuration.getBoolean(ENABLE_DICTIONARY,
+      ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED);
   }
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
     return configuration.getInt(MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+      ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
   }
 
   public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
@@ -266,7 +267,17 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static boolean getEstimatePageSizeCheck(Configuration configuration) {
     return configuration.getBoolean(ESTIMATE_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK);
+      ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK);
+  }
+
+  public static StatisticsOpts getStatisticsOpts(
+    Configuration configuration,
+    MessageType schema) {
+    String colName = configuration.get(BLOOM_FILTER_COL_NAME);
+    String expectedEntries = configuration.get(EXPECTED_ENTRIES);
+    return new StatisticsOpts(
+      new BloomFilterOptBuilder().enableCols(colName).expectedEntries(expectedEntries)
+        .build(schema));
   }
 
   @Deprecated
@@ -369,6 +380,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
+    WriteContext init = writeSupport.init(conf);
+
     ParquetProperties props = ParquetProperties.builder()
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
@@ -377,6 +390,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
+        .withStatisticsOpts(getStatisticsOpts(conf, init.getSchema()))
         .build();
 
     long blockSize = getLongBlockSize(conf);
@@ -394,7 +408,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
     if (INFO) LOG.info("Max row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
 
-    WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(
         conf, init.getSchema(), file, Mode.CREATE, blockSize, maxPaddingSize);
     w.start();

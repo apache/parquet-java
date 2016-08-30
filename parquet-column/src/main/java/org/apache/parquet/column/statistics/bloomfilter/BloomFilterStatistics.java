@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.column.statistics.bloomfilter;
 
-import java.util.List;
-
 public interface BloomFilterStatistics<T> {
   void add(T value);
 

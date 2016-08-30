@@ -67,12 +67,12 @@ final class ColumnWriterV2 implements ColumnWriter {
       ParquetProperties props) {
     this.path = path;
     this.pageWriter = pageWriter;
+    this.statisticsOpts = props.getStatisticsOpts();
     resetStatistics();
 
     this.repetitionLevelColumn = props.newRepetitionLevelEncoder(path);
     this.definitionLevelColumn = props.newDefinitionLevelEncoder(path);
     this.dataColumn = props.newValuesWriter(path);
-    this.statisticsOpts = props.getStatisticsOpts();
   }
 
   private void log(Object value, int r, int d) {

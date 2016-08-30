@@ -68,13 +68,13 @@ final class ColumnWriterV1 implements ColumnWriter {
 
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+    this.statisticsOpts = props.getStatisticsOpts();
 
     resetStatistics();
 
     this.repetitionLevelColumn = props.newRepetitionLevelWriter(path);
     this.definitionLevelColumn = props.newDefinitionLevelWriter(path);
     this.dataColumn = props.newValuesWriter(path);
-    this.statisticsOpts = props.getStatisticsOpts();
   }
 
   private void log(Object value, int r, int d) {

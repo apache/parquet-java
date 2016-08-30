@@ -54,7 +54,6 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.column.statistics.StatisticsOpts;
-import org.apache.parquet.column.statistics.bloomfilter.BloomFilter;
 import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOptBuilder;
 import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -274,7 +273,7 @@ public class ParquetFileWriter {
   }
 
   private void buildBloomFilterOpts(Configuration conf) {
-    String colNamesWithBloomFilter = conf.get(ParquetOutputFormat.ENABLE_BLOOM_FILTER_COL_NAME, "");
+    String colNamesWithBloomFilter = conf.get(ParquetOutputFormat.BLOOM_FILTER_COL_NAME, "");
     String expectedEntries = conf.get(ParquetOutputFormat.EXPECTED_ENTRIES, "");
     String FPPs = conf.get(ParquetOutputFormat.FALSE_POSITIVE_PROBABILITY, "");
     LOG.info("FPP: " + FPPs + " expectedEntries:  " + expectedEntries + "colNamesWithBloomFilter:"
