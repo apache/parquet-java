@@ -430,7 +430,7 @@ public class ParquetFileReader implements Closeable {
       Configuration configuration,
       FileStatus file,
       MetadataFilter filter) throws IOException {
-    return readFooter(configuration, file, filter, false);
+    return readFooter(configuration, file, filter, true);
   }
 
   /**
@@ -439,7 +439,7 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file) throws IOException {
-    return readFooter(configuration, file, NO_FILTER, false);
+    return readFooter(configuration, file, NO_FILTER, true);
   }
 
   /**
@@ -581,7 +581,7 @@ public class ParquetFileReader implements Closeable {
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
     this.f = fs.open(file);
-    this.footer = readFooter(fileStatus, f, filter, false);
+    this.footer = readFooter(fileStatus, f, filter, true);
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = footer.getBlocks();
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
@@ -620,7 +620,7 @@ public class ParquetFileReader implements Closeable {
     if (footer == null) {
       try {
         // don't read the row groups because this.blocks is always set
-        this.footer = readFooter(fileStatus, f, SKIP_ROW_GROUPS, false);
+        this.footer = readFooter(fileStatus, f, SKIP_ROW_GROUPS, true);
       } catch (IOException e) {
         throw new ParquetDecodingException("Unable to read file footer", e);
       }

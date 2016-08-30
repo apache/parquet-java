@@ -296,7 +296,7 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
-  public static Statistics toParquetStatisticsWithoutBloomFilter(
+  public static Statistics toParquetStatistics(
       org.apache.parquet.column.statistics.Statistics statistics) {
     Statistics stats = new Statistics();
     // Don't write stats larger than the max size rather than truncating. The
@@ -308,6 +308,7 @@ public class ParquetMetadataConverter {
       if (statistics.hasNonNullValue()) {
         stats.setMax(statistics.getMaxBytes());
         stats.setMin(statistics.getMinBytes());
+        setBloomFilter(stats, statistics);
       }
     }
     return stats;
@@ -320,20 +321,6 @@ public class ParquetMetadataConverter {
   @Deprecated
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(Statistics statistics, PrimitiveTypeName type) {
     return fromParquetStatistics(null, statistics, type);
-  }
-
-  public static Statistics toParquetStatistics(
-      org.apache.parquet.column.statistics.Statistics statistics) {
-    Statistics stats = new Statistics();
-    if (!statistics.isEmpty()) {
-      stats.setNull_count(statistics.getNumNulls());
-      if (statistics.hasNonNullValue()) {
-        stats.setMax(statistics.getMaxBytes());
-        stats.setMin(statistics.getMinBytes());
-        setBloomFilter(stats, statistics);
-     }
-    }
-    return stats;
   }
 
   public static ByteBuffer serializeLongArray(long[] list) {
@@ -397,7 +384,7 @@ public class ParquetMetadataConverter {
     if (includeBF) {
       return fromParquetStatisticsWithBF(createdBy, statistics, type);
     } else {
-      return fromParquetStatistics(createdBy, statistics, type);
+      return fromParquetStatisticsWithBF(createdBy, statistics, type);
     }
   }
 
@@ -973,7 +960,7 @@ public class ParquetMetadataConverter {
         getEncoding(rlEncoding)));
     if (!statistics.isEmpty()) {
       pageHeader.getData_page_header()
-          .setStatistics(toParquetStatisticsWithoutBloomFilter(statistics));
+          .setStatistics(toParquetStatistics(statistics));
     }
     return pageHeader;
   }
@@ -1006,7 +993,7 @@ public class ParquetMetadataConverter {
         getEncoding(dataEncoding),
         dlByteLength, rlByteLength);
     if (!statistics.isEmpty()) {
-      dataPageHeaderV2.setStatistics(toParquetStatisticsWithoutBloomFilter(statistics));
+      dataPageHeaderV2.setStatistics(toParquetStatistics(statistics));
     }
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
     pageHeader.setData_page_header_v2(dataPageHeaderV2);
