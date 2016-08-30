@@ -36,10 +36,6 @@ import org.slf4j.LoggerFactory;
  */
 public class BytesUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(BytesUtils.class);
-  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   public static final Charset UTF8 = Charset.forName("UTF-8");
 
@@ -163,8 +159,8 @@ public class BytesUtils {
     out.write((v >>>  8) & 0xFF);
     out.write((v >>> 16) & 0xFF);
     out.write((v >>> 24) & 0xFF);
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("write le int: " + v + " => " + ((v >>> 0) & 0xFF) + " " + ((v >>> 8) & 0xFF) + " " + ((v >>> 16) & 0xFF) + " " + ((v >>> 24) & 0xFF));
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("write le int: {} => {} {} {} {}", v, (v >>> 0) & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF);
     }
   }
 

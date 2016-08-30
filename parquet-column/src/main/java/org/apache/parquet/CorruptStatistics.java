@@ -111,7 +111,7 @@ public class CorruptStatistics {
 
   private static void warnParseErrorOnce(String createdBy, Throwable e) {
     if(!alreadyLogged.getAndSet(true)) {
-      LOGGER.warn("Ignoring statistics because created_by could not be parsed (see PARQUET-251): " + createdBy, e);
+      LOGGER.warn("Ignoring statistics because created_by could not be parsed (see PARQUET-251): {}", createdBy, e);
     }
   }
 

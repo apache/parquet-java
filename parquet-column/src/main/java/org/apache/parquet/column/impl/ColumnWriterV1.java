@@ -46,9 +46,6 @@ import org.slf4j.LoggerFactory;
 final class ColumnWriterV1 implements ColumnWriter {
   private static final Logger LOGGER = LoggerFactory.getLogger(ColumnWriterV1.class);
   private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
@@ -79,7 +76,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   private void log(Object value, int r, int d) {
-    LOGGER.debug(path + " " + value + " r:" + r + " d:" + d);
+    LOGGER.debug("{} {} r:{} d:{}", path, value, r, d);
   }
 
   private void resetStatistics() {

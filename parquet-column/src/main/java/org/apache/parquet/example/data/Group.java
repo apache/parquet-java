@@ -65,9 +65,7 @@ abstract public class Group extends GroupValueSource {
   }
 
   public Group addGroup(String field) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("add group " + field + " to " + getType().getName());
-    }
+    LOGGER.debug("add group {} to {}", field, getType().getName());
     return addGroup(getType().getFieldIndex(field));
   }
 

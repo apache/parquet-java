@@ -63,9 +63,7 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
       throw new UnknownColumnException(descriptor);
     }
     List<DataPage> pages = new ArrayList<DataPage>(pageWriter.getPages());
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("initialize page reader with " + pageWriter.getTotalValueCount() + " values and " + pages.size() + " pages");
-    }
+    LOGGER.debug("initialize page reader with {} values and {} pages", pageWriter.getTotalValueCount(), pages.size());
     return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage());
   }
 

@@ -455,13 +455,9 @@ public class PigSchemaConverter {
    */
   public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema, RequiredFieldList requiredFieldList) {
     try {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("filtering schema:\n" + schemaToFilter + "\nwith requested pig schema:\n " + requestedPigSchema);
-      }
+      LOGGER.debug("filtering schema:\n{}\nwith requested pig schema:\n {}", schemaToFilter, requestedPigSchema);
       List<Type> result = columnAccess.filterTupleSchema(schemaToFilter, requestedPigSchema, requiredFieldList);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("schema:\n" + schemaToFilter + "\nfiltered to:\n" + result);
-      }
+      LOGGER.debug("schema:\n{}\nfiltered to:\n{}", schemaToFilter, result);
       return new MessageType(schemaToFilter.getName(), result);
     } catch (RuntimeException e) {
       throw new RuntimeException("can't filter " + schemaToFilter + " with " + requestedPigSchema, e);
@@ -469,9 +465,7 @@ public class PigSchemaConverter {
   }
 
   private Type filter(Type type, FieldSchema fieldSchema) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("filtering type:\n" + type + "\nwith:\n " + fieldSchema);
-    }
+    LOGGER.debug("filtering type:\n{}\nwith:\n {}", type, fieldSchema);
     try {
       switch (fieldSchema.type) {
       case DataType.BAG:
@@ -491,16 +485,12 @@ public class PigSchemaConverter {
   }
 
   private Type filterTuple(GroupType tupleType, FieldSchema tupleFieldSchema) throws FrontendException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("filtering TUPLE schema:\n" + tupleType + "\nwith:\n " + tupleFieldSchema);
-    }
+    LOGGER.debug("filtering TUPLE schema:\n{}\nwith:\n {}", tupleType, tupleFieldSchema);
     return tupleType.withNewFields(columnAccess.filterTupleSchema(tupleType, tupleFieldSchema.schema, null));
   }
 
   private Type filterMap(GroupType mapType, FieldSchema mapFieldSchema) throws FrontendException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("filtering MAP schema:\n" + mapType + "\nwith:\n " + mapFieldSchema);
-    }
+    LOGGER.debug("filtering MAP schema:\n{}\nwith:\n {}", mapType, mapFieldSchema);
     if (mapType.getFieldCount() != 1) {
       throw new RuntimeException("not unwrapping the right type, this should be a Map: " + mapType);
     }
@@ -513,9 +503,7 @@ public class PigSchemaConverter {
   }
 
   private Type filterBag(GroupType bagType, FieldSchema bagFieldSchema) throws FrontendException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("filtering BAG schema:\n" + bagType + "\nwith:\n " + bagFieldSchema);
-    }
+    LOGGER.debug("filtering BAG schema:\n{}\nwith:\n {}", bagType, bagFieldSchema);
     if (bagType.getFieldCount() != 1) {
       throw new RuntimeException("not unwrapping the right type, this should be a Bag: " + bagType);
     }

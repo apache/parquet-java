@@ -84,7 +84,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       messageWriter.writeTopLevelMessage(record);
     } catch (RuntimeException e) {
       Message m = (record instanceof Message.Builder) ? ((Message.Builder) record).build() : (Message) record;
-      LOGGER.error("Cannot write message " + e.getMessage() + " : " + m);
+      LOGGER.error("Cannot write message {} : {}", e.getMessage(), m);
       throw e;
     }
     recordConsumer.endMessage();

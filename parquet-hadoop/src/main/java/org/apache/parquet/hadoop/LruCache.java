@@ -37,10 +37,6 @@ import org.slf4j.LoggerFactory;
  */
 final class LruCache<K, V extends LruCache.Value<K, V>> {
   private static final Logger LOGGER = LoggerFactory.getLogger(LruCache.class);
-  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
@@ -69,11 +65,8 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
               @Override
               public boolean removeEldestEntry(final Map.Entry<K, V> eldest) {
                 boolean result = size() > maxSize;
-                if (result) {
-                  if (DEBUG_ENABLED) {
-                    LOGGER.debug("Removing eldest entry in cache: "
-                            + eldest.getKey());
-                  }
+                if (result && LOGGER.isDebugEnabled()) {
+                  LOGGER.debug("Removing eldest entry in cache: {}", eldest.getKey());
                 }
                 return result;
               }
@@ -89,9 +82,7 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
   public V remove(final K key) {
     V oldValue = cacheMap.remove(key);
     if (oldValue != null) {
-      if (DEBUG_ENABLED) {
-        LOGGER.debug("Removed cache entry for '" + key + "'");
-      }
+      LOGGER.debug("Removed cache entry for '{}'", key);
     }
     return oldValue;
   }
@@ -106,30 +97,24 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
    */
   public void put(final K key, final V newValue) {
     if (newValue == null || !newValue.isCurrent(key)) {
-      if (WARN_ENABLED) {
-        LOGGER.warn("Ignoring new cache entry for '" + key + "' because it is "
-                + (newValue == null ? "null" : "not current"));
-      }
+      LOGGER.warn("Ignoring new cache entry for '{}' because it is {}",
+                  key, newValue == null ? "null" : "not current");
       return;
     }
 
     V oldValue = cacheMap.get(key);
     if (oldValue != null && oldValue.isNewerThan(newValue)) {
-      if (WARN_ENABLED) {
-        LOGGER.warn("Ignoring new cache entry for '" + key + "' because "
-                + "existing cache entry is newer");
-      }
+      LOGGER.warn("Ignoring new cache entry for '{}' because "
+                  + "existing cache entry is newer", key);
       return;
     }
 
     // no existing value or new value is newer than old value
     oldValue = cacheMap.put(key, newValue);
-    if (DEBUG_ENABLED) {
-      if (oldValue == null) {
-        LOGGER.debug("Added new cache entry for '" + key + "'");
-      } else {
-        LOGGER.debug("Overwrote existing cache entry for '" + key + "'");
-      }
+    if (oldValue == null) {
+      LOGGER.debug("Added new cache entry for '{}'", key);
+    } else {
+      LOGGER.debug("Overwrote existing cache entry for '{}'", key);
     }
   }
 
@@ -150,10 +135,7 @@ final class LruCache<K, V extends LruCache.Value<K, V>> {
    */
   public V getCurrentValue(final K key) {
     V value = cacheMap.get(key);
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("Value for '" + key + "' " + (value == null ? "not " : "")
-              + "in cache");
-    }
+    LOGGER.debug("Value for '{}' {} in cache", key, value == null ? "not " : "");
     if (value != null && !value.isCurrent(key)) {
       // value is not current; remove it and return null
       remove(key);

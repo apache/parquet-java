@@ -84,9 +84,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
       try {
         ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers, level);
       } catch (Exception e) {
-        if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn("could not write summary file(s) for " + outputPath, e);
-        }
+        LOGGER.warn("could not write summary file(s) for {}", outputPath, e);
 
         final Path metadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_METADATA_FILE);
 
@@ -95,9 +93,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
             fileSystem.delete(metadataPath, true);
           }
         } catch (Exception e2) {
-          if (LOGGER.isWarnEnabled()) {
-            LOGGER.warn("could not delete metadata file" + outputPath, e2);
-          }
+          LOGGER.warn("could not delete metadata file{}", outputPath, e2);
         }
 
         try {
@@ -106,16 +102,12 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
             fileSystem.delete(commonMetadataPath, true);
           }
         } catch (Exception e2) {
-          if (LOGGER.isWarnEnabled()) {
-            LOGGER.warn("could not delete metadata file" + outputPath, e2);
-          }
+          LOGGER.warn("could not delete metadata file{}", outputPath, e2);
         }
 
       }
     } catch (Exception e) {
-      if (LOGGER.isWarnEnabled()) {
-        LOGGER.warn("could not write summary file for " + outputPath, e);
-      }
+      LOGGER.warn("could not write summary file for {}", outputPath, e);
     }
   }
 }

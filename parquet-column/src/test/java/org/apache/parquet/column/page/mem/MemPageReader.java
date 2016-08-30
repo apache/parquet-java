@@ -54,9 +54,7 @@ public class MemPageReader implements PageReader {
   public DataPage readPage() {
     if (pages.hasNext()) {
       DataPage next = pages.next();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("read page " + next);
-      }
+      LOGGER.debug("read page {}", next);
       return next;
     } else {
       throw new ParquetDecodingException("after last page");

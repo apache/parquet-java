@@ -153,9 +153,7 @@ public class TestTupleRecordConsumer {
       groupWriter.write(group);
       final Tuple tuple = pigRecordConsumer.getCurrentRecord();
       tuples.add(tuple);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("in: " + group + "\nout:" + tuple);
-      }
+      LOGGER.debug("in: {}\nout:{}", group, tuple);
     }
 
     List<Group> groups = new ArrayList<Group>();

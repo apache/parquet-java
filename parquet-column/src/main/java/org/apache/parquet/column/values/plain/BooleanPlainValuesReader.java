@@ -65,9 +65,7 @@ public class BooleanPlainValuesReader extends ValuesReader {
    */
   @Override
   public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("init from page at offset " + offset + " for length " + (in.limit() - offset));
-    }
+    LOGGER.debug("init from page at offset {} for length {}", offset, (in.limit() - offset));
     this.in.initFromPage(valueCount, in, offset);
   }
   

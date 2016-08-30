@@ -374,9 +374,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             cPools.put(com.getClass(), compressorPool);
             compressorPool.returnObject(com);
           } else {
-            if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor", codec.getClass().getName()));
-            }
+            LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor", codec.getClass().getName()));
           }
 
           decompressorPool = new GenericObjectPool(new BasePoolableObjectFactory() {
@@ -390,9 +388,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             dePools.put(decom.getClass(), decompressorPool);
             decompressorPool.returnObject(decom);
           } else {
-            if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "decompressor", codec.getClass().getName()));
-            }
+            LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "decompressor", codec.getClass().getName()));
           }
 
           if (supportDirectDecompressor) {
@@ -410,9 +406,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
             } else {
               supportDirectDecompressor = false;
-              if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor", codec.getClass().getName()));
-              }
+              LOGGER.debug(String.format(BYTE_BUF_IMPL_NOT_FOUND_MSG, "compressor", codec.getClass().getName()));
             }
 
           } else {

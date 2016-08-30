@@ -27,7 +27,6 @@ import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -54,10 +53,6 @@ import org.slf4j.LoggerFactory;
 
 class InternalParquetRecordReader<T> {
   private static final Logger LOGGER = LoggerFactory.getLogger(InternalParquetRecordReader.class);
-  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private ColumnIOFactory columnIOFactory = null;
   private final Filter filter;
@@ -116,18 +111,18 @@ class InternalParquetRecordReader<T> {
     if (current == totalCountLoadedSoFar) {
       if (current != 0) {
         totalTimeSpentProcessingRecords += (System.currentTimeMillis() - startedAssemblingCurrentBlockAt);
-        if (INFO_ENABLED) {
-            LOGGER.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info("Assembled and processed {} records from {} columns in {} ms: {} rec/ms, {} cell/ms", totalCountLoadedSoFar, columnCount, totalTimeSpentProcessingRecords, ((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords), ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords));
             final long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
             if (totalTime != 0) {
                 final long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
                 final long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
-                LOGGER.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
+              LOGGER.info("time spent so far {}% reading ({} ms) and {}% processing ({} ms)", percentReading, totalTimeSpentReadingBytes, percentProcessing, totalTimeSpentProcessingRecords);
             }
         }
       }
 
-      LOGGER.info("at row " + current + ". reading next block");
+      LOGGER.info("at row {}. reading next block", current);
       long t0 = System.currentTimeMillis();
       PageReadStore pages = reader.readNextRowGroup();
       if (pages == null) {
@@ -136,9 +131,9 @@ class InternalParquetRecordReader<T> {
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       BenchmarkCounter.incrementTime(timeSpentReading);
-      if (INFO_ENABLED) {
-        LOGGER.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
-        LOGGER.debug("initializing Record assembly with requested schema " + requestedSchema);
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info("block read in memory in {} ms. row count = {}", timeSpentReading, pages.getRowCount());
+        LOGGER.debug("initializing Record assembly with requested schema {}", requestedSchema);
       }
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);
       recordReader = columnIO.getRecordReader(pages, recordConverter,
@@ -187,7 +182,7 @@ class InternalParquetRecordReader<T> {
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(configuration, total);
     this.filterRecords = configuration.getBoolean(
         RECORD_FILTERING_ENABLED, RECORD_FILTERING_ENABLED_DEFAULT);
-    LOGGER.info("RecordReader initialized will read a total of " + total + " records.");
+    LOGGER.info("RecordReader initialized will read a total of {} records.", total);
   }
 
   public boolean nextKeyValue() throws IOException, InterruptedException {
@@ -206,34 +201,26 @@ class InternalParquetRecordReader<T> {
         } catch (RecordMaterializationException e) {
           // this might throw, but it's fatal if it does.
           unmaterializableRecordCounter.incErrors(e);
-          if (DEBUG_ENABLED) {
-            LOGGER.debug("skipping a corrupt record");
-          }
+          LOGGER.debug("skipping a corrupt record");
           continue;
         }
 
         if (recordReader.shouldSkipCurrentRecord()) {
           // this record is being filtered via the filter2 package
-          if (DEBUG_ENABLED) {
-            LOGGER.debug("skipping record");
-          }
+          LOGGER.debug("skipping record");
           continue;
         }
 
         if (currentValue == null) {
           // only happens with FilteredRecordReader at end of block
           current = totalCountLoadedSoFar;
-          if (DEBUG_ENABLED) {
-            LOGGER.debug("filtered record reader reached end of block");
-          }
+          LOGGER.debug("filtered record reader reached end of block");
           continue;
         }
 
         recordFound = true;
 
-        if (DEBUG_ENABLED) {
-          LOGGER.debug("read value: " + currentValue);
-        }
+        LOGGER.debug("read value: {}", currentValue);
       } catch (RuntimeException e) {
         throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, reader.getPath()), e);
       }

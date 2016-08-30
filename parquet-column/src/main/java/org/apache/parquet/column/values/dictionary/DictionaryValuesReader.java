@@ -56,13 +56,9 @@ public class DictionaryValuesReader extends ValuesReader {
       throws IOException {
     this.in = new ByteBufferInputStream(page, offset, page.limit() - offset);
     if (page.limit() - offset > 0) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("init from page at offset " + offset + " for length " + (page.limit() - offset));
-      }
+      LOGGER.debug("init from page at offset {} for length {}", offset, (page.limit() - offset));
       int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("bit width " + bitWidth);
-      }
+      LOGGER.debug("bit width {}", bitWidth);
       decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
     } else {
       decoder = new RunLengthBitPackingHybridDecoder(1, in) {

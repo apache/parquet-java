@@ -47,6 +47,9 @@ import org.apache.hadoop.util.Progressable;
 
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  *
  * A Parquet OutputFormat for Hive (with the deprecated package mapred)
@@ -55,7 +58,7 @@ import org.apache.parquet.hadoop.ParquetOutputFormat;
 public class MapredParquetOutputFormat extends FileOutputFormat<Void, ArrayWritable> implements
   HiveOutputFormat<Void, ArrayWritable> {
 
-  private static final Log LOG = LogFactory.getLog(MapredParquetOutputFormat.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MapredParquetOutputFormat.class);
 
   protected ParquetOutputFormat<ArrayWritable> realOutputFormat;
 
@@ -96,7 +99,7 @@ public class MapredParquetOutputFormat extends FileOutputFormat<Void, ArrayWrita
       final Properties tableProperties,
       final Progressable progress) throws IOException {
 
-    LOG.info("creating new record writer..." + this);
+    LOGGER.info("creating new record writer...{}", this);
 
     final String columnNameProperty = tableProperties.getProperty(IOConstants.COLUMNS);
     final String columnTypeProperty = tableProperties.getProperty(IOConstants.COLUMNS_TYPES);

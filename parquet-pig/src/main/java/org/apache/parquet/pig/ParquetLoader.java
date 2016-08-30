@@ -158,11 +158,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOGGER.debug("LoadFunc.setLocation(" + location + ", " + jobToString + ")");
-    }
-
+    LOGGER.debug("LoadFunc.setLocation({}, job[id={}, name={}])", location, job.getJobID(), job.getJobName());
     setInput(location, job);
   }
 
@@ -202,9 +198,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public InputFormat<Void, Tuple> getInputFormat() throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("LoadFunc.getInputFormat()");
-    }
+    LOGGER.debug("LoadFunc.getInputFormat()");
     return getParquetInputFormat();
   }
 
@@ -251,9 +245,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public void prepareToRead(@SuppressWarnings("rawtypes") RecordReader reader, PigSplit split)
       throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("LoadFunc.prepareToRead(" + reader + ", " + split + ")");
-    }
+    LOGGER.debug("LoadFunc.prepareToRead({}, {})", reader, split);
     this.reader = reader;
   }
 
@@ -273,20 +265,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public String[] getPartitionKeys(String location, Job job) throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOGGER.debug("LoadMetadata.getPartitionKeys(" + location + ", " + jobToString + ")");
-    }
+    LOGGER.debug("LoadMetadata.getPartitionKeys({}, job[id={}, name={}])", location, job.getJobID(), job.getJobName());
     setInput(location, job);
     return null;
   }
 
   @Override
   public ResourceSchema getSchema(String location, Job job) throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOGGER.debug("LoadMetadata.getSchema(" + location + ", " + jobToString + ")");
-    }
+    LOGGER.debug("LoadMetadata.getSchema({}, job[id={}, name={}])", location, job.getJobID(), job.getJobName());
     setInput(location, job);
     return new ResourceSchema(schema);
   }
@@ -328,10 +314,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOGGER.debug("LoadMetadata.getStatistics(" + location + ", " + jobToString + ")");
-    }
+    LOGGER.debug("LoadMetadata.getStatistics({}, job[id={}, name={}])", location, job.getJobID(), job.getJobName());
     /* We need to call setInput since setLocation is not
        guaranteed to be called before this */
     setInput(location, job);
@@ -352,9 +335,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setPartitionFilter(Expression expression) throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("LoadMetadata.setPartitionFilter(" + expression + ")");
-    }
+    LOGGER.debug("LoadMetadata.setPartitionFilter({})", expression);
   }
 
   @Override
@@ -472,10 +453,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setPushdownPredicate(Expression e) throws IOException {
-    LOGGER.info("Pig pushdown expression: " + e);
+    LOGGER.info("Pig pushdown expression: {}", e);
 
     FilterPredicate pred = buildFilter(e);
-    LOGGER.info("Parquet filter predicate expression: " + pred);
+    LOGGER.info("Parquet filter predicate expression: {}", pred);
 
     storeInUDFContext(ParquetInputFormat.FILTER_PREDICATE, pred);
   }

@@ -37,10 +37,6 @@ import org.slf4j.LoggerFactory;
 
 class ParquetReadProtocol extends ParquetProtocol {
   private static final Logger LOGGER = LoggerFactory.getLogger(ParquetReadProtocol.class);
-  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   ParquetReadProtocol() {
     super("read");
@@ -65,142 +61,102 @@ class ParquetReadProtocol extends ParquetProtocol {
   }
 
   public TMessage readMessageBegin() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readMessageBegin()");
-    }
+    LOGGER.debug("readMessageBegin()");
     return next().readMessageBegin();
   }
 
   public void readMessageEnd() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readMessageEnd()");
-    }
+    LOGGER.debug("readMessageEnd()");
     next().readMessageEnd();
   }
 
   public TStruct readStructBegin() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readStructBegin()");
-    }
+    LOGGER.debug("readStructBegin()");
     return next().readStructBegin();
   }
 
   public void readStructEnd() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readStructEnd()");
-    }
+    LOGGER.debug("readStructEnd()");
     next().readStructEnd();
   }
 
   public TField readFieldBegin() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readFieldBegin()");
-    }
+    LOGGER.debug("readFieldBegin()");
     return next().readFieldBegin();
   }
 
   public void readFieldEnd() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readFieldEnd()");
-    }
+    LOGGER.debug("readFieldEnd()");
     next().readFieldEnd();
   }
 
   public TMap readMapBegin() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readMapBegin()");
-    }
+    LOGGER.debug("readMapBegin()");
     return next().readMapBegin();
   }
 
   public void readMapEnd() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readMapEnd()");
-    }
+    LOGGER.debug("readMapEnd()");
     next().readMapEnd();
   }
 
   public TList readListBegin() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readListBegin()");
-    }
+    LOGGER.debug("readListBegin()");
     return next().readListBegin();
   }
 
   public void readListEnd() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readListEnd()");
-    }
+    LOGGER.debug("readListEnd()");
     next().readListEnd();
   }
 
   public TSet readSetBegin() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readSetBegin()");
-    }
+    LOGGER.debug("readSetBegin()");
     return next().readSetBegin();
   }
 
   public void readSetEnd() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readSetEnd()");
-    }
+    LOGGER.debug("readSetEnd()");
     next().readSetEnd();
   }
 
   public boolean readBool() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readBool()");
-    }
+    LOGGER.debug("readBool()");
     return next().readBool();
   }
 
   public byte readByte() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readByte()");
-    }
+    LOGGER.debug("readByte()");
     return next().readByte();
   }
 
   public short readI16() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readI16()");
-    }
+    LOGGER.debug("readI16()");
     return next().readI16();
   }
 
   public int readI32() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readI32()");
-    }
+    LOGGER.debug("readI32()");
     return next().readI32();
   }
 
   public long readI64() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readI64()");
-    }
+    LOGGER.debug("readI64()");
     return next().readI64();
   }
 
   public double readDouble() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readDouble()");
-    }
+    LOGGER.debug("readDouble()");
     return next().readDouble();
   }
 
   public String readString() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readString()");
-    }
+    LOGGER.debug("readString()");
     return next().readString();
   }
 
   public ByteBuffer readBinary() throws TException {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("readBinary()");
-    }
+    LOGGER.debug("readBinary()");
     return next().readBinary();
   }
 

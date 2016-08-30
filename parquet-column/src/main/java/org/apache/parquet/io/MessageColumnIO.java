@@ -62,9 +62,6 @@ import org.slf4j.LoggerFactory;
 public class MessageColumnIO extends GroupColumnIO {
   private static final Logger LOGGER = LoggerFactory.getLogger(MessageColumnIO.class);
   private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private List<PrimitiveColumnIO> leaves;
 
@@ -278,7 +275,7 @@ public class MessageColumnIO extends GroupColumnIO {
       for (int i = 0; i < currentLevel; ++i) {
         indent += "  ";
       }
-      LOGGER.debug(indent + m);
+      LOGGER.debug("{}{}", indent, m);
     }
 
     @Override

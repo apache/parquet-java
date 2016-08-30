@@ -130,8 +130,8 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     }
 
     if (!Strings.isNullOrEmpty(deprecated)) {
-      LOGGER.warn(String.format("Using %s is deprecated. Please see the docs for %s!",
-          THRIFT_COLUMN_FILTER_KEY, STRICT_THRIFT_COLUMN_FILTER_KEY));
+      LOGGER.warn("Using {} is deprecated. Please see the docs for {}!",
+                  THRIFT_COLUMN_FILTER_KEY, STRICT_THRIFT_COLUMN_FILTER_KEY);
       return new DeprecatedFieldProjectionFilter(deprecated);
     }
 

@@ -738,8 +738,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       Type elementType = repeatedType.getType(0);
       if (elementType.isRepetition(Type.Repetition.OPTIONAL)) {
         if (ignoreNullElements) {
-          LOGGER.warn("List " + listName +
-              " has optional elements: null elements are ignored.");
+          LOGGER.warn("List {} has optional elements: null elements are ignored.", listName);
         } else {
           throw new ParquetDecodingException("Cannot read list " + listName +
               " with optional elements: set " + IGNORE_NULL_LIST_ELEMENTS +

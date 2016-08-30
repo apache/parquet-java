@@ -54,9 +54,7 @@ public class MemPageWriter implements PageWriter {
     memSize += bytesInput.size();
     pages.add(new DataPageV1(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
     totalValueCount += valueCount;
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
-    }
+    LOGGER.debug("page written for {} bytes and {} records", bytesInput.size(), valueCount);
   }
 
   @Override
@@ -70,9 +68,7 @@ public class MemPageWriter implements PageWriter {
     memSize += size;
     pages.add(DataPageV2.uncompressed(rowCount, nullCount, valueCount, copy(repetitionLevels), copy(definitionLevels), dataEncoding, copy(data), statistics));
     totalValueCount += valueCount;
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("page written for " + size + " bytes and " + valueCount + " records");
-    }
+    LOGGER.debug("page written for {} bytes and {} records", size, valueCount);
 
   }
 
@@ -106,9 +102,7 @@ public class MemPageWriter implements PageWriter {
     }
     this.memSize += dictionaryPage.getBytes().size();
     this.dictionaryPage = dictionaryPage.copy();
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("dictionary page written for " + dictionaryPage.getBytes().size() + " bytes and " + dictionaryPage.getDictionarySize() + " records");
-    }
+    LOGGER.debug("dictionary page written for {} bytes and {} records", dictionaryPage.getBytes().size(), dictionaryPage.getDictionarySize());
   }
 
   @Override

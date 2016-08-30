@@ -46,7 +46,7 @@ public class CorruptDeltaByteArrays {
 
     if (!version.hasSemanticVersion()) {
       LOGGER.warn("Requiring sequential reads because created_by did not " +
-          "contain a valid version (see PARQUET-246): " + version.version);
+          "contain a valid version (see PARQUET-246): {}", version.version);
       return true;
     }
 
@@ -64,7 +64,7 @@ public class CorruptDeltaByteArrays {
 
     if (semver.compareTo(PARQUET_246_FIXED_VERSION) < 0) {
       LOGGER.info("Requiring sequential reads because this file was created " +
-          "prior to " + PARQUET_246_FIXED_VERSION + ". See PARQUET-246" );
+          "prior to {}. See PARQUET-246", PARQUET_246_FIXED_VERSION);
       return true;
     }
 
@@ -97,6 +97,6 @@ public class CorruptDeltaByteArrays {
 
   private static void warnParseError(String createdBy, Throwable e) {
     LOGGER.warn("Requiring sequential reads because created_by could not be " +
-        "parsed (see PARQUET-246): " + createdBy, e);
+        "parsed (see PARQUET-246): {}", createdBy, e);
   }
 }

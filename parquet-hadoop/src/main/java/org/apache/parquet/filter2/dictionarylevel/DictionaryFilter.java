@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.filter2.dictionarylevel;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
@@ -101,7 +100,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         case DOUBLE: dictSet.add(dict.decodeToDouble(i));
           break;
         default:
-          LOGGER.warn("Unknown dictionary type" + meta.getType());
+          LOGGER.warn("Unknown dictionary type{}", meta.getType());
       }
     }
 

@@ -139,8 +139,8 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     if (context instanceof TaskInputOutputContext<?, ?, ?, ?>) {
       BenchmarkCounter.initCounterFromContext((TaskInputOutputContext<?, ?, ?, ?>) context);
     } else {
-      LOGGER.error("Can not initialize counter due to context is not a instance of TaskInputOutputContext, but is "
-              + context.getClass().getCanonicalName());
+      LOGGER.error("Can not initialize counter due to context is not a instance of TaskInputOutputContext, but is {}",
+                   context.getClass().getCanonicalName());
     }
 
     initializeInternalReader(toParquetSplit(inputSplit), ContextUtil.getConfiguration(context));

@@ -38,28 +38,20 @@ public class TestLemireBitPacking {
   @Test
   public void testPackUnPack() {
     for (Packer packer : Packer.values()) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("");
-        LOGGER.debug("testPackUnPack");
-      }
+      LOGGER.debug("");
+      LOGGER.debug("testPackUnPack");
       for (int i = 1; i < 32; i++) {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Width: " + i);
-        }
+        LOGGER.debug("Width: {}", i);
         int[] values = generateValues(i);
         int[] unpacked = new int[32];
         {
           packUnpack(packer.newIntPacker(i), values, unpacked);
-          if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("int based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
-          }
+          LOGGER.debug("int based Output {}: {}", packer.name(), TestBitPacking.toString(unpacked));
           Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
         }
         {
           packUnpack(packer.newBytePacker(i), values, unpacked);
-          if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("byte based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
-          }
+          LOGGER.debug("byte based Output {}: {}", packer.name(), TestBitPacking.toString(unpacked));
           Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
         }
       }
@@ -83,22 +75,16 @@ public class TestLemireBitPacking {
     for (int j = 0; j < values.length; j++) {
       values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, bitWidth);
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Input:  " + TestBitPacking.toString(values));
-    }
+    LOGGER.debug("Input:  {}", TestBitPacking.toString(values));
     return values;
   }
 
   @Test
   public void testPackUnPackAgainstHandWritten() throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("");
-      LOGGER.debug("testPackUnPackAgainstHandWritten");
-    }
+    LOGGER.debug("");
+    LOGGER.debug("testPackUnPackAgainstHandWritten");
     for (int i = 1; i < 8; i++) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Width: " + i);
-      }
+      LOGGER.debug("Width: {}", i);
       int[] packed = new int[i];
       int[] unpacked = new int[32];
       int[] values = generateValues(i);
@@ -115,9 +101,7 @@ public class TestLemireBitPacking {
         lemireOut.write((v >>>  0) & 0xFF);
       }
       final byte[] packedByLemireAsBytes = lemireOut.toByteArray();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Lemire: " + TestBitPacking.toString(packedByLemireAsBytes));
-      }
+      LOGGER.debug("Lemire: {}", TestBitPacking.toString(packedByLemireAsBytes));
 
       // pack manual
       final ByteArrayOutputStream manualOut = new ByteArrayOutputStream();
@@ -126,9 +110,7 @@ public class TestLemireBitPacking {
         writer.write(values[j]);
       }
       final byte[] packedManualAsBytes = manualOut.toByteArray();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Manual: " + TestBitPacking.toString(packedManualAsBytes));
-      }
+      LOGGER.debug("Manual: {}", TestBitPacking.toString(packedManualAsBytes));
 
       // unpack manual
       final BitPackingReader reader = BitPacking.createBitPackingReader(i, new ByteArrayInputStream(packedByLemireAsBytes), 32);
@@ -136,9 +118,7 @@ public class TestLemireBitPacking {
         unpacked[j] = reader.read();
       }
 
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Output: " + TestBitPacking.toString(unpacked));
-      }
+      LOGGER.debug("Output: {}", TestBitPacking.toString(unpacked));
       Assert.assertArrayEquals("width " + i, values, unpacked);
     }
   }

@@ -69,13 +69,13 @@ public class FilterCompat {
   public static Filter get(FilterPredicate filterPredicate) {
     checkNotNull(filterPredicate, "filterPredicate");
 
-    LOGGER.info("Filtering using predicate: " + filterPredicate);
+    LOGGER.info("Filtering using predicate: {}", filterPredicate);
 
     // rewrite the predicate to not include the not() operator
     FilterPredicate collapsedPredicate = LogicalInverseRewriter.rewrite(filterPredicate);
 
     if (!filterPredicate.equals(collapsedPredicate)) {
-      LOGGER.info("Predicate has been collapsed to: " + collapsedPredicate);
+      LOGGER.info("Predicate has been collapsed to: {}", collapsedPredicate);
     }
 
     return new FilterPredicateCompat(collapsedPredicate);

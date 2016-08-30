@@ -70,10 +70,7 @@ public class HiveBindingFactory {
     try {
       hiveVersionInfo = Class.forName(HIVE_VERSION_CLASS_NAME, true, classLoader);
     } catch (ClassNotFoundException e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Class " + HIVE_VERSION_CLASS_NAME + ", not found, returning " +
-                     Hive010Binding.class.getSimpleName());
-      }
+      LOGGER.debug("Class {}, not found, returning {}", HIVE_VERSION_CLASS_NAME, Hive010Binding.class.getSimpleName());
       return Hive010Binding.class;
     }
     return createInternal(hiveVersionInfo);
@@ -89,42 +86,28 @@ public class HiveBindingFactory {
       Method getVersionMethod = hiveVersionInfo.
           getMethod(HIVE_VERSION_METHOD_NAME, (Class[])null);
       String rawVersion = (String)getVersionMethod.invoke(null, (Object[])null);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Raw Version from " + hiveVersionInfo.getSimpleName() + " is '" +
-                     rawVersion + "'");
-      }
+      LOGGER.debug("Raw Version from {} is '{}'", hiveVersionInfo.getSimpleName(), rawVersion);
       hiveVersion = trimVersion(rawVersion);
     } catch (Exception e) {
       throw new UnexpectedHiveVersionProviderError("Unexpected error whilst " +
           "determining Hive version", e);
     }
     if(hiveVersion.equalsIgnoreCase(HIVE_VERSION_UNKNOWN)) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Unknown hive version, attempting to guess");
-      }
+      LOGGER.debug("Unknown hive version, attempting to guess");
       return createBindingForUnknownVersion();
     }
     if(hiveVersion.startsWith(HIVE_VERSION_010)) {
-      if (LOGGER.isDebugEnabled())
-        LOGGER.debug("Hive version " + hiveVersion + ", returning " +
-          Hive010Binding.class.getSimpleName());
+      LOGGER.debug("Hive version {}, returning {}", hiveVersion, Hive010Binding.class.getSimpleName());
       return Hive010Binding.class;
     } else if(hiveVersion.startsWith(HIVE_VERSION_011)) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Hive version " + hiveVersion + ", returning " +
-                     Hive010Binding.class.getSimpleName() + " as it's expected the 0.10 " +
-                     "binding will work with 0.11");
-      }
+      LOGGER.debug("Hive version {}, returning {}", hiveVersion, Hive010Binding.class.getSimpleName());
       return Hive010Binding.class;
     } else if(hiveVersion.startsWith(HIVE_VERSION_013)) {
       throw new HiveBindingInstantiationError("Hive 0.13 contains native Parquet support " + 
           "and the parquet-hive jars from the parquet project should not be included " +
           "in Hive's classpath.");
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Hive version " + hiveVersion + ", returning " +
-                   Hive012Binding.class.getSimpleName());
-    }
+    LOGGER.debug("Hive version {}, returning {}", hiveVersion, Hive012Binding.class.getSimpleName());
     // as of 11/26/2013 it looks like the 0.12 binding will work for 0.13
     return Hive012Binding.class;
   }
@@ -134,20 +117,14 @@ public class HiveBindingFactory {
       Class<?> utilitiesClass = Class.forName(HIVE_UTILITIES_CLASS_NAME);
       for(Method method : utilitiesClass.getDeclaredMethods()) {
         if(HIVE_012_INDICATOR_UTILITIES_GETMAPWORK.equals(method.getName())) {
-          if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Found " + HIVE_UTILITIES_CLASS_NAME + "." +
-                         HIVE_012_INDICATOR_UTILITIES_GETMAPWORK + " returning 0.12 binding");
-          }
+          LOGGER.debug("Found {}.{} returning 0.12 binding", HIVE_UTILITIES_CLASS_NAME, HIVE_012_INDICATOR_UTILITIES_GETMAPWORK);
           return Hive012Binding.class;
         }
       }
       // if the getMapWork method does not exist then it must be 0.10 or 0.11
       return Hive010Binding.class;
     } catch (ClassNotFoundException e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Could not find " + HIVE_UTILITIES_CLASS_NAME + ", returning" +
-                     " the latest binding since this class existed in 0.10, 0.11, and 0.12");
-      }
+      LOGGER.debug("Could not find {}, returning the latest binding since this class existed in 0.10, 0.11, and 0.12", HIVE_UTILITIES_CLASS_NAME);
       return LATEST_BINDING;
     }
   }

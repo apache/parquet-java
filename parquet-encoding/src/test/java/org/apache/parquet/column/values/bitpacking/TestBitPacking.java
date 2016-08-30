@@ -171,10 +171,8 @@ public class TestBitPacking {
     }
     w.finish();
     byte[] bytes = baos.toByteArray();
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("vals (" + bitLength + "): " + toString(vals));
-      LOGGER.debug("bytes: " + toString(bytes));
-    }
+    LOGGER.debug("vals ({}): {}", bitLength, toString(vals));
+    LOGGER.debug("bytes: {}", toString(bytes));
     Assert.assertEquals(expected, toString(bytes));
     ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     BitPackingReader r = BitPacking.createBitPackingReader(bitLength, bais, vals.length);
@@ -182,9 +180,7 @@ public class TestBitPacking {
     for (int i = 0; i < result.length; i++) {
       result[i] = r.read();
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("result: " + toString(result));
-    }
+    LOGGER.debug("result: {}", toString(result));
     assertArrayEquals(vals, result);
   }
 

@@ -66,10 +66,6 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DictionaryValuesWriter extends ValuesWriter implements RequiresFallback {
   private static final Logger LOGGER = LoggerFactory.getLogger(DictionaryValuesWriter.class);
-  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   /* max entries allowed for the dictionary will fail over to plain encoding if reached */
   private static final int MAX_DICTIONARY_ENTRIES = Integer.MAX_VALUE - 1;
@@ -163,9 +159,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   @Override
   public BytesInput getBytes() {
     int maxDicId = getDictionarySize() - 1;
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("max dic id " + maxDicId);
-    }
+    LOGGER.debug("max dic id {}", maxDicId);
     int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
     int initialSlabSize =
         CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_INITIAL_SLAB_SIZE, maxDictionaryByteSize, 10);
@@ -181,9 +175,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       // encodes the bit width
       byte[] bytesHeader = new byte[] { (byte) bitWidth };
       BytesInput rleEncodedBytes = encoder.toBytes();
-      if (DEBUG_ENABLED) {
-        LOGGER.debug("rle encoded bytes " + rleEncodedBytes.size());
-      }
+      LOGGER.debug("rle encoded bytes {}", rleEncodedBytes.size());
       BytesInput bytes = concat(BytesInput.from(bytesHeader), rleEncodedBytes);
       // remember size of dictionary when we last wrote a page
       lastUsedDictionarySize = getDictionarySize();

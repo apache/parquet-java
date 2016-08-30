@@ -75,9 +75,7 @@ public class BitPackingValuesReader extends ValuesReader {
   public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
     int effectiveBitLength = valueCount * bitsPerValue;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength);
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits.");
-    }
+    LOGGER.debug("reading {} bytes for {} values of size {} bits.", length, valueCount, bitsPerValue);
     this.in = new ByteBufferInputStream(in, offset, length);
     this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);
     this.nextOffset = offset + length;

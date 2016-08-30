@@ -63,15 +63,11 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
     if (requestedProjectionString != null && !requestedProjectionString.trim().isEmpty()) {
       MessageType requestedProjection = getSchemaForRead(context.getFileSchema(), requestedProjectionString);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Reading data with projection " + requestedProjection);
-      }
+      LOGGER.debug("Reading data with projection {}", requestedProjection);
       return new ReadContext(requestedProjection);
     } else {
       MessageType fileSchema = context.getFileSchema();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Reading data with schema " + fileSchema);
-      }
+      LOGGER.debug("Reading data with schema {}", fileSchema);
       return new ReadContext(fileSchema);
     }
   }
@@ -82,9 +78,7 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
     String configuredProtoClass = configuration.get(PB_CLASS);
 
     if (configuredProtoClass != null) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Replacing class " + headerProtoClass + " by " + configuredProtoClass);
-      }
+      LOGGER.debug("Replacing class {} by {}", headerProtoClass, configuredProtoClass);
       headerProtoClass = configuredProtoClass;
     }
 
@@ -92,9 +86,7 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
       throw new RuntimeException("I Need parameter " + PB_CLASS + " with Protocol Buffer class");
     }
 
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Reading data with Protocol Buffer class " + headerProtoClass);
-    }
+    LOGGER.debug("Reading data with Protocol Buffer class {}", headerProtoClass);
 
     MessageType requestedSchema = readContext.getRequestedSchema();
     Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);

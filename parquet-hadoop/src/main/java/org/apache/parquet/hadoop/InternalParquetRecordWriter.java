@@ -162,7 +162,7 @@ class InternalParquetRecordWriter<T> {
     recordConsumer.flush();
     LOGGER.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.getAllocatedSize()));
     if (columnStore.getAllocatedSize() > (3 * rowGroupSizeThreshold)) {
-      LOGGER.warn("Too much memory used: " + columnStore.memUsageString());
+      LOGGER.warn("Too much memory used: {}", columnStore.memUsageString());
     }
 
     if (recordCount > 0) {

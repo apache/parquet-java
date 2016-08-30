@@ -140,9 +140,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     Type currentType = types.peek().asGroupType().getType(fields.peek());
     int c = fieldValueCount.pop() + 1;
     fieldValueCount.push(c);
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("validate " + p + " for " + currentType.getName());
-    }
+    LOGGER.debug("validate {} for {}", p, currentType.getName());
     switch (currentType.getRepetition()) {
       case OPTIONAL:
       case REQUIRED:
@@ -165,7 +163,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     int c = fieldValueCount.pop() + 1;
     fieldValueCount.push(c);
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("validate " + Arrays.toString(ptypes) + " for " + currentType.getName());
+      LOGGER.debug("validate {} for {}", Arrays.toString(ptypes), currentType.getName());
     }
     switch (currentType.getRepetition()) {
       case OPTIONAL:

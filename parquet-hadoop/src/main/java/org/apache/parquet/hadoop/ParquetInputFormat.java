@@ -384,7 +384,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         result.add(file);
       }
     }
-    LOGGER.info("Total input paths to process : " + result.size());
+    LOGGER.info("Total input paths to process : {}", result.size());
     return result;
   }
 
@@ -426,10 +426,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       FileStatusWrapper statusWrapper = new FileStatusWrapper(status);
       FootersCacheValue cacheEntry =
               footersCache.getCurrentValue(statusWrapper);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Cache entry " + (cacheEntry == null ? "not " : "")
-                + " found for '" + status.getPath() + "'");
-      }
+      LOGGER.debug("Cache entry {} found for '{}'", cacheEntry == null ? "not " : "", status.getPath());
       if (cacheEntry != null) {
         footersMap.put(statusWrapper, cacheEntry.getFooter());
       } else {
@@ -438,10 +435,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         missingStatusesMap.put(status.getPath(), statusWrapper);
       }
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("found " + footersMap.size() + " footers in cache and adding up "
-              + "to " + missingStatuses.size() + " missing footers to the cache");
-    }
+    LOGGER.debug("found {} footers in cache and adding up to {} missing footers to the cache",
+                 footersMap.size(), missingStatuses.size());
 
     if (!missingStatuses.isEmpty()) {
       List<Footer> newFooters = getFooters(config, missingStatuses);
@@ -482,9 +477,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public List<Footer> getFooters(Configuration configuration, Collection<FileStatus> statuses) throws IOException {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("reading " + statuses.size() + " files");
-    }
+    LOGGER.debug("reading {} files", statuses.size());
     boolean taskSideMetaData = isTaskSideMetaData(configuration);
     return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, taskSideMetaData);
   }
@@ -517,10 +510,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     public boolean isCurrent(FileStatusWrapper key) {
       long currentModTime = key.getModificationTime();
       boolean isCurrent = modificationTime >= currentModTime;
-      if (LOGGER.isDebugEnabled() && !isCurrent) {
-        LOGGER.debug("The cache value for '" + key + "' is not current: "
-                + "cached modification time=" + modificationTime + ", "
-                + "current modification time: " + currentModTime);
+      if (!isCurrent) {
+        LOGGER.debug("The cache value for '{}' is not current: cached modification time={}, current modification time: {}",
+                     key, modificationTime, currentModTime);
       }
       return isCurrent;
     }
@@ -706,9 +698,7 @@ class ClientSideMetadataSplitStrategy {
 
     for (Footer footer : footers) {
       final Path file = footer.getFile();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("{}", file);
-      }
+      LOGGER.debug("{}", file);
       FileSystem fs = file.getFileSystem(configuration);
       FileStatus fileStatus = fs.getFileStatus(file);
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
@@ -739,13 +729,9 @@ class ClientSideMetadataSplitStrategy {
 
     if (rowGroupsDropped > 0 && totalRowGroups > 0) {
       int percentDropped = (int) ((((double) rowGroupsDropped) / totalRowGroups) * 100);
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("Dropping " + rowGroupsDropped + " row groups that do not pass filter predicate! (" + percentDropped + "%)");
-      }
+      LOGGER.info("Dropping {} row groups that do not pass filter predicate! ({}%)", rowGroupsDropped, percentDropped);
     } else {
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("There were no row groups that could be dropped due to filter predicates");
-      }
+      LOGGER.info("There were no row groups that could be dropped due to filter predicates");
     }
     return splits;
   }

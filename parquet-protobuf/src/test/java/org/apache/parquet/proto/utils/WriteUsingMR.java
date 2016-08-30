@@ -47,10 +47,6 @@ import org.slf4j.LoggerFactory;
 public class WriteUsingMR {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteUsingMR.class);
-  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   Configuration conf = new Configuration();
   private static List<Message> inputMessages;
@@ -68,9 +64,7 @@ public class WriteUsingMR {
       } else {
         for (Message msg : inputMessages) {
           context.write(null, msg);
-          if (DEBUG_ENABLED) {
-            LOGGER.debug("Reading msg from mock writing mapper" + msg);
-          }
+          LOGGER.debug("Reading msg from mock writing mapper{}", msg);
         }
       }
     }
@@ -111,14 +105,10 @@ public class WriteUsingMR {
   static void waitForJob(Job job) throws Exception {
     job.submit();
     while (!job.isComplete()) {
-      if (DEBUG_ENABLED) {
-        LOGGER.debug("waiting for job " + job.getJobName());
-      }
+      LOGGER.debug("waiting for job {}", job.getJobName());
       sleep(50);
     }
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
-    }
+    LOGGER.debug("status for job {}: {}", job.getJobName(), job.isSuccessful() ? "SUCCESS" : "FAILURE");
     if (!job.isSuccessful()) {
       throw new RuntimeException("job failed " + job.getJobName());
     }

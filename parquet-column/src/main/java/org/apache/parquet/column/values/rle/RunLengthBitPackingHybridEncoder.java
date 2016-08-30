@@ -118,10 +118,8 @@ public class RunLengthBitPackingHybridEncoder {
   private boolean toBytesCalled;
 
   public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(String.format("Encoding: RunLengthBitPackingHybridEncoder with "
-        + "bithWidth: %d initialCapacity %d", bitWidth, initialCapacity));
-    }
+    LOGGER.debug("Encoding: RunLengthBitPackingHybridEncoder with bithWidth: {} initialCapacity {}",
+                 bitWidth, initialCapacity);
 
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
 

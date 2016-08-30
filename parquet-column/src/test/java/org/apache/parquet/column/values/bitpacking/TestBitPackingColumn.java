@@ -165,21 +165,15 @@ public class TestBitPackingColumn {
 
   private void validateEncodeDecode(int bitLength, int[] vals, String expected) throws IOException {
     for (PACKING_TYPE type : PACKING_TYPE.values()) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("{}", type);
-      }
+      LOGGER.debug("{}", type);
       final int bound = (int)Math.pow(2, bitLength) - 1;
       ValuesWriter w = type.getWriter(bound);
       for (int i : vals) {
         w.writeInteger(i);
       }
       byte[] bytes = w.getBytes().toByteArray();
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("vals (" + bitLength + "): " + TestBitPacking.toString(vals));
-      }
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("bytes: " + TestBitPacking.toString(bytes));
-      }
+      LOGGER.debug("vals ({}): {}", bitLength, TestBitPacking.toString(vals));
+      LOGGER.debug("bytes: {}", TestBitPacking.toString(bytes));
       assertEquals(type.toString(), expected, TestBitPacking.toString(bytes));
       ValuesReader r = type.getReader(bound);
       r.initFromPage(vals.length, ByteBuffer.wrap(bytes), 0);
@@ -187,9 +181,7 @@ public class TestBitPackingColumn {
       for (int i = 0; i < result.length; i++) {
         result[i] = r.readInteger();
       }
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("result: " + TestBitPacking.toString(result));
-      }
+      LOGGER.debug("result: {}", TestBitPacking.toString(result));
       assertArrayEquals(type + " result: " + TestBitPacking.toString(result), vals, result);
     }
   }

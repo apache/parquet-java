@@ -202,9 +202,7 @@ public class ParquetFileReader implements Closeable {
 
     if (toRead.size() > 0) {
       // read the footers of the files that did not have a summary file
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("reading another " + toRead.size() + " footers");
-      }
+      LOGGER.info("reading another {} footers", toRead.size());
       result.addAll(readAllFootersInParallel(configuration, toRead, skipRowGroups));
     }
 
@@ -212,9 +210,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   private static <T> List<T> runAllInParallel(int parallelism, List<Callable<T>> toRun) throws ExecutionException {
-    if (LOGGER.isInfoEnabled()) {
-      LOGGER.info("Initiating action with parallelism: " + parallelism);
-    }
+    LOGGER.info("Initiating action with parallelism: {}", parallelism);
     ExecutorService threadPool = Executors.newFixedThreadPool(parallelism);
     try {
       List<Future<T>> futures = new ArrayList<Future<T>>();
@@ -360,14 +356,10 @@ public class ParquetFileReader implements Closeable {
     FileSystem fileSystem = basePath.getFileSystem(configuration);
     if (skipRowGroups && fileSystem.exists(commonMetaDataFile)) {
       // reading the summary file that does not contain the row groups
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("reading summary file: " + commonMetaDataFile);
-      }
+      LOGGER.info("reading summary file: {}", commonMetaDataFile);
       return readFooter(configuration, commonMetaDataFile, filter(skipRowGroups));
     } else if (fileSystem.exists(metadataFile)) {
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("reading summary file: " + metadataFile);
-      }
+      LOGGER.info("reading summary file: {}", metadataFile);
       return readFooter(configuration, metadataFile, filter(skipRowGroups));
     } else {
       return null;
@@ -456,13 +448,13 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if an error occurs while reading the file
    */
   public static final ParquetMetadata readFooter(long fileLen, String filePath, SeekableInputStream f, MetadataFilter filter) throws IOException {
-    LOGGER.debug("File length " + fileLen);
+    LOGGER.debug("File length {}", fileLen);
     int FOOTER_LENGTH_SIZE = 4;
     if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
       throw new RuntimeException(filePath + " is not a Parquet file (too small)");
     }
     long footerLengthIndex = fileLen - FOOTER_LENGTH_SIZE - MAGIC.length;
-    LOGGER.debug("reading footer index at " + footerLengthIndex);
+    LOGGER.debug("reading footer index at {}", footerLengthIndex);
 
     f.seek(footerLengthIndex);
     int footerLength = readIntLittleEndian(f);
@@ -472,9 +464,7 @@ public class ParquetFileReader implements Closeable {
       throw new RuntimeException(filePath + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
     }
     long footerIndex = footerLengthIndex - footerLength;
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
-    }
+    LOGGER.debug("read footer length: {}, footer index: {}", footerLength, footerIndex);
     if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
       throw new RuntimeException("corrupted file: the footer index is not within the file");
     }
@@ -894,9 +884,7 @@ public class ParquetFileReader implements Closeable {
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
             break;
           default:
-            if (LOGGER.isDebugEnabled()){
-              LOGGER.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
-            }
+            LOGGER.debug("skipping page of type {} of size {}", pageHeader.getType(), compressedPageSize);
             this.skip(compressedPageSize);
             break;
         }
@@ -981,9 +969,7 @@ public class ParquetFileReader implements Closeable {
         // usually 13 to 19 bytes are missing
         int l1 = initPos + count - pos();
         int l2 = size - l1;
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info("completed the column chunk with " + l2 + " bytes");
-        }
+        LOGGER.info("completed the column chunk with {} bytes", l2);
         return BytesInput.concat(super.readAsBytesInput(l1), BytesInput.copy(BytesInput.from(f, l2)));
       }
       return super.readAsBytesInput(size);

@@ -54,15 +54,13 @@ public class ProtoSchemaConverter {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProtoSchemaConverter.class);
 
   public MessageType convert(Class<? extends Message> protobufClass) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
-    }
+    LOGGER.debug("Converting protocol buffer class \"{}\" to parquet schema.", protobufClass);
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
     MessageType messageType =
         convertFields(Types.buildMessage(), descriptor.getFields())
         .named(descriptor.getFullName());
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
+      LOGGER.debug("Converter info:\n {} was converted to \n{}", descriptor.toProto(), messageType);
     }
     return messageType;
   }

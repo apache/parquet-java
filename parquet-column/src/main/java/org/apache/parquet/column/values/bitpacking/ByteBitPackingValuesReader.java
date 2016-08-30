@@ -71,9 +71,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
       throws IOException {
     int effectiveBitLength = valueCount * bitWidth;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength); // ceil
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitWidth + " bits.");
-    }
+    LOGGER.debug("reading {} bytes for {} values of size {} bits.", length, valueCount, bitWidth);
     this.encoded = page;
     this.encodedPos = offset;
     this.decodedPosition = VALUES_AT_A_TIME - 1;

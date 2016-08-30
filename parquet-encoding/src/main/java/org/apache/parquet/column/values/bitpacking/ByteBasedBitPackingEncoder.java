@@ -38,10 +38,6 @@ import org.slf4j.LoggerFactory;
  */
 public class ByteBasedBitPackingEncoder {
   private static final Logger LOGGER = LoggerFactory.getLogger(ByteBasedBitPackingEncoder.class);
-  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private static final int VALUES_WRITTEN_AT_A_TIME = 8;
 
@@ -103,10 +99,7 @@ public class ByteBasedBitPackingEncoder {
    */
   public BytesInput toBytes() throws IOException {
     int packedByteLength = packedPosition + BytesUtils.paddedByteCountFromBits(inputSize * bitWidth);
-
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("writing " + (slabs.size() * slabSize + packedByteLength) + " bytes");
-    }
+    LOGGER.debug("writing {} bytes", slabs.size() * slabSize + packedByteLength);
     if (inputSize > 0) {
       for (int i = inputSize; i < input.length; i++) {
         input[i] = 0;

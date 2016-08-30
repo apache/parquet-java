@@ -40,10 +40,6 @@ import org.slf4j.LoggerFactory;
  */
 public class RunLengthBitPackingHybridDecoder {
   private static final Logger LOGGER = LoggerFactory.getLogger(RunLengthBitPackingHybridDecoder.class);
-  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   private static enum MODE { RLE, PACKED }
 
@@ -57,9 +53,7 @@ public class RunLengthBitPackingHybridDecoder {
   private int[] currentBuffer;
 
   public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
-    if (DEBUG_ENABLED) {
-      LOGGER.debug("decoding bitWidth " + bitWidth);
-    }
+    LOGGER.debug("decoding bitWidth {}", bitWidth);
 
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
     this.bitWidth = bitWidth;
@@ -93,17 +87,13 @@ public class RunLengthBitPackingHybridDecoder {
     switch (mode) {
     case RLE:
       currentCount = header >>> 1;
-      if (DEBUG_ENABLED) {
-        LOGGER.debug("reading " + currentCount + " values RLE");
-      }
+      LOGGER.debug("reading {} values RLE", currentCount);
       currentValue = BytesUtils.readIntLittleEndianPaddedOnBitWidth(in, bitWidth);
       break;
     case PACKED:
       int numGroups = header >>> 1;
       currentCount = numGroups * 8;
-      if (DEBUG_ENABLED) {
-        LOGGER.debug("reading " + currentCount + " values BIT PACKED");
-      }
+      LOGGER.debug("reading {} values BIT PACKED", currentCount);
       currentBuffer = new int[currentCount]; // TODO: reuse a buffer
       byte[] bytes = new byte[numGroups * bitWidth];
       // At the end of the file RLE data though, there might not be that many bytes left.

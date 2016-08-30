@@ -75,6 +75,7 @@ public class TestInputOutputFormat {
     protected void map(Void key, GenericRecord value, Context context) throws IOException ,InterruptedException {
       context.write(null, new Text(value.toString()));
     }
+
   }
 
   @Test
@@ -133,12 +134,10 @@ public class TestInputOutputFormat {
   private void waitForJob(Job job) throws Exception {
     job.submit();
     while (!job.isComplete()) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("waiting for job " + job.getJobName());
-      }
+      LOGGER.debug("waiting for job {}", job.getJobName());
       sleep(100);
     }
-    LOGGER.info("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
+    LOGGER.info("status for job {}: {}", job.getJobName(), job.isSuccessful() ? "SUCCESS" : "FAILURE");
     if (!job.isSuccessful()) {
       throw new RuntimeException("job failed " + job.getJobName());
     }

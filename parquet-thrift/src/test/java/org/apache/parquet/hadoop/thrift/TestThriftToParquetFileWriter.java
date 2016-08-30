@@ -270,7 +270,7 @@ public class TestThriftToParquetFileWriter {
 
   private <T extends TBase<?,?>> Path createFile(T... tObjs) throws IOException, InterruptedException, TException  {
     final Path fileToCreate = new Path("target/test/TestThriftToParquetFileWriter/"+tObjs[0].getClass()+".parquet");
-    LOGGER.info("File created: " + fileToCreate.toString());
+    LOGGER.info("File created: {}", fileToCreate);
     Configuration conf = new Configuration();
     final FileSystem fs = fileToCreate.getFileSystem(conf);
     if (fs.exists(fileToCreate)) {

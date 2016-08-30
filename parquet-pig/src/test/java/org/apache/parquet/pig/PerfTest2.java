@@ -67,10 +67,6 @@ public class PerfTest2 {
   private static Configuration conf = new Configuration();
   private static int jobid = 0;
   private static final Logger LOGGER = LoggerFactory.getLogger(PerfTest2.class);
-  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
-  private static final boolean WARN_ENABLED = LOGGER.isWarnEnabled();
-  private static final boolean INFO_ENABLED = LOGGER.isInfoEnabled();
-  private static final boolean ERROR_ENABLED = LOGGER.isErrorEnabled();
 
   public static void main(String[] args) throws Exception {
     StringBuilder results = new StringBuilder();
@@ -180,7 +176,7 @@ public class PerfTest2 {
       recordReader.initialize(split, taskAttemptContext);
       Tuple t;
       while ((t = loadFunc.getNext()) != null) {
-        if (DEBUG_ENABLED) {
+        if (LOGGER.isDebugEnabled()) {
           System.out.println(t);
         }
         ++i;
