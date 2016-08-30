@@ -168,7 +168,6 @@
           <aggregate>true</aggregate>
           <instrumentation>
             <ignores>
-              <ignore>org.apache.parquet.Log.*</ignore>
               <ignore>java.lang.UnsupportedOperationException.*</ignore>
             </ignores>
             <excludes>
@@ -387,6 +386,10 @@
           <excludes>
             <exclude>**/benchmark/*.java</exclude>
           </excludes>
+          <!-- exclude slf4j-log4j12 from classpath (so as to exclude it from test scope)-->
+          <classpathDependencyExcludes>
+            <classpathDependencyExclude>org.slf4j:slf4j-log4j12</classpathDependencyExclude>
+          </classpathDependencyExcludes>
         </configuration>
       </plugin>
       <plugin>
