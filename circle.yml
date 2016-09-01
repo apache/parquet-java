@@ -1,0 +1,22 @@
+general:
+  artifacts:
+    -
+
+machine:
+  pre:
+    - ./scripts/install_deps.sh
+  java:
+    version: oraclejdk8
+  environment:
+    TERM: dumb
+
+test:
+  override:
+    - ./build/mvn test -Pthrift9
+
+deployment:
+  release:
+    tag: /[0-9]+(\.[0-9]+)+/
+    commands:
+      - ./gradlew -i bintrayUpload
+
