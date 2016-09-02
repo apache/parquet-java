@@ -38,9 +38,29 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public void updateStats(Binary value) {
     if (!this.hasNonNullValue()) {
-      initializeStats(value, value);
+      initializeStatsSigned(value, value);
+      initializeStatsUnsigned(value, value);
     } else {
-      updateStats(value, value);
+      updateStatsSigned(value, value);
+      updateStatsUnsigned(value, value);
+    }
+  }
+
+  @Override
+  public void updateStatsSigned(Binary value) {
+    if (!this.hasNonNullValue()) {
+      initializeStatsSigned(value, value);
+    } else {
+      updateStatsSigned(value, value);
+    }
+  }
+
+  @Override
+  public void updateStatsUnsigned(Binary value) {
+    if (!this.hasNonNullValue()) {
+      initializeStatsUnsigned(value, value);
+    } else {
+      updateStatsUnsigned(value, value);
     }
   }
 
@@ -48,11 +68,11 @@ public class BinaryStatistics extends Statistics<Binary> {
   public void mergeStatisticsMinMax(Statistics stats) {
     BinaryStatistics binaryStats = (BinaryStatistics)stats;
     if (!this.hasNonNullValue()) {
-      initializeStats(binaryStats.genericGetMinSigned(), binaryStats.genericGetMaxSigned());
-      initializeStats(binaryStats.genericGetMinUnsigned(), binaryStats.genericGetMaxUnsigned());
+      initializeStatsSigned(binaryStats.genericGetMinSigned(), binaryStats.genericGetMaxSigned());
+      initializeStatsUnsigned(binaryStats.genericGetMinUnsigned(), binaryStats.genericGetMaxUnsigned());
     } else {
-      updateStats(binaryStats.genericGetMinSigned(), binaryStats.genericGetMaxSigned());
-      updateStats(binaryStats.genericGetMinUnsigned(), binaryStats.genericGetMaxUnsigned());
+      updateStatsSigned(binaryStats.genericGetMinSigned(), binaryStats.genericGetMaxSigned());
+      updateStatsUnsigned(binaryStats.genericGetMinUnsigned(), binaryStats.genericGetMaxUnsigned());
     }
   }
 
@@ -136,26 +156,37 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   /**
-   * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
+   * Tries to update the unsigned min and max to the new potential min_value and max_value.
    */
-  @Deprecated
-  public void updateStats(Binary min_value, Binary max_value) {
-    if (minSigned.compareTo(min_value) > 0) { minSigned = min_value.copy(); }
-    if (maxSigned.compareTo(max_value) < 0) { maxSigned = max_value.copy(); }
+  public void updateStatsUnsigned(Binary min_value, Binary max_value) {
     if (Binary.compareTwoBinaryUnsigned(minUnsigned, min_value) > 0) { minUnsigned = min_value.copy(); }
     if (Binary.compareTwoBinaryUnsigned(maxUnsigned, max_value) < 0) { maxUnsigned = max_value.copy(); }
   }
 
   /**
-   * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
+   * Tries to update the signed min and max to the new potential min_value and max_value.
    */
-  @Deprecated
-  public void initializeStats(Binary min_value, Binary max_value) {
-      minSigned = min_value.copy();
-      maxSigned = max_value.copy();
-      minUnsigned = min_value.copy();
-      maxUnsigned = max_value.copy();
-      this.markAsNotEmpty();
+  public void updateStatsSigned(Binary min_value, Binary max_value) {
+    if (minSigned.compareTo(min_value) > 0) { minSigned = min_value.copy(); }
+    if (maxSigned.compareTo(max_value) < 0) { maxSigned = max_value.copy(); }
+  }
+
+  /**
+   * Only initialize the unsigned min/max fields.
+   */
+  public void initializeStatsUnsigned(Binary min_value, Binary max_value) {
+    minUnsigned = min_value.copy();
+    maxUnsigned = max_value.copy();
+    this.markAsNotEmpty();
+  }
+
+  /**
+   * Only initialize the signed min/max fields.
+   */
+  public void initializeStatsSigned(Binary min_value, Binary max_value) {
+    minSigned = min_value.copy();
+    maxSigned = max_value.copy();
+    this.markAsNotEmpty();
   }
 
   /**

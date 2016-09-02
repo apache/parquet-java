@@ -194,12 +194,12 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     int compareTo(byte[] other, int otherOffset, int otherLength) {
-      return Binary.compareTwoByteArrays(value, offset, length, other, otherOffset, otherLength);
+      return Binary.compareTwoByteArraysSigned(value, offset, length, other, otherOffset, otherLength);
     }
 
     @Override
     int compareTo(ByteBuffer bytes, int otherOffset, int otherLength) {
-      return Binary.compareByteArrayToByteBuffer(value, offset, length, bytes, otherOffset, otherLength);
+      return Binary.compareByteArrayToByteBufferSigned(value, offset, length, bytes, otherOffset, otherLength);
     }
 
     @Override
@@ -350,12 +350,12 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     int compareTo(byte[] other, int otherOffset, int otherLength) {
-      return Binary.compareTwoByteArrays(value, 0, value.length, other, otherOffset, otherLength);
+      return Binary.compareTwoByteArraysSigned(value, 0, value.length, other, otherOffset, otherLength);
     }
 
     @Override
     int compareTo(ByteBuffer bytes, int otherOffset, int otherLength) {
-      return Binary.compareByteArrayToByteBuffer(value, 0, value.length, bytes, otherOffset, otherLength);
+      return Binary.compareByteArrayToByteBufferSigned(value, 0, value.length, bytes, otherOffset, otherLength);
     }
 
     @Override
@@ -515,16 +515,16 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     int compareTo(byte[] other, int otherOffset, int otherLength) {
       if (value.hasArray()) {
-        return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + offset, length,
+        return Binary.compareTwoByteArraysSigned(value.array(), value.arrayOffset() + offset, length,
             other, otherOffset, otherLength);
       } {
-        return Binary.compareByteBufferToByteArray(value, offset, length, other, otherOffset, otherLength);
+        return Binary.compareByteBufferToByteArraySigned(value, offset, length, other, otherOffset, otherLength);
       }
     }
 
     @Override
     int compareTo(ByteBuffer bytes, int otherOffset, int otherLength) {
-      return Binary.compareTwoByteBuffers(value, offset, length, bytes, otherOffset, otherLength);
+      return Binary.compareTwoByteBuffersSigned(value, offset, length, bytes, otherOffset, otherLength);
     }
 
     @Override
@@ -666,13 +666,13 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return true;
   }
 
-  private static final int compareByteBufferToByteArray(ByteBuffer buf, int offset1, int length1,
-                                                        byte[] array, int offset2, int length2) {
-    return -1 * Binary.compareByteArrayToByteBuffer(array, offset1, length1, buf, offset2, length2);
+  private static final int compareByteBufferToByteArraySigned(ByteBuffer buf, int offset1, int length1,
+                                                              byte[] array, int offset2, int length2) {
+    return -1 * Binary.compareByteArrayToByteBufferSigned(array, offset1, length1, buf, offset2, length2);
   }
 
-  private static final int compareByteArrayToByteBuffer(byte[] array1, int offset1, int length1,
-                                                        ByteBuffer buf, int offset2, int length2) {
+  private static final int compareByteArrayToByteBufferSigned(byte[] array1, int offset1, int length1,
+                                                              ByteBuffer buf, int offset2, int length2) {
     if (array1 == null && buf == null) return 0;
     int min_length = (length1 < length2) ? length1 : length2;
     for (int i = 0; i < min_length; i++) {
@@ -683,15 +683,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       }
     }
     // check remainder
-    if (length1 == length2) {
-      return 0;
-    } else {
-      return length2 - length1;
-    }
+    return length2 - length1;
   }
 
-  private static final int compareTwoByteBuffers(ByteBuffer buf1, int offset1, int length1,
-                                                        ByteBuffer buf2, int offset2, int length2) {
+  private static final int compareTwoByteBuffersSigned(ByteBuffer buf1, int offset1, int length1,
+                                                       ByteBuffer buf2, int offset2, int length2) {
     if (buf1 == null && buf2 == null) return 0;
     int min_length = (length1 < length2) ? length1 : length2;
     for (int i = 0; i < min_length; i++) {
@@ -702,15 +698,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       }
     }
     // check remainder
-    if (length1 == length2) {
-      return 0;
-    } else {
-      return length2 - length1;
-    }
+    return length2 - length1;
   }
 
-  private static final int compareTwoByteArrays(byte[] array1, int offset1, int length1,
-                                                byte[] array2, int offset2, int length2) {
+  private static final int compareTwoByteArraysSigned(byte[] array1, int offset1, int length1,
+                                                      byte[] array2, int offset2, int length2) {
     if (array1 == null && array2 == null) return 0;
     if (array1 == array2 && offset1 == offset2 && length1 == length2) return 0;
     int min_length = (length1 < length2) ? length1 : length2;
@@ -722,11 +714,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       }
     }
     // check remainder
-    if (length1 == length2) {
-      return 0;
-    } else {
-      return length2 - length1;
-    }
+    return length2 - length1;
   }
 
   public static final int compareTwoBinaryUnsigned(Binary first, Binary second) {
@@ -745,10 +733,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       }
     }
     // check remainder
-    if (length1 == length2) {
-      return 0;
-    } else {
-      return length1 - length2;
-    }
+    return length1 - length2;
   }
 }

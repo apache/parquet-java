@@ -18,7 +18,9 @@
  */
 package org.apache.parquet.filter2.compat;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
@@ -29,7 +31,6 @@ import org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
 
 import static org.apache.parquet.Preconditions.checkNotNull;

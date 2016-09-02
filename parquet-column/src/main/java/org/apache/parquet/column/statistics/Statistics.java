@@ -117,6 +117,24 @@ public abstract class Statistics<T extends Comparable<T>> {
   }
 
   /**
+   * updates statistics signed_min and signed_max using the
+   * passed value
+   * @param value value to use to update signed_min and signed_max
+   */
+  public void updateStatsSigned(Binary value) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * updates statistics unsigned_min and unsigned_max using the
+   * passed value
+   * @param value value to use to update unsigned_min and unsigned_max
+   */
+  public void updateStatsUnsigned(Binary value) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
    * Equality comparison method to compare two statistics objects.
    * @param other Object to compare against
    * @return true if objects are equal, false otherwise
