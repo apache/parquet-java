@@ -224,7 +224,7 @@ public final class Operators {
 
     // value cannot be null
     Lt(Column<T> column, T value) {
-      super(column, value);
+      super(column, checkNotNull(value, "value"));
     }
 
     // value cannot be null

@@ -68,8 +68,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
-    checkNotNull(pred, "predicate cannot be null");
-    checkNotNull(columns, "columns cannot be null");
+    checkNotNull(pred, "pred");
+    checkNotNull(columns, "columns");
     return pred.accept(new StatisticsFilter(columns));
   }
 
