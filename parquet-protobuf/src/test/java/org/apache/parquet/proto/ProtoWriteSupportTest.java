@@ -165,4 +165,19 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endMessage();
     Mockito.verifyNoMoreInteractions(readConsumerMock);
   }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testMessageWithExtensions() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.Vehicle.class, readConsumerMock);
+
+    TestProtobuf.Vehicle.Builder msg = TestProtobuf.Vehicle.newBuilder();
+    msg.setHorsePower(300);
+    // Currently there's no support for extension fields. This test tests that the extension field
+    // will cause an exception.
+    msg.setExtension(TestProtobuf.Airplane.wingSpan, 50);
+
+    instance.write(msg.build());
+  }
+
 }
