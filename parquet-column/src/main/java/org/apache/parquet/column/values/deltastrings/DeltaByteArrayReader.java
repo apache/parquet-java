@@ -54,8 +54,8 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
 
   @Override
   public void skip() {
-    prefixLengthReader.skip();
-    suffixReader.skip();
+    // read the next value to skip so that previous is correct.
+    readBytes();
   }
 
   @Override
