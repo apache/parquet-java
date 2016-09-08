@@ -156,7 +156,6 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       List<Descriptors.FieldDescriptor> fields = descriptor.getFields();
       fieldWriters = (FieldWriter[]) Array.newInstance(FieldWriter.class, fields.size());
 
-      int i = 0;
       for (Descriptors.FieldDescriptor fieldDescriptor: fields) {
         String name = fieldDescriptor.getName();
         Type type = schema.getType(name);
@@ -169,8 +168,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         writer.setFieldName(name);
         writer.setIndex(schema.getFieldIndex(name));
 
-        fieldWriters[i] = writer;
-        i++;
+        fieldWriters[fieldDescriptor.getIndex()] = writer;
       }
     }
 
@@ -220,6 +218,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
       for (Map.Entry<Descriptors.FieldDescriptor, Object> entry : changedPbFields.entrySet()) {
         Descriptors.FieldDescriptor fieldDescriptor = entry.getKey();
+
+        if(fieldDescriptor.isExtension()) {
+          // Field index of an extension field might overlap with a base field.
+          throw new UnsupportedOperationException(
+                  "Cannot convert Protobuf message with extension field(s)");
+        }
+
         int fieldIndex = fieldDescriptor.getIndex();
         fieldWriters[fieldIndex].writeField(entry.getValue());
       }
@@ -276,7 +281,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   }
 
   class IntWriter extends FieldWriter {
-  @Override
+    @Override
     final void writeRawValue(Object value) {
       recordConsumer.addInteger((Integer) value);
     }
