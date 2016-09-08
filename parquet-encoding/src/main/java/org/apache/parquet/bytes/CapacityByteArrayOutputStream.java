@@ -30,8 +30,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.OutputStreamCloseException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Similar to a {@link ByteArrayOutputStream}, but uses a different strategy for growing that does not involve copying.
@@ -54,7 +56,7 @@ import org.apache.parquet.OutputStreamCloseException;
  *
  */
 public class CapacityByteArrayOutputStream extends OutputStream {
-  private static final Log LOG = Log.getLog(CapacityByteArrayOutputStream.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CapacityByteArrayOutputStream.class);
   private static final ByteBuffer EMPTY_SLAB = ByteBuffer.wrap(new byte[0]);
 
   private int initialSlabSize;
@@ -167,11 +169,11 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     }
 
     if (nextSlabSize < minimumSize) {
-      if (Log.DEBUG) LOG.debug(format("slab size %,d too small for value of size %,d. Bumping up slab size", nextSlabSize, minimumSize));
+      LOGGER.debug(format("slab size %,d too small for value of size %,d. Bumping up slab size", nextSlabSize, minimumSize));
       nextSlabSize = minimumSize;
     }
 
-    if (Log.DEBUG) LOG.debug(format("used %d slabs, adding new slab of size %d", slabs.size(), nextSlabSize));
+    LOGGER.debug(format("used %d slabs, adding new slab of size %d", slabs.size(), nextSlabSize));
 
     this.currentSlab = allocator.allocate(nextSlabSize);
     this.slabs.add(currentSlab);
@@ -265,7 +267,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     // readjust slab size.
     // 7 = 2^3 - 1 so that doubling the initial size 3 times will get to the same size
     this.initialSlabSize = max(bytesUsed / 7, initialSlabSize);
-    if (Log.DEBUG) LOG.debug(String.format("initial slab of size %d", initialSlabSize));
+    LOGGER.debug(String.format("initial slab of size %d", initialSlabSize));
     for (ByteBuffer slab : slabs) {
       allocator.release(slab);
     }

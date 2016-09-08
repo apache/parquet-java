@@ -24,7 +24,6 @@ import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import java.io.IOException;
 
 import org.apache.parquet.Ints;
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -39,6 +38,9 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
  *
@@ -46,8 +48,8 @@ import org.apache.parquet.io.api.Binary;
  *
  */
 final class ColumnWriterV2 implements ColumnWriter {
-  private static final Log LOG = Log.getLog(ColumnWriterV2.class);
-  private static final boolean DEBUG = Log.DEBUG;
+  private static final Logger LOGGER = LoggerFactory.getLogger(ColumnWriterV2.class);
+  private static final boolean DEBUG_ENABLED = LOGGER.isDebugEnabled();
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
@@ -73,7 +75,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   }
 
   private void log(Object value, int r, int d) {
-    LOG.debug(path + " " + value + " r:" + r + " d:" + d);
+    LOGGER.debug("{} {} r:{} d:{}", path, value, r, d);
   }
 
   private void resetStatistics() {
@@ -102,7 +104,9 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @param definitionLevel
    */
   public void writeNull(int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(null, repetitionLevel, definitionLevel);
+    if (DEBUG_ENABLED) {
+      log(null, repetitionLevel, definitionLevel);
+    }
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     statistics.incrementNumNulls();
@@ -132,7 +136,9 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @param definitionLevel
    */
   public void write(double value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    if (DEBUG_ENABLED) {
+      log(value, repetitionLevel, definitionLevel);
+    }
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeDouble(value);
@@ -147,7 +153,9 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @param definitionLevel
    */
   public void write(float value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    if (DEBUG_ENABLED) {
+      log(value, repetitionLevel, definitionLevel);
+    }
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeFloat(value);
@@ -162,7 +170,9 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @param definitionLevel
    */
   public void write(Binary value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    if (DEBUG_ENABLED) {
+      log(value, repetitionLevel, definitionLevel);
+    }
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeBytes(value);
@@ -177,7 +187,9 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @param definitionLevel
    */
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    if (DEBUG_ENABLED) {
+      log(value, repetitionLevel, definitionLevel);
+    }
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeBoolean(value);
@@ -192,7 +204,9 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @param definitionLevel
    */
   public void write(int value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    if (DEBUG_ENABLED) {
+      log(value, repetitionLevel, definitionLevel);
+    }
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeInteger(value);
@@ -207,7 +221,9 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @param definitionLevel
    */
   public void write(long value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    if (DEBUG_ENABLED) {
+      log(value, repetitionLevel, definitionLevel);
+    }
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeLong(value);
@@ -222,7 +238,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   public void finalizeColumnChunk() {
     final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
-      if (DEBUG) LOG.debug("write dictionary");
+      LOGGER.debug("write dictionary");
       try {
         pageWriter.writeDictionaryPage(dictionaryPage);
       } catch (IOException e) {
@@ -289,7 +305,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   public void writePage(long rowCount) {
     int pageRowCount = Ints.checkedCast(rowCount - rowsWrittenSoFar);
     this.rowsWrittenSoFar = rowCount;
-    if (DEBUG) LOG.debug("write page");
+    LOGGER.debug("write page");
     try {
       // TODO: rework this API. Those must be called *in that order*
       BytesInput bytes = dataColumn.getBytes();

@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.filter2.dictionarylevel;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
@@ -30,6 +29,8 @@ import org.apache.parquet.filter2.predicate.Operators.*;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -47,7 +48,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  */
 public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
-  private static final Log LOG = Log.getLog(DictionaryFilter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DictionaryFilter.class);
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
@@ -99,7 +100,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         case DOUBLE: dictSet.add(dict.decodeToDouble(i));
           break;
         default:
-          LOG.warn("Unknown dictionary type" + meta.getType());
+          LOGGER.warn("Unknown dictionary type{}", meta.getType());
       }
     }
 
@@ -137,7 +138,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_CANNOT_MATCH;
       }
     } catch (IOException e) {
-      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+      LOGGER.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
     return BLOCK_MIGHT_MATCH; // cannot drop the row group based on this dictionary
@@ -180,7 +181,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_CANNOT_MATCH;
       }
     } catch (IOException e) {
-      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+      LOGGER.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
     return BLOCK_MIGHT_MATCH;
@@ -219,7 +220,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
       return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {
-      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+      LOGGER.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
     return BLOCK_MIGHT_MATCH;
@@ -260,7 +261,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
       return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {
-      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+      LOGGER.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
     return BLOCK_MIGHT_MATCH;
@@ -299,7 +300,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
       return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {
-      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+      LOGGER.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
     return BLOCK_MIGHT_MATCH;
@@ -340,7 +341,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
       return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {
-      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+      LOGGER.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
     return BLOCK_MIGHT_MATCH;

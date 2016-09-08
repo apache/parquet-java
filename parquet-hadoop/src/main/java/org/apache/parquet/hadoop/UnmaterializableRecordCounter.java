@@ -20,9 +20,11 @@ package org.apache.parquet.hadoop;
 
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.Log;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // Essentially taken from:
 // https://github.com/twitter/elephant-bird/blob/master/core/src/main/java/com/twitter/elephantbird/mapreduce/input/LzoRecordReader.java#L124
@@ -43,7 +45,7 @@ public class UnmaterializableRecordCounter {
   /* Tolerated percent bad records */
   public static final String BAD_RECORD_THRESHOLD_CONF_KEY = "parquet.read.bad.record.threshold";
 
-  private static final Log LOG = Log.getLog(UnmaterializableRecordCounter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(UnmaterializableRecordCounter.class);
 
   private static final float DEFAULT_THRESHOLD =  0f;
 
@@ -68,7 +70,7 @@ public class UnmaterializableRecordCounter {
   public void incErrors(RecordMaterializationException cause) throws ParquetDecodingException {
     numErrors++;
 
-    LOG.warn(String.format("Error while reading an input record (%s out of %s): ",
+    LOGGER.warn(String.format("Error while reading an input record (%s out of %s): ",
         numErrors, totalNumRecords), cause);
 
     if (numErrors > 0 && errorThreshold <= 0) { // no errors are tolerated
@@ -80,7 +82,7 @@ public class UnmaterializableRecordCounter {
     if (errRate > errorThreshold) {
       String message = String.format("Decoding error rate of at least %s/%s crosses configured threshold of %s",
           numErrors, totalNumRecords, errorThreshold);
-      LOG.error(message);
+      LOGGER.error(message);
       throw new ParquetDecodingException(message, cause);
     }
   }

@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.parquet.Ints;
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
@@ -37,6 +36,9 @@ import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.hadoop.CodecFactory.BytesDecompressor;
 import org.apache.parquet.io.ParquetDecodingException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * TODO: should this actually be called RowGroupImpl or something?
  * The name is kind of confusing since it references three different "entities"
@@ -44,7 +46,7 @@ import org.apache.parquet.io.ParquetDecodingException;
  *
  */
 class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore {
-  private static final Log LOG = Log.getLog(ColumnChunkPageReadStore.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ColumnChunkPageReadStore.class);
 
   /**
    * PageReader for a single column chunk. A column chunk contains

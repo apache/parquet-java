@@ -20,7 +20,6 @@ package org.apache.parquet.pig;
 
 import static java.util.Arrays.asList;
 import static org.apache.hadoop.mapreduce.lib.input.FileInputFormat.setInputPaths;
-import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 import static org.apache.parquet.pig.PigSchemaConverter.parsePigSchema;
 import static org.apache.parquet.pig.PigSchemaConverter.pigSchemaToString;
@@ -74,10 +73,12 @@ import static org.apache.pig.Expression.Column;
 import static org.apache.pig.Expression.Const;
 import static org.apache.pig.Expression.OpType;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.io.ParquetDecodingException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -88,7 +89,7 @@ import org.apache.parquet.io.ParquetDecodingException;
  *
  */
 public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown, LoadPredicatePushdown {
-  private static final Log LOG = Log.getLog(ParquetLoader.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ParquetLoader.class);
 
   public static final String ENABLE_PREDICATE_FILTER_PUSHDOWN = "parquet.pig.predicate.pushdown.enable";
   private static final boolean DEFAULT_PREDICATE_PUSHDOWN_ENABLED = false;
@@ -157,11 +158,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
-    if (DEBUG) {
-      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOG.debug("LoadFunc.setLocation(" + location + ", " + jobToString + ")");
-    }
-
+    LOGGER.debug("LoadFunc.setLocation({}, job[id={}, name={}])", location, job.getJobID(), job.getJobName());
     setInput(location, job);
   }
 
@@ -201,7 +198,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public InputFormat<Void, Tuple> getInputFormat() throws IOException {
-    if (DEBUG) LOG.debug("LoadFunc.getInputFormat()");
+    LOGGER.debug("LoadFunc.getInputFormat()");
     return getParquetInputFormat();
   }
 
@@ -248,7 +245,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public void prepareToRead(@SuppressWarnings("rawtypes") RecordReader reader, PigSplit split)
       throws IOException {
-    if (DEBUG) LOG.debug("LoadFunc.prepareToRead(" + reader + ", " + split + ")");
+    LOGGER.debug("LoadFunc.prepareToRead({}, {})", reader, split);
     this.reader = reader;
   }
 
@@ -268,20 +265,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public String[] getPartitionKeys(String location, Job job) throws IOException {
-    if (DEBUG) {
-      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + jobToString + ")");
-    }
+    LOGGER.debug("LoadMetadata.getPartitionKeys({}, job[id={}, name={}])", location, job.getJobID(), job.getJobName());
     setInput(location, job);
     return null;
   }
 
   @Override
   public ResourceSchema getSchema(String location, Job job) throws IOException {
-    if (DEBUG) {
-      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOG.debug("LoadMetadata.getSchema(" + location + ", " + jobToString + ")");
-    }
+    LOGGER.debug("LoadMetadata.getSchema({}, job[id={}, name={}])", location, job.getJobID(), job.getJobName());
     setInput(location, job);
     return new ResourceSchema(schema);
   }
@@ -323,10 +314,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
-    if (DEBUG) {
-      String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOG.debug("LoadMetadata.getStatistics(" + location + ", " + jobToString + ")");
-    }
+    LOGGER.debug("LoadMetadata.getStatistics({}, job[id={}, name={}])", location, job.getJobID(), job.getJobName());
     /* We need to call setInput since setLocation is not
        guaranteed to be called before this */
     setInput(location, job);
@@ -336,7 +324,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         length += split.getLength();
       }
     } catch (InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOGGER.warn("Interrupted: ", e);
       return null;
     }
     ResourceStatistics stats = new ResourceStatistics();
@@ -347,7 +335,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setPartitionFilter(Expression expression) throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.setPartitionFilter(" + expression + ")");
+    LOGGER.debug("LoadMetadata.setPartitionFilter({})", expression);
   }
 
   @Override
@@ -465,10 +453,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setPushdownPredicate(Expression e) throws IOException {
-    LOG.info("Pig pushdown expression: " + e);
+    LOGGER.info("Pig pushdown expression: {}", e);
 
     FilterPredicate pred = buildFilter(e);
-    LOG.info("Parquet filter predicate expression: " + pred);
+    LOGGER.info("Parquet filter predicate expression: {}", pred);
 
     storeInUDFContext(ParquetInputFormat.FILTER_PREDICATE, pred);
   }

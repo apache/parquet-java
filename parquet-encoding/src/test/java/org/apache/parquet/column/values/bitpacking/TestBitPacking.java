@@ -27,12 +27,14 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class TestBitPacking {
-  private static final Log LOG = Log.getLog(TestBitPacking.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TestBitPacking.class);
 
   @Test
   public void testZero() throws IOException {
@@ -169,8 +171,8 @@ public class TestBitPacking {
     }
     w.finish();
     byte[] bytes = baos.toByteArray();
-    LOG.debug("vals ("+bitLength+"): " + toString(vals));
-    LOG.debug("bytes: " + toString(bytes));
+    LOGGER.debug("vals ({}): {}", bitLength, toString(vals));
+    LOGGER.debug("bytes: {}", toString(bytes));
     Assert.assertEquals(expected, toString(bytes));
     ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     BitPackingReader r = BitPacking.createBitPackingReader(bitLength, bais, vals.length);
@@ -178,7 +180,7 @@ public class TestBitPacking {
     for (int i = 0; i < result.length; i++) {
       result[i] = r.read();
     }
-    LOG.debug("result: " + toString(result));
+    LOGGER.debug("result: {}", toString(result));
     assertArrayEquals(vals, result);
   }
 
