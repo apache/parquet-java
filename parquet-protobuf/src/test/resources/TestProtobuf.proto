@@ -137,3 +137,14 @@ message SecondCustomClassMessage {
 }
 
 //please place your unit test Protocol Buffer definitions here.
+
+message Vehicle {
+    optional int32 horsePower = 1;
+    extensions 100 to 199;
+}
+
+message Airplane {
+    extend Vehicle {
+        optional int32 wingSpan = 101;
+    }
+}
