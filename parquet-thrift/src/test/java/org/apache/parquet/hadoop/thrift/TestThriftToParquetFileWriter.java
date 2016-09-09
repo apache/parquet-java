@@ -114,6 +114,7 @@ public class TestThriftToParquetFileWriter {
                           new RequiredPrimitiveFixture(false, (byte)100, (short)100, 100, 287l, -9.0d, "world"),
                           new RequiredPrimitiveFixture(true, (byte)2, (short)2, 9, -17l, 9.63d, "hello"));
       final Configuration configuration = new Configuration();
+      configuration.set("parquet.strings.use-signed-order", "true");
       final FileSystem fs = p.getFileSystem(configuration);
       FileStatus fileStatus = fs.getFileStatus(p);
       ParquetMetadata footer = ParquetFileReader.readFooter(configuration, p);
@@ -160,6 +161,7 @@ public class TestThriftToParquetFileWriter {
 
       // make new configuration and create file with new large stats
       final Configuration configuration_large = new Configuration();
+      configuration_large.set("parquet.strings.use-signed-order", "true");
       final FileSystem fs_large = p_large.getFileSystem(configuration_large);
       FileStatus fileStatus_large = fs_large.getFileStatus(p_large);
       ParquetMetadata footer_large = ParquetFileReader.readFooter(configuration_large, p_large);
