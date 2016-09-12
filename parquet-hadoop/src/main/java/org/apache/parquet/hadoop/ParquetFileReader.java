@@ -88,11 +88,13 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopDataSource;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.HadoopStreams;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.ParquetDataSource;
 
 /**
  * Internal implementation of the Parquet file reader as a block container
@@ -410,8 +412,7 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException  if an error occurs while reading the file
    */
   public static ParquetMetadata readFooter(Configuration configuration, Path file, MetadataFilter filter) throws IOException {
-    FileSystem fileSystem = file.getFileSystem(configuration);
-    return readFooter(configuration, fileSystem.getFileStatus(file), filter);
+    return readFooter(HadoopDataSource.fromPath(file, configuration), filter);
   }
 
   /**
@@ -431,12 +432,21 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if an error occurs while reading the file
    */
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file, MetadataFilter filter) throws IOException {
-    FileSystem fileSystem = file.getPath().getFileSystem(configuration);
-    SeekableInputStream in = HadoopStreams.wrap(fileSystem.open(file.getPath()));
-    try {
-      return readFooter(file.getLen(), file.getPath().toString(), in, filter);
-    } finally {
-      in.close();
+    return readFooter(HadoopDataSource.fromStatus(file, configuration), filter);
+  }
+
+  /**
+   * Reads the meta data block in the footer of the file using provided input stream
+   * @param file a {@link ParquetDataSource} to read
+   * @param filter the filter to apply to row groups
+   * @return the metadata blocks in the footer
+   * @throws IOException if an error occurs while reading the file
+   */
+  public static final ParquetMetadata readFooter(
+      ParquetDataSource file, MetadataFilter filter) throws IOException {
+    try (SeekableInputStream in = file.newStream()) {
+      return readFooter(converter, file.getLength(), file.getLocation(),
+          in, filter);
     }
   }
 
@@ -449,7 +459,7 @@ public class ParquetFileReader implements Closeable {
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final ParquetMetadata readFooter(long fileLen, String filePath, SeekableInputStream f, MetadataFilter filter) throws IOException {
+  private static final ParquetMetadata readFooter(ParquetMetadataConverter converter, long fileLen, String filePath, SeekableInputStream f, MetadataFilter filter) throws IOException {
     if (Log.DEBUG) {
       LOG.debug("File length " + fileLen);
     }
@@ -563,7 +573,7 @@ public class ParquetFileReader implements Closeable {
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
     this.f = HadoopStreams.wrap(fs.open(file));
-    this.footer = readFooter(fileStatus.getLen(), fileStatus.getPath().toString(), f, filter);
+    this.footer = readFooter(converter, fileStatus.getLen(), fileStatus.getPath().toString(), f, filter);
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = footer.getBlocks();
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
@@ -602,7 +612,7 @@ public class ParquetFileReader implements Closeable {
     if (footer == null) {
       try {
         // don't read the row groups because this.blocks is always set
-        this.footer = readFooter(fileStatus.getLen(), fileStatus.getPath().toString(), f, SKIP_ROW_GROUPS);
+        this.footer = readFooter(converter, fileStatus.getLen(), fileStatus.getPath().toString(), f, SKIP_ROW_GROUPS);
       } catch (IOException e) {
         throw new ParquetDecodingException("Unable to read file footer", e);
       }
