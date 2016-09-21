@@ -541,7 +541,7 @@ public class TestParquetMetadataConverter {
   public void testUseStatsWithSignedSortOrder() {
     // override defaults and use stats that were accumulated using signed order
     Configuration conf = new Configuration();
-    conf.set("parquet.strings.use-signed-order", "true");
+    conf.setBoolean("parquet.strings.signed-min-max.enabled", true);
 
     ParquetMetadataConverter converter = new ParquetMetadataConverter(conf);
     BinaryStatistics stats = new BinaryStatistics();
@@ -554,7 +554,8 @@ public class TestParquetMetadataConverter {
     Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION,
         ParquetMetadataConverter.toParquetStatistics(stats),
-        Types.required(PrimitiveTypeName.BINARY).named("b"));
+        Types.required(PrimitiveTypeName.BINARY)
+            .as(OriginalType.UTF8).named("b"));
 
     Assert.assertFalse("Stats should not be empty", convertedStats.isEmpty());
     Assert.assertEquals("Should have 3 nulls", 3, convertedStats.getNumNulls());

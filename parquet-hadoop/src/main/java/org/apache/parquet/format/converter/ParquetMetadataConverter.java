@@ -85,11 +85,15 @@ public class ParquetMetadataConverter {
   private final boolean useSignedStringMinMax;
 
   public ParquetMetadataConverter() {
-    this.useSignedStringMinMax = false;
+    this(false);
   }
 
   public ParquetMetadataConverter(Configuration conf) {
-    this.useSignedStringMinMax = conf.getBoolean("parquet.strings.use-signed-order", false);
+    this(conf.getBoolean("parquet.strings.signed-min-max.enabled", false));
+  }
+
+  private ParquetMetadataConverter(boolean useSignedStringMinMax) {
+    this.useSignedStringMinMax = useSignedStringMinMax;
   }
 
   // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
@@ -330,14 +334,17 @@ public class ParquetMetadataConverter {
 
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal
-      (String createdBy, Statistics statistics, PrimitiveTypeName type, SortOrder expectedOrder) {
+      (String createdBy, Statistics statistics, PrimitiveTypeName type, SortOrder typeSortOrder) {
     // create stats object based on the column type
     org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type);
     // If there was no statistics written to the footer, create an empty Statistics object and return
 
     // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
+    // The sort order is checked to avoid returning min/max stats that are not
+    // valid with the type's sort order. Currently, all stats are aggregated
+    // using a signed ordering, which isn't valid for strings or unsigned ints.
     if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type) &&
-        SortOrder.SIGNED == expectedOrder) {
+        SortOrder.SIGNED == typeSortOrder) {
       if (statistics.isSetMax() && statistics.isSetMin()) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
       }
@@ -348,40 +355,56 @@ public class ParquetMetadataConverter {
 
   public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       String createdBy, Statistics statistics, PrimitiveType type) {
-    SortOrder expectedOrder = isSignedOrderOkay(type) ? SortOrder.SIGNED : sortOrder(type);
+    SortOrder expectedOrder = overrideSortOrderToSigned(type) ?
+        SortOrder.SIGNED : sortOrder(type);
     return fromParquetStatisticsInternal(
         createdBy, statistics, type.getPrimitiveTypeName(), expectedOrder);
   }
 
+  /**
+   * Sort order for page and column statistics. Types are associated with sort
+   * orders (e.g., UTF8 columns should use UNSIGNED) and column stats are
+   * aggregated using a sort order. As of parquet-format version 2.3.1, the
+   * order used to aggregate stats is always SIGNED and is not stored in the
+   * Parquet file. These stats are discarded for types that need unsigned.
+   *
+   * See PARQUET-686.
+   */
   enum SortOrder {
     SIGNED,
     UNSIGNED,
     UNKNOWN
   }
 
-  private boolean isSignedOrderOkay(PrimitiveType type) {
-    if (!useSignedStringMinMax) {
-      return false;
-    }
+  private static final Set<OriginalType> STRING_TYPES = Collections
+      .unmodifiableSet(new HashSet<>(Arrays.asList(
+          OriginalType.UTF8, OriginalType.ENUM, OriginalType.JSON
+      )));
 
+  /**
+   * Returns whether to use signed order min and max with a type. It is safe to
+   * use signed min and max when the type is a string type and contains only
+   * ASCII characters (where the sign bit was 0). This checks whether the type
+   * is a string type and uses {@code useSignedStringMinMax} to determine if
+   * only ASCII characters were written.
+   *
+   * @param type a primitive type with a logical type annotation
+   * @return true if signed order min/max can be used with this type
+   */
+  private boolean overrideSortOrderToSigned(PrimitiveType type) {
     // even if the override is set, only return stats for string-ish types
-    if (type.getPrimitiveTypeName() != PrimitiveTypeName.BINARY) {
-      return false;
-    }
-    if (type.getOriginalType() == null) {
-      return true; // plain binary is okay
-    }
-    switch (type.getOriginalType()) {
-      case UTF8:
-      case ENUM:
-      case BSON:
-      case JSON:
-        return true;
-      default: // includes decimal
-        return false;
-    }
+    // a null type annotation is considered string-ish because some writers
+    // failed to use the UTF8 annotation.
+    OriginalType annotation = type.getOriginalType();
+    return useSignedStringMinMax &&
+        PrimitiveTypeName.BINARY == type.getPrimitiveTypeName() &&
+        (annotation == null || STRING_TYPES.contains(annotation));
   }
 
+  /**
+   * @param primitive a primitive physical type
+   * @return the default sort order used when the logical type is not known
+   */
   private static SortOrder defaultSortOrder(PrimitiveTypeName primitive) {
     switch (primitive) {
       case BOOLEAN:
@@ -389,15 +412,19 @@ public class ParquetMetadataConverter {
       case INT64:
       case FLOAT:
       case DOUBLE:
-      case BINARY: // without a logical type, signed is okay
-      case FIXED_LEN_BYTE_ARRAY:
         return SortOrder.SIGNED;
+      case BINARY:
+      case FIXED_LEN_BYTE_ARRAY:
       case INT96: // only used for timestamp, which uses unsigned values
         return SortOrder.UNSIGNED;
     }
     return SortOrder.UNKNOWN;
   }
 
+  /**
+   * @param primitive a primitive type with a logical type annotation
+   * @return the "correct" sort order of the type that applications assume
+   */
   private static SortOrder sortOrder(PrimitiveType primitive) {
     OriginalType annotation = primitive.getOriginalType();
     if (annotation != null) {
@@ -416,12 +443,12 @@ public class ParquetMetadataConverter {
         case UINT_16:
         case UINT_32:
         case UINT_64:
-        case DECIMAL:
         case ENUM:
         case UTF8:
         case BSON:
         case JSON:
           return SortOrder.UNSIGNED;
+        case DECIMAL:
         case LIST:
         case MAP:
         case MAP_KEY_VALUE:
