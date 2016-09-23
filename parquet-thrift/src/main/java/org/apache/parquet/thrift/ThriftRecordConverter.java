@@ -34,7 +34,6 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
@@ -56,6 +55,8 @@ import org.apache.parquet.thrift.struct.ThriftType.MapType;
 import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.struct.ThriftTypeID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * converts the columnar events into a Thrift protocol.
@@ -66,7 +67,7 @@ import org.apache.parquet.thrift.struct.ThriftTypeID;
  */
 public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
-  private static final Log LOG = Log.getLog(ThriftRecordConverter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ThriftRecordConverter.class);
 
   public static final String IGNORE_NULL_LIST_ELEMENTS =
       "parquet.thrift.ignore-null-elements";

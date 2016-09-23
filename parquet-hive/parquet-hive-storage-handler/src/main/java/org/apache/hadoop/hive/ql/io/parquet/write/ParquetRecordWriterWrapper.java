@@ -20,8 +20,6 @@ package org.apache.hadoop.hive.ql.io.parquet.write;
 
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
@@ -36,11 +34,13 @@ import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
 
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.util.ContextUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ParquetRecordWriterWrapper implements RecordWriter<Void, ArrayWritable>,
   FileSinkOperator.RecordWriter {
 
-  public static final Log LOG = LogFactory.getLog(ParquetRecordWriterWrapper.class);
+  public static final Logger LOG = LoggerFactory.getLogger(ParquetRecordWriterWrapper.class);
 
   private final org.apache.hadoop.mapreduce.RecordWriter<Void, ArrayWritable> realWriter;
   private final TaskAttemptContext taskContext;
@@ -58,10 +58,10 @@ public class ParquetRecordWriterWrapper implements RecordWriter<Void, ArrayWrita
       }
       taskContext = ContextUtil.newTaskAttemptContext(jobConf, taskAttemptID);
 
-      LOG.info("creating real writer to write at " + name);
+      LOG.info("creating real writer to write at {}", name);
       realWriter = (org.apache.hadoop.mapreduce.RecordWriter<Void, ArrayWritable>)
           ((ParquetOutputFormat) realOutputFormat).getRecordWriter(taskContext, new Path(name));
-      LOG.info("real writer: " + realWriter);
+      LOG.info("real writer: {}", realWriter);
     } catch (final InterruptedException e) {
       throw new IOException(e);
     }
