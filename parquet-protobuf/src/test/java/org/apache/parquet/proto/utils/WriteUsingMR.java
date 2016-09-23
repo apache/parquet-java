@@ -27,9 +27,10 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.parquet.Log;
 import org.apache.parquet.proto.ProtoParquetOutputFormat;
 import org.apache.parquet.proto.TestUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,7 +45,7 @@ import static java.lang.Thread.sleep;
  */
 public class WriteUsingMR {
 
-  private static final Log LOG = Log.getLog(WriteUsingMR.class);
+  private static final Logger LOG = LoggerFactory.getLogger(WriteUsingMR.class);
   Configuration conf = new Configuration();
   private static List<Message> inputMessages;
   Path outputPath;
@@ -61,7 +62,7 @@ public class WriteUsingMR {
       } else {
         for (Message msg : inputMessages) {
           context.write(null, msg);
-          LOG.debug("Reading msg from mock writing mapper" + msg);
+          LOG.debug("Reading msg from mock writing mapper {}", msg);
         }
       }
     }
@@ -102,7 +103,7 @@ public class WriteUsingMR {
   static void waitForJob(Job job) throws Exception {
     job.submit();
     while (!job.isComplete()) {
-      LOG.debug("waiting for job " + job.getJobName());
+      LOG.debug("waiting for job {}", job.getJobName());
       sleep(50);
     }
     LOG.debug("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));

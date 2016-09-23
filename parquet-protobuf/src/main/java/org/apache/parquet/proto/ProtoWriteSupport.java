@@ -26,7 +26,6 @@ import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.TextFormat;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.InvalidRecordException;
@@ -36,6 +35,8 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Array;
 import java.util.HashMap;
@@ -48,7 +49,7 @@ import java.util.Map;
  */
 public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<T> {
 
-  private static final Log LOG = Log.getLog(ProtoWriteSupport.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ProtoWriteSupport.class);
   public static final String PB_CLASS_WRITE = "parquet.proto.writeClass";
 
   private RecordConsumer recordConsumer;

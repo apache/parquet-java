@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.LittleEndianDataOutputStream;
@@ -30,6 +29,8 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Plain encoding except for booleans
@@ -38,7 +39,7 @@ import org.apache.parquet.io.api.Binary;
  *
  */
 public class PlainValuesWriter extends ValuesWriter {
-  private static final Log LOG = Log.getLog(PlainValuesWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
@@ -117,7 +118,7 @@ public class PlainValuesWriter extends ValuesWriter {
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page", e);
     }
-    if (Log.DEBUG) LOG.debug("writing a buffer of size " + arrayOut.size());
+    if (LOG.isDebugEnabled()) LOG.debug("writing a buffer of size {}", arrayOut.size());
     return BytesInput.from(arrayOut);
   }
 

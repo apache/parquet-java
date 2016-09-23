@@ -33,7 +33,6 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.ObjectSerializer;
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -41,6 +40,8 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.pig.convert.TupleRecordMaterializer;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.MessageType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Read support for Pig Tuple
@@ -54,7 +55,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   static final String PARQUET_COLUMN_INDEX_ACCESS = "parquet.private.pig.column.index.access";
   static final String PARQUET_PIG_REQUIRED_FIELDS = "parquet.private.pig.required.fields";
   static final String PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE = "parquet.pig.elephantbird.compatible";
-  private static final Log LOG = Log.getLog(TupleReadSupport.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TupleReadSupport.class);
 
   private static final PigSchemaConverter pigSchemaConverter = new PigSchemaConverter(false);
 

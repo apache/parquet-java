@@ -18,10 +18,11 @@
  */
 package org.apache.parquet.filter2.compat;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
@@ -40,7 +41,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  * codebase.
  */
 public class FilterCompat {
-  private static final Log LOG = Log.getLog(FilterCompat.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FilterCompat.class);
 
   /**
    * Anyone wanting to use a {@link Filter} need only implement this interface,
@@ -67,13 +68,13 @@ public class FilterCompat {
   public static Filter get(FilterPredicate filterPredicate) {
     checkNotNull(filterPredicate, "filterPredicate");
 
-    LOG.info("Filtering using predicate: " + filterPredicate);
+    LOG.info("Filtering using predicate: {}", filterPredicate);
 
     // rewrite the predicate to not include the not() operator
     FilterPredicate collapsedPredicate = LogicalInverseRewriter.rewrite(filterPredicate);
 
     if (!filterPredicate.equals(collapsedPredicate)) {
-      LOG.info("Predicate has been collapsed to: " + collapsedPredicate);
+      LOG.info("Predicate has been collapsed to: {}", collapsedPredicate);
     }
 
     return new FilterPredicateCompat(collapsedPredicate);

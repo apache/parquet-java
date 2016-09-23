@@ -22,14 +22,15 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.nio.ByteBuffer;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ByteBitPackingValuesReader extends ValuesReader {
   private static final int VALUES_AT_A_TIME = 8; // because we're using unpack8Values()
 
-  private static final Log LOG = Log.getLog(ByteBitPackingValuesReader.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ByteBitPackingValuesReader.class);
 
   private final int bitWidth;
   private final BytePacker packer;
@@ -69,7 +70,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
       throws IOException {
     int effectiveBitLength = valueCount * bitWidth;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength); // ceil
-    if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitWidth + " bits." );
+    LOG.debug("reading {} bytes for {} values of size {} bits.", length, valueCount, bitWidth);
     this.encoded = page;
     this.encodedPos = offset;
     this.decodedPosition = VALUES_AT_A_TIME - 1;

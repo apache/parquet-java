@@ -27,8 +27,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.schema.GroupType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Group level of the IO structure
@@ -38,7 +39,7 @@ import org.apache.parquet.schema.GroupType;
  *
  */
 public class GroupColumnIO extends ColumnIO {
-  private static final Log LOG = Log.getLog(GroupColumnIO.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GroupColumnIO.class);
 
   private final Map<String, ColumnIO> childrenByName = new HashMap<String, ColumnIO>();
   private final List<ColumnIO> children = new ArrayList<ColumnIO>();
