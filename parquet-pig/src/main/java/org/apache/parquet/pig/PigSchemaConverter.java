@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.pig;
 
-import static org.apache.parquet.Log.DEBUG;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,7 +35,6 @@ import org.apache.pig.impl.util.Pair;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.schema.ConversionPatterns;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
@@ -46,6 +44,8 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -60,7 +60,7 @@ import org.apache.parquet.schema.Type.Repetition;
  *
  */
 public class PigSchemaConverter {
-  private static final Log LOG = Log.getLog(PigSchemaConverter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PigSchemaConverter.class);
   static final String ARRAY_VALUE_NAME = "value";
   private ColumnAccess columnAccess;
 
@@ -456,9 +456,9 @@ public class PigSchemaConverter {
    */
   public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema, RequiredFieldList requiredFieldList) {
     try {
-      if (DEBUG) LOG.debug("filtering schema:\n" + schemaToFilter + "\nwith requested pig schema:\n " + requestedPigSchema);
+      if (LOG.isDebugEnabled()) LOG.debug("filtering schema:\n" + schemaToFilter + "\nwith requested pig schema:\n " + requestedPigSchema);
       List<Type> result = columnAccess.filterTupleSchema(schemaToFilter, requestedPigSchema, requiredFieldList);
-      if (DEBUG) LOG.debug("schema:\n" + schemaToFilter + "\nfiltered to:\n" + result);
+      if (LOG.isDebugEnabled()) LOG.debug("schema:\n" + schemaToFilter + "\nfiltered to:\n" + result);
       return new MessageType(schemaToFilter.getName(), result);
     } catch (RuntimeException e) {
       throw new RuntimeException("can't filter " + schemaToFilter + " with " + requestedPigSchema, e);
@@ -466,7 +466,7 @@ public class PigSchemaConverter {
   }
 
   private Type filter(Type type, FieldSchema fieldSchema) {
-    if (DEBUG) LOG.debug("filtering type:\n" + type + "\nwith:\n " + fieldSchema);
+    if (LOG.isDebugEnabled()) LOG.debug("filtering type:\n" + type + "\nwith:\n " + fieldSchema);
     try {
       switch (fieldSchema.type) {
       case DataType.BAG:
@@ -486,12 +486,12 @@ public class PigSchemaConverter {
   }
 
   private Type filterTuple(GroupType tupleType, FieldSchema tupleFieldSchema) throws FrontendException {
-    if (DEBUG) LOG.debug("filtering TUPLE schema:\n" + tupleType + "\nwith:\n " + tupleFieldSchema);
+    if (LOG.isDebugEnabled()) LOG.debug("filtering TUPLE schema:\n" + tupleType + "\nwith:\n " + tupleFieldSchema);
     return tupleType.withNewFields(columnAccess.filterTupleSchema(tupleType, tupleFieldSchema.schema, null));
   }
 
   private Type filterMap(GroupType mapType, FieldSchema mapFieldSchema) throws FrontendException {
-    if (DEBUG) LOG.debug("filtering MAP schema:\n" + mapType + "\nwith:\n " + mapFieldSchema);
+    if (LOG.isDebugEnabled()) LOG.debug("filtering MAP schema:\n" + mapType + "\nwith:\n " + mapFieldSchema);
     if (mapType.getFieldCount() != 1) {
       throw new RuntimeException("not unwrapping the right type, this should be a Map: " + mapType);
     }
@@ -504,7 +504,7 @@ public class PigSchemaConverter {
   }
 
   private Type filterBag(GroupType bagType, FieldSchema bagFieldSchema) throws FrontendException {
-    if (DEBUG) LOG.debug("filtering BAG schema:\n" + bagType + "\nwith:\n " + bagFieldSchema);
+    if (LOG.isDebugEnabled()) LOG.debug("filtering BAG schema:\n" + bagType + "\nwith:\n " + bagFieldSchema);
     if (bagType.getFieldCount() != 1) {
       throw new RuntimeException("not unwrapping the right type, this should be a Bag: " + bagType);
     }

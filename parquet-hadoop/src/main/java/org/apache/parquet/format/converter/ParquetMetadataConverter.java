@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.parquet.CorruptStatistics;
-import org.apache.parquet.Log;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
@@ -70,6 +69,8 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.TypeVisitor;
 import org.apache.parquet.schema.Types;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // TODO: This file has become too long!
 // TODO: Lets split it up: https://issues.apache.org/jira/browse/PARQUET-310
@@ -79,7 +80,7 @@ public class ParquetMetadataConverter {
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
 
-  private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ParquetMetadataConverter.class);
 
   // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
   // sets of encodings. It is important that all collections inserted to this cache be
@@ -654,9 +655,9 @@ public class ParquetMetadataConverter {
         return filterFileMetaDataByMidpoint(readFileMetaData(from), filter);
       }
     });
-    if (Log.DEBUG) LOG.debug(fileMetaData);
+    LOG.debug("{}", fileMetaData);
     ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
-    if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    if (LOG.isDebugEnabled()) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
     return parquetMetadata;
   }
 

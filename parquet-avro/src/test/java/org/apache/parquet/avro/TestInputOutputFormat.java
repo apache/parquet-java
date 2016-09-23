@@ -36,14 +36,15 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.junit.Test;
-import org.apache.parquet.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class TestInputOutputFormat {
-  private static final Log LOG = Log.getLog(TestInputOutputFormat.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestInputOutputFormat.class);
 
   private static Schema avroSchema;
   static {
@@ -132,10 +133,10 @@ public class TestInputOutputFormat {
   private void waitForJob(Job job) throws Exception {
     job.submit();
     while (!job.isComplete()) {
-      LOG.debug("waiting for job " + job.getJobName());
+      LOG.debug("waiting for job {}", job.getJobName());
       sleep(100);
     }
-    LOG.info("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
+    LOG.info("status for job {}: {}", job.getJobName(), (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
     if (!job.isSuccessful()) {
       throw new RuntimeException("job failed " + job.getJobName());
     }

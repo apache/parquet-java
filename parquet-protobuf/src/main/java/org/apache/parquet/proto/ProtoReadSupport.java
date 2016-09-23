@@ -21,11 +21,12 @@ package org.apache.parquet.proto;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -35,7 +36,7 @@ import java.util.Map;
  */
 public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
-  private static final Log LOG = Log.getLog(ProtoReadSupport.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ProtoReadSupport.class);
 
   public static final String PB_REQUESTED_PROJECTION = "parquet.proto.projection";
 
@@ -62,11 +63,11 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
     if (requestedProjectionString != null && !requestedProjectionString.trim().isEmpty()) {
       MessageType requestedProjection = getSchemaForRead(context.getFileSchema(), requestedProjectionString);
-      LOG.debug("Reading data with projection " + requestedProjection);
+      LOG.debug("Reading data with projection {}", requestedProjection);
       return new ReadContext(requestedProjection);
     } else {
       MessageType fileSchema = context.getFileSchema();
-      LOG.debug("Reading data with schema " + fileSchema);
+      LOG.debug("Reading data with schema {}", fileSchema);
       return new ReadContext(fileSchema);
     }
   }
@@ -85,7 +86,7 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
       throw new RuntimeException("I Need parameter " + PB_CLASS + " with Protocol Buffer class");
     }
 
-    LOG.debug("Reading data with Protocol Buffer class " + headerProtoClass);
+    LOG.debug("Reading data with Protocol Buffer class {}", headerProtoClass);
 
     MessageType requestedSchema = readContext.getRequestedSchema();
     Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);

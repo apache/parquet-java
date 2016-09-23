@@ -22,8 +22,6 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_
 
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.io.IOConstants;
 import org.apache.hadoop.io.ArrayWritable;
@@ -46,9 +44,11 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hive.HiveBinding;
 import org.apache.parquet.hive.HiveBindingFactory;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ParquetRecordReaderWrapper  implements RecordReader<Void, ArrayWritable> {
-  public static final Log LOG = LogFactory.getLog(ParquetRecordReaderWrapper.class);
+  public static final Logger LOG = LoggerFactory.getLogger(ParquetRecordReaderWrapper.class);
 
   private final long splitLen; // for getPos()
 

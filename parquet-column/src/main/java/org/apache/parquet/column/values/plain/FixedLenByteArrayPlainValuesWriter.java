@@ -21,7 +21,6 @@ package org.apache.parquet.column.values.plain;
 import java.io.IOException;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.LittleEndianDataOutputStream;
@@ -29,6 +28,8 @@ import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ValuesWriter for FIXED_LEN_BYTE_ARRAY.
@@ -36,7 +37,7 @@ import org.apache.parquet.io.api.Binary;
  * @author David Z. Chen <dchen@linkedin.com>
  */
 public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
-  private static final Log LOG = Log.getLog(PlainValuesWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);
 
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
@@ -76,7 +77,7 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page", e);
     }
-    if (Log.DEBUG) LOG.debug("writing a buffer of size " + arrayOut.size());
+    LOG.debug("writing a buffer of size {}", arrayOut.size());
     return BytesInput.from(arrayOut);
   }
 

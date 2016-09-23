@@ -19,7 +19,6 @@
 package org.apache.parquet.column.impl;
 
 import static java.lang.String.format;
-import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.column.ValuesType.DEFINITION_LEVEL;
 import static org.apache.parquet.column.ValuesType.REPETITION_LEVEL;
@@ -30,7 +29,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.parquet.CorruptDeltaByteArrays;
-import org.apache.parquet.Log;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -51,6 +49,8 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ColumnReader implementation
@@ -59,7 +59,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
  *
  */
 public class ColumnReaderImpl implements ColumnReader {
-  private static final Log LOG = Log.getLog(ColumnReaderImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ColumnReaderImpl.class);
 
   /**
    * binds the lower level page decoder to the record converter materializing the records
@@ -523,7 +523,7 @@ public class ColumnReaderImpl implements ColumnReader {
   private void checkRead() {
     if (isPageFullyConsumed()) {
       if (isFullyConsumed()) {
-        if (DEBUG) LOG.debug("end reached");
+        LOG.debug("end reached");
         repetitionLevel = 0; // the next repetition level
         return;
       }
@@ -533,7 +533,7 @@ public class ColumnReaderImpl implements ColumnReader {
   }
 
   private void readPage() {
-    if (DEBUG) LOG.debug("loading page");
+    LOG.debug("loading page");
     DataPage page = pageReader.readPage();
     page.accept(new DataPage.Visitor<Void>() {
       @Override
@@ -590,14 +590,14 @@ public class ColumnReaderImpl implements ColumnReader {
     this.definitionLevelColumn = new ValuesReaderIntIterator(dlReader);
     try {
       ByteBuffer bytes = page.getBytes().toByteBuffer();
-      if (DEBUG) LOG.debug("page size " + bytes.remaining() + " bytes and " + pageValueCount + " records");
-      if (DEBUG) LOG.debug("reading repetition levels at 0");
+      LOG.debug("page size {} bytes and {} records", bytes.remaining(), pageValueCount);
+      LOG.debug("reading repetition levels at 0");
       rlReader.initFromPage(pageValueCount, bytes, 0);
       int next = rlReader.getNextOffset();
-      if (DEBUG) LOG.debug("reading definition levels at " + next);
+      LOG.debug("reading definition levels at {}", next);
       dlReader.initFromPage(pageValueCount, bytes, next);
       next = dlReader.getNextOffset();
-      if (DEBUG) LOG.debug("reading data at " + next);
+      LOG.debug("reading data at {}", next);
       initDataReader(page.getValueEncoding(), bytes, next, page.getValueCount());
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
@@ -608,7 +608,7 @@ public class ColumnReaderImpl implements ColumnReader {
     this.repetitionLevelColumn = newRLEIterator(path.getMaxRepetitionLevel(), page.getRepetitionLevels());
     this.definitionLevelColumn = newRLEIterator(path.getMaxDefinitionLevel(), page.getDefinitionLevels());
     try {
-      if (DEBUG) LOG.debug("page data size " + page.getData().size() + " bytes and " + pageValueCount + " records");
+      LOG.debug("page data size {} bytes and {} records", page.getData().size(), pageValueCount);
       initDataReader(page.getDataEncoding(), page.getData().toByteBuffer(), 0, page.getValueCount());
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);

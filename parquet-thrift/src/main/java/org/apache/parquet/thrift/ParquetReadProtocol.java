@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.thrift;
 
-import static org.apache.parquet.Log.DEBUG;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -33,12 +32,12 @@ import org.apache.thrift.protocol.TMessage;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
-
-import org.apache.parquet.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 class ParquetReadProtocol extends ParquetProtocol {
-  private static final Log LOG = Log.getLog(ParquetReadProtocol.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ParquetReadProtocol.class);
 
   ParquetReadProtocol() {
     super("read");
@@ -63,102 +62,102 @@ class ParquetReadProtocol extends ParquetProtocol {
   }
 
   public TMessage readMessageBegin() throws TException {
-    if (DEBUG) LOG.debug("readMessageBegin()");
+    LOG.debug("readMessageBegin()");
     return next().readMessageBegin();
   }
 
   public void readMessageEnd() throws TException {
-    if (DEBUG) LOG.debug("readMessageEnd()");
+    LOG.debug("readMessageEnd()");
     next().readMessageEnd();
   }
 
   public TStruct readStructBegin() throws TException {
-    if (DEBUG) LOG.debug("readStructBegin()");
+    LOG.debug("readStructBegin()");
     return next().readStructBegin();
   }
 
   public void readStructEnd() throws TException {
-    if (DEBUG) LOG.debug("readStructEnd()");
+    LOG.debug("readStructEnd()");
     next().readStructEnd();
   }
 
   public TField readFieldBegin() throws TException {
-    if (DEBUG) LOG.debug("readFieldBegin()");
+    LOG.debug("readFieldBegin()");
     return next().readFieldBegin();
   }
 
   public void readFieldEnd() throws TException {
-    if (DEBUG) LOG.debug("readFieldEnd()");
+    LOG.debug("readFieldEnd()");
     next().readFieldEnd();
   }
 
   public TMap readMapBegin() throws TException {
-    if (DEBUG) LOG.debug("readMapBegin()");
+    LOG.debug("readMapBegin()");
     return next().readMapBegin();
   }
 
   public void readMapEnd() throws TException {
-    if (DEBUG) LOG.debug("readMapEnd()");
+    LOG.debug("readMapEnd()");
     next().readMapEnd();
   }
 
   public TList readListBegin() throws TException {
-    if (DEBUG) LOG.debug("readListBegin()");
+    LOG.debug("readListBegin()");
     return next().readListBegin();
   }
 
   public void readListEnd() throws TException {
-    if (DEBUG) LOG.debug("readListEnd()");
+    LOG.debug("readListEnd()");
     next().readListEnd();
   }
 
   public TSet readSetBegin() throws TException {
-    if (DEBUG) LOG.debug("readSetBegin()");
+    LOG.debug("readSetBegin()");
     return next().readSetBegin();
   }
 
   public void readSetEnd() throws TException {
-    if (DEBUG) LOG.debug("readSetEnd()");
+    LOG.debug("readSetEnd()");
     next().readSetEnd();
   }
 
   public boolean readBool() throws TException {
-    if (DEBUG) LOG.debug("readBool()");
+    LOG.debug("readBool()");
     return next().readBool();
   }
 
   public byte readByte() throws TException {
-    if (DEBUG) LOG.debug("readByte()");
+    LOG.debug("readByte()");
     return next().readByte();
   }
 
   public short readI16() throws TException {
-    if (DEBUG) LOG.debug("readI16()");
+    LOG.debug("readI16()");
     return next().readI16();
   }
 
   public int readI32() throws TException {
-    if (DEBUG) LOG.debug("readI32()");
+    LOG.debug("readI32()");
     return next().readI32();
   }
 
   public long readI64() throws TException {
-    if (DEBUG) LOG.debug("readI64()");
+    LOG.debug("readI64()");
     return next().readI64();
   }
 
   public double readDouble() throws TException {
-    if (DEBUG) LOG.debug("readDouble()");
+    LOG.debug("readDouble()");
     return next().readDouble();
   }
 
   public String readString() throws TException {
-    if (DEBUG) LOG.debug("readString()");
+    LOG.debug("readString()");
     return next().readString();
   }
 
   public ByteBuffer readBinary() throws TException {
-    if (DEBUG) LOG.debug("readBinary()");
+    LOG.debug("readBinary()");
     return next().readBinary();
   }
 
