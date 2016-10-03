@@ -29,8 +29,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 
-import org.apache.parquet.Log;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A source of bytes capable of writing itself to an output.
@@ -44,8 +44,7 @@ import org.apache.parquet.Log;
  *
  */
 abstract public class BytesInput {
-  private static final Log LOG = Log.getLog(BytesInput.class);
-  private static final boolean DEBUG = false;//Log.DEBUG;
+  private static final Logger LOGGER = LoggerFactory.getLogger(BytesInput.class);
   private static final EmptyBytesInput EMPTY_BYTES_INPUT = new EmptyBytesInput();
 
   /**
@@ -90,12 +89,16 @@ abstract public class BytesInput {
    * @return a Bytes input that will write the given bytes
    */
   public static BytesInput from(byte[] in) {
-    if (DEBUG) LOG.debug("BytesInput from array of " + in.length + " bytes");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("BytesInput from array of " + in.length + " bytes");
+    }
     return new ByteArrayBytesInput(in, 0 , in.length);
   }
 
   public static BytesInput from(byte[] in, int offset, int length) {
-    if (DEBUG) LOG.debug("BytesInput from array of " + length + " bytes");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("BytesInput from array of " + length + " bytes");
+    }
     return new ByteArrayBytesInput(in, offset, length);
   }
 
@@ -189,7 +192,9 @@ abstract public class BytesInput {
   public byte[] toByteArray() throws IOException {
     BAOS baos = new BAOS((int)size());
     this.writeAllTo(baos);
-    if (DEBUG) LOG.debug("converted " + size() + " to byteArray of " + baos.size() + " bytes");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("converted " + size() + " to byteArray of " + baos.size() + " bytes");
+    }
     return baos.getBuf();
   }
 
@@ -228,7 +233,7 @@ abstract public class BytesInput {
   }
 
   private static class StreamBytesInput extends BytesInput {
-    private static final Log LOG = Log.getLog(BytesInput.StreamBytesInput.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BytesInput.StreamBytesInput.class);
     private final InputStream in;
     private final int byteCount;
 
@@ -240,13 +245,17 @@ abstract public class BytesInput {
 
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
-      if (DEBUG) LOG.debug("write All "+ byteCount + " bytes");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("write All " + byteCount + " bytes");
+      }
       // TODO: more efficient
       out.write(this.toByteArray());
     }
 
     public byte[] toByteArray() throws IOException {
-      if (DEBUG) LOG.debug("read all "+ byteCount + " bytes");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("read all " + byteCount + " bytes");
+      }
       byte[] buf = new byte[byteCount];
       new DataInputStream(in).readFully(buf);
       return buf;
@@ -260,7 +269,7 @@ abstract public class BytesInput {
   }
 
   private static class SequenceBytesIn extends BytesInput {
-    private static final Log LOG = Log.getLog(BytesInput.SequenceBytesIn.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BytesInput.SequenceBytesIn.class);
 
     private final List<BytesInput> inputs;
     private final long size;
@@ -278,10 +287,16 @@ abstract public class BytesInput {
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       for (BytesInput input : inputs) {
-        if (DEBUG) LOG.debug("write " + input.size() + " bytes to out");
-        if (DEBUG && input instanceof SequenceBytesIn) LOG.debug("{");
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("write " + input.size() + " bytes to out");
+        }
+        if (LOGGER.isDebugEnabled() && input instanceof SequenceBytesIn) {
+          LOGGER.debug("{");
+        }
         input.writeAllTo(out);
-        if (DEBUG && input instanceof SequenceBytesIn) LOG.debug("}");
+        if (LOGGER.isDebugEnabled() && input instanceof SequenceBytesIn) {
+          LOGGER.debug("}");
+        }
       }
     }
 
