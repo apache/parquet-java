@@ -18,14 +18,12 @@
  */
 package org.apache.parquet.column.page.mem;
 
-import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.bytes.BytesInput.copy;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DataPageV1;
@@ -36,8 +34,11 @@ import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.io.ParquetEncodingException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class MemPageWriter implements PageWriter {
-  private static final Log LOG = Log.getLog(MemPageWriter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemPageWriter.class);
 
   private final List<DataPage> pages = new ArrayList<DataPage>();
   private DictionaryPage dictionaryPage;
@@ -53,7 +54,7 @@ public class MemPageWriter implements PageWriter {
     memSize += bytesInput.size();
     pages.add(new DataPageV1(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
     totalValueCount += valueCount;
-    if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
+    LOGGER.debug("page written for {} bytes and {} records", bytesInput.size(), valueCount);
   }
 
   @Override
@@ -67,7 +68,7 @@ public class MemPageWriter implements PageWriter {
     memSize += size;
     pages.add(DataPageV2.uncompressed(rowCount, nullCount, valueCount, copy(repetitionLevels), copy(definitionLevels), dataEncoding, copy(data), statistics));
     totalValueCount += valueCount;
-    if (DEBUG) LOG.debug("page written for " + size + " bytes and " + valueCount + " records");
+    LOGGER.debug("page written for {} bytes and {} records", size, valueCount);
 
   }
 
@@ -101,7 +102,7 @@ public class MemPageWriter implements PageWriter {
     }
     this.memSize += dictionaryPage.getBytes().size();
     this.dictionaryPage = dictionaryPage.copy();
-    if (DEBUG) LOG.debug("dictionary page written for " + dictionaryPage.getBytes().size() + " bytes and " + dictionaryPage.getDictionarySize() + " records");
+    LOGGER.debug("dictionary page written for {} bytes and {} records", dictionaryPage.getBytes().size(), dictionaryPage.getDictionarySize());
   }
 
   @Override

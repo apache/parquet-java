@@ -21,7 +21,6 @@ package org.apache.parquet.column.values.deltalengthbytearray;
 import java.io.IOException;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.LittleEndianDataOutputStream;
@@ -31,6 +30,9 @@ import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Write lengths of byte-arrays using delta encoding, followed by concatenated byte-arrays
@@ -44,7 +46,7 @@ import org.apache.parquet.io.api.Binary;
  */
 public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
 
-  private static final Log LOG = Log.getLog(DeltaLengthByteArrayValuesWriter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeltaLengthByteArrayValuesWriter.class);
 
   private ValuesWriter lengthWriter;
   private CapacityByteArrayOutputStream arrayOut;
@@ -81,7 +83,7 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page", e);
     }
-    if (Log.DEBUG) LOG.debug("writing a buffer of size " + arrayOut.size());
+    LOGGER.debug("writing a buffer of size {}", arrayOut.size());
     return BytesInput.concat(lengthWriter.getBytes(), BytesInput.from(arrayOut));
   }
 

@@ -33,7 +33,9 @@ import java.util.logging.Level;
  *
  * @author Julien Le Dem
  *
+ * @deprecated This class will be removed in 2.0; use slf4j instead.
  */
+@Deprecated
 public class Log {
 
   /**

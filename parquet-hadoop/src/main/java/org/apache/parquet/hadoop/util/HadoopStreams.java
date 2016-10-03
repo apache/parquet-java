@@ -20,18 +20,20 @@
 package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.Log;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.SeekableInputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  * Convenience methods to get Parquet abstractions for Hadoop data streams.
  */
 public class HadoopStreams {
 
-  private static final Log LOG = Log.getLog(HadoopStreams.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(HadoopStreams.class);
 
   private static final Class<?> byteBufferReadableClass = getReadableClass();
   static final Constructor<SeekableInputStream> h2SeekableConstructor = getH2SeekableConstructor();
@@ -49,10 +51,10 @@ public class HadoopStreams {
       try {
         return h2SeekableConstructor.newInstance(stream);
       } catch (InstantiationException e) {
-        LOG.warn("Could not instantiate H2SeekableInputStream, falling back to byte array reads", e);
+        LOGGER.warn("Could not instantiate H2SeekableInputStream, falling back to byte array reads", e);
         return new H1SeekableInputStream(stream);
       } catch (IllegalAccessException e) {
-        LOG.warn("Could not instantiate H2SeekableInputStream, falling back to byte array reads", e);
+        LOGGER.warn("Could not instantiate H2SeekableInputStream, falling back to byte array reads", e);
         return new H1SeekableInputStream(stream);
       } catch (InvocationTargetException e) {
         throw new ParquetDecodingException(

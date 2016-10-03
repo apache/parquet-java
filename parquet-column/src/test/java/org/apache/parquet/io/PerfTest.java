@@ -26,7 +26,6 @@ import static org.apache.parquet.example.Paper.schema3;
 
 import java.util.logging.Level;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.mem.MemPageStore;

@@ -20,13 +20,14 @@ package org.apache.parquet.pig.summary;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Summary data for a Tuple
@@ -36,7 +37,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
  *
  */
 public class TupleSummaryData extends SummaryData {
-  private static final Logger LOG = Logger.getLogger(TupleSummaryData.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(TupleSummaryData.class);
 
   private List<FieldSummaryData> fields = new ArrayList<FieldSummaryData>();
 
@@ -60,7 +61,7 @@ public class TupleSummaryData extends SummaryData {
         Object o = tuple.get(i);
         fieldSummaryData.add(getSchema(field), o);
       } catch (ExecException e) {
-        LOG.log(Level.WARNING, "Can't get value from tuple", e);
+        LOGGER.warn("Can't get value from tuple", e);
         fieldSummaryData.addError();
       }
     }
