@@ -88,13 +88,13 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.apache.parquet.hadoop.util.HadoopDataSource;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.HadoopStreams;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.apache.parquet.io.ParquetDataSource;
+import org.apache.parquet.io.InputFile;
 
 /**
  * Internal implementation of the Parquet file reader as a block container
@@ -412,7 +412,7 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException  if an error occurs while reading the file
    */
   public static ParquetMetadata readFooter(Configuration configuration, Path file, MetadataFilter filter) throws IOException {
-    return readFooter(HadoopDataSource.fromPath(file, configuration), filter);
+    return readFooter(HadoopInputFile.fromPath(file, configuration), filter);
   }
 
   /**
@@ -432,20 +432,20 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if an error occurs while reading the file
    */
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file, MetadataFilter filter) throws IOException {
-    return readFooter(HadoopDataSource.fromStatus(file, configuration), filter);
+    return readFooter(HadoopInputFile.fromStatus(file, configuration), filter);
   }
 
   /**
    * Reads the meta data block in the footer of the file using provided input stream
-   * @param file a {@link ParquetDataSource} to read
+   * @param file a {@link InputFile} to read
    * @param filter the filter to apply to row groups
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
   public static final ParquetMetadata readFooter(
-      ParquetDataSource file, MetadataFilter filter) throws IOException {
+      InputFile file, MetadataFilter filter) throws IOException {
     try (SeekableInputStream in = file.newStream()) {
-      return readFooter(converter, file.getLength(), file.getLocation(),
+      return readFooter(converter, file.getLength(), file.toString(),
           in, filter);
     }
   }

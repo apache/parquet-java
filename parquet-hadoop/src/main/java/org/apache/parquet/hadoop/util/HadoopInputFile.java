@@ -19,42 +19,34 @@
 
 package org.apache.parquet.hadoop.util;
 
-import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.io.SeekableInputStream;
-import org.apache.parquet.io.ParquetDataSource;
+import org.apache.parquet.io.InputFile;
 import java.io.IOException;
 
-public class HadoopDataSource implements ParquetDataSource, Configurable {
+public class HadoopInputFile implements InputFile {
 
   private final FileSystem fs;
   private final FileStatus stat;
-  private Configuration conf;
 
-  public static HadoopDataSource fromPath(Path path, Configuration conf)
+  public static HadoopInputFile fromPath(Path path, Configuration conf)
       throws IOException {
     FileSystem fs = path.getFileSystem(conf);
-    return new HadoopDataSource(fs, fs.getFileStatus(path), conf);
+    return new HadoopInputFile(fs, fs.getFileStatus(path));
   }
 
-  public static HadoopDataSource fromStatus(FileStatus stat, Configuration conf)
+  public static HadoopInputFile fromStatus(FileStatus stat, Configuration conf)
       throws IOException {
     FileSystem fs = stat.getPath().getFileSystem(conf);
-    return new HadoopDataSource(fs, stat, conf);
+    return new HadoopInputFile(fs, stat);
   }
 
-  private HadoopDataSource(FileSystem fs, FileStatus stat, Configuration conf) {
-    this.conf = conf;
+  private HadoopInputFile(FileSystem fs, FileStatus stat) {
     this.fs = fs;
     this.stat = stat;
-  }
-
-  @Override
-  public String getLocation() {
-    return stat.getPath().toString();
   }
 
   @Override
@@ -68,12 +60,7 @@ public class HadoopDataSource implements ParquetDataSource, Configurable {
   }
 
   @Override
-  public void setConf(Configuration conf) {
-    this.conf = conf;
-  }
-
-  @Override
-  public Configuration getConf() {
-    return conf;
+  public String toString() {
+    return stat.getPath().toString();
   }
 }

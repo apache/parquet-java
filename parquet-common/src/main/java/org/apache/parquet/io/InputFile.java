@@ -22,15 +22,10 @@ package org.apache.parquet.io;
 import java.io.IOException;
 
 /**
- * {@code ParquetDataSource} is an interface with the methods needed by Parquet
- * to read data files using {@link SeekableInputStream} instances.
+ * {@code InputFile} is an interface with the methods needed by Parquet to read
+ * data files using {@link SeekableInputStream} instances.
  */
-public interface ParquetDataSource {
-
-  /**
-   * Returns the file location.
-   */
-  String getLocation();
+public interface InputFile {
 
   /**
    * Returns the total length of the file, in bytes.
