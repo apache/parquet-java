@@ -68,10 +68,11 @@ public class TestMemoryManager {
   public void testMemoryManagerUpperLimit() {
     // Verify the memory pool size
     // this value tends to change a little between setup and tests, so this
-    // validates that it is within 5% of the expected value
+    // validates that it is within 10% of the expected value
     long poolSize = ParquetOutputFormat.getMemoryManager().getTotalMemoryPool();
-    Assert.assertTrue("Pool size should be within 5% of the expected value",
-        Math.abs(expectedPoolSize - poolSize) < (long) (expectedPoolSize * 0.05));
+    Assert.assertTrue("Pool size should be within 10% of the expected value" +
+                    " (expected = " + expectedPoolSize + " actual = " + poolSize + ")",
+        Math.abs(expectedPoolSize - poolSize) < (long) (expectedPoolSize * 0.10));
   }
 
   @Test
