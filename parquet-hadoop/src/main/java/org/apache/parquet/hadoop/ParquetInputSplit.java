@@ -26,7 +26,6 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
@@ -89,7 +88,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
       String fileSchema,
       Map<String, String> extraMetadata,
       Map<String, String> readSupportMetadata) {
-    this(path, start, length, end(blocks, requestedSchema), hosts, offsets(blocks));
+    this(path, start, end(blocks, requestedSchema), length, hosts, offsets(blocks));
   }
 
   private static long end(List<BlockMetaData> blocks, String requestedSchema) {
