@@ -142,34 +142,6 @@
       </plugin>
       <!-- thrift -->
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>1.2.1</version>
-        <executions>
-          <execution>
-            <id>check-thrift-version</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>exec</goal>
-            </goals>
-            <configuration>
-              <executable>sh</executable>
-              <workingDirectory>${basedir}</workingDirectory>
-              <arguments>
-                <argument>-c</argument>
-                <argument>${thrift.executable} -version | fgrep 'Thrift version ${thrift.version}' &amp;&amp; exit 0;
-                   echo "=================================================================================";
-                   echo "========== [FATAL] Build is configured to require Thrift version ${thrift.version} ==========";
-                   echo -n "========== Currently installed: ";
-                   ${thrift.executable} -version;
-                   echo "=================================================================================";
-                   exit 1</argument>
-                </arguments>
-            </configuration>
-          </execution>
-        </executions>
-        </plugin>
-      <plugin>
         <groupId>org.apache.thrift.tools</groupId>
         <artifactId>maven-thrift-plugin</artifactId>
         <version>${maven-thrift-plugin.version}</version>
@@ -191,5 +163,51 @@
         <artifactId>maven-shade-plugin</artifactId>
       </plugin>
     </plugins>
-  </build> 
+  </build>
+
+  <profiles>
+    <profile>
+      <activation>
+        <os>
+          <family>!windows</family>
+        </os>
+      </activation>
+      <id>UnixClassOS</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>1.2.1</version>
+            <executions>
+              <execution>
+                <id>check-thrift-version</id>
+                <phase>generate-sources</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>sh</executable>
+                  <workingDirectory>${basedir}</workingDirectory>
+                  <arguments>
+                    <argument>-c</argument>
+                    <argument>${thrift.executable} -version | fgrep 'Thrift version ${thrift.version}' &amp;&amp; exit 0;
+                      echo "=================================================================================";
+                      echo "========== [FATAL] Build is configured to require Thrift version ${thrift.version} ==========";
+                      echo -n "========== Currently installed: ";
+                      ${thrift.executable} -version;
+                      echo "=================================================================================";
+                      exit 1
+                    </argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
 </project>
