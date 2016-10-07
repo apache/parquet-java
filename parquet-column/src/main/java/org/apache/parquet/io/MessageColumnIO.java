@@ -29,7 +29,6 @@ import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.column.page.PageReadStore;
-import org.apache.parquet.column.values.dictionary.IntList;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -264,7 +263,7 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     public void printState() {
-      if (LOG.isDebugEnabled()) {
+      if (DEBUG) {
         log(currentLevel + ", " + fieldsWritten[currentLevel] + ": " + Arrays.toString(currentColumnIO.getFieldPath()) + " r:" + r[currentLevel]);
         if (r[currentLevel] > currentColumnIO.getRepetitionLevel()) {
           // sanity check
@@ -274,7 +273,7 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     private void log(Object message, Object...parameters) {
-      if (LOG.isDebugEnabled()) {
+      if (DEBUG) {
         String indent = "";
         for (int i = 0; i < currentLevel; ++i) {
           indent += "  ";
@@ -378,7 +377,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private void setRepetitionLevel() {
       r[currentLevel] = currentColumnIO.getRepetitionLevel();
-      log("r: " + r[currentLevel]);
+      log("r: {}", r[currentLevel]);
     }
 
     @Override
@@ -464,7 +463,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     @Override
     public void addBinary(Binary value) {
-      log("addBinary(" + value.length() + " bytes)");
+      log("addBinary({} bytes)", value.length());
       emptyField = false;
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
