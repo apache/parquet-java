@@ -78,9 +78,7 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
     String configuredProtoClass = configuration.get(PB_CLASS);
 
     if (configuredProtoClass != null) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Replacing class " + headerProtoClass + " by " + configuredProtoClass);
-      }
+      LOG.debug("Replacing class " + headerProtoClass + " by " + configuredProtoClass);
       headerProtoClass = configuredProtoClass;
     }
 
