@@ -481,11 +481,8 @@ public class TestInputFormat {
         .generateSplitInfo(blocks, hdfsBlocks, min, max);
 
     for (ClientSideMetadataSplitStrategy.SplitInfo splitInfo : splitInfos) {
-      BlockMetaData lastRowGroup = splitInfo.getRowGroups().get(splitInfo.getRowGroupCount() - 1);
-      long end = lastRowGroup.getStartingPos() + lastRowGroup.getTotalByteSize();
-
       ParquetInputSplit split = new ParquetInputSplit(fileStatus.getPath(),
-          splitInfo.hdfsBlock.getOffset(), end, splitInfo.hdfsBlock.getHosts(),
+          splitInfo.hdfsBlock.getOffset(), splitInfo.hdfsBlock.getLength(), splitInfo.hdfsBlock.getHosts(),
           splitInfo.rowGroups, schema.toString(), null, null, extramd);
       splits.add(split);
     }
