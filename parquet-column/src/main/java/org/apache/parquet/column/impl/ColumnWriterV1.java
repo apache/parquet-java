@@ -43,6 +43,10 @@ import org.slf4j.LoggerFactory;
 final class ColumnWriterV1 implements ColumnWriter {
   private static final Logger LOG = LoggerFactory.getLogger(ColumnWriterV1.class);
 
+  // By default: Debugging disabled this way (using the "if (DEBUG)" IN the methods) to allow
+  // the java compiler (not the JIT) to remove the unused statements during build time.
+  private static final boolean DEBUG = false;
+
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
   private final ParquetProperties props;
@@ -72,7 +76,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   private void log(Object value, int r, int d) {
-    LOG.debug( "{} {} r:{} d:{}", path, value, r, d);
+    if (DEBUG) LOG.debug( "{} {} r:{} d:{}", path, value, r, d);
   }
 
   private void resetStatistics() {
@@ -141,7 +145,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   private void writePage() {
-    LOG.debug("write page");
+    if (DEBUG) LOG.debug("write page");
     try {
       pageWriter.writePage(
           concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
@@ -162,7 +166,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void writeNull(int repetitionLevel, int definitionLevel) {
-    log(null, repetitionLevel, definitionLevel);
+    if (DEBUG) log(null, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     updateStatisticsNumNulls();
@@ -171,7 +175,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(double value, int repetitionLevel, int definitionLevel) {
-    log(value, repetitionLevel, definitionLevel);
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeDouble(value);
@@ -181,7 +185,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(float value, int repetitionLevel, int definitionLevel) {
-    log(value, repetitionLevel, definitionLevel);
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeFloat(value);
@@ -191,7 +195,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(Binary value, int repetitionLevel, int definitionLevel) {
-    log(value, repetitionLevel, definitionLevel);
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBytes(value);
@@ -201,7 +205,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
-    log(value, repetitionLevel, definitionLevel);
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBoolean(value);
@@ -211,7 +215,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(int value, int repetitionLevel, int definitionLevel) {
-    log(value, repetitionLevel, definitionLevel);
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeInteger(value);
@@ -221,7 +225,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public void write(long value, int repetitionLevel, int definitionLevel) {
-    log(value, repetitionLevel, definitionLevel);
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeLong(value);
@@ -235,7 +239,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     }
     final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
-      LOG.debug("write dictionary");
+      if (DEBUG) LOG.debug("write dictionary");
       try {
         pageWriter.writeDictionaryPage(dictionaryPage);
       } catch (IOException e) {
