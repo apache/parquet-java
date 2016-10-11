@@ -52,6 +52,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -444,9 +445,19 @@ public class ParquetFileReader implements Closeable {
    */
   public static final ParquetMetadata readFooter(
       InputFile file, MetadataFilter filter) throws IOException {
+    ParquetMetadataConverter converter;
+    // TODO: remove this temporary work-around.
+    // this is necessary to pass the Configuration to ParquetMetadataConverter
+    // and should be removed when there is a non-Hadoop configuration.
+    if (file instanceof HadoopInputFile) {
+      converter = new ParquetMetadataConverter(
+          ((HadoopInputFile) file).getConfiguration());
+    } else {
+      converter = new ParquetMetadataConverter();
+    }
     try (SeekableInputStream in = file.newStream()) {
-      return readFooter(new ParquetMetadataConverter(), file.getLength(),
-          file.toString(), in, filter);
+
+      return readFooter(converter, file.getLength(), file.toString(), in, filter);
     }
   }
 
