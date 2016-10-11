@@ -27,23 +27,40 @@ Currently these tools are available for UN*X systems.
 
 ## Build
 
-If you want to use parquet-tools in local mode, you should use the local profile so the 
+If you want to use parquet-tools in local mode, you should use the local profile so the
 hadoop client dependency is included.
 
 ```sh
-cd parquet-tools && mvn clean package -Plocal 
+cd parquet-tools && mvn clean package -Plocal
 ```
 
 To use it in hadoop mode, the default profile will exclude the hadoop client dependency
 
 ```sh
-cd parquet-tools && mvn clean package 
+cd parquet-tools && mvn clean package
 ```
 
 The resulting jar is target/parquet-tools-<Version>.jar, you can copy it to the place where you
 want to use it
 
-#Run from hadoop
+## Create distribution
+
+You can create distribution (recommended to include client-dependency) that includes scripts for
+common commands (see below) and all dependencies necessary to run them. Distribution is created in
+`{projectDirectory}/target` in `.zip` and `.tar.gz`.
+
+```sh
+cd parquet-tools && mvn clean package -Plocal assembly:single
+```
+
+Output should look like this:
+```sh
+$ ls -l parquet-tools/target
+parquet-tools-<Version>-bin.tar.gz
+parquet-tools-<Version>-bin.zip
+```
+
+## Run from hadoop
 
 See Commands Usage for command to use
 
@@ -51,21 +68,49 @@ See Commands Usage for command to use
 hadoop jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
 ```
 
-#Run locally
+## Run locally
 
 See Commands Usage for command to use
 
-```
+```sh
 java jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
+```
+
+## Run using distribution
+
+See Commands Usage for available scripts/commands to use
+
+```sh
+./parquet-tools <command> my_parquet_file.lzo.parquet
+```
+
+Or each script, e.g. for displaying schema
+
+```sh
+./parquet-schema my_parquet_file.lzo.parquet
 ```
 
 ## Commands Usage
 
-To see usage instructions for all commands: 
+To see usage instructions for all commands:
 
-```
+```sh
 java jar ./parquet-tools-<VERSION>.jar --help
 ```
+
+If you use distribution, to see usage:
+```sh
+./parquet-tools --help
+```
+
+Scripts available in distribution:
+- `parquet-cat`
+- `parquet-head`
+- `parquet-dump`
+- `parquet-merge`
+- `parquet-meta`
+- `parquet-schema`
+- `parquet-tools` as a master script
 
 **Note:** To run it on hadoop, you should use `hadoop jar` instead of `java jar`
 
