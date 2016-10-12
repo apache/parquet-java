@@ -24,7 +24,6 @@ import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTI
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
@@ -53,6 +52,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -92,6 +92,7 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.InputFile;
+import org.apache.parquet.schema.PrimitiveType;
 
 /**
  * Internal implementation of the Parquet file reader as a block container
@@ -105,7 +106,7 @@ public class ParquetFileReader implements Closeable {
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
-  private static ParquetMetadataConverter converter = new ParquetMetadataConverter();
+  private final ParquetMetadataConverter converter;
 
   /**
    * for files provided, check if there's a summary file.
@@ -428,9 +429,23 @@ public class ParquetFileReader implements Closeable {
    */
   public static final ParquetMetadata readFooter(
       InputFile file, MetadataFilter filter) throws IOException {
-    try (SeekableInputStream in = file.newStream()) {
-      return readFooter(converter, file.getLength(), file.toString(),
-          in, filter);
+    ParquetMetadataConverter converter;
+    // TODO: remove this temporary work-around.
+    // this is necessary to pass the Configuration to ParquetMetadataConverter
+    // and should be removed when there is a non-Hadoop configuration.
+    if (file instanceof HadoopInputFile) {
+      converter = new ParquetMetadataConverter(
+          ((HadoopInputFile) file).getConfiguration());
+    } else {
+      converter = new ParquetMetadataConverter();
+    }
+    SeekableInputStream in = file.newStream();
+    try {
+      return readFooter(converter, file.getLength(), file.toString(), in, filter);
+    } finally {
+      if (in != null) {
+        in.close();
+      }
     }
   }
 
@@ -521,6 +536,7 @@ public class ParquetFileReader implements Closeable {
   public ParquetFileReader(
       Configuration configuration, FileMetaData fileMetaData,
       Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
+    this.converter = new ParquetMetadataConverter(configuration);
     this.conf = configuration;
     this.fileMetaData = fileMetaData;
     FileSystem fs = filePath.getFileSystem(configuration);
@@ -549,6 +565,7 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if the file can not be opened
    */
   public ParquetFileReader(Configuration conf, Path file, MetadataFilter filter) throws IOException {
+    this.converter = new ParquetMetadataConverter(conf);
     this.conf = conf;
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
@@ -571,6 +588,7 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if the file can not be opened
    */
   public ParquetFileReader(Configuration conf, Path file, ParquetMetadata footer) throws IOException {
+    this.converter = new ParquetMetadataConverter(conf);
     this.conf = conf;
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
@@ -759,7 +777,7 @@ public class ParquetFileReader implements Closeable {
         compressedPage.getEncoding());
   }
 
-  private static DictionaryPage readCompressedDictionary(
+  private DictionaryPage readCompressedDictionary(
       PageHeader pageHeader, SeekableInputStream fin) throws IOException {
     DictionaryPageHeader dictHeader = pageHeader.getDictionary_page_header();
 
@@ -822,6 +840,8 @@ public class ParquetFileReader implements Closeable {
     public ColumnChunkPageReader readAllPages() throws IOException {
       List<DataPage> pagesInChunk = new ArrayList<DataPage>();
       DictionaryPage dictionaryPage = null;
+      PrimitiveType type = getFileMetaData().getSchema()
+          .getType(descriptor.col.getPath()).asPrimitiveType();
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
         PageHeader pageHeader = readPageHeader();
@@ -849,10 +869,10 @@ public class ParquetFileReader implements Closeable {
                     this.readAsBytesInput(compressedPageSize),
                     dataHeaderV1.getNum_values(),
                     uncompressedPageSize,
-                    fromParquetStatistics(
+                    converter.fromParquetStatistics(
                         getFileMetaData().getCreatedBy(),
                         dataHeaderV1.getStatistics(),
-                        descriptor.col.getType()),
+                        type),
                     converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
                     converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
                     converter.getEncoding(dataHeaderV1.getEncoding())
@@ -872,10 +892,10 @@ public class ParquetFileReader implements Closeable {
                     converter.getEncoding(dataHeaderV2.getEncoding()),
                     this.readAsBytesInput(dataSize),
                     uncompressedPageSize,
-                    fromParquetStatistics(
+                    converter.fromParquetStatistics(
                         getFileMetaData().getCreatedBy(),
                         dataHeaderV2.getStatistics(),
-                        descriptor.col.getType()),
+                        type),
                     dataHeaderV2.isIs_compressed()
                     ));
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
