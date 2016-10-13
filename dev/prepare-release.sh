@@ -30,4 +30,4 @@ tag=apache-parquet-$version
 mvn release:clean
 mvn release:prepare -Dtag=$tag -DreleaseVersion=$version
 
-echo "Finish staging binary artifacts by running: sh dev/perform-release.sh"
+echo "Finish staging binary artifacts by running: mvn release:perform"
