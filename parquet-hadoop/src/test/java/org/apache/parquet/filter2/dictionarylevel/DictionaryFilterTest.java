@@ -56,7 +56,7 @@ import java.util.UUID;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.filter2.dictionarylevel.DictionaryFilter.canDrop;
 import static org.apache.parquet.filter2.predicate.FilterApi.*;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -118,7 +118,7 @@ public class DictionaryFilterTest {
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
     ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
         .withWriterVersion(PARQUET_1_0)
-        .withCompressionCodec(UNCOMPRESSED)
+        .withCompressionCodec(GZIP)
         .withRowGroupSize(1024*1024)
         .withPageSize(1024)
         .enableDictionaryEncoding()
