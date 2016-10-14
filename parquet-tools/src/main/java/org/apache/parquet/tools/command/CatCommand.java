@@ -43,7 +43,7 @@ public class CatCommand extends ReadCommand {
   static {
     OPTIONS = new Options();
     Option jsonOpt = OptionBuilder.withLongOpt("json")
-                               .withDescription("Show records in JSON format.")
+                               .withDescription("Show records in JSON format")
                                .create('j');
     OPTIONS.addOption(jsonOpt);
   }

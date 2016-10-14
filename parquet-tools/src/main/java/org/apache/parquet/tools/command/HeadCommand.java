@@ -49,7 +49,7 @@ public class HeadCommand extends ReadCommand {
                                .hasOptionalArg()
                                .create('n');
     Option jsonOpt = OptionBuilder.withLongOpt("json")
-                               .withDescription("Show records in JSON format.")
+                               .withDescription("Show records in JSON format")
                                .create('j');
     OPTIONS.addOption(recordsOpt);
     OPTIONS.addOption(jsonOpt);
