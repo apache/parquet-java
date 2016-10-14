@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -27,11 +27,13 @@ import org.apache.commons.cli.Options;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.tools.Main;
+import org.apache.parquet.tools.json.JsonRecordFormatter;
 import org.apache.parquet.tools.read.SimpleReadSupport;
 import org.apache.parquet.tools.read.SimpleRecord;
 
-public class HeadCommand extends ArgsOnlyCommand {
+public class HeadCommand extends ReadCommand {
   private static final long DEFAULT = 5;
 
   public static final String[] USAGE = new String[] {
@@ -42,11 +44,15 @@ public class HeadCommand extends ArgsOnlyCommand {
   public static final Options OPTIONS;
   static {
     OPTIONS = new Options();
-    Option help = OptionBuilder.withLongOpt("records")
+    Option recordsOpt = OptionBuilder.withLongOpt("records")
                                .withDescription("The number of records to show (default: " + DEFAULT + ")")
                                .hasOptionalArg()
                                .create('n');
-    OPTIONS.addOption(help);
+    Option jsonOpt = OptionBuilder.withLongOpt("json")
+                               .withDescription("Show records in JSON format.")
+                               .create('j');
+    OPTIONS.addOption(recordsOpt);
+    OPTIONS.addOption(jsonOpt);
   }
 
   public HeadCommand() {
@@ -75,12 +81,22 @@ public class HeadCommand extends ArgsOnlyCommand {
     String[] args = options.getArgs();
     String input = args[0];
 
+    Path basePath = null;
     ParquetReader<SimpleRecord> reader = null;
     try {
+      basePath = new Path(input);
       PrintWriter writer = new PrintWriter(Main.out, true);
-      reader = ParquetReader.builder(new SimpleReadSupport(), new Path(input)).build();
+      ParquetMetadata metadata = getMetadata(basePath, filterPartitionFiles());
+      reader = ParquetReader.builder(new SimpleReadSupport(), basePath).build();
+      JsonRecordFormatter.JsonGroupFormatter formatter =
+        JsonRecordFormatter.fromSchema(metadata.getFileMetaData().getSchema());
+
       for (SimpleRecord value = reader.read(); value != null && num-- > 0; value = reader.read()) {
-        value.prettyPrint(writer);
+        if (options.hasOption('j')) {
+          writer.write(formatter.formatRecord(value));
+        } else {
+          value.prettyPrint(writer);
+        }
         writer.println();
       }
     } finally {
