@@ -254,6 +254,7 @@ public class GroupType extends Type {
     return
         !otherType.isPrimitive()
         && super.equals(otherType)
+        && getOriginalType() == otherType.getOriginalType()
         && getFields().equals(otherType.asGroupType().getFields());
   }
 
@@ -347,7 +348,7 @@ public class GroupType extends Type {
     if (toMerge.isPrimitive()) {
       throw new IncompatibleSchemaModificationException("can not merge primitive type " + toMerge + " into group type " + this);
     }
-    return new GroupType(toMerge.getRepetition(), getName(), mergeFields(toMerge.asGroupType()));
+    return new GroupType(toMerge.getRepetition(), getName(), toMerge.getOriginalType(), mergeFields(toMerge.asGroupType()), getId());
   }
 
   /**
@@ -374,6 +375,9 @@ public class GroupType extends Type {
         Type fieldToMerge = toMerge.getType(type.getName());
         if (fieldToMerge.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
           throw new IncompatibleSchemaModificationException("repetition constraint is more restrictive: can not merge type " + fieldToMerge + " into " + type);
+        }
+        if (type.getOriginalType() != null && fieldToMerge.getOriginalType() != type.getOriginalType()) {
+          throw new IncompatibleSchemaModificationException("cannot merge original type " + fieldToMerge.getOriginalType() + " into " + type.getOriginalType());
         }
         merged = type.union(fieldToMerge, strict);
       } else {

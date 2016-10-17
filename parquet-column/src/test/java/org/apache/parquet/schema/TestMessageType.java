@@ -19,6 +19,7 @@
 package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+import static org.apache.parquet.schema.OriginalType.LIST;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
@@ -159,6 +160,32 @@ public class TestMessageType {
     } catch (IncompatibleSchemaModificationException e) {
       assertEquals("can not merge type optional fixed_len_byte_array(20) a into optional fixed_len_byte_array(10) a", e.getMessage());
     }
+  }
+
+  @Test
+  public void testMergeSchemaWithOriginalType() throws Exception {
+    MessageType t5 = new MessageType("root1",
+        new GroupType(REQUIRED, "g1", LIST,
+            new PrimitiveType(OPTIONAL, BINARY, "a")),
+        new GroupType(REQUIRED, "g2",
+            new PrimitiveType(OPTIONAL, BINARY, "b")));
+    MessageType t6 = new MessageType("root1",
+        new GroupType(REQUIRED, "g1", LIST,
+            new PrimitiveType(OPTIONAL, BINARY, "a")),
+        new GroupType(REQUIRED, "g2", LIST,
+            new GroupType(REQUIRED, "g3",
+                new PrimitiveType(OPTIONAL, BINARY, "c")),
+            new PrimitiveType(OPTIONAL, BINARY, "b")));
+
+    assertEquals(
+        new MessageType("root1",
+            new GroupType(REQUIRED, "g1", LIST,
+                new PrimitiveType(OPTIONAL, BINARY, "a")),
+            new GroupType(REQUIRED, "g2", LIST,
+                new PrimitiveType(OPTIONAL, BINARY, "b"),
+                new GroupType(REQUIRED, "g3",
+                    new PrimitiveType(OPTIONAL, BINARY, "c")))),
+        t5.union(t6));
   }
 
   @Test
