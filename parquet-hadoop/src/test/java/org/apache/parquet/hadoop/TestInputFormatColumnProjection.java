@@ -19,10 +19,12 @@
 package org.apache.parquet.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Counters;
+import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
@@ -31,10 +33,12 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.ExampleInputFormat;
 import org.apache.parquet.hadoop.example.ExampleOutputFormat;
+import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -44,7 +48,6 @@ import java.io.IOException;
 import java.util.UUID;
 
 import static java.lang.Thread.sleep;
-import static org.apache.hadoop.mapreduce.lib.output.FileOutputFormat.Counter.BYTES_WRITTEN;
 import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
@@ -76,10 +79,18 @@ public class TestInputFormatColumnProjection {
   }
 
   public static class Reader extends Mapper<Void, Group, LongWritable, Text> {
+
+    public static Counter bytesReadCounter = null;
+    public static void setBytesReadCounter(Counter bytesRead) {
+      bytesReadCounter = bytesRead;
+    }
+
     @Override
     protected void map(Void key, Group value, Context context)
         throws IOException, InterruptedException {
       // Do nothing. The test uses Hadoop FS counters for verification.
+      setBytesReadCounter(ContextUtil.getCounter(
+          context, "parquet", "bytesread"));
     }
   }
 
@@ -88,6 +99,9 @@ public class TestInputFormatColumnProjection {
 
   @Test
   public void testProjectionSize() throws Exception {
+    Assume.assumeTrue( // only run this test for Hadoop 2
+        org.apache.hadoop.mapreduce.JobContext.class.isInterface());
+
     File inputFile = temp.newFile();
     FileOutputStream out = new FileOutputStream(inputFile);
     out.write(FILE_CONTENT.getBytes("UTF-8"));
@@ -110,9 +124,6 @@ public class TestInputFormatColumnProjection {
     conf.set("parquet.enable.summary-metadata", "false");
     conf.set("parquet.example.schema", PARQUET_TYPE.toString());
 
-    long bytesWritten;
-    long bytesRead;
-
     {
       Job writeJob = new Job(conf, "write");
       writeJob.setInputFormatClass(TextInputFormat.class);
@@ -129,11 +140,15 @@ public class TestInputFormatColumnProjection {
       ParquetOutputFormat.setOutputPath(writeJob, tempPath);
 
       waitForJob(writeJob);
-
-      Counters counters = writeJob.getCounters();
-      bytesWritten = counters.findCounter(BYTES_WRITTEN).getValue();
     }
 
+    long bytesWritten = 0;
+    FileSystem fs = FileSystem.getLocal(conf);
+    for (FileStatus file : fs.listStatus(tempPath)) {
+      bytesWritten += file.getLen();
+    }
+
+    long bytesRead;
     {
       Job readJob = new Job(conf, "read");
       readJob.setInputFormatClass(ExampleInputFormat.class);
@@ -146,10 +161,7 @@ public class TestInputFormatColumnProjection {
 
       waitForJob(readJob);
 
-      Counters counters = readJob.getCounters();
-      bytesRead = counters.getGroup("parquet")
-          .findCounter("bytesread")
-          .getValue();
+      bytesRead = Reader.bytesReadCounter.getValue();
     }
 
     Assert.assertTrue("Should read less than 10% of the input file size",
