@@ -179,6 +179,7 @@ class InternalParquetRecordReader<T> {
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(configuration, total);
     this.filterRecords = configuration.getBoolean(
         RECORD_FILTERING_ENABLED, RECORD_FILTERING_ENABLED_DEFAULT);
+    reader.setRequestedSchema(requestedSchema);
     LOG.info("RecordReader initialized will read a total of " + total + " records.");
   }
 

@@ -95,6 +95,7 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.InputFile;
+import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
 /**
@@ -672,6 +673,13 @@ public class ParquetFileReader implements Closeable {
 
   public List<BlockMetaData> getRowGroups() {
     return blocks;
+  }
+
+  public void setRequestedSchema(MessageType projection) {
+    paths.clear();
+    for (ColumnDescriptor col : projection.getColumns()) {
+      paths.put(ColumnPath.get(col.getPath()), col);
+    }
   }
 
   public void appendTo(ParquetFileWriter writer) throws IOException {
