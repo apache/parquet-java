@@ -71,9 +71,9 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
 
   private RowGroupFilter(List<FilterLevel> levels, List<BlockMetaData> blocks, ParquetFileReader reader) {
     this.blocks = checkNotNull(blocks, "blocks");
-    this.reader = checkNotNull(reader, "reader");
     this.schema = reader.getFileMetaData().getSchema();
     this.levels = levels;
+    this.reader = checkNotNull(reader, "reader");
   }
 
   @Override

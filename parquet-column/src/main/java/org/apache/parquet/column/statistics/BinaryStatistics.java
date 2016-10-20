@@ -18,19 +18,49 @@
  */
 package org.apache.parquet.column.statistics;
 
+import org.apache.parquet.filter2.predicate.ByteSignedness;
 import org.apache.parquet.io.api.Binary;
 
+/**
+ * BinaryStatistics: tracks statistics information on binary data columns.
+ * There are two sets of mins and maxes: those based on signed and unsigned byte comparisons.
+ * For example, given a set of Binary values {@code Binary.fromString("a")}, {@code Binary.fromString("é")},
+ * the signed min will be "é" as the first byte of the codepoint will be larger than 127
+ */
 public class BinaryStatistics extends Statistics<Binary> {
 
-  private Binary max;
-  private Binary min;
+  private Binary maxSigned;
+  private Binary minSigned;
+
+  private Binary minUnsigned;
+  private Binary maxUnsigned;
 
   @Override
   public void updateStats(Binary value) {
     if (!this.hasNonNullValue()) {
-      initializeStats(value, value);
+      initializeStatsSigned(value, value);
+      initializeStatsUnsigned(value, value);
     } else {
-      updateStats(value, value);
+      updateStatsSigned(value, value);
+      updateStatsUnsigned(value, value);
+    }
+  }
+
+  @Override
+  public void updateStatsSigned(Binary value) {
+    if (!this.hasNonNullValue()) {
+      initializeStatsSigned(value, value);
+    } else {
+      updateStatsSigned(value, value);
+    }
+  }
+
+  @Override
+  public void updateStatsUnsigned(Binary value) {
+    if (!this.hasNonNullValue()) {
+      initializeStatsUnsigned(value, value);
+    } else {
+      updateStatsUnsigned(value, value);
     }
   }
 
@@ -38,44 +68,87 @@ public class BinaryStatistics extends Statistics<Binary> {
   public void mergeStatisticsMinMax(Statistics stats) {
     BinaryStatistics binaryStats = (BinaryStatistics)stats;
     if (!this.hasNonNullValue()) {
-      initializeStats(binaryStats.getMin(), binaryStats.getMax());
+      initializeStatsSigned(binaryStats.genericGetMinSigned(), binaryStats.genericGetMaxSigned());
+      initializeStatsUnsigned(binaryStats.genericGetMinUnsigned(), binaryStats.genericGetMaxUnsigned());
     } else {
-      updateStats(binaryStats.getMin(), binaryStats.getMax());
+      updateStatsSigned(binaryStats.genericGetMinSigned(), binaryStats.genericGetMaxSigned());
+      updateStatsUnsigned(binaryStats.genericGetMinUnsigned(), binaryStats.genericGetMaxUnsigned());
     }
   }
 
   /**
-   * Sets min and max values, re-uses the byte[] passed in.
-   * Any changes made to byte[] will be reflected in min and max values as well.
-   * @param minBytes byte array to set the min value to
-   * @param maxBytes byte array to set the max value to
+   * Sets minSigned and maxSigned values, re-uses the byte[] passed in.
+   * Any changes made to byte[] will be reflected in minSigned and maxSigned values as well.
+   * @param minBytes byte array to set the minSigned value to
+   * @param maxBytes byte array to set the maxSigned value to
    */
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = Binary.fromReusedByteArray(maxBytes);
-    min = Binary.fromReusedByteArray(minBytes);
+    maxSigned = Binary.fromReusedByteArray(maxBytes);
+    minSigned = Binary.fromReusedByteArray(minBytes);
+    maxUnsigned = maxSigned.copy();
+    minUnsigned = minSigned.copy();
     this.markAsNotEmpty();
   }
 
   @Override
-  public byte[] getMaxBytes() {
-    return max == null ? null : max.getBytes();
+  public void setMinMaxSignedFromBytes(byte[] minBytes, byte[] maxBytes) {
+    this.minSigned = Binary.fromReusedByteArray(minBytes);
+    this.maxSigned = Binary.fromReusedByteArray(maxBytes);
   }
 
   @Override
+  public void setMinMaxUnsignedFromBytes(byte[] minBytes, byte[] maxBytes) {
+    this.minUnsigned = Binary.fromReusedByteArray(minBytes);
+    this.maxUnsigned = Binary.fromReusedByteArray(maxBytes);
+  }
+
+  /**
+   * Use either getMaxBytesSigned() or getMaxBytesUnsigned() directly instead.
+   */
+  @Deprecated
+  @Override
+  public byte[] getMaxBytes() {
+    return getMaxBytesSigned();
+  }
+
+  /**
+   * Use either getMinBytesSigned() or getMinBytesUnsigned() directly instead.
+   */
+  @Deprecated
+  @Override
   public byte[] getMinBytes() {
-    return min == null ? null : min.getBytes();
+    return getMinBytesSigned();
+  }
+
+  public byte[] getMaxBytesSigned() {
+    return maxSigned == null ? null : maxSigned.getBytes();
+  }
+
+  @Override
+  public byte[] getMinBytesSigned() {
+    return minSigned == null ? null : minSigned.getBytes();
+  }
+
+  @Override
+  public byte[] getMaxBytesUnsigned() {
+    return maxUnsigned == null ? null : maxUnsigned.getBytes();
+  }
+
+  @Override
+  public byte[] getMinBytesUnsigned() {
+    return minUnsigned == null ? null : minUnsigned.getBytes();
   }
 
   @Override
   public boolean isSmallerThan(long size) {
-    return !hasNonNullValue() || ((min.length() + max.length()) < size);
+    return !hasNonNullValue() || (((minSigned.length() + maxSigned.length()) < size) && ((minUnsigned.length() + maxUnsigned.length()) < size));
   }
 
   @Override
   public String toString() {
     if (this.hasNonNullValue())
-      return String.format("min: %s, max: %s, num_nulls: %d", min.toStringUsingUTF8(), max.toStringUsingUTF8(), this.getNumNulls());
+      return String.format("min: %s, max: %s, num_nulls: %d", minSigned.toStringUsingUTF8(), maxSigned.toStringUsingUTF8(), this.getNumNulls());
    else if (!this.isEmpty())
       return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
    else
@@ -83,32 +156,75 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   /**
-   * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
+   * Tries to update the unsigned min and max to the new potential min_value and max_value.
    */
-  @Deprecated
-  public void updateStats(Binary min_value, Binary max_value) {
-    if (min.compareTo(min_value) > 0) { min = min_value.copy(); }
-    if (max.compareTo(max_value) < 0) { max = max_value.copy(); }
+  public void updateStatsUnsigned(Binary min_value, Binary max_value) {
+    if (Binary.compareTwoBinaryUnsigned(minUnsigned, min_value) > 0) { minUnsigned = min_value.copy(); }
+    if (Binary.compareTwoBinaryUnsigned(maxUnsigned, max_value) < 0) { maxUnsigned = max_value.copy(); }
   }
 
   /**
-   * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
+   * Tries to update the signed min and max to the new potential min_value and max_value.
+   */
+  public void updateStatsSigned(Binary min_value, Binary max_value) {
+    if (minSigned.compareTo(min_value) > 0) { minSigned = min_value.copy(); }
+    if (maxSigned.compareTo(max_value) < 0) { maxSigned = max_value.copy(); }
+  }
+
+  /**
+   * Only initialize the unsigned min/max fields.
+   */
+  public void initializeStatsUnsigned(Binary min_value, Binary max_value) {
+    minUnsigned = min_value.copy();
+    maxUnsigned = max_value.copy();
+    this.markAsNotEmpty();
+  }
+
+  /**
+   * Only initialize the signed min/max fields.
+   */
+  public void initializeStatsSigned(Binary min_value, Binary max_value) {
+    minSigned = min_value.copy();
+    maxSigned = max_value.copy();
+    this.markAsNotEmpty();
+  }
+
+  /**
+   * For BinaryStatistics use one of genericGetMinSigned() or genericGetMinUnsigned()
    */
   @Deprecated
-  public void initializeStats(Binary min_value, Binary max_value) {
-      min = min_value.copy();
-      max = max_value.copy();
-      this.markAsNotEmpty();
-  }
-
   @Override
   public Binary genericGetMin() {
-    return min;
+    return genericGetMinSigned();
+  }
+
+  /**
+   * For BinaryStatistics use one of genericGetMaxSigned() or generic getMaxUnsigned()
+   */
+  @Deprecated
+  @Override
+  public Binary genericGetMax() {
+    return genericGetMaxSigned();
   }
 
   @Override
-  public Binary genericGetMax() {
-    return max;
+  public Binary genericGetMinSigned() {
+    return minSigned;
+  }
+
+  @Override
+  public Binary genericGetMaxSigned() {
+    return maxSigned;
+  }
+
+  @Override
+  public Binary genericGetMinUnsigned() {
+    return minUnsigned;
+  }
+
+  @Override
+  public Binary genericGetMaxUnsigned() {
+    return maxUnsigned;
   }
 
   /**
@@ -116,7 +232,7 @@ public class BinaryStatistics extends Statistics<Binary> {
    */
   @Deprecated
   public Binary getMax() {
-    return max;
+    return maxSigned;
   }
 
   /**
@@ -124,7 +240,7 @@ public class BinaryStatistics extends Statistics<Binary> {
    */
   @Deprecated
   public Binary getMin() {
-    return min;
+    return minSigned;
   }
 
   /**
@@ -132,8 +248,29 @@ public class BinaryStatistics extends Statistics<Binary> {
    */
   @Deprecated
   public void setMinMax(Binary min, Binary max) {
-    this.max = max;
-    this.min = min;
+    this.maxSigned = max;
+    this.minSigned = min;
+    this.maxUnsigned = max;
+    this.minUnsigned = min;
     this.markAsNotEmpty();
   }
+
+  @Override
+  public final int compareValueToMin(Binary value, ByteSignedness signedness) {
+    if (signedness == ByteSignedness.SIGNED) {
+      return value.compareTo(genericGetMinSigned());
+    } else {
+      return Binary.compareTwoBinaryUnsigned(value, genericGetMinUnsigned());
+    }
+  }
+
+  @Override
+  public final int compareValueToMax(Binary value, ByteSignedness signedness) {
+    if (signedness == ByteSignedness.SIGNED) {
+      return value.compareTo(genericGetMaxSigned());
+    } else {
+      return Binary.compareTwoBinaryUnsigned(value, genericGetMaxUnsigned());
+    }
+  }
+
 }

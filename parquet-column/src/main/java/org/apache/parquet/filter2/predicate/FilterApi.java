@@ -103,6 +103,13 @@ public final class FilterApi {
   }
 
   /**
+   * Same as {@link FilterApi#eq(Column, Comparable)}, but allows specifying signedness.
+   */
+  public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> Eq<T> eq(C column, T value, ByteSignedness signedness) {
+    return new Eq<T>(column, value, signedness);
+  }
+
+  /**
    * Keeps records if their value is not equal to the provided value.
    * Nulls are treated the same way the java programming language does.
    * For example:
@@ -121,6 +128,13 @@ public final class FilterApi {
   }
 
   /**
+   * Same as {@link FilterApi#notEq(Column, Comparable)}, but allows specifying signedness.
+   */
+  public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> NotEq<T> notEq(C column, T value, ByteSignedness signedness) {
+    return new NotEq<T>(column, value, signedness);
+  }
+
+  /**
    * Keeps records if their value is less than (but not equal to) the provided value.
    * The provided value cannot be null, as less than null has no meaning.
    * Records with null values will be dropped.
@@ -132,6 +146,14 @@ public final class FilterApi {
   }
 
   /**
+   * Same as {@link FilterApi#lt(Column, Comparable)}, but allows specifying signedness.
+   */
+  public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> Lt<T> lt(C column, T value, ByteSignedness signedness) {
+    return new Lt<T>(column, value, signedness);
+  }
+
+
+  /**
    * Keeps records if their value is less than or equal to the provided value.
    * The provided value cannot be null, as less than null has no meaning.
    * Records with null values will be dropped.
@@ -140,6 +162,13 @@ public final class FilterApi {
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> LtEq<T> ltEq(C column, T value) {
     return new LtEq<T>(column, value);
+  }
+
+  /**
+   * Same as {@link FilterApi#ltEq(Column, Comparable)}, but allows specifying signedness.
+   */
+  public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> LtEq<T> ltEq(C column, T value, ByteSignedness signedness) {
+    return new LtEq<T>(column, value, signedness);
   }
 
   /**
@@ -154,6 +183,13 @@ public final class FilterApi {
   }
 
   /**
+   * Same as {@link FilterApi#gt(Column, Comparable)}, but allows specifying signedness.
+   */
+  public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> Gt<T> gt(C column, T value, ByteSignedness signedness) {
+    return new Gt<T>(column, value, signedness);
+  }
+
+  /**
    * Keeps records if their value is greater than or equal to the provided value.
    * The provided value cannot be null, as less than null has no meaning.
    * Records with null values will be dropped.
@@ -162,6 +198,13 @@ public final class FilterApi {
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> GtEq<T> gtEq(C column, T value) {
     return new GtEq<T>(column, value);
+  }
+
+  /**
+   * Same as {@link FilterApi#gtEq(Column, Comparable)}, but allows specifying signedness.
+   */
+  public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> GtEq<T> gtEq(C column, T value, ByteSignedness signedness) {
+    return new GtEq<T>(column, value, signedness);
   }
 
   /**
