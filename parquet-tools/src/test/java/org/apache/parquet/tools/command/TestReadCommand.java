@@ -83,7 +83,6 @@ public class TestReadCommand {
       .getResource("/org/apache/parquet/tools/build/sample.parquet/_SUCCESS").toURI())
       .getParent();
     ParquetMetadata metadata = command.getMetadata(file, command.filterPartitionFiles());
-    System.out.println(metadata);
     assertNotNull(metadata);
   }
 
@@ -113,23 +112,23 @@ public class TestReadCommand {
 
     // we expect first metadata to be returned regardless of content
     ParquetMetadata result = command.extractMetadata(footers, new Path("/tmp/folder"));
-    assertSame(result, metadata1);
-    assertNotSame(result, metadata2);
+    assertSame(metadata1, result);
+    assertNotSame(metadata2, result);
 
     // change footers to have metadata2 first
     footers.add(0, new Footer(new Path("/tmp/folder/file2"), metadata2));
     result = command.extractMetadata(footers, new Path("/tmp/folder"));
-    assertSame(result, metadata2);
-    assertNotSame(result, metadata1);
+    assertSame(metadata2, result);
+    assertNotSame(metadata1, result);
   }
 
   @Test
   public void testFilterPartitionFiles() throws Exception {
     PathFilter filter = command.filterPartitionFiles();
-    assertEquals(filter.accept(null), false);
-    assertEquals(filter.accept(new Path("/tmp/folder/_SUCCESS")), false);
-    assertEquals(filter.accept(new Path("/tmp/folder")), true);
-    assertEquals(filter.accept(new Path("/tmp/folder/_metadata")), true);
-    assertEquals(filter.accept(new Path("/tmp/folder/_success")), true);
+    assertEquals(false, filter.accept(null));
+    assertEquals(false, filter.accept(new Path("/tmp/folder/_SUCCESS")));
+    assertEquals(true, filter.accept(new Path("/tmp/folder")));
+    assertEquals(true, filter.accept(new Path("/tmp/folder/_metadata")));
+    assertEquals(true, filter.accept(new Path("/tmp/folder/_success")));
   }
 }
