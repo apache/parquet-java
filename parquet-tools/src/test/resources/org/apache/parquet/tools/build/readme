@@ -1,0 +1,8 @@
+'sample.parquet' is Parquet table saved using Spark 1.6.2.
+
+Schema:
+message spark_schema {
+  optional int64 id;
+  optional binary str (UTF8);
+  optional boolean flag;
+}

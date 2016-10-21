@@ -44,7 +44,7 @@ abstract class ReadCommand extends ArgsOnlyCommand {
    * Get Parquet metadata for given base path and filter. Path can be a directory, see
    * `mergeFooters` method on how metadata is selected.
    */
-  protected ParquetMetadata getMetadata(Path basePath, PathFilter filter) throws IOException {
+  public ParquetMetadata getMetadata(Path basePath, PathFilter filter) throws IOException {
     FileSystem fs = basePath.getFileSystem(conf);
     // Sometimes input path can be a directory, e.g. in case of Spark output, we need to make sure
     // that at least one path exists for extracting metadata
@@ -55,13 +55,17 @@ abstract class ReadCommand extends ArgsOnlyCommand {
 
     List<Footer> footers =
       ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, Arrays.asList(statuses));
-    return mergeFooters(footers, basePath);
+    return extractMetadata(footers, basePath);
   }
 
   /**
-   * Merge list of footers to extract Parquet metadata.
+   * Extract metadata from list of footers.
    */
-  protected ParquetMetadata mergeFooters(List<Footer> footers, Path basePath) throws IOException {
+  public ParquetMetadata extractMetadata(List<Footer> footers, Path basePath) throws IOException {
+    if (basePath == null) {
+      throw new IOException("Invalid basePath " + basePath);
+    }
+
     if (footers == null || footers.isEmpty()) {
       throw new IOException("Could not find metadata in " + basePath);
     }
@@ -74,12 +78,12 @@ abstract class ReadCommand extends ArgsOnlyCommand {
    * Get filter for partition files when base path is a directory, this is used mainly to filter
    * out Spark files.
    */
-  protected PathFilter filterPartitionFiles() {
+  public PathFilter filterPartitionFiles() {
     return new PathFilter() {
       @Override
       public boolean accept(Path path) {
         // Ignore Spark '_SUCCESS' files
-        return !path.getName().equals("_SUCCESS");
+        return path != null && !path.getName().equals("_SUCCESS");
       }
     };
   }
