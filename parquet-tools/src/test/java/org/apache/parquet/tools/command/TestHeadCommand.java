@@ -72,7 +72,7 @@ public class TestHeadCommand {
 
   @Test(expected = IOException.class)
   public void testHeadFileWrongPath() throws Exception {
-    // test for cat on invalid Parquet file
+    // test reading of invalid Parquet file
     HeadCommand command = new HeadCommand();
     String path = getClass().getResource("/org/apache/parquet/tools/build/readme").toString();
     CommandLine cmd = getCommandLine(command, new String[]{path});
