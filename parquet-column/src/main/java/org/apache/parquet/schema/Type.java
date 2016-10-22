@@ -118,7 +118,7 @@ abstract public class Type {
   /**
    * Pattern for matching column names that need to wrapped in backquotes.
    */
-  private static final Pattern pattern = Pattern.compile("[^a-zA-Z\\.\\d_-]");
+  private static final Pattern pattern = Pattern.compile("[^a-zA-Z\\d_-]");
 
   /**
    * @param name the name of the type

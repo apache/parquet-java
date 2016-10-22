@@ -150,13 +150,13 @@ public class TestParquetWriter {
     MessageType schema = parseMessageType(
         "message test { "
         + "required binary `binary field`; "
-        + "required int32 `int32 field`; "
-        + "required int64 `int64 field`; "
-        + "required boolean `boolean field`; "
-        + "required float `float field`; "
-        + "required double `double field`; "
-        + "required fixed_len_byte_array(3) `flba field`; "
-        + "required int96 `int96 field`; "
+        + "required int32 `int32.field`; "
+        + "required int64 `int64``field`; "
+        + "required boolean `boolean,field`; "
+        + "required float `!float field!`; "
+        + "required double `double@#$field`; "
+        + "required fixed_len_byte_array(3) `flba+& field`; "
+        + "required int96 `int96!`; "
         + "} ");
     GroupWriteSupport.setSchema(schema, conf);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
@@ -176,27 +176,27 @@ public class TestParquetWriter {
           writer.write(
               f.newGroup()
               .append("binary field", "test" + (i % modulo))
-              .append("int32 field", 32)
-              .append("int64 field", 64l)
-              .append("boolean field", true)
-              .append("float field", 1.0f)
-              .append("double field", 2.0d)
-              .append("flba field", "foo")
-              .append("int96 field", Binary.fromConstantByteArray(new byte[12])));
+              .append("int32.field", 32)
+              .append("int64`field", 64l)
+              .append("boolean,field", true)
+              .append("!float field!", 1.0f)
+              .append("double@#$field", 2.0d)
+              .append("flba+& field", "foo")
+              .append("int96!", Binary.fromConstantByteArray(new byte[12])));
         }
         writer.close();
         ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build();
         for (int i = 0; i < 1000; i++) {
           Group group = reader.read();
           assertEquals("test" + (i % modulo), group.getBinary("binary field", 0).toStringUsingUTF8());
-          assertEquals(32, group.getInteger("int32 field", 0));
-          assertEquals(64l, group.getLong("int64 field", 0));
-          assertEquals(true, group.getBoolean("boolean field", 0));
-          assertEquals(1.0f, group.getFloat("float field", 0), 0.001);
-          assertEquals(2.0d, group.getDouble("double field", 0), 0.001);
-          assertEquals("foo", group.getBinary("flba field", 0).toStringUsingUTF8());
+          assertEquals(32, group.getInteger("int32.field", 0));
+          assertEquals(64l, group.getLong("int64`field", 0));
+          assertEquals(true, group.getBoolean("boolean,field", 0));
+          assertEquals(1.0f, group.getFloat("!float field!", 0), 0.001);
+          assertEquals(2.0d, group.getDouble("double@#$field", 0), 0.001);
+          assertEquals("foo", group.getBinary("flba+& field", 0).toStringUsingUTF8());
           assertEquals(Binary.fromConstantByteArray(new byte[12]),
-              group.getInt96("int96 field",0));
+              group.getInt96("int96!",0));
         }
         reader.close();
         ParquetMetadata footer = readFooter(conf, file, NO_FILTER);

@@ -18,15 +18,15 @@
  */
 package org.apache.parquet.schema;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
