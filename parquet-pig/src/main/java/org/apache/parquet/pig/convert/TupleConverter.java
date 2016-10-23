@@ -22,6 +22,7 @@ import static java.lang.Math.max;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.parquet.pig.PigSchemaConverter;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.DataType;
@@ -73,17 +74,46 @@ public class TupleConverter extends GroupConverter {
       this.converters = new Converter[this.schemaSize];
       for (int i = 0, c = 0; i < schemaSize; i++) {
         FieldSchema field = pigSchema.getField(i);
-        if(parquetSchema.containsField(field.alias) || columnIndexAccess) {
-          Type type = getType(columnIndexAccess, field.alias, i);
-          
+        String fieldName = field.alias;
+        boolean isWrapped = false;
+        // case of a repeated field
+        if (PigSchemaConverter.isWrappedType(fieldName)) {
+          fieldName = PigSchemaConverter.unWrappedName(fieldName);
+          isWrapped = true;
+        }
+        if(parquetSchema.containsField(fieldName) || columnIndexAccess) {
+          Type type = getType(columnIndexAccess, fieldName, i);
+
           if(type != null) {
             final int index = i;
-            converters[c++] = newConverter(field, type, new ParentValueContainer() {
-              @Override
-              void add(Object value) {
-                TupleConverter.this.set(index, value);
+            if (type.getRepetition() == Repetition.REPEATED && isWrapped == true) {
+
+              if (type.isPrimitive()) {
+                field = field.schema.getField(0).schema.getField(0);
+              } else {
+                field = field.schema.getField(0);
               }
-            }, elephantBirdCompatible, columnIndexAccess);
+
+              converters[c++] = newConverter(field, type, new ParentValueContainer() {
+                private boolean initialized = false;
+                Tuple outerTuple = TF.newTuple();
+                @Override
+                void add(Object value) {
+                  if (initialized == false) {
+                    TupleConverter.this.set(index,outerTuple);
+                    initialized = true;
+                  }
+                  outerTuple.append(value);
+                }
+              }, elephantBirdCompatible, columnIndexAccess);
+            } else {
+              converters[c++] = newConverter(field, type, new ParentValueContainer() {
+                @Override
+                void add(Object value) {
+                  TupleConverter.this.set(index, value);
+                }
+              }, elephantBirdCompatible, columnIndexAccess);
+            }
           }
         }
         
@@ -204,6 +234,7 @@ public class TupleConverter extends GroupConverter {
           " to current tuple " + currentTuple + " at " + fieldIndex, e);
     }
   }
+
 
   @Override
   public void end() {
