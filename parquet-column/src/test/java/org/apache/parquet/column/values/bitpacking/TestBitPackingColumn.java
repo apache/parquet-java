@@ -28,12 +28,13 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
-import org.apache.parquet.Log;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestBitPackingColumn {
-  private static final Log LOG = Log.getLog(TestBitPackingColumn.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestBitPackingColumn.class);
 
   @Test
   public void testZero() throws IOException {
@@ -163,7 +164,7 @@ public class TestBitPackingColumn {
 
   private void validateEncodeDecode(int bitLength, int[] vals, String expected) throws IOException {
     for (PACKING_TYPE type : PACKING_TYPE.values()) {
-      LOG.debug(type);
+      LOG.debug("{}", type);
       final int bound = (int)Math.pow(2, bitLength) - 1;
       ValuesWriter w = type.getWriter(bound);
       for (int i : vals) {
@@ -171,7 +172,7 @@ public class TestBitPackingColumn {
       }
       byte[] bytes = w.getBytes().toByteArray();
       LOG.debug("vals ("+bitLength+"): " + TestBitPacking.toString(vals));
-      LOG.debug("bytes: " + TestBitPacking.toString(bytes));
+      LOG.debug("bytes: {}", TestBitPacking.toString(bytes));
       assertEquals(type.toString(), expected, TestBitPacking.toString(bytes));
       ValuesReader r = type.getReader(bound);
       r.initFromPage(vals.length, ByteBuffer.wrap(bytes), 0);
@@ -179,7 +180,7 @@ public class TestBitPackingColumn {
       for (int i = 0; i < result.length; i++) {
         result[i] = r.readInteger();
       }
-      LOG.debug("result: " + TestBitPacking.toString(result));
+      LOG.debug("result: {}", TestBitPacking.toString(result));
       assertArrayEquals(type + " result: " + TestBitPacking.toString(result), vals, result);
     }
   }

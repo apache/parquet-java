@@ -26,12 +26,13 @@ import java.nio.ByteBuffer;
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestLemireBitPacking {
-  private static final Log LOG = Log.getLog(TestLemireBitPacking.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestLemireBitPacking.class);
 
   @Test
   public void testPackUnPack() {
@@ -39,7 +40,7 @@ public class TestLemireBitPacking {
       LOG.debug("");
       LOG.debug("testPackUnPack");
       for (int i = 1; i < 32; i++) {
-        LOG.debug("Width: " + i);
+        LOG.debug("Width: {}", i);
         int[] values = generateValues(i);
         int[] unpacked = new int[32];
         {
@@ -73,7 +74,7 @@ public class TestLemireBitPacking {
     for (int j = 0; j < values.length; j++) {
       values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, bitWidth);
     }
-    LOG.debug("Input:  " + TestBitPacking.toString(values));
+    LOG.debug("Input:  {}", TestBitPacking.toString(values));
     return values;
   }
 
@@ -82,7 +83,7 @@ public class TestLemireBitPacking {
     LOG.debug("");
     LOG.debug("testPackUnPackAgainstHandWritten");
     for (int i = 1; i < 8; i++) {
-      LOG.debug("Width: " + i);
+      LOG.debug("Width: {}", i);
       int[] packed = new int[i];
       int[] unpacked = new int[32];
       int[] values = generateValues(i);
@@ -99,7 +100,7 @@ public class TestLemireBitPacking {
         lemireOut.write((v >>>  0) & 0xFF);
       }
       final byte[] packedByLemireAsBytes = lemireOut.toByteArray();
-      LOG.debug("Lemire: " + TestBitPacking.toString(packedByLemireAsBytes));
+      LOG.debug("Lemire: {}", TestBitPacking.toString(packedByLemireAsBytes));
 
       // pack manual
       final ByteArrayOutputStream manualOut = new ByteArrayOutputStream();
@@ -108,7 +109,7 @@ public class TestLemireBitPacking {
         writer.write(values[j]);
       }
       final byte[] packedManualAsBytes = manualOut.toByteArray();
-      LOG.debug("Manual: " + TestBitPacking.toString(packedManualAsBytes));
+      LOG.debug("Manual: {}", TestBitPacking.toString(packedManualAsBytes));
 
       // unpack manual
       final BitPackingReader reader = BitPacking.createBitPackingReader(i, new ByteArrayInputStream(packedByLemireAsBytes), 32);
@@ -116,7 +117,7 @@ public class TestLemireBitPacking {
         unpacked[j] = reader.read();
       }
 
-      LOG.debug("Output: " + TestBitPacking.toString(unpacked));
+      LOG.debug("Output: {}", TestBitPacking.toString(unpacked));
       Assert.assertArrayEquals("width " + i, values, unpacked);
     }
   }

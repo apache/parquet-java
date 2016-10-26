@@ -24,9 +24,6 @@ import static org.apache.parquet.example.Paper.schema;
 import static org.apache.parquet.example.Paper.schema2;
 import static org.apache.parquet.example.Paper.schema3;
 
-import java.util.logging.Level;
-
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.mem.MemPageStore;
@@ -37,8 +34,6 @@ import org.apache.parquet.schema.MessageType;
 
 
 /**
- * make sure {@link Log#LEVEL} is set to {@link Level#OFF}
- *
  * @author Julien Le Dem
  *
  */

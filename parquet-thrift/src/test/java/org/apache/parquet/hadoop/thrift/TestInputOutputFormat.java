@@ -45,7 +45,6 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.thrift.TBase;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.thrift.test.compat.StructV1;
@@ -56,9 +55,11 @@ import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestInputOutputFormat {
-  private static final Log LOG = Log.getLog(TestInputOutputFormat.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestInputOutputFormat.class);
 
   public static AddressBook nextAddressbook(int i) {
     final ArrayList<Person> persons = new ArrayList<Person>();
@@ -245,10 +246,10 @@ public class TestInputOutputFormat {
   public static void waitForJob(Job job) throws Exception {
     job.submit();
     while (!job.isComplete()) {
-      LOG.debug("waiting for job " + job.getJobName());
+      LOG.debug("waiting for job {}", job.getJobName());
       sleep(100);
     }
-    LOG.info("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
+    LOG.info("status for job {}: {}", job.getJobName(), (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
     if (!job.isSuccessful()) {
       throw new RuntimeException("job failed " + job.getJobName());
     }
