@@ -19,6 +19,7 @@
 
 package org.apache.parquet.tools.command;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,17 +30,23 @@ import org.apache.commons.cli.Options;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 
+import org.junit.Rule;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.parquet.hadoop.Footer;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 
 public class TestReadCommand {
+  @Rule
+  public TemporaryFolder temp = new TemporaryFolder();
+
   // dummy test command for metadata tests
   private ReadCommand command = null;
 
@@ -62,62 +69,69 @@ public class TestReadCommand {
   }
 
   @Test(expected = IOException.class)
+  public void testGetMetadataNullBasePath() throws Exception {
+    // test should fail for null base path
+    command.getMetadata(null, command.filterPartitionFiles());
+  }
+
+  @Test(expected = IOException.class)
   public void testGetMetadataWrongBasePath() throws Exception {
-    // test should fail because no Parquet metadata available for text file
-    Path file = new Path(getClass().getResource("/org/apache/parquet/tools/build/readme").toURI());
-    command.getMetadata(file, command.filterPartitionFiles());
+    // test should fail because no Parquet metadata available for simple non-Parquet file
+    File file = temp.newFile("textfile");
+    Path path = new Path(file.toString());
+    command.getMetadata(path, command.filterPartitionFiles());
   }
 
   @Test(expected = IOException.class)
   public void testGetMetadataEmptyFileStatus() throws Exception {
     // test should fail because no file statuses available for the path
-    Path file = new Path(getClass().getResource("/org/apache/parquet/tools/build/readme").toURI())
-      .suffix("-empty");
-    command.getMetadata(file, command.filterPartitionFiles());
+    File file = temp.newFile("textfile");
+    assertTrue(file.delete());
+    Path path = new Path(file.toString());
+    command.getMetadata(path, command.filterPartitionFiles());
   }
 
   @Test
   public void testGetMetadata() throws Exception {
     // read Parquet table and return first footer found
-    Path file = new Path(getClass()
-      .getResource("/org/apache/parquet/tools/build/sample.parquet/_SUCCESS").toURI())
-      .getParent();
-    ParquetMetadata metadata = command.getMetadata(file, command.filterPartitionFiles());
+    File folder = temp.newFolder();
+    Path path = new Path(folder.toString()).suffix(Path.SEPARATOR + "table.parquet");
+    ParquetToolsWrite.writeParquetTable(path, 4, true);
+    ParquetMetadata metadata = command.getMetadata(path, command.filterPartitionFiles());
     assertNotNull(metadata);
   }
 
   @Test(expected = IOException.class)
-  public void testExtractMetadataWrongBasePath() throws Exception {
-    command.extractMetadata(new ArrayList<Footer>(), null);
-  }
-
-  @Test(expected = IOException.class)
   public void testExtractMetadataWrongFooters() throws Exception {
-    command.extractMetadata(null, new Path("/tmp/folder"));
+    command.extractMetadata(null);
   }
 
   @Test(expected = IOException.class)
   public void testExtractMetadataEmptyFooters() throws Exception {
-    command.extractMetadata(new ArrayList<Footer>(), new Path("/tmp/folder"));
+    command.extractMetadata(new ArrayList<Footer>());
   }
 
   @Test
   public void testExtractMetadata() throws Exception {
+    // test verifies that we just fetch first footer metadata from provided array of footers
+    // paths are dummy, files existence does not affect test
+    File file1 = temp.newFile("file1");
+    File file2 = temp.newFile("file2");
     List<Footer> footers = new ArrayList<Footer>();
     // we are not interested in actual values of ParquetMetadata in this test
     ParquetMetadata metadata1 = new ParquetMetadata(null, null);
     ParquetMetadata metadata2 = new ParquetMetadata(null, null);
-    footers.add(new Footer(new Path("/tmp/folder/file1"), metadata1));
-    footers.add(new Footer(new Path("/tmp/folder/file2"), metadata2));
+    footers.add(new Footer(new Path(file1.toString()), metadata1));
+    footers.add(new Footer(new Path(file2.toString()), metadata2));
 
     // we expect first metadata to be returned regardless of content
-    ParquetMetadata result = command.extractMetadata(footers, new Path("/tmp/folder"));
+    ParquetMetadata result = command.extractMetadata(footers);
     assertSame(metadata1, result);
     assertNotSame(metadata2, result);
 
     // change footers to have metadata2 first
-    footers.add(0, new Footer(new Path("/tmp/folder/file2"), metadata2));
-    result = command.extractMetadata(footers, new Path("/tmp/folder"));
+    footers.add(0, new Footer(new Path(file2.toString()), metadata2));
+    result = command.extractMetadata(footers);
     assertSame(metadata2, result);
     assertNotSame(metadata1, result);
   }
@@ -129,6 +143,7 @@ public class TestReadCommand {
     assertEquals(false, filter.accept(new Path("/tmp/folder/_SUCCESS")));
     assertEquals(true, filter.accept(new Path("/tmp/folder")));
     assertEquals(true, filter.accept(new Path("/tmp/folder/_metadata")));
+    assertEquals(true, filter.accept(new Path("/tmp/folder/_common_metadata")));
     assertEquals(true, filter.accept(new Path("/tmp/folder/_success")));
   }
 }

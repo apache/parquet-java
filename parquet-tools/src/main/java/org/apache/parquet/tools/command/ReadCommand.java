@@ -45,6 +45,10 @@ abstract class ReadCommand extends ArgsOnlyCommand {
    * `mergeFooters` method on how metadata is selected.
    */
   public ParquetMetadata getMetadata(Path basePath, PathFilter filter) throws IOException {
+    if (basePath == null) {
+      throw new IOException("Invalid basePath " + basePath);
+    }
+
     FileSystem fs = basePath.getFileSystem(conf);
     // Sometimes input path can be a directory, e.g. in case of Spark output, we need to make sure
     // that at least one path exists for extracting metadata
@@ -55,19 +59,16 @@ abstract class ReadCommand extends ArgsOnlyCommand {
 
     List<Footer> footers =
       ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, Arrays.asList(statuses));
-    return extractMetadata(footers, basePath);
+    return extractMetadata(footers);
   }
 
   /**
    * Extract metadata from list of footers.
    */
-  public ParquetMetadata extractMetadata(List<Footer> footers, Path basePath) throws IOException {
-    if (basePath == null) {
-      throw new IOException("Invalid basePath " + basePath);
-    }
-
+  public ParquetMetadata extractMetadata(List<Footer> footers) throws IOException {
     if (footers == null || footers.isEmpty()) {
-      throw new IOException("Could not find metadata in " + basePath);
+      throw new IOException("Could not find metadata in provided files' footers, " +
+        "they are either null or empty. Check that base path exists");
     }
 
     // Just take the first metadata for now
