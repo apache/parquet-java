@@ -169,8 +169,8 @@ public class TestParquetParser {
 
     MessageType parsed = parseMessageType(message);
     MessageType expected = buildMessage()
-        .optionalGroup()
-        .repeatedGroup()
+        .optionalGroup().as(MAP)
+        .repeatedGroup().as(MAP_KEY_VALUE)
         .required(BINARY).as(UTF8).named("key")
         .required(INT32).named("value")
         .named("map")
@@ -194,7 +194,7 @@ public class TestParquetParser {
 
     MessageType parsed = parseMessageType(message);
     MessageType expected = buildMessage()
-        .requiredGroup()
+        .requiredGroup().as(LIST)
         .repeated(BINARY).as(UTF8).named("string")
         .named("aList")
         .named("Message");

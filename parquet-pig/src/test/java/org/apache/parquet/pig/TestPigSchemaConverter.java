@@ -114,11 +114,11 @@ public class TestPigSchemaConverter {
     testConversion(
         "a:chararray, b:{t:(c:chararray, d:chararray)}",
         "message pig_schema {\n" +
-        "  optional binary a;\n" +
-        "  optional group b {\n" +
+        "  optional binary a (UTF8);\n" +
+        "  optional group b (LIST) {\n" +
         "    repeated group t {\n" +
-        "      optional binary c;\n" +
-        "      optional binary d;\n" +
+        "      optional binary c (UTF8);\n" +
+        "      optional binary d (UTF8);\n" +
         "    }\n" +
         "  }\n" +
         "}\n");
@@ -129,11 +129,11 @@ public class TestPigSchemaConverter {
     testConversion(
         "a:chararray, b:{(c:chararray, d:chararray)}",
         "message pig_schema {\n" +
-        "  optional binary a;\n" +
-        "  optional group b {\n" +
+        "  optional binary a (UTF8);\n" +
+        "  optional group b (LIST) {\n" +
         "    repeated group bag {\n" + // the inner field in the bag is called "bag"
-        "      optional binary c;\n" +
-        "      optional binary d;\n" +
+        "      optional binary c (UTF8);\n" +
+        "      optional binary d (UTF8);\n" +
         "    }\n" +
         "  }\n" +
         "}\n");
@@ -144,13 +144,13 @@ public class TestPigSchemaConverter {
     testConversion(
         "a:chararray, b:[(c:chararray, d:chararray)]",
         "message pig_schema {\n" +
-        "  optional binary a;\n" +
-        "  optional group b {\n" +
-        "    repeated group map {\n" +
-        "      required binary key;\n" +
+        "  optional binary a (UTF8);\n" +
+        "  optional group b (MAP) {\n" +
+        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "      required binary key (UTF8);\n" +
         "      optional group value {\n" +
-        "        optional binary c;\n" +
-        "        optional binary d;\n" +
+        "        optional binary c (UTF8);\n" +
+        "        optional binary d (UTF8);\n" +
         "      }\n" +
         "    }\n" +
         "  }\n" +
@@ -161,9 +161,9 @@ public class TestPigSchemaConverter {
   public void testMap2() throws Exception {
     testConversion("a:map[int]",
         "message pig_schema {\n" +
-        "  optional group a {\n" +
-        "    repeated group map {\n" +
-        "      required binary key;\n" +
+        "  optional group a (MAP) {\n" +
+        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "      required binary key (UTF8);\n" +
         "      optional int32 value;" +
         "    }\n" +
         "  }\n" +
@@ -174,12 +174,12 @@ public class TestPigSchemaConverter {
   public void testMap3() throws Exception {
     testConversion("a:map[map[int]]",
         "message pig_schema {\n" +
-        "  optional group a {\n" +
-        "    repeated group map {\n" +
-        "      required binary key;\n" +
-        "      optional group value {\n" +
-        "        repeated group map {\n" +
-        "          required binary key;\n" +
+        "  optional group a (MAP) {\n" +
+        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "      required binary key (UTF8);\n" +
+        "      optional group value (MAP) {\n" +
+        "        repeated group map (MAP_KEY_VALUE) {\n" +
+        "          required binary key (UTF8);\n" +
         "          optional int32 value;\n" +
         "        }\n" +
         "      }\n" +
@@ -192,10 +192,10 @@ public class TestPigSchemaConverter {
   public void testMap4() throws Exception {
     testConversion("a:map[bag{(a:int)}]",
         "message pig_schema {\n" +
-        "  optional group a {\n" +
-        "    repeated group map {\n" +
-        "      required binary key;\n" +
-        "      optional group value {\n" +
+        "  optional group a (MAP) {\n" +
+        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "      required binary key (UTF8);\n" +
+        "      optional group value (LIST) {\n" +
         "        repeated group bag {\n" +
         "          optional int32 a;\n" +
         "        }\n" +
