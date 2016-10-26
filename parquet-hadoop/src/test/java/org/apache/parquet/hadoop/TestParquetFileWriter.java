@@ -24,9 +24,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Version;
-import org.apache.parquet.VersionParser;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.junit.Assume;
@@ -453,8 +451,9 @@ public class TestParquetFileWriter {
 
     Path path = new Path(testFile.toURI());
     Configuration configuration = new Configuration();
+    configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
 
-    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b (UTF8);} required group c { required int64 d; }}");
     String[] path1 = {"a", "b"};
     ColumnDescriptor c1 = schema.getColumnDescription(path1);
     String[] path2 = {"c", "d"};
@@ -585,13 +584,14 @@ public class TestParquetFileWriter {
     testFile.delete();
 
     writeSchema = "message example {\n" +
-            "required binary content;\n" +
+            "required binary content (UTF8);\n" +
             "}";
 
     Path path = new Path(testFile.toURI());
 
     MessageType schema = MessageTypeParser.parseMessageType(writeSchema);
     Configuration configuration = new Configuration();
+    configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
     GroupWriteSupport.setSchema(schema, configuration);
 
     ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport());

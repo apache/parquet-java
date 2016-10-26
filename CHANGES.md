@@ -19,22 +19,130 @@
 
 # Parquet #
 
+### Version 1.9.0 ###
+
+#### Bug
+
+*   [PARQUET-182](https://issues.apache.org/jira/browse/PARQUET-182) - FilteredRecordReader skips rows it shouldn't for schema with optional columns
+*   [PARQUET-212](https://issues.apache.org/jira/browse/PARQUET-212) - Implement nested type read rules in parquet-thrift
+*   [PARQUET-241](https://issues.apache.org/jira/browse/PARQUET-241) - ParquetInputFormat.getFooters() should return in the same order as what listStatus() returns
+*   [PARQUET-305](https://issues.apache.org/jira/browse/PARQUET-305) - Logger instantiated for package org.apache.parquet may be GC-ed
+*   [PARQUET-335](https://issues.apache.org/jira/browse/PARQUET-335) - Avro object model should not require MAP_KEY_VALUE
+*   [PARQUET-340](https://issues.apache.org/jira/browse/PARQUET-340) - totalMemoryPool is truncated to 32 bits
+*   [PARQUET-346](https://issues.apache.org/jira/browse/PARQUET-346) - ThriftSchemaConverter throws for unknown struct or union type
+*   [PARQUET-349](https://issues.apache.org/jira/browse/PARQUET-349) - VersionParser does not handle versions like "parquet-mr 1.6.0rc4"
+*   [PARQUET-352](https://issues.apache.org/jira/browse/PARQUET-352) - Add tags to "created by" metadata in the file footer
+*   [PARQUET-353](https://issues.apache.org/jira/browse/PARQUET-353) - Compressors not getting recycled while writing parquet files, causing memory leak
+*   [PARQUET-360](https://issues.apache.org/jira/browse/PARQUET-360) - parquet-cat json dump is broken for maps
+*   [PARQUET-363](https://issues.apache.org/jira/browse/PARQUET-363) - Cannot construct empty MessageType for ReadContext.requestedSchema
+*   [PARQUET-367](https://issues.apache.org/jira/browse/PARQUET-367) - "parquet-cat -j" doesn't show all records
+*   [PARQUET-372](https://issues.apache.org/jira/browse/PARQUET-372) - Parquet stats can have awkwardly large values
+*   [PARQUET-373](https://issues.apache.org/jira/browse/PARQUET-373) - MemoryManager tests are flaky
+*   [PARQUET-379](https://issues.apache.org/jira/browse/PARQUET-379) - PrimitiveType.union erases original type
+*   [PARQUET-380](https://issues.apache.org/jira/browse/PARQUET-380) - Cascading and scrooge builds fail when using thrift 0.9.0
+*   [PARQUET-385](https://issues.apache.org/jira/browse/PARQUET-385) - PrimitiveType.union accepts fixed_len_byte_array fields with different lengths when strict mode is on
+*   [PARQUET-387](https://issues.apache.org/jira/browse/PARQUET-387) - TwoLevelListWriter does not handle null values in array
+*   [PARQUET-389](https://issues.apache.org/jira/browse/PARQUET-389) - Filter predicates should work with missing columns
+*   [PARQUET-395](https://issues.apache.org/jira/browse/PARQUET-395) - System.out is used as logger in org.apache.parquet.Log
+*   [PARQUET-396](https://issues.apache.org/jira/browse/PARQUET-396) - The builder for AvroParquetReader loses the record type
+*   [PARQUET-400](https://issues.apache.org/jira/browse/PARQUET-400) - Error reading some files after PARQUET-77 bytebuffer read path
+*   [PARQUET-409](https://issues.apache.org/jira/browse/PARQUET-409) - InternalParquetRecordWriter doesn't use min/max row counts
+*   [PARQUET-410](https://issues.apache.org/jira/browse/PARQUET-410) - Fix subprocess hang in merge_parquet_pr.py
+*   [PARQUET-413](https://issues.apache.org/jira/browse/PARQUET-413) - Test failures for Java 8
+*   [PARQUET-415](https://issues.apache.org/jira/browse/PARQUET-415) - ByteBufferBackedBinary serialization is broken
+*   [PARQUET-422](https://issues.apache.org/jira/browse/PARQUET-422) - Fix a potential bug in MessageTypeParser where we ignore and overwrite the initial value of a method parameter
+*   [PARQUET-425](https://issues.apache.org/jira/browse/PARQUET-425) - Fix the bug when predicate contains columns not specified in prejection, to prevent filtering out data improperly
+*   [PARQUET-426](https://issues.apache.org/jira/browse/PARQUET-426) - Throw Exception when predicate contains columns not specified in prejection, to prevent filtering out data improperly
+*   [PARQUET-430](https://issues.apache.org/jira/browse/PARQUET-430) - Change to use Locale parameterized version of String.toUpperCase()/toLowerCase
+*   [PARQUET-431](https://issues.apache.org/jira/browse/PARQUET-431) - Make ParquetOutputFormat.memoryManager volatile
+*   [PARQUET-495](https://issues.apache.org/jira/browse/PARQUET-495) - Fix mismatches in Types class comments
+*   [PARQUET-509](https://issues.apache.org/jira/browse/PARQUET-509) - Incorrect number of args passed to string.format calls
+*   [PARQUET-511](https://issues.apache.org/jira/browse/PARQUET-511) - Integer overflow on counting values in column
+*   [PARQUET-528](https://issues.apache.org/jira/browse/PARQUET-528) - Fix flush() for RecordConsumer and implementations
+*   [PARQUET-529](https://issues.apache.org/jira/browse/PARQUET-529) - Avoid evoking job.toString() in ParquetLoader
+*   [PARQUET-540](https://issues.apache.org/jira/browse/PARQUET-540) - Cascading3 module doesn't build when using thrift 0.9.0
+*   [PARQUET-544](https://issues.apache.org/jira/browse/PARQUET-544) - ParquetWriter.close() throws NullPointerException on second call, improper implementation of Closeable contract
+*   [PARQUET-560](https://issues.apache.org/jira/browse/PARQUET-560) - Incorrect synchronization in SnappyCompressor
+*   [PARQUET-569](https://issues.apache.org/jira/browse/PARQUET-569) - ParquetMetadataConverter offset filter is broken
+*   [PARQUET-571](https://issues.apache.org/jira/browse/PARQUET-571) - Fix potential leak in ParquetFileReader.close()
+*   [PARQUET-580](https://issues.apache.org/jira/browse/PARQUET-580) - Potentially unnecessary creation of large int[] in IntList for columns that aren't used
+*   [PARQUET-581](https://issues.apache.org/jira/browse/PARQUET-581) - Min/max row count for page size check are conflated in some places
+*   [PARQUET-584](https://issues.apache.org/jira/browse/PARQUET-584) - show proper command usage when there's no arguments
+*   [PARQUET-612](https://issues.apache.org/jira/browse/PARQUET-612) - Add compression to FileEncodingIT tests
+*   [PARQUET-623](https://issues.apache.org/jira/browse/PARQUET-623) - DeltaByteArrayReader has incorrect skip behaviour
+*   [PARQUET-642](https://issues.apache.org/jira/browse/PARQUET-642) - Improve performance of ByteBuffer based read / write paths
+*   [PARQUET-645](https://issues.apache.org/jira/browse/PARQUET-645) - DictionaryFilter incorrectly handles null
+*   [PARQUET-651](https://issues.apache.org/jira/browse/PARQUET-651) - Parquet-avro fails to decode array of record with a single field name "element" correctly
+*   [PARQUET-660](https://issues.apache.org/jira/browse/PARQUET-660) - Writing Protobuf messages with extensions results in an error or data corruption.
+*   [PARQUET-663](https://issues.apache.org/jira/browse/PARQUET-663) - Link are Broken in README.md
+*   [PARQUET-674](https://issues.apache.org/jira/browse/PARQUET-674) - Add an abstraction to get the length of a stream
+*   [PARQUET-685](https://issues.apache.org/jira/browse/PARQUET-685) - Deprecated ParquetInputSplit constructor passes parameters in the wrong order.
+*   [PARQUET-726](https://issues.apache.org/jira/browse/PARQUET-726) - TestMemoryManager consistently fails
+*   [PARQUET-743](https://issues.apache.org/jira/browse/PARQUET-743) - DictionaryFilters can re-use StreamBytesInput when compressed
+
+#### Improvement
+
+*   [PARQUET-77](https://issues.apache.org/jira/browse/PARQUET-77) - Improvements in ByteBuffer read path
+*   [PARQUET-99](https://issues.apache.org/jira/browse/PARQUET-99) - Large rows cause unnecessary OOM exceptions
+*   [PARQUET-146](https://issues.apache.org/jira/browse/PARQUET-146) - make Parquet compile with java 7 instead of java 6
+*   [PARQUET-318](https://issues.apache.org/jira/browse/PARQUET-318) - Remove unnecessary objectmapper from ParquetMetadata
+*   [PARQUET-327](https://issues.apache.org/jira/browse/PARQUET-327) - Show statistics in the dump output
+*   [PARQUET-341](https://issues.apache.org/jira/browse/PARQUET-341) - Improve write performance with wide schema sparse data
+*   [PARQUET-343](https://issues.apache.org/jira/browse/PARQUET-343) - Caching nulls on group node to improve write performance on wide schema sparse data
+*   [PARQUET-358](https://issues.apache.org/jira/browse/PARQUET-358) - Add support for temporal logical types to AVRO/Parquet conversion
+*   [PARQUET-361](https://issues.apache.org/jira/browse/PARQUET-361) - Add prerelease logic to semantic versions
+*   [PARQUET-384](https://issues.apache.org/jira/browse/PARQUET-384) - Add Dictionary Based Filtering to Filter2 API
+*   [PARQUET-386](https://issues.apache.org/jira/browse/PARQUET-386) - Printing out the statistics of metadata in parquet-tools
+*   [PARQUET-397](https://issues.apache.org/jira/browse/PARQUET-397) - Pig Predicate Pushdown using Filter2 API
+*   [PARQUET-421](https://issues.apache.org/jira/browse/PARQUET-421) - Fix mismatch of javadoc names and method parameters in module encoding, column, and hadoop
+*   [PARQUET-427](https://issues.apache.org/jira/browse/PARQUET-427) - Push predicates into the whole read path
+*   [PARQUET-432](https://issues.apache.org/jira/browse/PARQUET-432) - Complete a todo for method ColumnDescriptor.compareTo()
+*   [PARQUET-460](https://issues.apache.org/jira/browse/PARQUET-460) - Parquet files concat tool
+*   [PARQUET-480](https://issues.apache.org/jira/browse/PARQUET-480) - Update for Cascading 3.0
+*   [PARQUET-484](https://issues.apache.org/jira/browse/PARQUET-484) - Warn when Decimal is stored as INT64 while could be stored as INT32
+*   [PARQUET-543](https://issues.apache.org/jira/browse/PARQUET-543) - Remove BoundedInt encodings
+*   [PARQUET-585](https://issues.apache.org/jira/browse/PARQUET-585) - Slowly ramp up sizes of int[]s in IntList to keep sizes small when data sets are small
+*   [PARQUET-654](https://issues.apache.org/jira/browse/PARQUET-654) - Make record-level filtering optional
+*   [PARQUET-668](https://issues.apache.org/jira/browse/PARQUET-668) - Provide option to disable auto crop feature in DumpCommand output
+*   [PARQUET-727](https://issues.apache.org/jira/browse/PARQUET-727) - Ensure correct version of thrift is used
+*   [PARQUET-740](https://issues.apache.org/jira/browse/PARQUET-740) - Introduce editorconfig
+
+#### New Feature
+
+*   [PARQUET-225](https://issues.apache.org/jira/browse/PARQUET-225) - INT64 support for Delta Encoding
+*   [PARQUET-382](https://issues.apache.org/jira/browse/PARQUET-382) - Add a way to append encoded blocks in ParquetFileWriter
+*   [PARQUET-429](https://issues.apache.org/jira/browse/PARQUET-429) - Enables predicates collecting their referred columns
+*   [PARQUET-548](https://issues.apache.org/jira/browse/PARQUET-548) - Add Java metadata for PageEncodingStats
+*   [PARQUET-669](https://issues.apache.org/jira/browse/PARQUET-669) - Allow reading file footers from input streams when writing metadata files
+
+#### Task
+
+*   [PARQUET-392](https://issues.apache.org/jira/browse/PARQUET-392) - Release Parquet-mr 1.9.0
+*   [PARQUET-404](https://issues.apache.org/jira/browse/PARQUET-404) - Replace git@github.com.apache for HTTPS URL on dev/README.md to avoid permission issues
+*   [PARQUET-696](https://issues.apache.org/jira/browse/PARQUET-696) - Move travis download from google code (defunct) to github
+
+#### Test
+
+*   [PARQUET-355](https://issues.apache.org/jira/browse/PARQUET-355) - Create Integration tests to validate statistics
+*   [PARQUET-378](https://issues.apache.org/jira/browse/PARQUET-378) - Add thoroughly parquet test encodings
+
+
 ### Version 1.8.1 ###
 
 #### Bug
 
-*   [[PARQUET-331](https://issues.apache.org/jira/browse/PARQUET-331)] - Merge script doesn't surface stderr from failed sub processes
-*   [[PARQUET-336](https://issues.apache.org/jira/browse/PARQUET-336)] - ArrayIndexOutOfBounds in checkDeltaByteArrayProblem
-*   [[PARQUET-337](https://issues.apache.org/jira/browse/PARQUET-337)] - binary fields inside map/set/list are not handled in parquet-scrooge
-*   [[PARQUET-338](https://issues.apache.org/jira/browse/PARQUET-338)] - Readme references wrong format of pull request title
+*   [PARQUET-331](https://issues.apache.org/jira/browse/PARQUET-331) - Merge script doesn't surface stderr from failed sub processes
+*   [PARQUET-336](https://issues.apache.org/jira/browse/PARQUET-336) - ArrayIndexOutOfBounds in checkDeltaByteArrayProblem
+*   [PARQUET-337](https://issues.apache.org/jira/browse/PARQUET-337) - binary fields inside map/set/list are not handled in parquet-scrooge
+*   [PARQUET-338](https://issues.apache.org/jira/browse/PARQUET-338) - Readme references wrong format of pull request title
 
 #### Improvement
 
-*   [[PARQUET-279](https://issues.apache.org/jira/browse/PARQUET-279)] - Check empty struct in the CompatibilityChecker util
+*   [PARQUET-279](https://issues.apache.org/jira/browse/PARQUET-279) - Check empty struct in the CompatibilityChecker util
 
 #### Task
 
-*   [[PARQUET-339](https://issues.apache.org/jira/browse/PARQUET-339)] - Add Alex Levenson to KEYS file
+*   [PARQUET-339](https://issues.apache.org/jira/browse/PARQUET-339) - Add Alex Levenson to KEYS file
 
 ### Version 1.8.0 ###
 

@@ -9,7 +9,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.8.2-SNAPSHOT</version>
+  <version>1.9.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -520,7 +520,7 @@
         <!-- test hadoop-1 with the same jars that were produced for default profile -->
         <maven.main.skip>true</maven.main.skip>
         <hadoop.version>${hadoop1.version}</hadoop.version>
-        <pig.classifier/>
+        <pig.classifier />
       </properties>
     </profile>
     <profile>

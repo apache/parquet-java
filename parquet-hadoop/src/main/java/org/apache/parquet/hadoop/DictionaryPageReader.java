@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import org.apache.parquet.Strings;
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
@@ -93,7 +94,10 @@ class DictionaryPageReader implements DictionaryPageReadStore {
         // check the cache again in case this thread waited on another reading the same page
         if (!cache.containsKey(dotPath)) {
           DictionaryPage dict = hasDictionaryPage(column) ? reader.readDictionary(column) : null;
-          cache.put(dotPath, dict);
+          // copy the dictionary to ensure it can be reused if it is returned
+          // more than once. this can happen when a DictionaryFilter has two or
+          // more predicates for the same column.
+          cache.put(dotPath, reusableCopy(dict));
         }
       }
 
@@ -101,6 +105,19 @@ class DictionaryPageReader implements DictionaryPageReadStore {
     } catch (IOException e) {
       throw new ParquetDecodingException(
           "Failed to read dictionary", e);
+    }
+  }
+
+  private static DictionaryPage reusableCopy(DictionaryPage dict) {
+    if (dict == null) {
+      return null;
+    }
+    try {
+      return new DictionaryPage(
+          BytesInput.from(dict.getBytes().toByteArray()),
+          dict.getDictionarySize(), dict.getEncoding());
+    } catch (IOException e) {
+      throw new ParquetDecodingException("Cannot read dictionary", e);
     }
   }
 
