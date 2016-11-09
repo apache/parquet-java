@@ -92,6 +92,7 @@
   </properties>
 
   <modules>
+    <module>parquet-arrow</module>
     <module>parquet-avro</module>
     <module>parquet-benchmarks</module>
     <module>parquet-cascading</module>
