@@ -48,10 +48,10 @@ To run from the target directory instead of using the `hadoop` command, first co
 mvn dependency:copy-dependencies
 ```
 
-Then, run the command-line using the `target/dependencies` for the classpath:
+Then, run the command-line and add `target/dependencies/*` to the classpath:
 
 ```
-java -cp 'target/parquet-cli-1.9.1-runtime.jar:target/dependency/*' org.apache.parquet.cli.Main
+java -cp 'target/*:target/dependency/*' org.apache.parquet.cli.Main
 ```
 
 
