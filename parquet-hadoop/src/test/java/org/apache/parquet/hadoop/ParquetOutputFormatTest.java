@@ -30,6 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 
 public class ParquetOutputFormatTest {
 
@@ -51,21 +52,32 @@ public class ParquetOutputFormatTest {
     }
   }
 
+  /* Using reflection to get around Hadoop version differences */
+  private Object getOutCommitterUsingReflection() throws Exception {
+    return ParquetOutputFormat.class.getMethod(
+      "getOutputCommitter", Class.forName("org.apache.hadoop.mapreduce.TaskAttemptContext"))
+        .invoke(parquetOutputFormat, context);
+  }
+
   @Test
   public void getOutputCommitter() throws Exception {
     configuration.set(
-        ParquetOutputFormat.OUTPUT_COMMITTER_CLASS, MockOutputCommitter.class.getName());
-    assertTrue(parquetOutputFormat.getOutputCommitter(context) instanceof MockOutputCommitter);
+      ParquetOutputFormat.OUTPUT_COMMITTER_CLASS, MockOutputCommitter.class.getName());
+    assertTrue(getOutCommitterUsingReflection() instanceof MockOutputCommitter);
   }
 
   @Test
   public void getOutputCommitterNoSet() throws Exception {
-    assertTrue(parquetOutputFormat.getOutputCommitter(context) instanceof ParquetOutputCommitter);
+    assertTrue(getOutCommitterUsingReflection() instanceof ParquetOutputCommitter);
   }
 
   @Test(expected = BadConfigurationException.class)
-  public void getOutputCommitterInvalidClass() throws Exception {
+  public void getOutputCommitterInvalidClass() throws Throwable {
     configuration.set(ParquetOutputFormat.OUTPUT_COMMITTER_CLASS, "java.lang.404");
-    parquetOutputFormat.getOutputCommitter(context);
+    try {
+      getOutCommitterUsingReflection();
+    } catch (final InvocationTargetException ex) {
+      throw ex.getCause();
+    }
   }
 }
