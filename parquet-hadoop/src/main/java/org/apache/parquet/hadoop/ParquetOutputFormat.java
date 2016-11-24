@@ -440,8 +440,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   @Override
   public OutputCommitter getOutputCommitter(TaskAttemptContext context) throws IOException {
     if (committer == null) {
-      Path output = getOutputPath(context);
-      final String outputCommitterClassName = context.getConfiguration().get(
+      final Path output = getOutputPath(context);
+      final String outputCommitterClassName = getConfiguration(context).get(
         OUTPUT_COMMITTER_CLASS, ParquetOutputCommitter.class.getName());
       try {
         committer = (OutputCommitter) Class.forName(outputCommitterClassName)
