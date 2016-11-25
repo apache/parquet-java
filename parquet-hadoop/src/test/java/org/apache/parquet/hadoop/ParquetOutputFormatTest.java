@@ -24,13 +24,13 @@ import static org.mockito.Mockito.when;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.OutputCommitter;
+import org.apache.hadoop.mapred.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 
 public class ParquetOutputFormatTest {
 
@@ -38,46 +38,42 @@ public class ParquetOutputFormatTest {
   private TaskAttemptContext context;
   private Configuration configuration;
 
+
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     parquetOutputFormat = new ParquetOutputFormat<>();
     context = mock(TaskAttemptContext.class);
     configuration = new Configuration();
     when(context.getConfiguration()).thenReturn(configuration);
   }
 
-  private static class MockOutputCommitter extends FileOutputCommitter {
-    public MockOutputCommitter(Path outputPath, TaskAttemptContext context) throws IOException {
+  public static class MockOutputCommitter extends FileOutputCommitter {
+    public MockOutputCommitter(
+      final Path outputPath,
+      final org.apache.hadoop.mapreduce.TaskAttemptContext context) throws IOException {
       super(outputPath, context);
     }
   }
 
-  /* Using reflection to get around Hadoop version differences */
-  private Object getOutCommitterUsingReflection() throws Exception {
-    return ParquetOutputFormat.class.getMethod(
-      "getOutputCommitter", Class.forName("org.apache.hadoop.mapreduce.TaskAttemptContext"))
-        .invoke(parquetOutputFormat, context);
+  private OutputCommitter getOutCommitter() throws Exception {
+    return parquetOutputFormat.getOutputCommitter(context);
   }
 
   @Test
   public void getOutputCommitter() throws Exception {
     configuration.set(
       ParquetOutputFormat.OUTPUT_COMMITTER_CLASS, MockOutputCommitter.class.getName());
-    assertTrue(getOutCommitterUsingReflection() instanceof MockOutputCommitter);
+    assertTrue(getOutCommitter() instanceof MockOutputCommitter);
   }
 
   @Test
   public void getOutputCommitterNoSet() throws Exception {
-    assertTrue(getOutCommitterUsingReflection() instanceof ParquetOutputCommitter);
+    assertTrue(getOutCommitter() instanceof ParquetOutputCommitter);
   }
 
   @Test(expected = BadConfigurationException.class)
   public void getOutputCommitterInvalidClass() throws Throwable {
     configuration.set(ParquetOutputFormat.OUTPUT_COMMITTER_CLASS, "java.lang.404");
-    try {
-      getOutCommitterUsingReflection();
-    } catch (final InvocationTargetException ex) {
-      throw ex.getCause();
-    }
+    getOutCommitter();
   }
 }
