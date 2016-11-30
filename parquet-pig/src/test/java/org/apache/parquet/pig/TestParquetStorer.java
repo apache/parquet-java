@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,6 +26,7 @@ import static org.junit.Assert.assertEquals;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 
@@ -37,6 +38,8 @@ import org.apache.pig.builtin.mock.Storage;
 import org.apache.pig.builtin.mock.Storage.Data;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
 import com.google.common.base.Function;
@@ -79,6 +82,54 @@ public class TestParquetStorer {
     for (Tuple tuple : result) {
       assertEquals("a"+i, tuple.get(0));
       ++i;
+    }
+  }
+
+  @Test
+  public void testStorerWithDateTime() throws Exception {
+    String out = "target/out";
+    int rows = 1000;
+    Properties props = new Properties();
+    props.setProperty("parquet.compression", "uncompressed");
+    props.setProperty("parquet.page.size", "1000");
+    PigServer pigServer = new PigServer(ExecType.LOCAL, props);
+    Data data = Storage.resetData(pigServer);
+    Collection<Tuple> list = new ArrayList<Tuple>(rows + 10);
+    for (int i = 0; i < rows; i++) {
+      list.add(tuple(new DateTime(DateTimeZone.UTC).plusYears(i).plusMonths(i).plusDays(i).plusHours(i).plusMinutes(i).plusSeconds(i)));
+    }
+
+    // add some tricky dates:
+    // http://en.wikipedia.org/wiki/Conversion_between_Julian_and_Gregorian_calendars
+    // http://en.wikipedia.org/wiki/Julian_day
+    list.add(tuple(new DateTime(-4713, 1, 1, 12, 0, 0, 0, DateTimeZone.UTC)));
+    list.add(tuple(new DateTime(-100, 1, 1, 1, 1, 1, 1, DateTimeZone.UTC)));
+    list.add(tuple(new DateTime(0, 1, 1, 1, 1, 1, 1, DateTimeZone.UTC)));
+    list.add(tuple(new DateTime(1582, 10, 15, 1, 1, 1, 1, DateTimeZone.UTC)));
+    list.add(tuple(new DateTime(2100, 2, 15, 1, 1, 1, 1, DateTimeZone.UTC)));
+    list.add(tuple(new DateTime(2100, 2, 16, 1, 1, 1, 1, DateTimeZone.UTC)));
+
+    data.set("in", "a:datetime", list);
+    pigServer.setBatchOn();
+    pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
+    pigServer.deleteFile(out);
+    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
+    if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
+      throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
+    }
+
+    pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
+    pigServer.registerQuery("Store B into 'out' using mock.Storage();");
+    if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
+      throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
+    }
+
+    List<Tuple> result = data.get("out");
+
+    Iterator<Tuple> iter = list.iterator();
+    assertEquals(list.size(), result.size());
+    for (Tuple tuple : result) {
+      assertEquals(iter.next(), tuple);
     }
   }
 

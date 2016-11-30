@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import jodd.datetime.JulianDateStamp;
+import jodd.datetime.TimeUtil;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataBag;
@@ -38,6 +40,10 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeConstants;
+import org.joda.time.DateTimeZone;
+import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
@@ -174,6 +180,8 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
             bytes = ((DataByteArray)t.get(i)).get();
           } else if (pigType.type == DataType.CHARARRAY) {
             bytes = ((String)t.get(i)).getBytes("UTF-8");
+          } else if (pigType.type == DataType.DATETIME) {
+            bytes = convertDateTimeToInt96((DateTime) t.get(i));
           } else {
             throw new UnsupportedOperationException("can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
           }
@@ -208,4 +216,11 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
     }
   }
 
+  private static byte[] convertDateTimeToInt96(DateTime dateTime) {
+    dateTime = dateTime.toDateTime(DateTimeZone.UTC); // julian is always UTC
+    JulianDateStamp julianDate = TimeUtil.toJulianDate(dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth(), dateTime.getHourOfDay(),
+      dateTime.getMinuteOfHour(), dateTime.getSecondOfMinute(), dateTime.getMillisOfSecond());
+    NanoTime nt = new NanoTime(julianDate.getInteger(), Math.round(julianDate.getFraction() * 1000000L * DateTimeConstants.MILLIS_PER_DAY));
+    return nt.toBinary().getBytes();
+  }
 }
