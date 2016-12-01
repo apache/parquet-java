@@ -26,12 +26,16 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Operators.LongColumn;
+import org.apache.parquet.filter2.predicate.Statistics;
+import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -47,6 +51,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -331,6 +336,43 @@ public class DictionaryFilterTest {
         canDrop(or(x, y), ccmd, dictionaries));
   }
 
+
+  @Test
+  public void testUdp() throws Exception {
+    InInt32UDP udp = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP udp1 = new InInt32UDP(ImmutableSet.of(205));
+
+    assertTrue("Should drop block for non-matching UDP",
+      canDrop(FilterApi.userDefined(intColumn("int32_field"), udp), ccmd, dictionaries));
+
+    assertFalse("Should not drop block for matching UDP",
+      canDrop(FilterApi.userDefined(intColumn("int32_field"), udp1), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testInverseUdp() throws Exception {
+    InInt32UDP udp = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP udp1 = new InInt32UDP(ImmutableSet.of(205));
+    Set<Integer> allValues = ImmutableSet.copyOf(Arrays.asList(ArrayUtils.toObject(intValues)));
+    InInt32UDP udp2 = new InInt32UDP(allValues);
+
+    FilterPredicate inverse =
+      LogicalInverseRewriter.rewrite(FilterApi.not(FilterApi.userDefined(intColumn("int32_field"), udp)));
+    FilterPredicate inverse1 =
+      LogicalInverseRewriter.rewrite(FilterApi.not(FilterApi.userDefined(intColumn("int32_field"), udp1)));
+    FilterPredicate inverse2 =
+      LogicalInverseRewriter.rewrite(FilterApi.not(FilterApi.userDefined(intColumn("int32_field"), udp2)));
+
+    assertFalse("Should not drop block for inverse of non-matching UDP",
+      canDrop(inverse, ccmd, dictionaries));
+
+    assertFalse("Should not drop block for inverse of UDP with some matches",
+      canDrop(inverse1, ccmd, dictionaries));
+
+    assertTrue("Should drop block for inverse of UDP with all matches",
+      canDrop(inverse2, ccmd, dictionaries));
+  }
+
   @Test
   public void testColumnWithoutDictionary() throws Exception {
     IntColumn plain = intColumn("plain_int32_field");
@@ -435,6 +477,50 @@ public class DictionaryFilterTest {
 
     assertTrue("Should drop block for any non-null query",
         canDrop(gtEq(b, Binary.fromString("any")), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testUdpMissingColumn() throws Exception {
+    InInt32UDP udp = new InInt32UDP(ImmutableSet.of(42));
+    IntColumn fake = intColumn("missing_column");
+
+    assertFalse("Should not drop block for any null columns",
+      canDrop(FilterApi.userDefined(fake, udp), ccmd, dictionaries));
+  }
+
+
+  @Test
+  public void testInverseUdpMissingColumn() throws Exception {
+    InInt32UDP udp = new InInt32UDP(ImmutableSet.of(42));
+    IntColumn fake = intColumn("missing_column");
+
+    assertFalse("Should not drop block for any null columns",
+      canDrop(LogicalInverseRewriter.rewrite(FilterApi.userDefined(fake, udp)), ccmd, dictionaries));
+  }
+
+
+  private static final class InInt32UDP extends UserDefinedPredicate<Integer> implements Serializable {
+
+    private final Set<Integer> ints;
+
+    InInt32UDP(Set<Integer> ints) {
+      this.ints = ints;
+    }
+
+    @Override
+    public boolean keep(Integer value) {
+      return ints.contains(value);
+    }
+
+    @Override
+    public boolean canDrop(Statistics<Integer> statistics) {
+      return false;
+    }
+
+    @Override
+    public boolean inverseCanDrop(Statistics<Integer> statistics) {
+      return false;
+    }
   }
 
   private static double toDouble(int value) {

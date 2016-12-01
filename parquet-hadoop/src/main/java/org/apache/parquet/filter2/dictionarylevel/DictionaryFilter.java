@@ -363,14 +363,54 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
   }
 
+  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
+    Column<T> filterColumn = ud.getColumn();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    // Cannot make assumptions around UDPs and acceptance of null values
+    if (meta == null || hasNonDictionaryPages(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    try {
+      Set<T> dictSet = expandDictionary(meta);
+      if (dictSet == null) {
+        return BLOCK_MIGHT_MATCH;
+      }
+
+      boolean allMatch = true;
+      for(T entry : dictSet) {
+        if (ud.getUserDefinedPredicate().keep(entry)) {
+          if (!inverted) {
+            return BLOCK_MIGHT_MATCH;
+          }
+        } else {
+          allMatch = false;
+        }
+      }
+
+      if (inverted && allMatch) {
+        return BLOCK_CANNOT_MATCH;
+      } else if (inverted) {
+        return BLOCK_MIGHT_MATCH;
+      } else {
+        return BLOCK_CANNOT_MATCH;
+      }
+    } catch (IOException e) {
+      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+    }
+
+    return BLOCK_MIGHT_MATCH;
+  }
+
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> udp) {
-    throw new UnsupportedOperationException("UDP not supported with dictionary evaluation.");
+    return visit(udp, false);
   }
 
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(LogicalNotUserDefined<T, U> udp) {
-    throw new UnsupportedOperationException("UDP not supported with dictionary evaluation.");
+    return visit(udp.getUserDefined(), true);
   }
 
   @SuppressWarnings("deprecation")
