@@ -62,7 +62,7 @@ public class ByteBufferInputStream extends InputStream {
   /**
    * Returns the position in the stream.
    */
-  public long getPos() {
+  public long position() {
     return position;
   }
 
@@ -125,7 +125,7 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   @Override
-  public int read(byte[] bytes, int off, int len) throws IOException {
+  public int read(byte[] bytes, int off, int len) {
     if (len <= 0) {
       return 0;
     }
@@ -151,7 +151,7 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   @Override
-  public int read(byte[] bytes) throws IOException {
+  public int read(byte[] bytes) {
     return read(bytes, 0, bytes.length);
   }
 
@@ -163,6 +163,7 @@ public class ByteBufferInputStream extends InputStream {
 
     while (true) {
       if (current.remaining() > 0) {
+        this.position += 1;
         return current.get();
       } else if (!nextBuffer()) {
         // there are no more buffers
@@ -172,7 +173,7 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   @Override
-  public int available() throws IOException {
+  public int available() {
     long remaining = length - position;
     if (remaining > Integer.MAX_VALUE) {
       return Integer.MAX_VALUE;
@@ -187,8 +188,10 @@ public class ByteBufferInputStream extends InputStream {
       discardMark();
     }
     this.mark = position;
-    this.markLimit = mark + readlimit;
-    markBuffers.add(current.duplicate());
+    this.markLimit = mark + readlimit + 1;
+    if (current != null) {
+      markBuffers.add(current.duplicate());
+    }
   }
 
   @Override
@@ -199,6 +202,7 @@ public class ByteBufferInputStream extends InputStream {
       // have been used since mark was called.
       this.iterator = concat(markBuffers.iterator(), iterator);
       discardMark();
+      nextBuffer(); // go back to the marked buffers
     } else {
       throw new RuntimeException("No mark defined");
     }
@@ -207,7 +211,7 @@ public class ByteBufferInputStream extends InputStream {
   private synchronized void discardMark() {
     this.mark = -1;
     this.markLimit = 0;
-    markBuffers.clear();
+    markBuffers = new ArrayList<>();
   }
 
   @Override
@@ -216,9 +220,6 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   private boolean nextBuffer() {
-    Preconditions.checkState(current.remaining() == 0,
-        "Cannot advance to the next buffer until the current one is consumed.");
-
     if (!iterator.hasNext()) {
       this.current = null;
       return false;
@@ -226,7 +227,7 @@ public class ByteBufferInputStream extends InputStream {
 
     this.current = iterator.next().duplicate();
 
-    if (mark > 0) {
+    if (mark >= 0) {
       if (position < markLimit) {
         // the mark is defined and valid. save the new buffer
         markBuffers.add(current.duplicate());

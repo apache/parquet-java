@@ -977,7 +977,7 @@ public class ParquetFileReader implements Closeable {
             "Expected " + descriptor.metadata.getValueCount() + " values in column chunk at " +
             getPath() + " offset " + descriptor.metadata.getFirstDataPageOffset() +
             " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
-            + " pages ending at file offset " + (descriptor.fileOffset + stream.getPos()));
+            + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage);
@@ -1036,12 +1036,12 @@ public class ParquetFileReader implements Closeable {
     }
 
     public BytesInput readAsBytesInput(int size) throws IOException {
-      if (stream.getPos() + size > length) {
+      if (stream.position() + size > length) {
         // this is to workaround a bug where the compressedLength
         // of the chunk is missing the size of the header of the dictionary
         // to allow reading older files (using dictionary) we need this.
         // usually 13 to 19 bytes are missing
-        int l1 = length - (int) stream.getPos();
+        int l1 = length - (int) stream.position();
         int l2 = size - l1;
         LOG.info("completed the column chunk with {} bytes", l2);
         return BytesInput.concat(super.readAsBytesInput(l1), BytesInput.copy(BytesInput.from(f, l2)));
