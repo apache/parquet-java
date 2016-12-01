@@ -1081,8 +1081,6 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
-  private static final int ALLOCATION_SIZE = 8388608; // 8MB
-
   /**
    * describes a list of consecutive column chunks to be read at once.
    *
@@ -1120,14 +1118,14 @@ public class ParquetFileReader implements Closeable {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
 
-      int fullAllocations = length / ALLOCATION_SIZE;
-      int lastAllocationSize = length % ALLOCATION_SIZE;
+      int fullAllocations = length / options.getMaxAllocationSize();
+      int lastAllocationSize = length % options.getMaxAllocationSize();
 
       int numAllocations = fullAllocations + (lastAllocationSize > 0 ? 1 : 0);
       List<ByteBuffer> buffers = new ArrayList<>(numAllocations);
 
       for (int i = 0; i < fullAllocations; i += 1) {
-        buffers.add(options.getAllocator().allocate(ALLOCATION_SIZE));
+        buffers.add(options.getAllocator().allocate(options.getMaxAllocationSize()));
       }
 
       if (lastAllocationSize > 0) {

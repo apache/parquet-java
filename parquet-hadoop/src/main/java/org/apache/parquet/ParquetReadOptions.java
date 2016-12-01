@@ -38,6 +38,7 @@ public class ParquetReadOptions {
   private static final boolean RECORD_FILTERING_ENABLED_DEFAULT = true;
   private static final boolean STATS_FILTERING_ENABLED_DEFAULT = true;
   private static final boolean DICTIONARY_FILTERING_ENABLED_DEFAULT = true;
+  private static final int ALLOCATION_SIZE_DEFAULT = 8388608; // 8MB
 
   private final boolean useSignedStringMinMax;
   private final boolean useStatsFilter;
@@ -47,17 +48,19 @@ public class ParquetReadOptions {
   private final ParquetMetadataConverter.MetadataFilter metadataFilter;
   private final CompressionCodecFactory codecFactory;
   private final ByteBufferAllocator allocator;
+  private final int maxAllocationSize;
   private final Map<String, String> properties;
 
   ParquetReadOptions(boolean useSignedStringMinMax,
-                             boolean useStatsFilter,
-                             boolean useDictionaryFilter,
-                             boolean useRecordFilter,
-                             FilterCompat.Filter recordFilter,
-                             ParquetMetadataConverter.MetadataFilter metadataFilter,
-                             CompressionCodecFactory codecFactory,
-                             ByteBufferAllocator allocator,
-                             Map<String, String> properties) {
+                     boolean useStatsFilter,
+                     boolean useDictionaryFilter,
+                     boolean useRecordFilter,
+                     FilterCompat.Filter recordFilter,
+                     ParquetMetadataConverter.MetadataFilter metadataFilter,
+                     CompressionCodecFactory codecFactory,
+                     ByteBufferAllocator allocator,
+                     int maxAllocationSize,
+                     Map<String, String> properties) {
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.useStatsFilter = useStatsFilter;
     this.useDictionaryFilter = useDictionaryFilter;
@@ -66,6 +69,7 @@ public class ParquetReadOptions {
     this.metadataFilter = metadataFilter;
     this.codecFactory = codecFactory;
     this.allocator = allocator;
+    this.maxAllocationSize = maxAllocationSize;
     this.properties = Collections.unmodifiableMap(properties);
   }
 
@@ -101,6 +105,10 @@ public class ParquetReadOptions {
     return allocator;
   }
 
+  public int getMaxAllocationSize() {
+    return maxAllocationSize;
+  }
+
   public Set<String> getPropertyNames() {
     return properties.keySet();
   }
@@ -122,16 +130,17 @@ public class ParquetReadOptions {
   }
 
   public static class Builder {
-    boolean useSignedStringMinMax = false;
-    boolean useStatsFilter = STATS_FILTERING_ENABLED_DEFAULT;
-    boolean useDictionaryFilter = DICTIONARY_FILTERING_ENABLED_DEFAULT;
-    boolean useRecordFilter = RECORD_FILTERING_ENABLED_DEFAULT;
-    FilterCompat.Filter recordFilter = null;
-    ParquetMetadataConverter.MetadataFilter metadataFilter = NO_FILTER;
+    protected boolean useSignedStringMinMax = false;
+    protected boolean useStatsFilter = STATS_FILTERING_ENABLED_DEFAULT;
+    protected boolean useDictionaryFilter = DICTIONARY_FILTERING_ENABLED_DEFAULT;
+    protected boolean useRecordFilter = RECORD_FILTERING_ENABLED_DEFAULT;
+    protected FilterCompat.Filter recordFilter = null;
+    protected ParquetMetadataConverter.MetadataFilter metadataFilter = NO_FILTER;
     // the page size parameter isn't used when only using the codec factory to get decompressors
-    CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
-    ByteBufferAllocator allocator = new HeapByteBufferAllocator();
-    Map<String, String> properties = new HashMap<>();
+    protected CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
+    protected ByteBufferAllocator allocator = new HeapByteBufferAllocator();
+    protected int maxAllocationSize = ALLOCATION_SIZE_DEFAULT;
+    protected Map<String, String> properties = new HashMap<>();
 
     public Builder useSignedStringMinMax(boolean useSignedStringMinMax) {
       this.useSignedStringMinMax = useSignedStringMinMax;
@@ -203,6 +212,11 @@ public class ParquetReadOptions {
       return this;
     }
 
+    public Builder withMaxAllocationInBytes(int allocationSizeInBytes) {
+      this.maxAllocationSize = allocationSizeInBytes;
+      return this;
+    }
+
     public Builder set(String key, String value) {
       properties.put(key, value);
       return this;
@@ -226,7 +240,7 @@ public class ParquetReadOptions {
     public ParquetReadOptions build() {
       return new ParquetReadOptions(
           useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-          recordFilter, metadataFilter, codecFactory, allocator, properties);
+          recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, properties);
     }
   }
 }
