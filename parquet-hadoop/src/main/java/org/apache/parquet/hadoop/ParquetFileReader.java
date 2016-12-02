@@ -53,6 +53,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
@@ -81,7 +82,6 @@ import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.HadoopReadOptions;
-import org.apache.parquet.hadoop.util.ByteBufferInputStream;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
@@ -891,7 +891,7 @@ public class ParquetFileReader implements Closeable {
      */
     public Chunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers) {
       this.descriptor = descriptor;
-      this.stream = new ByteBufferInputStream(buffers);
+      this.stream = ByteBufferInputStream.wrap(buffers);
     }
 
     protected PageHeader readPageHeader() throws IOException {
@@ -990,7 +990,7 @@ public class ParquetFileReader implements Closeable {
      */
     public BytesInput readAsBytesInput(int size) throws IOException {
       return BytesInput.from(
-          new ByteBufferInputStream(stream.sliceBuffers(size)),
+          ByteBufferInputStream.wrap(stream.sliceBuffers(size)),
           size);
     }
 
@@ -1134,11 +1134,12 @@ public class ParquetFileReader implements Closeable {
 
       for (ByteBuffer buffer : buffers) {
         f.readFully(buffer);
+        buffer.flip();
       }
 
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
-      ByteBufferInputStream stream = new ByteBufferInputStream(buffers);
+      ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
       for (int i = 0; i < chunks.size(); i++) {
         ChunkDescriptor descriptor = chunks.get(i);
         if (i < chunks.size() - 1) {

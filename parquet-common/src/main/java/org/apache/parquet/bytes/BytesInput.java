@@ -212,7 +212,7 @@ abstract public class BytesInput {
    * @throws IOException
    */
   public InputStream toInputStream() throws IOException {
-    return new ByteBufferInputStream(toByteBuffer());
+    return ByteBufferInputStream.wrap(toByteBuffer());
   }
 
   /**

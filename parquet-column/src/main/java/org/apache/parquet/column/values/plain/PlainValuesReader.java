@@ -50,7 +50,9 @@ abstract public class PlainValuesReader extends ValuesReader {
   }
 
   private ByteBufferInputStream toInputStream(ByteBuffer in, int offset) {
-    return new ByteBufferInputStream(in.duplicate(), offset, in.limit() - offset);
+    ByteBuffer buffer = in.duplicate();
+    buffer.position(buffer.position() + offset);
+    return ByteBufferInputStream.wrap(buffer);
   }
 
   public static class DoublePlainValuesReader extends PlainValuesReader {

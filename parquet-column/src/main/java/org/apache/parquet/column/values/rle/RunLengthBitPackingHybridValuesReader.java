@@ -43,7 +43,9 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
 
   @Override
   public void initFromPage(int valueCountL, ByteBuffer page, int offset) throws IOException {
-    ByteBufferInputStream in = new ByteBufferInputStream(page, offset, page.limit() - offset);
+    ByteBuffer buffer = page.duplicate();
+    buffer.position(buffer.position() + offset);
+    ByteBufferInputStream in = ByteBufferInputStream.wrap(buffer);
     int length = BytesUtils.readIntLittleEndian(in);
 
     decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);

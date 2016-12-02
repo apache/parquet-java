@@ -17,10 +17,8 @@
  *  under the License.
  */
 
-package org.apache.parquet.hadoop.util;
+package org.apache.parquet.bytes;
 
-import com.google.common.collect.Lists;
-import org.apache.parquet.hadoop.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import java.io.EOFException;
@@ -31,8 +29,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-public class TestByteBufferInputStream {
-  private static final List<ByteBuffer> DATA = Lists.newArrayList(
+public class TestMultiBufferInputStream {
+  private static final List<ByteBuffer> DATA = Arrays.asList(
       ByteBuffer.wrap(new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 }),
       ByteBuffer.wrap(new byte[] { 9, 10, 11, 12 }),
       ByteBuffer.wrap(new byte[] {  }),
@@ -46,7 +44,7 @@ public class TestByteBufferInputStream {
   public void testRead0() {
     byte[] bytes = new byte[0];
 
-    ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
     Assert.assertEquals("Should read 0 bytes", 0, stream.read(bytes));
 
@@ -61,7 +59,7 @@ public class TestByteBufferInputStream {
   public void testReadAll() {
     byte[] bytes = new byte[35];
 
-    ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
     int bytesRead = stream.read(bytes);
     Assert.assertEquals("Should read the entire buffer",
@@ -93,7 +91,7 @@ public class TestByteBufferInputStream {
     for (int size = 1; size < 36; size += 1) {
       byte[] bytes = new byte[size];
 
-      ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+      MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
       long length = stream.available();
 
       int lastBytesRead = bytes.length;
@@ -137,7 +135,7 @@ public class TestByteBufferInputStream {
     for (int size = 1; size < 35; size += 1) {
       byte[] bytes = new byte[33];
 
-      ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+      MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
       int lastBytesRead = size;
       for (int offset = 0; offset < bytes.length; offset += size) {
@@ -183,7 +181,7 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testReadByte() throws Exception {
-    final ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    final MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
     int length = stream.available();
 
     for (int i = 0; i < length; i += 1) {
@@ -191,7 +189,7 @@ public class TestByteBufferInputStream {
       Assert.assertEquals(i, stream.read());
     }
 
-    TestUtils.assertThrows("Should throw EOFException at end of stream",
+    assertThrows("Should throw EOFException at end of stream",
         EOFException.class, new Callable<Integer>() {
           @Override
           public Integer call() throws IOException {
@@ -208,7 +206,7 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testSlice0() throws Exception {
-    ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
     Assert.assertEquals("Should return a single 0-length buffer",
         Arrays.asList(ByteBuffer.allocate(0)), stream.sliceBuffers(0));
@@ -216,14 +214,14 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testWholeSlice() throws Exception {
-    final ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    final MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
     final int length = stream.available();
 
     List<ByteBuffer> buffers = stream.sliceBuffers(stream.available());
 
     Assert.assertEquals("Should consume all buffers", length, stream.position());
 
-    List<ByteBuffer> nonEmptyBuffers = Lists.newArrayList();
+    List<ByteBuffer> nonEmptyBuffers = new ArrayList<>();
     for (ByteBuffer buffer : DATA) {
       if (buffer.remaining() > 0) {
         nonEmptyBuffers.add(buffer);
@@ -232,7 +230,7 @@ public class TestByteBufferInputStream {
     Assert.assertEquals("Should return duplicates of all non-empty buffers",
         nonEmptyBuffers, buffers);
 
-    TestUtils.assertThrows("Should throw EOFException when empty",
+    assertThrows("Should throw EOFException when empty",
         EOFException.class, new Callable<List<ByteBuffer>>() {
           @Override
           public List<ByteBuffer> call() throws Exception {
@@ -240,7 +238,7 @@ public class TestByteBufferInputStream {
           }
         });
 
-    ByteBufferInputStream copy = new ByteBufferInputStream(buffers);
+    MultiBufferInputStream copy = new MultiBufferInputStream(buffers);
     for (int i = 0; i < length; i += 1) {
       Assert.assertEquals("Slice should have identical data", i, copy.read());
     }
@@ -255,7 +253,7 @@ public class TestByteBufferInputStream {
   @Test
   public void testSliceCoverage() throws Exception {
     for (int size = 1; size < 36; size += 1) {
-      ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+      MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
       int length = stream.available();
 
       List<ByteBuffer> buffers = new ArrayList<>();
@@ -266,7 +264,7 @@ public class TestByteBufferInputStream {
       Assert.assertEquals("Should consume all content",
           length, stream.position());
 
-      ByteBufferInputStream newStream = new ByteBufferInputStream(buffers);
+      MultiBufferInputStream newStream = new MultiBufferInputStream(buffers);
 
       for (int i = 0; i < length; i += 1) {
         Assert.assertEquals("Data should be correct", i, newStream.read());
@@ -282,7 +280,7 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testSliceModification() throws Exception {
-    ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
     int length = stream.available();
 
     int sliceLength = 5;
@@ -317,14 +315,14 @@ public class TestByteBufferInputStream {
     ByteBuffer undoBuffer = buffer.duplicate();
 
     try {
-      buffer.put((byte) -1);
+      buffer.put((byte) 255);
 
       Assert.assertEquals(
           "Writing to a slice shouldn't advance the original stream",
           sliceLength + 1, stream.position());
       Assert.assertEquals(
           "Writing to a slice should change the underlying data",
-          -1, stream.read());
+          255, stream.read());
 
     } finally {
       undoBuffer.put((byte) originalValue);
@@ -333,7 +331,7 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testMark() throws Exception {
-    ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
     stream.read(new byte[7]);
     stream.mark(100);
@@ -364,7 +362,7 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testMarkAtStart() throws Exception {
-    ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
     stream.mark(100);
 
@@ -391,7 +389,7 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testMarkAtEnd() throws Exception {
-    ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
     int bytesRead = stream.read(new byte[100]);
     Assert.assertTrue("Should read to end of stream", bytesRead < 100);
@@ -421,10 +419,10 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testMarkUnset() {
-    final ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    final MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
-    TestUtils.assertThrows("Should throw an error for reset() without mark()",
-        RuntimeException.class, new Callable() {
+    assertThrows("Should throw an error for reset() without mark()",
+        IOException.class, new Callable() {
           @Override
           public Object call() throws Exception {
             stream.reset();
@@ -435,7 +433,7 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testMarkAndResetTwiceOverSameRange() throws Exception {
-    final ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    final MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
     byte[] expected = new byte[6];
     stream.mark(10);
@@ -464,7 +462,7 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testMarkLimit() throws Exception {
-    final ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    final MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
     stream.mark(5);
     Assert.assertEquals("Should read 5 bytes", 5, stream.read(new byte[5]));
@@ -473,8 +471,8 @@ public class TestByteBufferInputStream {
 
     Assert.assertEquals("Should read 6 bytes", 6, stream.read(new byte[6]));
 
-    TestUtils.assertThrows("Should throw an error for reset() after limit",
-        RuntimeException.class, new Callable() {
+    assertThrows("Should throw an error for reset() after limit",
+        IOException.class, new Callable() {
           @Override
           public Object call() throws Exception {
             stream.reset();
@@ -485,20 +483,42 @@ public class TestByteBufferInputStream {
 
   @Test
   public void testMarkDoubleReset() throws Exception {
-    final ByteBufferInputStream stream = new ByteBufferInputStream(DATA);
+    final MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
     stream.mark(5);
     Assert.assertEquals("Should read 5 bytes", 5, stream.read(new byte[5]));
 
     stream.reset();
 
-    TestUtils.assertThrows("Should throw an error for double reset()",
-        RuntimeException.class, new Callable() {
+    assertThrows("Should throw an error for double reset()",
+        IOException.class, new Callable() {
           @Override
           public Object call() throws Exception {
             stream.reset();
             return null;
           }
         });
+  }
+
+  /**
+   * A convenience method to avoid a large number of @Test(expected=...) tests
+   * @param message A String message to describe this assertion
+   * @param expected An Exception class that the Runnable should throw
+   * @param callable A Callable that is expected to throw the exception
+   */
+  public static void assertThrows(
+      String message, Class<? extends Exception> expected, Callable callable) {
+    try {
+      callable.call();
+      Assert.fail("No exception was thrown (" + message + "), expected: " +
+          expected.getName());
+    } catch (Exception actual) {
+      try {
+        Assert.assertEquals(message, expected, actual.getClass());
+      } catch (AssertionError e) {
+        e.addSuppressed(actual);
+        throw e;
+      }
+    }
   }
 }

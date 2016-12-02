@@ -17,12 +17,10 @@
  *  under the License.
  */
 
-package org.apache.parquet.hadoop.util;
+package org.apache.parquet.bytes;
 
-import org.apache.parquet.Preconditions;
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,7 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-public class ByteBufferInputStream extends InputStream {
+class MultiBufferInputStream extends ByteBufferInputStream {
   private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
 
   private final Collection<ByteBuffer> buffers;
@@ -45,7 +43,7 @@ public class ByteBufferInputStream extends InputStream {
   private long markLimit = 0;
   private List<ByteBuffer> markBuffers = new ArrayList<>();
 
-  public ByteBufferInputStream(Collection<ByteBuffer> buffers) {
+  MultiBufferInputStream(Collection<ByteBuffer> buffers) {
     this.buffers = buffers;
 
     long totalLen = 0;
@@ -164,7 +162,7 @@ public class ByteBufferInputStream extends InputStream {
     while (true) {
       if (current.remaining() > 0) {
         this.position += 1;
-        return current.get();
+        return current.get() & 0xFF; // as unsigned
       } else if (!nextBuffer()) {
         // there are no more buffers
         throw new EOFException();
@@ -204,7 +202,7 @@ public class ByteBufferInputStream extends InputStream {
       discardMark();
       nextBuffer(); // go back to the marked buffers
     } else {
-      throw new RuntimeException("No mark defined");
+      throw new IOException("No mark defined");
     }
   }
 

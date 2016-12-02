@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.values.delta;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -28,7 +27,6 @@ import org.apache.parquet.column.values.bitpacking.BytePackerForLong;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -68,7 +66,9 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    */
   @Override
   public void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException {
-    in = new ByteBufferInputStream(page, offset, page.limit() - offset);
+    ByteBuffer buffer = page.duplicate();
+    buffer.position(buffer.position() + offset);
+    in = ByteBufferInputStream.wrap(buffer);
     this.config = DeltaBinaryPackingConfig.readConfig(in);
     this.page = page;
     this.totalValueCount = BytesUtils.readUnsignedVarInt(in);
@@ -123,7 +123,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     }
   }
 
-  private void loadNewBlockToBuffer() {
+  private void loadNewBlockToBuffer() throws IOException {
     try {
       minDeltaInCurrentBlock = BytesUtils.readZigZagVarLong(in);
     } catch (IOException e) {
@@ -152,13 +152,13 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    *
    * @param packer the packer created from bitwidth of current mini block
    */
-  private void unpackMiniBlock(BytePackerForLong packer) {
+  private void unpackMiniBlock(BytePackerForLong packer) throws IOException {
     for (int j = 0; j < config.miniBlockSizeInValues; j += 8) {
       unpack8Values(packer);
     }
   }
 
-  private void unpack8Values(BytePackerForLong packer) {
+  private void unpack8Values(BytePackerForLong packer) throws IOException {
     //calculate the pos because the packer api uses array not stream
     int pos = page.limit() - in.available();
     packer.unpack8Values(page, pos, valuesBuffer, valuesBuffered);

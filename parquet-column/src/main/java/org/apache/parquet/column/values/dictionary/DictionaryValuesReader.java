@@ -54,7 +54,9 @@ public class DictionaryValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valueCount, ByteBuffer page, int offset)
       throws IOException {
-    this.in = new ByteBufferInputStream(page, offset, page.limit() - offset);
+    ByteBuffer buffer = page.duplicate();
+    buffer.position(buffer.position() + offset);
+    this.in = ByteBufferInputStream.wrap(buffer);
     if (page.limit() - offset > 0) {
       LOG.debug("init from page at offset {} for length {}", offset, (page.limit() - offset));
       int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
