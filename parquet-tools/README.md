@@ -56,7 +56,7 @@ hadoop jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
 See Commands Usage for command to use
 
 ```
-java jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
+java -jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
 ```
 
 ## Commands Usage
@@ -64,10 +64,10 @@ java jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
 To see usage instructions for all commands: 
 
 ```
-java jar ./parquet-tools-<VERSION>.jar --help
+java -jar ./parquet-tools-<VERSION>.jar --help
 ```
 
-**Note:** To run it on hadoop, you should use `hadoop jar` instead of `java jar`
+**Note:** To run it on hadoop, you should use `hadoop jar` instead of `java -jar`
 
 ## Meta Legend
 
