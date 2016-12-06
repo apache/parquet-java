@@ -90,9 +90,79 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     return bytesSkipped;
   }
 
+  @Override
+  public int read(ByteBuffer out) {
+    int len = out.remaining();
+    if (len <= 0) {
+      return 0;
+    }
+
+    if (current == null) {
+      return -1;
+    }
+
+    int bytesCopied = 0;
+    while (bytesCopied < len) {
+      if (current.remaining() > 0) {
+        int bytesToCopy;
+        ByteBuffer copyBuffer;
+        if (current.remaining() <= out.remaining()) {
+          // copy all of the current buffer
+          bytesToCopy = current.remaining();
+          copyBuffer = current;
+        } else {
+          // copy a slice of the current buffer
+          bytesToCopy = out.remaining();
+          copyBuffer = current.duplicate();
+          copyBuffer.limit(copyBuffer.position() + bytesToCopy);
+          current.position(copyBuffer.position() + bytesToCopy);
+        }
+
+        out.put(copyBuffer);
+        bytesCopied += bytesToCopy;
+        this.position += bytesToCopy;
+
+      } else if (!nextBuffer()) {
+        // there are no more buffers
+        return bytesCopied > 0 ? bytesCopied : -1;
+      }
+    }
+
+    return bytesCopied;
+  }
+
+  @Override
+  public ByteBuffer slice(int length) throws EOFException {
+    if (length <= 0) {
+      return EMPTY;
+    }
+
+    if (current == null) {
+      throw new EOFException();
+    }
+
+    ByteBuffer slice;
+    if (length > current.remaining()) {
+      // a copy is needed to return a single buffer
+      // TODO: use an allocator
+      slice = ByteBuffer.allocate(length);
+      int bytesCopied = read(slice);
+      slice.flip();
+      if (bytesCopied < length) {
+        throw new EOFException();
+      }
+    } else {
+      slice = current.duplicate();
+      slice.limit(slice.position() + length);
+      current.position(slice.position() + length);
+    }
+
+    return slice;
+  }
+
   public List<ByteBuffer> sliceBuffers(long len) throws EOFException {
     if (len <= 0) {
-      return Collections.singletonList(EMPTY);
+      return Collections.emptyList();
     }
 
     if (current == null) {
@@ -120,6 +190,21 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     }
 
     return buffers;
+  }
+
+  @Override
+  public List<ByteBuffer> remainingBuffers() {
+    if (position >= length) {
+      return Collections.emptyList();
+    }
+
+    try {
+      return sliceBuffers(length - position);
+    } catch (EOFException e) {
+      throw new RuntimeException(
+          "[Parquet bug] Stream is bad: incorrect bytes remaining " +
+              (length - position));
+    }
   }
 
   @Override

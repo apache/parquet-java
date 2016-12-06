@@ -302,7 +302,9 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         size = Snappy.compress(this.incoming, outgoing);
       }
 
-      return BytesInput.from(outgoing, 0, (int) size);
+      outgoing.limit(size);
+
+      return BytesInput.from(outgoing);
     }
 
     @Override

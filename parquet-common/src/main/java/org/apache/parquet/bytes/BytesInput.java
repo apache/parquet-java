@@ -28,9 +28,6 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.List;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +46,6 @@ import org.slf4j.LoggerFactory;
  */
 abstract public class BytesInput {
   private static final Logger LOG = LoggerFactory.getLogger(BytesInput.class);
-  private static final boolean DEBUG = false;//Log.DEBUG;
   private static final EmptyBytesInput EMPTY_BYTES_INPUT = new EmptyBytesInput();
 
   /**
@@ -78,14 +74,27 @@ abstract public class BytesInput {
   public static BytesInput from(InputStream in, int bytes) {
     return new StreamBytesInput(in, bytes);
   }
-  
+
   /**
-   * @param buffer
-   * @param length number of bytes to read
-   * @return a BytesInput that will read the given bytes from the ByteBuffer
+   * @param buffers
+   * @return a BytesInput that will read the given bytes from the ByteBuffers
    */
-  public static BytesInput from(ByteBuffer buffer, int offset, int length) {
-    return new ByteBufferBytesInput(buffer, offset, length);
+  public static BytesInput from(ByteBuffer... buffers) {
+    if (buffers.length == 1) {
+      return new ByteBufferBytesInput(buffers[0]);
+    }
+    return new BufferListBytesInput(Arrays.asList(buffers));
+  }
+
+  /**
+   * @param buffers
+   * @return a BytesInput that will read the given bytes from the ByteBuffers
+   */
+  public static BytesInput from(List<ByteBuffer> buffers) {
+    if (buffers.size() == 1) {
+      return new ByteBufferBytesInput(buffers.get(0));
+    }
+    return new BufferListBytesInput(buffers);
   }
 
   /**
@@ -211,7 +220,7 @@ abstract public class BytesInput {
    * @return a new InputStream materializing the contents of this input
    * @throws IOException
    */
-  public InputStream toInputStream() throws IOException {
+  public ByteBufferInputStream toInputStream() throws IOException {
     return ByteBufferInputStream.wrap(toByteBuffer());
   }
 
@@ -442,7 +451,7 @@ abstract public class BytesInput {
     }
 
     public ByteBuffer toByteBuffer() throws IOException {
-      return ByteBuffer.wrap(in, offset, length);
+      return java.nio.ByteBuffer.wrap(in, offset, length);
     }
 
     @Override
@@ -451,39 +460,59 @@ abstract public class BytesInput {
     }
 
   }
-  
-  private static class ByteBufferBytesInput extends BytesInput {
-    
-    private final ByteBuffer byteBuf;
-    private final int length;
-    private final int offset;
 
-    private ByteBufferBytesInput(ByteBuffer byteBuf, int offset, int length) {
-      this.byteBuf = byteBuf;
-      this.offset = offset;
-      this.length = length;
+  private static class BufferListBytesInput extends BytesInput {
+    private final List<ByteBuffer> buffers;
+    private final long length;
+
+    public BufferListBytesInput(List<ByteBuffer> buffers) {
+      this.buffers = buffers;
+      long totalLen = 0;
+      for (ByteBuffer buffer : buffers) {
+        totalLen += buffer.remaining();
+      }
+      this.length = totalLen;
     }
 
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
-      final WritableByteChannel outputChannel = Channels.newChannel(out);
-      byteBuf.position(offset);
-      ByteBuffer tempBuf = byteBuf.slice();
-      tempBuf.limit(length);
-      outputChannel.write(tempBuf);
+      WritableByteChannel channel = Channels.newChannel(out);
+      for (ByteBuffer buffer : buffers) {
+        channel.write(buffer.duplicate());
+      }
     }
-    
+
     @Override
-    public ByteBuffer toByteBuffer() throws IOException {
-      byteBuf.position(offset);
-      ByteBuffer buf = byteBuf.slice();
-      buf.limit(length);
-      return buf;
+    public ByteBufferInputStream toInputStream() {
+      return ByteBufferInputStream.wrap(buffers);
     }
 
     @Override
     public long size() {
       return length;
+    }
+  }
+
+  private static class ByteBufferBytesInput extends BytesInput {
+    private final ByteBuffer buffer;
+
+    private ByteBufferBytesInput(ByteBuffer buffer) {
+      this.buffer = buffer;
+    }
+
+    @Override
+    public void writeAllTo(OutputStream out) throws IOException {
+      Channels.newChannel(out).write(buffer.duplicate());
+    }
+
+    @Override
+    public ByteBufferInputStream toInputStream() {
+      return ByteBufferInputStream.wrap(buffer);
+    }
+
+    @Override
+    public long size() {
+      return buffer.remaining();
     }
   }
 }

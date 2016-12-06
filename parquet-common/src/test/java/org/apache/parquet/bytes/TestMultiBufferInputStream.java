@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -208,8 +209,8 @@ public class TestMultiBufferInputStream {
   public void testSlice0() throws Exception {
     MultiBufferInputStream stream = new MultiBufferInputStream(DATA);
 
-    Assert.assertEquals("Should return a single 0-length buffer",
-        Arrays.asList(ByteBuffer.allocate(0)), stream.sliceBuffers(0));
+    Assert.assertEquals("Should return an empty list",
+        Collections.emptyList(), stream.sliceBuffers(0));
   }
 
   @Test

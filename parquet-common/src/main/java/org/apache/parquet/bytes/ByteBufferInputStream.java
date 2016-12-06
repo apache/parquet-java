@@ -20,6 +20,7 @@
 package org.apache.parquet.bytes;
 
 import java.io.EOFException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -45,6 +46,27 @@ public abstract class ByteBufferInputStream extends InputStream {
 
   public abstract long position();
 
+  public void skipFully(long n) throws IOException {
+    long skipped = skip(n);
+    if (skipped < n) {
+      throw new EOFException(
+          "Not enough bytes to skip: " + skipped + " < " + n);
+    }
+  }
+
+  public abstract int read(ByteBuffer out);
+
+  public abstract ByteBuffer slice(int length) throws EOFException;
+
   public abstract List<ByteBuffer> sliceBuffers(long length) throws EOFException;
 
+  public ByteBufferInputStream sliceStream(long length) throws EOFException {
+    return ByteBufferInputStream.wrap(sliceBuffers(length));
+  }
+
+  public abstract List<ByteBuffer> remainingBuffers();
+
+  public ByteBufferInputStream remainingStream() {
+    return ByteBufferInputStream.wrap(remainingBuffers());
+  }
 }

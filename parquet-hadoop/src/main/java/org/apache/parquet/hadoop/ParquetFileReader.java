@@ -967,7 +967,7 @@ public class ParquetFileReader implements Closeable {
             break;
           default:
             LOG.debug("skipping page of type {} of size {}", pageHeader.getType(), compressedPageSize);
-            stream.skip(compressedPageSize);
+            stream.skipFully(compressedPageSize);
             break;
         }
       }
@@ -989,9 +989,7 @@ public class ParquetFileReader implements Closeable {
      * @throws IOException
      */
     public BytesInput readAsBytesInput(int size) throws IOException {
-      return BytesInput.from(
-          ByteBufferInputStream.wrap(stream.sliceBuffers(size)),
-          size);
+      return BytesInput.from(stream.sliceBuffers(size));
     }
 
   }
@@ -1004,16 +1002,14 @@ public class ParquetFileReader implements Closeable {
    */
   private class WorkaroundChunk extends Chunk {
 
-    private final int length;
     private final SeekableInputStream f;
 
     /**
      * @param descriptor the descriptor of the chunk
      * @param f the file stream positioned at the end of this chunk
      */
-    private WorkaroundChunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers, int length, SeekableInputStream f) {
+    private WorkaroundChunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers, SeekableInputStream f) {
       super(descriptor, buffers);
-      this.length = length;
       this.f = f;
     }
 
@@ -1036,16 +1032,25 @@ public class ParquetFileReader implements Closeable {
     }
 
     public BytesInput readAsBytesInput(int size) throws IOException {
-      if (stream.position() + size > length) {
+      int available = stream.available();
+      if (size > available) {
         // this is to workaround a bug where the compressedLength
         // of the chunk is missing the size of the header of the dictionary
         // to allow reading older files (using dictionary) we need this.
         // usually 13 to 19 bytes are missing
-        int l1 = length - (int) stream.position();
-        int l2 = size - l1;
-        LOG.info("completed the column chunk with {} bytes", l2);
-        return BytesInput.concat(super.readAsBytesInput(l1), BytesInput.copy(BytesInput.from(f, l2)));
+        int missingBytes = size - available;
+        LOG.info("completed the column chunk with {} bytes", missingBytes);
+
+        List<ByteBuffer> buffers = new ArrayList<>();
+        buffers.addAll(stream.sliceBuffers(available));
+
+        ByteBuffer lastBuffer = ByteBuffer.allocate(missingBytes);
+        f.readFully(lastBuffer);
+        buffers.add(lastBuffer);
+
+        return BytesInput.from(buffers);
       }
+
       return super.readAsBytesInput(size);
     }
 
@@ -1146,7 +1151,7 @@ public class ParquetFileReader implements Closeable {
           result.add(new Chunk(descriptor, stream.sliceBuffers(descriptor.size)));
         } else {
           // because of a bug, the last chunk might be larger than descriptor.size
-          result.add(new WorkaroundChunk(descriptor, stream.sliceBuffers(descriptor.size), length, f));
+          result.add(new WorkaroundChunk(descriptor, stream.sliceBuffers(descriptor.size), f));
         }
       }
       return result ;

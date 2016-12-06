@@ -43,7 +43,7 @@ public class TestDeltaLengthByteArray {
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
     
     Utils.writeData(writer, values);
-    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
       Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
@@ -57,7 +57,7 @@ public class TestDeltaLengthByteArray {
 
     String[] values = Utils.getRandomStringSamples(1000, 32);
     Utils.writeData(writer, values);
-    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
       Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
@@ -70,7 +70,7 @@ public class TestDeltaLengthByteArray {
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
     Utils.writeData(writer, values);
-    int[] bin = Utils.readInts(reader, writer.getBytes().toByteArray(), values.length);
+    int[] bin = Utils.readInts(reader, writer.getBytes().toInputStream(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
       Assert.assertEquals(values[i].length(), bin[i]);

@@ -89,17 +89,61 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
+  public int read(ByteBuffer out) {
+    int bytesToCopy;
+    ByteBuffer copyBuffer;
+    if (buffer.remaining() <= out.remaining()) {
+      // copy all of the buffer
+      bytesToCopy = buffer.remaining();
+      copyBuffer = buffer;
+    } else {
+      // copy a slice of the current buffer
+      bytesToCopy = out.remaining();
+      copyBuffer = buffer.duplicate();
+      copyBuffer.limit(buffer.position() + bytesToCopy);
+      buffer.position(buffer.position() + bytesToCopy);
+    }
+
+    out.put(copyBuffer);
+    out.flip();
+
+    return bytesToCopy;
+  }
+
+  @Override
+  public ByteBuffer slice(int length) throws EOFException {
+    if (buffer.remaining() < length) {
+      throw new EOFException();
+    }
+
+    // length is less than remaining, so it must fit in an int
+    ByteBuffer copy = buffer.duplicate();
+    copy.limit(copy.position() + length);
+    buffer.position(buffer.position() + length);
+
+    return copy;
+  }
+
+  @Override
   public List<ByteBuffer> sliceBuffers(long length) throws EOFException {
     if (length > buffer.remaining()) {
       throw new EOFException();
     }
 
     // length is less than remaining, so it must fit in an int
-    ByteBuffer copy = buffer.duplicate();
-    copy.limit(copy.position() + (int) length);
-    buffer.position(copy.position() + (int) length);
+    return Collections.singletonList(slice((int) length));
+  }
 
-    return Collections.singletonList(copy);
+  @Override
+  public List<ByteBuffer> remainingBuffers() {
+    if (buffer.remaining() <= 0) {
+      return Collections.emptyList();
+    }
+
+    ByteBuffer remaining = buffer.duplicate();
+    buffer.position(buffer.limit());
+
+    return Collections.singletonList(remaining);
   }
 
   @Override
