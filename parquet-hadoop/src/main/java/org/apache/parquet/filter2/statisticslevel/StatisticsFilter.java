@@ -327,19 +327,25 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
     Column<T> filterColumn = ud.getColumn();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+
+    if (columnChunk == null) {
+      // the column isn't in this file so all values are null.
+      return BLOCK_MIGHT_MATCH;
+    }
+
     U udp = ud.getUserDefinedPredicate();
     Statistics<T> stats = columnChunk.getStatistics();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
-      return false;
+      return BLOCK_MIGHT_MATCH;
     }
 
     if (isAllNulls(columnChunk)) {
       // there is no min max, there is nothing
       // else we can say about this chunk, we
       // cannot drop it.
-      return false;
+      return BLOCK_MIGHT_MATCH;
     }
 
     org.apache.parquet.filter2.predicate.Statistics<T> udpStats =

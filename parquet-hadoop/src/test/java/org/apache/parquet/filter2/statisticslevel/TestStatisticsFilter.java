@@ -83,6 +83,7 @@ public class TestStatisticsFilter {
   private static final IntColumn intColumn = intColumn("int.column");
   private static final DoubleColumn doubleColumn = doubleColumn("double.column");
   private static final BinaryColumn missingColumn = binaryColumn("missing");
+  private static final IntColumn missingColumn2 = intColumn("missing.int");
 
   private static final IntStatistics intStats = new IntStatistics();
   private static final IntStatistics nullIntStats = new IntStatistics();
@@ -288,6 +289,9 @@ public class TestStatisticsFilter {
     FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class);
     FilterPredicate invPred = LogicalInverseRewriter.rewrite(not(userDefined(intColumn, SevensAndEightsUdp.class)));
 
+    FilterPredicate predForMissingColumn = userDefined(missingColumn2, SevensAndEightsUdp.class);
+    FilterPredicate invPredForMissingColumn = LogicalInverseRewriter.rewrite(not(userDefined(missingColumn2, SevensAndEightsUdp.class)));
+
     IntStatistics seven = new IntStatistics();
     seven.setMinMax(7, 7);
 
@@ -318,6 +322,30 @@ public class TestStatisticsFilter {
         getDoubleColumnMeta(doubleStats, 177L))));
 
     assertFalse(canDrop(invPred, Arrays.asList(
+        getIntColumnMeta(neither, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(predForMissingColumn, Arrays.asList(
+        getIntColumnMeta(seven, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(predForMissingColumn, Arrays.asList(
+        getIntColumnMeta(eight, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(predForMissingColumn, Arrays.asList(
+        getIntColumnMeta(neither, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(invPredForMissingColumn, Arrays.asList(
+        getIntColumnMeta(seven, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(invPredForMissingColumn, Arrays.asList(
+        getIntColumnMeta(eight, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(invPredForMissingColumn, Arrays.asList(
         getIntColumnMeta(neither, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
   }
