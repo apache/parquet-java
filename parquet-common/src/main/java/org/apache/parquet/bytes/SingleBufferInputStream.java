@@ -126,6 +126,10 @@ class SingleBufferInputStream extends ByteBufferInputStream {
 
   @Override
   public List<ByteBuffer> sliceBuffers(long length) throws EOFException {
+    if (length == 0) {
+      return Collections.emptyList();
+    }
+
     if (length > buffer.remaining()) {
       throw new EOFException();
     }

@@ -155,6 +155,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       slice = current.duplicate();
       slice.limit(slice.position() + length);
       current.position(slice.position() + length);
+      this.position += length;
     }
 
     return slice;
