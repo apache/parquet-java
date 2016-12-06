@@ -329,6 +329,7 @@ public class TestInputOutputFormat {
   @Test
   public void testReadWriteWithCounter() throws Exception {
     runMapReduceJob(CompressionCodecName.GZIP);
+
     assertTrue(value(readJob, "parquet", "bytesread") > 0L);
     assertTrue(value(readJob, "parquet", "bytestotal") > 0L);
     assertTrue(value(readJob, "parquet", "bytesread")

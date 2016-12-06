@@ -225,6 +225,7 @@
                    <dumpDetails>true</dumpDetails>
                    <previousVersion>${previous.version}</previousVersion>
                    <excludes>
+                     <exclude>org/apache/parquet/hadoop/util/**</exclude>
                      <exclude>org/apache/parquet/thrift/projection/**</exclude>
                      <exclude>org/apache/parquet/thrift/ThriftSchemaConverter</exclude>
                      <exclude>org/apache/parquet/filter2/**</exclude>
