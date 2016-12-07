@@ -58,9 +58,12 @@ public class Util {
   private static final long KB = 1024;
   private static final long MB = 1024 * KB;
   private static final long GB = 1024 * MB;
+  private static final long TB = 1024 * GB;
 
   public static String humanReadable(float bytes) {
-    if (bytes > GB) {
+    if (bytes > TB) {
+      return String.format("%.03f TB", bytes / TB);
+    } else if (bytes > GB) {
       return String.format("%.03f GB", bytes / GB);
     } else if (bytes > MB) {
       return String.format("%.03f MB", bytes / MB);
@@ -72,7 +75,9 @@ public class Util {
   }
 
   public static String humanReadable(long bytes) {
-    if (bytes > GB) {
+    if (bytes > TB) {
+      return String.format("%.03f TB", ((float) bytes) / TB);
+    } else if (bytes > GB) {
       return String.format("%.03f GB", ((float) bytes) / GB);
     } else if (bytes > MB) {
       return String.format("%.03f MB", ((float) bytes) / MB);

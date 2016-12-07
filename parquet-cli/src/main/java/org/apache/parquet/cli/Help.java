@@ -46,38 +46,19 @@ public class Help implements Command {
 
   @Override
   public int run() {
-    boolean hasRequired = false;
-
     if (helpCommands.isEmpty()) {
-      console.info(
-          "\nUsage: {} [options] [command] [command options]",
-          programName);
-      console.info("\n  Options:\n");
-      for (ParameterDescription param : jc.getParameters()) {
-        hasRequired = printOption(console, param) || hasRequired;
-      }
-      if (hasRequired) {
-        console.info("\n  * = required");
-      }
-      console.info("\n  Commands:\n");
-      for (String command : jc.getCommands().keySet()) {
-        console.info("    {}\n\t{}",
-            command, jc.getCommandDescription(command));
-      }
-      console.info("\n  Examples:");
-      console.info("\n    # print information for create\n    {} help create",
-          programName);
-      console.info("\n  See '{} help <command>' for more information on a " +
-          "specific command.", programName);
+      printGenericHelp();
 
     } else {
       for (String cmd : helpCommands) {
         JCommander commander = jc.getCommands().get(cmd);
         if (commander == null) {
-          console.error("Unknown command: {}", cmd);
+          console.error("\nUnknown command: {}\n", cmd);
+          printGenericHelp();
           return 1;
         }
 
+        boolean hasRequired = false;
         console.info("\nUsage: {} [general options] {} {} [command options]",
             new Object[] {
                 programName, cmd,
@@ -111,6 +92,30 @@ public class Help implements Command {
       }
     }
     return 0;
+  }
+
+  public void printGenericHelp() {
+    boolean hasRequired = false;
+    console.info(
+        "\nUsage: {} [options] [command] [command options]",
+        programName);
+    console.info("\n  Options:\n");
+    for (ParameterDescription param : jc.getParameters()) {
+      hasRequired = printOption(console, param) || hasRequired;
+    }
+    if (hasRequired) {
+      console.info("\n  * = required");
+    }
+    console.info("\n  Commands:\n");
+    for (String command : jc.getCommands().keySet()) {
+      console.info("    {}\n\t{}",
+          command, jc.getCommandDescription(command));
+    }
+    console.info("\n  Examples:");
+    console.info("\n    # print information for create\n    {} help create",
+        programName);
+    console.info("\n  See '{} help <command>' for more information on a " +
+        "specific command.", programName);
   }
 
   private boolean printOption(Logger console, ParameterDescription param) {

@@ -32,9 +32,7 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.ChecksumFileSystem;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
@@ -42,7 +40,9 @@ import org.apache.parquet.avro.AvroParquetReader;
 import org.apache.parquet.avro.AvroReadSupport;
 import org.apache.parquet.cli.json.AvroJsonReader;
 import org.apache.parquet.cli.util.Formats;
+import org.apache.parquet.cli.util.GetClassLoader;
 import org.apache.parquet.cli.util.Schemas;
+import org.apache.parquet.cli.util.SeekableFSDataInputStream;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.slf4j.Logger;
 import java.io.File;
@@ -52,10 +52,8 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.charset.Charset;
 import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -355,8 +353,8 @@ public abstract class BaseCommand implements Command, Configurable {
         };
 
       case AVRO:
-        Iterable<D> avroReader = (Iterable<D>) DataFileReader.openReader(openSeekable(source),
-            new GenericDatumReader<>(projection));
+        Iterable<D> avroReader = (Iterable<D>) DataFileReader.openReader(
+            openSeekable(source), new GenericDatumReader<>(projection));
         return avroReader;
 
       default:
@@ -396,62 +394,4 @@ public abstract class BaseCommand implements Command, Configurable {
     }
   }
 
-  private static class GetClassLoader implements PrivilegedAction<ClassLoader> {
-    private final URL[] urls;
-
-    public GetClassLoader(List<URL> urls) {
-      this.urls = urls.toArray(new URL[urls.size()]);
-    }
-
-    @Override
-    public ClassLoader run() {
-      return new URLClassLoader(
-          urls, Thread.currentThread().getContextClassLoader());
-    }
-  }
-
-  private static class SeekableFSDataInputStream extends InputStream implements SeekableInput {
-    private final FSDataInputStream in;
-    private final FileStatus stat;
-
-    private SeekableFSDataInputStream(FileSystem fs, Path file) throws IOException {
-      this.in = fs.open(file);
-      this.stat = fs.getFileStatus(file);
-    }
-
-    @Override
-    public void seek(long p) throws IOException {
-      in.seek(p);
-    }
-
-    @Override
-    public long tell() throws IOException {
-      return in.getPos();
-    }
-
-    @Override
-    public long length() throws IOException {
-      return stat.getLen();
-    }
-
-    @Override
-    public int read(byte[] b) throws IOException {
-      return in.read(b);
-    }
-
-    @Override
-    public int read() throws IOException {
-      return in.read();
-    }
-
-    @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-      return in.read(b, off, len);
-    }
-
-    @Override
-    public void close() throws IOException {
-      in.close();
-    }
-  }
 }
