@@ -145,9 +145,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
 
-  // default to no padding for now
-  private static final int DEFAULT_MAX_PADDING_SIZE = 0;
-
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
     String deprecatedFlag = conf.get(ENABLE_JOB_SUMMARY);
@@ -313,8 +310,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   private static int getMaxPaddingSize(Configuration conf) {
-    // default to no padding, 0% of the row group size
-    return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
+    return conf.getInt(MAX_PADDING_BYTES, ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
   }
 
   private WriteSupport<T> writeSupport;
