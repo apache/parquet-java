@@ -270,7 +270,10 @@ public class TestStatisticsFilter {
 
     @Override
     public boolean keep(Integer value) {
-      throw new RuntimeException("this method should not be called");
+      if (value == null) {
+        return true;
+      }
+      throw new RuntimeException("this method should not be called with value != null");
     }
 
     @Override
@@ -284,13 +287,26 @@ public class TestStatisticsFilter {
     }
   }
 
+  public static class DropNullUdp extends SevensAndEightsUdp {
+    @Override
+    public boolean keep(Integer value) {
+      if (value == null) {
+        return false;
+      }
+      throw new RuntimeException("this method should not be called with value != null");
+    }
+  }
+
   @Test
   public void testUdp() {
     FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class);
     FilterPredicate invPred = LogicalInverseRewriter.rewrite(not(userDefined(intColumn, SevensAndEightsUdp.class)));
 
-    FilterPredicate predForMissingColumn = userDefined(missingColumn2, SevensAndEightsUdp.class);
-    FilterPredicate invPredForMissingColumn = LogicalInverseRewriter.rewrite(not(userDefined(missingColumn2, SevensAndEightsUdp.class)));
+    FilterPredicate udpDropMissingColumn = userDefined(missingColumn2, DropNullUdp.class);
+    FilterPredicate invUdpDropMissingColumn = LogicalInverseRewriter.rewrite(not(userDefined(missingColumn2, DropNullUdp.class)));
+
+    FilterPredicate udpKeepMissingColumn = userDefined(missingColumn2, SevensAndEightsUdp.class);
+    FilterPredicate invUdpKeepMissingColumn = LogicalInverseRewriter.rewrite(not(userDefined(missingColumn2, SevensAndEightsUdp.class)));
 
     IntStatistics seven = new IntStatistics();
     seven.setMinMax(7, 7);
@@ -325,27 +341,55 @@ public class TestStatisticsFilter {
         getIntColumnMeta(neither, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
 
-    assertFalse(canDrop(predForMissingColumn, Arrays.asList(
+    // udpDropMissingColumn drops null column.
+    assertTrue(canDrop(udpDropMissingColumn, Arrays.asList(
         getIntColumnMeta(seven, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
 
-    assertFalse(canDrop(predForMissingColumn, Arrays.asList(
+    assertTrue(canDrop(udpDropMissingColumn, Arrays.asList(
         getIntColumnMeta(eight, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
 
-    assertFalse(canDrop(predForMissingColumn, Arrays.asList(
+    assertTrue(canDrop(udpDropMissingColumn, Arrays.asList(
         getIntColumnMeta(neither, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
 
-    assertFalse(canDrop(invPredForMissingColumn, Arrays.asList(
+    // invUdpDropMissingColumn (i.e., not(udpDropMissingColumn)) keeps null column.
+    assertFalse(canDrop(invUdpDropMissingColumn, Arrays.asList(
         getIntColumnMeta(seven, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
 
-    assertFalse(canDrop(invPredForMissingColumn, Arrays.asList(
+    assertFalse(canDrop(invUdpDropMissingColumn, Arrays.asList(
         getIntColumnMeta(eight, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
 
-    assertFalse(canDrop(invPredForMissingColumn, Arrays.asList(
+    assertFalse(canDrop(invUdpDropMissingColumn, Arrays.asList(
+        getIntColumnMeta(neither, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    // udpKeepMissingColumn keeps null column.
+    assertFalse(canDrop(udpKeepMissingColumn, Arrays.asList(
+        getIntColumnMeta(seven, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(udpKeepMissingColumn, Arrays.asList(
+        getIntColumnMeta(eight, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(udpKeepMissingColumn, Arrays.asList(
+        getIntColumnMeta(neither, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    // invUdpKeepMissingColumn (i.e., not(udpKeepMissingColumn)) drops null column.
+    assertTrue(canDrop(invUdpKeepMissingColumn, Arrays.asList(
+        getIntColumnMeta(seven, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertTrue(canDrop(invUdpKeepMissingColumn, Arrays.asList(
+        getIntColumnMeta(eight, 177L),
+        getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertTrue(canDrop(invUdpKeepMissingColumn, Arrays.asList(
         getIntColumnMeta(neither, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
   }
