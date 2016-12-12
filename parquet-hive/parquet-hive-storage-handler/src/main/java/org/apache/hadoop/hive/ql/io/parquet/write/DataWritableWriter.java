@@ -25,12 +25,14 @@ import org.apache.hadoop.hive.serde2.io.DoubleWritable;
 import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.BooleanWritable;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Writable;
 
 import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.Type;
@@ -148,6 +150,8 @@ public class DataWritableWriter {
       recordConsumer.addInteger(((ShortWritable) value).get());
     } else if (value instanceof ByteWritable) {
       recordConsumer.addInteger(((ByteWritable) value).get());
+    } else if (value instanceof BytesWritable) {
+      recordConsumer.addBinary(Binary.fromByteArray(((BytesWritable) value).getBytes(), 0, ((BytesWritable) value).getLength()));
     } else if (value instanceof BigDecimalWritable) {
       throw new UnsupportedOperationException("BigDecimal writing not implemented");
     } else if (value instanceof BinaryWritable) {
