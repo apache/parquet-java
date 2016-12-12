@@ -602,10 +602,10 @@ public class TestParquetFileWriter {
     
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
     
-    // assert the statistics object is not empty
-    assertTrue((readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().isEmpty()) == false);
-    // assert the number of nulls are correct for the first block
-    assertEquals(1, (readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().getNumNulls()));
+    // assert the statistics object is empty
+    assertTrue((readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().isEmpty()) == true);
+    // no data written actually
+    assertEquals(0, (readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().getNumNulls()));
   }
 
   private void validateFooters(final List<Footer> metadata) {

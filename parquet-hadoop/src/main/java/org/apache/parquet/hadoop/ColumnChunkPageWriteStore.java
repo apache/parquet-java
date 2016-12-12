@@ -89,6 +89,11 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
                           Encoding rlEncoding,
                           Encoding dlEncoding,
                           Encoding valuesEncoding) throws IOException {
+      if (!statistics.hasNonNullValue()) {
+        LOG.debug("Ignore all-null field.");
+        return;
+      }
+
       long uncompressedSize = bytes.size();
       if (uncompressedSize > Integer.MAX_VALUE) {
         throw new ParquetEncodingException(

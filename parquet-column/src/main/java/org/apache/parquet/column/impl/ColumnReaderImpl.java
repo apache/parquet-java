@@ -352,9 +352,6 @@ public class ColumnReaderImpl implements ColumnReader {
       this.dictionary = null;
     }
     this.totalValueCount = pageReader.getTotalValueCount();
-    if (totalValueCount <= 0) {
-      throw new ParquetDecodingException("totalValueCount '" + totalValueCount + "' <= 0");
-    }
     consume();
   }
 

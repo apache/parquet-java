@@ -47,6 +47,7 @@ import org.mockito.InOrder;
 import org.mockito.Mockito;
 
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.LittleEndianDataInputStream;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -55,13 +56,15 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.BinaryStatistics;
+import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 public class TestColumnChunkPageWriteStore {
 
@@ -142,6 +145,35 @@ public class TestColumnChunkPageWriteStore {
     os.close();
     return i;
   }
+  
+  private Statistics getStatsBasedOnType(PrimitiveTypeName type) {
+    Statistics stats = Statistics.getStatsBasedOnType(type);
+    switch(type) {
+    case INT32:
+      stats.updateStats((int)1);
+      break;
+    case INT64:
+      stats.updateStats((long)1);
+      break;
+    case FLOAT:
+      stats.updateStats((float)1);
+      break;
+    case DOUBLE:
+      stats.updateStats((double)1);
+      break;
+    case BOOLEAN:
+      stats.updateStats(true);
+      break;
+    case BINARY:
+      stats.updateStats(Binary.fromString("fake_string"));
+      break;
+    case INT96:
+    case FIXED_LEN_BYTE_ARRAY:
+    default:
+      break;
+    }
+    return stats;
+  }
 
   @Test
   public void testColumnOrderV1() throws IOException {
@@ -157,7 +189,6 @@ public class TestColumnChunkPageWriteStore {
 
     BytesInput fakeData = BytesInput.fromInt(34);
     int fakeCount = 3;
-    BinaryStatistics fakeStats = new BinaryStatistics();
 
     // TODO - look back at this, an allocator was being passed here in the ByteBuffer changes
     // see comment at this constructor
@@ -166,6 +197,7 @@ public class TestColumnChunkPageWriteStore {
 
     for (ColumnDescriptor col : schema.getColumns()) {
       PageWriter pageWriter = store.getPageWriter(col);
+      Statistics fakeStats = getStatsBasedOnType(col.getType());
       pageWriter.writePage(fakeData, fakeCount, fakeStats, RLE, RLE, PLAIN);
     }
 
