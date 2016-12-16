@@ -212,8 +212,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_MIGHT_MATCH;
       }
 
-      for(T entry : dictSet) {
-        if(value.compareTo(entry) > 0) {
+      for (T entry : dictSet) {
+        if (value.compareTo(entry) > 0) {
           return BLOCK_MIGHT_MATCH;
         }
       }
@@ -253,8 +253,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_MIGHT_MATCH;
       }
 
-      for(T entry : dictSet) {
-        if(value.compareTo(entry) >= 0) {
+      for (T entry : dictSet) {
+        if (value.compareTo(entry) >= 0) {
           return BLOCK_MIGHT_MATCH;
         }
       }
@@ -292,8 +292,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_MIGHT_MATCH;
       }
 
-      for(T entry : dictSet) {
-        if(value.compareTo(entry) < 0) {
+      for (T entry : dictSet) {
+        if (value.compareTo(entry) < 0) {
           return BLOCK_MIGHT_MATCH;
         }
       }
@@ -333,8 +333,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_MIGHT_MATCH;
       }
 
-      for(T entry : dictSet) {
-        if(value.compareTo(entry) <= 0) {
+      for (T entry : dictSet) {
+        if (value.compareTo(entry) <= 0) {
           return BLOCK_MIGHT_MATCH;
         }
       }
@@ -366,9 +366,18 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
     Column<T> filterColumn = ud.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+    U udp = ud.getUserDefinedPredicate();
 
-    // Cannot make assumptions around UDPs and acceptance of null values
-    if (meta == null || hasNonDictionaryPages(meta)) {
+    // The column is missing, thus all null. Check if the predicate keeps null.
+    if (meta == null) {
+      if (inverted) {
+        return udp.keep(null);
+      } else {
+        return !udp.keep(null);
+      }
+    }
+
+    if (hasNonDictionaryPages(meta)) {
       return BLOCK_MIGHT_MATCH;
     }
 
@@ -378,24 +387,11 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_MIGHT_MATCH;
       }
 
-      boolean allMatch = true;
-      for(T entry : dictSet) {
-        if (ud.getUserDefinedPredicate().keep(entry)) {
-          if (!inverted) {
-            return BLOCK_MIGHT_MATCH;
-          }
-        } else {
-          allMatch = false;
-        }
+      for (T entry : dictSet) {
+        boolean keep = udp.keep(entry);
+        if ((keep && !inverted) || (!keep && inverted)) return BLOCK_MIGHT_MATCH;
       }
-
-      if (inverted && allMatch) {
-        return BLOCK_CANNOT_MATCH;
-      } else if (inverted) {
-        return BLOCK_MIGHT_MATCH;
-      } else {
-        return BLOCK_CANNOT_MATCH;
-      }
+      return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
     }

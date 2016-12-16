@@ -20,6 +20,7 @@
 package org.apache.parquet.filter2.dictionarylevel;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -28,7 +29,6 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
-import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
@@ -341,29 +341,29 @@ public class DictionaryFilterTest {
 
   @Test
   public void testUdp() throws Exception {
-    InInt32UDP udp = new InInt32UDP(ImmutableSet.of(42));
-    InInt32UDP udp1 = new InInt32UDP(ImmutableSet.of(205));
+    InInt32UDP dropabble = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
 
     assertTrue("Should drop block for non-matching UDP",
-      canDrop(FilterApi.userDefined(intColumn("int32_field"), udp), ccmd, dictionaries));
+      canDrop(userDefined(intColumn("int32_field"), dropabble), ccmd, dictionaries));
 
     assertFalse("Should not drop block for matching UDP",
-      canDrop(FilterApi.userDefined(intColumn("int32_field"), udp1), ccmd, dictionaries));
+      canDrop(userDefined(intColumn("int32_field"), undroppable), ccmd, dictionaries));
   }
 
   @Test
   public void testInverseUdp() throws Exception {
-    InInt32UDP udp = new InInt32UDP(ImmutableSet.of(42));
-    InInt32UDP udp1 = new InInt32UDP(ImmutableSet.of(205));
+    InInt32UDP droppable = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
     Set<Integer> allValues = ImmutableSet.copyOf(Arrays.asList(ArrayUtils.toObject(intValues)));
-    InInt32UDP udp2 = new InInt32UDP(allValues);
+    InInt32UDP completeMatch = new InInt32UDP(allValues);
 
     FilterPredicate inverse =
-      LogicalInverseRewriter.rewrite(FilterApi.not(FilterApi.userDefined(intColumn("int32_field"), udp)));
+      LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), droppable)));
     FilterPredicate inverse1 =
-      LogicalInverseRewriter.rewrite(FilterApi.not(FilterApi.userDefined(intColumn("int32_field"), udp1)));
+      LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), undroppable)));
     FilterPredicate inverse2 =
-      LogicalInverseRewriter.rewrite(FilterApi.not(FilterApi.userDefined(intColumn("int32_field"), udp2)));
+      LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), completeMatch)));
 
     assertFalse("Should not drop block for inverse of non-matching UDP",
       canDrop(inverse, ccmd, dictionaries));
@@ -483,21 +483,27 @@ public class DictionaryFilterTest {
 
   @Test
   public void testUdpMissingColumn() throws Exception {
-    InInt32UDP udp = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP nullRejecting = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP nullAccepting = new InInt32UDP(Sets.newHashSet((Integer) null));
     IntColumn fake = intColumn("missing_column");
 
-    assertFalse("Should not drop block for any null columns",
-      canDrop(FilterApi.userDefined(fake, udp), ccmd, dictionaries));
+    assertTrue("Should drop block for null rejecting udp",
+      canDrop(userDefined(fake, nullRejecting), ccmd, dictionaries));
+    assertFalse("Should not drop block for null accepting udp",
+      canDrop(userDefined(fake, nullAccepting), ccmd, dictionaries));
   }
 
 
   @Test
   public void testInverseUdpMissingColumn() throws Exception {
-    InInt32UDP udp = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP nullRejecting = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP nullAccepting = new InInt32UDP(Sets.newHashSet((Integer) null));
     IntColumn fake = intColumn("missing_column");
 
-    assertFalse("Should not drop block for any null columns",
-      canDrop(LogicalInverseRewriter.rewrite(FilterApi.userDefined(fake, udp)), ccmd, dictionaries));
+    assertTrue("Should drop block for null accepting udp",
+      canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullAccepting))), ccmd, dictionaries));
+    assertFalse("Should not drop block for null rejecting udp",
+      canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries));
   }
 
 
