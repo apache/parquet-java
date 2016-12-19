@@ -232,7 +232,7 @@ public class TestStatistics {
     assertEquals(statsFromBytesMinMax.getMin(), Float.MIN_VALUE, 1e-10);
 
     // Test print formatting
-    assertEquals(stats.toString(), "min: 0.00010, max: 553.59998, num_nulls: 0");
+    assertEquals(stats.toString(), String.format("min: %.5f, max: %.5f, num_nulls: %d", 0.00010, 553.59998, 0));
   }
 
   @Test
@@ -293,7 +293,7 @@ public class TestStatistics {
     assertEquals(statsFromBytesMinMax.getMin(), Double.MIN_VALUE, 1e-10);
 
     // Test print formatting
-    assertEquals(stats.toString(), "min: 0.00001, max: 944.50000, num_nulls: 0");
+    assertEquals(stats.toString(), String.format("min: %.5f, max: %.5f, num_nulls: %d", 0.00001, 944.50000, 0));
   }
 
   @Test
