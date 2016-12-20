@@ -19,6 +19,9 @@
 
 package org.apache.parquet.filter2.dictionarylevel;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -27,11 +30,14 @@ import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Operators.LongColumn;
+import org.apache.parquet.filter2.predicate.Statistics;
+import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -47,6 +53,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -331,6 +338,43 @@ public class DictionaryFilterTest {
         canDrop(or(x, y), ccmd, dictionaries));
   }
 
+
+  @Test
+  public void testUdp() throws Exception {
+    InInt32UDP dropabble = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
+
+    assertTrue("Should drop block for non-matching UDP",
+      canDrop(userDefined(intColumn("int32_field"), dropabble), ccmd, dictionaries));
+
+    assertFalse("Should not drop block for matching UDP",
+      canDrop(userDefined(intColumn("int32_field"), undroppable), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testInverseUdp() throws Exception {
+    InInt32UDP droppable = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
+    Set<Integer> allValues = ImmutableSet.copyOf(Arrays.asList(ArrayUtils.toObject(intValues)));
+    InInt32UDP completeMatch = new InInt32UDP(allValues);
+
+    FilterPredicate inverse =
+      LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), droppable)));
+    FilterPredicate inverse1 =
+      LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), undroppable)));
+    FilterPredicate inverse2 =
+      LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), completeMatch)));
+
+    assertFalse("Should not drop block for inverse of non-matching UDP",
+      canDrop(inverse, ccmd, dictionaries));
+
+    assertFalse("Should not drop block for inverse of UDP with some matches",
+      canDrop(inverse1, ccmd, dictionaries));
+
+    assertTrue("Should drop block for inverse of UDP with all matches",
+      canDrop(inverse2, ccmd, dictionaries));
+  }
+
   @Test
   public void testColumnWithoutDictionary() throws Exception {
     IntColumn plain = intColumn("plain_int32_field");
@@ -435,6 +479,56 @@ public class DictionaryFilterTest {
 
     assertTrue("Should drop block for any non-null query",
         canDrop(gtEq(b, Binary.fromString("any")), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testUdpMissingColumn() throws Exception {
+    InInt32UDP nullRejecting = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP nullAccepting = new InInt32UDP(Sets.newHashSet((Integer) null));
+    IntColumn fake = intColumn("missing_column");
+
+    assertTrue("Should drop block for null rejecting udp",
+      canDrop(userDefined(fake, nullRejecting), ccmd, dictionaries));
+    assertFalse("Should not drop block for null accepting udp",
+      canDrop(userDefined(fake, nullAccepting), ccmd, dictionaries));
+  }
+
+
+  @Test
+  public void testInverseUdpMissingColumn() throws Exception {
+    InInt32UDP nullRejecting = new InInt32UDP(ImmutableSet.of(42));
+    InInt32UDP nullAccepting = new InInt32UDP(Sets.newHashSet((Integer) null));
+    IntColumn fake = intColumn("missing_column");
+
+    assertTrue("Should drop block for null accepting udp",
+      canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullAccepting))), ccmd, dictionaries));
+    assertFalse("Should not drop block for null rejecting udp",
+      canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries));
+  }
+
+
+  private static final class InInt32UDP extends UserDefinedPredicate<Integer> implements Serializable {
+
+    private final Set<Integer> ints;
+
+    InInt32UDP(Set<Integer> ints) {
+      this.ints = ints;
+    }
+
+    @Override
+    public boolean keep(Integer value) {
+      return ints.contains(value);
+    }
+
+    @Override
+    public boolean canDrop(Statistics<Integer> statistics) {
+      return false;
+    }
+
+    @Override
+    public boolean inverseCanDrop(Statistics<Integer> statistics) {
+      return false;
+    }
   }
 
   private static double toDouble(int value) {
