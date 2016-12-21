@@ -17,11 +17,12 @@
 # under the License.
 #
 
+
 # !/usr/bin/env bash
 
 set -e
 
 SCRIPT_PATH=$( cd "$(dirname "$0")" ; pwd -P )
 
-bash ${SCRIPT_PATH}/write-benchmark.sh "$@"
-bash ${SCRIPT_PATH}/read-benchmark.sh "$@"
+echo "Starting WRITE benchmarks"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*Write* "$@"

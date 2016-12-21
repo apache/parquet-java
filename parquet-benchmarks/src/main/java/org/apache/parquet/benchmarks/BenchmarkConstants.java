@@ -39,4 +39,9 @@ public class BenchmarkConstants {
   public static final int PAGE_SIZE_8M = 8 * 1024 * 1024;
 
   public static final int DICT_PAGE_SIZE = 512;
+
+  //In order to improve the benchmark speed, we generate a random sample data.
+  //This data will be written as many times as rows are needed in the file.
+  //The sample is 100k of random records, enough to write many pages of unique data.
+  public static final int RANDOM_SAMPLE_ROWS = 100000;
 }

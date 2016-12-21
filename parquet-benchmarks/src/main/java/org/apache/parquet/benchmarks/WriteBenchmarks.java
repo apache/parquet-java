@@ -18,27 +18,49 @@
  */
 package org.apache.parquet.benchmarks;
 
+import org.apache.hadoop.conf.Configuration;
+import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
-import static org.openjdk.jmh.annotations.Scope.Thread;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion;
+import static org.openjdk.jmh.annotations.Scope.Benchmark;
 import static org.apache.parquet.benchmarks.BenchmarkConstants.*;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
 
 import java.io.IOException;
 
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
-@State(Thread)
+@State(Benchmark)
+@BenchmarkMode(Mode.All)
+@Fork(1)
 public class WriteBenchmarks {
-  private DataGenerator dataGenerator = new DataGenerator();
+  private DataGenerator dataGenerator;
 
-  @Setup(Level.Iteration)
+  @Param("v2")
+  public String parquetVersion;
+
+  @Param("false")
+  public boolean randomData;
+
+  @Setup(Level.Trial)
+  public void setupBenchmark() throws IOException {
+    dataGenerator = new DataGenerator(new Configuration(), WriterVersion.fromString(parquetVersion));
+
+    if (randomData) {
+      dataGenerator.initializeRandomSampleData(RANDOM_SAMPLE_ROWS);
+    }
+  }
+
+  @Setup(Level.Invocation)
   public void cleanup() {
     //clean existing test data at the beginning of each iteration
     dataGenerator.cleanup();
@@ -49,11 +71,8 @@ public class WriteBenchmarks {
           throws IOException
   {
     dataGenerator.generateData(file_1M,
-                               configuration,
-                               PARQUET_2_0,
                                BLOCK_SIZE_DEFAULT,
                                PAGE_SIZE_DEFAULT,
-                               FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
                                ONE_MILLION);
   }
@@ -63,11 +82,8 @@ public class WriteBenchmarks {
           throws IOException
   {
     dataGenerator.generateData(file_1M_BS256M_PS4M,
-                               configuration,
-                               PARQUET_2_0,
                                BLOCK_SIZE_256M,
                                PAGE_SIZE_4M,
-                               FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
                                ONE_MILLION);
   }
@@ -77,11 +93,8 @@ public class WriteBenchmarks {
           throws IOException
   {
     dataGenerator.generateData(file_1M_BS256M_PS8M,
-                               configuration,
-                               PARQUET_2_0,
                                BLOCK_SIZE_256M,
                                PAGE_SIZE_8M,
-                               FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
                                ONE_MILLION);
   }
@@ -91,11 +104,8 @@ public class WriteBenchmarks {
           throws IOException
   {
     dataGenerator.generateData(file_1M_BS512M_PS4M,
-                               configuration,
-                               PARQUET_2_0,
                                BLOCK_SIZE_512M,
                                PAGE_SIZE_4M,
-                               FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
                                ONE_MILLION);
   }
@@ -105,11 +115,8 @@ public class WriteBenchmarks {
           throws IOException
   {
     dataGenerator.generateData(file_1M_BS512M_PS8M,
-                               configuration,
-                               PARQUET_2_0,
                                BLOCK_SIZE_512M,
                                PAGE_SIZE_8M,
-                               FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
                                ONE_MILLION);
   }
@@ -120,11 +127,8 @@ public class WriteBenchmarks {
 //          throws IOException
 //  {
 //    dataGenerator.generateData(parquetFile_1M_LZO,
-//            configuration,
-//            WriterVersion.PARQUET_2_0,
 //            BLOCK_SIZE_DEFAULT,
 //            PAGE_SIZE_DEFAULT,
-//            FIXED_LEN_BYTEARRAY_SIZE,
 //            LZO,
 //            ONE_MILLION);
 //  }
@@ -134,11 +138,8 @@ public class WriteBenchmarks {
           throws IOException
   {
     dataGenerator.generateData(file_1M_SNAPPY,
-                               configuration,
-                               PARQUET_2_0,
                                BLOCK_SIZE_DEFAULT,
                                PAGE_SIZE_DEFAULT,
-                               FIXED_LEN_BYTEARRAY_SIZE,
                                SNAPPY,
                                ONE_MILLION);
   }
@@ -148,11 +149,8 @@ public class WriteBenchmarks {
           throws IOException
   {
     dataGenerator.generateData(file_1M_GZIP,
-                               configuration,
-                               PARQUET_2_0,
                                BLOCK_SIZE_DEFAULT,
                                PAGE_SIZE_DEFAULT,
-                               FIXED_LEN_BYTEARRAY_SIZE,
                                GZIP,
                                ONE_MILLION);
   }
