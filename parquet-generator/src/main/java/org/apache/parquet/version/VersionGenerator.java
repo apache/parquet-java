@@ -50,7 +50,11 @@ public class VersionGenerator {
     	throw new IOException("/parquet-version.properties not found");
     }
     Properties props = new Properties();
-    props.load(in);
+    try {
+      props.load(in);
+    } finally {
+      in.close();
+    }
 
     add("package org.apache.parquet;\n" +
         "\n" +

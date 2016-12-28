@@ -128,7 +128,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 //    }
 
     public boolean equals(Case other) {
-      return startLevel == other.startLevel
+      return other != null
+          && startLevel == other.startLevel
           && depth == other.depth
           && nextLevel == other.nextLevel
           && nextState == other.nextState
