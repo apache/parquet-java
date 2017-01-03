@@ -61,7 +61,7 @@ public class TestMemoryManager {
     conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
 
     // the memory manager is not initialized until a writer is created
-    createWriter(1).close(null);
+    createWriter(0).close(null);
   }
 
   @Test

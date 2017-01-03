@@ -92,7 +92,7 @@
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>scrooge-core_${scala.binary.version}</artifactId>
-      <version>3.17.0</version>
+      <version>4.7.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
