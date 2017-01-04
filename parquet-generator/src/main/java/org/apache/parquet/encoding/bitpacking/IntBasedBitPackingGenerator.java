@@ -56,9 +56,7 @@ public class IntBasedBitPackingGenerator {
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();
     }
-    FileWriter fw = null;
-    try {
-      fw = new FileWriter(file);
+    try (FileWriter fw = new FileWriter(file)) {
       fw.append("package org.apache.parquet.column.values.bitpacking;\n");
       fw.append("\n");
       fw.append("/**\n");
@@ -96,9 +94,6 @@ public class IntBasedBitPackingGenerator {
         fw.append("\n");
       }
       fw.append("}\n");
-    } finally {
-      if (fw != null)
-        fw.close();
     }
   }
 

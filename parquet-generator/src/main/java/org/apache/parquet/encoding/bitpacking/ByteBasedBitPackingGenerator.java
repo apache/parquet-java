@@ -65,9 +65,7 @@ public class ByteBasedBitPackingGenerator {
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();
     }
-    FileWriter fw = null;
-    try {
-      fw = new FileWriter(file);
+    try (FileWriter fw = new FileWriter(file)) {
       fw.append("package org.apache.parquet.column.values.bitpacking;\n");
       fw.append("import java.nio.ByteBuffer;\n");
       fw.append("\n");
@@ -102,9 +100,6 @@ public class ByteBasedBitPackingGenerator {
         fw.append("\n");
       }
       fw.append("}\n");
-    } finally {
-      if (fw != null)
-        fw.close();
     }
   }
 
