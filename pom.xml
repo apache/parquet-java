@@ -70,7 +70,7 @@
     <jackson.package>org.codehaus.jackson</jackson.package>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.7.3</hadoop.version>
-    <hadoop1.version>1.1.0</hadoop1.version>
+    <hadoop1.version>1.2.1</hadoop1.version>
     <cascading.version>2.7.1</cascading.version>
     <cascading3.version>3.1.2</cascading3.version>
     <parquet.format.version>2.3.1</parquet.format.version>
@@ -128,10 +128,11 @@
       <version>3.4</version>
       <scope>test</scope>
     </dependency>
+    <!-- hadoop-1 requires the old httpclient for testing -->
     <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>4.5.2</version>
+      <groupId>commons-httpclient</groupId>
+      <artifactId>commons-httpclient</artifactId>
+      <version>3.1</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
