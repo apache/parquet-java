@@ -18,18 +18,18 @@
  */
 package org.apache.parquet.column.values.rle;
 
-import static org.apache.parquet.Log.DEBUG;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Decodes values written in the grammar described in {@link RunLengthBitPackingHybridEncoder}
@@ -37,7 +37,7 @@ import org.apache.parquet.io.ParquetDecodingException;
  * @author Julien Le Dem
  */
 public class RunLengthBitPackingHybridDecoder {
-  private static final Log LOG = Log.getLog(RunLengthBitPackingHybridDecoder.class);
+  private static final Logger LOG = LoggerFactory.getLogger(RunLengthBitPackingHybridDecoder.class);
 
   private static enum MODE { RLE, PACKED }
 
@@ -51,7 +51,7 @@ public class RunLengthBitPackingHybridDecoder {
   private int[] currentBuffer;
 
   public RunLengthBitPackingHybridDecoder(int bitWidth, ByteArrayInputStream in) {
-    if (DEBUG) LOG.debug("decoding bitWidth " + bitWidth);
+    LOG.debug("decoding bitWidth {}", bitWidth);
 
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
     this.bitWidth = bitWidth;
@@ -85,13 +85,13 @@ public class RunLengthBitPackingHybridDecoder {
     switch (mode) {
     case RLE:
       currentCount = header >>> 1;
-      if (DEBUG) LOG.debug("reading " + currentCount + " values RLE");
+      LOG.debug("reading {} values RLE", currentCount);
       currentValue = BytesUtils.readIntLittleEndianPaddedOnBitWidth(in, bitWidth);
       break;
     case PACKED:
       int numGroups = header >>> 1;
       currentCount = numGroups * 8;
-      if (DEBUG) LOG.debug("reading " + currentCount + " values BIT PACKED");
+      LOG.debug("reading {} values BIT PACKED", currentCount);
       currentBuffer = new int[currentCount]; // TODO: reuse a buffer
       byte[] bytes = new byte[numGroups * bitWidth];
       // At the end of the file RLE data though, there might not be that many bytes left.

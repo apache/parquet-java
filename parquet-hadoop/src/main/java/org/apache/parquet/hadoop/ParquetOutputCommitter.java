@@ -29,11 +29,12 @@ import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.util.ContextUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ParquetOutputCommitter extends FileOutputCommitter {
-  private static final Log LOG = Log.getLog(ParquetOutputCommitter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ParquetOutputCommitter.class);
 
   private final Path outputPath;
 

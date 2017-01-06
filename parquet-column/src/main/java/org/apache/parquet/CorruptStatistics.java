@@ -22,6 +22,8 @@ import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -32,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * and thus it's statistics should be ignored / not trusted.
  */
 public class CorruptStatistics {
-  private static final Log LOG = Log.getLog(CorruptStatistics.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CorruptStatistics.class);
 
   private static final AtomicBoolean alreadyLogged = new AtomicBoolean(false);
 

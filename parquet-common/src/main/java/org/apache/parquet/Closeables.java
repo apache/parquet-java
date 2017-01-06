@@ -21,13 +21,16 @@ package org.apache.parquet;
 import java.io.Closeable;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Utility for working with {@link java.io.Closeable}ss
  */
 public final class Closeables {
   private Closeables() { }
 
-  private static final Log LOG = Log.getLog(Closeables.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Closeables.class);
 
   /**
    * Closes a (potentially null) closeable.

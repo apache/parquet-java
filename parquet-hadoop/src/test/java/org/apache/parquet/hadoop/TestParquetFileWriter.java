@@ -29,7 +29,6 @@ import org.apache.parquet.bytes.BytesUtils;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -67,10 +66,12 @@ import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.Mockito;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestParquetFileWriter {
 
-  private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestParquetFileWriter.class);
 
   private static final MessageType SCHEMA = MessageTypeParser.parseMessageType("" +
       "message m {" +
@@ -607,7 +608,7 @@ public class TestParquetFileWriter {
   }
 
   private void validateFooters(final List<Footer> metadata) {
-    LOG.debug(metadata);
+    LOG.debug("{}", metadata);
     assertEquals(String.valueOf(metadata), 3, metadata.size());
     for (Footer footer : metadata) {
       final File file = new File(footer.getFile().toUri());

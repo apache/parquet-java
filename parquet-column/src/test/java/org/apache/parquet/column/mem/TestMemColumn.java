@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import org.apache.parquet.column.ParquetProperties;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.ColumnWriter;
@@ -34,9 +33,11 @@ import org.apache.parquet.example.DummyRecordConverter;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestMemColumn {
-  private static final Log LOG = Log.getLog(TestMemColumn.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestMemColumn.class);
 
   @Test
   public void testMemColumn() throws Exception {
@@ -134,7 +135,7 @@ public class TestMemColumn {
     for (int i = 0; i < 837; i++) {
       int r = rs[i % rs.length];
       int d = ds[i % ds.length];
-      LOG.debug("write i: " + i);
+      LOG.debug("write i: {}", i);
       if (d == 2) {
         columnWriter.write((long)i, r, d);
       } else {
@@ -148,7 +149,7 @@ public class TestMemColumn {
     for (int j = 0; j < columnReader.getTotalValueCount(); j++) {
       int r = rs[i % rs.length];
       int d = ds[i % ds.length];
-      LOG.debug("read i: " + i);
+      LOG.debug("read i: {}", i);
       assertEquals("r row " + i, r, columnReader.getCurrentRepetitionLevel());
       assertEquals("d row " + i, d, columnReader.getCurrentDefinitionLevel());
       if (d == 2) {

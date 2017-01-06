@@ -19,12 +19,11 @@
 package org.apache.parquet.column.values.plain;
 
 import java.io.IOException;
-import org.apache.parquet.Log;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
-
-import static org.apache.parquet.Log.DEBUG;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ValuesReader for FIXED_LEN_BYTE_ARRAY.
@@ -32,7 +31,7 @@ import static org.apache.parquet.Log.DEBUG;
  * @author David Z. Chen <dchen@linkedin.com>
  */
 public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
-  private static final Log LOG = Log.getLog(FixedLenByteArrayPlainValuesReader.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FixedLenByteArrayPlainValuesReader.class);
   private byte[] in;
   private int offset;
   private int length;
@@ -60,7 +59,7 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valueCount, byte[] in, int offset)
       throws IOException {
-    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
+    LOG.debug("init from page at offset {} for length {}", offset, (in.length - offset));
     this.in = in;
     this.offset = offset;
   }

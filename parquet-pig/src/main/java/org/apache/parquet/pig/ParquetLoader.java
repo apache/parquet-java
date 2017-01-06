@@ -20,7 +20,6 @@ package org.apache.parquet.pig;
 
 import static java.util.Arrays.asList;
 import static org.apache.hadoop.mapreduce.lib.input.FileInputFormat.setInputPaths;
-import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 import static org.apache.parquet.pig.PigSchemaConverter.parsePigSchema;
 import static org.apache.parquet.pig.PigSchemaConverter.pigSchemaToString;
@@ -57,10 +56,11 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.parser.ParserException;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -71,7 +71,7 @@ import org.apache.parquet.io.ParquetDecodingException;
  *
  */
 public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown {
-  private static final Log LOG = Log.getLog(ParquetLoader.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ParquetLoader.class);
 
   // Using a weak hash map will ensure that the cache will be gc'ed when there is memory pressure
   static final Map<String, Reference<ParquetInputFormat<Tuple>>> inputFormatCache = new WeakHashMap<String, Reference<ParquetInputFormat<Tuple>>>();
@@ -137,9 +137,9 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
-    if (DEBUG) {
+    if (LOG.isDebugEnabled()) {
       String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOG.debug("LoadFunc.setLocation(" + location + ", " + jobToString + ")");
+      LOG.debug("LoadFunc.setLocation({}, {})", location, jobToString);
     }
 
     setInput(location, job);
@@ -176,7 +176,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public InputFormat<Void, Tuple> getInputFormat() throws IOException {
-    if (DEBUG) LOG.debug("LoadFunc.getInputFormat()");
+    LOG.debug("LoadFunc.getInputFormat()");
     return getParquetInputFormat();
   }
 
@@ -223,7 +223,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public void prepareToRead(@SuppressWarnings("rawtypes") RecordReader reader, PigSplit split)
       throws IOException {
-    if (DEBUG) LOG.debug("LoadFunc.prepareToRead(" + reader + ", " + split + ")");
+    LOG.debug("LoadFunc.prepareToRead({}, {})", reader, split);
     this.reader = reader;
   }
 
@@ -243,9 +243,9 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public String[] getPartitionKeys(String location, Job job) throws IOException {
-    if (DEBUG) {
+    if (LOG.isDebugEnabled()) {
       String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + jobToString + ")");
+      LOG.debug("LoadMetadata.getPartitionKeys({}, {})", location, jobToString);
     }
     setInput(location, job);
     return null;
@@ -253,9 +253,9 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public ResourceSchema getSchema(String location, Job job) throws IOException {
-    if (DEBUG) {
+    if (LOG.isDebugEnabled()) {
       String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOG.debug("LoadMetadata.getSchema(" + location + ", " + jobToString + ")");
+      LOG.debug("LoadMetadata.getSchema({}, {})", location, jobToString);
     }
     setInput(location, job);
     return new ResourceSchema(schema);
@@ -298,9 +298,9 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
-    if (DEBUG) {
+    if (LOG.isDebugEnabled()) {
       String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
-      LOG.debug("LoadMetadata.getStatistics(" + location + ", " + jobToString + ")");
+      LOG.debug("LoadMetadata.getStatistics({}, {})", location, jobToString);
     }
     /* We need to call setInput since setLocation is not
        guaranteed to be called before this */
@@ -322,7 +322,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setPartitionFilter(Expression expression) throws IOException {
-    if (DEBUG) LOG.debug("LoadMetadata.setPartitionFilter(" + expression + ")");
+    LOG.debug("LoadMetadata.setPartitionFilter({})", expression);
   }
 
   @Override

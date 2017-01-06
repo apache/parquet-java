@@ -22,7 +22,6 @@ import org.apache.thrift.TBase;
 
 import com.twitter.elephantbird.pig.util.ThriftToPig;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -34,11 +33,13 @@ import org.apache.parquet.thrift.ParquetWriteProtocol;
 import org.apache.parquet.thrift.ThriftMetaData;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   public static final String PARQUET_THRIFT_CLASS = "parquet.thrift.class";
-  private static final Log LOG = Log.getLog(AbstractThriftWriteSupport.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractThriftWriteSupport.class);
 
   public static void setGenericThriftClass(Configuration configuration, Class<?> thriftClass) {
     configuration.set(PARQUET_THRIFT_CLASS, thriftClass.getName());

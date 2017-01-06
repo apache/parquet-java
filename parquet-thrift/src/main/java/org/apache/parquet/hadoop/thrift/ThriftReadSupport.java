@@ -27,7 +27,6 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TProtocol;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.Strings;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
@@ -43,9 +42,11 @@ import org.apache.parquet.thrift.projection.StrictFieldProjectionFilter;
 import org.apache.parquet.thrift.projection.ThriftProjectionException;
 import org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ThriftReadSupport<T> extends ReadSupport<T> {
-  private static final Log LOG = Log.getLog(ThriftReadSupport.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ThriftReadSupport.class);
 
   /**
    * Deprecated. Use {@link #STRICT_THRIFT_COLUMN_FILTER_KEY}
@@ -127,8 +128,8 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     }
 
     if (!Strings.isNullOrEmpty(deprecated)) {
-      LOG.warn(String.format("Using %s is deprecated. Please see the docs for %s!",
-          THRIFT_COLUMN_FILTER_KEY, STRICT_THRIFT_COLUMN_FILTER_KEY));
+      LOG.warn("Using {} is deprecated. Please see the docs for {}!",
+          THRIFT_COLUMN_FILTER_KEY, STRICT_THRIFT_COLUMN_FILTER_KEY);
       return new DeprecatedFieldProjectionFilter(deprecated);
     }
 

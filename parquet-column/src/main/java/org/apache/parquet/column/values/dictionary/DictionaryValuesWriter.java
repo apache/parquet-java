@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.values.dictionary;
 
-import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.bytes.BytesInput.concat;
 import it.unimi.dsi.fastutil.doubles.Double2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.doubles.Double2IntMap;
@@ -39,7 +38,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -54,6 +52,9 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Will attempt to encode values using a dictionary and fall back to plain encoding
  *  if the dictionary gets too big
@@ -62,7 +63,7 @@ import org.apache.parquet.io.api.Binary;
  *
  */
 public abstract class DictionaryValuesWriter extends ValuesWriter implements RequiresFallback {
-  private static final Log LOG = Log.getLog(DictionaryValuesWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DictionaryValuesWriter.class);
 
   /* max entries allowed for the dictionary will fail over to plain encoding if reached */
   private static final int MAX_DICTIONARY_ENTRIES = Integer.MAX_VALUE - 1;
@@ -145,7 +146,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   @Override
   public BytesInput getBytes() {
     int maxDicId = getDictionarySize() - 1;
-    if (DEBUG) LOG.debug("max dic id " + maxDicId);
+    LOG.debug("max dic id {}", maxDicId);
     int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
 
     int initialSlabSize =
@@ -161,7 +162,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       // encodes the bit width
       byte[] bytesHeader = new byte[] { (byte) bitWidth };
       BytesInput rleEncodedBytes = encoder.toBytes();
-      if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
+      LOG.debug("rle encoded bytes {}", rleEncodedBytes.size());
       BytesInput bytes = concat(BytesInput.from(bytesHeader), rleEncodedBytes);
       // remember size of dictionary when we last wrote a page
       lastUsedDictionarySize = getDictionarySize();

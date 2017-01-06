@@ -50,7 +50,6 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -65,10 +64,11 @@ import com.twitter.elephantbird.thrift.test.TestListInMap;
 import com.twitter.elephantbird.thrift.test.TestMapInList;
 
 import org.apache.parquet.schema.MessageType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestThriftToParquetFileWriter {
-  private static final Log LOG = Log
-      .getLog(TestThriftToParquetFileWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestThriftToParquetFileWriter.class);
 
   @Test
   public void testWriteFile() throws IOException, InterruptedException, TException {
@@ -270,7 +270,7 @@ public class TestThriftToParquetFileWriter {
 
   private <T extends TBase<?,?>> Path createFile(T... tObjs) throws IOException, InterruptedException, TException  {
     final Path fileToCreate = new Path("target/test/TestThriftToParquetFileWriter/"+tObjs[0].getClass()+".parquet");
-    LOG.info("File created: " + fileToCreate.toString());
+    LOG.info("File created: {}", fileToCreate.toString());
     Configuration conf = new Configuration();
     final FileSystem fs = fileToCreate.getFileSystem(conf);
     if (fs.exists(fileToCreate)) {

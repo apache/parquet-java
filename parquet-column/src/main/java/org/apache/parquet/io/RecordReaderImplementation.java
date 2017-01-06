@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.io.api.Converter;
@@ -36,6 +35,8 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -45,7 +46,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
  * @param <T> the type of the materialized record
  */
 class RecordReaderImplementation<T> extends RecordReader<T> {
-  private static final Log LOG = Log.getLog(RecordReaderImplementation.class);
+  private static final Logger LOG = LoggerFactory.getLogger(RecordReaderImplementation.class);
 
   public static class Case {
 
@@ -376,7 +377,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   }
 
   private RecordConsumer wrap(RecordConsumer recordConsumer) {
-    if (Log.DEBUG) {
+    if (LOG.isDebugEnabled()) {
       return new RecordConsumerLoggingWrapper(recordConsumer);
     }
     return recordConsumer;
