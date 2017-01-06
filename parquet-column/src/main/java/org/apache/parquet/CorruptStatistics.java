@@ -22,6 +22,7 @@ import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * There was a bug (PARQUET-251) that caused the statistics metadata
@@ -32,6 +33,8 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
  */
 public class CorruptStatistics {
   private static final Log LOG = Log.getLog(CorruptStatistics.class);
+
+  private static final AtomicBoolean alreadyLogged = new AtomicBoolean(false);
 
   // the version in which the bug described by jira: PARQUET-251 was fixed
   // the bug involved writing invalid binary statistics, so stats written prior to this
@@ -52,7 +55,7 @@ public class CorruptStatistics {
     if (Strings.isNullOrEmpty(createdBy)) {
       // created_by is not populated, which could have been caused by
       // parquet-mr during the same time as PARQUET-251, see PARQUET-297
-      LOG.info("Ignoring statistics because created_by is null or empty! See PARQUET-251 and PARQUET-297");
+      warnOnce("Ignoring statistics because created_by is null or empty! See PARQUET-251 and PARQUET-297");
       return true;
     }
 
@@ -65,14 +68,14 @@ public class CorruptStatistics {
       }
 
       if (Strings.isNullOrEmpty(version.version)) {
-        LOG.warn("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): " + createdBy);
+        warnOnce("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): " + createdBy);
         return true;
       }
 
       SemanticVersion semver = SemanticVersion.parse(version.version);
 
       if (semver.compareTo(PARQUET_251_FIXED_VERSION) < 0) {
-        LOG.info("Ignoring statistics because this file was created prior to "
+        warnOnce("Ignoring statistics because this file was created prior to "
             + PARQUET_251_FIXED_VERSION
             + ", see PARQUET-251" );
         return true;
@@ -83,22 +86,30 @@ public class CorruptStatistics {
     } catch (RuntimeException e) {
       // couldn't parse the created_by field, log what went wrong, don't trust the stats,
       // but don't make this fatal.
-      warnParseError(createdBy, e);
+      warnParseErrorOnce(createdBy, e);
       return true;
     } catch (SemanticVersionParseException e) {
       // couldn't parse the created_by field, log what went wrong, don't trust the stats,
       // but don't make this fatal.
-      warnParseError(createdBy, e);
+      warnParseErrorOnce(createdBy, e);
       return true;
     } catch (VersionParseException e) {
       // couldn't parse the created_by field, log what went wrong, don't trust the stats,
       // but don't make this fatal.
-      warnParseError(createdBy, e);
+      warnParseErrorOnce(createdBy, e);
       return true;
     }
   }
 
-  private static void warnParseError(String createdBy, Throwable e) {
-    LOG.warn("Ignoring statistics because created_by could not be parsed (see PARQUET-251): " + createdBy, e);
+  private static void warnParseErrorOnce(String createdBy, Throwable e) {
+    if(!alreadyLogged.getAndSet(true)) {
+      LOG.warn("Ignoring statistics because created_by could not be parsed (see PARQUET-251): " + createdBy, e);
+    }
+  }
+
+  private static void warnOnce(String message) {
+    if(!alreadyLogged.getAndSet(true)) {
+      LOG.warn(message);
+    }
   }
 }
