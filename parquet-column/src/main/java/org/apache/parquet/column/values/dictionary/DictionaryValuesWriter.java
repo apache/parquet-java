@@ -155,16 +155,15 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     return encodedValues.size() * 4 + dictionaryByteSize;
   }
 
-  @Override
-  public BytesInput getBytes() {
+  public BytesInput getBytes(IntList encodedValues) {
     int maxDicId = getDictionarySize() - 1;
     if (DEBUG) LOG.debug("max dic id " + maxDicId);
     int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
     int initialSlabSize =
-        CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_INITIAL_SLAB_SIZE, maxDictionaryByteSize, 10);
+      CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_INITIAL_SLAB_SIZE, maxDictionaryByteSize, 10);
 
     RunLengthBitPackingHybridEncoder encoder =
-        new RunLengthBitPackingHybridEncoder(bitWidth, initialSlabSize, maxDictionaryByteSize, this.allocator);
+      new RunLengthBitPackingHybridEncoder(bitWidth, initialSlabSize, maxDictionaryByteSize, this.allocator);
     encoders.add(encoder);
     IntIterator iterator = encodedValues.iterator();
     try {
@@ -183,6 +182,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     } catch (IOException e) {
       throw new ParquetEncodingException("could not encode the values", e);
     }
+  }
+
+  @Override
+  public BytesInput getBytes() {
+    return getBytes(encodedValues);
   }
 
   @Override

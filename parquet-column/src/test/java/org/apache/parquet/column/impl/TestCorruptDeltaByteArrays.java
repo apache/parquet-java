@@ -191,7 +191,7 @@ public class TestCorruptDeltaByteArrays {
     MemPageStore pages = new MemPageStore(0);
     PageWriter memWriter = pages.getPageWriter(column);
 
-    ParquetProperties parquetProps = new ParquetProperties(0, ParquetProperties.WriterVersion.PARQUET_1_0, false, new HeapByteBufferAllocator());
+    ParquetProperties parquetProps = new ParquetProperties(0, ParquetProperties.WriterVersion.PARQUET_1_0, false);
 
     // get generic repetition and definition level bytes to use for pages
     ValuesWriter rdValues = parquetProps.getColumnDescriptorValuesWriter(0, 10, 100);

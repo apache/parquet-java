@@ -37,7 +37,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-
 import org.apache.parquet.Log;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.Version;
@@ -47,11 +46,12 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
+import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
@@ -303,24 +303,26 @@ public class ParquetFileWriter {
    * writes a dictionary page page
    * @param dictionaryPage the dictionary page
    */
-  public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
+  public PageHeaderWithOffset writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page: " + dictionaryPage.getDictionarySize() + " values");
     currentChunkDictionaryPageOffset = out.getPos();
     int uncompressedSize = dictionaryPage.getUncompressedSize();
     int compressedPageSize = (int)dictionaryPage.getBytes().size(); // TODO: fix casts
-    metadataConverter.writeDictionaryPageHeader(
+    final PageHeader pageHeader = metadataConverter.writeDictionaryPageHeader(
         uncompressedSize,
         compressedPageSize,
         dictionaryPage.getDictionarySize(),
         dictionaryPage.getEncoding(),
         out);
-    long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
+    long currentPos = out.getPos();
+    long headerSize = currentPos - currentChunkDictionaryPageOffset;
     this.uncompressedLength += uncompressedSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page content " + compressedPageSize);
     dictionaryPage.getBytes().writeAllTo(out);
     currentEncodings.add(dictionaryPage.getEncoding());
+    return new PageHeaderWithOffset(pageHeader, currentPos); // dictionary data starts from currentPos
   }
 
 
@@ -334,7 +336,7 @@ public class ParquetFileWriter {
    * @param valuesEncoding encoding of values
    */
   @Deprecated
-  public void writeDataPage(
+  public PageHeader writeDataPage(
       int valueCount, int uncompressedPageSize,
       BytesInput bytes,
       Encoding rlEncoding,
@@ -344,7 +346,7 @@ public class ParquetFileWriter {
     long beforeHeader = out.getPos();
     if (DEBUG) LOG.debug(beforeHeader + ": write data page: " + valueCount + " values");
     int compressedPageSize = (int)bytes.size();
-    metadataConverter.writeDataPageHeader(
+    PageHeader pageHeader = metadataConverter.writeDataPageHeader(
         uncompressedPageSize, compressedPageSize,
         valueCount,
         rlEncoding,
@@ -359,6 +361,7 @@ public class ParquetFileWriter {
     currentEncodings.add(rlEncoding);
     currentEncodings.add(dlEncoding);
     currentEncodings.add(valuesEncoding);
+    return pageHeader;
   }
 
   /**
@@ -370,7 +373,7 @@ public class ParquetFileWriter {
    * @param dlEncoding encoding of the definition level
    * @param valuesEncoding encoding of values
    */
-  public void writeDataPage(
+  public PageHeader writeDataPage(
       int valueCount, int uncompressedPageSize,
       BytesInput bytes,
       Statistics statistics,
@@ -381,7 +384,7 @@ public class ParquetFileWriter {
     long beforeHeader = out.getPos();
     if (DEBUG) LOG.debug(beforeHeader + ": write data page: " + valueCount + " values");
     int compressedPageSize = (int)bytes.size();
-    metadataConverter.writeDataPageHeader(
+    final PageHeader pageHeader = metadataConverter.writeDataPageHeader(
         uncompressedPageSize, compressedPageSize,
         valueCount,
         statistics,
@@ -398,6 +401,7 @@ public class ParquetFileWriter {
     currentEncodings.add(rlEncoding);
     currentEncodings.add(dlEncoding);
     currentEncodings.add(valuesEncoding);
+    return pageHeader;
   }
 
   /**

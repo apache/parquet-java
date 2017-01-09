@@ -79,17 +79,19 @@ public class ParquetProperties {
   private final WriterVersion writerVersion;
   private final boolean enableDictionary;
   private final ByteBufferAllocator allocator;
+  private final int pageSize;
 
   public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict) {
-    this(dictPageSize, writerVersion, enableDict, new HeapByteBufferAllocator());
+    this(dictPageSize, writerVersion, enableDict, new HeapByteBufferAllocator(), 1024*1024);
   }
 
-  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, ByteBufferAllocator allocator) {
+  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, ByteBufferAllocator allocator, int pageSize) {
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
     Preconditions.checkNotNull(allocator, "ByteBufferAllocator");
     this.allocator = allocator;
+    this.pageSize = pageSize;
   }
 
   public ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol, int pageSize) {
@@ -121,7 +123,7 @@ public class ParquetProperties {
     }
   }
 
-  private DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path, int initialSizePerCol) {
+  public DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path, int initialSizePerCol) {
     Encoding encodingForDataPage;
     Encoding encodingForDictionaryPage;
     switch(writerVersion) {
@@ -230,6 +232,10 @@ public class ParquetProperties {
     return enableDictionary;
   }
 
+  public int getPageSize() {
+    return pageSize;
+  }
+
   public ByteBufferAllocator getAllocator() {
     return allocator;
   }
@@ -251,7 +257,7 @@ public class ParquetProperties {
           schema,
           pageStore,
           pageSize,
-          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary, allocator));
+          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary, allocator, pageSize));
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);
     }

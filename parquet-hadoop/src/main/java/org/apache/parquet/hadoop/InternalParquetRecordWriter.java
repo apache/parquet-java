@@ -99,12 +99,12 @@ class InternalParquetRecordWriter<T> {
     this.pageSize = pageSize;
     this.compressor = compressor;
     this.validating = validating;
-    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary, allocator);
+    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary, allocator, pageSize);
     initStore();
   }
 
   private void initStore() {
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, parquetProperties.getAllocator());
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, parquetProperties);
     columnStore = parquetProperties.newColumnWriteStore(
         schema,
         pageStore,
