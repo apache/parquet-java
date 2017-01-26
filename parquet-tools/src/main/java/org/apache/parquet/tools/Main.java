@@ -162,7 +162,7 @@ public class Main {
   }
 
   public static void die(Throwable th, boolean usage, String name, Command command) {
-    die(th.getMessage(), usage, name, command);
+    die(th.toString(), usage, name, command);
   }
 
   public static void main(String[] args) {
