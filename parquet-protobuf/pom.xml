@@ -31,7 +31,7 @@
 
   <properties>
     <elephant-bird.version>4.4</elephant-bird.version>
-    <protobuf.version>2.5.0</protobuf.version>
+    <protobuf.version>2.6.1</protobuf.version>
   </properties>
 
 

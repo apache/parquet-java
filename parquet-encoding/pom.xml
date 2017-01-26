@@ -44,7 +44,7 @@
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
-      <version>1.5</version>
+      <version>1.10</version>
       <scope>compile</scope>
     </dependency>
 
