@@ -89,8 +89,12 @@
     <dependency>
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
-      <version>1.6</version>
-      <scope>test</scope>
+      <version>2.9.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jodd</groupId>
+      <artifactId>jodd</artifactId>
+      <version>3.3.8</version>
     </dependency>
     <dependency>
       <groupId>org.antlr</groupId>

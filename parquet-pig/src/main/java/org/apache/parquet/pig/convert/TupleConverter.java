@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,6 +22,9 @@ import static java.lang.Math.max;
 import java.util.ArrayList;
 import java.util.List;
 
+import jodd.datetime.DateTimeStamp;
+import jodd.datetime.JulianDateStamp;
+import jodd.datetime.TimeUtil;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.DataType;
@@ -32,7 +35,11 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeConstants;
+import org.joda.time.DateTimeZone;
 import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
@@ -75,7 +82,7 @@ public class TupleConverter extends GroupConverter {
         FieldSchema field = pigSchema.getField(i);
         if(parquetSchema.containsField(field.alias) || columnIndexAccess) {
           Type type = getType(columnIndexAccess, field.alias, i);
-          
+
           if(type != null) {
             final int index = i;
             converters[c++] = newConverter(field, type, new ParentValueContainer() {
@@ -86,7 +93,7 @@ public class TupleConverter extends GroupConverter {
             }, elephantBirdCompatible, columnIndexAccess);
           }
         }
-        
+
       }
     } catch (FrontendException e) {
       throw new ParquetDecodingException("can not initialize pig converter from:\n" + parquetSchema + "\n" + pigSchema, e);
@@ -101,10 +108,10 @@ public class TupleConverter extends GroupConverter {
     } else {
       return parquetSchema.getType(parquetSchema.getFieldIndex(alias));
     }
-    
+
     return null;
   }
-  
+
   static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent, boolean elephantBirdCompatible, boolean columnIndexAccess) {
     try {
       switch (pigField.type) {
@@ -140,6 +147,8 @@ public class TupleConverter extends GroupConverter {
         return new FieldDoubleConverter(parent);
       case DataType.LONG:
         return new FieldLongConverter(parent);
+      case DataType.DATETIME:
+        return new FieldDateTimeConverter(parent);
       default:
         throw new TupleConversionException("unsupported pig type: " + pigField);
       }
@@ -278,8 +287,8 @@ public class TupleConverter extends GroupConverter {
     public void addBoolean(boolean value) {
       parent.add(Boolean.toString(value));
     }
-    
-    
+
+
   }
 
   /**
@@ -413,7 +422,7 @@ public class TupleConverter extends GroupConverter {
 
     @Override
     public void addInt(int value) {
-      parent.add((long)value); 
+      parent.add((long)value);
     }
 
     @Override
@@ -435,7 +444,7 @@ public class TupleConverter extends GroupConverter {
     public void addBinary(Binary value) {
       parent.add(Long.parseLong(value.toStringUsingUTF8()));
     }
-    
+
   }
 
   /**
@@ -526,7 +535,31 @@ public class TupleConverter extends GroupConverter {
       parent.add(Boolean.parseBoolean(value.toStringUsingUTF8()));
     }
 
-    
+
+  }
+
+  /**
+   * handles DateTimes
+   *
+   * @author Christian Rolf, Alexander Kasper
+   */
+  static final class FieldDateTimeConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+    private static final double NANO_SCALAR = 1000000.0 * DateTimeConstants.MILLIS_PER_DAY;
+
+    public FieldDateTimeConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    final public void addBinary(Binary value) {
+      NanoTime nt = NanoTime.fromBinary(value);
+      DateTimeStamp julianDate = TimeUtil.fromJulianDate(new JulianDateStamp(nt.getJulianDay(), nt.getTimeOfDayNanos() / NANO_SCALAR));
+      parent.add(new DateTime(julianDate.getYear(), julianDate.getMonth(), julianDate.getDay(), julianDate.getHour(), julianDate.getMinute(),
+        julianDate.getSecond(), julianDate.getMillisecond(), DateTimeZone.UTC));
+    }
+
   }
 
   /**
