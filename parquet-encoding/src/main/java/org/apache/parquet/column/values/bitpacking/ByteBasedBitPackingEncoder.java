@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -39,11 +39,14 @@ public class ByteBasedBitPackingEncoder {
   private static final Logger LOG = LoggerFactory.getLogger(ByteBasedBitPackingEncoder.class);
 
   private static final int VALUES_WRITTEN_AT_A_TIME = 8;
+  private static final int MAX_SLAB_SIZE_MULT = 64 * 1024;
+  private static final int INITIAL_SLAB_SIZE_MULT = 1024;
 
   private final int bitWidth;
   private final BytePacker packer;
   private final int[] input = new int[VALUES_WRITTEN_AT_A_TIME];
-  private final int slabSize;
+  private int slabSize;
+  private long totalFullSlabSize;
   private int inputSize;
   private byte[] packed;
   private int packedPosition;
@@ -56,8 +59,9 @@ public class ByteBasedBitPackingEncoder {
   public ByteBasedBitPackingEncoder(int bitWidth, Packer packer) {
     this.bitWidth = bitWidth;
     this.inputSize = 0;
+    this.totalFullSlabSize = 0;
     // must be a multiple of bitWidth
-    this.slabSize = bitWidth * 64 * 1024;
+    this.slabSize = (bitWidth == 0) ? 1 : (bitWidth * INITIAL_SLAB_SIZE_MULT);
     initPackedSlab();
     this.packer = packer.newBytePacker(bitWidth);
   }
@@ -75,6 +79,10 @@ public class ByteBasedBitPackingEncoder {
       pack();
       if (packedPosition == slabSize) {
         slabs.add(BytesInput.from(packed));
+        totalFullSlabSize += slabSize;
+        if (slabSize < bitWidth * MAX_SLAB_SIZE_MULT) {
+          slabSize *= 2;
+        }
         initPackedSlab();
       }
     }
@@ -99,7 +107,7 @@ public class ByteBasedBitPackingEncoder {
   public BytesInput toBytes() throws IOException {
     int packedByteLength = packedPosition + BytesUtils.paddedByteCountFromBits(inputSize * bitWidth);
 
-    LOG.debug("writing {} bytes", (slabs.size() * slabSize + packedByteLength));
+    LOG.debug("writing {} bytes", (totalFullSlabSize + packedByteLength));
     if (inputSize > 0) {
       for (int i = inputSize; i < input.length; i++) {
         input[i] = 0;
@@ -113,18 +121,24 @@ public class ByteBasedBitPackingEncoder {
    * @return size of the data as it would be written
    */
   public long getBufferSize() {
-    return BytesUtils.paddedByteCountFromBits(totalValues * bitWidth);
+    return BytesUtils.paddedByteCountFromBits((totalValues + inputSize) * bitWidth);
   }
 
   /**
    * @return total memory allocated
    */
   public long getAllocatedSize() {
-    return (slabs.size() * slabSize) + packed.length + input.length * 4;
+    return totalFullSlabSize + packed.length + input.length * 4;
   }
 
   public String memUsageString(String prefix) {
     return String.format("%s ByteBitPacking %d slabs, %d bytes", prefix, slabs.size(), getAllocatedSize());
   }
 
+  /**
+   * @return number of full slabs along with the current slab (debug aid)
+   */
+  int getNumSlabs() {
+    return slabs.size() + 1;
+  }
 }
