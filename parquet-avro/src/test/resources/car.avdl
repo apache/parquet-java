@@ -21,7 +21,7 @@
 protocol Cars {
 
     record Service {
-        long date;
+        long `date`;
         string mechanic;
     }
 

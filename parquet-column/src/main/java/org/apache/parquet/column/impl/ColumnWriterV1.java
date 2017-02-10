@@ -22,7 +22,6 @@ import static org.apache.parquet.bytes.BytesInput.concat;
 
 import java.io.IOException;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
@@ -32,8 +31,8 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
-
-import static java.lang.Math.max;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
@@ -42,8 +41,11 @@ import static java.lang.Math.max;
  *
  */
 final class ColumnWriterV1 implements ColumnWriter {
-  private static final Log LOG = Log.getLog(ColumnWriterV1.class);
-  private static final boolean DEBUG = Log.DEBUG;
+  private static final Logger LOG = LoggerFactory.getLogger(ColumnWriterV1.class);
+
+  // By default: Debugging disabled this way (using the "if (DEBUG)" IN the methods) to allow
+  // the java compiler (not the JIT) to remove the unused statements during build time.
+  private static final boolean DEBUG = false;
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
@@ -74,7 +76,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   private void log(Object value, int r, int d) {
-    LOG.debug(path + " " + value + " r:" + r + " d:" + d);
+    if (DEBUG) LOG.debug( "{} {} r:{} d:{}", path, value, r, d);
   }
 
   private void resetStatistics() {

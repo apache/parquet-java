@@ -48,8 +48,9 @@ import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.util.ContextUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -59,6 +60,9 @@ import org.apache.parquet.hadoop.util.ContextUtil;
  *
  */
 public class PerfTest2 {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PerfTest2.class);
+  private static final boolean DEBUG = LOG.isDebugEnabled();
 
   static final int COLUMN_COUNT = 50;
   private static final long ROW_COUNT = 100000;
@@ -173,7 +177,7 @@ public class PerfTest2 {
       recordReader.initialize(split, taskAttemptContext);
       Tuple t;
       while ((t = loadFunc.getNext()) != null) {
-        if (Log.DEBUG) System.out.println(t);
+        if (DEBUG) System.out.println(t);
         ++i;
       }
     }

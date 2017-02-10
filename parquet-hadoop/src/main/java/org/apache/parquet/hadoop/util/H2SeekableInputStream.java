@@ -45,6 +45,11 @@ class H2SeekableInputStream extends SeekableInputStream {
   }
 
   @Override
+  public void close() throws IOException {
+    stream.close();
+  }
+
+  @Override
   public long getPos() throws IOException {
     return stream.getPos();
   }

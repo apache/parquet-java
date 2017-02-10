@@ -31,6 +31,8 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import org.junit.ComparisonFailure;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import thrift.test.OneOfEach;
 
 import org.apache.pig.data.Tuple;
@@ -39,7 +41,6 @@ import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.ExpectationValidatingRecordConsumer;
 import org.apache.parquet.io.MessageColumnIO;
@@ -67,7 +68,7 @@ import com.twitter.elephantbird.thrift.test.TestStructInMap;
 
 
 public class TestParquetWriteProtocol {
-  private static final Log LOG = Log.getLog(TestParquetWriteProtocol.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestParquetWriteProtocol.class);
   @Test
   public void testMap() throws Exception {
     String[] expectations = {
@@ -523,7 +524,7 @@ public class TestParquetWriteProtocol {
 //      System.out.println(a);
     final Class<TBase<?,?>> class1 = (Class<TBase<?,?>>)a.getClass();
     final MessageType schema = thriftSchemaConverter.convert(class1);
-    LOG.info(schema);
+    LOG.info("{}", schema);
     final StructType structType = thriftSchemaConverter.toStructType(class1);
     ExpectationValidatingRecordConsumer recordConsumer = new ExpectationValidatingRecordConsumer(new ArrayDeque<String>(Arrays.asList(expectations)));
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
@@ -535,14 +536,14 @@ public class TestParquetWriteProtocol {
     ThriftToPig<TBase<?,?>> thriftToPig = new ThriftToPig(a.getClass());
     ExpectationValidatingRecordConsumer recordConsumer = new ExpectationValidatingRecordConsumer(new ArrayDeque<String>(Arrays.asList(expectations)));
     Schema pigSchema = thriftToPig.toSchema();
-    LOG.info(pigSchema);
+    LOG.info("{}", pigSchema);
     MessageType schema = new PigSchemaConverter().convert(pigSchema);
-    LOG.info(schema);
+    LOG.info("{}", schema);
     TupleWriteSupport tupleWriteSupport = new TupleWriteSupport(pigSchema);
     tupleWriteSupport.init(null);
     tupleWriteSupport.prepareForWrite(recordConsumer);
     final Tuple pigTuple = thriftToPig.getPigTuple(a);
-    LOG.info(pigTuple);
+    LOG.info("{}", pigTuple);
     tupleWriteSupport.write(pigTuple);
     return schema;
   }

@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import com.google.common.collect.Sets;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -401,8 +402,9 @@ public class TestParquetMetadataConverter {
     Assert.assertFalse("Num nulls should not be set",
         formatStats.isSetNull_count());
 
-    Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatistics(
-        Version.FULL_VERSION, formatStats, PrimitiveTypeName.BINARY);
+    Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        Version.FULL_VERSION, formatStats, PrimitiveTypeName.BINARY,
+        ParquetMetadataConverter.SortOrder.SIGNED);
 
     Assert.assertTrue(roundTripStats.isEmpty());
   }
@@ -514,5 +516,52 @@ public class TestParquetMetadataConverter {
         max, BytesUtils.bytesToBool(formatStats.getMax()));
     Assert.assertEquals("Num nulls should match",
         3004, formatStats.getNull_count());
+  }
+
+  @Test
+  public void testIgnoreStatsWithSignedSortOrder() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    BinaryStatistics stats = new BinaryStatistics();
+    stats.incrementNumNulls();
+    stats.updateStats(Binary.fromString("A"));
+    stats.incrementNumNulls();
+    stats.updateStats(Binary.fromString("z"));
+    stats.incrementNumNulls();
+
+    Statistics convertedStats = converter.fromParquetStatistics(
+        Version.FULL_VERSION,
+        ParquetMetadataConverter.toParquetStatistics(stats),
+        Types.required(PrimitiveTypeName.BINARY)
+            .as(OriginalType.UTF8).named("b"));
+
+    Assert.assertTrue("Stats should be empty", convertedStats.isEmpty());
+  }
+
+  @Test
+  public void testUseStatsWithSignedSortOrder() {
+    // override defaults and use stats that were accumulated using signed order
+    Configuration conf = new Configuration();
+    conf.setBoolean("parquet.strings.signed-min-max.enabled", true);
+
+    ParquetMetadataConverter converter = new ParquetMetadataConverter(conf);
+    BinaryStatistics stats = new BinaryStatistics();
+    stats.incrementNumNulls();
+    stats.updateStats(Binary.fromString("A"));
+    stats.incrementNumNulls();
+    stats.updateStats(Binary.fromString("z"));
+    stats.incrementNumNulls();
+
+    Statistics convertedStats = converter.fromParquetStatistics(
+        Version.FULL_VERSION,
+        ParquetMetadataConverter.toParquetStatistics(stats),
+        Types.required(PrimitiveTypeName.BINARY)
+            .as(OriginalType.UTF8).named("b"));
+
+    Assert.assertFalse("Stats should not be empty", convertedStats.isEmpty());
+    Assert.assertEquals("Should have 3 nulls", 3, convertedStats.getNumNulls());
+    Assert.assertEquals("Should have correct min (unsigned sort)",
+        Binary.fromString("A"), convertedStats.genericGetMin());
+    Assert.assertEquals("Should have correct max (unsigned sort)",
+        Binary.fromString("z"), convertedStats.genericGetMax());
   }
 }

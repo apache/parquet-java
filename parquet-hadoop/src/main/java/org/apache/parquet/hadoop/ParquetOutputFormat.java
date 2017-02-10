@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.Log.INFO;
 import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
@@ -35,7 +34,6 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
@@ -44,6 +42,8 @@ import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -101,7 +101,7 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
  * @param <T> the type of the materialized records
  */
 public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
-  private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ParquetOutputFormat.class);
 
   public static enum JobSummaryLevel {
     /**
@@ -144,9 +144,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
-
-  // default to no padding for now
-  private static final int DEFAULT_MAX_PADDING_SIZE = 0;
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -313,8 +310,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   private static int getMaxPaddingSize(Configuration conf) {
-    // default to no padding, 0% of the row group size
-    return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
+    return conf.getInt(MAX_PADDING_BYTES, ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
   }
 
   private WriteSupport<T> writeSupport;
@@ -373,17 +369,17 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     int maxPaddingSize = getMaxPaddingSize(conf);
     boolean validating = getValidation(conf);
 
-    if (INFO) {
-      LOG.info("Parquet block size to " + blockSize);
-      LOG.info("Parquet page size to " + props.getPageSizeThreshold());
-      LOG.info("Parquet dictionary page size to " + props.getDictionaryPageSizeThreshold());
-      LOG.info("Dictionary is " + (props.isEnableDictionary() ? "on" : "off"));
-      LOG.info("Validation is " + (validating ? "on" : "off"));
-      LOG.info("Writer version is: " + props.getWriterVersion());
-      LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
-      LOG.info("Page size checking is: " + (props.estimateNextSizeCheck() ? "estimated" : "constant"));
-      LOG.info("Min row count for page size check is: " + props.getMinRowCountForPageSizeCheck());
-      LOG.info("Max row count for page size check is: " + props.getMaxRowCountForPageSizeCheck());
+    if (LOG.isInfoEnabled()) {
+      LOG.info("Parquet block size to {}", blockSize);
+      LOG.info("Parquet page size to {}", props.getPageSizeThreshold());
+      LOG.info("Parquet dictionary page size to {}", props.getDictionaryPageSizeThreshold());
+      LOG.info("Dictionary is {}", (props.isEnableDictionary() ? "on" : "off"));
+      LOG.info("Validation is {}", (validating ? "on" : "off"));
+      LOG.info("Writer version is: {}", props.getWriterVersion());
+      LOG.info("Maximum row group padding size is {} bytes", maxPaddingSize);
+      LOG.info("Page size checking is: {}", (props.estimateNextSizeCheck() ? "estimated" : "constant"));
+      LOG.info("Min row count for page size check is: {}", props.getMinRowCountForPageSizeCheck());
+      LOG.info("Max row count for page size check is: {}", props.getMaxRowCountForPageSizeCheck());
     }
 
     WriteContext init = writeSupport.init(conf);

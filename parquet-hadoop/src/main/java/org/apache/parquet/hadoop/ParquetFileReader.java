@@ -18,13 +18,11 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTIONARY;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
@@ -53,6 +51,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -66,7 +65,6 @@ import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
@@ -88,11 +86,17 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.HadoopStreams;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Internal implementation of the Parquet file reader as a block container
@@ -102,11 +106,11 @@ import org.apache.parquet.io.ParquetDecodingException;
  */
 public class ParquetFileReader implements Closeable {
 
-  private static final Log LOG = Log.getLog(ParquetFileReader.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ParquetFileReader.class);
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
-  private static ParquetMetadataConverter converter = new ParquetMetadataConverter();
+  private final ParquetMetadataConverter converter;
 
   /**
    * for files provided, check if there's a summary file.
@@ -200,9 +204,7 @@ public class ParquetFileReader implements Closeable {
 
     if (toRead.size() > 0) {
       // read the footers of the files that did not have a summary file
-      if (Log.INFO) {
-        LOG.info("reading another " + toRead.size() + " footers");
-      }
+      LOG.info("reading another {} footers", toRead.size());
       result.addAll(readAllFootersInParallel(configuration, toRead, skipRowGroups));
     }
 
@@ -210,7 +212,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   private static <T> List<T> runAllInParallel(int parallelism, List<Callable<T>> toRun) throws ExecutionException {
-    LOG.info("Initiating action with parallelism: " + parallelism);
+    LOG.info("Initiating action with parallelism: {}", parallelism);
     ExecutorService threadPool = Executors.newFixedThreadPool(parallelism);
     try {
       List<Future<T>> futures = new ArrayList<Future<T>>();
@@ -356,12 +358,10 @@ public class ParquetFileReader implements Closeable {
     FileSystem fileSystem = basePath.getFileSystem(configuration);
     if (skipRowGroups && fileSystem.exists(commonMetaDataFile)) {
       // reading the summary file that does not contain the row groups
-      if (Log.INFO) LOG.info("reading summary file: " + commonMetaDataFile);
+      LOG.info("reading summary file: {}", commonMetaDataFile);
       return readFooter(configuration, commonMetaDataFile, filter(skipRowGroups));
     } else if (fileSystem.exists(metadataFile)) {
-      if (Log.INFO) {
-        LOG.info("reading summary file: " + metadataFile);
-      }
+      LOG.info("reading summary file: {}", metadataFile);
       return readFooter(configuration, metadataFile, filter(skipRowGroups));
     } else {
       return null;
@@ -410,8 +410,7 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException  if an error occurs while reading the file
    */
   public static ParquetMetadata readFooter(Configuration configuration, Path file, MetadataFilter filter) throws IOException {
-    FileSystem fileSystem = file.getFileSystem(configuration);
-    return readFooter(configuration, fileSystem.getFileStatus(file), filter);
+    return readFooter(HadoopInputFile.fromPath(file, configuration), filter);
   }
 
   /**
@@ -431,12 +430,31 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if an error occurs while reading the file
    */
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file, MetadataFilter filter) throws IOException {
-    FileSystem fileSystem = file.getPath().getFileSystem(configuration);
-    SeekableInputStream in = HadoopStreams.wrap(fileSystem.open(file.getPath()));
-    try {
-      return readFooter(file.getLen(), file.getPath().toString(), in, filter);
-    } finally {
-      in.close();
+    return readFooter(HadoopInputFile.fromStatus(file, configuration), filter);
+  }
+
+  /**
+   * Reads the meta data block in the footer of the file using provided input stream
+   * @param file a {@link InputFile} to read
+   * @param filter the filter to apply to row groups
+   * @return the metadata blocks in the footer
+   * @throws IOException if an error occurs while reading the file
+   */
+  public static final ParquetMetadata readFooter(
+      InputFile file, MetadataFilter filter) throws IOException {
+    ParquetMetadataConverter converter;
+    // TODO: remove this temporary work-around.
+    // this is necessary to pass the Configuration to ParquetMetadataConverter
+    // and should be removed when there is a non-Hadoop configuration.
+    if (file instanceof HadoopInputFile) {
+      converter = new ParquetMetadataConverter(
+          ((HadoopInputFile) file).getConfiguration());
+    } else {
+      converter = new ParquetMetadataConverter();
+    }
+    try (SeekableInputStream in = file.newStream()) {
+
+      return readFooter(converter, file.getLength(), file.toString(), in, filter);
     }
   }
 
@@ -449,18 +467,14 @@ public class ParquetFileReader implements Closeable {
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final ParquetMetadata readFooter(long fileLen, String filePath, SeekableInputStream f, MetadataFilter filter) throws IOException {
-    if (Log.DEBUG) {
-      LOG.debug("File length " + fileLen);
-    }
+  private static final ParquetMetadata readFooter(ParquetMetadataConverter converter, long fileLen, String filePath, SeekableInputStream f, MetadataFilter filter) throws IOException {
+    LOG.debug("File length {}", fileLen);
     int FOOTER_LENGTH_SIZE = 4;
     if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
       throw new RuntimeException(filePath + " is not a Parquet file (too small)");
     }
     long footerLengthIndex = fileLen - FOOTER_LENGTH_SIZE - MAGIC.length;
-    if (Log.DEBUG) {
-      LOG.debug("reading footer index at " + footerLengthIndex);
-    }
+    LOG.debug("reading footer index at {}", footerLengthIndex);
 
     f.seek(footerLengthIndex);
     int footerLength = readIntLittleEndian(f);
@@ -470,9 +484,7 @@ public class ParquetFileReader implements Closeable {
       throw new RuntimeException(filePath + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
     }
     long footerIndex = footerLengthIndex - footerLength;
-    if (Log.DEBUG) {
-      LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
-    }
+    LOG.debug("read footer length: {}, footer index: {}", footerLength, footerIndex);
     if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
       throw new RuntimeException("corrupted file: the footer index is not within the file");
     }
@@ -528,6 +540,7 @@ public class ParquetFileReader implements Closeable {
   public ParquetFileReader(
       Configuration configuration, FileMetaData fileMetaData,
       Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
+    this.converter = new ParquetMetadataConverter(configuration);
     this.conf = configuration;
     this.fileMetaData = fileMetaData;
     FileSystem fs = filePath.getFileSystem(configuration);
@@ -559,11 +572,12 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if the file can not be opened
    */
   public ParquetFileReader(Configuration conf, Path file, MetadataFilter filter) throws IOException {
+    this.converter = new ParquetMetadataConverter(conf);
     this.conf = conf;
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
     this.f = HadoopStreams.wrap(fs.open(file));
-    this.footer = readFooter(fileStatus.getLen(), fileStatus.getPath().toString(), f, filter);
+    this.footer = readFooter(converter, fileStatus.getLen(), fileStatus.getPath().toString(), f, filter);
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = footer.getBlocks();
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
@@ -582,6 +596,7 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if the file can not be opened
    */
   public ParquetFileReader(Configuration conf, Path file, ParquetMetadata footer) throws IOException {
+    this.converter = new ParquetMetadataConverter(conf);
     this.conf = conf;
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
@@ -602,7 +617,7 @@ public class ParquetFileReader implements Closeable {
     if (footer == null) {
       try {
         // don't read the row groups because this.blocks is always set
-        this.footer = readFooter(fileStatus.getLen(), fileStatus.getPath().toString(), f, SKIP_ROW_GROUPS);
+        this.footer = readFooter(converter, fileStatus.getLen(), fileStatus.getPath().toString(), f, SKIP_ROW_GROUPS);
       } catch (IOException e) {
         throw new ParquetDecodingException("Unable to read file footer", e);
       }
@@ -648,6 +663,13 @@ public class ParquetFileReader implements Closeable {
 
   public List<BlockMetaData> getRowGroups() {
     return blocks;
+  }
+
+  public void setRequestedSchema(MessageType projection) {
+    paths.clear();
+    for (ColumnDescriptor col : projection.getColumns()) {
+      paths.put(ColumnPath.get(col.getPath()), col);
+    }
   }
 
   public void appendTo(ParquetFileWriter writer) throws IOException {
@@ -771,7 +793,7 @@ public class ParquetFileReader implements Closeable {
         compressedPage.getEncoding());
   }
 
-  private static DictionaryPage readCompressedDictionary(
+  private DictionaryPage readCompressedDictionary(
       PageHeader pageHeader, SeekableInputStream fin) throws IOException {
     DictionaryPageHeader dictHeader = pageHeader.getDictionary_page_header();
 
@@ -833,6 +855,8 @@ public class ParquetFileReader implements Closeable {
     public ColumnChunkPageReader readAllPages() throws IOException {
       List<DataPage> pagesInChunk = new ArrayList<DataPage>();
       DictionaryPage dictionaryPage = null;
+      PrimitiveType type = getFileMetaData().getSchema()
+          .getType(descriptor.col.getPath()).asPrimitiveType();
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
         PageHeader pageHeader = readPageHeader();
@@ -860,10 +884,10 @@ public class ParquetFileReader implements Closeable {
                     this.readAsBytesInput(compressedPageSize),
                     dataHeaderV1.getNum_values(),
                     uncompressedPageSize,
-                    fromParquetStatistics(
+                    converter.fromParquetStatistics(
                         getFileMetaData().getCreatedBy(),
                         dataHeaderV1.getStatistics(),
-                        descriptor.col.getType()),
+                        type),
                     converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
                     converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
                     converter.getEncoding(dataHeaderV1.getEncoding())
@@ -883,18 +907,16 @@ public class ParquetFileReader implements Closeable {
                     converter.getEncoding(dataHeaderV2.getEncoding()),
                     this.readAsBytesInput(dataSize),
                     uncompressedPageSize,
-                    fromParquetStatistics(
+                    converter.fromParquetStatistics(
                         getFileMetaData().getCreatedBy(),
                         dataHeaderV2.getStatistics(),
-                        descriptor.col.getType()),
+                        type),
                     dataHeaderV2.isIs_compressed()
                     ));
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
             break;
           default:
-            if (DEBUG) {
-              LOG.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
-            }
+            LOG.debug("skipping page of type {} of size {}", pageHeader.getType(), compressedPageSize);
             this.skip(compressedPageSize);
             break;
         }
@@ -979,7 +1001,7 @@ public class ParquetFileReader implements Closeable {
         // usually 13 to 19 bytes are missing
         int l1 = initPos + count - pos();
         int l2 = size - l1;
-        LOG.info("completed the column chunk with " + l2 + " bytes");
+        LOG.info("completed the column chunk with {} bytes", l2);
         return BytesInput.concat(super.readAsBytesInput(l1), BytesInput.copy(BytesInput.from(f, l2)));
       }
       return super.readAsBytesInput(size);

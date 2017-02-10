@@ -18,15 +18,15 @@
  */
 package org.apache.parquet.column.values.plain;
 
-import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * encodes boolean for the plain encoding: one bit at a time (0 = false)
@@ -35,7 +35,7 @@ import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesReader;
  *
  */
 public class BooleanPlainValuesReader extends ValuesReader {
-  private static final Log LOG = Log.getLog(BooleanPlainValuesReader.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BooleanPlainValuesReader.class);
 
   private ByteBitPackingValuesReader in = new ByteBitPackingValuesReader(1, LITTLE_ENDIAN);
 
@@ -64,7 +64,7 @@ public class BooleanPlainValuesReader extends ValuesReader {
    */
   @Override
   public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
-    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.limit() - offset));
+    LOG.debug("init from page at offset {} for length {}", offset, (in.limit() - offset));
     this.in.initFromPage(valueCount, in, offset);
   }
   

@@ -50,7 +50,6 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Test;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -65,10 +64,11 @@ import com.twitter.elephantbird.thrift.test.TestListInMap;
 import com.twitter.elephantbird.thrift.test.TestMapInList;
 
 import org.apache.parquet.schema.MessageType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestThriftToParquetFileWriter {
-  private static final Log LOG = Log
-      .getLog(TestThriftToParquetFileWriter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestThriftToParquetFileWriter.class);
 
   @Test
   public void testWriteFile() throws IOException, InterruptedException, TException {
@@ -114,6 +114,7 @@ public class TestThriftToParquetFileWriter {
                           new RequiredPrimitiveFixture(false, (byte)100, (short)100, 100, 287l, -9.0d, "world"),
                           new RequiredPrimitiveFixture(true, (byte)2, (short)2, 9, -17l, 9.63d, "hello"));
       final Configuration configuration = new Configuration();
+      configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
       final FileSystem fs = p.getFileSystem(configuration);
       FileStatus fileStatus = fs.getFileStatus(p);
       ParquetMetadata footer = ParquetFileReader.readFooter(configuration, p);
@@ -160,6 +161,7 @@ public class TestThriftToParquetFileWriter {
 
       // make new configuration and create file with new large stats
       final Configuration configuration_large = new Configuration();
+      configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
       final FileSystem fs_large = p_large.getFileSystem(configuration_large);
       FileStatus fileStatus_large = fs_large.getFileStatus(p_large);
       ParquetMetadata footer_large = ParquetFileReader.readFooter(configuration_large, p_large);
@@ -268,7 +270,7 @@ public class TestThriftToParquetFileWriter {
 
   private <T extends TBase<?,?>> Path createFile(T... tObjs) throws IOException, InterruptedException, TException  {
     final Path fileToCreate = new Path("target/test/TestThriftToParquetFileWriter/"+tObjs[0].getClass()+".parquet");
-    LOG.info("File created: " + fileToCreate.toString());
+    LOG.info("File created: {}", fileToCreate.toString());
     Configuration conf = new Configuration();
     final FileSystem fs = fileToCreate.getFileSystem(conf);
     if (fs.exists(fileToCreate)) {

@@ -56,45 +56,45 @@ public class IntBasedBitPackingGenerator {
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();
     }
-    FileWriter fw = new FileWriter(file);
-    fw.append("package org.apache.parquet.column.values.bitpacking;\n");
-    fw.append("\n");
-    fw.append("/**\n");
-    fw.append(" * Based on the original implementation at at https://github.com/lemire/JavaFastPFOR/blob/master/src/integercompression/BitPacking.java\n");
-    fw.append(" * Which is released under the\n");
-    fw.append(" * Apache License Version 2.0 http://www.apache.org/licenses/.\n");
-    fw.append(" * By Daniel Lemire, http://lemire.me/en/\n");
-    fw.append(" * \n");
-    fw.append(" * Scheme designed by D. Lemire\n");
-    if (msbFirst) {
-      fw.append(" * Adapted to pack from the Most Significant Bit first\n");
-    }
-    fw.append(" * \n");
-    fw.append(" * @author automatically generated\n");
-    fw.append(" * @see IntBasedBitPackingGenerator\n");
-    fw.append(" *\n");
-    fw.append(" */\n");
-    fw.append("abstract class " + className + " {\n");
-    fw.append("\n");
-    fw.append("  private static final IntPacker[] packers = new IntPacker[32];\n");
-    fw.append("  static {\n");
-    for (int i = 0; i < 32; i++) {
-      fw.append("    packers[" + i + "] = new Packer" + i + "();\n");
-    }
-    fw.append("  }\n");
-    fw.append("\n");
-    fw.append("  public static final IntPackerFactory factory = new IntPackerFactory() {\n");
-    fw.append("    public IntPacker newIntPacker(int bitWidth) {\n");
-    fw.append("      return packers[bitWidth];\n");
-    fw.append("    }\n");
-    fw.append("  };\n");
-    fw.append("\n");
-    for (int i = 0; i < 32; i++) {
-      generateClass(fw, i, msbFirst);
+    try (FileWriter fw = new FileWriter(file)) {
+      fw.append("package org.apache.parquet.column.values.bitpacking;\n");
       fw.append("\n");
+      fw.append("/**\n");
+      fw.append(" * Based on the original implementation at at https://github.com/lemire/JavaFastPFOR/blob/master/src/integercompression/BitPacking.java\n");
+      fw.append(" * Which is released under the\n");
+      fw.append(" * Apache License Version 2.0 http://www.apache.org/licenses/.\n");
+      fw.append(" * By Daniel Lemire, http://lemire.me/en/\n");
+      fw.append(" * \n");
+      fw.append(" * Scheme designed by D. Lemire\n");
+      if (msbFirst) {
+        fw.append(" * Adapted to pack from the Most Significant Bit first\n");
+      }
+      fw.append(" * \n");
+      fw.append(" * @author automatically generated\n");
+      fw.append(" * @see IntBasedBitPackingGenerator\n");
+      fw.append(" *\n");
+      fw.append(" */\n");
+      fw.append("abstract class " + className + " {\n");
+      fw.append("\n");
+      fw.append("  private static final IntPacker[] packers = new IntPacker[32];\n");
+      fw.append("  static {\n");
+      for (int i = 0; i < 32; i++) {
+        fw.append("    packers[" + i + "] = new Packer" + i + "();\n");
+      }
+      fw.append("  }\n");
+      fw.append("\n");
+      fw.append("  public static final IntPackerFactory factory = new IntPackerFactory() {\n");
+      fw.append("    public IntPacker newIntPacker(int bitWidth) {\n");
+      fw.append("      return packers[bitWidth];\n");
+      fw.append("    }\n");
+      fw.append("  };\n");
+      fw.append("\n");
+      for (int i = 0; i < 32; i++) {
+        generateClass(fw, i, msbFirst);
+        fw.append("\n");
+      }
+      fw.append("}\n");
     }
-    fw.append("}\n");
-    fw.close();
   }
 
   private static void generateClass(FileWriter fw, int bitWidth, boolean msbFirst) throws IOException {

@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.deltastrings;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.junit.Test;
 import org.junit.Assert;
@@ -50,6 +51,13 @@ public class TestDeltaByteArray {
   }
 
   @Test
+  public void testRandomStringsWithSkip() throws Exception {
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
+    DeltaByteArrayReader reader = new DeltaByteArrayReader();
+    assertReadWriteWithSkip(writer, reader, randvalues);
+  }
+
+  @Test
   public void testLengths() throws IOException {
     DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
@@ -78,6 +86,16 @@ public class TestDeltaByteArray {
 
     for(int i = 0; i< bin.length ; i++) {
       Assert.assertEquals(Binary.fromString(vals[i]), bin[i]);
+    }
+  }
+
+  private void assertReadWriteWithSkip(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
+    Utils.writeData(writer, vals);
+
+    reader.initFromPage(vals.length, writer.getBytes().toByteBuffer(), 0);
+    for (int i = 0; i < vals.length; i += 2) {
+      Assert.assertEquals(Binary.fromString(vals[i]), reader.readBytes());
+      reader.skip();
     }
   }
 

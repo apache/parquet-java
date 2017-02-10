@@ -26,7 +26,6 @@ import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.TextFormat;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.InvalidRecordException;
@@ -36,6 +35,8 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Array;
 import java.util.HashMap;
@@ -48,7 +49,7 @@ import java.util.Map;
  */
 public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<T> {
 
-  private static final Log LOG = Log.getLog(ProtoWriteSupport.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ProtoWriteSupport.class);
   public static final String PB_CLASS_WRITE = "parquet.proto.writeClass";
 
   private RecordConsumer recordConsumer;
@@ -156,7 +157,6 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       List<Descriptors.FieldDescriptor> fields = descriptor.getFields();
       fieldWriters = (FieldWriter[]) Array.newInstance(FieldWriter.class, fields.size());
 
-      int i = 0;
       for (Descriptors.FieldDescriptor fieldDescriptor: fields) {
         String name = fieldDescriptor.getName();
         Type type = schema.getType(name);
@@ -169,8 +169,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         writer.setFieldName(name);
         writer.setIndex(schema.getFieldIndex(name));
 
-        fieldWriters[i] = writer;
-        i++;
+        fieldWriters[fieldDescriptor.getIndex()] = writer;
       }
     }
 
@@ -220,6 +219,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
       for (Map.Entry<Descriptors.FieldDescriptor, Object> entry : changedPbFields.entrySet()) {
         Descriptors.FieldDescriptor fieldDescriptor = entry.getKey();
+
+        if(fieldDescriptor.isExtension()) {
+          // Field index of an extension field might overlap with a base field.
+          throw new UnsupportedOperationException(
+                  "Cannot convert Protobuf message with extension field(s)");
+        }
+
         int fieldIndex = fieldDescriptor.getIndex();
         fieldWriters[fieldIndex].writeField(entry.getValue());
       }
@@ -276,7 +282,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   }
 
   class IntWriter extends FieldWriter {
-  @Override
+    @Override
     final void writeRawValue(Object value) {
       recordConsumer.addInteger((Integer) value);
     }

@@ -331,7 +331,7 @@ public class DumpCommand extends ArgsOnlyCommand {
         try {
             CharBuffer buffer = UTF8_DECODER.decode(value.toByteBuffer());
             return buffer.toString();
-        } catch (Throwable th) {
+        } catch (Exception ex) {
         }
 
         return "<bytes...>";

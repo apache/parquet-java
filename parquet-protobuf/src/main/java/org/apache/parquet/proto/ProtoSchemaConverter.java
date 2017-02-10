@@ -29,7 +29,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 import java.util.List;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
@@ -40,6 +39,8 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p/>
@@ -49,7 +50,7 @@ import com.twitter.elephantbird.util.Protobufs;
  */
 public class ProtoSchemaConverter {
 
-  private static final Log LOG = Log.getLog(ProtoSchemaConverter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ProtoSchemaConverter.class);
 
   public MessageType convert(Class<? extends Message> protobufClass) {
     LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
@@ -86,21 +87,21 @@ public class ProtoSchemaConverter {
     Type.Repetition repetition = getRepetition(descriptor);
     JavaType javaType = descriptor.getJavaType();
     switch (javaType) {
-    case BOOLEAN : return builder.primitive(BOOLEAN, repetition);
-    case INT : return builder.primitive(INT32, repetition);
-    case LONG : return builder.primitive(INT64, repetition);
-    case FLOAT : return builder.primitive(FLOAT, repetition);
-    case DOUBLE: return builder.primitive(DOUBLE, repetition);
-    case BYTE_STRING: return builder.primitive(BINARY, repetition);
-    case STRING: return builder.primitive(BINARY, repetition).as(UTF8);
-    case MESSAGE: {
-      GroupBuilder<GroupBuilder<T>> group = builder.group(repetition);
-      convertFields(group, descriptor.getMessageType().getFields());
-      return group;
-    }
-    case ENUM: return builder.primitive(BINARY, repetition).as(ENUM);
-    default:
-      throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType);
+      case BOOLEAN: return builder.primitive(BOOLEAN, repetition);
+      case INT: return builder.primitive(INT32, repetition);
+      case LONG: return builder.primitive(INT64, repetition);
+      case FLOAT: return builder.primitive(FLOAT, repetition);
+      case DOUBLE: return builder.primitive(DOUBLE, repetition);
+      case BYTE_STRING: return builder.primitive(BINARY, repetition);
+      case STRING: return builder.primitive(BINARY, repetition).as(UTF8);
+      case MESSAGE: {
+        GroupBuilder<GroupBuilder<T>> group = builder.group(repetition);
+        convertFields(group, descriptor.getMessageType().getFields());
+        return group;
+      }
+      case ENUM: return builder.primitive(BINARY, repetition).as(ENUM);
+      default:
+        throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType);
     }
   }
 

@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.8.2-SNAPSHOT</version>
+    <version>1.9.1-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -31,7 +31,7 @@
 
   <properties>
     <elephant-bird.version>4.4</elephant-bird.version>
-    <protobuf.version>2.5.0</protobuf.version>
+    <protobuf.version>2.6.1</protobuf.version>
   </properties>
 
 

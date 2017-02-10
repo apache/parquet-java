@@ -24,8 +24,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
@@ -46,6 +44,8 @@ import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.hadoop.util.Progressable;
 
 import org.apache.parquet.hadoop.ParquetOutputFormat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -55,7 +55,7 @@ import org.apache.parquet.hadoop.ParquetOutputFormat;
 public class MapredParquetOutputFormat extends FileOutputFormat<Void, ArrayWritable> implements
   HiveOutputFormat<Void, ArrayWritable> {
 
-  private static final Log LOG = LogFactory.getLog(MapredParquetOutputFormat.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MapredParquetOutputFormat.class);
 
   protected ParquetOutputFormat<ArrayWritable> realOutputFormat;
 
@@ -96,7 +96,7 @@ public class MapredParquetOutputFormat extends FileOutputFormat<Void, ArrayWrita
       final Properties tableProperties,
       final Progressable progress) throws IOException {
 
-    LOG.info("creating new record writer..." + this);
+    LOG.info("creating new record writer...{}", this);
 
     final String columnNameProperty = tableProperties.getProperty(IOConstants.COLUMNS);
     final String columnTypeProperty = tableProperties.getProperty(IOConstants.COLUMNS_TYPES);

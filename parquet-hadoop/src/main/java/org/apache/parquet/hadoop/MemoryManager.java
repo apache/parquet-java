@@ -18,9 +18,10 @@
  */
 package org.apache.parquet.hadoop;
 
-import org.apache.parquet.Log;
 import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
 import java.util.Collections;
@@ -40,7 +41,7 @@ import java.util.Map;
  * When the sum exceeds, decrease each writer's allocation size by a ratio.
  */
 public class MemoryManager {
-  private static final Log LOG = Log.getLog(MemoryManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MemoryManager.class);
   static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
   static final long DEFAULT_MIN_MEMORY_ALLOCATION = 1 * 1024 * 1024; // 1MB
   private final float memoryPoolRatio;
@@ -59,7 +60,7 @@ public class MemoryManager {
     minMemoryAllocation = minAllocation;
     totalMemoryPool = Math.round((double) ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * ratio);
-    LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
+    LOG.debug("Allocated total memory pool is: {}", totalMemoryPool);
   }
 
   private void checkRatio(float ratio) {

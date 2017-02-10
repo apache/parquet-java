@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.8.2-SNAPSHOT</version>
+    <version>1.9.1-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -92,7 +92,7 @@
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>scrooge-core_${scala.binary.version}</artifactId>
-      <version>3.17.0</version>
+      <version>4.7.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
