@@ -21,6 +21,7 @@ package org.apache.parquet.pig.convert;
 import static java.lang.Math.max;
 import java.util.ArrayList;
 import java.util.List;
+import java.math.BigDecimal;
 
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataByteArray;
@@ -39,9 +40,11 @@ import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.pig.TupleConversionException;
+import org.apache.parquet.pig.convert.DecimalUtils;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.DecimalMetadata;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 
@@ -140,6 +143,8 @@ public class TupleConverter extends GroupConverter {
         return new FieldDoubleConverter(parent);
       case DataType.LONG:
         return new FieldLongConverter(parent);
+      case DataType.BIGDECIMAL:
+        return new FieldBigDecimalConverter(type, parent);
       default:
         throw new TupleConversionException("unsupported pig type: " + pigField);
       }
@@ -528,6 +533,32 @@ public class TupleConverter extends GroupConverter {
 
     
   }
+
+  /**
+   * handle decimal type
+   *
+   */
+  static final class FieldBigDecimalConverter extends PrimitiveConverter {
+    private final ParentValueContainer parent;
+    private final Type primitiveType;
+    public FieldBigDecimalConverter(Type primitiveType, ParentValueContainer parent) {
+      this.parent = parent;
+      this.primitiveType = primitiveType;
+    }
+
+    @Override
+    final public void addBinary(Binary value) {
+      if (primitiveType != null) {
+        int precision = primitiveType.asPrimitiveType().getDecimalMetadata().getPrecision();
+        int scale = primitiveType.asPrimitiveType().getDecimalMetadata().getScale();
+        BigDecimal finaldecimal = DecimalUtils.binaryToDecimal(value, precision, scale);
+        parent.add(finaldecimal);
+      } else {
+        parent.add("Broken DecimalType");
+      }
+    }
+  }
+
 
   /**
    * Converts groups into bags

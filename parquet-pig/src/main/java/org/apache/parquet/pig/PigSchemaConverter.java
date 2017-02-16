@@ -244,8 +244,12 @@ public class PigSchemaConverter {
 
       @Override
       public FieldSchema convertFIXED_LEN_BYTE_ARRAY(
-          PrimitiveTypeName primitiveTypeName) throws FrontendException {
-        return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
+        PrimitiveTypeName primitiveTypeName) throws FrontendException {
+        if (originalType == OriginalType.DECIMAL) {
+          return new FieldSchema(fieldName, null, DataType.BIGDECIMAL);
+        } else {
+          return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
+        }
       }
 
       @Override
