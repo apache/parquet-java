@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.parquet.cli.util;
+package org.apache.parquet.util;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Preconditions;
-import com.google.common.base.Throwables;
-import com.google.common.collect.Maps;
+import org.apache.parquet.Preconditions;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
+
+import static org.apache.parquet.Exceptions.throwIfInstance;
 
 public class DynConstructors {
   public static class Ctor<C> extends DynMethods.UnboundMethod {
@@ -53,10 +52,9 @@ public class DynConstructors {
       } catch (IllegalAccessException e) {
         throw e;
       } catch (InvocationTargetException e) {
-        // rethrow the cause is an exception
-        Throwables.propagateIfPossible(e.getCause(), Exception.class);
-        // otherwise, propagate the throwable
-        throw Throwables.propagate(e.getCause());
+        throwIfInstance(e.getCause(), Exception.class);
+        throwIfInstance(e.getCause(), RuntimeException.class);
+        throw new RuntimeException(e.getCause());
       }
     }
 
@@ -64,7 +62,8 @@ public class DynConstructors {
       try {
         return newInstanceChecked(args);
       } catch (Exception e) {
-        throw Throwables.propagate(e);
+        throwIfInstance(e, RuntimeException.class);
+        throw new RuntimeException(e);
       }
     }
 
@@ -73,7 +72,7 @@ public class DynConstructors {
     public <R> R invoke(Object target, Object... args) {
       Preconditions.checkArgument(target == null,
           "Invalid call to constructor: target must be null");
-      return (R) newInstance(target, args);
+      return (R) newInstance(args);
     }
 
     @Override
@@ -85,16 +84,19 @@ public class DynConstructors {
     }
 
     @Override
+    public DynMethods.BoundMethod bind(Object receiver) {
+      throw new IllegalStateException("Cannot bind constructors");
+    }
+
+    @Override
     public boolean isStatic() {
       return true;
     }
 
     @Override
     public String toString() {
-      return Objects.toStringHelper(this)
-          .add("constructor", ctor)
-          .add("class", constructed)
-          .toString();
+      return getClass().getSimpleName() +
+          "(constructor=" + ctor + ", class=" + constructed + ")";
     }
   }
 
@@ -102,7 +104,7 @@ public class DynConstructors {
     private final Class<?> baseClass;
     private ClassLoader loader = Thread.currentThread().getContextClassLoader();
     private Ctor ctor = null;
-    private Map<String, Throwable> problems = Maps.newHashMap();
+    private Map<String, Throwable> problems = new HashMap<String, Throwable>();
 
     public Builder(Class<?> baseClass) {
       this.baseClass = baseClass;
@@ -122,11 +124,6 @@ public class DynConstructors {
      */
     public Builder loader(ClassLoader loader) {
       this.loader = loader;
-      return this;
-    }
-
-    public Builder impl(Class<?>... types) {
-      impl(baseClass, types);
       return this;
     }
 

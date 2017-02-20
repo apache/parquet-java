@@ -30,7 +30,7 @@ import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Version;
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.cli.util.DynConstructors;
+import org.apache.parquet.util.DynConstructors;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.page.DataPage;

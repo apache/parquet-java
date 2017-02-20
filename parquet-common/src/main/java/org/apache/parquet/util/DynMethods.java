@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.parquet.cli.util;
+package org.apache.parquet.util;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Preconditions;
-import com.google.common.base.Throwables;
+import org.apache.parquet.Preconditions;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.security.PrivilegedExceptionAction;
 import java.util.Arrays;
+
+import static org.apache.parquet.Exceptions.throwIfInstance;
 
 public class DynMethods {
 
@@ -61,10 +60,9 @@ public class DynMethods {
         }
 
       } catch (InvocationTargetException e) {
-        // rethrow the cause is an exception
-        Throwables.propagateIfPossible(e.getCause(), Exception.class);
-        // otherwise, propagate the throwable
-        throw Throwables.propagate(e.getCause());
+        throwIfInstance(e.getCause(), Exception.class);
+        throwIfInstance(e.getCause(), RuntimeException.class);
+        throw new RuntimeException(e.getCause());
       }
     }
 
@@ -72,7 +70,8 @@ public class DynMethods {
       try {
         return this.<R>invokeChecked(target, args);
       } catch (Exception e) {
-        throw Throwables.propagate(e);
+        throwIfInstance(e, RuntimeException.class);
+        throw new RuntimeException(e);
       }
     }
 
@@ -121,10 +120,8 @@ public class DynMethods {
     }
 
     public String toString() {
-      return Objects.toStringHelper(this)
-          .add("name", name)
-          .add("method", method.toGenericString())
-          .toString();
+      return "DynMethods.UnboundMethod(name=" + name +" method=" +
+          method.toGenericString() + ")";
     }
 
     /**
@@ -153,9 +150,7 @@ public class DynMethods {
 
       @Override
       public String toString() {
-        return Objects.toStringHelper(this)
-            .add("name", "noop")
-            .toString();
+        return "DynMethods.UnboundMethod(NOOP)";
       }
     };
   }
@@ -223,7 +218,7 @@ public class DynMethods {
      *
      * @return this Builder for method chaining
      */
-    public Builder defaultNoop() {
+    public Builder orNoop() {
       if (method == null) {
         this.method = UnboundMethod.NOOP;
       }
