@@ -64,9 +64,9 @@ public class TestParquetParser {
                 new PrimitiveType(REPEATED, INT64, "Forward")),
             new GroupType(REPEATED, "Name",
                 new GroupType(REPEATED, "Language",
-                new PrimitiveType(REQUIRED, BINARY, "Code"),
-                new PrimitiveType(REQUIRED, BINARY, "Country")),
-            new PrimitiveType(OPTIONAL, BINARY, "Url")));
+                  new PrimitiveType(REQUIRED, BINARY, "Code"),
+                  new PrimitiveType(REQUIRED, BINARY, "Country")),
+                new PrimitiveType(OPTIONAL, BINARY, "Url")));
     assertEquals(manuallyMade, parsed);
 
     MessageType parsedThenReparsed = parseMessageType(parsed.toString());
@@ -77,9 +77,9 @@ public class TestParquetParser {
     manuallyMade =
         new MessageType("m",
             new GroupType(REQUIRED, "a",
-            new PrimitiveType(REQUIRED, BINARY, "b")),
+              new PrimitiveType(REQUIRED, BINARY, "b")),
             new GroupType(REQUIRED, "c",
-            new PrimitiveType(REQUIRED, INT64, "d")));
+              new PrimitiveType(REQUIRED, INT64, "d")));
 
     assertEquals(manuallyMade, parsed);
 
@@ -99,8 +99,7 @@ public class TestParquetParser {
         schema.append("  required fixed_len_byte_array(3) fixed_;");
         builder.required(FIXED_LEN_BYTE_ARRAY).length(3).named("fixed_");
       } else {
-        schema.append("  required ").append(type)
-                .append(" ").append(type).append("_;\n");
+        schema.append("  required ").append(type).append(" ").append(type).append("_;\n");
         builder.required(type).named(type.toString() + "_");
       }
     }
@@ -315,9 +314,9 @@ public class TestParquetParser {
   public void testQuotedColumnNames() {
     String message = "message IntMessage {" +
         "  required int32 `foo bar`;" +
-        "  required int32 `foo.bar`;" +
+        "  required int32 foo.bar;" +
         "  required int32 `foo``bar`;" +
-        "  required int64 `foo@#$bar`;" +
+        "  required int64 foo@#$bar;" +
         "}\n";
 
     MessageType parsed = MessageTypeParser.parseMessageType(message);

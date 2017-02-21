@@ -105,8 +105,12 @@ public class TestFilterApiMethods {
     IntColumn c1 = intColumn("a.b.`foo bar`");
     IntColumn c2 = intColumn("a.b.`foo.bar`");
     IntColumn c3 = intColumn("`a.b.foo.bar`");
-    FilterPredicate pred = or(eq(c1, 10), or(eq(c2, 20), eq(c3, 30)));
-    assertEquals("or(eq(a.b.`foo bar`, 10), or(eq(a.b.`foo.bar`, 20), eq(`a.b.foo.bar`, 30)))", pred.toString());
+    FilterPredicate pred1 = or(eq(c1, 10), or(eq(c2, 20), eq(c3, 30)));
+    assertEquals("or(eq(a.b.`foo bar`, 10), or(eq(a.b.`foo.bar`, 20), eq(`a.b.foo.bar`, 30)))", pred1.toString());
+
+    IntColumn c4 = intColumn("`a.b``foo.bar`");
+    FilterPredicate pred2 = eq(c4, 40);
+    assertEquals("eq(`a.b``foo.bar`, 40)", pred2.toString());
   }
 
   @Test
@@ -120,7 +124,7 @@ public class TestFilterApiMethods {
   }
 
   @Test
-  public void testSerializable() throws Exception {    
+  public void testSerializable() throws Exception {
     BinaryColumn binary = binaryColumn("foo");
     FilterPredicate p = and(or(and(userDefined(intColumn, DummyUdp.class), predicate), eq(binary, Binary.fromString("hi"))), userDefined(longColumn, new IsMultipleOf(7)));
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -135,7 +139,7 @@ public class TestFilterApiMethods {
 
   public static class IsMultipleOf extends UserDefinedPredicate<Long> implements Serializable {
 
-    private long of; 
+    private long of;
 
     public IsMultipleOf(long of) {
       this.of = of;
@@ -158,7 +162,7 @@ public class TestFilterApiMethods {
     public boolean inverseCanDrop(Statistics<Long> statistics) {
       return false;
     }
-    
+
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
@@ -167,12 +171,12 @@ public class TestFilterApiMethods {
       IsMultipleOf that = (IsMultipleOf) o;
       return this.of == that.of;
     }
-    
+
     @Override
     public int hashCode() {
       return new Long(of).hashCode();
     }
-    
+
     @Override
     public String toString() {
       return "IsMultipleOf(" + of + ")";

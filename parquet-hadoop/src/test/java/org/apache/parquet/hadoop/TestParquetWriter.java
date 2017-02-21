@@ -154,9 +154,9 @@ public class TestParquetWriter {
         + "required int64 `int64``field`; "
         + "required boolean `boolean,field`; "
         + "required float `!float field!`; "
-        + "required double `double@#$field`; "
-        + "required fixed_len_byte_array(3) `flba+& field`; "
-        + "required int96 `int96!`; "
+        + "required double double@#$field; "
+        + "required fixed_len_byte_array(3) flba+&field; "
+        + "required int96 int96!; "
         + "} ");
     GroupWriteSupport.setSchema(schema, conf);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
@@ -181,7 +181,7 @@ public class TestParquetWriter {
               .append("boolean,field", true)
               .append("!float field!", 1.0f)
               .append("double@#$field", 2.0d)
-              .append("flba+& field", "foo")
+              .append("flba+&field", "foo")
               .append("int96!", Binary.fromConstantByteArray(new byte[12])));
         }
         writer.close();
@@ -194,7 +194,7 @@ public class TestParquetWriter {
           assertEquals(true, group.getBoolean("boolean,field", 0));
           assertEquals(1.0f, group.getFloat("!float field!", 0), 0.001);
           assertEquals(2.0d, group.getDouble("double@#$field", 0), 0.001);
-          assertEquals("foo", group.getBinary("flba+& field", 0).toStringUsingUTF8());
+          assertEquals("foo", group.getBinary("flba+&field", 0).toStringUsingUTF8());
           assertEquals(Binary.fromConstantByteArray(new byte[12]),
               group.getInt96("int96!",0));
         }

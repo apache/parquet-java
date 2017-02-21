@@ -19,20 +19,14 @@
 package org.apache.parquet.hadoop.metadata;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 
-import org.apache.parquet.Strings;
+import org.apache.parquet.QuotedIdentifiers;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 public final class ColumnPath implements Iterable<String>, Serializable {
-
-  private static Pattern pattern = Pattern.compile("[^a-zA-Z\\d_-]");
 
   private static Canonicalizer<ColumnPath> paths = new Canonicalizer<ColumnPath>() {
     @Override
@@ -47,14 +41,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
 
   public static ColumnPath fromDotString(String path) {
     checkNotNull(path, "path");
-    String[] parts = path.split("\\.(?=([^`]*`[^`]*`)*[^`]*$)");
-    for (int i = 0; i < parts.length; ++i) {
-      String part = parts[i];
-      if (part.startsWith("`") && part.endsWith("`")) {
-        parts[i] = part.substring(1, part.length() - 1);
-      }
-    }
-    return get(parts);
+    return get(QuotedIdentifiers.getParts(path));
   }
 
   public static ColumnPath get(String... path){
@@ -65,14 +52,6 @@ public final class ColumnPath implements Iterable<String>, Serializable {
 
   private ColumnPath(String[] path) {
     this.p = path;
-  }
-
-  /**
-   * @return the name of the type, possibly wrapped in backquotes.
-   */
-  private String getQuotedName(String name) {
-    Matcher matcher = pattern.matcher(name);
-    return matcher.find() ? "`" + name.replace("`", "``") + "`" : name;
   }
 
   @Override
@@ -94,7 +73,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
       if (i > 0) {
         sb.append(".");
       }
-      sb.append(getQuotedName(p[i]));
+      sb.append(QuotedIdentifiers.getName(p[i]));
     }
     return sb.toString();
   }
