@@ -140,9 +140,9 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
      so if the data is corrupted, it could read a big integer as the length of the binary and therefore causes OOM to happen.
      Currently this fix only applies to TBinaryProtocol which has the setReadLength defined.
       */
-    if (IS_READ_LENGTH_SETABLE && protocol instanceof TBinaryProtocol) {
-      ((TBinaryProtocol)protocol).setReadLength(record.getLength());
-    }
+    //if (IS_READ_LENGTH_SETABLE && protocol instanceof TBinaryProtocol) {
+    //  ((TBinaryProtocol)protocol).setReadLength(record.getLength());
+    //}
 
     return protocol;
   }

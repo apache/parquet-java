@@ -82,7 +82,7 @@
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
-    <thrift.version>0.7.0</thrift.version>
+    <thrift.version>0.9.3</thrift.version>
     <fastutil.version>7.0.13</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
