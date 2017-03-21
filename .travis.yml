@@ -4,11 +4,14 @@ before_install:
   - sudo apt-get install build-essential
   - mkdir protobuf_install
   - pushd protobuf_install
-  - wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
-  - tar xzf protobuf-2.5.0.tar.gz
-  - cd  protobuf-2.5.0
+  - wget https://github.com/google/protobuf/archive/v3.2.0.tar.gz -O protobuf-3.2.0.tar.gz
+  - tar xzf protobuf-3.2.0.tar.gz
+  - cd protobuf-3.2.0
+  - sudo apt-get install autoconf automake libtool curl make g++ unzip
+  - ./autogen.sh
   - ./configure
   - make
+  - make check
   - sudo make install
   - sudo ldconfig
   - protoc --version
