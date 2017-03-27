@@ -78,15 +78,15 @@ public class RowCountCommand extends ArgsOnlyCommand {
     inputFileStatuses = inputPath.getFileSystem(conf).globStatus(inputPath);
     long rowCount = 0;
 
-    for(FileStatus fs : inputFileStatuses){
+    for (FileStatus fs : inputFileStatuses) {
       long fileRowCount=0;
-      for(Footer f : ParquetFileReader.readFooters(conf, fs, false)){
-        for(BlockMetaData b : f.getParquetMetadata().getBlocks()){
+      for (Footer f : ParquetFileReader.readFooters(conf, fs, false)) {
+        for (BlockMetaData b : f.getParquetMetadata().getBlocks()) {
           rowCount += b.getRowCount();
           fileRowCount += b.getRowCount();
         }
       }
-      if(options.hasOption('d')){
+      if (options.hasOption('d')) {
         out.format("%s row count: %d\n", fs.getPath().getName(), fileRowCount);
       }
     }

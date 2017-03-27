@@ -92,47 +92,47 @@ public class SizeCommand extends ArgsOnlyCommand {
     conf = new Configuration();
     inputFileStatuses = inputPath.getFileSystem(conf).globStatus(inputPath);
     long size = 0;
-    for(FileStatus fs : inputFileStatuses){
+    for (FileStatus fs : inputFileStatuses) {
       long fileSize = 0;
-      for(Footer f : ParquetFileReader.readFooters(conf, fs, false)){
-        for(BlockMetaData b : f.getParquetMetadata().getBlocks()){
+      for (Footer f : ParquetFileReader.readFooters(conf, fs, false)) {
+        for (BlockMetaData b : f.getParquetMetadata().getBlocks()) {
           size += (options.hasOption('u') ? b.getTotalByteSize() : b.getCompressedSize());
           fileSize += (options.hasOption('u') ? b.getTotalByteSize() : b.getCompressedSize());
         }
       }
-      if(options.hasOption('d')){
-        if(options.hasOption('p')){
+      if (options.hasOption('d')) {
+        if (options.hasOption('p')) {
           out.format("%s: %s\n", fs.getPath().getName(), getPrettySize(fileSize));
         }
-        else{
+        else {
           out.format("%s: %d bytes\n", fs.getPath().getName(), fileSize);
         }
       }
     }
 
-    if(options.hasOption('p')){
+    if (options.hasOption('p')) {
       out.format("Total Size: %s", getPrettySize(size));
     }
-    else{
+    else {
       out.format("Total Size: %d bytes", size);
     }
     out.println();
   }
 
   public String getPrettySize(long bytes){
-    if (bytes/ONE_KB < 1){
+    if (bytes/ONE_KB < 1) {
       return  String.format("%d", bytes) + " bytes";
     }
-    if (bytes/ONE_MB < 1){
+    if (bytes/ONE_MB < 1) {
       return String.format("%.3f", bytes/ONE_KB) + " KB";
     }
-    if (bytes/ONE_GB < 1){
+    if (bytes/ONE_GB < 1) {
       return String.format("%.3f", bytes/ONE_MB) + " MB";
     }
-    if (bytes/ONE_TB < 1){
+    if (bytes/ONE_TB < 1) {
       return String.format("%.3f", bytes/ONE_GB) + " GB";
     }
-    if (bytes/ONE_PB < 1){
+    if (bytes/ONE_PB < 1) {
       return String.format("%.3f", bytes/ONE_TB) + " TB";
     }
     return String.format("%.3f", bytes/ONE_PB) + " PB";
