@@ -51,28 +51,26 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.bytes.HeapByteBufferAllocator;
-import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.page.DictionaryPageReadStore;
-import org.apache.parquet.filter2.compat.FilterCompat;
-import org.apache.parquet.filter2.compat.RowGroupFilter;
-
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReadStore;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.encryption.BytesDecryptor;
+import org.apache.parquet.encryption.CodecFailureException;
+import org.apache.parquet.filter2.compat.FilterCompat;
+import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
@@ -84,15 +82,16 @@ import org.apache.parquet.hadoop.CodecFactory.BytesDecompressor;
 import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.HadoopStreams;
-import org.apache.parquet.io.SeekableInputStream;
+import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
-import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
@@ -111,7 +110,9 @@ public class ParquetFileReader implements Closeable {
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
   private final ParquetMetadataConverter converter;
-
+  
+  private BytesDecryptor decryptor = new BytesDecryptor();
+  
   /**
    * for files provided, check if there's a summary file.
    * If a summary file is found it is used otherwise the file footer is used.
@@ -879,9 +880,10 @@ public class ParquetFileReader implements Closeable {
             break;
           case DATA_PAGE:
             DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
-            pagesInChunk.add(
+            if ( dataHeaderV1 != null ){
+            	pagesInChunk.add(
                 new DataPageV1(
-                    this.readAsBytesInput(compressedPageSize),
+                		readData(pageHeader, pageHeader.getCompressed_page_size()),
                     dataHeaderV1.getNum_values(),
                     uncompressedPageSize,
                     converter.fromParquetStatistics(
@@ -892,7 +894,11 @@ public class ParquetFileReader implements Closeable {
                     converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
                     converter.getEncoding(dataHeaderV1.getEncoding())
                     ));
-            valuesCountReadSoFar += dataHeaderV1.getNum_values();
+            	valuesCountReadSoFar += dataHeaderV1.getNum_values();
+            } else {
+            	LOG.error("Invalid data read, dataHeaderV1:{}", dataHeaderV1);
+            	// TODO throw error
+            }
             break;
           case DATA_PAGE_V2:
             DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
@@ -905,7 +911,7 @@ public class ParquetFileReader implements Closeable {
                     this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length()),
                     this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length()),
                     converter.getEncoding(dataHeaderV2.getEncoding()),
-                    this.readAsBytesInput(dataSize),
+                    readData(pageHeader, dataSize),
                     uncompressedPageSize,
                     converter.fromParquetStatistics(
                         getFileMetaData().getCreatedBy(),
@@ -933,6 +939,29 @@ public class ParquetFileReader implements Closeable {
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage);
     }
 
+
+	/**
+	 * @author krishnaprasad
+	 * Check if encrypted, If yes decrypt the read data 
+	 * @param pageHeader
+	 * @param dataSize 
+	 * @return
+	 * @throws IOException
+	 */
+	private BytesInput readData(PageHeader pageHeader, int dataSize) throws IOException {
+		if (pageHeader.getEncrypted_page_size() > 0) {
+			int encryptedPageSize = pageHeader.getEncrypted_page_size();
+			try {
+				return decryptor.decrypt(this.readAsBytesInput(encryptedPageSize));
+			} catch (CodecFailureException e) {
+				throw new RuntimeException("Decryption failed", e);
+			}
+		} else {
+			return this.readAsBytesInput(dataSize);
+		}
+	}
+
+    
     /**
      * @return the current position in the chunk
      */

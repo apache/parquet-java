@@ -366,7 +366,7 @@ public class ParquetFileWriter {
     LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
     int compressedPageSize = (int)bytes.size();
     metadataConverter.writeDataPageHeader(
-        uncompressedPageSize, compressedPageSize,
+        uncompressedPageSize, compressedPageSize, 0,
         valueCount,
         rlEncoding,
         dlEncoding,
@@ -404,7 +404,7 @@ public class ParquetFileWriter {
     LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
     int compressedPageSize = (int)bytes.size();
     metadataConverter.writeDataPageHeader(
-        uncompressedPageSize, compressedPageSize,
+        uncompressedPageSize, compressedPageSize, 0,
         valueCount,
         statistics,
         rlEncoding,

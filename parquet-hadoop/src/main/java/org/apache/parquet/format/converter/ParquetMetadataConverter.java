@@ -916,14 +916,14 @@ public class ParquetMetadataConverter {
   @Deprecated
   public void writeDataPageHeader(
       int uncompressedSize,
-      int compressedSize,
+      int compressedSize, int encryptedSize,
       int valueCount,
       org.apache.parquet.column.Encoding rlEncoding,
       org.apache.parquet.column.Encoding dlEncoding,
       org.apache.parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
     writePageHeader(newDataPageHeader(uncompressedSize,
-                                      compressedSize,
+                                      compressedSize, encryptedSize,
                                       valueCount,
                                       new org.apache.parquet.column.statistics.BooleanStatistics(),
                                       rlEncoding,
@@ -933,7 +933,7 @@ public class ParquetMetadataConverter {
 
   public void writeDataPageHeader(
       int uncompressedSize,
-      int compressedSize,
+      int compressedSize, int encryptedSize,
       int valueCount,
       org.apache.parquet.column.statistics.Statistics statistics,
       org.apache.parquet.column.Encoding rlEncoding,
@@ -941,19 +941,22 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
     writePageHeader(
-        newDataPageHeader(uncompressedSize, compressedSize, valueCount, statistics,
+        newDataPageHeader(uncompressedSize, compressedSize, encryptedSize, valueCount, statistics,
             rlEncoding, dlEncoding, valuesEncoding),
         to);
   }
 
   private PageHeader newDataPageHeader(
-      int uncompressedSize, int compressedSize,
+      int uncompressedSize, int compressedSize, int encryptedSize,
       int valueCount,
       org.apache.parquet.column.statistics.Statistics statistics,
       org.apache.parquet.column.Encoding rlEncoding,
       org.apache.parquet.column.Encoding dlEncoding,
       org.apache.parquet.column.Encoding valuesEncoding) {
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedSize, compressedSize);
+    if(encryptedSize > 0){
+    	pageHeader.setEncrypted_page_size(encryptedSize);
+    }
     // TODO: pageHeader.crc = ...;
     pageHeader.setData_page_header(new DataPageHeader(
         valueCount,
@@ -968,7 +971,7 @@ public class ParquetMetadataConverter {
   }
 
   public void writeDataPageV2Header(
-      int uncompressedSize, int compressedSize,
+      int uncompressedSize, int compressedSize, int encryptedSize,
       int valueCount, int nullCount, int rowCount,
       org.apache.parquet.column.statistics.Statistics statistics,
       org.apache.parquet.column.Encoding dataEncoding,
@@ -976,7 +979,7 @@ public class ParquetMetadataConverter {
       OutputStream to) throws IOException {
     writePageHeader(
         newDataPageV2Header(
-            uncompressedSize, compressedSize,
+            uncompressedSize, compressedSize, encryptedSize,
             valueCount, nullCount, rowCount,
             statistics,
             dataEncoding,
@@ -984,7 +987,7 @@ public class ParquetMetadataConverter {
   }
 
   private PageHeader newDataPageV2Header(
-      int uncompressedSize, int compressedSize,
+      int uncompressedSize, int compressedSize, int encryptedSize,
       int valueCount, int nullCount, int rowCount,
       org.apache.parquet.column.statistics.Statistics<?> statistics,
       org.apache.parquet.column.Encoding dataEncoding,
@@ -999,6 +1002,9 @@ public class ParquetMetadataConverter {
           toParquetStatistics(statistics));
     }
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
+    if(encryptedSize > 0){
+    	pageHeader.setEncrypted_page_size(encryptedSize);
+    }
     pageHeader.setData_page_header_v2(dataPageHeaderV2);
     return pageHeader;
   }
