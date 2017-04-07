@@ -82,6 +82,7 @@
       <version>${slf4j.version}</version>
       <scope>test</scope>
     </dependency>
+
   </dependencies>
 
   <developers>
@@ -92,6 +93,12 @@
   </developers>
 
   <build>
+    <extensions>
+      <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+      </extension>
+    </extensions>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -146,32 +153,20 @@
       </plugin>
 
       <plugin>
-        <artifactId>maven-antrun-plugin</artifactId>
+        <groupId>org.xolstice.maven.plugins</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <configuration>
+          <protoTestSourceRoot>${project.basedir}/src/test/resources</protoTestSourceRoot>
+          <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+        </configuration>
         <executions>
           <execution>
-            <id>generate-sources</id>
-            <phase>generate-test-sources</phase>
-            <configuration>
-              <tasks>
-                <mkdir dir="${project.build.directory}/generated-test-sources" />
-                <mkdir dir="${project.build.directory}/generated-test-sources/java" />
-                <exec failonerror="true" executable="protoc">
-                  <arg value="--java_out=${project.build.directory}/generated-test-sources/java" />
-                  <arg value="src/test/resources/TestProtobuf.proto" />
-                  <arg value="src/test/resources/TestProto3.proto" />
-                  <arg value="-I." />
-                </exec>
-              </tasks>
-              <sourceRoot>src/main/java</sourceRoot>
-              <sourceRoot>target/generated-sources/java</sourceRoot>
-            </configuration>
             <goals>
-              <goal>run</goal>
+              <goal>test-compile</goal>
             </goals>
           </execution>
         </executions>
       </plugin>
-
     </plugins>
   </build>
 
