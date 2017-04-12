@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -139,7 +139,7 @@ public class ParquetMetadataConverter {
     field.accept(new TypeVisitor() {
       @Override
       public void visit(PrimitiveType primitiveType) {
-        SchemaElement element = new SchemaElement(primitiveType.getName());
+        SchemaElement element = schemaElementfromType(primitiveType);
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         if (primitiveType.getOriginalType() != null) {
@@ -157,13 +157,13 @@ public class ParquetMetadataConverter {
 
       @Override
       public void visit(MessageType messageType) {
-        SchemaElement element = new SchemaElement(messageType.getName());
+        SchemaElement element = schemaElementfromType(messageType);
         visitChildren(result, messageType.asGroupType(), element);
       }
 
       @Override
       public void visit(GroupType groupType) {
-        SchemaElement element = new SchemaElement(groupType.getName());
+        SchemaElement element = schemaElementfromType(groupType);
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getOriginalType() != null) {
           element.setConverted_type(getConvertedType(groupType.getOriginalType()));
@@ -180,6 +180,21 @@ public class ParquetMetadataConverter {
         }
       }
     });
+  }
+
+  /**
+   * Build a {@link SchemaElement} from {@link org.apache.parquet.schema.Type} with the field's name, and keep the field
+   * id if the field has one.
+   *
+   * @param field a field of the parquet schema
+   * @return SchemaElement
+   */
+  private static SchemaElement schemaElementfromType(org.apache.parquet.schema.Type field) {
+    SchemaElement element = new SchemaElement(field.getName());
+    if (field.getId() != null) {
+      element.setField_id(field.getId().intValue());
+    }
+    return element;
   }
 
   private void addRowGroup(ParquetMetadata parquetMetadata, List<RowGroup> rowGroups, BlockMetaData block) {
