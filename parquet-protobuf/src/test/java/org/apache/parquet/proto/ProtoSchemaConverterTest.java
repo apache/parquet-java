@@ -18,12 +18,21 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message;
-import org.junit.Test;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
+import org.apache.parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
+import org.apache.parquet.proto.utils.WriteUsingMR;
+import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.Type;
+import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
@@ -72,7 +81,7 @@ public class ProtoSchemaConverterTest {
       " optional binary optionalEnum (ENUM)  = 18;" +
       "}";
 
-    testConversion(TestProtobuf.SchemaConverterAllDatatypes.class, expectedSchema);
+    testConversion(SchemaConverterAllDatatypes.class, expectedSchema);
   }
 
   /**
@@ -150,5 +159,47 @@ public class ProtoSchemaConverterTest {
         "}";
 
     testConversion(TestProto3.SchemaConverterRepetition.class, expectedSchema);
+  }
+
+  /**
+   * Test the persistent metadata contains field id.
+   *
+   * @throws Exception if test fails.
+   */
+  @Test
+  public void testConvertProtoSchema2ParquetMetadata() throws Exception {
+    ProtoSchemaConverter schemaConverter = new ProtoSchemaConverter();
+    MessageType parquetSchema = schemaConverter.convert(SchemaConverterAllDatatypes.class);
+    // Test if the converted schema respects the field id, index and name.
+    for (Descriptors.FieldDescriptor field : SchemaConverterAllDatatypes.getDescriptor().getFields()) {
+      checkFieldConversion(parquetSchema, field);
+    }
+
+    final WriteUsingMR writeParquet = new WriteUsingMR();
+    Path parquetPath = writeParquet.write(SchemaConverterAllDatatypes.getDefaultInstance());
+    FileStatus[] files = parquetPath.getFileSystem(writeParquet.getConfiguration()).listStatus(parquetPath);
+    int parquetFileCount = 0;
+    for (FileStatus file : files) {
+      if (file.getPath().getName().endsWith("parquet")) {
+        parquetFileCount ++;
+        ParquetFileReader parquetReader = ParquetFileReader.open(writeParquet.getConfiguration(), file.getPath());
+        MessageType outputSchema = parquetReader.getFooter().getFileMetaData().getSchema();
+        // Test if the output schema is same as the original one converted from protobuf descriptor, thus id is preserved.
+        assertEquals(outputSchema, parquetSchema);
+      }
+    }
+    // There will be only 1 file.
+    assertEquals(parquetFileCount, 1);
+  }
+
+  private static void checkFieldConversion(GroupType parquetSchema, Descriptors.FieldDescriptor field) {
+    Type schemaField = parquetSchema.getType(field.getIndex());
+    assertEquals(schemaField.getName(), field.getName());
+    assertEquals(schemaField.getId().getValue(), field.getNumber());
+    if (field.getJavaType() == JavaType.MESSAGE) {
+      for (Descriptors.FieldDescriptor subField : field.getMessageType().getFields()) {
+        checkFieldConversion((GroupType) schemaField, subField);
+      }
+    }
   }
 }
