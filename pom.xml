@@ -418,6 +418,7 @@
         </executions>
         <configuration>
           <excludes>
+            <exclude>**/_SUCCESS</exclude>
             <exclude>**/*.parquet</exclude>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.json</exclude>
