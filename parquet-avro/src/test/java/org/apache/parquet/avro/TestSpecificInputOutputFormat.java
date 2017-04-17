@@ -27,6 +27,8 @@ import static org.junit.Assert.fail;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
+
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -36,6 +38,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -125,6 +128,11 @@ public class TestSpecificInputOutputFormat {
     @Override
     public RecordFilter bind(Iterable<ColumnReader> readers) {
       return filter.bind(readers);
+    }
+
+    @Override
+    public void collectColumnPaths(Set<ColumnPath> columnPathSet) {
+      // do nothing
     }
   }
 
