@@ -111,7 +111,7 @@ public class ParquetFileReader implements Closeable {
 
   private final ParquetMetadataConverter converter;
   
-  private BytesDecryptor decryptor = new BytesDecryptor();
+  private BytesDecryptor decryptor;
   
   /**
    * for files provided, check if there's a summary file.
@@ -951,6 +951,9 @@ public class ParquetFileReader implements Closeable {
 	private BytesInput readData(PageHeader pageHeader, int dataSize) throws IOException {
 		if (pageHeader.getEncrypted_page_size() > 0) {
 			int encryptedPageSize = pageHeader.getEncrypted_page_size();
+			if(decryptor == null){
+				decryptor = new BytesDecryptor();
+			}
 			try {
 				return decryptor.decrypt(this.readAsBytesInput(encryptedPageSize));
 			} catch (CodecFailureException e) {
