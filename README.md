@@ -148,7 +148,7 @@ Parquet has a default security key associated with it, Also you can use Java Key
 
 #### How to use Java KeyStore,
 
-Generate a security key using the Keytool,
+Generate a security key using Keytool,
 ```
  keytool -genseckey -alias parquet -keyalg AES -keysize 128 -storetype jceks -keystore parquetkeystore.jks
 ```
