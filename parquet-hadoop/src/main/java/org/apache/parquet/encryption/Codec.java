@@ -1,5 +1,7 @@
 package org.apache.parquet.encryption;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 /* 
@@ -22,6 +24,7 @@ import java.io.InputStream;
  */
 import java.security.Key;
 import java.security.KeyStore;
+import java.util.Enumeration;
 import java.util.Properties;
 
 import javax.crypto.Cipher;
@@ -59,33 +62,49 @@ public abstract class Codec {
 	}
 
 	private Key getKey() throws IOException {
-		String keyStorePassword = "keystore.properties";
-		InputStream is = this.getClass().getClassLoader().getResourceAsStream(keyStorePassword);
+		String keyStoreProps = "keystore.properties";
+		InputStream is = this.getClass().getClassLoader().getResourceAsStream(keyStoreProps);
 		Properties props = new Properties();
 		props.load(is);
 		if (is != null) {
 			is.close();
 		}
 		String keyPass = props.getProperty("key-password");
-		if (keyPass == null || keyPass.isEmpty()) {
-			LOG.warn("No Key Password configured in file '" + keyStorePassword + "' for the property 'key-password'");
+		String jksFilePath = props.getProperty("jks-filepath");
+		if ((keyPass == null || keyPass.isEmpty()) || (jksFilePath == null || jksFilePath.isEmpty())) {
+			LOG.warn("Please check '" + keyStoreProps
+					+ "'; Required values for 'key-password' & 'jks-filepath'. Values follows,");
+			Enumeration<Object> em = props.keys();
+			while (em.hasMoreElements()) {
+				String key = (String) em.nextElement();
+				String value;
+				if (key.equals("key-password")) {
+					value = props.get(key).toString().isEmpty() ? "" : "******";
+				} else {
+					value = props.get(key).toString();
+				}
+				LOG.warn("{}={}", key, value);
+			}
 			return null;
 		}
 		Key key = null;
 		try {
-			key = getKeyFromJKS(keyPass);
+			key = getKeyFromJKS(keyPass, jksFilePath);
 		} catch (Exception e) {
 			LOG.warn("Key retrieval from JKS failed", e);
 		}
 		return key;
 	}
 
-	private Key getKeyFromJKS(String password) throws Exception {
+	private Key getKeyFromJKS(String password, String jksFilePath) throws Exception {
 		KeyStore keystore = KeyStore.getInstance("jceks");
 		String alias = "parquet";
-		InputStream resourceAsStream = this.getClass().getClassLoader().getResourceAsStream("parquetkeystore.jks");
+		InputStream is = new FileInputStream(new File(jksFilePath));
 		char[] passCharArray = password.toCharArray();
-		keystore.load(resourceAsStream, passCharArray);
+		keystore.load(is, passCharArray);
+		if (is != null) {
+			is.close();
+		}
 		Key key = keystore.getKey(alias, passCharArray);
 		return key;
 	}
@@ -100,7 +119,7 @@ public abstract class Codec {
 		if (key != null) {
 			return key;
 		} else {
-			LOG.warn("Falling back to default security key");
+			LOG.warn("Fallback to default key");
 			key = new SecretKeySpec(keyValue, ALGO);
 			return key;
 		}
