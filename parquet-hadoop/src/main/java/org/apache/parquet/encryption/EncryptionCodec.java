@@ -27,11 +27,13 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.ShortBufferException;
 
 import org.apache.parquet.bytes.BytesInput;
+import org.slf4j.LoggerFactory;
 
 public class EncryptionCodec extends Codec {
 
 	public EncryptionCodec() {
 		super(Cipher.ENCRYPT_MODE);
+		LOG = LoggerFactory.getLogger(EncryptionCodec.class);
 	}
 
 	public BytesInput encrypt(BytesInput compressedBytes) throws CodecFailureException {

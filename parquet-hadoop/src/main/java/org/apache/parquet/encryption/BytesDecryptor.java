@@ -26,9 +26,4 @@ public class BytesDecryptor {
 	public BytesInput decrypt(BytesInput compressedBytes) throws CodecFailureException {
 		return decryptionCodec.decrypt(compressedBytes);
 	}
-
-	@Deprecated
-	public BytesInput decrypt(BytesInput compressedBytes, int actualByteSize) throws CodecFailureException {
-		return decryptionCodec.decrypt(compressedBytes, actualByteSize);
-	}
 }

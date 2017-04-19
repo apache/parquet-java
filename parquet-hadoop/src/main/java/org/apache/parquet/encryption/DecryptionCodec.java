@@ -28,11 +28,13 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.ShortBufferException;
 
 import org.apache.parquet.bytes.BytesInput;
+import org.slf4j.LoggerFactory;
 
 public class DecryptionCodec extends Codec {
 
 	public DecryptionCodec() {
 		super(Cipher.DECRYPT_MODE);
+		LOG = LoggerFactory.getLogger(DecryptionCodec.class);
 	}
 
 	public BytesInput decrypt(BytesInput encryptedBytes) throws CodecFailureException {
@@ -48,16 +50,6 @@ public class DecryptionCodec extends Codec {
 			throws ShortBufferException, IllegalBlockSizeException, BadPaddingException, IOException {
 		int size = cipher.doFinal(encryptedBytes, outputByteBuff);
 		return BytesInput.from(outputByteBuff, 0, (int) size);
-	}
-
-	@Deprecated
-	public BytesInput decrypt(BytesInput encryptedBytes, int actualByteSize) throws CodecFailureException {
-		ByteBuffer outputByteBuff = ByteBuffer.allocate(actualByteSize);
-		try {
-			return decrypt(encryptedBytes.toByteBuffer(), outputByteBuff);
-		} catch (IllegalBlockSizeException | BadPaddingException | IOException | ShortBufferException e) {
-			throw new CodecFailureException("Decription Failed...", e);
-		}
 	}
 
 }

@@ -1,5 +1,7 @@
 package org.apache.parquet.encryption;
 
+import java.io.IOException;
+import java.io.InputStream;
 /* 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -19,9 +21,14 @@ package org.apache.parquet.encryption;
  * under the License.
  */
 import java.security.Key;
+import java.security.KeyStore;
+import java.util.Properties;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class Codec {
 
@@ -30,6 +37,7 @@ public abstract class Codec {
 			'K', 'e', 'y' };
 	private final int codecMode;
 	protected Cipher cipher;
+	protected Logger LOG = LoggerFactory.getLogger(Codec.class);
 
 	public Codec(int codecMode) {
 		super();
@@ -42,14 +50,60 @@ public abstract class Codec {
 	}
 
 	private void initialize() throws Exception {
-		Key key = generateKey();
+		Key key;
+		synchronized (Codec.class) {
+			key = generateKey();
+		}
 		cipher = Cipher.getInstance(ALGO);
 		cipher.init(codecMode, key);
 	}
 
-	private static Key generateKey() throws Exception {
-		Key key = new SecretKeySpec(keyValue, ALGO);
+	private Key getKey() throws IOException {
+		String keyStorePassword = "keystore.properties";
+		InputStream is = this.getClass().getClassLoader().getResourceAsStream(keyStorePassword);
+		Properties props = new Properties();
+		props.load(is);
+		if (is != null) {
+			is.close();
+		}
+		String keyPass = props.getProperty("key-password");
+		if (keyPass == null || keyPass.isEmpty()) {
+			LOG.warn("No Key Password configured in file '" + keyStorePassword + "' for the property 'key-password'");
+			return null;
+		}
+		Key key = null;
+		try {
+			key = getKeyFromJKS(keyPass);
+		} catch (Exception e) {
+			LOG.warn("Key retrieval from JKS failed", e);
+		}
 		return key;
+	}
+
+	private Key getKeyFromJKS(String password) throws Exception {
+		KeyStore keystore = KeyStore.getInstance("jceks");
+		String alias = "parquet";
+		InputStream resourceAsStream = this.getClass().getClassLoader().getResourceAsStream("parquetkeystore.jks");
+		char[] passCharArray = password.toCharArray();
+		keystore.load(resourceAsStream, passCharArray);
+		Key key = keystore.getKey(alias, passCharArray);
+		return key;
+	}
+
+	private Key generateKey() throws Exception {
+		Key key = null;
+		try {
+			key = getKey();
+		} catch (Exception e) {
+			LOG.warn("Key password retrieval failed for file 'keystore.properties'");
+		}
+		if (key != null) {
+			return key;
+		} else {
+			LOG.warn("Falling back to default security key");
+			key = new SecretKeySpec(keyValue, ALGO);
+			return key;
+		}
 
 	}
 }
