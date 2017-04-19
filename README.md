@@ -64,30 +64,6 @@ Once protobuf and thrift are available in your path, you can build the project b
 ```
 LC_ALL=C mvn clean install
 ```
-## Parquet Encryption
-
-Parquet Encryption supports columnar level access control.
-We can encrypt data at column level, It could selectively encrypt only a subset of columns.
-If you want a column to encrypt you should make that column name to start with 'encrypted_' (not case sensitive), thats all.
-
-### Encryption Key
-
-Parquet has a default security key associated with it else you can use Java KeyStore.
-
-#### How to use Java KeyStore,
-
-Generate a security key using the Keytool,
- keytool -genseckey -alias parquet -keyalg AES -keysize 128 -storetype jceks -keystore parquetkeystore.jks
- You should use the alias as 'parquet'. The algorithm used is AES and keysize is 128.
- Also while generating the key use same password for keystore and keypassword
-Now create a property file named 'keystore.properties' and add your password (keystore password created above) and the keystore location as follows,
-
-```
- key-password=<password>
- jks-filepath=/home/user/parquetkeystore.jks
-```
-
-Add the property file (keystore.properties) in classpath.
 
 ## Features
 
@@ -159,6 +135,33 @@ If the data was stored using Pig, things will "just work". If the data was store
 ## Hive integration
 
 Hive integration is provided via the [parquet-hive](https://github.com/apache/parquet-mr/tree/master/parquet-hive) sub-project.
+
+## Parquet Encryption
+
+Parquet Encryption supports columnar level access control.
+We can encrypt data at column level, It could selectively encrypt only a subset of columns.
+If you want a column to encrypt you should make that column name to start with 'encrypted_' (not case sensitive), thats all.
+
+### Encryption Key
+
+Parquet has a default security key associated with it, Also you can use Java KeyStore.
+
+#### How to use Java KeyStore,
+
+Generate a security key using the Keytool,
+```
+ keytool -genseckey -alias parquet -keyalg AES -keysize 128 -storetype jceks -keystore parquetkeystore.jks
+```
+ You should use the alias as 'parquet'. The algorithm used is AES and keysize is 128.
+ Also while generating the key use same password for keystore and keypassword
+Now create a property file named 'keystore.properties' and add your password (keystore password created above) and the keystore location as follows,
+
+```
+ key-password=<password>
+ jks-filepath=/home/user/parquetkeystore.jks
+```
+
+Add the property file (keystore.properties) in classpath.
 
 ## Build
 
