@@ -103,10 +103,12 @@ public class ProtoSchemaConverterTest {
         "  optional binary optionalEnum (ENUM) = 18;" +
         "  optional int32 someInt32 = 19;" +
         "  optional binary someString (UTF8) = 20;" +
-        "  repeated group optionalMap = 21 {\n" +
-        "    optional int64 key = 1;\n" +
-        "    optional group value = 2 {\n" +
-        "      optional int32 someId = 3;\n" +
+        "  required group optionalMap (MAP) = 21 {\n" +
+        "    repeated group key_value {\n" +
+        "      required int64 key;\n" +
+        "      optional group value {\n" +
+        "        optional int32 someId = 3;\n" +
+        "      }\n" +
         "    }\n" +
         "  }\n" +
         "}";
@@ -120,16 +122,22 @@ public class ProtoSchemaConverterTest {
       "message TestProtobuf.SchemaConverterRepetition {\n" +
         "  optional int32 optionalPrimitive = 1;\n" +
         "  required int32 requiredPrimitive = 2;\n" +
-        "  repeated int32 repeatedPrimitive = 3;\n" +
+        "  required group repeatedPrimitive (LIST) = 3 {\n" +
+        "    repeated group list {\n" +
+        "      required int32 element;\n" +
+        "    }\n" +
+        "  }\n" +
         "  optional group optionalMessage = 7 {\n" +
         "    optional int32 someId = 3;\n" +
         "  }\n" +
-        "  required group requiredMessage = 8 {" +
+        "  required group requiredMessage = 8 {\n" +
         "    optional int32 someId= 3;\n" +
         "  }\n" +
-        "  repeated group repeatedMessage = 9 {" +
-        "    optional int32 someId = 3;\n" +
-        "  }\n" +
+        "  required group repeatedMessage (LIST) = 9 {\n" +
+        "    repeated group list {\n" +
+        "      optional int32 someId = 3;\n" +
+        "    }\n" +
+        "  }" +
         "}";
 
     testConversion(TestProtobuf.SchemaConverterRepetition.class, expectedSchema);
@@ -140,12 +148,18 @@ public class ProtoSchemaConverterTest {
     String expectedSchema =
       "message TestProto3.SchemaConverterRepetition {\n" +
         "  optional int32 optionalPrimitive = 1;\n" +
-        "  repeated int32 repeatedPrimitive = 3;\n" +
+        "  required group repeatedPrimitive (LIST) = 3 {\n" +
+        "    repeated group list {\n" +
+        "      required int32 element;\n" +
+        "    }\n" +
+        "  }\n" +
         "  optional group optionalMessage = 7 {\n" +
         "    optional int32 someId = 3;\n" +
         "  }\n" +
-        "  repeated group repeatedMessage = 9 {" +
-        "    optional int32 someId = 3;\n" +
+        "  required group repeatedMessage (LIST) = 9 {\n" +
+        "    repeated group list {\n" +
+        "      optional int32 someId = 3;\n" +
+        "    }\n" +
         "  }\n" +
         "}";
 

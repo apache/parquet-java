@@ -21,6 +21,7 @@ package org.apache.parquet.proto;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
+import com.google.protobuf.MapEntry;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.TextFormat;
@@ -34,11 +35,13 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Array;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -162,7 +165,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         Type type = schema.getType(name);
         FieldWriter writer = createWriter(fieldDescriptor, type);
 
-        if(fieldDescriptor.isRepeated()) {
+        if(fieldDescriptor.isRepeated() && !fieldDescriptor.isMapField()) {
          writer = new ArrayWriter(writer);
         }
 
@@ -177,7 +180,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
       switch (fieldDescriptor.getJavaType()) {
         case STRING: return new StringWriter() ;
-        case MESSAGE: return new MessageWriter(fieldDescriptor.getMessageType(), type.asGroupType());
+        case MESSAGE: return createMessageWriter(fieldDescriptor, type);
         case INT: return new IntWriter();
         case LONG: return new LongWriter();
         case FLOAT: return new FloatWriter();
@@ -190,6 +193,47 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       return unknownType(fieldDescriptor);//should not be executed, always throws exception.
     }
 
+    private FieldWriter createMessageWriter(Descriptors.FieldDescriptor fieldDescriptor, Type type) {
+      if (fieldDescriptor.isMapField()) {
+        return createMapWriter(fieldDescriptor, type);
+      }
+
+      return new MessageWriter(fieldDescriptor.getMessageType(), getGroupType(type));
+    }
+
+    private GroupType getGroupType(Type type) {
+      if (type.getOriginalType() == OriginalType.LIST) {
+        return type.asGroupType().getType("list").asGroupType();
+      }
+
+      if (type.getOriginalType() == OriginalType.MAP) {
+        return type.asGroupType().getType("key_value").asGroupType().getType("value").asGroupType();
+      }
+
+      return type.asGroupType();
+    }
+
+    private MapWriter createMapWriter(Descriptors.FieldDescriptor fieldDescriptor, Type type) {
+      List<Descriptors.FieldDescriptor> fields = fieldDescriptor.getMessageType().getFields();
+      if (fields.size() != 2) {
+        throw new UnsupportedOperationException("Expected two fields for the map (key/value), but got: " + fields);
+      }
+
+      // KeyFieldWriter
+      Descriptors.FieldDescriptor keyProtoField = fields.get(0);
+      FieldWriter keyWriter = createWriter(keyProtoField, type);
+      keyWriter.setFieldName(keyProtoField.getName());
+      keyWriter.setIndex(0);
+
+      // ValueFieldWriter
+      Descriptors.FieldDescriptor valueProtoField = fields.get(1);
+      FieldWriter valueWriter = createWriter(valueProtoField, type);
+      valueWriter.setFieldName(valueProtoField.getName());
+      valueWriter.setIndex(1);
+
+      return new MapWriter(keyWriter, valueWriter);
+    }
+
     /** Writes top level message. It cannot call startGroup() */
     void writeTopLevelMessage(Object value) {
       writeAllFields((MessageOrBuilder) value);
@@ -198,9 +242,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     /** Writes message as part of repeated field. It cannot start field*/
     @Override
     final void writeRawValue(Object value) {
-      recordConsumer.startGroup();
       writeAllFields((MessageOrBuilder) value);
-      recordConsumer.endGroup();
     }
 
     /** Used for writing nonrepeated (optional, required) fields*/
@@ -247,14 +289,30 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     @Override
     final void writeField(Object value) {
       recordConsumer.startField(fieldName, index);
+      recordConsumer.startGroup();
       List<?> list = (List<?>) value;
 
+      recordConsumer.startField("list", 0); // This is the wrapper group for the array field
       for (Object listEntry: list) {
+        recordConsumer.startGroup();
+        if (isPrimitive(listEntry)) {
+          recordConsumer.startField("element", 0);
+        }
         fieldWriter.writeRawValue(listEntry);
+        if (isPrimitive(listEntry)) {
+          recordConsumer.endField("element", 0);
+        }
+        recordConsumer.endGroup();
       }
+      recordConsumer.endField("list", 0);
 
+      recordConsumer.endGroup();
       recordConsumer.endField(fieldName, index);
     }
+  }
+
+  private boolean isPrimitive(Object listEntry) {
+    return !(listEntry instanceof Message);
   }
 
   /** validates mapping between protobuffer fields and parquet fields.*/
@@ -293,6 +351,35 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     @Override
     final void writeRawValue(Object value) {
       recordConsumer.addLong((Long) value);
+    }
+  }
+
+  class MapWriter extends FieldWriter {
+
+    private final FieldWriter keyWriter;
+    private final FieldWriter valueWriter;
+
+    public MapWriter(FieldWriter keyWriter, FieldWriter valueWriter) {
+      super();
+      this.keyWriter = keyWriter;
+      this.valueWriter = valueWriter;
+    }
+
+    @Override
+    final void writeRawValue(Object value) {
+      recordConsumer.startGroup();
+
+      recordConsumer.startField("key_value", 0); // This is the wrapper group for the map field
+      for(MapEntry<?, ?> entry : (Collection<MapEntry<?, ?>>) value) {
+        recordConsumer.startGroup();
+        keyWriter.writeField(entry.getKey());
+        valueWriter.writeField(entry.getValue());
+        recordConsumer.endGroup();
+      }
+
+      recordConsumer.endField("key_value", 0);
+
+      recordConsumer.endGroup();
     }
   }
 
