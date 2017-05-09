@@ -191,13 +191,29 @@ public enum Encoding {
    * Suffixes are stored as delta length byte arrays.
    */
   DELTA_BYTE_ARRAY {
+    private DeltaByteArrayReader previous;
+
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor,
         ValuesType valuesType) {
       if (descriptor.getType() != BINARY && descriptor.getType() != FIXED_LEN_BYTE_ARRAY) {
         throw new ParquetDecodingException("Encoding DELTA_BYTE_ARRAY is only supported for type BINARY and FIXED_LEN_BYTE_ARRAY");
       }
-      return new DeltaByteArrayReader();
+
+      DeltaByteArrayReader current = new DeltaByteArrayReader();
+
+      //A bug was found on PARQUET-246 where DeltaByteArrayWriter was not cleaning the previous binary
+      //value before starting a new page reader, causing that the first value of the page being encoded uses
+      //a prefix value from the last page. This issue was fixed by resetting the previous binary value
+      //when writing data to a new page.
+      //However, buggy files were written with this issue. This line passes the previous binary
+      //value of the last page reader to the new page reader so that data can be recovered.
+      if (previous != null) {
+        current.setPreviousBinary(previous.getPreviousBinary());
+      }
+
+      previous = current;
+      return current;
     }
   },
 

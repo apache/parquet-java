@@ -45,12 +45,20 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
     this.previous = Binary.fromConstantByteArray(new byte[0]);
   }
 
+  public void setPreviousBinary(Binary previous) {
+    this.previous = previous;
+  }
+
+  public Binary getPreviousBinary() {
+    return previous;
+  }
+
   @Override
   public void initFromPage(int valueCount, ByteBuffer page, int offset)
       throws IOException {
     prefixLengthReader.initFromPage(valueCount, page, offset);
     int next = prefixLengthReader.getNextOffset();
-    suffixReader.initFromPage(valueCount, page, next);	
+    suffixReader.initFromPage(valueCount, page, next);
   }
   
   @Override
