@@ -548,14 +548,10 @@ public class TupleConverter extends GroupConverter {
 
     @Override
     final public void addBinary(Binary value) {
-      if (primitiveType != null) {
-        int precision = primitiveType.asPrimitiveType().getDecimalMetadata().getPrecision();
-        int scale = primitiveType.asPrimitiveType().getDecimalMetadata().getScale();
-        BigDecimal finaldecimal = DecimalUtils.binaryToDecimal(value, precision, scale);
-        parent.add(finaldecimal);
-      } else {
-        parent.add("Broken DecimalType");
-      }
+      int precision = primitiveType.asPrimitiveType().getDecimalMetadata().getPrecision();
+      int scale = primitiveType.asPrimitiveType().getDecimalMetadata().getScale();
+      BigDecimal finaldecimal = DecimalUtils.binaryToDecimal(value, precision, scale);
+      parent.add(finaldecimal);
     }
   }
 
