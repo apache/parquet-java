@@ -28,7 +28,7 @@ import org.apache.parquet.io.api.Binary;
 
 /*
  * Conversion between Parquet Decimal Type to Java BigDecimal in Pig
- * Code Based on the Apache Spark ParquetRowConverter.java
+ * Code Based on the Apache Spark ParquetRowConverter.scala
  * 
  *
  */
@@ -36,6 +36,10 @@ import org.apache.parquet.io.api.Binary;
 public class DecimalUtils {
 
   public static BigDecimal binaryToDecimal(Binary value, int precision, int scale) {
+    /*
+     * Precision <= 18 checks for the max number of digits for an unscaled long,
+     * else treat with big integer conversion
+     */
     if (precision <= 18) {
       ByteBuffer buffer = value.toByteBuffer();
       byte[] bytes = buffer.array();
