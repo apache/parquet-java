@@ -471,7 +471,7 @@ public class ParquetFileReader implements Closeable {
     LOG.debug("File length {}", fileLen);
     int FOOTER_LENGTH_SIZE = 4;
     if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
-      throw new RuntimeException(filePath + " is not a Parquet file (too small)");
+      throw new RuntimeException(filePath + " is not a Parquet file (too small length: " + fileLen + ")");
     }
     long footerLengthIndex = fileLen - FOOTER_LENGTH_SIZE - MAGIC.length;
     LOG.debug("reading footer index at {}", footerLengthIndex);
@@ -486,7 +486,7 @@ public class ParquetFileReader implements Closeable {
     long footerIndex = footerLengthIndex - footerLength;
     LOG.debug("read footer length: {}, footer index: {}", footerLength, footerIndex);
     if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
-      throw new RuntimeException("corrupted file: the footer index is not within the file");
+      throw new RuntimeException("corrupted file: the footer index is not within the file: " + footerIndex);
     }
     f.seek(footerIndex);
     return converter.readParquetMetadata(f, filter);
