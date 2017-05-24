@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,6 +26,7 @@ import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.TextFormat;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.InvalidRecordException;
@@ -118,6 +119,10 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     Map<String, String> extraMetaData = new HashMap<String, String>();
     extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
+    // By default, we will persist field id in the parquet schema metadata.
+    // This can be turned off by explicitly set the flag to false in the configuration.
+    extraMetaData.put(ParquetMetadataConverter.PARQUET_SCHEMA_FIELD_WITH_ID,
+      String.valueOf(configuration.getBoolean(ParquetMetadataConverter.PARQUET_SCHEMA_FIELD_WITH_ID, true)));
     return new WriteContext(rootSchema, extraMetaData);
   }
 

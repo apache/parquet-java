@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -44,6 +44,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Version;
@@ -61,6 +62,7 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.InvalidSchemaException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -100,23 +102,55 @@ public class TestParquetMetadataConverter {
   @Test
   public void testSchemaConverter() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(Paper.schema);
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(mockHadoopFileMetaData(Paper.schema, false));
     MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema);
     assertEquals(Paper.schema, schema);
   }
 
   @Test
+  public void testSchemaWithFieldId() {
+    final ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    final MessageType schema = Types.buildMessage()
+      .required(PrimitiveTypeName.BINARY)
+      .as(OriginalType.UTF8)
+      .id(1)
+      .named("stringField")
+      .optional(PrimitiveTypeName.INT32)
+      .as(OriginalType.INT_32)
+      .id(2)
+      .named("intField")
+      .named("Message");
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(mockHadoopFileMetaData(schema, true));
+    assertEquals(schema, parquetMetadataConverter.fromParquetSchema(parquetSchema));
+  }
+
+  @Test(expected = InvalidSchemaException.class)
+  public void testSchemaExpectingFieldId() {
+    final ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    final MessageType messageType = Types.buildMessage()
+      .required(PrimitiveTypeName.BINARY)
+      .as(OriginalType.UTF8)
+      .named("stringField")
+      .optional(PrimitiveTypeName.INT32)
+      .as(OriginalType.INT_32)
+      .named("intField")
+      .named("Message");
+    parquetMetadataConverter.toParquetSchema(mockHadoopFileMetaData(messageType, true));
+  }
+
+  @Test
   public void testSchemaConverterDecimal() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    final MessageType messageType = Types.buildMessage()
+      .required(PrimitiveTypeName.BINARY)
+      .as(OriginalType.DECIMAL).precision(9).scale(2)
+      .named("aBinaryDecimal")
+      .optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(4)
+      .as(OriginalType.DECIMAL).precision(9).scale(2)
+      .named("aFixedDecimal")
+      .named("Message");
     List<SchemaElement> schemaElements = parquetMetadataConverter.toParquetSchema(
-        Types.buildMessage()
-            .required(PrimitiveTypeName.BINARY)
-                .as(OriginalType.DECIMAL).precision(9).scale(2)
-                .named("aBinaryDecimal")
-            .optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(4)
-                .as(OriginalType.DECIMAL).precision(9).scale(2)
-                .named("aFixedDecimal")
-            .named("Message")
+      mockHadoopFileMetaData(messageType, false)
     );
     List<SchemaElement> expected = Lists.newArrayList(
         new SchemaElement("Message").setNum_children(2),
@@ -162,6 +196,12 @@ public class TestParquetMetadataConverter {
     for (ConvertedType converted : ConvertedType.values()) {
       assertEquals(converted, parquetMetadataConverter.getConvertedType(parquetMetadataConverter.getOriginalType(converted)));
     }
+  }
+
+  private org.apache.parquet.hadoop.metadata.FileMetaData mockHadoopFileMetaData(MessageType messageType, boolean withId) {
+    return new org.apache.parquet.hadoop.metadata.FileMetaData(messageType,
+      withId ? ImmutableMap.of(ParquetMetadataConverter.PARQUET_SCHEMA_FIELD_WITH_ID, "true") : Collections.<String, String>emptyMap(),
+      null);
   }
 
   private FileMetaData metadata(long... sizes) {
@@ -330,7 +370,7 @@ public class TestParquetMetadataConverter {
             0, 0, 0, 0, 0);
     return md;
   }
-  
+
   @Test
   public void testEncodingsCache() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();

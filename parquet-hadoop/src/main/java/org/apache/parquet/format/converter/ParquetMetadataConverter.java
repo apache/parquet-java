@@ -36,6 +36,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.format.PageEncodingStats;
@@ -62,14 +63,9 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
-import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.*;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
-import org.apache.parquet.schema.TypeVisitor;
-import org.apache.parquet.schema.Types;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +76,7 @@ public class ParquetMetadataConverter {
   public static final MetadataFilter NO_FILTER = new NoFilter();
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
+  public static final String PARQUET_SCHEMA_FIELD_WITH_ID = "parquet.schema.field.with.id";
 
   private static final Logger LOG = LoggerFactory.getLogger(ParquetMetadataConverter.class);
 
@@ -115,7 +112,7 @@ public class ParquetMetadataConverter {
     }
     FileMetaData fileMetaData = new FileMetaData(
         currentVersion,
-        toParquetSchema(parquetMetadata.getFileMetaData().getSchema()),
+        toParquetSchema(parquetMetadata.getFileMetaData()),
         numRows,
         rowGroups);
 
@@ -129,17 +126,18 @@ public class ParquetMetadataConverter {
   }
 
   // Visible for testing
-  List<SchemaElement> toParquetSchema(MessageType schema) {
+  List<SchemaElement> toParquetSchema(org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData) {
     List<SchemaElement> result = new ArrayList<SchemaElement>();
-    addToList(result, schema);
+    String withId = fileMetaData.getKeyValueMetaData().get(PARQUET_SCHEMA_FIELD_WITH_ID);
+    addToList(result, fileMetaData.getSchema(), !StringUtils.isBlank(withId) && Boolean.valueOf(withId));
     return result;
   }
 
-  private void addToList(final List<SchemaElement> result, org.apache.parquet.schema.Type field) {
+  private void addToList(final List<SchemaElement> result, final org.apache.parquet.schema.Type field, final boolean withId) {
     field.accept(new TypeVisitor() {
       @Override
       public void visit(PrimitiveType primitiveType) {
-        SchemaElement element = schemaElementfromType(primitiveType);
+        SchemaElement element = schemaElementfromField(primitiveType, withId);
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         if (primitiveType.getOriginalType() != null) {
@@ -157,13 +155,13 @@ public class ParquetMetadataConverter {
 
       @Override
       public void visit(MessageType messageType) {
-        SchemaElement element = schemaElementfromType(messageType);
+        SchemaElement element = new SchemaElement(messageType.getName());
         visitChildren(result, messageType.asGroupType(), element);
       }
 
       @Override
       public void visit(GroupType groupType) {
-        SchemaElement element = schemaElementfromType(groupType);
+        SchemaElement element = schemaElementfromField(groupType, withId);
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getOriginalType() != null) {
           element.setConverted_type(getConvertedType(groupType.getOriginalType()));
@@ -176,7 +174,7 @@ public class ParquetMetadataConverter {
         element.setNum_children(groupType.getFieldCount());
         result.add(element);
         for (org.apache.parquet.schema.Type field : groupType.getFields()) {
-          addToList(result, field);
+          addToList(result, field, withId);
         }
       }
     });
@@ -189,9 +187,12 @@ public class ParquetMetadataConverter {
    * @param field a field of the parquet schema
    * @return SchemaElement
    */
-  private static SchemaElement schemaElementfromType(org.apache.parquet.schema.Type field) {
+  private static SchemaElement schemaElementfromField(org.apache.parquet.schema.Type field, boolean withId) {
     SchemaElement element = new SchemaElement(field.getName());
-    if (field.getId() != null) {
+    if (withId) {
+      if (field.getId() == null) {
+        throw new InvalidSchemaException("Field id is required, but not found in " + field.toString());
+      }
       element.setField_id(field.getId().intValue());
     }
     return element;

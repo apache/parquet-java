@@ -22,7 +22,9 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
@@ -51,15 +53,15 @@ class ProtoMessageConverter extends GroupConverter {
   private final Converter[] converters;
   private final ParentValueContainer parent;
   private final Message.Builder myBuilder;
+  private final boolean readFieldById;
 
   // used in record converter
-  ProtoMessageConverter(ParentValueContainer pvc, Class<? extends Message> protoClass, GroupType parquetSchema) {
-    this(pvc, Protobufs.getMessageBuilder(protoClass), parquetSchema);
+  ProtoMessageConverter(ParentValueContainer pvc, Class<? extends Message> protoClass, GroupType parquetSchema, boolean readFieldById) {
+    this(pvc, Protobufs.getMessageBuilder(protoClass), parquetSchema, readFieldById);
   }
 
-
   // For usage in message arrays
-  ProtoMessageConverter(ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema) {
+  ProtoMessageConverter(ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema, boolean readFieldById) {
 
     int schemaSize = parquetSchema.getFieldCount();
     converters = new Converter[schemaSize];
@@ -72,12 +74,12 @@ class ProtoMessageConverter extends GroupConverter {
     }
 
     myBuilder = builder;
+    this.readFieldById = readFieldById;
 
     Descriptors.Descriptor protoDescriptor = builder.getDescriptorForType();
-
     for (Type parquetField : parquetSchema.getFields()) {
-      // Find field by id, fall back to find field by name if no id found (legacy schema).
-      Descriptors.FieldDescriptor protoField = parquetField.getId() == null ?
+      // Find field by id, fall back to find field by name if either flag is set to false explicitly or no id found (legacy schema).
+      Descriptors.FieldDescriptor protoField = !readFieldById || (parquetField.getId() == null) ?
                                                 protoDescriptor.findFieldByName(parquetField.getName()) :
                                                 protoDescriptor.findFieldByNumber(parquetField.getId().intValue());
 
@@ -151,7 +153,7 @@ class ProtoMessageConverter extends GroupConverter {
       case LONG: return new ProtoLongConverter(pvc);
       case MESSAGE: {
         Message.Builder subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
-        return new ProtoMessageConverter(pvc, subBuilder, parquetType.asGroupType());
+        return new ProtoMessageConverter(pvc, subBuilder, parquetType.asGroupType(), readFieldById);
       }
     }
 
