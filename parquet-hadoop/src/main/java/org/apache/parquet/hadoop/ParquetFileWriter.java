@@ -693,19 +693,28 @@ public class ParquetFileWriter {
    */
   @Deprecated
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
-    writeMetadataFile(configuration, outputPath, footers, JobSummaryLevel.ALL);
+    writeMetadataFile(configuration, outputPath, outputPath, footers, JobSummaryLevel.ALL);
   }
 
   /**
    * writes _common_metadata file, and optionally a _metadata file depending on the {@link JobSummaryLevel} provided
    */
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers, JobSummaryLevel level) throws IOException {
+    writeMetadataFile(configuration, outputPath, outputPath, footers, level);
+  }
+
+  /**
+   * writes _common_metadata file, and optionally a _metadata file depending on the {@link JobSummaryLevel} provided.
+   * Allows to distinguish between metadata output path and directories in metadata footers
+   */
+  public static void writeMetadataFile(Configuration configuration, Path outputPath, Path footerRootPath, List<Footer> footers, JobSummaryLevel level) throws IOException {
     Preconditions.checkArgument(level == JobSummaryLevel.ALL || level == JobSummaryLevel.COMMON_ONLY,
         "Unsupported level: " + level);
 
     FileSystem fs = outputPath.getFileSystem(configuration);
     outputPath = outputPath.makeQualified(fs);
-    ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);
+    footerRootPath = footerRootPath.makeQualified(fs);
+    ParquetMetadata metadataFooter = mergeFooters(footerRootPath, footers);
 
     if (level == JobSummaryLevel.ALL) {
       writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_METADATA_FILE);
