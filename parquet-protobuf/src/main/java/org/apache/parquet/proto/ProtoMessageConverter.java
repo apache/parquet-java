@@ -18,11 +18,12 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.io.InvalidRecordException;
@@ -32,7 +33,11 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
+import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.Type;
+import org.omg.CORBA.DynAnyPackage.Invalid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -49,10 +54,11 @@ import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
  * @author Lukas Nalezenec
  */
 class ProtoMessageConverter extends GroupConverter {
+  private static final Logger LOG = LoggerFactory.getLogger(ProtoMessageConverter.class);
 
   private final Converter[] converters;
   private final ParentValueContainer parent;
-  private final Message.Builder myBuilder;
+  private final Message.Builder messageBuilder;
   private final boolean readFieldById;
 
   // used in record converter
@@ -62,39 +68,19 @@ class ProtoMessageConverter extends GroupConverter {
 
   // For usage in message arrays
   ProtoMessageConverter(ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema, boolean readFieldById) {
-
-    int schemaSize = parquetSchema.getFieldCount();
-    converters = new Converter[schemaSize];
-
-    this.parent = pvc;
-    int parquetFieldIndex = 1;
-
     if (pvc == null) {
       throw new IllegalStateException("Missing parent value container");
     }
-
-    myBuilder = builder;
+    this.parent = pvc;
     this.readFieldById = readFieldById;
-
-    Descriptors.Descriptor protoDescriptor = builder.getDescriptorForType();
-    for (Type parquetField : parquetSchema.getFields()) {
-      // Find field by id, fall back to find field by name if either flag is set to false explicitly or no id found (legacy schema).
-      Descriptors.FieldDescriptor protoField = !readFieldById || (parquetField.getId() == null) ?
-                                                protoDescriptor.findFieldByName(parquetField.getName()) :
-                                                protoDescriptor.findFieldByNumber(parquetField.getId().intValue());
-
-      if (protoField == null) {
-        String description = "Scheme mismatch \n\"" + parquetField + "\"" +
-                "\n proto descriptor:\n" + protoDescriptor.toProto();
-        throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
-      }
-
-      converters[parquetFieldIndex - 1] = newMessageConverter(myBuilder, protoField, parquetField);
-
-      parquetFieldIndex++;
-    }
+    this.messageBuilder = builder;
+    this.converters = Lists.transform(parquetSchema.getFields(), convertField())
+      .toArray(new Converter[parquetSchema.getFieldCount()]);
   }
 
+  private Function<? super Type,?> convertField() {
+    return readFieldById ? new ConvertFieldById() : new ConvertFieldByName();
+  }
 
   @Override
   public Converter getConverter(int fieldIndex) {
@@ -108,8 +94,8 @@ class ProtoMessageConverter extends GroupConverter {
 
   @Override
   public void end() {
-    parent.add(myBuilder.build());
-    myBuilder.clear();
+    parent.add(messageBuilder.build());
+    messageBuilder.clear();
   }
 
   private Converter newMessageConverter(final Message.Builder parentBuilder, final Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
@@ -162,7 +148,7 @@ class ProtoMessageConverter extends GroupConverter {
   }
 
   public Message.Builder getBuilder() {
-    return myBuilder;
+    return messageBuilder;
   }
 
   static abstract class ParentValueContainer {
@@ -349,5 +335,47 @@ class ProtoMessageConverter extends GroupConverter {
       parent.add(str);
     }
 
+  }
+
+  /**
+   * Map parquet and protobuf schema by field names, error if no field found, this is the old behavior.
+   */
+  private final class ConvertFieldByName implements Function<Type, Converter> {
+
+    @Override
+    public Converter apply(Type parquetField) {
+      Descriptors.FieldDescriptor protoField = messageBuilder.getDescriptorForType().findFieldByName(parquetField.getName());
+      if (protoField == null) {
+        String description = "Scheme mismatch \n\"" + parquetField + "\"" +
+                "\n proto descriptor:\n" + messageBuilder.getDescriptorForType().toProto();
+        throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
+      }
+
+      return newMessageConverter(messageBuilder, protoField, parquetField);
+    }
+  }
+
+  /**
+   * Map parquet and protobuf schema by field id, if no field found, treat it as unknown field (for the moment, just
+   * ignore the field).
+   */
+  private final class ConvertFieldById implements Function<Type, Converter> {
+
+    @Override
+    public Converter apply(Type parquetField) {
+      final Type.ID parquetFieldId = parquetField.getId();
+      if (parquetFieldId == null) {
+        throw new InvalidSchemaException("Schema should have field id, but field <" + parquetField.toString()
+          + "> has no id. Need to disable the flag " + ParquetMetadataConverter.PARQUET_SCHEMA_FIELD_WITH_ID
+          + " in configuration to read it.");
+      }
+      Descriptors.FieldDescriptor protoField = messageBuilder.getDescriptorForType().findFieldByNumber(parquetFieldId.intValue());
+      if (protoField == null) {
+        LOG.warn("Cannot find corresponding field in protobuf schema for: " + parquetField.toString());
+        return parquetField.isPrimitive() ? UnknownFieldIgnorePrimitiveConverter.INSTANCE
+          : new UnknownFieldIgnoreGroupConverter(parquetField.asGroupType());
+      }
+      return newMessageConverter(messageBuilder, protoField, parquetField);
+    }
   }
 }

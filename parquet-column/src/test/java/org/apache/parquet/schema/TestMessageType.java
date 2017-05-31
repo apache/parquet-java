@@ -18,16 +18,17 @@
  */
 package org.apache.parquet.schema;
 
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.OriginalType.LIST;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
+import org.apache.parquet.io.InvalidRecordException;
 import org.junit.Test;
 
 import org.apache.parquet.example.Paper;
@@ -199,5 +200,67 @@ public class TestMessageType {
     MessageType schema2 = MessageTypeParser.parseMessageType(schema.toString());
     assertEquals(schema, schema2);
     assertEquals(schema.toString(), schema2.toString());
+  }
+
+  @Test
+  public void testDecorateProjectionSchema() {
+    MessageType schema = new MessageType("Document",
+      new PrimitiveType(REQUIRED, INT64, "DocId").withId(1),
+      new GroupType(OPTIONAL, "Links",
+        new PrimitiveType(REPEATED, INT64, "Backward").withId(1),
+        new PrimitiveType(REPEATED, INT64, "Forward").withId(2)
+      ).withId(2),
+      new GroupType(REPEATED, "Name",
+        new GroupType(REPEATED, "Language",
+          new PrimitiveType(REQUIRED, BINARY, "Code").withId(1),
+          new PrimitiveType(OPTIONAL, BINARY, "Country").withId(2))
+          .withId(1),
+        new PrimitiveType(OPTIONAL, BINARY, "Url").withId(2))
+        .withId(3));
+
+    MessageType projection = new MessageType("Document",
+      new PrimitiveType(REQUIRED, INT64, "DocId"),
+      new GroupType(REPEATED, "Name",
+        new GroupType(REPEATED, "Language",
+          new PrimitiveType(OPTIONAL, BINARY, "Country"))));
+
+    MessageType projectionWithId = schema.checkSubTypeAndDecorateWithId(projection);
+    projection.checkContains(projectionWithId);
+    projectionWithId.checkContains(projection);
+    assertFieldIdNotNull(projectionWithId);
+  }
+
+  @Test(expected = InvalidRecordException.class)
+  public void testCheckProjectionSchema() {
+    MessageType schema = new MessageType("Document",
+      new PrimitiveType(REQUIRED, INT64, "DocId").withId(1),
+      new GroupType(OPTIONAL, "Links",
+        new PrimitiveType(REPEATED, INT64, "Backward").withId(1),
+        new PrimitiveType(REPEATED, INT64, "Forward").withId(2)
+      ).withId(2),
+      new GroupType(REPEATED, "Name",
+        new GroupType(REPEATED, "Language",
+          new PrimitiveType(REQUIRED, BINARY, "Code").withId(1),
+          new PrimitiveType(OPTIONAL, BINARY, "Country").withId(2))
+          .withId(1),
+        new PrimitiveType(OPTIONAL, BINARY, "Url").withId(2))
+        .withId(3));
+
+    MessageType projection = new MessageType("Document",
+      new PrimitiveType(REQUIRED, INT64, "DocId"),
+      new GroupType(REPEATED, "Name",
+        new GroupType(REQUIRED, "Language", // repetition wrong
+          new PrimitiveType(OPTIONAL, BINARY, "Country"))));
+
+    schema.checkSubTypeAndDecorateWithId(projection);
+  }
+
+  private void assertFieldIdNotNull(GroupType projectionWithId) {
+    for (Type field : projectionWithId.getFields()) {
+      assertTrue(field.getId() != null);
+      if (!field.isPrimitive()) {
+        assertFieldIdNotNull(field.asGroupType());
+      }
+    }
   }
 }

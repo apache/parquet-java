@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -41,14 +41,14 @@ public final class MessageType extends GroupType {
     super(Repetition.REPEATED, name, fields);
   }
 
- /**
-  *
-  * @param name the name of the type
-  * @param fields the fields contained by this message
-  */
- public MessageType(String name, List<Type> fields) {
-   super(Repetition.REPEATED, name, fields);
- }
+  /**
+    *
+    * @param name the name of the type
+    * @param fields the fields contained by this message
+    */
+  public MessageType(String name, List<Type> fields) {
+    super(Repetition.REPEATED, name, fields);
+  }
 
   /**
    * {@inheritDoc}
@@ -145,4 +145,15 @@ public final class MessageType extends GroupType {
     return new MessageType(this.getName(), mergeFields(toMerge, strict));
   }
 
+  /**
+   * Check projection schema is subschema of this and append field id to projection if this contains field id.
+   * This is because we often just don't put field id for projection schema, but that is necessary when trying to read fields by id.
+   *
+   * @param projection
+   * @return Projection schema with field id.
+   * @throws InvalidRecordException if check fails.
+   */
+  public MessageType checkSubTypeAndDecorateWithId(MessageType projection) {
+    return checkSubTypeAndDecorateWithFieldId(projection, Types.buildMessage());
+  }
 }

@@ -19,6 +19,7 @@
 package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
@@ -191,6 +192,43 @@ public class ProtoInputOutputFormatTest {
     String stringValue;
     stringValue = ((TestProto3.SecondCustomClassMessage) msg).getString();
     assertEquals("writtenString", stringValue);
+  }
+
+  /**
+   * Write data with {@link org.apache.parquet.proto.test.TestProto3.SchemaConverterAllDatatypes}, and read back with
+   * {@link org.apache.parquet.proto.test.TestProto3.SchemaConverterAllDatatypesEvolved}, to emulate the evolution of
+   * protobuf schema during the time.
+   *
+   * @throws Exception if test error.
+   */
+  @Test
+  public void testReadProto3WithEvolvedSchema() throws Exception {
+    TestProto3.SchemaConverterSimpleMessage innerMessage = TestProto3.SchemaConverterSimpleMessage.newBuilder()
+      .setSomeId(100)
+      .setName("some name")
+      .build();
+    TestProto3.SchemaConverterAllDatatypes data = TestProto3.SchemaConverterAllDatatypes.newBuilder()
+      .setOptionalDouble(1.0)
+      .setOptionalBool(true)
+      .setOptionalString("optional string")
+      .setOptionalMessage(innerMessage)
+      .addRepeatedMessage(innerMessage).addRepeatedMessage(TestProto3.SchemaConverterSimpleMessage.getDefaultInstance())
+      .setOptionalEnum(TestProto3.SchemaConverterAllDatatypes.TestEnum.FIRST)
+      .setSomeInt32(8)
+      .setSomeString("some string")
+      .build();
+    Path outputPath = new WriteUsingMR().write(new TestProto3.SchemaConverterAllDatatypes[]{data});
+    Configuration readConf = new Configuration();
+    ProtoReadSupport.setProtobufClass(readConf, TestProto3.SchemaConverterAllDatatypesEvolved.class.getName());
+    ReadUsingMR readUsingMR = new ReadUsingMR(readConf);
+    List<Message> result = readUsingMR.read(outputPath);
+    assertEquals(result.size(), 1);
+    TestProto3.SchemaConverterAllDatatypesEvolved readBack = (TestProto3.SchemaConverterAllDatatypesEvolved) result.get(0);
+    assertEquals(readBack.getOptionalDouble(), data.getOptionalDouble(), 0.0);
+    assertEquals(readBack.getOptionalBool(), data.getOptionalBool());
+    assertEquals(readBack.getOptionalString(), data.getOptionalString());
+    assertEquals(readBack.getSomeInt32(), data.getSomeInt32());
+    assertEquals(readBack.getOptionalMessage().getName(), readBack.getOptionalMessage().getName());
   }
 
   /**

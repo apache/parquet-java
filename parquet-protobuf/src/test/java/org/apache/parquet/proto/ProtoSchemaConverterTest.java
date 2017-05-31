@@ -108,6 +108,11 @@ public class ProtoSchemaConverterTest {
         "  optional binary optionalBytes = 15;\n" +
         "  optional group optionalMessage = 16 {\n" +
         "    optional int32 someId = 3;\n" +
+        "    optional binary name (UTF8) = 5;\n" +
+        "  }\n" +
+        "  repeated group repeatedMessage = 17 {\n" +
+        "    optional int32 someId = 3;\n" +
+        "    optional binary name (UTF8) = 5;\n" +
         "  }\n" +
         "  optional binary optionalEnum (ENUM) = 18;" +
         "  optional int32 someInt32 = 19;" +
@@ -116,6 +121,7 @@ public class ProtoSchemaConverterTest {
         "    optional int64 key = 1;\n" +
         "    optional group value = 2 {\n" +
         "      optional int32 someId = 3;\n" +
+        "      optional binary name (UTF8) = 5;\n" +
         "    }\n" +
         "  }\n" +
         "}";
@@ -152,9 +158,11 @@ public class ProtoSchemaConverterTest {
         "  repeated int32 repeatedPrimitive = 3;\n" +
         "  optional group optionalMessage = 7 {\n" +
         "    optional int32 someId = 3;\n" +
+        "    optional binary name (UTF8) = 5;\n" +
         "  }\n" +
         "  repeated group repeatedMessage = 9 {" +
         "    optional int32 someId = 3;\n" +
+        "    optional binary name (UTF8) = 5;\n" +
         "  }\n" +
         "}";
 

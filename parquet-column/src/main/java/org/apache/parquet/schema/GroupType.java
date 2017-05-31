@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -393,5 +393,37 @@ public class GroupType extends Type {
       }
     }
     return newFields;
+  }
+
+  /**
+   * Check the projection schema is contained by the origin, and decorate projection schema with the origin field id if original schema has field id.
+   * This is needed because people usually do not put the field id when they describe a projection schema.
+   *
+   * @param projection Projection schema (or subschema of the projection)
+   * @param builder Builder for constructing a corresponding schema with field id (if origin contains) regarding to projection
+   * @param <T> Type, which could be {@link MessageType} or {@link org.apache.parquet.schema.Types.GroupBuilder}
+   * @return builder or the final {@link MessageType}.
+   * @throws InvalidRecordException if check fails.
+   */
+  protected <T> T checkSubTypeAndDecorateWithFieldId(GroupType projection, Types.GroupBuilder<T> builder) {
+    if (this.getRepetition() != projection.getRepetition()) {
+      throw new InvalidRecordException(projection + " found: expected " + this);
+    }
+    for (Type field : projection.getFields()) {
+      Type fieldInFile = this.getType(field.getName());
+      if (fieldInFile == null) {
+        throw new InvalidRecordException(projection + " found: expected " + this);
+      }
+      if (fieldInFile.isPrimitive()) {
+        fieldInFile.checkContains(field);
+        builder.addField(fieldInFile.getId() == null ? field : field.withId(fieldInFile.getId().intValue()));
+      } else {
+        fieldInFile.asGroupType().checkSubTypeAndDecorateWithFieldId(field.asGroupType(), builder.group(field.getRepetition()));
+      }
+    }
+    if (this.getId() != null) {
+      builder.id(this.getId().intValue());
+    }
+    return builder.as(this.getOriginalType()).named(this.getName());
   }
 }

@@ -50,6 +50,11 @@ message Links {
 
 message SchemaConverterSimpleMessage {
     int32 someId = 3;
+    string name = 5;
+}
+
+message SchemaConverterSimpleMessageEvolved {
+    string name = 5;
 }
 
 message SchemaConverterAllDatatypes {
@@ -69,6 +74,7 @@ message SchemaConverterAllDatatypes {
     string optionalString = 14;
     bytes optionalBytes = 15;
     SchemaConverterSimpleMessage optionalMessage = 16;
+    repeated SchemaConverterSimpleMessage repeatedMessage = 17;
     enum TestEnum {
         FIRST = 0;
         SECOND = 1;
@@ -79,6 +85,29 @@ message SchemaConverterAllDatatypes {
         string someString = 20;
     }
     map<int64, SchemaConverterSimpleMessage> optionalMap = 21;
+}
+
+// This message is a version of SchemaConverterAllDatatypes with some fields removed.
+message SchemaConverterAllDatatypesEvolved {
+    double optionalDouble = 1;
+    float optionalFloat = 2;
+    int32 optionalInt32 = 3;
+    int64 optionalInt64 = 4;
+    uint32 optionalUInt32 = 5;
+    uint64 optionalUInt64 = 6;
+    sint32 optionalSInt32 = 7;
+    sint64 optionalSInt64 = 8;
+    fixed32 optionalFixed32 = 9;
+    fixed64 optionalFixed64 = 10;
+    sfixed32 optionalSFixed32 = 11;
+    sfixed64 optionalSFixed64 = 12;
+    bool optionalBool = 13;
+    string optionalString = 14;
+    bytes optionalBytes = 15;
+    SchemaConverterSimpleMessageEvolved optionalMessage = 16;
+    oneof oneof {
+        int32 someInt32 = 19;
+    }
 }
 
 message SchemaConverterRepetition {
