@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import org.junit.Test;
 import org.apache.parquet.proto.test.TestProto3;
@@ -35,7 +36,8 @@ public class ProtoSchemaConverterTest {
   private void testConversion(Class<? extends Message> pbClass, String parquetSchemaString) throws
           Exception {
     ProtoSchemaConverter protoSchemaConverter = new ProtoSchemaConverter();
-    MessageType schema = protoSchemaConverter.convert(pbClass);
+    Descriptors.Descriptor descriptor = protoSchemaConverter.convert(pbClass);
+    MessageType schema = protoSchemaConverter.convert(descriptor);
     MessageType expectedMT = MessageTypeParser.parseMessageType(parquetSchemaString);
     assertEquals(expectedMT.toString(), schema.toString());
   }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import org.apache.hadoop.mapreduce.Job;
@@ -36,6 +37,18 @@ import org.apache.parquet.hadoop.util.ContextUtil;
  * ProtoParquetOutputFormat.setOutputPath(job, parquetPath);
  * ProtoParquetOutputFormat.setProtobufClass(job, YourProtocolbuffer.class);
  * }
+ *
+ * or for {@link com.google.protobuf.DynamicMessage}.
+ * <p/>
+ * Usage:
+ * <p/>
+ * <pre>
+ * {@code
+ * final Job job = new Job(conf, "Parquet writing job");
+ * job.setOutputFormatClass(ProtoParquetOutputFormat.class);
+ * ProtoParquetOutputFormat.setOutputPath(job, parquetPath);
+ * ProtoParquetOutputFormat.setProtobufDescriptor(descriptor);
+ *
  * </pre>
  *
  * @author Lukas Nalezenec
@@ -44,6 +57,10 @@ public class ProtoParquetOutputFormat<T extends MessageOrBuilder> extends Parque
 
   public static void setProtobufClass(Job job, Class<? extends Message> protoClass) {
     ProtoWriteSupport.setSchema(ContextUtil.getConfiguration(job), protoClass);
+  }
+
+  public static void setProtobufDescriptor(Descriptors.Descriptor descriptor) {
+    ProtoWriteSupport.setDescriptor(descriptor);
   }
 
   public ProtoParquetOutputFormat(Class<? extends Message> msg) {

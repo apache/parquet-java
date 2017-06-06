@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -27,6 +27,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
+import com.google.protobuf.Descriptors.Descriptor;
 import java.util.List;
 
 import org.apache.parquet.schema.MessageType;
@@ -52,12 +53,23 @@ public class ProtoSchemaConverter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProtoSchemaConverter.class);
 
-  public MessageType convert(Class<? extends Message> protobufClass) {
-    LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
+
+  public MessageType convert(Descriptors.Descriptor descriptor) {
+    LOG.debug("Converting protocol buffer descriptor \"" + descriptor.getName() + "\" to parquet schema.");
+    MessageType messageType = convertDescriptorToParquetSchema(descriptor);
+    return messageType;
+  }
+
+  public Descriptors.Descriptor convert(Class<? extends Message> protobufClass) {
+    LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to protobuf descriptor");
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
+    return descriptor;
+  }
+
+  public MessageType convertDescriptorToParquetSchema(Descriptor descriptor) {
     MessageType messageType =
         convertFields(Types.buildMessage(), descriptor.getFields())
-        .named(descriptor.getFullName());
+            .named(descriptor.getFullName());
     LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
     return messageType;
   }
