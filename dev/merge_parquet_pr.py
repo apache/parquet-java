@@ -218,9 +218,9 @@ def fix_version_from_branch(branch, versions):
         return filter(lambda x: x.name.startswith(branch_ver), versions)[-1]
 
 def exctract_jira_id(title):
-    m = re.search(r'^(PARQUET-[0-9]+)\b.*$', title)
+    m = re.search(r'^(PARQUET-[0-9]+)\b.*$', title, re.IGNORECASE)
     if m and m.groups > 0:
-        return m.group(1)
+        return m.group(1).upper()
     else:
         fail("PR title should be prefixed by a jira id \"PARQUET-XXX: ...\", found: \"%s\"" % title)
 
