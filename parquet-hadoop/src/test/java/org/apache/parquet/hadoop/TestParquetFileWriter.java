@@ -595,17 +595,18 @@ public class TestParquetFileWriter {
     GroupWriteSupport.setSchema(schema, configuration);
 
     ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport());
-   
+
     Group r1 = new SimpleGroup(schema);
     writer.write(r1);
     writer.close();
-    
+
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
-    
+
     // assert the statistics object is not empty
-    assertTrue((readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().isEmpty()) == false);
+    org.apache.parquet.column.statistics.Statistics stats = readFooter.getBlocks().get(0).getColumns().get(0).getStatistics();
+    assertFalse("is empty: " + stats, stats.isEmpty());
     // assert the number of nulls are correct for the first block
-    assertEquals(1, (readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().getNumNulls()));
+    assertEquals("nulls: " + stats, 1, stats.getNumNulls());
   }
 
   private void validateFooters(final List<Footer> metadata) {

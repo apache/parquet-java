@@ -534,7 +534,27 @@ public class TestParquetMetadataConverter {
         Types.required(PrimitiveTypeName.BINARY)
             .as(OriginalType.UTF8).named("b"));
 
-    Assert.assertTrue("Stats should be empty", convertedStats.isEmpty());
+    Assert.assertTrue("Stats should be empty: " + convertedStats, convertedStats.isEmpty());
+  }
+
+  @Test
+  public void testStillUseStatsWithSignedSortOrderIfSingleValue() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    BinaryStatistics stats = new BinaryStatistics();
+    stats.incrementNumNulls();
+    stats.updateStats(Binary.fromString("A"));
+    stats.incrementNumNulls();
+    stats.updateStats(Binary.fromString("A"));
+    stats.incrementNumNulls();
+
+    Statistics convertedStats = converter.fromParquetStatistics(
+        Version.FULL_VERSION,
+        ParquetMetadataConverter.toParquetStatistics(stats),
+        Types.required(PrimitiveTypeName.BINARY)
+            .as(OriginalType.UTF8).named("b"));
+
+    Assert.assertFalse("Stats should not be empty: " + convertedStats, convertedStats.isEmpty());
+    Assert.assertArrayEquals("min == max: " + convertedStats, convertedStats.getMaxBytes(), convertedStats.getMinBytes());
   }
 
   @Test
