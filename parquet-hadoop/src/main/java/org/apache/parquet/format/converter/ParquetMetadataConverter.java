@@ -340,13 +340,16 @@ public class ParquetMetadataConverter {
     org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type);
     // If there was no statistics written to the footer, create an empty Statistics object and return
 
+    boolean isSet = statistics != null && statistics.isSetMax() && statistics.isSetMin();
+    boolean maxEqualsMin = isSet ? Arrays.equals(statistics.getMin(), statistics.getMax()) : false;
+    boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
     // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
     // The sort order is checked to avoid returning min/max stats that are not
     // valid with the type's sort order. Currently, all stats are aggregated
     // using a signed ordering, which isn't valid for strings or unsigned ints.
     if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type) &&
-        SortOrder.SIGNED == typeSortOrder) {
-      if (statistics.isSetMax() && statistics.isSetMin()) {
+        ( sortOrdersMatch || maxEqualsMin)) {
+      if (isSet) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
       }
       stats.setNumNulls(statistics.null_count);
