@@ -35,9 +35,9 @@ Parquet-MR uses Maven to build and depends on both the thrift and protoc compile
 To build and install the protobuf compiler, run:
 
 ```
-wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
-tar xzf protobuf-2.5.0.tar.gz
-cd  protobuf-2.5.0
+wget https://github.com/google/protobuf/releases/download/v3.2.0/protobuf-cpp-3.2.0.tar.gz
+tar xzf protobuf-cpp-3.2.0.tar.gz
+cd  protobuf-3.2.0
 ./configure
 make
 sudo make install
