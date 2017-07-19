@@ -23,7 +23,7 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
-
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
@@ -33,9 +33,10 @@ import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
@@ -144,6 +145,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
+  public static final String VALUES_WRITER_FACTORY_CLASS = "parquet.writer.values.factory";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -281,6 +283,22 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return WriterVersion.fromString(writerVersion);
   }
 
+  public static ValuesWriterFactory getValuesWriterFactory(Configuration conf) {
+    String factoryClass = conf.get(VALUES_WRITER_FACTORY_CLASS);
+    if (factoryClass == null || ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY
+      .getClass().getName().equals(factoryClass)) {
+      return ParquetProperties.DEFAULT_VALUES_WRITER_FACTORY;
+    } else {
+      Class<? extends ValuesWriterFactory> c = conf
+        .getClass(VALUES_WRITER_FACTORY_CLASS, null, ValuesWriterFactory.class);
+      ValuesWriterFactory factory = ReflectionUtils.newInstance(c, conf);
+      if (Configurable.class.isAssignableFrom(c)) {
+        ((Configurable) factory).setConf(conf);
+      }
+      return factory;
+    }
+  }
+
   public static CompressionCodecName getCompression(Configuration configuration) {
     return CodecConfig.getParquetCompressionCodec(configuration);
   }
@@ -363,6 +381,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
+        .withValuesWriterFactory(getValuesWriterFactory(conf))
         .build();
 
     long blockSize = getLongBlockSize(conf);
