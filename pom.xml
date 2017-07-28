@@ -89,6 +89,12 @@
     <avro.version>1.8.1</avro.version>
     <guava.version>20.0</guava.version>
     <mockito.version>1.10.19</mockito.version>
+
+    <!-- parquet-cli dependencies -->
+    <opencsv.version>2.3</opencsv.version>
+    <jackson2.version>2.3.1</jackson2.version>
+    <jcommander.version>1.35</jcommander.version>
+    <commons-codec.version>1.10</commons-codec.version>
   </properties>
 
   <modules>
@@ -97,6 +103,7 @@
     <module>parquet-benchmarks</module>
     <module>parquet-cascading</module>
     <module>parquet-cascading3</module>
+    <module>parquet-cli</module>
     <module>parquet-column</module>
     <module>parquet-common</module>
     <module>parquet-encoding</module>
