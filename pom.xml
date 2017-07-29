@@ -143,18 +143,9 @@
               <artifactSet>
                 <includes>
                   <include>org.apache.thrift:libthrift</include>
-                  <include>org.slf4j:slf4j-api</include>
-                  <include>org.slf4j:slf4j-nop</include>
                 </includes>
               </artifactSet>
               <filters>
-                <filter>
-                  <!-- Exclude SLF4J's meta files, covered by LICENSE and NOTICE -->
-                  <artifact>org.slf4j:*</artifact>
-                  <excludes>
-                    <exclude>META-INF/**/*</exclude>
-                  </excludes>
-                </filter>
                 <filter>
                   <!-- Sigh. The Thrift jar contains its source -->
                   <artifact>org.apache.thrift:libthrift</artifact>
@@ -169,10 +160,6 @@
                 <relocation>
                   <pattern>org.apache.thrift</pattern>
                   <shadedPattern>${shade.prefix}.org.apache.thrift</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>org.slf4j</pattern>
-                  <shadedPattern>${shade.prefix}.org.slf4j</shadedPattern>
                 </relocation>
               </relocations>
             </configuration>
@@ -209,8 +196,8 @@
             <exclude>*/jdiff/*.xml</exclude>
             <exclude>.travis.yml</exclude>
             <exclude>licenses/**</exclude>
-            <exclude>thrift-0.7.0/**</exclude>
-            <exclude>thrift-0.7.0.tar.gz</exclude>
+            <exclude>thrift-0.9.3/**</exclude>
+            <exclude>thrift-0.9.3.tar.gz</exclude>
           </excludes>
         </configuration>
       </plugin>
@@ -231,7 +218,7 @@
     <dependency>
       <groupId>org.apache.thrift</groupId>
       <artifactId>libthrift</artifactId>
-      <version>0.7.0</version>
+      <version>0.9.3</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
