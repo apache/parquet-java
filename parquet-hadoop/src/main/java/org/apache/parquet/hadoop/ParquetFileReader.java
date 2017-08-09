@@ -214,13 +214,6 @@ public class ParquetFileReader implements Closeable {
   private static <T> List<T> runAllInParallel(int parallelism, List<Callable<T>> toRun) throws ExecutionException {
     if (toRun.isEmpty()) {
       return Collections.emptyList();
-    } else if (toRun.size() == 1) {
-      // Prevent instantiating a ThreadPool if only one task
-      try {
-		return Collections.singletonList(toRun.get(0).call());
-      } catch (Exception e) {
-        throw new ExecutionException(e);
-      }
     }
     // Prevent instantiating a pool with many threads if not useful
     int limitedParallelism = Math.min(parallelism, toRun.size());
