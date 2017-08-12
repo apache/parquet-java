@@ -43,11 +43,11 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.arrow.vector.types.IntervalUnit;
 
-import org.apache.arrow.flatbuf.IntervalUnit;
-import org.apache.arrow.flatbuf.Precision;
-import org.apache.arrow.flatbuf.TimeUnit;
-import org.apache.arrow.flatbuf.UnionMode;
+import org.apache.arrow.vector.types.UnionMode;
+import org.apache.arrow.vector.types.DateUnit;
+import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -80,12 +80,12 @@ public class TestSchemaConverter {
 
   private final Schema complexArrowSchema = new Schema(asList(
       field("a", false, new ArrowType.Int(8, true)),
-      field("b", new ArrowType.Struct_(),
+      field("b", new ArrowType.Struct(),
           field("c", new ArrowType.Int(16, true)),
           field("d", new ArrowType.Utf8())),
-      field("e", new ArrowType.List(), field(null, new ArrowType.Date())),
-      field("f", new ArrowType.FloatingPoint(Precision.SINGLE)),
-      field("g", new ArrowType.Timestamp(TimeUnit.MILLISECOND)),
+      field("e", new ArrowType.List(), field(null, new ArrowType.Date(DateUnit.DAY))),
+      field("f", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
+      field("g", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC")),
       field("h", new ArrowType.Interval(IntervalUnit.DAY_TIME))
       ));
   private final MessageType complexParquetSchema = Types.buildMessage()
@@ -104,7 +104,7 @@ public class TestSchemaConverter {
 
   private final Schema allTypesArrowSchema = new Schema(asList(
       field("a", false, new ArrowType.Null()),
-      field("b", new ArrowType.Struct_(), field("ba", new ArrowType.Null())),
+      field("b", new ArrowType.Struct(), field("ba", new ArrowType.Null())),
       field("c", new ArrowType.List(), field("ca", new ArrowType.Null())),
       field("d", new ArrowType.Union(UnionMode.Sparse, new int[] {1, 2, 3}), field("da", new ArrowType.Null())),
       field("e", new ArrowType.Int(8, true)),
@@ -115,17 +115,17 @@ public class TestSchemaConverter {
       field("e5", new ArrowType.Int(16, false)),
       field("e6", new ArrowType.Int(32, false)),
       field("e7", new ArrowType.Int(64, false)),
-      field("f", new ArrowType.FloatingPoint(Precision.SINGLE)),
-      field("f1", new ArrowType.FloatingPoint(Precision.DOUBLE)),
+      field("f", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
+      field("f1", new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE)),
       field("g", new ArrowType.Utf8()),
       field("h", new ArrowType.Binary()),
       field("i", new ArrowType.Bool()),
       field("j", new ArrowType.Decimal(5, 5)),
       field("j1", new ArrowType.Decimal(15, 5)),
       field("j2", new ArrowType.Decimal(25, 5)),
-      field("k", new ArrowType.Date()),
-      field("l", new ArrowType.Time()),
-      field("m", new ArrowType.Timestamp(TimeUnit.MILLISECOND)),
+      field("k", new ArrowType.Date(DateUnit.DAY)),
+      field("l", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.SECOND, 32)),
+      field("m", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC")),
       field("n", new ArrowType.Interval(IntervalUnit.DAY_TIME)),
       field("n1", new ArrowType.Interval(IntervalUnit.YEAR_MONTH))
       ));
@@ -164,7 +164,7 @@ public class TestSchemaConverter {
       .named("root");
 
   private final Schema supportedTypesArrowSchema = new Schema(asList(
-      field("b", new ArrowType.Struct_(), field("ba", new ArrowType.Binary())),
+      field("b", new ArrowType.Struct(), field("ba", new ArrowType.Binary())),
       field("c", new ArrowType.List(), field(null, new ArrowType.Binary())),
       field("e", new ArrowType.Int(8, true)),
       field("e1", new ArrowType.Int(16, true)),
@@ -174,17 +174,17 @@ public class TestSchemaConverter {
       field("e5", new ArrowType.Int(16, false)),
       field("e6", new ArrowType.Int(32, false)),
       field("e7", new ArrowType.Int(64, false)),
-      field("f", new ArrowType.FloatingPoint(Precision.SINGLE)),
-      field("f1", new ArrowType.FloatingPoint(Precision.DOUBLE)),
+      field("f", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
+      field("f1", new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE)),
       field("g", new ArrowType.Utf8()),
       field("h", new ArrowType.Binary()),
       field("i", new ArrowType.Bool()),
       field("j", new ArrowType.Decimal(5, 5)),
       field("j1", new ArrowType.Decimal(15, 5)),
       field("j2", new ArrowType.Decimal(25, 5)),
-      field("k", new ArrowType.Date()),
-      field("l", new ArrowType.Time()),
-      field("m", new ArrowType.Timestamp(TimeUnit.MILLISECOND))
+      field("k", new ArrowType.Date(DateUnit.DAY)),
+      field("l", new ArrowType.Date(DateUnit.MILLISECOND)),
+      field("m", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC"))
       ));
 
   private final MessageType supportedTypesParquetSchema = Types.buildMessage()
@@ -217,14 +217,14 @@ public class TestSchemaConverter {
 
   private final Schema paperArrowSchema = new Schema(asList(
       field("DocId", false, new ArrowType.Int(64, true)),
-      field("Links", new ArrowType.Struct_(),
+      field("Links", new ArrowType.Struct(),
           field("Backward", false, new ArrowType.List(), field(null, false, new ArrowType.Int(64, true))),
           field("Forward", false, new ArrowType.List(), field(null, false, new ArrowType.Int(64, true)))
       ),
       field("Name", false, new ArrowType.List(),
-          field(null, false, new ArrowType.Struct_(),
+          field(null, false, new ArrowType.Struct(),
               field("Language", false, new ArrowType.List(),
-                  field(null, false, new ArrowType.Struct_(),
+                  field(null, false, new ArrowType.Struct(),
                       field("Code", false, new ArrowType.Binary()),
                       field("Country", new ArrowType.Binary())
                   )
