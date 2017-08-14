@@ -18,19 +18,14 @@
  */
 package org.apache.parquet.column.impl;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
 
-import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.column.values.bloom.BloomDataWriter;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 
@@ -61,7 +56,13 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
 
   private ColumnWriterV1 newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterV1(path, pageWriter, props);
+
+    if (props.isBloomFilterEnabled() && props.getBloomFilterColumnNames() != null) {
+      BloomDataWriter bloomDataWriter = pageWriteStore.getBloomDataWriter(path);
+      return new ColumnWriterV1(path, pageWriter, bloomDataWriter, props);
+    } else {
+      return new ColumnWriterV1(path, pageWriter, props);
+    }
   }
 
   @Override

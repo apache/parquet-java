@@ -177,7 +177,6 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       }
 
     } else {
-      // apply data filters
       reader.filterRowGroups(getFilter(configuration));
     }
 

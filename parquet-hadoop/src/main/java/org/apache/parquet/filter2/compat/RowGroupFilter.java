@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.parquet.filter2.BloomFilter;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
 import org.apache.parquet.filter2.compat.FilterCompat.Visitor;
@@ -32,6 +33,9 @@ import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.schema.MessageType;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
@@ -45,10 +49,12 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
   private final MessageType schema;
   private final List<FilterLevel> levels;
   private final ParquetFileReader reader;
+  private Logger logger = LoggerFactory.getLogger(RowGroupFilter.class);
 
   public enum FilterLevel {
     STATISTICS,
-    DICTIONARY
+    DICTIONARY,
+    BLOOM
   }
 
   public static List<BlockMetaData> filterRowGroups(Filter filter, List<BlockMetaData> blocks, MessageType schema) {
@@ -94,6 +100,12 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
 
       if(!drop && levels.contains(FilterLevel.DICTIONARY)) {
         drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
+      }
+
+
+      if (!drop && levels.contains(FilterLevel.BLOOM)) {
+        drop = BloomFilter.canDrop(filterPredicate, block.getColumns(), reader.getBloomDataReader(block));
+        if (drop) logger.debug("Block drop by bloom filter ");
       }
 
       if(!drop) {
