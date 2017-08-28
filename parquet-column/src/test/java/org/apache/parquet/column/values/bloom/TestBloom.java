@@ -27,6 +27,7 @@ import org.apache.parquet.column.values.RandomStr;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -46,7 +47,7 @@ public class TestBloom {
   }
 
   @Test
-  public void testBinaryBloom () throws IOException {
+  public void testBinaryBloom() throws IOException {
     Bloom.BinaryBloom binaryBloom = new Bloom.BinaryBloom(0);
     List<String> strings = new ArrayList<>();
     RandomStr randomStr = new RandomStr();
@@ -66,4 +67,10 @@ public class TestBloom {
     assertFalse(exist);
   }
 
+  @Test
+  public void testMurmur3() throws IOException {
+    byte[] bytes = {0x12, 0x34, 0x56, 0x78};
+    long hash = Murmur3.hash64(bytes);
+    assertEquals(hash, -420773712042568267l);
+  }
 }
