@@ -31,7 +31,7 @@ import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED_DEFAULT;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STATS_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STATS_FILTERING_ENABLED_DEFAULT;
-import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTER_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTER_ENABLED_DEFAULT;
 
 import java.io.Closeable;
@@ -663,7 +663,7 @@ public class ParquetFileReader implements Closeable {
       levels.add(DICTIONARY);
     }
 
-    if (conf.getBoolean(BLOOM_FILTER_ENABLED, BLOOM_FILTER_ENABLED_DEFAULT)) {
+    if (conf.getBoolean(BLOOM_FILTERING_ENABLED, BLOOM_FILTER_ENABLED_DEFAULT)) {
       levels.add(BLOOM);
     }
 
@@ -833,12 +833,15 @@ public class ParquetFileReader implements Closeable {
     byte[] bytes = new byte[Bloom.BLOOM_HEADER_SIZE];
     f.read(bytes);
     ByteBuffer bloomHeader = ByteBuffer.wrap(bytes);
-    int numBytes = bloomHeader.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().get(0);
+    IntBuffer headerBuffer = bloomHeader.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
+    int numBytes = headerBuffer.get();
+    Bloom.HASH hash = Bloom.HASH.values()[headerBuffer.get()];
+    Bloom.ALGORITHM algorithm = Bloom.ALGORITHM.values()[headerBuffer.get()];
 
     byte[] bitset = new byte[numBytes];
     f.readFully(bitset);
 
-    Bloom bloom = Bloom.getBloomOnType(meta.getType(), 0);
+    Bloom bloom = Bloom.getBloomOnType(meta.getType(), 0, hash, algorithm);
     bloom.initBitset(bitset);
 
     return bloom;

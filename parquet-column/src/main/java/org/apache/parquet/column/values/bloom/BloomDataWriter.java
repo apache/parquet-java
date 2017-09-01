@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.column.values.bloom;
 
+/**
+ * A bloom data writer for a given column chunk.
+ */
 public interface BloomDataWriter {
   void writeBloomData(Bloom bloom);
 }

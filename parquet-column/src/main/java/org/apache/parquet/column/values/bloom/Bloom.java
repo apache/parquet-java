@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.values.bloom;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -57,13 +56,13 @@ public abstract class Bloom<T extends Comparable<T>> {
     BLOCK,
   }
 
-  public double FPP = 0.01;
-  public static int BLOOM_HEADER_SIZE = 8;
-  public final int BYTES_PER_BUCKET = 32;
-  public final int MINIMUM_BLOOM_SIZE = 256;
+  public final double FPP = 0.01;
+  public static final int BLOOM_HEADER_SIZE = 12;
+  public static final int BYTES_PER_BUCKET = 32;
+  public static final int MINIMUM_BLOOM_SIZE = 256;
 
-  public final short bloomFilterHash = (short)HASH.MURMUR3_X64_128.ordinal();
-  public final short bloomFilterAlgorithm = (short)ALGORITHM.BLOCK.ordinal();
+  public HASH bloomFilterHash = HASH.MURMUR3_X64_128;
+  public ALGORITHM bloomFilterAlgorithm = ALGORITHM.BLOCK;
 
   private HashSet<Long> elements = new HashSet<>();
 
@@ -74,25 +73,30 @@ public abstract class Bloom<T extends Comparable<T>> {
    * Create bitset immediately if numBytes is not zero.
    * @param numBytes
    */
-  public Bloom(int numBytes) {
-    if (numBytes != 0)
+  public Bloom(int numBytes, HASH hash, ALGORITHM algorithm) {
+    if (numBytes != 0) {
       initBitset(numBytes);
+    }
+    this.bloomFilterHash = hash;
+    this.bloomFilterAlgorithm = algorithm;
   }
 
   /**
    * Construct the bloom filter with given bit set.
    * @param bitset given bitset
    */
-  public Bloom(byte[] bitset) {
+  public Bloom(byte[] bitset, HASH hash, ALGORITHM algorithm) {
     this.bitset = bitset;
     this.numBytes = bitset.length;
+    this.bloomFilterHash = hash;
+    this.bloomFilterAlgorithm = algorithm;
   }
 
   /**
    * Construct the bloom filter with given bit set.
    * @param input given bitset
    */
-  public Bloom(ByteBuffer input) {
+  public Bloom(ByteBuffer input, HASH hash, ALGORITHM algorithm) {
     if (input.isDirect()){
       bitset = new byte[input.remaining()];
       input.get(bitset);
@@ -100,10 +104,12 @@ public abstract class Bloom<T extends Comparable<T>> {
       this.bitset = input.array();
     }
     this.numBytes = input.array().length;
+    this.bloomFilterHash = hash;
+    this.bloomFilterAlgorithm = algorithm;
   }
 
   /**
-   * Create a new allcated bit set for bloom filter, at least 256 bits will be create.
+   * Create a new bit set for bloom filter, at least 256 bits will be create.
    * @param numBytes number of bytes for bit set.
    */
   public void initBitset(int numBytes) {
@@ -139,7 +145,7 @@ public abstract class Bloom<T extends Comparable<T>> {
 
   /**
    * Get bitset size.
-   * @return
+   * @return size of bitset
    */
   public long getBloomSize() {
     return numBytes;
@@ -151,13 +157,17 @@ public abstract class Bloom<T extends Comparable<T>> {
 
 
   public BytesInput getBytes() throws IOException {
-    List<BytesInput> inputs= new ArrayList<>();
+    // TODO: move out of here and reuse
+    List<BytesInput> inputs= new ArrayList<>(4);
 
     // number of bytes.
     inputs.add(BytesInput.fromInt(numBytes));
 
-    // algorithm and hash
-    inputs.add(BytesInput.fromInt(0));
+    // hash
+    inputs.add(BytesInput.fromInt(this.bloomFilterHash.ordinal()));
+
+    // algorithm
+    inputs.add(BytesInput.fromInt(this.bloomFilterAlgorithm.ordinal()));
 
     // bitset.
     inputs.add(BytesInput.from(bitset, 0, bitset.length));
@@ -195,11 +205,11 @@ public abstract class Bloom<T extends Comparable<T>> {
   public void flush() {
     if (bitset == null) {
       initBitset(optimalNumOfBits(elements.size(), FPP)/8);
+      for (long hash : elements) {
+        bloomInsert(hash);
+      }
+      elements.clear();
     }
-    for (long hash : elements) {
-      bloomInsert(hash);
-    }
-    elements.clear();
   }
 
   /**
@@ -209,7 +219,7 @@ public abstract class Bloom<T extends Comparable<T>> {
    * @return optimal number of bits of given n and p.
    */
   public static int optimalNumOfBits(long n, double p) {
-       int bits = (int)(-n * Math.log(p) / (Math.log(2) * Math.log(2)));
+    int bits = (int)(-n * Math.log(p) / (Math.log(2) * Math.log(2)));
 
     bits --;
     bits |= bits >> 1;
@@ -218,6 +228,7 @@ public abstract class Bloom<T extends Comparable<T>> {
     bits |= bits >> 8;
     bits |= bits >> 16;
     bits++;
+
     return bits;
   }
 
@@ -279,35 +290,56 @@ public abstract class Bloom<T extends Comparable<T>> {
     );
   }
 
-  public static Bloom getBloomOnType(PrimitiveType.PrimitiveTypeName type, int size) {
+  public static Bloom getBloomOnType(PrimitiveType.PrimitiveTypeName type,
+                                     int size,
+                                     HASH hash,
+                                     ALGORITHM algorithm) {
     switch(type) {
       case INT32:
-        return new IntBloom(size);
+        return new IntBloom(size, hash, algorithm);
       case INT64:
-        return new LongBloom(size);
+        return new LongBloom(size, hash, algorithm);
       case FLOAT:
-        return new FloatBloom(size);
+        return new FloatBloom(size, hash, algorithm);
       case DOUBLE:
-        return new DoubleBloom(size);
+        return new DoubleBloom(size, hash, algorithm);
       case BINARY:
-        return new BinaryBloom(size);
+        return new BinaryBloom(size, hash, algorithm);
       case INT96:
-        return new BinaryBloom(size);
+        return new BinaryBloom(size, hash, algorithm);
       case FIXED_LEN_BYTE_ARRAY:
-        return new BinaryBloom(size);
-
+        return new BinaryBloom(size, hash, algorithm);
       default:
         return null;
     }
   }
 
+  // TODO: add doc for public member and function.
 
+  /**
+   * Compute hash for values' plain encoding result.
+   * @param value the column value to be compute
+   * @return hash result
+   */
   public abstract long hash(T value);
 
+  /**
+   * Insert element to set represented by bloom bitset.
+   * @param value the column value to be inserted.
+   */
   public void insert(T value) {
-    elements.add(hash(value));
+    if(bitset != null) {
+      bloomInsert(hash(value));
+    } else {
+      elements.add(hash(value));
+    }
   }
 
+  /**
+   * Determine whether an element exist in set or not.
+   * @param value the element to find.
+   * @return false if value is definitely not in set, and true means PROBABLY in set.
+   */
   public boolean find (T value) {
     return bloomFind(hash(value));
   }
@@ -317,7 +349,11 @@ public abstract class Bloom<T extends Comparable<T>> {
     private LittleEndianDataOutputStream out = new LittleEndianDataOutputStream(arrayout);
 
     public BinaryBloom(int size) {
-      super(size);
+      super(size, HASH.MURMUR3_X64_128, ALGORITHM.BLOCK);
+    }
+
+    public BinaryBloom(int size, HASH hash, ALGORITHM algorithm) {
+      super(size, hash, algorithm);
     }
 
     @Override
@@ -329,9 +365,9 @@ public abstract class Bloom<T extends Comparable<T>> {
         byte[] encoded = BytesInput.from(arrayout).toByteArray();
         arrayout.reset();
         switch (bloomFilterHash) {
-          case 0:
+          case MURMUR3_X64_128: return Murmur3.hash64(encoded);
           default:
-            return Murmur3.hash64(encoded);
+            throw new RuntimeException("Not support hash strategy");
         }
       } catch (IOException e) {
         throw new ParquetEncodingException("could not insert Binary value to bloom ", e);
@@ -341,88 +377,85 @@ public abstract class Bloom<T extends Comparable<T>> {
 
 
   public static class LongBloom extends Bloom<Long> {
-    public ByteArrayOutputStream arrayout = new ByteArrayOutputStream(Long.SIZE/Byte.SIZE);
-    public LittleEndianDataOutputStream out = new LittleEndianDataOutputStream(arrayout);
-
-    public LongBloom (int size) {
-      super(size);
+    public LongBloom(int size) {
+      super(size, HASH.MURMUR3_X64_128, ALGORITHM.BLOCK);
     }
+
+    public LongBloom (int size, HASH hash, ALGORITHM algorithm) {
+      super(size, hash, algorithm);
+    }
+
     @Override
     public long hash(Long value) {
-      try {
-        out.writeLong(value);
-        out.flush();
-        byte[] encoded = arrayout.toByteArray();
-        arrayout.reset();
-        return Murmur3.hash64(encoded);
-      } catch (IOException e) {
-        throw new ParquetEncodingException("could not write int", e);
+      ByteBuffer plain = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
+      plain.order(ByteOrder.LITTLE_ENDIAN).putLong(value);
+      switch (bloomFilterHash) {
+        case MURMUR3_X64_128: return Murmur3.hash64(plain.array());
+        default:
+          throw new RuntimeException("Not support hash strategy");
       }
     }
   }
 
-
   public static class IntBloom extends Bloom<Integer> {
-    private ByteArrayOutputStream arrayout = new ByteArrayOutputStream(Integer.SIZE/Byte.SIZE);
-    private LittleEndianDataOutputStream out = new LittleEndianDataOutputStream(arrayout);
-
     public IntBloom(int size) {
-      super(size);
+      super(size, HASH.MURMUR3_X64_128, ALGORITHM.BLOCK);
     }
+
+    public IntBloom(int size, HASH hash, ALGORITHM algorithm) {
+      super(size, hash, algorithm);
+    }
+
     @Override
     public long hash(Integer value) {
-      try {
-        out.writeInt(value);
-        out.flush();
-        byte[] encoded = arrayout.toByteArray();
-        arrayout.reset();
-        return Murmur3.hash64(encoded);
-      } catch (IOException e) {
-        throw new ParquetEncodingException("could not write int", e);
+      ByteBuffer plain = ByteBuffer.allocate(Integer.SIZE/Byte.SIZE);
+      plain.order(ByteOrder.LITTLE_ENDIAN).putInt(value);
+      switch (bloomFilterHash) {
+        case MURMUR3_X64_128: return Murmur3.hash64(plain.array());
+        default:
+          throw new RuntimeException("Not support hash strategy");
       }
     }
   }
 
   public static class FloatBloom extends Bloom<Float> {
-    private ByteArrayOutputStream arrayout = new ByteArrayOutputStream(Float.SIZE/Byte.SIZE);
-    private LittleEndianDataOutputStream out = new LittleEndianDataOutputStream(arrayout);
-
     public FloatBloom(int size) {
-      super(size);
+      super(size, HASH.MURMUR3_X64_128, ALGORITHM.BLOCK);
+    }
+
+    public FloatBloom(int size, HASH hash, ALGORITHM algorithm) {
+      super(size, hash, algorithm);
     }
 
     @Override
     public long hash(Float value) {
-      try {
-        out.writeFloat(value);
-        out.flush();
-        byte[] encoded = arrayout.toByteArray();
-        arrayout.reset();
-        return Murmur3.hash64(encoded);
-      } catch (IOException e) {
-        throw new ParquetEncodingException("could not write float", e);
+      ByteBuffer plain = ByteBuffer.allocate(Float.SIZE/Byte.SIZE);
+      plain.order(ByteOrder.LITTLE_ENDIAN).putFloat(value);
+      switch (bloomFilterHash) {
+        case MURMUR3_X64_128: return Murmur3.hash64(plain.array());
+        default:
+          throw new RuntimeException("Not support hash strategy");
       }
     }
   }
 
   public static class DoubleBloom extends Bloom<Double> {
-    private ByteArrayOutputStream arrayout = new ByteArrayOutputStream(Double.SIZE/Byte.SIZE);
-    private LittleEndianDataOutputStream out = new LittleEndianDataOutputStream(arrayout);
-
     public DoubleBloom(int size) {
-      super(size);
+      super(size, HASH.MURMUR3_X64_128, ALGORITHM.BLOCK);
+    }
+
+    public DoubleBloom(int size, HASH hash, ALGORITHM algorithm) {
+      super(size, hash, algorithm);
     }
 
     @Override
     public long hash(Double value) {
-      try {
-        out.writeDouble(value.doubleValue());
-        out.flush();
-        byte[] encoded = arrayout.toByteArray();
-        arrayout.reset();
-        return Murmur3.hash64(encoded);
-      }catch (IOException e) {
-        throw new ParquetEncodingException("count not find Double", e);
+      ByteBuffer plain = ByteBuffer.allocate(Double.SIZE/Byte.SIZE);
+      plain.order(ByteOrder.LITTLE_ENDIAN).putDouble(value);
+      switch (bloomFilterHash) {
+        case MURMUR3_X64_128: return Murmur3.hash64(plain.array());
+        default:
+          throw new RuntimeException("Not support hash strategy");
       }
     }
   }

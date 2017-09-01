@@ -20,6 +20,8 @@
 package org.apache.parquet.column.values.bloom;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,7 +37,7 @@ import static org.junit.Assert.assertTrue;
 public class TestBloom {
   @Test
   public void testIntBloom () throws IOException {
-    Bloom.IntBloom intBloom = new Bloom.IntBloom(0);
+    Bloom.IntBloom intBloom = new Bloom.IntBloom(0, Bloom.HASH.MURMUR3_X64_128, Bloom.ALGORITHM.BLOCK);
     for(int i = 0; i<10; i++) {
       intBloom.insert(i);
     }
@@ -48,7 +50,7 @@ public class TestBloom {
 
   @Test
   public void testBinaryBloom() throws IOException {
-    Bloom.BinaryBloom binaryBloom = new Bloom.BinaryBloom(0);
+    Bloom.BinaryBloom binaryBloom = new Bloom.BinaryBloom(0, Bloom.HASH.MURMUR3_X64_128, Bloom.ALGORITHM.BLOCK);
     List<String> strings = new ArrayList<>();
     RandomStr randomStr = new RandomStr();
     for(int i = 0; i<10000; i++) {
@@ -72,5 +74,6 @@ public class TestBloom {
     byte[] bytes = {0x12, 0x34, 0x56, 0x78};
     long hash = Murmur3.hash64(bytes);
     assertEquals(hash, -420773712042568267l);
+
   }
 }

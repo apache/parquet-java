@@ -20,7 +20,18 @@ package org.apache.parquet.column.values.bloom;
 
 import org.apache.parquet.column.ColumnDescriptor;
 
+/**
+ * Interface to read bloom data for all the columns of a row group
+ */
+
 public interface BloomDataReadStore {
+  /**
+   * Returns a {@link Bloom} for the given column descriptor.
+   * The dictionary page bytes are uncompressed.
+   *
+   * @param path the descriptor of the column
+   * @return the bloom dta for that column, or null if there isn't one
+   */
   Bloom readBloomData(ColumnDescriptor path);
 }
 

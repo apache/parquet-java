@@ -93,7 +93,7 @@ public class BloomFilter implements FilterPredicate.Visitor<Boolean>{
     }
 
     Bloom bloom = bloomFilterReader.readBloomData(col);
-    if (bloom != null && bloom.find(value) == false) {
+    if (bloom != null && !bloom.find(value)) {
       return BLOCK_CANNOT_MATCH;
     }
 

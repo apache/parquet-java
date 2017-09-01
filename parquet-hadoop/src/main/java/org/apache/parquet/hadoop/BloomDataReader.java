@@ -30,6 +30,12 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * A {@link BloomDataReadStore} implementation that reads bloom data from
+ * an open {@link ParquetFileReader}.
+ *
+ */
+
 public class BloomDataReader implements BloomDataReadStore {
   private final ParquetFileReader reader;
   private final Map<String, ColumnChunkMetaData> columns;

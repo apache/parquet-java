@@ -18,8 +18,12 @@
  */
 package org.apache.parquet.column.impl;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.parquet.column.values.bloom.BloomDataWriter;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -56,7 +60,6 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
 
   private ColumnWriterV1 newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-
     if (props.isBloomFilterEnabled() && props.getBloomFilterColumnNames() != null) {
       BloomDataWriter bloomDataWriter = pageWriteStore.getBloomDataWriter(path);
       return new ColumnWriterV1(path, pageWriter, bloomDataWriter, props);
