@@ -35,6 +35,9 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWrite
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.schema.MessageType;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * This class represents all the configurable Parquet properties.
  *
@@ -50,6 +53,8 @@ public class ParquetProperties {
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
+  public static final int DEFAULT_MAXIMUM_BLOOM_FILTER_SIZE = 16 * 1024 * 1024;
+  public static final boolean DEFAULT_BLOOM_FILTER_ENABLED = false;
 
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
@@ -86,10 +91,13 @@ public class ParquetProperties {
   private final boolean estimateNextSizeCheck;
   private final ByteBufferAllocator allocator;
   private final ValuesWriterFactory valuesWriterFactory;
+  private final boolean enableBloomFilter;
+  private final Set<String> bloomFilterColumnNames;
+  private final int bloomFilterSize;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
-                            ValuesWriterFactory writerFactory) {
+                            ValuesWriterFactory writerFactory, boolean enableBloomFilter, Set<String> bloomFilterColumnNames, int bloomFilterSize) {
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
@@ -100,7 +108,9 @@ public class ParquetProperties {
     this.maxRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
     this.allocator = allocator;
-
+    this.enableBloomFilter = enableBloomFilter;
+    this.bloomFilterColumnNames = bloomFilterColumnNames;
+    this.bloomFilterSize = bloomFilterSize;
     this.valuesWriterFactory = writerFactory;
   }
 
@@ -162,6 +172,12 @@ public class ParquetProperties {
     return allocator;
   }
 
+  public boolean isBloomFilterEnabled() {return enableBloomFilter;}
+
+  public Set<String> getBloomFilterColumnNames() {return bloomFilterColumnNames;}
+
+  public int getBloomFilterSize() {return bloomFilterSize;}
+
   public ColumnWriteStore newColumnWriteStore(MessageType schema,
                                               PageWriteStore pageStore) {
     switch (writerVersion) {
@@ -202,13 +218,16 @@ public class ParquetProperties {
     private int pageSize = DEFAULT_PAGE_SIZE;
     private int dictPageSize = DEFAULT_DICTIONARY_PAGE_SIZE;
     private boolean enableDict = DEFAULT_IS_DICTIONARY_ENABLED;
+    private boolean enableBloomFilter = DEFAULT_BLOOM_FILTER_ENABLED;
+    private int bloomFilterSize = DEFAULT_MAXIMUM_BLOOM_FILTER_SIZE;
+    private Set<String> bloomFilterColumnNames = new HashSet<>();
     private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
     private int minRowCountForPageSizeCheck = DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK;
     private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
     private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
-
+    
     private Builder() {
     }
 
@@ -220,6 +239,9 @@ public class ParquetProperties {
       this.maxRowCountForPageSizeCheck = toCopy.maxRowCountForPageSizeCheck;
       this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
       this.allocator = toCopy.allocator;
+      this.enableBloomFilter = toCopy.enableBloomFilter;
+      this.bloomFilterSize = toCopy.bloomFilterSize;
+      this.bloomFilterColumnNames = toCopy.bloomFilterColumnNames;
     }
 
     /**
@@ -256,6 +278,43 @@ public class ParquetProperties {
       Preconditions.checkArgument(dictionaryPageSize > 0,
           "Invalid dictionary page size (negative): %s", dictionaryPageSize);
       this.dictPageSize = dictionaryPageSize;
+      return this;
+    }
+
+    /**
+     * Set to enable bloom filter.
+     *
+     * @param enableBloomFilter a boolean to indicate whether to enable bloom filter.
+     * @return this builder for method chaining.
+     */
+    public Builder withBloomFilterEnabled(boolean enableBloomFilter) {
+      this.enableBloomFilter = enableBloomFilter;
+      return this;
+    }
+
+    /**
+     * Set bloom filter size for a column.
+     *
+     * @param size bytes for a bloom filter of column.
+     * @return this builder for method chaining
+     */
+    public Builder withBloomFilterSize(int size) {
+      Preconditions.checkArgument(size > 0, "invalid bloom filter size");
+      this.bloomFilterSize = size;
+      return this;
+    }
+
+    /**
+     * Set which column to enable bloom filter.
+     *
+     * @param names column names to enable bloom filter.
+     * @return this builder for method chaining
+     */
+    public Builder withBloomFilterColumnNames(String names) {
+      String[] cols = names.split(",");
+      for(String col : cols) {
+        this.bloomFilterColumnNames.add(col);
+      }
       return this;
     }
 
@@ -306,7 +365,8 @@ public class ParquetProperties {
       ParquetProperties properties =
         new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, valuesWriterFactory);
+          estimateNextSizeCheck, allocator, valuesWriterFactory,
+          enableBloomFilter, bloomFilterColumnNames, bloomFilterSize);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently
       // creation of ValuesWriters is invoked from within ParquetProperties. In the future
       // we'd like to decouple that and won't need to pass an object to properties and then pass the

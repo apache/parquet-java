@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.page.mem;
 
+import org.apache.parquet.column.values.bloom.BloomDataWriter;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.UnknownColumnException;
 import org.apache.parquet.column.page.DataPage;
@@ -54,6 +55,11 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
       pageWriters.put(path, pageWriter);
     }
     return pageWriter;
+  }
+
+  @Override
+  public BloomDataWriter getBloomDataWriter(ColumnDescriptor path) {
+    return new MemBloomDataWriter();
   }
 
   @Override

@@ -340,7 +340,7 @@ public class TestInputFormat {
         CompressionCodecName.GZIP,
         new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
         stats,
-        100l, 100l, valueCount, 100l, 100l);
+        100l, 0l, 100l, valueCount, 100l, 100l);
     blockMetaData.addColumn(column);
     blockMetaData.setTotalByteSize(200l);
     blockMetaData.setRowCount(valueCount);
@@ -550,7 +550,7 @@ public class TestInputFormat {
                                                          CompressionCodecName.GZIP,
                                                          new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
                                                          new BinaryStatistics(),
-                                                         start, 0l, 0l, compressedBlockSize, uncompressedSize);
+                                                         start, 0l, 0l, 0l, compressedBlockSize, uncompressedSize);
     blockMetaData.addColumn(column);
     blockMetaData.setTotalByteSize(uncompressedSize);
     return blockMetaData;

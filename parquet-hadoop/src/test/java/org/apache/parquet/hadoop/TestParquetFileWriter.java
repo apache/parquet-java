@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.values.bloom.Bloom;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.junit.Assume;
 import org.junit.Rule;
@@ -130,6 +131,44 @@ public class TestParquetFileWriter {
     assertTrue(!exceptionThrown);
     testFile.delete();
   }
+
+  @Test
+  public void testBloomWriteRead() throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
+    File testFile = temp.newFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+    configuration.set("parquet.bloom.filter.column.names", "foo");
+    String colPath[] = {"foo"};
+    ColumnDescriptor col = schema.getColumnDescription(colPath);
+
+    ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
+    w.start();
+    w.startBlock(3);
+    w.startColumn(col, 5, CODEC);
+    w.writeDataPage(2, 4, BytesInput.from(BYTES1), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES1), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    Bloom bloomData = new Bloom.BinaryBloom(0);
+    bloomData.insert(Binary.fromString("hello"));
+    bloomData.insert(Binary.fromString("world"));
+    bloomData.flush();
+    long blStarts = w.getPos();
+    w.writeBloomFilter(bloomData);
+    w.endColumn();
+    w.endBlock();
+    w.end(new HashMap<String, String>());
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    assertEquals("bloom offset", blStarts, readFooter.getBlocks().get(0).getColumns().get(0).getBloomFilterDataOffset());
+    ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+      Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(colPath)));
+    BloomDataReader bloomReader =  r.getBloomDataReader(readFooter.getBlocks().get(0));
+    Bloom bloomDataRead = bloomReader.readBloomData(col);
+    assertTrue(bloomDataRead.find(Binary.fromString("hello")));
+    assertTrue(bloomDataRead.find(Binary.fromString("world")));
+  }
+
 
   @Test
   public void testWriteRead() throws Exception {

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,26 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.page;
-
-import org.apache.parquet.column.values.bloom.BloomDataWriter;
-import org.apache.parquet.column.ColumnDescriptor;
+package org.apache.parquet.column.values.bloom;
 
 /**
- * contains all the writers for the columns in the corresponding row group
- *
- * @author Julien Le Dem
- *
+ * A bloom data writer for a given column chunk.
  */
-public interface PageWriteStore {
-
-  /**
-   *
-   * @param path the descriptor for the column
-   * @return the corresponding page writer
-   */
-  PageWriter getPageWriter(ColumnDescriptor path);
-
-  BloomDataWriter getBloomDataWriter(ColumnDescriptor path);
-
+public interface BloomDataWriter {
+  void writeBloomData(Bloom bloom);
 }

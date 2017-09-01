@@ -35,6 +35,7 @@ import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.values.bloom.BloomDataWriter;
 import org.apache.parquet.schema.MessageType;
 
 public class ColumnWriteStoreV2 implements ColumnWriteStore {
@@ -58,7 +59,12 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
     Map<ColumnDescriptor, ColumnWriterV2> mcolumns = new TreeMap<ColumnDescriptor, ColumnWriterV2>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      mcolumns.put(path, new ColumnWriterV2(path, pageWriter, props));
+      if (props.isBloomFilterEnabled() && props.getBloomFilterColumnNames() != null) {
+        BloomDataWriter bloomDataWriter = pageWriteStore.getBloomDataWriter(path);
+        mcolumns.put(path, new ColumnWriterV2(path, pageWriter, bloomDataWriter, props));
+      } else {
+        mcolumns.put(path, new ColumnWriterV2(path, pageWriter, props));
+      }
     }
     this.columns = unmodifiableMap(mcolumns);
     this.writers = this.columns.values();

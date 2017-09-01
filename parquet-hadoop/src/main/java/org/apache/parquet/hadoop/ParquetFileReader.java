@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTIONARY;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
+import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.BLOOM;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
@@ -30,11 +31,15 @@ import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED_DEFAULT;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STATS_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STATS_FILTERING_ENABLED_DEFAULT;
+import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTER_ENABLED_DEFAULT;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.SequenceInputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -51,7 +56,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -60,6 +64,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.column.values.bloom.Bloom;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -658,6 +663,10 @@ public class ParquetFileReader implements Closeable {
       levels.add(DICTIONARY);
     }
 
+    if (conf.getBoolean(BLOOM_FILTERING_ENABLED, BLOOM_FILTER_ENABLED_DEFAULT)) {
+      levels.add(BLOOM);
+    }
+
     this.blocks = RowGroupFilter.filterRowGroups(levels, filter, blocks, this);
   }
 
@@ -759,6 +768,9 @@ public class ParquetFileReader implements Closeable {
     return new DictionaryPageReader(this, block);
   }
 
+  public BloomDataReader getBloomDataReader(BlockMetaData block) {
+    return new BloomDataReader(this, block);
+  }
   /**
    * Reads and decompresses a dictionary page for the given column chunk.
    *
@@ -808,6 +820,31 @@ public class ParquetFileReader implements Closeable {
     return new DictionaryPage(
         bin, uncompressedPageSize, dictHeader.getNum_values(),
         converter.getEncoding(dictHeader.getEncoding()));
+  }
+
+  public Bloom readBloomData(ColumnChunkMetaData meta) throws IOException {
+    long bloomDataOffset = meta.getBloomFilterDataOffset();
+
+    // Bloom data is stored at end of row group, so offset can not be null.
+    if (bloomDataOffset == 0) return null;
+    f.seek(bloomDataOffset);
+
+    // Read bloom data header.
+    byte[] bytes = new byte[Bloom.BLOOM_HEADER_SIZE];
+    f.read(bytes);
+    ByteBuffer bloomHeader = ByteBuffer.wrap(bytes);
+    IntBuffer headerBuffer = bloomHeader.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
+    int numBytes = headerBuffer.get();
+    Bloom.HASH hash = Bloom.HASH.values()[headerBuffer.get()];
+    Bloom.ALGORITHM algorithm = Bloom.ALGORITHM.values()[headerBuffer.get()];
+
+    byte[] bitset = new byte[numBytes];
+    f.readFully(bitset);
+
+    Bloom bloom = Bloom.getBloomOnType(meta.getType(), 0, hash, algorithm);
+    bloom.initBitset(bitset);
+
+    return bloom;
   }
 
   @Override
