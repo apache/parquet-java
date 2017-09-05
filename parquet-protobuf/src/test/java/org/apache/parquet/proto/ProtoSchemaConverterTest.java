@@ -103,7 +103,7 @@ public class ProtoSchemaConverterTest {
         "  optional binary optionalEnum (ENUM) = 18;" +
         "  optional int32 someInt32 = 19;" +
         "  optional binary someString (UTF8) = 20;" +
-        "  required group optionalMap (MAP) = 21 {\n" +
+        "  optional group optionalMap (MAP) = 21 {\n" +
         "    repeated group key_value {\n" +
         "      required int64 key;\n" +
         "      optional group value {\n" +
@@ -135,7 +135,9 @@ public class ProtoSchemaConverterTest {
         "  }\n" +
         "  required group repeatedMessage (LIST) = 9 {\n" +
         "    repeated group list {\n" +
-        "      optional int32 someId = 3;\n" +
+        "      optional group element {\n" +
+        "        optional int32 someId = 3;\n" +
+        "      }\n" +
         "    }\n" +
         "  }" +
         "}";
@@ -158,7 +160,9 @@ public class ProtoSchemaConverterTest {
         "  }\n" +
         "  required group repeatedMessage (LIST) = 9 {\n" +
         "    repeated group list {\n" +
-        "      optional int32 someId = 3;\n" +
+        "      optional group element {\n" +
+        "        optional int32 someId = 3;\n" +
+        "      }\n" +
         "    }\n" +
         "  }\n" +
         "}";
