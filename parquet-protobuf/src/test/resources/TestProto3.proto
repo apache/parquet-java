@@ -1,0 +1,139 @@
+syntax = "proto3";
+//
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+package TestProto3;
+
+option java_package = "org.apache.parquet.proto.test";
+
+// original Dremel paper structures: Original paper used groups, not internal
+// messages but groups were deprecated.
+
+message Document {
+    int64 DocId = 1;
+    Links links = 32;
+    repeated Name Name = 24;
+}
+
+message Name {
+    repeated Language name = 4;
+    string url = 5;
+}
+
+message Language {
+    string code = 12;
+    string Country = 14;
+}
+
+message Links {
+    repeated int64 Backward = 1;
+    repeated int64 Forward = 2;
+}
+
+
+// begin - protocol buffers for ProtoSchemaConverterTest
+
+message SchemaConverterSimpleMessage {
+    int32 someId = 3;
+}
+
+message SchemaConverterAllDatatypes {
+    double optionalDouble = 1;
+    float optionalFloat = 2;
+    int32 optionalInt32 = 3;
+    int64 optionalInt64 = 4;
+    uint32 optionalUInt32 = 5;
+    uint64 optionalUInt64 = 6;
+    sint32 optionalSInt32 = 7;
+    sint64 optionalSInt64 = 8;
+    fixed32 optionalFixed32 = 9;
+    fixed64 optionalFixed64 = 10;
+    sfixed32 optionalSFixed32 = 11;
+    sfixed64 optionalSFixed64 = 12;
+    bool optionalBool = 13;
+    string optionalString = 14;
+    bytes optionalBytes = 15;
+    SchemaConverterSimpleMessage optionalMessage = 16;
+    enum TestEnum {
+        FIRST = 0;
+        SECOND = 1;
+    }
+    TestEnum optionalEnum = 18;
+    oneof oneof {
+        int32 someInt32 = 19;
+        string someString = 20;
+    }
+    map<int64, SchemaConverterSimpleMessage> optionalMap = 21;
+}
+
+message SchemaConverterRepetition {
+    int32 optionalPrimitive = 1;
+    repeated int32 repeatedPrimitive = 3;
+    SchemaConverterSimpleMessage optionalMessage = 7;
+    repeated SchemaConverterSimpleMessage repeatedMessage = 9;
+}
+
+// end - protocol buffers for ProtoSchemaConverterTest
+
+
+//begin protocol buffers for ProtoInputOutputFormatTest
+
+message InputOutputMsgFormat {
+    int32 someId = 3;
+}
+
+message IOFormatMessage {
+    double optionalDouble = 1;
+    repeated string repeatedString = 2;
+    InputOutputMsgFormat msg = 3;
+ }
+
+//end protocol buffers for ProtoInputOutputFormatTest
+
+
+message InnerMessage {
+    string one = 1;
+    string two = 2;
+    string three = 3;
+}
+
+message TopMessage {
+    repeated InnerMessage inner = 1;
+}
+
+message MessageA {
+    InnerMessage inner = 123;
+}
+
+message RepeatedIntMessage {
+    repeated int32 repeatedInt = 1;
+}
+
+message HighIndexMessage {
+    repeated int32 repeatedInt = 50000;
+}
+
+//custom proto class - ProtoInputOutputFormatTest
+
+message FirstCustomClassMessage {
+    string string = 11;
+}
+
+message SecondCustomClassMessage {
+    string string = 11;
+}

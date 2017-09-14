@@ -22,6 +22,9 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
@@ -70,6 +73,9 @@ public class SimpleRecordConverter extends GroupConverter {
           case UTF8: return new StringConverter(field.getName());
           case MAP_KEY_VALUE: break;
           case ENUM: break;
+          case DECIMAL:
+            int scale = field.asPrimitiveType().getDecimalMetadata().getScale();
+            return new DecimalConverter(field.getName(), scale);
         }
       }
 
@@ -153,6 +159,20 @@ public class SimpleRecordConverter extends GroupConverter {
     @Override
     public void addBinary(Binary value) {
       record.add(name, value.toStringUsingUTF8());
+    }
+  }
+
+  private class DecimalConverter extends SimplePrimitiveConverter {
+    private final int scale;
+
+    public DecimalConverter(String name, int scale) {
+      super(name);
+      this.scale = scale;
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      record.add(name, new BigDecimal(new BigInteger(value.getBytes()), scale));
     }
   }
 }
