@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.ConcatenatingByteArrayCollector;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -37,11 +38,12 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.encryption.BytesEncryptor;
+import org.apache.parquet.encryption.CodecFailureException;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +56,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     private final ColumnDescriptor path;
     private final BytesCompressor compressor;
-
+    private BytesEncryptor encryptor = null;
+    
     private final ByteArrayOutputStream tempOutputStream = new ByteArrayOutputStream();
     private final ConcatenatingByteArrayCollector buf;
     private DictionaryPage dictionaryPage;
@@ -76,12 +79,23 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
                                   BytesCompressor compressor,
                                   ByteBufferAllocator allocator) {
       this.path = path;
+      if(path.isEncrypt()){
+			this.encryptor = new BytesEncryptor();
+      }
       this.compressor = compressor;
       this.allocator = allocator;
       this.buf = new ConcatenatingByteArrayCollector();
       this.totalStatistics = getStatsBasedOnType(this.path.getType());
     }
 
+	private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor,
+			ByteBufferAllocator allocator, BytesEncryptor encryptor) {
+		this(path, compressor, allocator);
+		if(path.isEncrypt()){
+			this.encryptor = new BytesEncryptor();
+		}
+	}
+    
     @Override
     public void writePage(BytesInput bytes,
                           int valueCount,
@@ -96,6 +110,21 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
                 uncompressedSize);
       }
       BytesInput compressedBytes = compressor.compress(bytes);
+      
+      //TODO encrypt the compressed data: KP
+      BytesInput encryptedBytes = null;
+      long encryptedSize = 0;
+      if(path.isEncrypt()){
+    	  try {
+			encryptedBytes = encryptor.encrypt(compressedBytes);
+		    encryptedSize = encryptedBytes.size();
+		} catch (CodecFailureException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+      }
+      //
+      
       long compressedSize = compressedBytes.size();
       if (compressedSize > Integer.MAX_VALUE) {
         throw new ParquetEncodingException(
@@ -106,6 +135,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       parquetMetadataConverter.writeDataPageHeader(
           (int)uncompressedSize,
           (int)compressedSize,
+          (int)encryptedSize,
           valueCount,
           statistics,
           rlEncoding,
@@ -119,7 +149,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.totalStatistics.mergeStatistics(statistics);
       // by concatenating before collecting instead of collecting twice,
       // we only allocate one buffer to copy into instead of multiple.
-      buf.collect(BytesInput.concat(BytesInput.from(tempOutputStream), compressedBytes));
+      
+			buf.collect(BytesInput.concat(BytesInput.from(tempOutputStream),
+					encryptedBytes == null ? compressedBytes : encryptedBytes));
+      
       rlEncodings.add(rlEncoding);
       dlEncodings.add(dlEncoding);
       dataEncodings.add(valuesEncoding);
@@ -141,9 +174,22 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       int compressedSize = toIntWithCheck(
           compressedData.size() + repetitionLevels.size() + definitionLevels.size()
       );
+      
+      BytesInput encryptedBytes = null;
+      int encryptedSize = 0;
+      if(path.isEncrypt()){
+    	  try {
+			encryptedBytes = encryptor.encrypt(compressedData);
+		    encryptedSize = (int) encryptedBytes.size();
+		} catch (CodecFailureException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+      }
+      
       tempOutputStream.reset();
       parquetMetadataConverter.writeDataPageV2Header(
-          uncompressedSize, compressedSize,
+          uncompressedSize, compressedSize, encryptedSize,
           valueCount, nullCount, rowCount,
           statistics,
           dataEncoding,
@@ -163,7 +209,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
               BytesInput.from(tempOutputStream),
               repetitionLevels,
               definitionLevels,
-              compressedData)
+              encryptedBytes == null ? compressedData : encryptedBytes)
       );
       dataEncodings.add(dataEncoding);
     }
@@ -236,7 +282,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator));
+    	writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator));
     }
   }
 

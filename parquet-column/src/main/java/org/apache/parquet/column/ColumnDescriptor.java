@@ -35,7 +35,8 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
   private final int typeLength;
   private final int maxRep;
   private final int maxDef;
-
+  private boolean encrypt = false;
+  
   /**
    *
    * @param path the path to the leaf field in the schema
@@ -63,8 +64,16 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
     this.typeLength = typeLength;
     this.maxRep = maxRep;
     this.maxDef = maxDef;
+	setEncryptFlag();
   }
 
+  private void setEncryptFlag() {
+	if (path[0].toLowerCase().startsWith("encrypted_")) {
+		this.encrypt = true;
+	}
+  }
+
+  
   /**
    * @return the path to the leaf field in the schema
    */
@@ -100,6 +109,13 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
     return typeLength;
   }
 
+  /**
+   * @return true if the column needs to be encrypted false otherwise
+   **/
+  public boolean isEncrypt() {
+	return encrypt;
+  }
+  
   @Override
   public int hashCode() {
     return Arrays.hashCode(path);
