@@ -239,7 +239,8 @@ public class PigSchemaConverter {
       @Override
       public FieldSchema convertINT96(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
-        throw new FrontendException("NYI");
+        LOG.warn("Converting type " + primitiveTypeName + " to bytearray");
+        return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
       }
 
       @Override
@@ -283,7 +284,7 @@ public class PigSchemaConverter {
         }
         GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
         if (!mapKeyValType.isRepetition(Repetition.REPEATED) ||
-            !mapKeyValType.getOriginalType().equals(OriginalType.MAP_KEY_VALUE) ||
+            (mapKeyValType.getOriginalType() != null && !mapKeyValType.getOriginalType().equals(OriginalType.MAP_KEY_VALUE)) ||
             mapKeyValType.getFieldCount()!=2) {
           throw new SchemaConversionException("Invalid map type " + parquetGroupType);
         }
