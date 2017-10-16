@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
+import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
@@ -193,7 +194,7 @@ public class ParquetMetadataConverter {
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
           Arrays.asList(columnMetaData.getPath().toArray()),
-          columnMetaData.getCodec().getParquetCompressionCodec(),
+          toFormatCodec(columnMetaData.getCodec()),
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
           columnMetaData.getTotalSize(),
@@ -244,6 +245,14 @@ public class ParquetMetadataConverter {
     }
 
     return cached;
+  }
+
+  private CompressionCodecName fromFormatCodec(CompressionCodec codec) {
+    return CompressionCodecName.valueOf(codec.toString());
+  }
+
+  private CompressionCodec toFormatCodec(CompressionCodecName codec) {
+    return CompressionCodec.valueOf(codec.toString());
   }
 
   public org.apache.parquet.column.Encoding getEncoding(Encoding encoding) {
@@ -820,7 +829,7 @@ public class ParquetMetadataConverter {
           ColumnChunkMetaData column = ColumnChunkMetaData.get(
               path,
               messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
-              CompressionCodecName.fromParquet(metaData.codec),
+              fromFormatCodec(metaData.codec),
               convertEncodingStats(metaData.getEncoding_stats()),
               fromFormatEncodings(metaData.encodings),
               fromParquetStatistics(
