@@ -23,7 +23,6 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,7 +35,6 @@ import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
@@ -59,9 +57,13 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.HadoopStreams;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.TypeUtil;
@@ -85,22 +87,6 @@ public class ParquetFileWriter {
   public static final String PARQUET_COMMON_METADATA_FILE = "_common_metadata";
   public static final int CURRENT_VERSION = 1;
 
-  // need to supply a buffer size when setting block size. this is the default
-  // for hadoop 1 to present. copying it avoids loading DFSConfigKeys.
-  private static final int DFS_BUFFER_SIZE_DEFAULT = 4096;
-
-  // visible for testing
-  static final Set<String> BLOCK_FS_SCHEMES = new HashSet<String>();
-  static {
-    BLOCK_FS_SCHEMES.add("hdfs");
-    BLOCK_FS_SCHEMES.add("webhdfs");
-    BLOCK_FS_SCHEMES.add("viewfs");
-  }
-
-  private static boolean supportsBlockSize(FileSystem fs) {
-    return BLOCK_FS_SCHEMES.contains(fs.getUri().getScheme());
-  }
-
   // File creation modes
   public static enum Mode {
     CREATE,
@@ -108,7 +94,7 @@ public class ParquetFileWriter {
   }
 
   private final MessageType schema;
-  private final FSDataOutputStream out;
+  private final PositionOutputStream out;
   private final AlignmentStrategy alignment;
 
   // file data
@@ -193,11 +179,14 @@ public class ParquetFileWriter {
    * @param schema the schema of the data
    * @param file the file to write to
    * @throws IOException if the file can not be created
+   * @deprecated will be removed in 2.0.0;
+   *             use {@link ParquetFileWriter(OutputFile,MessageType,Mode,long,long)} instead
    */
+  @Deprecated
   public ParquetFileWriter(Configuration configuration, MessageType schema,
       Path file) throws IOException {
-    this(configuration, schema, file, Mode.CREATE, DEFAULT_BLOCK_SIZE,
-        MAX_PADDING_SIZE_DEFAULT);
+    this(HadoopOutputFile.fromPath(file, configuration),
+        schema, Mode.CREATE, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT);
   }
 
   /**
@@ -206,49 +195,50 @@ public class ParquetFileWriter {
    * @param file the file to write to
    * @param mode file creation mode
    * @throws IOException if the file can not be created
+   * @deprecated will be removed in 2.0.0;
+   *             use {@link ParquetFileWriter(OutputFile,MessageType,Mode,long,long)} instead
    */
+  @Deprecated
   public ParquetFileWriter(Configuration configuration, MessageType schema,
                            Path file, Mode mode) throws IOException {
-    this(configuration, schema, file, mode, DEFAULT_BLOCK_SIZE,
-        MAX_PADDING_SIZE_DEFAULT);
+    this(HadoopOutputFile.fromPath(file, configuration),
+        schema, mode, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT);
   }
 
   /**
-   * @param configuration Hadoop configuration
+   * @param file OutputFile to create or overwrite
    * @param schema the schema of the data
-   * @param file the file to write to
    * @param mode file creation mode
    * @param rowGroupSize the row group size
+   * @param maxPaddingSize the maximum padding
    * @throws IOException if the file can not be created
    */
-  public ParquetFileWriter(Configuration configuration, MessageType schema,
-                           Path file, Mode mode, long rowGroupSize,
-                           int maxPaddingSize)
+  public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
+                           long rowGroupSize, int maxPaddingSize)
       throws IOException {
     TypeUtil.checkValidWriteSchema(schema);
+
     this.schema = schema;
-    FileSystem fs = file.getFileSystem(configuration);
-    boolean overwriteFlag = (mode == Mode.OVERWRITE);
 
-    if (supportsBlockSize(fs)) {
-      // use the default block size, unless row group size is larger
-      long dfsBlockSize = Math.max(fs.getDefaultBlockSize(file), rowGroupSize);
-
-      this.alignment = PaddingAlignment.get(
-          dfsBlockSize, rowGroupSize, maxPaddingSize);
-      this.out = fs.create(file, overwriteFlag, DFS_BUFFER_SIZE_DEFAULT,
-          fs.getDefaultReplication(file), dfsBlockSize);
-
+    long blockSize = rowGroupSize;
+    if (file.supportsBlockSize()) {
+      blockSize = Math.max(file.defaultBlockSize(), rowGroupSize);
+      this.alignment = PaddingAlignment.get(blockSize, rowGroupSize, maxPaddingSize);
     } else {
       this.alignment = NoAlignment.get(rowGroupSize);
-      this.out = fs.create(file, overwriteFlag);
+    }
+
+    if (mode == Mode.OVERWRITE) {
+      this.out = file.createOrOverwrite(blockSize);
+    } else {
+      this.out = file.create(blockSize);
     }
 
     this.encodingStatsBuilder = new EncodingStats.Builder();
   }
 
   /**
-   * FOR TESTING ONLY.
+   * FOR TESTING ONLY. This supports testing block padding behavior on the local FS.
    *
    * @param configuration Hadoop configuration
    * @param schema the schema of the data
@@ -263,11 +253,10 @@ public class ParquetFileWriter {
     this.schema = schema;
     this.alignment = PaddingAlignment.get(
         rowAndBlockSize, rowAndBlockSize, maxPaddingSize);
-    this.out = fs.create(file, true, DFS_BUFFER_SIZE_DEFAULT,
-        fs.getDefaultReplication(file), rowAndBlockSize);
+    this.out = HadoopStreams.wrap(
+        fs.create(file, true, 8192, fs.getDefaultReplication(file), rowAndBlockSize));
     this.encodingStatsBuilder = new EncodingStats.Builder();
   }
-
   /**
    * start the file
    * @throws IOException
@@ -490,10 +479,23 @@ public class ParquetFileWriter {
     currentBlock = null;
   }
 
+  /**
+   * @deprecated will be removed in 2.0.0; use {@link #appendFile(InputFile)} instead
+   */
+  @Deprecated
   public void appendFile(Configuration conf, Path file) throws IOException {
     ParquetFileReader.open(conf, file).appendTo(this);
   }
 
+  public void appendFile(InputFile file) throws IOException {
+    ParquetFileReader.open(file).appendTo(this);
+  }
+
+  /**
+   * @deprecated will be removed in 2.0.0;
+   *             use {@link #appendRowGroups(SeekableInputStream,List,boolean)} instead
+   */
+  @Deprecated
   public void appendRowGroups(FSDataInputStream file,
                               List<BlockMetaData> rowGroups,
                               boolean dropColumns) throws IOException {
@@ -508,13 +510,18 @@ public class ParquetFileWriter {
     }
   }
 
+  /**
+   * @deprecated will be removed in 2.0.0;
+   *             use {@link #appendRowGroup(SeekableInputStream,BlockMetaData,boolean)} instead
+   */
+  @Deprecated
   public void appendRowGroup(FSDataInputStream from, BlockMetaData rowGroup,
                              boolean dropColumns) throws IOException {
-    appendRowGroup(from, rowGroup, dropColumns);
+    appendRowGroup(HadoopStreams.wrap(from), rowGroup, dropColumns);
   }
 
   public void appendRowGroup(SeekableInputStream from, BlockMetaData rowGroup,
-    boolean dropColumns) throws IOException {
+                             boolean dropColumns) throws IOException {
     startBlock(rowGroup.getRowCount());
 
     Map<String, ColumnChunkMetaData> columnsToCopy =
@@ -603,13 +610,13 @@ public class ParquetFileWriter {
   /**
    * Copy from a FS input stream to an output stream. Thread-safe
    *
-   * @param from a {@link FSDataInputStream}
-   * @param to any {@link OutputStream}
+   * @param from a {@link SeekableInputStream}
+   * @param to any {@link PositionOutputStream}
    * @param start where in the from stream to start copying
    * @param length the number of bytes to copy
    * @throws IOException
    */
-  private static void copy(SeekableInputStream from, FSDataOutputStream to,
+  private static void copy(SeekableInputStream from, PositionOutputStream to,
                            long start, long length) throws IOException{
     LOG.debug("Copying {} bytes at {} to {}" ,length , start , to.getPos());
     from.seek(start);
@@ -642,7 +649,7 @@ public class ParquetFileWriter {
     out.close();
   }
 
-  private static void serializeFooter(ParquetMetadata footer, FSDataOutputStream out) throws IOException {
+  private static void serializeFooter(ParquetMetadata footer, PositionOutputStream out) throws IOException {
     long footerIndex = out.getPos();
     org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
     writeFileMetaData(parquetMetadata, out);
@@ -654,7 +661,9 @@ public class ParquetFileWriter {
   /**
    * Given a list of metadata files, merge them into a single ParquetMetadata
    * Requires that the schemas be compatible, and the extraMetadata be exactly equal.
+   * @deprecated metadata files are not recommended and will be removed in 2.0.0
    */
+  @Deprecated
   public static ParquetMetadata mergeMetadataFiles(List<Path> files,  Configuration conf) throws IOException {
     Preconditions.checkArgument(!files.isEmpty(), "Cannot merge an empty list of metadata");
 
@@ -677,7 +686,9 @@ public class ParquetFileWriter {
    * Requires that the schemas be compatible, and the extraMetaData be exactly equal.
    * This is useful when merging 2 directories of parquet files into a single directory, as long
    * as both directories were written with compatible schemas and equal extraMetaData.
+   * @deprecated metadata files are not recommended and will be removed in 2.0.0
    */
+  @Deprecated
   public static void writeMergedMetadataFile(List<Path> files, Path outputPath, Configuration conf) throws IOException {
     ParquetMetadata merged = mergeMetadataFiles(files, conf);
     writeMetadataFile(outputPath, merged, outputPath.getFileSystem(conf));
@@ -688,8 +699,8 @@ public class ParquetFileWriter {
    * @param configuration the configuration to use to get the FileSystem
    * @param outputPath the directory to write the _metadata file to
    * @param footers the list of footers to merge
-   * @deprecated use the variant of writeMetadataFile that takes a {@link JobSummaryLevel} as an argument.
    * @throws IOException
+   * @deprecated metadata files are not recommended and will be removed in 2.0.0
    */
   @Deprecated
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
@@ -698,7 +709,9 @@ public class ParquetFileWriter {
 
   /**
    * writes _common_metadata file, and optionally a _metadata file depending on the {@link JobSummaryLevel} provided
+   * @deprecated metadata files are not recommended and will be removed in 2.0.0
    */
+  @Deprecated
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers, JobSummaryLevel level) throws IOException {
     Preconditions.checkArgument(level == JobSummaryLevel.ALL || level == JobSummaryLevel.COMMON_ONLY,
         "Unsupported level: " + level);
@@ -715,15 +728,23 @@ public class ParquetFileWriter {
     writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_COMMON_METADATA_FILE);
   }
 
+  /**
+   * @deprecated metadata files are not recommended and will be removed in 2.0.0
+   */
+  @Deprecated
   private static void writeMetadataFile(Path outputPathRoot, ParquetMetadata metadataFooter, FileSystem fs, String parquetMetadataFile)
       throws IOException {
     Path metaDataPath = new Path(outputPathRoot, parquetMetadataFile);
     writeMetadataFile(metaDataPath, metadataFooter, fs);
   }
 
+  /**
+   * @deprecated metadata files are not recommended and will be removed in 2.0.0
+   */
+  @Deprecated
   private static void writeMetadataFile(Path outputPath, ParquetMetadata metadataFooter, FileSystem fs)
       throws IOException {
-    FSDataOutputStream metadata = fs.create(outputPath);
+    PositionOutputStream metadata = HadoopStreams.wrap(fs.create(outputPath));
     metadata.write(MAGIC);
     serializeFooter(metadataFooter, metadata);
     metadata.close();
@@ -850,9 +871,9 @@ public class ParquetFileWriter {
   }
 
   private interface AlignmentStrategy {
-    void alignForRowGroup(FSDataOutputStream out) throws IOException;
+    void alignForRowGroup(PositionOutputStream out) throws IOException;
 
-    long nextRowGroupSize(FSDataOutputStream out) throws IOException;
+    long nextRowGroupSize(PositionOutputStream out) throws IOException;
   }
 
   private static class NoAlignment implements AlignmentStrategy {
@@ -867,11 +888,11 @@ public class ParquetFileWriter {
     }
 
     @Override
-    public void alignForRowGroup(FSDataOutputStream out) {
+    public void alignForRowGroup(PositionOutputStream out) {
     }
 
     @Override
-    public long nextRowGroupSize(FSDataOutputStream out) {
+    public long nextRowGroupSize(PositionOutputStream out) {
       return rowGroupSize;
     }
   }
@@ -900,7 +921,7 @@ public class ParquetFileWriter {
     }
 
     @Override
-    public void alignForRowGroup(FSDataOutputStream out) throws IOException {
+    public void alignForRowGroup(PositionOutputStream out) throws IOException {
       long remaining = dfsBlockSize - (out.getPos() % dfsBlockSize);
 
       if (isPaddingNeeded(remaining)) {
@@ -912,7 +933,7 @@ public class ParquetFileWriter {
     }
 
     @Override
-    public long nextRowGroupSize(FSDataOutputStream out) throws IOException {
+    public long nextRowGroupSize(PositionOutputStream out) throws IOException {
       if (maxPaddingSize <= 0) {
         return rowGroupSize;
       }

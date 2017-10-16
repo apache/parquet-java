@@ -23,6 +23,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
@@ -91,7 +92,7 @@ public class MergeCommand extends ArgsOnlyCommand {
         tooSmallFilesMerged = true;
       }
 
-      writer.appendFile(conf, input);
+      writer.appendFile(HadoopInputFile.fromPath(input, conf));
     }
 
     if (tooSmallFilesMerged) {

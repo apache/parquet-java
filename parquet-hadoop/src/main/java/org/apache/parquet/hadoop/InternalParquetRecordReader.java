@@ -27,6 +27,8 @@ import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 
+import org.apache.parquet.HadoopReadOptions;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -47,7 +49,6 @@ import org.slf4j.LoggerFactory;
 import static java.lang.String.format;
 import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
-import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED_DEFAULT;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 
 class InternalParquetRecordReader<T> {
@@ -160,6 +161,34 @@ class InternalParquetRecordReader<T> {
     return (float) current / total;
   }
 
+  public void initialize(ParquetFileReader reader, ParquetReadOptions options) {
+    // copy custom configuration to the Configuration passed to the ReadSupport
+    Configuration conf = new Configuration();
+    if (options instanceof HadoopReadOptions) {
+      conf = ((HadoopReadOptions) options).getConf();
+    }
+    for (String property : options.getPropertyNames()) {
+      conf.set(property, options.getProperty(property));
+    }
+
+    // initialize a ReadContext for this file
+    this.reader = reader;
+    FileMetaData parquetFileMetadata = reader.getFooter().getFileMetaData();
+    this.fileSchema = parquetFileMetadata.getSchema();
+    Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
+    ReadSupport.ReadContext readContext = readSupport.init(new InitContext(conf, toSetMultiMap(fileMetadata), fileSchema));
+    this.columnIOFactory = new ColumnIOFactory(parquetFileMetadata.getCreatedBy());
+    this.requestedSchema = readContext.getRequestedSchema();
+    this.columnCount = requestedSchema.getPaths().size();
+    this.recordConverter = readSupport.prepareForRead(conf, fileMetadata, fileSchema, readContext);
+    this.strictTypeChecking = options.isEnabled(STRICT_TYPE_CHECKING, true);
+    this.total = reader.getRecordCount();
+    this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(options, total);
+    this.filterRecords = options.useRecordFilter();
+    reader.setRequestedSchema(requestedSchema);
+    LOG.info("RecordReader initialized will read a total of {} records.", total);
+  }
+
   public void initialize(ParquetFileReader reader, Configuration configuration)
       throws IOException {
     // initialize a ReadContext for this file
@@ -177,8 +206,7 @@ class InternalParquetRecordReader<T> {
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
     this.total = reader.getRecordCount();
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(configuration, total);
-    this.filterRecords = configuration.getBoolean(
-        RECORD_FILTERING_ENABLED, RECORD_FILTERING_ENABLED_DEFAULT);
+    this.filterRecords = configuration.getBoolean(RECORD_FILTERING_ENABLED, true);
     reader.setRequestedSchema(requestedSchema);
     LOG.info("RecordReader initialized will read a total of {} records.", total);
   }

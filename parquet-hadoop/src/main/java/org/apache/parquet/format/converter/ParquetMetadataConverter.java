@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -90,8 +91,16 @@ public class ParquetMetadataConverter {
     this(false);
   }
 
+  /**
+   * @deprecated will be removed in 2.0.0; use {@code ParquetMetadataConverter(ParquetReadOptions)}
+   */
+  @Deprecated
   public ParquetMetadataConverter(Configuration conf) {
     this(conf.getBoolean("parquet.strings.signed-min-max.enabled", false));
+  }
+
+  public ParquetMetadataConverter(ParquetReadOptions options) {
+    this(options.useSignedStringMinMax());
   }
 
   private ParquetMetadataConverter(boolean useSignedStringMinMax) {
