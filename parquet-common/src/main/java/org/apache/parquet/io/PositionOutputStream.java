@@ -20,25 +20,20 @@
 package org.apache.parquet.io;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
- * {@code InputFile} is an interface with the methods needed by Parquet to read
- * data files using {@link SeekableInputStream} instances.
+ * {@code PositionOutputStream} is an interface with the methods needed by
+ * Parquet to write data to a file or Hadoop data stream.
  */
-public interface InputFile {
+public abstract class PositionOutputStream extends OutputStream {
 
   /**
-   * @return the total length of the file, in bytes.
-   * @throws IOException if the length cannot be determined
-   */
-  long getLength() throws IOException;
-
-  /**
-   * Open a new {@link SeekableInputStream} for the underlying data file.
+   * Reports the current position of this output stream.
    *
-   * @return a new {@link SeekableInputStream} to read the file
-   * @throws IOException if the stream cannot be opened
+   * @return a long, the current position in bytes starting from 0
+   * @throws IOException when the underlying stream throws IOException
    */
-  SeekableInputStream newStream() throws IOException;
+  public abstract long getPos() throws IOException;
 
 }
