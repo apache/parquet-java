@@ -28,7 +28,7 @@ before_install:
 
 env:
   - HADOOP_PROFILE=hadoop-1 TEST_CODECS=uncompressed
-  - HADOOP_PROFILE=default TEST_CODECS=gzip,snappy
+  - HADOOP_PROFILE=default TEST_CODECS=gzip,snappy,brotli
 
 install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true > mvn_install.log || mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true > mvn_install.log || (cat mvn_install.log && false)
 script: mvn test -P $HADOOP_PROFILE

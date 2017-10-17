@@ -50,6 +50,26 @@
     </mailingList>
   </mailingLists>
 
+  <repositories>
+    <repository>
+      <id>apache-staging</id>
+      <name>Nexus staging repository</name>
+      <url>https://repository.apache.org/content/repositories/orgapacheparquet-1012</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+      <name>Jitpack.io repository</name>
+      <!-- needed for brotli-codec -->
+    </repository>
+  </repositories>
+
   <developers>
     <developer>
       <name>Julien Le Dem</name>
@@ -72,7 +92,7 @@
     <hadoop1.version>1.2.1</hadoop1.version>
     <cascading.version>2.7.1</cascading.version>
     <cascading3.version>3.1.2</cascading3.version>
-    <parquet.format.version>2.3.1</parquet.format.version>
+    <parquet.format.version>2.4.0</parquet.format.version>
     <previous.version>1.7.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <scala.version>2.10.6</scala.version>
@@ -88,6 +108,7 @@
     <slf4j.version>1.7.22</slf4j.version>
     <avro.version>1.8.1</avro.version>
     <guava.version>20.0</guava.version>
+    <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
 
     <!-- parquet-cli dependencies -->

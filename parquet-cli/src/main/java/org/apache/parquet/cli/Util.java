@@ -218,6 +218,12 @@ public class Util {
         return "G";
       case LZO:
         return "L";
+      case BROTLI:
+        return "B";
+      case LZ4:
+        return "4";
+      case ZSTD:
+        return "Z";
       default:
         return "?";
     }
