@@ -263,6 +263,8 @@
                      <exclude>org/apache/parquet/hadoop/CodecFactory**</exclude>
                      <exclude>shaded/**</exclude> <!-- shaded by parquet -->
                      <exclude>org/apache/parquet/it/unimi/dsi/fastutil/**</exclude> <!-- Another shaded dependency from parquet-column -->
+                     <exclude>org/apache/parquet/benchmarks/**</exclude>
+                     <exclude>org/openjdk/**</exclude>
                      <!-- temporary exclusions for false-positives -->
                      <exclude>org/apache/parquet/Version</exclude>
                      <exclude>org/apache/parquet/schema/**</exclude> <!-- methods moved to new superclass -->
@@ -277,6 +279,22 @@
                </rules>
              </configuration>
            </execution>
+           <execution>
+            <id>enforce-banned-dependencies</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <excludes>
+                    <exclude>org.slf4j:slf4j-log4j12</exclude>
+                  </excludes>
+                </bannedDependencies>
+              </rules>
+              <fail>true</fail>
+            </configuration>
+          </execution>
          </executions>
         </plugin>
         <plugin>
