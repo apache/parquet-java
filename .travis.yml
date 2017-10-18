@@ -22,7 +22,7 @@ before_install:
   - tar zxf thrift-0.7.0.tar.gz
   - cd thrift-0.7.0
   - chmod +x ./configure
-  - ./configure --disable-gen-erl --disable-gen-hs --without-php --without-nodejs --without-ruby --without-haskell --without-erlang
+  - ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php
   - sudo make install
   - cd ..
 
@@ -32,3 +32,4 @@ env:
 
 install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true > mvn_install.log || mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true > mvn_install.log || (cat mvn_install.log && false)
 script: mvn test -P $HADOOP_PROFILE
+dist: precise
