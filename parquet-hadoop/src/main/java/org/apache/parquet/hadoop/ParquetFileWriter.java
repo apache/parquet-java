@@ -206,6 +206,26 @@ public class ParquetFileWriter {
   }
 
   /**
+   * @param configuration Hadoop configuration
+   * @param schema the schema of the data
+   * @param file the file to write to
+   * @param mode file creation mode
+   * @param rowGroupSize the row group size
+   * @param maxPaddingSize the maximum padding
+   * @throws IOException if the file can not be created
+   * @deprecated will be removed in 2.0.0;
+   *             use {@link ParquetFileWriter(OutputFile,MessageType,Mode,long,long)} instead
+   */
+  @Deprecated
+  public ParquetFileWriter(Configuration configuration, MessageType schema,
+                           Path file, Mode mode, long rowGroupSize,
+                           int maxPaddingSize)
+      throws IOException {
+    this(HadoopOutputFile.fromPath(file, configuration),
+        schema, mode, rowGroupSize, maxPaddingSize);
+  }
+
+  /**
    * @param file OutputFile to create or overwrite
    * @param schema the schema of the data
    * @param mode file creation mode

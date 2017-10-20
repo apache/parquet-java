@@ -19,14 +19,15 @@
 package org.apache.parquet.hadoop.metadata;
 
 
+import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.hadoop.codec.CompressionCodecNotSupportedException;
 import java.util.Locale;
 
 public enum CompressionCodecName {
-  UNCOMPRESSED(null, ""),
-  SNAPPY("org.apache.parquet.hadoop.codec.SnappyCodec", ".snappy"),
-  GZIP("org.apache.hadoop.io.compress.GzipCodec", ".gz"),
-  LZO("com.hadoop.compression.lzo.LzoCodec", ".lzo"),
+  UNCOMPRESSED(null, CompressionCodec.UNCOMPRESSED, ""),
+  SNAPPY("org.apache.parquet.hadoop.codec.SnappyCodec", CompressionCodec.SNAPPY, ".snappy"),
+  GZIP("org.apache.hadoop.io.compress.GzipCodec", CompressionCodec.GZIP, ".gz"),
+  LZO("com.hadoop.compression.lzo.LzoCodec", CompressionCodec.LZO, ".lzo"),
   BROTLI("org.apache.hadoop.io.compress.BrotliCodec", CompressionCodec.BROTLI, ".br"),
   LZ4("org.apache.hadoop.io.compress.Lz4Codec", CompressionCodec.LZ4, ".lz4"),
   ZSTD("org.apache.hadoop.io.compress.ZStandardCodec", CompressionCodec.ZSTD, ".zstd");
@@ -51,11 +52,22 @@ public enum CompressionCodecName {
     throw new CompressionCodecNotSupportedException(clazz);
   }
 
+  public static CompressionCodecName fromParquet(CompressionCodec codec) {
+    for (CompressionCodecName codecName : CompressionCodecName.values()) {
+      if (codec.equals(codecName.parquetCompressionCodec)) {
+        return codecName;
+      }
+    }
+    throw new IllegalArgumentException("Unknown compression codec " + codec);
+  }
+
   private final String hadoopCompressionCodecClass;
+  private final CompressionCodec parquetCompressionCodec;
   private final String extension;
 
-  CompressionCodecName(String hadoopCompressionCodecClass, String extension) {
+  private CompressionCodecName(String hadoopCompressionCodecClass, CompressionCodec parquetCompressionCodec, String extension) {
     this.hadoopCompressionCodecClass = hadoopCompressionCodecClass;
+    this.parquetCompressionCodec = parquetCompressionCodec;
     this.extension = extension;
   }
 
@@ -73,6 +85,10 @@ public enum CompressionCodecName {
     } catch (ClassNotFoundException e) {
       return null;
     }
+  }
+
+  public CompressionCodec getParquetCompressionCodec() {
+    return parquetCompressionCodec;
   }
 
   public String getExtension() {
