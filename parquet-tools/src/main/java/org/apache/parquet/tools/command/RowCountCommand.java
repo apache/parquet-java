@@ -67,6 +67,11 @@ public class RowCountCommand extends ArgsOnlyCommand {
   }
 
   @Override
+  public String getCommandDescription() {
+    return "Prints the count of rows in Parquet file(s)";
+  }
+
+  @Override
   public void execute(CommandLine options) throws Exception {
     super.execute(options);
 

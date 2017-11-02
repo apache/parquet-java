@@ -26,8 +26,10 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
+import org.apache.parquet.tools.Main;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +44,7 @@ public class MergeCommand extends ArgsOnlyCommand {
    * Biggest number of input files we can merge.
    */
   private static final int MAX_FILE_NUM = 100;
+  private static final long TOO_SMALL_FILE_THRESHOLD = 64 * 1024 * 1024;
 
   private Configuration conf;
 
@@ -57,6 +60,13 @@ public class MergeCommand extends ArgsOnlyCommand {
   }
 
   @Override
+  public String getCommandDescription() {
+    return "Merges multiple Parquet files into one. " +
+      "The command doesn't merge row groups, just places one after the other. " +
+      "When used to merge many small files, the resulting file will still contain small row groups.";
+  }
+
+  @Override
   public void execute(CommandLine options) throws Exception {
     // Prepare arguments
     List<String> args = options.getArgList();
@@ -65,13 +75,27 @@ public class MergeCommand extends ArgsOnlyCommand {
 
     // Merge schema and extraMeta
     FileMetaData mergedMeta = mergedMetadata(inputFiles);
+    PrintWriter out = new PrintWriter(Main.out, true);
 
     // Merge data
     ParquetFileWriter writer = new ParquetFileWriter(conf,
             mergedMeta.getSchema(), outputFile, ParquetFileWriter.Mode.CREATE);
     writer.start();
+    boolean tooSmallFilesMerged = false;
     for (Path input: inputFiles) {
+      if (input.getFileSystem(conf).getFileStatus(input).getLen() < TOO_SMALL_FILE_THRESHOLD) {
+        out.format("Warning: file %s is too small, length: %d\n",
+          input,
+          input.getFileSystem(conf).getFileStatus(input).getLen());
+        tooSmallFilesMerged = true;
+      }
+
       writer.appendFile(conf, input);
+    }
+
+    if (tooSmallFilesMerged) {
+      out.println("Warning: you merged too small files. " +
+        "Despite the size of the merged file is bigger, it STILL contains small row groups, thus you don't have the advantage of big row groups!");
     }
     writer.end(mergedMeta.getKeyValueMetaData());
   }
