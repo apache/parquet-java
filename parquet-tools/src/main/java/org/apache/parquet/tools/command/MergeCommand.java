@@ -63,7 +63,8 @@ public class MergeCommand extends ArgsOnlyCommand {
   public String getCommandDescription() {
     return "Merges multiple Parquet files into one. " +
       "The command doesn't merge row groups, just places one after the other. " +
-      "When used to merge many small files, the resulting file will still contain small row groups.";
+      "When used to merge many small files, the resulting file will still contain small row groups, " +
+      "which usually leads to bad query performance.";
   }
 
   @Override
@@ -95,7 +96,8 @@ public class MergeCommand extends ArgsOnlyCommand {
 
     if (tooSmallFilesMerged) {
       out.println("Warning: you merged too small files. " +
-        "Despite the size of the merged file is bigger, it STILL contains small row groups, thus you don't have the advantage of big row groups!");
+        "Although the size of the merged file is bigger, it STILL contains small row groups, thus you don't have the advantage of big row groups, " +
+        "which usually leads to bad query performance!");
     }
     writer.end(mergedMeta.getKeyValueMetaData());
   }
