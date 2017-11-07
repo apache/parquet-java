@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.tools.command;
 
-import java.text.DecimalFormat;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
@@ -61,6 +59,11 @@ public class ShowSchemaCommand extends ArgsOnlyCommand {
   @Override
   public String[] getUsageDescription() {
     return USAGE;
+  }
+
+  @Override
+  public String getCommandDescription() {
+    return "Prints the schema of Parquet file(s)";
   }
 
   @Override

@@ -18,10 +18,6 @@
  */
 package org.apache.parquet.tools.read;
 
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
@@ -33,15 +29,7 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 
-/**
- * 
- * 
- * @author 
- */
 public class SimpleRecordConverter extends GroupConverter {
-  private static final Charset UTF8 = Charset.forName("UTF-8");
-  private static final CharsetDecoder UTF8_DECODER = UTF8.newDecoder();
-
   private final Converter converters[];
   private final String name;
   private final SimpleRecordConverter parent;

@@ -113,7 +113,12 @@ public class DumpCommand extends ArgsOnlyCommand {
         return USAGE;
     }
 
-    @Override
+  @Override
+  public String getCommandDescription() {
+    return "Prints the content and metadata of a Parquet file";
+  }
+
+  @Override
     public void execute(CommandLine options) throws Exception {
         super.execute(options);
 
