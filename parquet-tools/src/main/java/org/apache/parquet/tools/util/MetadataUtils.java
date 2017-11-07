@@ -156,7 +156,7 @@ public class MetadataUtils {
     int defl = desc.getMaxDefinitionLevel();
     int repl = desc.getMaxRepetitionLevel();
 
-    out.format("column desc: %s T:%s R:%d D:%d%n", path, type, repl, defl);
+    out.format("column desc: %s T:%s R:%d D:%d%n", path, type, repl, defl); 
   }
 
   public static void showDetails(PrettyPrintWriter out, MessageType type) {

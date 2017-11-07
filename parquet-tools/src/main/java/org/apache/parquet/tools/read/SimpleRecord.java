@@ -41,7 +41,7 @@ public class SimpleRecord {
   public void add(String name, Object value) {
     values.add(new NameValue(name,value));
   }
-
+  
   public List<NameValue> getValues() {
     return Collections.unmodifiableList(values);
   }
@@ -144,7 +144,7 @@ public class SimpleRecord {
     public String getName() {
       return name;
     }
-  
+
     public Object getValue() {
       return value;
     }
