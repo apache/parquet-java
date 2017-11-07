@@ -64,7 +64,6 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
-    <maven-thrift-plugin.version>0.1.11</maven-thrift-plugin.version>
     <jackson.groupId>org.codehaus.jackson</jackson.groupId>
     <jackson.version>1.9.13</jackson.version>
     <jackson.package>org.codehaus.jackson</jackson.package>
@@ -82,7 +81,7 @@
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
-    <thrift.version>0.7.0</thrift.version>
+    <thrift.version>0.9.3</thrift.version>
     <fastutil.version>7.0.13</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
