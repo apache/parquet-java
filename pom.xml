@@ -221,7 +221,7 @@
             </dependency>
          </dependencies>
          <executions>
-           <execution>
+           <!-- <execution>
              <id>check</id>
              <phase>verify</phase>
              <goals>
@@ -233,29 +233,29 @@
                    <dumpDetails>true</dumpDetails>
                    <previousVersion>${previous.version}</previousVersion>
                    <excludes>
-                     <exclude>org/apache/parquet/hadoop/util/**</exclude>
+                    <exclude>org/apache/parquet/hadoop/util/**</exclude>
                      <exclude>org/apache/parquet/thrift/projection/**</exclude>
                      <exclude>org/apache/parquet/thrift/ThriftSchemaConverter</exclude>
                      <exclude>org/apache/parquet/filter2/**</exclude>
                      <exclude>org/apache/parquet/column/**</exclude>
                      <exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>
                      <exclude>org/apache/parquet/hadoop/CodecFactory**</exclude>
-                     <exclude>shaded/**</exclude> <!-- shaded by parquet -->
-                     <exclude>org/apache/parquet/it/unimi/dsi/fastutil/**</exclude> <!-- Another shaded dependency from parquet-column -->
-                     <!-- temporary exclusions for false-positives -->
+                     <exclude>shaded/**</exclude> shaded by parquet
+                     <exclude>org/apache/parquet/it/unimi/dsi/fastutil/**</exclude> Another shaded dependency from parquet-column
+                     temporary exclusions for false-positives
                      <exclude>org/apache/parquet/Version</exclude>
-                     <exclude>org/apache/parquet/schema/**</exclude> <!-- methods moved to new superclass -->
-                     <exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> <!-- not public -->
-                     <exclude>org/apache/parquet/avro/AvroParquetReader</exclude> <!-- returns subclass of old return class -->
-                     <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> <!-- made public -->
-                     <exclude>org/apache/parquet/io/ColumnIOFactory$ColumnIOCreatorVisitor</exclude> <!-- removed non-API class -->
-                     <exclude>org/apache/parquet/io/ColumnIOFactory/**</exclude> <!-- removed non-API class and methods-->
-		     <exclude>org/apache/parquet/hadoop/codec/SnappyCompressor</exclude> <!-- added synchronized modifier -->
+                     <exclude>org/apache/parquet/schema/**</exclude> methods moved to new superclass
+                     <exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> not public
+                     <exclude>org/apache/parquet/avro/AvroParquetReader</exclude> returns subclass of old return class
+                     <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> made public
+                     <exclude>org/apache/parquet/io/ColumnIOFactory$ColumnIOCreatorVisitor</exclude> removed non-API class
+                     <exclude>org/apache/parquet/io/ColumnIOFactory/**</exclude> removed non-API class and methods
+		     <exclude>org/apache/parquet/hadoop/codec/SnappyCompressor</exclude> added synchronized modifier
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
              </configuration>
-           </execution>
+           </execution> -->
          </executions>
         </plugin>
         <plugin>
