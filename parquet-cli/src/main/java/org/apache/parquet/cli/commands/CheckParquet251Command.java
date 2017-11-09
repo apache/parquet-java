@@ -53,6 +53,7 @@ import org.slf4j.Logger;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
@@ -184,9 +185,11 @@ public class CheckParquet251Command extends BaseCommand {
     private final boolean hasNonNull;
     private final T min;
     private final T max;
+    private final Comparator<T> comparator;
 
     public StatsValidator(DataPage page) {
       Statistics<T> stats = getStatisticsFromPageHeader(page);
+      this.comparator = stats.comparator();
       this.hasNonNull = stats.hasNonNullValue();
       if (hasNonNull) {
         this.min = stats.genericGetMin();
@@ -199,10 +202,10 @@ public class CheckParquet251Command extends BaseCommand {
 
     public void validate(T value) {
       if (hasNonNull) {
-        if (min.compareTo(value) > 0) {
+        if (comparator.compare(min, value) > 0) {
           throw new BadStatsException("Min should be <= all values.");
         }
-        if (max.compareTo(value) < 0) {
+        if (comparator.compare(max, value) < 0) {
           throw new BadStatsException("Max should be >= all values.");
         }
       }

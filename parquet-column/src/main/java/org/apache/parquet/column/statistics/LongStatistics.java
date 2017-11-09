@@ -18,12 +18,30 @@
  */
 package org.apache.parquet.column.statistics;
 
+import it.unimi.dsi.fastutil.longs.LongComparator;
+import it.unimi.dsi.fastutil.longs.LongComparators;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.Comparators;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
 
 public class LongStatistics extends Statistics<Long> {
 
+  private final Comparators.LongComparator comparator;
   private long max;
   private long min;
+
+  /**
+   * @deprecated Use {@link Statistics#getStatsBasedOnType(PrimitiveType.PrimitiveTypeName, OriginalType)} instead
+   */
+  @Deprecated
+  public LongStatistics() {
+    this(null);
+  }
+
+  LongStatistics(OriginalType logicalType) {
+    this.comparator = Comparators.int64Comparator(logicalType);
+  }
 
   @Override
   public void updateStats(long value) {
@@ -62,23 +80,23 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
+  public String minAsString() {
+    return comparator.toString(min);
+  }
+
+  @Override
+  public String maxAsString() {
+    return comparator.toString(max);
+  }
+
+  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || (16 < size);
   }
 
-  @Override
-  public String toString() {
-    if (this.hasNonNullValue())
-      return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
-    else if (!this.isEmpty())
-      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
-    else
-      return "no stats for this column";
-  }
-
   public void updateStats(long min_value, long max_value) {
-    if (min_value < min) { min = min_value; }
-    if (max_value > max) { max = max_value; }
+    if (comparator.compare(min, min_value) > 0) { min = min_value; }
+    if (comparator.compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(long min_value, long max_value) {
@@ -95,6 +113,19 @@ public class LongStatistics extends Statistics<Long> {
   @Override
   public Long genericGetMax() {
     return max;
+  }
+
+  @Override
+  public LongComparator comparator() {
+    return LongComparators.NATURAL_COMPARATOR;
+  }
+
+  public int compareToMin(long value) {
+    return comparator.compare(min, value);
+  }
+
+  public int compareToMax(long value) {
+    return comparator.compare(max, value);
   }
 
   public long getMax() {

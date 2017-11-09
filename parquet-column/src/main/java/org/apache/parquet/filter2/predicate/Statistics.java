@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.filter2.predicate;
 
+import java.util.Comparator;
+
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
@@ -26,17 +28,31 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 public class Statistics<T> {
   private final T min;
   private final T max;
+  private final Comparator<T> comparator;
 
-  public Statistics(T min, T max) {
+  public Statistics(T min, T max, Comparator<T> comparator) {
     this.min = checkNotNull(min, "min");
     this.max = checkNotNull(max, "max");
+    this.comparator = checkNotNull(comparator, "comparator");
   }
 
+  /**
+   * The self-comparison logic of {@code T} might not proper for the actual logical type (e.g. unsigned int). Use {@link
+   * #getComparator()} for comparing.
+   */
   public T getMin() {
     return min;
   }
 
+  /**
+   * The self-comparison logic of {@code T} might not proper for the actual logical type (e.g. unsigned int). Use {@link
+   * #getComparator()} for comparing.
+   */
   public T getMax() {
     return max;
+  }
+
+  public Comparator<T> getComparator() {
+    return comparator;
   }
 }

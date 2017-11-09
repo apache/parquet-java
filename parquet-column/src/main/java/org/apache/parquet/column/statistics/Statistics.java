@@ -20,8 +20,10 @@ package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import java.util.Arrays;
+import java.util.Comparator;
 
 
 /**
@@ -29,7 +31,7 @@ import java.util.Arrays;
  *
  * @author Katya Gonina
  */
-public abstract class Statistics<T extends Comparable<T>> {
+public abstract class Statistics<T> {
 
   private boolean hasNonNullValue;
   private long num_nulls;
@@ -43,7 +45,9 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Returns the typed statistics object based on the passed type parameter
    * @param type PrimitiveTypeName type of the column
    * @return instance of a typed statistics class
+   * @deprecated Use {@link #getStatsBasedOnType(PrimitiveTypeName, OriginalType)} instead
    */
+  @Deprecated
   public static Statistics getStatsBasedOnType(PrimitiveTypeName type) {
     switch(type) {
     case INT32:
@@ -64,6 +68,27 @@ public abstract class Statistics<T extends Comparable<T>> {
       return new BinaryStatistics();
     default:
       throw new UnknownColumnTypeException(type);
+    }
+  }
+
+  public static Statistics<?> getStatsBasedOnType(PrimitiveTypeName type, OriginalType logicalType) {
+    switch(type) {
+      case INT32:
+        return new IntStatistics(logicalType);
+      case INT64:
+        return new LongStatistics(logicalType);
+      case FLOAT:
+        return new FloatStatistics(logicalType);
+      case DOUBLE:
+        return new DoubleStatistics(logicalType);
+      case BOOLEAN:
+        return new BooleanStatistics(logicalType);
+      case BINARY:
+      case INT96:
+      case FIXED_LEN_BYTE_ARRAY:
+        return new BinaryStatistics(type, logicalType);
+      default:
+        throw new UnknownColumnTypeException(type);
     }
   }
 
@@ -175,8 +200,45 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
+  /**
+   * Returns the generic object representing the min value in the statistics. The self comparing logic of the returned
+   * object might not be the proper one (e.g. unsigned comparison for int/long) therefore it is strongly recommended to
+   * use the related comparing method {@link #compareToMin(Object)} or the comparator returned by {@link
+   * #comparator()}.
+   */
   abstract public T genericGetMin();
+
+  /**
+   * Returns the generic object representing the max value in the statistics. The self comparing logic of the returned
+   * object might not be the proper one (e.g. unsigned comparison for int/long) therefore it is strongly recommended to
+   * use the related comparing method {@link #compareToMax(Object)} or the comparator returned by {@link
+   * #comparator()}.
+   */
   abstract public T genericGetMax();
+
+  /**
+   * Returns the comparator to be used to compare two generic values in the proper way (e.g. unsigned comparison for
+   * int/long)
+   */
+  public abstract Comparator<T> comparator();
+
+  /**
+   * Compares the specified value to min in the proper way.
+   *
+   * @see {@link Comparable#compareTo(Object)}
+   */
+  public int compareToMin(T value) {
+    return comparator().compare(genericGetMin(), value);
+  }
+
+  /**
+   * Compares the specified value to max in the proper way.
+   *
+   * @see {@link Comparable#compareTo(Object)}
+   */
+  public int compareToMax(T value) {
+    return comparator().compare(genericGetMax(), value);
+  }
 
   /**
    * Abstract method to return the max value as a byte array
@@ -191,6 +253,16 @@ public abstract class Statistics<T extends Comparable<T>> {
   abstract public byte[] getMinBytes();
 
   /**
+   * Returns the string representation of min for debugging/logging purposes.
+   */
+  public abstract String minAsString();
+
+  /**
+   * Returns the string representation of max for debugging/logging purposes.
+   */
+  public abstract String maxAsString();
+
+  /**
    * Abstract method to return whether the min and max values fit in the given
    * size.
    * @param size a size in bytes
@@ -198,11 +270,15 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   abstract public boolean isSmallerThan(long size);
 
-  /**
-   * toString() to display min, max, num_nulls in a string
-   */
-  abstract public String toString();
-
+  @Override
+  public String toString() {
+    if (this.hasNonNullValue())
+      return String.format("min: %s, max: %s, num_nulls: %d", minAsString(), maxAsString(), this.getNumNulls());
+    else if (!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
+    else
+      return "no stats for this column";
+  }
 
   /**
    * Increments the null count by one
@@ -250,11 +326,11 @@ public abstract class Statistics<T extends Comparable<T>> {
   public boolean hasNonNullValue() {
     return hasNonNullValue;
   }
- 
+
   /**
    * Sets the page/column as having a valid non-null value
    * kind of misnomer here
-   */ 
+   */
   protected void markAsNotEmpty() {
     hasNonNullValue = true;
   }

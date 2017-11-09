@@ -19,11 +19,27 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.Comparators;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
 
 public class DoubleStatistics extends Statistics<Double> {
 
+  private final Comparators.DoubleComparator comparator;
   private double max;
   private double min;
+
+  /**
+   * @deprecated Use {@link Statistics#getStatsBasedOnType(PrimitiveType.PrimitiveTypeName, OriginalType)} instead
+   */
+  @Deprecated
+  public DoubleStatistics() {
+    this(null);
+  }
+
+  DoubleStatistics(OriginalType logicalType) {
+    this.comparator = Comparators.doubleComparator(logicalType);
+  }
 
   @Override
   public void updateStats(double value) {
@@ -62,23 +78,23 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
+  public String minAsString() {
+    return comparator.toString(min);
+  }
+
+  @Override
+  public String maxAsString() {
+    return comparator.toString(max);
+  }
+
+  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || (16 < size);
   }
 
-  @Override
-  public String toString() {
-    if(this.hasNonNullValue())
-      return String.format("min: %.5f, max: %.5f, num_nulls: %d", min, max, this.getNumNulls());
-    else if (!this.isEmpty())
-      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
-    else
-      return "no stats for this column";
-  }
-
   public void updateStats(double min_value, double max_value) {
-    if (min_value < min) { min = min_value; }
-    if (max_value > max) { max = max_value; }
+    if (comparator.compare(min, min_value) > 0) { min = min_value; }
+    if (comparator.compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(double min_value, double max_value) {
@@ -95,6 +111,19 @@ public class DoubleStatistics extends Statistics<Double> {
   @Override
   public Double genericGetMax() {
     return max;
+  }
+
+  @Override
+  public Comparators.DoubleComparator comparator() {
+    return comparator;
+  }
+
+  public int compareToMin(double value) {
+    return comparator.compare(min, value);
+  }
+
+  public int compareToMax(double value) {
+    return comparator.compare(max, value);
   }
 
   public double getMax() {

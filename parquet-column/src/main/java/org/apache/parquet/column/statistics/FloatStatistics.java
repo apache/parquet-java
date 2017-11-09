@@ -19,11 +19,27 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.Comparators;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
 
 public class FloatStatistics extends Statistics<Float> {
 
+  private final Comparators.FloatComparator comparator;
   private float max;
   private float min;
+
+  /**
+   * @deprecated Use {@link Statistics#getStatsBasedOnType(PrimitiveType.PrimitiveTypeName, OriginalType)} instead
+   */
+  @Deprecated
+  public FloatStatistics() {
+    this(null);
+  }
+
+  FloatStatistics(OriginalType logicalType) {
+    this.comparator = Comparators.floatComparator(logicalType);
+  }
 
   @Override
   public void updateStats(float value) {
@@ -62,23 +78,23 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
+  public String minAsString() {
+    return comparator.toString(min);
+  }
+
+  @Override
+  public String maxAsString() {
+    return comparator.toString(max);
+  }
+
+  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || (8 < size);
   }
 
-  @Override
-  public String toString() {
-    if (this.hasNonNullValue())
-      return String.format("min: %.5f, max: %.5f, num_nulls: %d", min, max, this.getNumNulls());
-    else if (!this.isEmpty())
-      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
-    else
-      return "no stats for this column";
-  }
-
   public void updateStats(float min_value, float max_value) {
-    if (min_value < min) { min = min_value; }
-    if (max_value > max) { max = max_value; }
+    if (comparator.compare(min, min_value) > 0) { min = min_value; }
+    if (comparator.compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(float min_value, float max_value) {
@@ -95,6 +111,19 @@ public class FloatStatistics extends Statistics<Float> {
   @Override
   public Float genericGetMax() {
     return max;
+  }
+
+  @Override
+  public Comparators.FloatComparator comparator() {
+    return comparator;
+  }
+
+  public int compareToMin(float value) {
+    return comparator.compare(min, value);
+  }
+
+  public int compareToMax(float value) {
+    return comparator.compare(max, value);
   }
 
   public float getMax() {

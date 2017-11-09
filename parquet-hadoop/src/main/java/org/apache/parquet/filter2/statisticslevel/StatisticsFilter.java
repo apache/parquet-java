@@ -134,7 +134,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     // drop if value < min || value > max
-    return value.compareTo(stats.genericGetMin()) < 0 || value.compareTo(stats.genericGetMax()) > 0;
+    return stats.compareToMin(value) > 0 || stats.compareToMax(value) < 0;
   }
 
   @Override
@@ -173,7 +173,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     // drop if this is a column where min = max = value
-    return value.compareTo(stats.genericGetMin()) == 0 && value.compareTo(stats.genericGetMax()) == 0;
+    return stats.compareToMin(value) == 0 && stats.compareToMax(value) == 0;
   }
 
   @Override
@@ -204,7 +204,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = lt.getValue();
 
     // drop if value <= min
-    return  value.compareTo(stats.genericGetMin()) <= 0;
+    return stats.compareToMin(value) >= 0;
   }
 
   @Override
@@ -235,7 +235,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = ltEq.getValue();
 
     // drop if value < min
-    return value.compareTo(stats.genericGetMin()) < 0;
+    return stats.compareToMin(value) > 0;
   }
 
   @Override
@@ -266,7 +266,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = gt.getValue();
 
     // drop if value >= max
-    return value.compareTo(stats.genericGetMax()) >= 0;
+    return stats.compareToMax(value) <= 0;
   }
 
   @Override
@@ -296,8 +296,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
     T value = gtEq.getValue();
 
-    // drop if value >= max
-    return value.compareTo(stats.genericGetMax()) > 0;
+    // drop if value > max
+    return stats.compareToMax(value) < 0;
   }
 
   @Override
@@ -356,7 +356,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     org.apache.parquet.filter2.predicate.Statistics<T> udpStats =
-        new org.apache.parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax());
+      new org.apache.parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax(),
+        stats.comparator());
 
     if (inverted) {
       return udp.inverseCanDrop(udpStats);

@@ -19,11 +19,27 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.Comparators;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
 
 public class IntStatistics extends Statistics<Integer> {
 
+  private final Comparators.IntComparator comparator;
   private int max;
   private int min;
+
+  /**
+   * @deprecated Use {@link Statistics#getStatsBasedOnType(PrimitiveType.PrimitiveTypeName, OriginalType)} instead
+   */
+  @Deprecated
+  public IntStatistics() {
+    this(null);
+  }
+
+  IntStatistics(OriginalType logicalType) {
+    comparator = Comparators.int32Comparator(logicalType);
+  }
 
   @Override
   public void updateStats(int value) {
@@ -62,23 +78,23 @@ public class IntStatistics extends Statistics<Integer> {
   }
 
   @Override
+  public String minAsString() {
+    return comparator.toString(min);
+  }
+
+  @Override
+  public String maxAsString() {
+    return comparator.toString(max);
+  }
+
+  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || (8 < size);
   }
 
-  @Override
-  public String toString() {
-    if (this.hasNonNullValue())
-      return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
-    else if (!this.isEmpty())
-      return String.format("num_nulls: %d, min/max is not defined", this.getNumNulls());
-    else
-      return "no stats for this column";
-  }
-
   public void updateStats(int min_value, int max_value) {
-    if (min_value < min) { min = min_value; }
-    if (max_value > max) { max = max_value; }
+    if (comparator.compare(min, min_value) > 0) { min = min_value; }
+    if (comparator.compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(int min_value, int max_value) {
@@ -95,6 +111,19 @@ public class IntStatistics extends Statistics<Integer> {
   @Override
   public Integer genericGetMax() {
     return max;
+  }
+
+  @Override
+  public Comparators.IntComparator comparator() {
+    return comparator;
+  }
+
+  public int compareToMin(int value) {
+    return comparator.compare(min, value);
+  }
+
+  public int compareToMax(int value) {
+    return comparator.compare(max, value);
   }
 
   public int getMax() {

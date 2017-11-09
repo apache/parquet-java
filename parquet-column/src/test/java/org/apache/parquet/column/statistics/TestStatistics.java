@@ -74,6 +74,13 @@ public class TestStatistics {
     assertEquals(statsNeg.getMax(), 54);
     assertEquals(statsNeg.getMin(), -66);
 
+    assertEquals(-1, statsNeg.compareToMax(55));
+    assertEquals(0, statsNeg.compareToMax(54));
+    assertEquals(1, statsNeg.compareToMax(5));
+    assertEquals(-1, statsNeg.compareToMin(0));
+    assertEquals(0, statsNeg.compareToMin(-66));
+    assertEquals(1, statsNeg.compareToMin(-67));
+
     // Test converting to and from byte[]
     byte[] intMaxBytes = statsNeg.getMaxBytes();
     byte[] intMinBytes = statsNeg.getMinBytes();
@@ -134,6 +141,13 @@ public class TestStatistics {
     }
     assertEquals(statsNeg.getMax(), 993);
     assertEquals(statsNeg.getMin(), -9914);
+
+    assertEquals(-1, statsNeg.compareToMax(994));
+    assertEquals(0, statsNeg.compareToMax(993));
+    assertEquals(1, statsNeg.compareToMax(-1000));
+    assertEquals(-1, statsNeg.compareToMin(10000));
+    assertEquals(0, statsNeg.compareToMin(-9914));
+    assertEquals(1, statsNeg.compareToMin(-9915));
 
     // Test converting to and from byte[]
     byte[] longMaxBytes = statsNeg.getMaxBytes();
@@ -196,6 +210,13 @@ public class TestStatistics {
     assertEquals(statsNeg.getMax(), 0.65f, 1e-10);
     assertEquals(statsNeg.getMin(), -412.99f, 1e-10);
 
+    assertEquals(-1, statsNeg.compareToMax(1));
+    assertEquals(0, statsNeg.compareToMax(0.65F));
+    assertEquals(1, statsNeg.compareToMax(0.649F));
+    assertEquals(-1, statsNeg.compareToMin(-412.98F));
+    assertEquals(0, statsNeg.compareToMin(-412.99F));
+    assertEquals(1, statsNeg.compareToMin(-450));
+
     // Test converting to and from byte[]
     byte[] floatMaxBytes = statsNeg.getMaxBytes();
     byte[] floatMinBytes = statsNeg.getMinBytes();
@@ -256,6 +277,13 @@ public class TestStatistics {
     }
     assertEquals(statsNeg.getMax(), 23.0d, 1e-10);
     assertEquals(statsNeg.getMin(), -944.5d, 1e-10);
+
+    assertEquals(-1, statsNeg.compareToMax(23.0001D));
+    assertEquals(0, statsNeg.compareToMax(23D));
+    assertEquals(1, statsNeg.compareToMax(0D));
+    assertEquals(-1, statsNeg.compareToMin(-400D));
+    assertEquals(0, statsNeg.compareToMin(-944.5D));
+    assertEquals(1, statsNeg.compareToMin(-944.500001D));
 
     // Test converting to and from byte[]
     byte[] doubleMaxBytes = statsNeg.getMaxBytes();
