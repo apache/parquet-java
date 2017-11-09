@@ -22,7 +22,7 @@ before_install:
   - tar zxf thrift-0.7.0.tar.gz
   - cd thrift-0.7.0
   - chmod +x ./configure
-  - ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
+  - ./configure --disable-gen-erl --disable-gen-hs --without-php --without-nodejs --without-ruby --without-haskell --without-erlang
   - sudo make install
   - cd ..
 
