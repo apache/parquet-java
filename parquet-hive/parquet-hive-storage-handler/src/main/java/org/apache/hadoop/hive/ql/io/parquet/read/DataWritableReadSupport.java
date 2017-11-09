@@ -56,7 +56,7 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
    * From a string which columns names (including hive column), return a list
    * of string columns
    *
-   * @param comma separated list of columns
+   * @param columns comma separated list of columns
    * @return list with virtual columns removed
    */
   private static List<String> getColumns(final String columns) {
