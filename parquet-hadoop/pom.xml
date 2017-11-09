@@ -89,6 +89,7 @@
       <groupId>com.github.rdblue</groupId>
       <artifactId>brotli-codec</artifactId>
       <version>${brotli-codec.version}</version>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
