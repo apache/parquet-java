@@ -86,7 +86,7 @@
     <fastutil.version>7.0.13</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
-    <avro.version>1.8.1</avro.version>
+    <avro.version>1.8.2</avro.version>
     <guava.version>20.0</guava.version>
     <mockito.version>1.10.19</mockito.version>
 
