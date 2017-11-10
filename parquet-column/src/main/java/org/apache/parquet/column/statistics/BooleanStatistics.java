@@ -19,26 +19,24 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.column.Comparators;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 public class BooleanStatistics extends Statistics<Boolean> {
 
-  private final Comparators.BooleanComparator comparator;
   private boolean max;
   private boolean min;
 
   /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(PrimitiveType.PrimitiveTypeName, OriginalType)} instead
+   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
    */
   @Deprecated
   public BooleanStatistics() {
-    this(null);
+    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.BOOLEAN, ""));
   }
 
-  BooleanStatistics(OriginalType logicalType) {
-    this.comparator = Comparators.booleanComparator(logicalType);
+  BooleanStatistics(Type type) {
+    super(type);
   }
 
   @Override
@@ -78,16 +76,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public String minAsString() {
-    return comparator.toString(min);
-  }
-
-  @Override
-  public String maxAsString() {
-    return comparator.toString(max);
-  }
-
-  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || (2 < size);
   }
@@ -111,11 +99,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
   @Override
   public Boolean genericGetMax() {
     return max;
-  }
-
-  @Override
-  public Comparators.BooleanComparator comparator() {
-    return comparator;
   }
 
   public int compareToMin(boolean value) {

@@ -324,4 +324,12 @@ abstract public class Type {
    */
    abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);
 
+  /**
+   * Returns the {@link Type} specific comparator for properly comparing values. The natural ordering of the values
+   * might not proper in certain cases (e.g. {@code UINT_32} requires unsigned comparison of {@code int} values while
+   * the natural ordering is signed.)
+   */
+  public <T> PrimitiveComparator<T> comparator() {
+    throw new UnsupportedOperationException("No comparator is implemented for type: " + this);
+  }
 }

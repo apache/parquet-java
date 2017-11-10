@@ -37,6 +37,7 @@ public class Statistics<T> {
   }
 
   /**
+   * Returns the generic object representing the min value in the statistics.
    * The self-comparison logic of {@code T} might not proper for the actual logical type (e.g. unsigned int). Use {@link
    * #getComparator()} for comparing.
    */
@@ -45,6 +46,7 @@ public class Statistics<T> {
   }
 
   /**
+   * Returns the generic object representing the max value in the statistics.
    * The self-comparison logic of {@code T} might not proper for the actual logical type (e.g. unsigned int). Use {@link
    * #getComparator()} for comparing.
    */
@@ -52,6 +54,10 @@ public class Statistics<T> {
     return max;
   }
 
+  /**
+   * Returns the comparator to be used to compare two generic values in the proper way (e.g. unsigned comparison for
+   * UINT_32)
+   */
   public Comparator<T> getComparator() {
     return comparator;
   }

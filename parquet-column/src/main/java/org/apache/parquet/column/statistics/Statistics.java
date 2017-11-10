@@ -20,8 +20,10 @@ package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
+
 import java.util.Arrays;
 import java.util.Comparator;
 
@@ -31,21 +33,23 @@ import java.util.Comparator;
  *
  * @author Katya Gonina
  */
-public abstract class Statistics<T> {
+public abstract class Statistics<T extends Comparable<T>> {
 
+  final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
   private long num_nulls;
 
-  public Statistics() {
+  Statistics(Type type) {
     hasNonNullValue = false;
     num_nulls = 0;
+    this.comparator = type.comparator();
   }
 
   /**
    * Returns the typed statistics object based on the passed type parameter
    * @param type PrimitiveTypeName type of the column
    * @return instance of a typed statistics class
-   * @deprecated Use {@link #getStatsBasedOnType(PrimitiveTypeName, OriginalType)} instead
+   * @deprecated Use {@link #getStatsBasedOnType(Type)} instead
    */
   @Deprecated
   public static Statistics getStatsBasedOnType(PrimitiveTypeName type) {
@@ -71,24 +75,31 @@ public abstract class Statistics<T> {
     }
   }
 
-  public static Statistics<?> getStatsBasedOnType(PrimitiveTypeName type, OriginalType logicalType) {
-    switch(type) {
+  /**
+   * Returns the typed statistics object based on the passed type parameter
+   *
+   * @param type type of the column
+   * @return instance of a typed statistics class
+   */
+  public static Statistics<?> getStatsBasedOnType(Type type) {
+    PrimitiveTypeName primitive = type.asPrimitiveType().getPrimitiveTypeName();
+    switch (primitive) {
       case INT32:
-        return new IntStatistics(logicalType);
+        return new IntStatistics(type);
       case INT64:
-        return new LongStatistics(logicalType);
+        return new LongStatistics(type);
       case FLOAT:
-        return new FloatStatistics(logicalType);
+        return new FloatStatistics(type);
       case DOUBLE:
-        return new DoubleStatistics(logicalType);
+        return new DoubleStatistics(type);
       case BOOLEAN:
-        return new BooleanStatistics(logicalType);
+        return new BooleanStatistics(type);
       case BINARY:
       case INT96:
       case FIXED_LEN_BYTE_ARRAY:
-        return new BinaryStatistics(type, logicalType);
+        return new BinaryStatistics(type);
       default:
-        throw new UnknownColumnTypeException(type);
+        throw new UnknownColumnTypeException(primitive);
     }
   }
 
@@ -201,43 +212,45 @@ public abstract class Statistics<T> {
   abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
   /**
-   * Returns the generic object representing the min value in the statistics. The self comparing logic of the returned
-   * object might not be the proper one (e.g. unsigned comparison for int/long) therefore it is strongly recommended to
-   * use the related comparing method {@link #compareToMin(Object)} or the comparator returned by {@link
-   * #comparator()}.
+   * Returns the min value in the statistics. The java natural order of the returned type defined by {@link
+   * T#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
+   * natural signed one. Use {@link #compareToMin(Comparable)} or the comparator returned by {@link #comparator()} to
+   * always get the proper ordering.
    */
   abstract public T genericGetMin();
 
   /**
-   * Returns the generic object representing the max value in the statistics. The self comparing logic of the returned
-   * object might not be the proper one (e.g. unsigned comparison for int/long) therefore it is strongly recommended to
-   * use the related comparing method {@link #compareToMax(Object)} or the comparator returned by {@link
-   * #comparator()}.
+   * Returns the max value in the statistics. The java natural order of the returned type defined by {@link
+   * T#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
+   * natural signed one. Use {@link #compareToMax(Comparable)} or the comparator returned by {@link #comparator()} to
+   * always get the proper ordering.
    */
   abstract public T genericGetMax();
 
   /**
-   * Returns the comparator to be used to compare two generic values in the proper way (e.g. unsigned comparison for
-   * int/long)
+   * Returns the comparator to be used to compare two generic values in the proper way (for example, unsigned comparison
+   * for UINT_32).
    */
-  public abstract Comparator<T> comparator();
+  public Comparator<T> comparator() {
+    return comparator;
+  }
 
   /**
    * Compares the specified value to min in the proper way.
    *
-   * @see {@link Comparable#compareTo(Object)}
+   * @see Comparable#compareTo(Object)
    */
   public int compareToMin(T value) {
-    return comparator().compare(genericGetMin(), value);
+    return comparator.compare(genericGetMin(), value);
   }
 
   /**
    * Compares the specified value to max in the proper way.
    *
-   * @see {@link Comparable#compareTo(Object)}
+   * @see Comparable#compareTo(Object)
    */
   public int compareToMax(T value) {
-    return comparator().compare(genericGetMax(), value);
+    return comparator.compare(genericGetMax(), value);
   }
 
   /**
@@ -255,12 +268,20 @@ public abstract class Statistics<T> {
   /**
    * Returns the string representation of min for debugging/logging purposes.
    */
-  public abstract String minAsString();
+  public String minAsString() {
+    return toString(genericGetMin());
+  }
 
   /**
    * Returns the string representation of max for debugging/logging purposes.
    */
-  public abstract String maxAsString();
+  public String maxAsString() {
+    return toString(genericGetMax());
+  }
+
+  String toString(T value) {
+    return value.toString();
+  }
 
   /**
    * Abstract method to return whether the min and max values fit in the given

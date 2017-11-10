@@ -86,6 +86,14 @@ public final class PrimitiveType extends Type {
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertINT64(this);
       }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        if (logicalType == OriginalType.UINT_64)
+          // TODO: return unsigned comparator
+          return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
+        return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
+      }
     },
     INT32("getInteger", Integer.TYPE) {
       @Override
@@ -108,6 +116,19 @@ public final class PrimitiveType extends Type {
       @Override
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertINT32(this);
+      }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        if (logicalType != null)
+          switch (logicalType) {
+            case UINT_8:
+            case UINT_16:
+            case UINT_32:
+              // TODO: return unsigned comparator
+              return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
+          }
+        return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
       }
     },
     BOOLEAN("getBoolean", Boolean.TYPE) {
@@ -132,6 +153,11 @@ public final class PrimitiveType extends Type {
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertBOOLEAN(this);
       }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        return PrimitiveComparator.BOOLEAN_COMPARATOR;
+      }
     },
     BINARY("getBinary", Binary.class) {
       @Override
@@ -154,6 +180,22 @@ public final class PrimitiveType extends Type {
       @Override
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertBINARY(this);
+      }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        if (logicalType != null)
+          switch (logicalType) {
+            case JSON:
+            case BSON:
+              // TODO: Based on specs we do not have ordering for these while we specified lexicographical in ColumnOrder
+              return PrimitiveComparator.BINARY_COMPARATOR;
+            case DECIMAL:
+              // TODO: return signed comparator
+              return PrimitiveComparator.BINARY_COMPARATOR;
+          }
+        // TODO: return lexicographical comparator
+        return PrimitiveComparator.BINARY_COMPARATOR;
       }
     },
     FLOAT("getFloat", Float.TYPE) {
@@ -178,6 +220,11 @@ public final class PrimitiveType extends Type {
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertFLOAT(this);
       }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        return PrimitiveComparator.FLOAT_COMPARATOR;
+      }
     },
     DOUBLE("getDouble", Double.TYPE) {
       @Override
@@ -201,6 +248,11 @@ public final class PrimitiveType extends Type {
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertDOUBLE(this);
       }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        return PrimitiveComparator.DOUBLE_COMPARATOR;
+      }
     },
     INT96("getBinary", Binary.class) {
       @Override
@@ -221,6 +273,12 @@ public final class PrimitiveType extends Type {
       @Override
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertINT96(this);
+      }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        // TODO: what to return here?
+        return PrimitiveComparator.BINARY_COMPARATOR;
       }
     },
     FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {
@@ -244,6 +302,15 @@ public final class PrimitiveType extends Type {
       @Override
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertFIXED_LEN_BYTE_ARRAY(this);
+      }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        if (logicalType == OriginalType.DECIMAL)
+          // TODO: return signed comparator
+          return PrimitiveComparator.BINARY_COMPARATOR;
+        // TODO: return lexicographical comparator
+        return PrimitiveComparator.BINARY_COMPARATOR;
       }
     };
 
@@ -274,6 +341,8 @@ public final class PrimitiveType extends Type {
         PrimitiveConverter primitiveConverter, ColumnReader columnReader);
 
     abstract public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E;
+
+    abstract PrimitiveComparator<?> comparator(OriginalType logicalType);
 
   }
 
@@ -546,5 +615,10 @@ public final class PrimitiveType extends Type {
     }
 
     return builder.as(getOriginalType()).named(getName());
+  }
+
+  @Override
+  public PrimitiveComparator<?> comparator() {
+    return getPrimitiveTypeName().comparator(getOriginalType());
   }
 }

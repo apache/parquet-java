@@ -18,27 +18,25 @@
  */
 package org.apache.parquet.column.statistics;
 
-import org.apache.parquet.column.Comparators;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 public class BinaryStatistics extends Statistics<Binary> {
 
-  private final Comparators.BinaryComparator comparator;
   private Binary max;
   private Binary min;
 
   /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(PrimitiveType.PrimitiveTypeName, OriginalType)} instead
+   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
    */
   @Deprecated
   public BinaryStatistics() {
-    this(PrimitiveType.PrimitiveTypeName.BINARY, null);
+    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.BINARY, ""));
   }
 
-  BinaryStatistics(PrimitiveType.PrimitiveTypeName type, OriginalType logicalType) {
-    comparator = Comparators.binaryComparator(type, logicalType);
+  BinaryStatistics(Type type) {
+    super(type);
   }
 
   @Override
@@ -84,13 +82,9 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public String minAsString() {
-    return comparator.toString(min);
-  }
-
-  @Override
-  public String maxAsString() {
-    return comparator.toString(max);
+  String toString(Binary value) {
+    // TODO: have separate toString for different logical types?
+    return value.toStringUsingUTF8();
   }
 
   @Override
@@ -125,11 +119,6 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public Binary genericGetMax() {
     return max;
-  }
-
-  @Override
-  public Comparators.BinaryComparator comparator() {
-    return comparator;
   }
 
   /**

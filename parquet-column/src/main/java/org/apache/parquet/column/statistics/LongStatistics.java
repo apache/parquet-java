@@ -21,26 +21,24 @@ package org.apache.parquet.column.statistics;
 import it.unimi.dsi.fastutil.longs.LongComparator;
 import it.unimi.dsi.fastutil.longs.LongComparators;
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.column.Comparators;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 public class LongStatistics extends Statistics<Long> {
 
-  private final Comparators.LongComparator comparator;
   private long max;
   private long min;
 
   /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(PrimitiveType.PrimitiveTypeName, OriginalType)} instead
+   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
    */
   @Deprecated
   public LongStatistics() {
-    this(null);
+    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.INT64, ""));
   }
 
-  LongStatistics(OriginalType logicalType) {
-    this.comparator = Comparators.int64Comparator(logicalType);
+  LongStatistics(Type type) {
+    super(type);
   }
 
   @Override
@@ -80,13 +78,9 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public String minAsString() {
-    return comparator.toString(min);
-  }
-
-  @Override
-  public String maxAsString() {
-    return comparator.toString(max);
+  String toString(Long value) {
+    // TODO: implement unsigned int as required
+    return value.toString();
   }
 
   @Override

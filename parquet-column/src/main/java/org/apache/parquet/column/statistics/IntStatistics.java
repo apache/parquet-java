@@ -19,26 +19,24 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.column.Comparators;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 public class IntStatistics extends Statistics<Integer> {
 
-  private final Comparators.IntComparator comparator;
   private int max;
   private int min;
 
   /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(PrimitiveType.PrimitiveTypeName, OriginalType)} instead
+   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
    */
   @Deprecated
   public IntStatistics() {
-    this(null);
+    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.INT32, ""));
   }
 
-  IntStatistics(OriginalType logicalType) {
-    comparator = Comparators.int32Comparator(logicalType);
+  IntStatistics(Type type) {
+    super(type);
   }
 
   @Override
@@ -78,13 +76,9 @@ public class IntStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public String minAsString() {
-    return comparator.toString(min);
-  }
-
-  @Override
-  public String maxAsString() {
-    return comparator.toString(max);
+  String toString(Integer value) {
+    // TODO: implement unsigned int as required
+    return value.toString();
   }
 
   @Override
@@ -111,11 +105,6 @@ public class IntStatistics extends Statistics<Integer> {
   @Override
   public Integer genericGetMax() {
     return max;
-  }
-
-  @Override
-  public Comparators.IntComparator comparator() {
-    return comparator;
   }
 
   public int compareToMin(int value) {

@@ -19,26 +19,24 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.column.Comparators;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 public class DoubleStatistics extends Statistics<Double> {
 
-  private final Comparators.DoubleComparator comparator;
   private double max;
   private double min;
 
   /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(PrimitiveType.PrimitiveTypeName, OriginalType)} instead
+   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
    */
   @Deprecated
   public DoubleStatistics() {
-    this(null);
+    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.DOUBLE, ""));
   }
 
-  DoubleStatistics(OriginalType logicalType) {
-    this.comparator = Comparators.doubleComparator(logicalType);
+  DoubleStatistics(Type type) {
+    super(type);
   }
 
   @Override
@@ -78,13 +76,8 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public String minAsString() {
-    return comparator.toString(min);
-  }
-
-  @Override
-  public String maxAsString() {
-    return comparator.toString(max);
+  String toString(Double value) {
+    return String.format("%.5f", value);
   }
 
   @Override
@@ -111,11 +104,6 @@ public class DoubleStatistics extends Statistics<Double> {
   @Override
   public Double genericGetMax() {
     return max;
-  }
-
-  @Override
-  public Comparators.DoubleComparator comparator() {
-    return comparator;
   }
 
   public int compareToMin(double value) {
