@@ -52,17 +52,6 @@
 
   <repositories>
     <repository>
-      <id>apache-staging</id>
-      <name>Nexus staging repository</name>
-      <url>https://repository.apache.org/content/repositories/orgapacheparquet-1012</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
       <id>jitpack.io</id>
       <url>https://jitpack.io</url>
       <name>Jitpack.io repository</name>
