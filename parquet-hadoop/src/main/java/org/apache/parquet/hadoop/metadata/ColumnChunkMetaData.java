@@ -24,7 +24,9 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
@@ -65,6 +67,7 @@ abstract public class ColumnChunkMetaData {
         valueCount, totalSize, totalUncompressedSize);
   }
 
+  @Deprecated
   public static ColumnChunkMetaData get(
       ColumnPath path,
       PrimitiveTypeName type,
@@ -77,6 +80,22 @@ abstract public class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
+    return get(path, new PrimitiveType(Type.Repetition.OPTIONAL, type, ""), codec, encodingStats, encodings, statistics,
+      firstDataPage, dictionaryPageOffset, valueCount, totalSize, totalUncompressedSize);
+  }
+
+  public static ColumnChunkMetaData get(
+    ColumnPath path,
+    PrimitiveType type,
+    CompressionCodecName codec,
+    EncodingStats encodingStats,
+    Set<Encoding> encodings,
+    Statistics statistics,
+    long firstDataPage,
+    long dictionaryPageOffset,
+    long valueCount,
+    long totalSize,
+    long totalUncompressedSize) {
     // to save space we store those always positive longs in ints when they fit.
     if (positiveLongFitsInAnInt(firstDataPage)
         && positiveLongFitsInAnInt(dictionaryPageOffset)
@@ -162,6 +181,13 @@ abstract public class ColumnChunkMetaData {
   }
 
   /**
+   * @return the full type object of the column
+   */
+  public PrimitiveType getFullType() {
+    return properties.getFullType();
+  }
+
+  /**
    * @return start of the column data offset
    */
   abstract public long getFirstDataPageOffset();
@@ -231,7 +257,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
    */
   IntColumnChunkMetaData(
       ColumnPath path,
-      PrimitiveTypeName type,
+      PrimitiveType type,
       CompressionCodecName codec,
       EncodingStats encodingStats,
       Set<Encoding> encodings,
@@ -336,7 +362,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
    */
   LongColumnChunkMetaData(
       ColumnPath path,
-      PrimitiveTypeName type,
+      PrimitiveType type,
       CompressionCodecName codec,
       EncodingStats encodingStats,
       Set<Encoding> encodings,

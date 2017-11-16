@@ -49,7 +49,19 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     throw new UnsupportedOperationException();
   }
 
-  static PrimitiveComparator<Boolean> BOOLEAN_COMPARATOR = new PrimitiveComparator<Boolean>() {
+  private static final PrimitiveComparator<? extends Comparable<?>> COMPARABLE_COMPARATOR = new PrimitiveComparator<Comparable<Object>>() {
+    @Override
+    public int compare(Comparable<Object> o1, Comparable<Object> o2) {
+      return o1.compareTo(o2);
+    }
+  };
+
+  @SuppressWarnings("unchecked")
+  public static <C extends Comparable<C>> PrimitiveComparator<C> comparableComparator() {
+    return (PrimitiveComparator<C>) COMPARABLE_COMPARATOR;
+  }
+
+  static final PrimitiveComparator<Boolean> BOOLEAN_COMPARATOR = new PrimitiveComparator<Boolean>() {
     @Override
     public int compare(Boolean o1, Boolean o2) {
       return compare(o1.booleanValue(), o2.booleanValue());
@@ -61,7 +73,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   };
 
-  static PrimitiveComparator<Integer> SIGNED_INT32_COMPARATOR = new PrimitiveComparator<Integer>() {
+  static final PrimitiveComparator<Integer> SIGNED_INT32_COMPARATOR = new PrimitiveComparator<Integer>() {
     @Override
     public int compare(Integer o1, Integer o2) {
       return compare(o1.intValue(), o2.intValue());
@@ -73,7 +85,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   };
 
-  static PrimitiveComparator<Long> SIGNED_INT64_COMPARATOR = new PrimitiveComparator<Long>() {
+  static final PrimitiveComparator<Long> SIGNED_INT64_COMPARATOR = new PrimitiveComparator<Long>() {
     @Override
     public int compare(Long o1, Long o2) {
       return compare(o1.longValue(), o2.longValue());
@@ -85,7 +97,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   };
 
-  static PrimitiveComparator<Float> FLOAT_COMPARATOR = new PrimitiveComparator<Float>() {
+  static final PrimitiveComparator<Float> FLOAT_COMPARATOR = new PrimitiveComparator<Float>() {
     @Override
     public int compare(Float o1, Float o2) {
       return compare(o1.floatValue(), o2.floatValue());
@@ -97,7 +109,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   };
 
-  static PrimitiveComparator<Double> DOUBLE_COMPARATOR = new PrimitiveComparator<Double>() {
+  static final PrimitiveComparator<Double> DOUBLE_COMPARATOR = new PrimitiveComparator<Double>() {
     @Override
     public int compare(Double o1, Double o2) {
       return compare(o1.doubleValue(), o2.doubleValue());
@@ -110,7 +122,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
   };
 
   // TODO: this one is temporary as the self-comparison of Binary is not proper
-  static PrimitiveComparator<Binary> BINARY_COMPARATOR = new PrimitiveComparator<Binary>() {
+  static final PrimitiveComparator<Binary> BINARY_COMPARATOR = new PrimitiveComparator<Binary>() {
     @Override
     public int compare(Binary o1, Binary o2) {
       return o1.compareTo(o2);

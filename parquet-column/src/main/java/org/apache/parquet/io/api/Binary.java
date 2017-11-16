@@ -33,6 +33,7 @@ import java.util.Arrays;
 
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.schema.Type;
 
 import static org.apache.parquet.bytes.BytesUtils.UTF8;
 
@@ -77,6 +78,12 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   abstract boolean equals(Binary other);
 
+  /**
+   * @deprecated The comparison logic depends on the related logical type therefore this one might not be correct. The
+   * {@link java.util.Comparator} implementation for the related type available at {@link Type#comparator()} shall be
+   * used instead.
+   */
+  @Deprecated
   abstract public int compareTo(Binary other);
 
   abstract public int compareTo(Binary other, ComparatorHelper helper);

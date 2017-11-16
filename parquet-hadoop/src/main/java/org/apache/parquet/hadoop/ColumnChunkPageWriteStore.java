@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -79,7 +77,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.compressor = compressor;
       this.allocator = allocator;
       this.buf = new ConcatenatingByteArrayCollector();
-      this.totalStatistics = getStatsBasedOnType(this.path.getType());
     }
 
     @Override
@@ -116,7 +113,14 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
       this.pageCount += 1;
-      this.totalStatistics.mergeStatistics(statistics);
+
+      // Cloning the statistics if it is not initialized yet so we have the correct typed one
+      if (totalStatistics == null) {
+        totalStatistics = statistics.clone();
+      } else {
+        totalStatistics.mergeStatistics(statistics);
+      }
+
       // by concatenating before collecting instead of collecting twice,
       // we only allocate one buffer to copy into instead of multiple.
       buf.collect(BytesInput.concat(BytesInput.from(tempOutputStream), compressedBytes));
@@ -154,7 +158,13 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
       this.pageCount += 1;
-      this.totalStatistics.mergeStatistics(statistics);
+
+      // Cloning the statistics if it is not initialized yet so we have the correct typed one
+      if (totalStatistics == null) {
+        totalStatistics = statistics.clone();
+      } else {
+        totalStatistics.mergeStatistics(statistics);
+      }
 
       // by concatenating before collecting instead of collecting twice,
       // we only allocate one buffer to copy into instead of multiple.

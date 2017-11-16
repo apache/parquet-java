@@ -19,7 +19,6 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 public class IntStatistics extends Statistics<Integer> {
@@ -27,16 +26,12 @@ public class IntStatistics extends Statistics<Integer> {
   private int max;
   private int min;
 
-  /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
-   */
-  @Deprecated
   public IntStatistics() {
-    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.INT32, ""));
+    super();
   }
 
   IntStatistics(Type type) {
-    super(type);
+    super(type.<Integer>comparator());
   }
 
   @Override
@@ -87,8 +82,8 @@ public class IntStatistics extends Statistics<Integer> {
   }
 
   public void updateStats(int min_value, int max_value) {
-    if (comparator.compare(min, min_value) > 0) { min = min_value; }
-    if (comparator.compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) { min = min_value; }
+    if (comparator().compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(int min_value, int max_value) {
@@ -108,11 +103,11 @@ public class IntStatistics extends Statistics<Integer> {
   }
 
   public int compareToMin(int value) {
-    return comparator.compare(min, value);
+    return comparator().compare(min, value);
   }
 
   public int compareToMax(int value) {
-    return comparator.compare(max, value);
+    return comparator().compare(max, value);
   }
 
   public int getMax() {

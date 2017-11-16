@@ -27,16 +27,12 @@ public class BinaryStatistics extends Statistics<Binary> {
   private Binary max;
   private Binary min;
 
-  /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
-   */
-  @Deprecated
   public BinaryStatistics() {
-    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.BINARY, ""));
+    super();
   }
 
   BinaryStatistics(Type type) {
-    super(type);
+    super(type.<Binary>comparator());
   }
 
   @Override
@@ -84,7 +80,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   String toString(Binary value) {
     // TODO: have separate toString for different logical types?
-    return value.toStringUsingUTF8();
+    return value == null ? "null" : value.toStringUsingUTF8();
   }
 
   @Override
@@ -97,8 +93,8 @@ public class BinaryStatistics extends Statistics<Binary> {
    */
   @Deprecated
   public void updateStats(Binary min_value, Binary max_value) {
-    if (comparator.compare(min, min_value) > 0) { min = min_value.copy(); }
-    if (comparator.compare(max, max_value) < 0) { max = max_value.copy(); }
+    if (comparator().compare(min, min_value) > 0) { min = min_value.copy(); }
+    if (comparator().compare(max, max_value) < 0) { max = max_value.copy(); }
   }
 
   /**

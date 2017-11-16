@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.statistics;
 
+import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
@@ -26,6 +27,7 @@ import org.apache.parquet.schema.Type;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Objects;
 
 
 /**
@@ -33,55 +35,71 @@ import java.util.Comparator;
  *
  * @author Katya Gonina
  */
-public abstract class Statistics<T extends Comparable<T>> {
+public abstract class Statistics<T extends Comparable<T>> implements Cloneable {
 
-  final PrimitiveComparator<T> comparator;
+  private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
   private long num_nulls;
 
-  Statistics(Type type) {
+  Statistics() {
+    this(PrimitiveComparator.<T>comparableComparator());
+  }
+
+  Statistics(PrimitiveComparator<T> comparator) {
     hasNonNullValue = false;
     num_nulls = 0;
-    this.comparator = type.comparator();
+    this.comparator = comparator;
   }
 
   /**
    * Returns the typed statistics object based on the passed type parameter
    * @param type PrimitiveTypeName type of the column
    * @return instance of a typed statistics class
-   * @deprecated Use {@link #getStatsBasedOnType(Type)} instead
+   * @deprecated Use {@link #createStats(Type)} or {@link #createLegacyStats(PrimitiveTypeName)} instead
    */
   @Deprecated
   public static Statistics getStatsBasedOnType(PrimitiveTypeName type) {
     switch(type) {
-    case INT32:
-      return new IntStatistics();
-    case INT64:
-      return new LongStatistics();
-    case FLOAT:
-      return new FloatStatistics();
-    case DOUBLE:
-      return new DoubleStatistics();
-    case BOOLEAN:
-      return new BooleanStatistics();
-    case BINARY:
-      return new BinaryStatistics();
-    case INT96:
-      return new BinaryStatistics();
-    case FIXED_LEN_BYTE_ARRAY:
-      return new BinaryStatistics();
-    default:
-      throw new UnknownColumnTypeException(type);
+      case INT32:
+        return new IntStatistics();
+      case INT64:
+        return new LongStatistics();
+      case FLOAT:
+        return new FloatStatistics();
+      case DOUBLE:
+        return new DoubleStatistics();
+      case BOOLEAN:
+        return new BooleanStatistics();
+      case BINARY:
+        return new BinaryStatistics();
+      case INT96:
+        return new BinaryStatistics();
+      case FIXED_LEN_BYTE_ARRAY:
+        return new BinaryStatistics();
+      default:
+        throw new UnknownColumnTypeException(type);
     }
   }
 
   /**
-   * Returns the typed statistics object based on the passed type parameter
+   * Creates an empty {@code Statistics} instance for the specified type to be used for reading/writing the legacy
+   * min/max statistics.
    *
    * @param type type of the column
    * @return instance of a typed statistics class
    */
-  public static Statistics<?> getStatsBasedOnType(Type type) {
+  public static Statistics createLegacyStats(PrimitiveTypeName type) {
+    return getStatsBasedOnType(type);
+  }
+
+  /**
+   * Creates an empty {@code Statistics} instance for the specified type to be used for reading/writing the new min/max
+   * statistics used in the V2 format.
+   *
+   * @param type type of the column
+   * @return instance of a typed statistics class
+   */
+  public static Statistics<?> createStats(Type type) {
     PrimitiveTypeName primitive = type.asPrimitiveType().getPrimitiveTypeName();
     switch (primitive) {
       case INT32:
@@ -231,7 +249,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Returns the comparator to be used to compare two generic values in the proper way (for example, unsigned comparison
    * for UINT_32).
    */
-  public Comparator<T> comparator() {
+  public final Comparator<T> comparator() {
     return comparator;
   }
 
@@ -240,7 +258,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    *
    * @see Comparable#compareTo(Object)
    */
-  public int compareToMin(T value) {
+  public final int compareToMin(T value) {
     return comparator.compare(genericGetMin(), value);
   }
 
@@ -249,7 +267,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    *
    * @see Comparable#compareTo(Object)
    */
-  public int compareToMax(T value) {
+  public final int compareToMax(T value) {
     return comparator.compare(genericGetMax(), value);
   }
 
@@ -280,7 +298,7 @@ public abstract class Statistics<T extends Comparable<T>> {
   }
 
   String toString(T value) {
-    return value.toString();
+    return Objects.toString(value);
   }
 
   /**
@@ -354,6 +372,15 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   protected void markAsNotEmpty() {
     hasNonNullValue = true;
+  }
+
+  @Override
+  public Statistics<T> clone() {
+    try {
+      return (Statistics<T>) super.clone();
+    } catch(CloneNotSupportedException e) {
+      throw new ShouldNeverHappenException(e);
+    }
   }
 }
 

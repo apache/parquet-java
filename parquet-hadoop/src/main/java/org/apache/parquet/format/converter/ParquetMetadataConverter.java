@@ -335,8 +335,12 @@ public class ParquetMetadataConverter {
     if (!statistics.isEmpty() && statistics.isSmallerThan(MAX_STATS_SIZE)) {
       stats.setNull_count(statistics.getNumNulls());
       if (statistics.hasNonNullValue()) {
+        byte[] maxBytes = statistics.getMaxBytes();
         stats.setMax(statistics.getMaxBytes());
+        stats.setMax_value(maxBytes);
+        byte[] minBytes = statistics.getMinBytes();
         stats.setMin(statistics.getMinBytes());
+        stats.setMin_value(minBytes);
       }
     }
     return stats;
@@ -357,29 +361,44 @@ public class ParquetMetadataConverter {
   @Deprecated
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics
       (String createdBy, Statistics statistics, PrimitiveTypeName type) {
-    return fromParquetStatisticsInternal(createdBy, statistics, type, defaultSortOrder(type));
+    return fromParquetStatisticsInternal(createdBy, statistics, new PrimitiveType(Repetition.OPTIONAL, type, ""),
+      defaultSortOrder(type));
   }
 
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal
-      (String createdBy, Statistics statistics, PrimitiveTypeName type, SortOrder typeSortOrder) {
-    // create stats object based on the column type
-    org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type);
+      (String createdBy, Statistics statistics, PrimitiveType type, SortOrder typeSortOrder) {
     // If there was no statistics written to the footer, create an empty Statistics object and return
+    if (statistics == null) {
+      return org.apache.parquet.column.statistics.Statistics
+        .createLegacyStats(type.asPrimitiveType().getPrimitiveTypeName());
+    }
 
-    boolean isSet = statistics != null && statistics.isSetMax() && statistics.isSetMin();
-    boolean maxEqualsMin = isSet ? Arrays.equals(statistics.getMin(), statistics.getMax()) : false;
-    boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
-    // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
-    // The sort order is checked to avoid returning min/max stats that are not
-    // valid with the type's sort order. Currently, all stats are aggregated
-    // using a signed ordering, which isn't valid for strings or unsigned ints.
-    if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type) &&
-        ( sortOrdersMatch || maxEqualsMin)) {
-      if (isSet) {
-        stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
-      }
+    org.apache.parquet.column.statistics.Statistics stats;
+    // Use the new V2 min-max statistics over the former one if it is filled
+    if (statistics.isSetMin_value() && statistics.isSetMax_value()) {
+      stats = org.apache.parquet.column.statistics.Statistics.createStats(type);
+      stats.setMinMaxFromBytes(statistics.min_value.array(), statistics.max_value.array());
       stats.setNumNulls(statistics.null_count);
+    } else {
+      // create stats object based on the column type
+      stats = org.apache.parquet.column.statistics.Statistics
+        .createLegacyStats(type.asPrimitiveType().getPrimitiveTypeName());
+
+      boolean isSet = statistics.isSetMax() && statistics.isSetMin();
+      boolean maxEqualsMin = isSet ? Arrays.equals(statistics.getMin(), statistics.getMax()) : false;
+      boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
+      // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
+      // The sort order is checked to avoid returning min/max stats that are not
+      // valid with the type's sort order. Currently, all stats are aggregated
+      // using a signed ordering, which isn't valid for strings or unsigned ints.
+      if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName()) &&
+        (sortOrdersMatch || maxEqualsMin)) {
+        if (isSet) {
+          stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
+        }
+        stats.setNumNulls(statistics.null_count);
+      }
     }
     return stats;
   }
@@ -389,7 +408,7 @@ public class ParquetMetadataConverter {
     SortOrder expectedOrder = overrideSortOrderToSigned(type) ?
         SortOrder.SIGNED : sortOrder(type);
     return fromParquetStatisticsInternal(
-        createdBy, statistics, type.getPrimitiveTypeName(), expectedOrder);
+        createdBy, statistics, type, expectedOrder);
   }
 
   /**
@@ -846,7 +865,7 @@ public class ParquetMetadataConverter {
           ColumnPath path = getPath(metaData);
           ColumnChunkMetaData column = ColumnChunkMetaData.get(
               path,
-              messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
+              messageType.getType(path.toArray()).asPrimitiveType(),
               fromFormatCodec(metaData.codec),
               convertEncodingStats(metaData.getEncoding_stats()),
               fromFormatEncodings(metaData.encodings),

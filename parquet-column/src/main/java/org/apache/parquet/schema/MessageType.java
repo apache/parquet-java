@@ -95,8 +95,7 @@ public final class MessageType extends GroupType {
     int maxRep = getMaxRepetitionLevel(path);
     int maxDef = getMaxDefinitionLevel(path);
     PrimitiveType type = getType(path).asPrimitiveType();
-    return new ColumnDescriptor(path, type.getPrimitiveTypeName(),
-                                type.getTypeLength(), maxRep, maxDef);
+    return new ColumnDescriptor(path, type, maxRep, maxDef);
   }
 
   public List<String[]> getPaths() {
@@ -111,8 +110,7 @@ public final class MessageType extends GroupType {
       PrimitiveType primitiveType = getType(path).asPrimitiveType();
       columns.add(new ColumnDescriptor(
                       path,
-                      primitiveType.getPrimitiveTypeName(),
-                      primitiveType.getTypeLength(),
+                      primitiveType,
                       getMaxRepetitionLevel(path),
                       getMaxDefinitionLevel(path)));
     }

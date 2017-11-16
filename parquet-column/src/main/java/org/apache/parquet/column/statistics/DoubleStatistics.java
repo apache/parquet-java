@@ -19,7 +19,6 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 public class DoubleStatistics extends Statistics<Double> {
@@ -27,16 +26,12 @@ public class DoubleStatistics extends Statistics<Double> {
   private double max;
   private double min;
 
-  /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
-   */
-  @Deprecated
   public DoubleStatistics() {
-    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.DOUBLE, ""));
+    super();
   }
 
   DoubleStatistics(Type type) {
-    super(type);
+    super(type.<Double>comparator());
   }
 
   @Override
@@ -86,8 +81,8 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   public void updateStats(double min_value, double max_value) {
-    if (comparator.compare(min, min_value) > 0) { min = min_value; }
-    if (comparator.compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) { min = min_value; }
+    if (comparator().compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(double min_value, double max_value) {
@@ -107,11 +102,11 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   public int compareToMin(double value) {
-    return comparator.compare(min, value);
+    return comparator().compare(min, value);
   }
 
   public int compareToMax(double value) {
-    return comparator.compare(max, value);
+    return comparator().compare(max, value);
   }
 
   public double getMax() {

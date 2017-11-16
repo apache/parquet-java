@@ -89,9 +89,10 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        if (logicalType == OriginalType.UINT_64)
+        if (logicalType == OriginalType.UINT_64) {
           // TODO: return unsigned comparator
           return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
+        }
         return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
       }
     },
@@ -120,7 +121,7 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        if (logicalType != null)
+        if (logicalType != null) {
           switch (logicalType) {
             case UINT_8:
             case UINT_16:
@@ -128,6 +129,7 @@ public final class PrimitiveType extends Type {
               // TODO: return unsigned comparator
               return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
           }
+        }
         return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
       }
     },
@@ -184,7 +186,7 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        if (logicalType != null)
+        if (logicalType != null) {
           switch (logicalType) {
             case JSON:
             case BSON:
@@ -194,6 +196,7 @@ public final class PrimitiveType extends Type {
               // TODO: return signed comparator
               return PrimitiveComparator.BINARY_COMPARATOR;
           }
+        }
         // TODO: return lexicographical comparator
         return PrimitiveComparator.BINARY_COMPARATOR;
       }
@@ -277,7 +280,7 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        // TODO: what to return here?
+        // TODO: return signed comparator
         return PrimitiveComparator.BINARY_COMPARATOR;
       }
     },
@@ -306,9 +309,10 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        if (logicalType == OriginalType.DECIMAL)
+        if (logicalType == OriginalType.DECIMAL) {
           // TODO: return signed comparator
           return PrimitiveComparator.BINARY_COMPARATOR;
+        }
         // TODO: return lexicographical comparator
         return PrimitiveComparator.BINARY_COMPARATOR;
       }
@@ -618,7 +622,8 @@ public final class PrimitiveType extends Type {
   }
 
   @Override
-  public PrimitiveComparator<?> comparator() {
-    return getPrimitiveTypeName().comparator(getOriginalType());
+  @SuppressWarnings("unchecked")
+  public <T> PrimitiveComparator<T> comparator() {
+    return (PrimitiveComparator<T>) getPrimitiveTypeName().comparator(getOriginalType());
   }
 }

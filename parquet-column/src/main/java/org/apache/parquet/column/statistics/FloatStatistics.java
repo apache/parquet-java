@@ -19,7 +19,6 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 public class FloatStatistics extends Statistics<Float> {
@@ -27,16 +26,12 @@ public class FloatStatistics extends Statistics<Float> {
   private float max;
   private float min;
 
-  /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
-   */
-  @Deprecated
   public FloatStatistics() {
-    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.FLOAT, ""));
+    super();
   }
 
   FloatStatistics(Type type) {
-    super(type);
+    super(type.<Float>comparator());
   }
 
   @Override
@@ -86,8 +81,8 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   public void updateStats(float min_value, float max_value) {
-    if (comparator.compare(min, min_value) > 0) { min = min_value; }
-    if (comparator.compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) { min = min_value; }
+    if (comparator().compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(float min_value, float max_value) {
@@ -107,11 +102,11 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   public int compareToMin(float value) {
-    return comparator.compare(min, value);
+    return comparator().compare(min, value);
   }
 
   public int compareToMax(float value) {
-    return comparator.compare(max, value);
+    return comparator().compare(max, value);
   }
 
   public float getMax() {

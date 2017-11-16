@@ -52,6 +52,7 @@ import org.junit.rules.TemporaryFolder;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
@@ -163,9 +164,11 @@ public class TestStatistics {
     private final boolean hasNonNull;
     private final T min;
     private final T max;
+    private final Comparator<T> comparator;
 
     public StatsValidator(DataPage page) {
       Statistics<T> stats = getStatisticsFromPageHeader(page);
+      this.comparator = stats.comparator();
       this.hasNonNull = stats.hasNonNullValue();
       if (hasNonNull) {
         this.min = stats.genericGetMin();
@@ -178,8 +181,8 @@ public class TestStatistics {
 
     public void validate(T value) {
       if (hasNonNull) {
-        assertTrue("min should be <= all values", min.compareTo(value) <= 0);
-        assertTrue("min should be >= all values", max.compareTo(value) >= 0);
+        assertTrue("min should be <= all values", comparator.compare(min, value) <= 0);
+        assertTrue("min should be >= all values", comparator.compare(max, value) >= 0);
       }
     }
   }
@@ -306,8 +309,8 @@ public class TestStatistics {
 
       System.err.println(String.format(
           "Validated stats min=%s max=%s nulls=%d for page=%s col=%s",
-          String.valueOf(stats.genericGetMin()),
-          String.valueOf(stats.genericGetMax()), stats.getNumNulls(), page,
+          stats.minAsString(),
+          stats.maxAsString(), stats.getNumNulls(), page,
           Arrays.toString(desc.getPath())));
     }
   }

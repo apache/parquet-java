@@ -61,6 +61,7 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -403,7 +404,7 @@ public class TestParquetMetadataConverter {
         formatStats.isSetNull_count());
 
     Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
-        Version.FULL_VERSION, formatStats, PrimitiveTypeName.BINARY,
+        Version.FULL_VERSION, formatStats, new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, ""),
         ParquetMetadataConverter.SortOrder.SIGNED);
 
     Assert.assertTrue(roundTripStats.isEmpty());
@@ -528,9 +529,14 @@ public class TestParquetMetadataConverter {
     stats.updateStats(Binary.fromString("z"));
     stats.incrementNumNulls();
 
+    org.apache.parquet.format.Statistics v1Statistics = ParquetMetadataConverter.toParquetStatistics(stats);
+    // Unsetting the min/max values the enforce the v1 ignoring logic
+    v1Statistics.unsetMin_value();
+    v1Statistics.unsetMax_value();
+
     Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION,
-        ParquetMetadataConverter.toParquetStatistics(stats),
+        v1Statistics,
         Types.required(PrimitiveTypeName.BINARY)
             .as(OriginalType.UTF8).named("b"));
 

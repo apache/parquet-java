@@ -19,7 +19,6 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 public class BooleanStatistics extends Statistics<Boolean> {
@@ -27,16 +26,12 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private boolean max;
   private boolean min;
 
-  /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
-   */
-  @Deprecated
   public BooleanStatistics() {
-    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.BOOLEAN, ""));
+    super();
   }
 
   BooleanStatistics(Type type) {
-    super(type);
+    super(type.<Boolean>comparator());
   }
 
   @Override
@@ -81,8 +76,8 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   public void updateStats(boolean min_value, boolean max_value) {
-    if (comparator.compare(min, min_value) > 0) { min = min_value; }
-    if (comparator.compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) { min = min_value; }
+    if (comparator().compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(boolean min_value, boolean max_value) {
@@ -102,11 +97,11 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   public int compareToMin(boolean value) {
-    return comparator.compare(min, value);
+    return comparator().compare(min, value);
   }
 
   public int compareToMax(boolean value) {
-    return comparator.compare(max, value);
+    return comparator().compare(max, value);
   }
 
   public boolean getMax() {

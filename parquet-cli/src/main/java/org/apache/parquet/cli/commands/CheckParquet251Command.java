@@ -346,8 +346,8 @@ public class CheckParquet251Command extends BaseCommand {
 
       console.debug(String.format(
           "Validated stats min=%s max=%s nulls=%d for page=%s col=%s",
-          String.valueOf(stats.genericGetMin()),
-          String.valueOf(stats.genericGetMax()), stats.getNumNulls(), page,
+          stats.minAsString(),
+          stats.maxAsString(), stats.getNumNulls(), page,
           Arrays.toString(desc.getPath())));
     }
   }

@@ -18,10 +18,7 @@
  */
 package org.apache.parquet.column.statistics;
 
-import it.unimi.dsi.fastutil.longs.LongComparator;
-import it.unimi.dsi.fastutil.longs.LongComparators;
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 public class LongStatistics extends Statistics<Long> {
@@ -29,16 +26,12 @@ public class LongStatistics extends Statistics<Long> {
   private long max;
   private long min;
 
-  /**
-   * @deprecated Use {@link Statistics#getStatsBasedOnType(Type)} instead
-   */
-  @Deprecated
   public LongStatistics() {
-    this(new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.INT64, ""));
+    super();
   }
 
   LongStatistics(Type type) {
-    super(type);
+    super(type.<Long>comparator());
   }
 
   @Override
@@ -89,8 +82,8 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   public void updateStats(long min_value, long max_value) {
-    if (comparator.compare(min, min_value) > 0) { min = min_value; }
-    if (comparator.compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) { min = min_value; }
+    if (comparator().compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(long min_value, long max_value) {
@@ -109,17 +102,12 @@ public class LongStatistics extends Statistics<Long> {
     return max;
   }
 
-  @Override
-  public LongComparator comparator() {
-    return LongComparators.NATURAL_COMPARATOR;
-  }
-
   public int compareToMin(long value) {
-    return comparator.compare(min, value);
+    return comparator().compare(min, value);
   }
 
   public int compareToMax(long value) {
-    return comparator.compare(max, value);
+    return comparator().compare(max, value);
   }
 
   public long getMax() {
