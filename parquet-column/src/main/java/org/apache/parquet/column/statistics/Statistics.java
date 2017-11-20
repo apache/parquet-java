@@ -41,10 +41,6 @@ public abstract class Statistics<T extends Comparable<T>> implements Cloneable {
   private boolean hasNonNullValue;
   private long num_nulls;
 
-  Statistics() {
-    this(PrimitiveComparator.<T>comparableComparator());
-  }
-
   Statistics(PrimitiveComparator<T> comparator) {
     hasNonNullValue = false;
     num_nulls = 0;
@@ -249,7 +245,7 @@ public abstract class Statistics<T extends Comparable<T>> implements Cloneable {
    * Returns the comparator to be used to compare two generic values in the proper way (for example, unsigned comparison
    * for UINT_32).
    */
-  public final Comparator<T> comparator() {
+  public final PrimitiveComparator<T> comparator() {
     return comparator;
   }
 

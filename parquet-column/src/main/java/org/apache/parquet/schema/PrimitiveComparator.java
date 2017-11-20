@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import org.apache.parquet.io.api.Binary;
 
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 /**
@@ -49,18 +50,6 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     throw new UnsupportedOperationException();
   }
 
-  private static final PrimitiveComparator<? extends Comparable<?>> COMPARABLE_COMPARATOR = new PrimitiveComparator<Comparable<Object>>() {
-    @Override
-    public int compare(Comparable<Object> o1, Comparable<Object> o2) {
-      return o1.compareTo(o2);
-    }
-  };
-
-  @SuppressWarnings("unchecked")
-  public static <C extends Comparable<C>> PrimitiveComparator<C> comparableComparator() {
-    return (PrimitiveComparator<C>) COMPARABLE_COMPARATOR;
-  }
-
   static final PrimitiveComparator<Boolean> BOOLEAN_COMPARATOR = new PrimitiveComparator<Boolean>() {
     @Override
     public int compare(Boolean o1, Boolean o2) {
@@ -73,27 +62,47 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   };
 
-  static final PrimitiveComparator<Integer> SIGNED_INT32_COMPARATOR = new PrimitiveComparator<Integer>() {
+  private static abstract class IntComparator extends PrimitiveComparator<Integer> {
     @Override
-    public int compare(Integer o1, Integer o2) {
+    public final int compare(Integer o1, Integer o2) {
       return compare(o1.intValue(), o2.intValue());
     }
+  }
 
+  static final PrimitiveComparator<Integer> SIGNED_INT32_COMPARATOR = new IntComparator() {
     @Override
     public int compare(int i1, int i2) {
       return Integer.compare(i1, i2);
     }
   };
 
-  static final PrimitiveComparator<Long> SIGNED_INT64_COMPARATOR = new PrimitiveComparator<Long>() {
+  static final PrimitiveComparator<Integer> UNSIGNED_INT32_COMPARATOR = new IntComparator() {
     @Override
-    public int compare(Long o1, Long o2) {
+    public int compare(int i1, int i2) {
+      // Implemented based on com.google.common.primitives.UnsignedInts.compare(int, int)
+      return Integer.compare(i1 ^ Integer.MIN_VALUE, i2 ^ Integer.MIN_VALUE);
+    }
+  };
+
+  private static abstract class LongComparator extends PrimitiveComparator<Long> {
+    @Override
+    public final int compare(Long o1, Long o2) {
       return compare(o1.longValue(), o2.longValue());
     }
+  }
 
+  static final PrimitiveComparator<Long> SIGNED_INT64_COMPARATOR = new LongComparator() {
     @Override
     public int compare(long l1, long l2) {
       return Long.compare(l1, l2);
+    }
+  };
+
+  static final PrimitiveComparator<Long> UNSIGNED_INT64_COMPARATOR = new LongComparator() {
+    @Override
+    public int compare(long l1, long l2) {
+      // Implemented based on com.google.common.primitives.UnsignedLongs.compare(long, long)
+      return Long.compare(l1 ^ Long.MIN_VALUE, l2 ^ Long.MIN_VALUE);
     }
   };
 
@@ -121,11 +130,73 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   };
 
-  // TODO: this one is temporary as the self-comparison of Binary is not proper
-  static final PrimitiveComparator<Binary> BINARY_COMPARATOR = new PrimitiveComparator<Binary>() {
+  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> {
     @Override
-    public int compare(Binary o1, Binary o2) {
-      return o1.compareTo(o2);
+    public final int compare(Binary o1, Binary o2) {
+      return compare(o1.toByteBuffer(), o2.toByteBuffer());
+    }
+
+    abstract int compare(ByteBuffer b1, ByteBuffer b2);
+
+    final int toUnsigned(byte b) {
+      return b & 0xFF;
+    }
+  }
+
+  static final PrimitiveComparator<Binary> LEXICOGRAPHICAL_BINARY_COMPARATOR = new BinaryComparator() {
+    @Override
+    int compare(ByteBuffer b1, ByteBuffer b2) {
+      int l1 = b1.remaining();
+      int l2 = b2.remaining();
+      int p1 = b1.position();
+      int p2 = b2.position();
+      int minL = Math.min(l1, l2);
+
+      for (int i = 0; i < minL; ++i) {
+        int result = unsignedCompare(b1.get(p1 + i), b2.get(p2 + i));
+        if (result != 0) {
+          return result;
+        }
+      }
+
+      return l1 - l2;
+    }
+
+    private int unsignedCompare(byte b1, byte b2) {
+      return toUnsigned(b1) - toUnsigned(b2);
+    }
+  };
+
+  static final PrimitiveComparator<Binary> SIGNED_BINARY_COMPARATOR = new BinaryComparator() {
+    private static final int NEGATIVE_PREFIX = 0xFF;
+    private static final int POSITIVE_PREFIX = 0;
+
+    @Override
+    int compare(ByteBuffer b1, ByteBuffer b2) {
+      int l1 = b1.remaining();
+      int l2 = b2.remaining();
+      int p1 = b1.position();
+      int p2 = b2.position();
+
+      boolean isNegative1 = l1 > 0 ? b1.get(p1) < 0 : false;
+      boolean isNegative2 = l2 > 0 ? b2.get(p2) < 0 : false;
+      if (isNegative1 != isNegative2) {
+        return isNegative1 ? -1 : 1;
+      }
+
+      int maxL = Math.max(l1, l2);
+      int iDiff1 = maxL - l1;
+      int iDiff2 = maxL - l2;
+      int prefix = isNegative1 ? NEGATIVE_PREFIX : POSITIVE_PREFIX;
+      for (int i = 0; i < maxL; ++i) {
+        int value1 = i < iDiff1 ? prefix : toUnsigned(b1.get(p1 + i - iDiff1));
+        int value2 = i < iDiff2 ? prefix : toUnsigned(b2.get(p2 + i - iDiff2));
+        int result = value1 - value2;
+        if (result != 0) {
+          return result;
+        }
+      }
+      return 0;
     }
   };
 }

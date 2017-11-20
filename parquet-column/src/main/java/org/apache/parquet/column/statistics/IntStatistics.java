@@ -19,7 +19,9 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 
 public class IntStatistics extends Statistics<Integer> {
 
@@ -27,7 +29,8 @@ public class IntStatistics extends Statistics<Integer> {
   private int min;
 
   public IntStatistics() {
-    super();
+    // Creating a fake primitive type to have the proper comparator
+    this(Types.optional(PrimitiveType.PrimitiveTypeName.INT32).named(""));
   }
 
   IntStatistics(Type type) {

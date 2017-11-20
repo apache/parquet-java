@@ -21,6 +21,7 @@ package org.apache.parquet.column.statistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 
 public class BinaryStatistics extends Statistics<Binary> {
 
@@ -28,7 +29,8 @@ public class BinaryStatistics extends Statistics<Binary> {
   private Binary min;
 
   public BinaryStatistics() {
-    super();
+    // Creating a fake primitive type to have the proper comparator
+    this(Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).named(""));
   }
 
   BinaryStatistics(Type type) {

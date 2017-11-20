@@ -90,8 +90,7 @@ public final class PrimitiveType extends Type {
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
         if (logicalType == OriginalType.UINT_64) {
-          // TODO: return unsigned comparator
-          return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
+          return PrimitiveComparator.UNSIGNED_INT64_COMPARATOR;
         }
         return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
       }
@@ -126,8 +125,7 @@ public final class PrimitiveType extends Type {
             case UINT_8:
             case UINT_16:
             case UINT_32:
-              // TODO: return unsigned comparator
-              return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
+              return PrimitiveComparator.UNSIGNED_INT32_COMPARATOR;
           }
         }
         return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
@@ -186,19 +184,10 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        if (logicalType != null) {
-          switch (logicalType) {
-            case JSON:
-            case BSON:
-              // TODO: Based on specs we do not have ordering for these while we specified lexicographical in ColumnOrder
-              return PrimitiveComparator.BINARY_COMPARATOR;
-            case DECIMAL:
-              // TODO: return signed comparator
-              return PrimitiveComparator.BINARY_COMPARATOR;
-          }
+        if (logicalType == OriginalType.DECIMAL) {
+          return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
         }
-        // TODO: return lexicographical comparator
-        return PrimitiveComparator.BINARY_COMPARATOR;
+        return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
       }
     },
     FLOAT("getFloat", Float.TYPE) {
@@ -280,8 +269,7 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        // TODO: return signed comparator
-        return PrimitiveComparator.BINARY_COMPARATOR;
+        return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
       }
     },
     FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {
@@ -310,11 +298,9 @@ public final class PrimitiveType extends Type {
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
         if (logicalType == OriginalType.DECIMAL) {
-          // TODO: return signed comparator
-          return PrimitiveComparator.BINARY_COMPARATOR;
+          return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
         }
-        // TODO: return lexicographical comparator
-        return PrimitiveComparator.BINARY_COMPARATOR;
+        return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
       }
     };
 

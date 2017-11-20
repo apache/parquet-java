@@ -19,7 +19,9 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 
 public class FloatStatistics extends Statistics<Float> {
 
@@ -27,7 +29,8 @@ public class FloatStatistics extends Statistics<Float> {
   private float min;
 
   public FloatStatistics() {
-    super();
+    // Creating a fake primitive type to have the proper comparator
+    this(Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT).named(""));
   }
 
   FloatStatistics(Type type) {

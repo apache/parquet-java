@@ -33,17 +33,10 @@ import java.util.Arrays;
 
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.ParquetEncodingException;
-import org.apache.parquet.schema.Type;
 
 import static org.apache.parquet.bytes.BytesUtils.UTF8;
 
 abstract public class Binary implements Comparable<Binary>, Serializable {
-
-  public interface ComparatorHelper {
-    int compare(byte[] array1, int offset1, int length1, byte[] array2, int offset2, int length2);
-    int compare(ByteBuffer buffer1, int offset1, int length1, ByteBuffer buffer2, int offset2, int length2);
-    int compare(byte[] array1, int offset1, int length1, ByteBuffer buffer2, int offset2, int length2);
-  }
 
   protected boolean isBackingBytesReused;
 
@@ -86,19 +79,9 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   @Deprecated
   abstract public int compareTo(Binary other);
 
-  abstract public int compareTo(Binary other, ComparatorHelper helper);
+  abstract int compareTo(byte[] bytes, int offset, int length);
 
-  int compareTo(byte[] bytes, int offset, int length) {
-    return compareTo(bytes, offset, length, DEFAULT_COMPARATOR_HELPER);
-  }
-
-  abstract int compareTo(byte[] bytes, int offset, int length, ComparatorHelper helper);
-
-  int compareTo(ByteBuffer bytes, int offset, int length) {
-    return compareTo(bytes, offset, length, DEFAULT_COMPARATOR_HELPER);
-  }
-
-  abstract int compareTo(ByteBuffer bytes, int offset, int length, ComparatorHelper helper);
+  abstract int compareTo(ByteBuffer bytes, int offset, int length);
 
   abstract public ByteBuffer toByteBuffer();
 
@@ -212,22 +195,17 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public int compareTo(Binary other) {
-      return -other.compareTo(value, offset, length);
+      return other.compareTo(value, offset, length);
     }
 
     @Override
-    public int compareTo(Binary other, ComparatorHelper helper) {
-      return -other.compareTo(value, offset, length, helper);
+    int compareTo(byte[] other, int otherOffset, int otherLength) {
+      return Binary.compareTwoByteArrays(value, offset, length, other, otherOffset, otherLength);
     }
 
     @Override
-    int compareTo(byte[] other, int otherOffset, int otherLength, ComparatorHelper helper) {
-      return helper.compare(value, offset, length, other, otherOffset, otherLength);
-    }
-
-    @Override
-    int compareTo(ByteBuffer bytes, int otherOffset, int otherLength, ComparatorHelper helper) {
-      return helper.compare(value, offset, length, bytes, otherOffset, otherLength);
+    int compareTo(ByteBuffer bytes, int otherOffset, int otherLength) {
+      return Binary.compareByteArrayToByteBuffer(value, offset, length, bytes, otherOffset, otherLength);
     }
 
     @Override
@@ -373,22 +351,17 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public int compareTo(Binary other) {
-      return -other.compareTo(value, 0, value.length);
+      return other.compareTo(value, 0, value.length);
     }
 
     @Override
-    public int compareTo(Binary other, ComparatorHelper helper) {
-      return -other.compareTo(value, 0, value.length, helper);
+    int compareTo(byte[] other, int otherOffset, int otherLength) {
+      return Binary.compareTwoByteArrays(value, 0, value.length, other, otherOffset, otherLength);
     }
 
     @Override
-    int compareTo(byte[] other, int otherOffset, int otherLength, ComparatorHelper helper) {
-      return helper.compare(value, 0, value.length, other, otherOffset, otherLength);
-    }
-
-    @Override
-    int compareTo(ByteBuffer bytes, int otherOffset, int otherLength, ComparatorHelper helper) {
-      return helper.compare(value, 0, value.length, bytes, otherOffset, otherLength);
+    int compareTo(ByteBuffer bytes, int otherOffset, int otherLength) {
+      return Binary.compareByteArrayToByteBuffer(value, 0, value.length, bytes, otherOffset, otherLength);
     }
 
     @Override
@@ -539,39 +512,30 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public int compareTo(Binary other) {
       if (value.hasArray()) {
-        return -other.compareTo(value.array(), value.arrayOffset() + offset, length);
+        return other.compareTo(value.array(), value.arrayOffset() + offset, length);
       } else {
-        return -other.compareTo(value, offset, length);
+        return other.compareTo(value, offset, length);
       }
     }
 
     @Override
-    public int compareTo(Binary other, ComparatorHelper helper) {
+    int compareTo(byte[] other, int otherOffset, int otherLength) {
       if (value.hasArray()) {
-        return -other.compareTo(value.array(), value.arrayOffset() + offset, length, helper);
-      } else {
-        return -other.compareTo(value, offset, length, helper);
-      }
-    }
-
-    @Override
-    int compareTo(byte[] other, int otherOffset, int otherLength, ComparatorHelper helper) {
-      if (value.hasArray()) {
-        return helper.compare(value.array(), value.arrayOffset() + offset, length,
+        return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + offset, length,
             other, otherOffset, otherLength);
       } {
-        return -helper.compare(other, otherOffset, otherLength, value, offset, length);
+        return Binary.compareByteBufferToByteArray(value, offset, length, other, otherOffset, otherLength);
       }
     }
 
     @Override
-    int compareTo(ByteBuffer bytes, int otherOffset, int otherLength, ComparatorHelper helper) {
-      return helper.compare(value, offset, length, bytes, otherOffset, otherLength);
+    int compareTo(ByteBuffer bytes, int otherOffset, int otherLength) {
+      return Binary.compareTwoByteBuffers(value, offset, length, bytes, otherOffset, otherLength);
     }
 
     @Override
     public ByteBuffer toByteBuffer() {
-      ByteBuffer ret = value.slice();
+      ByteBuffer ret = value.duplicate();
       ret.position(offset);
       ret.limit(offset + length);
       return ret;
@@ -708,75 +672,63 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return true;
   }
 
-  private static final ComparatorHelper DEFAULT_COMPARATOR_HELPER = new ComparatorHelper() {
-    @Override
-    public int compare(byte[] array1, int offset1, int length1,
-      ByteBuffer buf, int offset2, int length2) {
-      if (array1 == null && buf == null) return 0;
-      int min_length = (length1 < length2) ? length1 : length2;
-      for (int i = 0; i < min_length; i++) {
-        if (array1[i + offset1] < buf.get(i + offset2)) {
-          return -1;
-        }
-        if (array1[i + offset1] > buf.get(i + offset2)) {
-          return 1;
-        }
-      }
-      // check remainder
-      if (length1 == length2) {
-        return 0;
-      } else if (length1 < length2) {
-        return -1;
-      } else {
-        return 1;
-      }
-    }
+  private static final int compareByteBufferToByteArray(ByteBuffer buf, int offset1, int length1,
+                                                        byte[] array, int offset2, int length2) {
+    return -1 * Binary.compareByteArrayToByteBuffer(array, offset1, length1, buf, offset2, length2);
+  }
 
-    @Override
-    public int compare(ByteBuffer buf1, int offset1, int length1,
-      ByteBuffer buf2, int offset2, int length2) {
-      if (buf1 == null && buf2 == null) return 0;
-      int min_length = (length1 < length2) ? length1 : length2;
-      for (int i = 0; i < min_length; i++) {
-        if (buf1.get(i + offset1) < buf2.get(i + offset2)) {
-          return -1;
-        }
-        if (buf1.get(i + offset1) > buf2.get(i + offset2)) {
-          return 1;
-        }
-      }
-      // check remainder
-      if (length1 == length2) {
-        return 0;
-      } else if (length1 < length2) {
-        return -1;
-      } else {
+  private static final int compareByteArrayToByteBuffer(byte[] array1, int offset1, int length1,
+                                                        ByteBuffer buf, int offset2, int length2) {
+    if (array1 == null && buf == null) return 0;
+    int min_length = (length1 < length2) ? length1 : length2;
+    for (int i = 0; i < min_length; i++) {
+      if (array1[i + offset1] < buf.get(i + offset2)) {
         return 1;
       }
+      if (array1[i + offset1] > buf.get(i + offset2)) {
+        return -1;
+      }
     }
+    // check remainder
+    if (length1 == length2) { return 0; }
+    else if (length1 < length2) { return 1;}
+    else { return -1; }
+  }
 
-    @Override
-    public int compare(byte[] array1, int offset1, int length1,
-      byte[] array2, int offset2, int length2) {
-      if (array1 == null && array2 == null) return 0;
-      if (array1 == array2 && offset1 == offset2 && length1 == length2) return 0;
-      int min_length = (length1 < length2) ? length1 : length2;
-      for (int i = 0; i < min_length; i++) {
-        if (array1[i + offset1] < array2[i + offset2]) {
-          return -1;
-        }
-        if (array1[i + offset1] > array2[i + offset2]) {
-          return 1;
-        }
-      }
-      // check remainder
-      if (length1 == length2) {
-        return 0;
-      } else if (length1 < length2) {
-        return -1;
-      } else {
+  private static final int compareTwoByteBuffers(ByteBuffer buf1, int offset1, int length1,
+                                                        ByteBuffer buf2, int offset2, int length2) {
+    if (buf1 == null && buf2 == null) return 0;
+    int min_length = (length1 < length2) ? length1 : length2;
+    for (int i = 0; i < min_length; i++) {
+      if (buf1.get(i + offset1) < buf2.get(i + offset2)) {
         return 1;
       }
+      if (buf1.get(i + offset1) > buf2.get(i + offset2)) {
+        return -1;
+      }
     }
-  };
+    // check remainder
+    if (length1 == length2) { return 0; }
+    else if (length1 < length2) { return 1;}
+    else { return -1; }
+  }
+
+  private static final int compareTwoByteArrays(byte[] array1, int offset1, int length1,
+                                                byte[] array2, int offset2, int length2) {
+    if (array1 == null && array2 == null) return 0;
+    if (array1 == array2 && offset1 == offset2 && length1 == length2) return 0;
+    int min_length = (length1 < length2) ? length1 : length2;
+    for (int i = 0; i < min_length; i++) {
+      if (array1[i + offset1] < array2[i + offset2]) {
+        return 1;
+      }
+      if (array1[i + offset1] > array2[i + offset2]) {
+        return -1;
+      }
+    }
+    // check remainder
+    if (length1 == length2) { return 0; }
+    else if (length1 < length2) { return 1;}
+    else { return -1; }
+  }
 }

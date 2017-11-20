@@ -19,7 +19,9 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 
 public class BooleanStatistics extends Statistics<Boolean> {
 
@@ -27,7 +29,8 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private boolean min;
 
   public BooleanStatistics() {
-    super();
+    // Creating a fake primitive type to have the proper comparator
+    this(Types.optional(PrimitiveType.PrimitiveTypeName.BOOLEAN).named(""));
   }
 
   BooleanStatistics(Type type) {
