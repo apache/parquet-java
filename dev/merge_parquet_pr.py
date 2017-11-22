@@ -45,8 +45,21 @@ PROJECT_NAME = PARQUET_HOME.rsplit("/", 1)[1]
 print "PARQUET_HOME = " + PARQUET_HOME
 print "PROJECT_NAME = " + PROJECT_NAME
 
-# Remote name which points to the Gihub site
-PR_REMOTE_NAME = os.environ.get("PR_REMOTE_NAME", "apache-github")
+def lines_from_cmd(cmd):
+    return subprocess.check_output(cmd.split(" ")).strip().split("\n")
+
+# Remote name which points to the GitHub site
+PR_REMOTE_NAME = os.environ.get("PR_REMOTE_NAME")
+available_remotes = lines_from_cmd("git remote")
+if PR_REMOTE_NAME is not None:
+    if PR_REMOTE_NAME not in available_remotes:
+        print "ERROR: git remote '%s' is not defined." % PR_REMOTE_NAME
+        sys.exit(-1)
+else:
+    remote_candidates = ["github-apache", "apache-github"]
+    # Get first available remote from the list of candidates
+    PR_REMOTE_NAME = next((remote for remote in available_remotes if remote in remote_candidates), None)
+
 # Remote name which points to Apache git
 PUSH_REMOTE_NAME = os.environ.get("PUSH_REMOTE_NAME", "apache")
 # ASF JIRA username
@@ -295,12 +308,29 @@ def resolve_jira(title, merge_branches, comment):
 
     print "Succesfully resolved %s with fixVersions=%s!" % (jira_id, fix_versions)
 
+if JIRA_IMPORTED:
+    jira_login_accepted = False
+    while not jira_login_accepted:
+        if JIRA_USERNAME:
+            print "JIRA username: %s" % JIRA_USERNAME
+        else:
+            JIRA_USERNAME = raw_input("Enter JIRA username: ")
 
-if not JIRA_USERNAME:
-    JIRA_USERNAME =  raw_input("Env JIRA_USERNAME not set, please enter your JIRA username:")
+        if not JIRA_PASSWORD:
+            JIRA_PASSWORD = getpass.getpass("Enter JIRA password: ")
 
-if not JIRA_PASSWORD:
-    JIRA_PASSWORD =  getpass.getpass("Env JIRA_PASSWORD not set, please enter your JIRA password:")
+        try:
+            asf_jira = jira.client.JIRA({'server': JIRA_API_BASE},
+                                        basic_auth=(JIRA_USERNAME, JIRA_PASSWORD))
+            jira_login_accepted = True
+        except Exception as e:
+            print "\nJIRA login failed, try again\n"
+            JIRA_USERNAME = None
+            JIRA_PASSWORD = None
+else:
+    print "WARNING: Could not find jira python library. Run 'sudo pip install jira' to install."
+    print "The tool will continue to run but won't handle the JIRA."
+    print
 
 branches = get_json("%s/branches" % GITHUB_API_BASE)
 branch_names = filter(lambda x: x.startswith("branch-"), [x['name'] for x in branches])
@@ -313,7 +343,8 @@ pr = get_json("%s/pulls/%s" % (GITHUB_API_BASE, pr_num))
 
 url = pr["url"]
 title = pr["title"]
-check_jira(title)
+if JIRA_IMPORTED:
+    check_jira(title)
 body = pr["body"]
 target_ref = pr["base"]["ref"]
 user_login = pr["user"]["login"]
@@ -358,5 +389,5 @@ if JIRA_IMPORTED:
     jira_comment = "Issue resolved by pull request %s\n[%s/%s]" % (pr_num, GITHUB_BASE, pr_num)
     resolve_jira(title, merged_refs, jira_comment)
 else:
-    print "Could not find jira-python library. Run 'sudo pip install jira-python' to install."
+    print "WARNING: Could not find jira python library. Run 'sudo pip install jira' to install."
     print "Exiting without trying to close the associated JIRA."
