@@ -26,7 +26,7 @@ import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
@@ -80,7 +80,7 @@ abstract public class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
-    return get(path, new PrimitiveType(Type.Repetition.OPTIONAL, type, ""), codec, encodingStats, encodings, statistics,
+    return get(path, Types.optional(type).named(""), codec, encodingStats, encodings, statistics,
       firstDataPage, dictionaryPageOffset, valueCount, totalSize, totalUncompressedSize);
   }
 

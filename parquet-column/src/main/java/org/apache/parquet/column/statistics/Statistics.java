@@ -35,7 +35,7 @@ import java.util.Objects;
  *
  * @author Katya Gonina
  */
-public abstract class Statistics<T extends Comparable<T>> implements Cloneable {
+public abstract class Statistics<T extends Comparable<T>> {
 
   private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
@@ -84,7 +84,7 @@ public abstract class Statistics<T extends Comparable<T>> implements Cloneable {
    * @param type type of the column
    * @return instance of a typed statistics class
    */
-  public static Statistics createLegacyStats(PrimitiveTypeName type) {
+  public static Statistics<?> createLegacyStats(PrimitiveTypeName type) {
     return getStatsBasedOnType(type);
   }
 
@@ -370,13 +370,10 @@ public abstract class Statistics<T extends Comparable<T>> implements Cloneable {
     hasNonNullValue = true;
   }
 
-  @Override
-  public Statistics<T> clone() {
-    try {
-      return (Statistics<T>) super.clone();
-    } catch(CloneNotSupportedException e) {
-      throw new ShouldNeverHappenException(e);
-    }
-  }
+  /**
+   * Returns a new independent statistics instance of this class. All the values
+   * are copied.
+   */
+  public abstract Statistics<T> copy();
 }
 

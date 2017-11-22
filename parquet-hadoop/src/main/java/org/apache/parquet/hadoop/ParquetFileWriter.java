@@ -428,7 +428,7 @@ public class ParquetFileWriter {
 
     // Cloning the statistics if it is not initialized yet so we have the correct typed one
     if (currentStatistics == null) {
-      currentStatistics = statistics.clone();
+      currentStatistics = statistics.copy();
     } else {
       currentStatistics.mergeStatistics(statistics);
     }

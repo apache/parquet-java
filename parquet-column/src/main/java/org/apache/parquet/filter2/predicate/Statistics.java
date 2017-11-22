@@ -30,6 +30,15 @@ public class Statistics<T> {
   private final T max;
   private final Comparator<T> comparator;
 
+  // Intended for use only within Parquet itself.
+  @Deprecated
+  public Statistics(T min, T max) {
+    this.min = checkNotNull(min, "min");
+    this.max = checkNotNull(max, "max");
+    this.comparator = null;
+  }
+
+  // Intended for use only within Parquet itself.
   public Statistics(T min, T max, Comparator<T> comparator) {
     this.min = checkNotNull(min, "min");
     this.max = checkNotNull(max, "max");

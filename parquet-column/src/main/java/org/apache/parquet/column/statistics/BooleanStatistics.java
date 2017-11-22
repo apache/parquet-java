@@ -25,16 +25,26 @@ import org.apache.parquet.schema.Types;
 
 public class BooleanStatistics extends Statistics<Boolean> {
 
+  // A fake type object to be used to generate the proper comparator
+  private static final Type DEFAULT_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BOOLEAN).named("");
+
   private boolean max;
   private boolean min;
 
   public BooleanStatistics() {
-    // Creating a fake primitive type to have the proper comparator
-    this(Types.optional(PrimitiveType.PrimitiveTypeName.BOOLEAN).named(""));
+    this(DEFAULT_TYPE);
   }
 
   BooleanStatistics(Type type) {
     super(type.<Boolean>comparator());
+  }
+
+  private BooleanStatistics(BooleanStatistics other) {
+    super(other.comparator());
+    if (other.hasNonNullValue()) {
+      initializeStats(other.min, other.max);
+    }
+    setNumNulls(other.getNumNulls());
   }
 
   @Override
@@ -119,5 +129,10 @@ public class BooleanStatistics extends Statistics<Boolean> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public BooleanStatistics copy() {
+    return new BooleanStatistics(this);
   }
 }

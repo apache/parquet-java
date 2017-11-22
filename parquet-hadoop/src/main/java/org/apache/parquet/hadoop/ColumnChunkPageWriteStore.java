@@ -116,7 +116,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
       // Cloning the statistics if it is not initialized yet so we have the correct typed one
       if (totalStatistics == null) {
-        totalStatistics = statistics.clone();
+        totalStatistics = statistics.copy();
       } else {
         totalStatistics.mergeStatistics(statistics);
       }
@@ -161,7 +161,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
       // Cloning the statistics if it is not initialized yet so we have the correct typed one
       if (totalStatistics == null) {
-        totalStatistics = statistics.clone();
+        totalStatistics = statistics.copy();
       } else {
         totalStatistics.mergeStatistics(statistics);
       }

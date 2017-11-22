@@ -25,16 +25,27 @@ import org.apache.parquet.schema.Types;
 
 public class FloatStatistics extends Statistics<Float> {
 
+  // A fake type object to be used to generate the proper comparator
+  private static final Type DEFAULT_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT).named("");
+
   private float max;
   private float min;
 
   public FloatStatistics() {
     // Creating a fake primitive type to have the proper comparator
-    this(Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT).named(""));
+    this(DEFAULT_TYPE);
   }
 
   FloatStatistics(Type type) {
     super(type.<Float>comparator());
+  }
+
+  private FloatStatistics(FloatStatistics other) {
+    super(other.comparator());
+    if (other.hasNonNullValue()) {
+      initializeStats(other.min, other.max);
+    }
+    setNumNulls(other.getNumNulls());
   }
 
   @Override
@@ -124,5 +135,10 @@ public class FloatStatistics extends Statistics<Float> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public FloatStatistics copy() {
+    return new FloatStatistics(this);
   }
 }

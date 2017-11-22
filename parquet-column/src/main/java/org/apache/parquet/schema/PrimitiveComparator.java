@@ -31,23 +31,23 @@ import java.util.Comparator;
 public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
   public int compare(boolean b1, boolean b2) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("compare(boolean, boolean) was called on a non-boolean comparator");
   }
 
   public int compare(int i1, int i2) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("compare(int, int) was called on a non-int comparator");
   }
 
   public int compare(long l1, long l2) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("compare(long, long) was called on a non-long comparator");
   }
 
   public int compare(float f1, float f2) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("compare(float, float) was called on a non-float comparator");
   }
 
   public int compare(double d1, double d2) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("compare(double, double) was called on a non-double comparator");
   }
 
   static final PrimitiveComparator<Boolean> BOOLEAN_COMPARATOR = new PrimitiveComparator<Boolean>() {

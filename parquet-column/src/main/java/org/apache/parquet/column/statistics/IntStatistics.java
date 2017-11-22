@@ -25,16 +25,26 @@ import org.apache.parquet.schema.Types;
 
 public class IntStatistics extends Statistics<Integer> {
 
+  // A fake type object to be used to generate the proper comparator
+  private static final Type DEFAULT_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT32).named("");
+
   private int max;
   private int min;
 
   public IntStatistics() {
-    // Creating a fake primitive type to have the proper comparator
-    this(Types.optional(PrimitiveType.PrimitiveTypeName.INT32).named(""));
+    this(DEFAULT_TYPE);
   }
 
   IntStatistics(Type type) {
     super(type.<Integer>comparator());
+  }
+
+  private IntStatistics(IntStatistics other) {
+    super(other.comparator());
+    if (other.hasNonNullValue()) {
+      initializeStats(other.min, other.max);
+    }
+    setNumNulls(other.getNumNulls());
   }
 
   @Override
@@ -125,5 +135,10 @@ public class IntStatistics extends Statistics<Integer> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public IntStatistics copy() {
+    return new IntStatistics(this);
   }
 }

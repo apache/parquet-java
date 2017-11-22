@@ -25,16 +25,26 @@ import org.apache.parquet.schema.Types;
 
 public class BinaryStatistics extends Statistics<Binary> {
 
+  // A fake type object to be used to generate the proper comparator
+  private static final Type DEFAULT_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).named("");
+
   private Binary max;
   private Binary min;
 
   public BinaryStatistics() {
-    // Creating a fake primitive type to have the proper comparator
-    this(Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).named(""));
+    this(DEFAULT_TYPE);
   }
 
   BinaryStatistics(Type type) {
     super(type.<Binary>comparator());
+  }
+
+  private BinaryStatistics(BinaryStatistics other) {
+    super(other.comparator());
+    if (other.hasNonNullValue()) {
+      initializeStats(other.min, other.max);
+    }
+    setNumNulls(other.getNumNulls());
   }
 
   @Override
@@ -143,5 +153,10 @@ public class BinaryStatistics extends Statistics<Binary> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public BinaryStatistics copy() {
+    return new BinaryStatistics(this);
   }
 }
