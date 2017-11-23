@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.statistics;
 
-import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
@@ -26,7 +25,6 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Objects;
 
 
@@ -49,9 +47,12 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Returns the typed statistics object based on the passed type parameter
-   * @param type PrimitiveTypeName type of the column
+   * 
+   * @param type
+   *          PrimitiveTypeName type of the column
    * @return instance of a typed statistics class
-   * @deprecated Use {@link #createStats(Type)} or {@link #createLegacyStats(PrimitiveTypeName)} instead
+   * @deprecated Use {@link #createStats(Type)} or
+   *             {@link #createLegacyStats(PrimitiveTypeName)} instead
    */
   @Deprecated
   public static Statistics getStatsBasedOnType(PrimitiveTypeName type) {
@@ -78,10 +79,11 @@ public abstract class Statistics<T extends Comparable<T>> {
   }
 
   /**
-   * Creates an empty {@code Statistics} instance for the specified type to be used for reading/writing the legacy
-   * min/max statistics.
+   * Creates an empty {@code Statistics} instance for the specified type to be
+   * used for reading/writing the legacy min/max statistics.
    *
-   * @param type type of the column
+   * @param type
+   *          type of the column
    * @return instance of a typed statistics class
    */
   public static Statistics<?> createLegacyStats(PrimitiveTypeName type) {
@@ -89,10 +91,11 @@ public abstract class Statistics<T extends Comparable<T>> {
   }
 
   /**
-   * Creates an empty {@code Statistics} instance for the specified type to be used for reading/writing the new min/max
-   * statistics used in the V2 format.
+   * Creates an empty {@code Statistics} instance for the specified type to be
+   * used for reading/writing the new min/max statistics used in the V2 format.
    *
-   * @param type type of the column
+   * @param type
+   *          type of the column
    * @return instance of a typed statistics class
    */
   public static Statistics<?> createStats(Type type) {

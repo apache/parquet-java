@@ -26,7 +26,7 @@ import java.util.Random;
 public class RandomValues {
   private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
 
-  private static abstract class RandomValueGenerator<T extends Comparable<T>> {
+  static abstract class RandomValueGenerator<T extends Comparable<T>> {
     private final Random random;
 
     protected RandomValueGenerator(long seed) {
@@ -82,7 +82,7 @@ public class RandomValues {
     public abstract T nextValue();
   }
 
-  private static abstract class RandomBinaryBase<T extends Comparable<T>> extends RandomValueGenerator<T> {
+  static abstract class RandomBinaryBase<T extends Comparable<T>> extends RandomValueGenerator<T> {
     protected final int bufferLength;
     protected final byte[] buffer;
 
@@ -103,18 +103,37 @@ public class RandomValues {
   }
 
   public static class IntGenerator extends RandomValueGenerator<Integer> {
-    private final RandomRange<Integer> randomRange = new RandomRange<Integer>(randomInt(), randomInt());
-    private final int minimum = randomRange.minimum();
-    private final int maximum = randomRange.maximum();
-    private final int range = (maximum - minimum);
+    private final int minimum;
+    private final int range;
 
     public IntGenerator(long seed) {
       super(seed);
+      RandomRange<Integer> randomRange = new RandomRange<>(randomInt(), randomInt());
+      this.minimum = randomRange.minimum();
+      this.range = (randomRange.maximum() - this.minimum);
+    }
+
+    public IntGenerator(long seed, int minimum, int maximum) {
+      super(seed);
+      RandomRange<Integer> randomRange = new RandomRange<>(minimum, maximum);
+      this.minimum = randomRange.minimum();
+      this.range = randomRange.maximum() - this.minimum;
     }
 
     @Override
     public Integer nextValue() {
       return (minimum + randomInt(range));
+    }
+  }
+
+  public static class UnconstrainedIntGenerator extends RandomValueGenerator<Integer> {
+    public UnconstrainedIntGenerator(long seed) {
+      super(seed);
+    }
+
+    @Override
+    public Integer nextValue() {
+      return randomInt();
     }
   }
 
@@ -131,6 +150,17 @@ public class RandomValues {
     @Override
     public Long nextValue() {
       return (minimum + randomLong(range));
+    }
+  }
+
+  public static class UnconstrainedLongGenerator extends RandomValueGenerator<Long> {
+    public UnconstrainedLongGenerator(long seed) {
+      super(seed);
+    }
+
+    @Override
+    public Long nextValue() {
+      return randomLong();
     }
   }
 
@@ -173,6 +203,17 @@ public class RandomValues {
     }
   }
 
+  public static class UnconstrainedFloatGenerator extends RandomValueGenerator<Float> {
+    public UnconstrainedFloatGenerator(long seed) {
+      super(seed);
+    }
+
+    @Override
+    public Float nextValue() {
+      return randomFloat();
+    }
+  }
+
   public static class DoubleGenerator extends RandomValueGenerator<Double> {
     private final RandomRange<Double> randomRange = new RandomRange<Double>(randomDouble(), randomDouble());
     private final double minimum = randomRange.minimum();
@@ -186,6 +227,17 @@ public class RandomValues {
     @Override
     public Double nextValue() {
       return (minimum + randomDouble(range));
+    }
+  }
+
+  public static class UnconstrainedDoubleGenerator extends RandomValueGenerator<Double> {
+    public UnconstrainedDoubleGenerator(long seed) {
+      super(seed);
+    }
+
+    @Override
+    public Double nextValue() {
+      return randomDouble();
     }
   }
 

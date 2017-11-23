@@ -335,12 +335,19 @@ public class ParquetMetadataConverter {
     if (!statistics.isEmpty() && statistics.isSmallerThan(MAX_STATS_SIZE)) {
       stats.setNull_count(statistics.getNumNulls());
       if (statistics.hasNonNullValue()) {
-        byte[] maxBytes = statistics.getMaxBytes();
-        stats.setMax(statistics.getMaxBytes());
-        stats.setMax_value(maxBytes);
-        byte[] minBytes = statistics.getMinBytes();
-        stats.setMin(statistics.getMinBytes());
-        stats.setMin_value(minBytes);
+        byte[] min = statistics.getMinBytes();
+        byte[] max = statistics.getMaxBytes();
+
+        // Fill the former min-max statistics only if comparison logic is the one
+        // specified in V1 format (e.g. signed comparison for numbers, unsigned
+        // lexicographical for binary) or the min and max are equal
+        if (statistics.comparator().isFormerStatsCompliant() || Arrays.equals(min, max)) {
+          stats.setMin(min);
+          stats.setMax(max);
+        }
+
+        stats.setMin_value(min);
+        stats.setMax_value(max);
       }
     }
     return stats;

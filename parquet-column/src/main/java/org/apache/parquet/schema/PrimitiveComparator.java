@@ -50,6 +50,14 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     throw new UnsupportedOperationException("compare(double, double) was called on a non-double comparator");
   }
 
+  /**
+   * Returns whether this comparator is compliant with the sorting definition of
+   * the former V1 min-max statistics.
+   */
+  public boolean isFormerStatsCompliant() {
+    return true;
+  }
+
   static final PrimitiveComparator<Boolean> BOOLEAN_COMPARATOR = new PrimitiveComparator<Boolean>() {
     @Override
     public int compare(Boolean o1, Boolean o2) {
@@ -82,6 +90,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
       // Implemented based on com.google.common.primitives.UnsignedInts.compare(int, int)
       return Integer.compare(i1 ^ Integer.MIN_VALUE, i2 ^ Integer.MIN_VALUE);
     }
+
+    @Override
+    public boolean isFormerStatsCompliant() {
+      return false;
+    }
   };
 
   private static abstract class LongComparator extends PrimitiveComparator<Long> {
@@ -103,6 +116,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     public int compare(long l1, long l2) {
       // Implemented based on com.google.common.primitives.UnsignedLongs.compare(long, long)
       return Long.compare(l1 ^ Long.MIN_VALUE, l2 ^ Long.MIN_VALUE);
+    }
+
+    @Override
+    public boolean isFormerStatsCompliant() {
+      return false;
     }
   };
 
@@ -197,6 +215,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
         }
       }
       return 0;
+    }
+
+    @Override
+    public boolean isFormerStatsCompliant() {
+      return false;
     }
   };
 }

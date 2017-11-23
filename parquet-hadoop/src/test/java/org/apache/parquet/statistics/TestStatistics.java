@@ -19,6 +19,26 @@
 
 package org.apache.parquet.statistics;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -42,24 +62,17 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
+import org.apache.parquet.statistics.RandomValues.RandomBinaryBase;
+import org.apache.parquet.statistics.RandomValues.RandomValueGenerator;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Random;
-
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertTrue;
 
 public class TestStatistics {
   private static final int MEGABYTE = 1 << 20;
@@ -283,7 +296,11 @@ public class TestStatistics {
     private void validateStatsForPage(DataPage page, DictionaryPage dict, ColumnDescriptor desc) {
       SingletonPageReader reader = new SingletonPageReader(dict, page);
       PrimitiveConverter converter = getValidatingConverter(page, desc.getType());
-      Statistics stats = getStatisticsFromPageHeader(page);
+      Statistics<?> stats = getStatisticsFromPageHeader(page);
+
+      assertEquals("Statistics does not use the proper comparator",
+          desc.getFullType().comparator().getClass(),
+          stats.comparator().getClass());
 
       if (stats.isEmpty()) {
         // stats are empty if num nulls = 0 and there are no non-null values
@@ -318,56 +335,108 @@ public class TestStatistics {
   public static class DataContext extends DataGenerationContext.WriteContext {
     private static final int MAX_TOTAL_ROWS = 1000000;
 
-    private final long seed;
     private final Random random;
     private final int recordCount;
 
-    private final int fixedLength;
-    private final RandomValues.IntGenerator intGenerator;
-    private final RandomValues.LongGenerator longGenerator;
-    private final RandomValues.Int96Generator int96Generator;
-    private final RandomValues.FloatGenerator floatGenerator;
-    private final RandomValues.DoubleGenerator doubleGenerator;
-    private final RandomValues.StringGenerator stringGenerator;
-    private final RandomValues.BinaryGenerator binaryGenerator;
-    private final RandomValues.FixedGenerator fixedBinaryGenerator;
+    private final List<RandomValueGenerator<?>> randomGenerators;
 
     public DataContext(long seed, File path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
       super(path, buildSchema(seed), blockSize, pageSize, enableDictionary, true, version);
 
-      this.seed = seed;
       this.random = new Random(seed);
       this.recordCount = random.nextInt(MAX_TOTAL_ROWS);
 
-      this.fixedLength = schema.getType("fixed-binary").asPrimitiveType().getTypeLength();
-      this.intGenerator = new RandomValues.IntGenerator(random.nextLong());
-      this.longGenerator = new RandomValues.LongGenerator(random.nextLong());
-      this.int96Generator = new RandomValues.Int96Generator(random.nextLong());
-      this.floatGenerator = new RandomValues.FloatGenerator(random.nextLong());
-      this.doubleGenerator = new RandomValues.DoubleGenerator(random.nextLong());
-      this.stringGenerator = new RandomValues.StringGenerator(random.nextLong());
-      this.binaryGenerator = new RandomValues.BinaryGenerator(random.nextLong());
-      this.fixedBinaryGenerator = new RandomValues.FixedGenerator(random.nextLong(), fixedLength);
+      int fixedLength = schema.getType("fixed-binary").asPrimitiveType().getTypeLength();
+
+      randomGenerators = Arrays.<RandomValueGenerator<?>>asList(
+          new RandomValues.IntGenerator(random.nextLong()),
+          new RandomValues.LongGenerator(random.nextLong()),
+          new RandomValues.Int96Generator(random.nextLong()),
+          new RandomValues.FloatGenerator(random.nextLong()),
+          new RandomValues.DoubleGenerator(random.nextLong()),
+          new RandomValues.StringGenerator(random.nextLong()),
+          new RandomValues.BinaryGenerator(random.nextLong()),
+          new RandomValues.FixedGenerator(random.nextLong(), fixedLength),
+          new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
+          new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
+          new RandomValues.UnconstrainedFloatGenerator(random.nextLong()),
+          new RandomValues.UnconstrainedDoubleGenerator(random.nextLong()),
+          new RandomValues.IntGenerator(random.nextLong(), Byte.MIN_VALUE, Byte.MAX_VALUE),
+          new RandomValues.IntGenerator(random.nextLong(), Byte.MIN_VALUE, Byte.MAX_VALUE),
+          new RandomValues.IntGenerator(random.nextLong(), Short.MIN_VALUE, Short.MAX_VALUE),
+          new RandomValues.IntGenerator(random.nextLong(), Short.MIN_VALUE, Short.MAX_VALUE),
+          new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
+          new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
+          new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
+          new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
+          new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
+          new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
+          new RandomValues.FixedGenerator(random.nextLong(), fixedLength),
+          new RandomValues.BinaryGenerator(random.nextLong()),
+          new RandomValues.StringGenerator(random.nextLong()),
+          new RandomValues.StringGenerator(random.nextLong()),
+          new RandomValues.StringGenerator(random.nextLong()),
+          new RandomValues.BinaryGenerator(random.nextLong()),
+          new RandomValues.IntGenerator(random.nextLong()),
+          new RandomValues.IntGenerator(random.nextLong()),
+          new RandomValues.LongGenerator(random.nextLong()),
+          new RandomValues.LongGenerator(random.nextLong()),
+          new RandomValues.LongGenerator(random.nextLong()),
+          new RandomValues.FixedGenerator(random.nextLong(), 12)
+      );
     }
 
     private static MessageType buildSchema(long seed) {
       Random random = new Random(seed);
       int fixedBinaryLength = random.nextInt(21) + 1;
+      int fixedPrecision = calculatePrecision(fixedBinaryLength);
+      int fixedScale = fixedPrecision / 4;
+      int binaryPrecision = calculatePrecision(16);
+      int binaryScale = binaryPrecision / 4;
 
       return new MessageType("schema",
-        new PrimitiveType(OPTIONAL, INT32, "i32"),
-        new PrimitiveType(OPTIONAL, INT64, "i64"),
-        new PrimitiveType(OPTIONAL, INT96, "i96"),
-        new PrimitiveType(OPTIONAL, FLOAT, "sngl"),
-        new PrimitiveType(OPTIONAL, DOUBLE, "dbl"),
-        new PrimitiveType(OPTIONAL, BINARY, "strings"),
-        new PrimitiveType(OPTIONAL, BINARY, "binary"),
-        new PrimitiveType(OPTIONAL, FIXED_LEN_BYTE_ARRAY, fixedBinaryLength, "fixed-binary"),
-        new PrimitiveType(REQUIRED, INT32, "unconstrained-i32"),
-        new PrimitiveType(REQUIRED, INT64, "unconstrained-i64"),
-        new PrimitiveType(REQUIRED, FLOAT, "unconstrained-sngl"),
-        new PrimitiveType(REQUIRED, DOUBLE, "unconstrained-dbl")
+          new PrimitiveType(OPTIONAL, INT32, "i32"),
+          new PrimitiveType(OPTIONAL, INT64, "i64"),
+          new PrimitiveType(OPTIONAL, INT96, "i96"),
+          new PrimitiveType(OPTIONAL, FLOAT, "sngl"),
+          new PrimitiveType(OPTIONAL, DOUBLE, "dbl"),
+          new PrimitiveType(OPTIONAL, BINARY, "strings"),
+          new PrimitiveType(OPTIONAL, BINARY, "binary"),
+          new PrimitiveType(OPTIONAL, FIXED_LEN_BYTE_ARRAY, fixedBinaryLength, "fixed-binary"),
+          new PrimitiveType(REQUIRED, INT32, "unconstrained-i32"),
+          new PrimitiveType(REQUIRED, INT64, "unconstrained-i64"),
+          new PrimitiveType(REQUIRED, FLOAT, "unconstrained-sngl"),
+          new PrimitiveType(REQUIRED, DOUBLE, "unconstrained-dbl"),
+          Types.optional(INT32).as(OriginalType.INT_8).named("int8"),
+          Types.optional(INT32).as(OriginalType.UINT_8).named("uint8"),
+          Types.optional(INT32).as(OriginalType.INT_16).named("int16"),
+          Types.optional(INT32).as(OriginalType.UINT_16).named("uint16"),
+          Types.optional(INT32).as(OriginalType.INT_32).named("int32"),
+          Types.optional(INT32).as(OriginalType.UINT_32).named("uint32"),
+          Types.optional(INT64).as(OriginalType.INT_64).named("int64"),
+          Types.optional(INT64).as(OriginalType.UINT_64).named("uint64"),
+          Types.optional(INT32).as(OriginalType.DECIMAL).precision(9).scale(2).named("decimal-int32"),
+          Types.optional(INT64).as(OriginalType.DECIMAL).precision(18).scale(4).named("decimal-int64"),
+          Types.optional(FIXED_LEN_BYTE_ARRAY).length(fixedBinaryLength).as(OriginalType.DECIMAL)
+              .precision(fixedPrecision).scale(fixedScale).named("decimal-fixed"),
+          Types.optional(BINARY).as(OriginalType.DECIMAL).precision(binaryPrecision).scale(binaryScale)
+              .named("decimal-binary"),
+          Types.optional(BINARY).as(OriginalType.UTF8).named("utf8"),
+          Types.optional(BINARY).as(OriginalType.ENUM).named("enum"),
+          Types.optional(BINARY).as(OriginalType.JSON).named("json"),
+          Types.optional(BINARY).as(OriginalType.BSON).named("bson"),
+          Types.optional(INT32).as(OriginalType.DATE).named("date"),
+          Types.optional(INT32).as(OriginalType.TIME_MILLIS).named("time-millis"),
+          Types.optional(INT64).as(OriginalType.TIME_MICROS).named("time-micros"),
+          Types.optional(INT64).as(OriginalType.TIMESTAMP_MILLIS).named("timestamp-millis"),
+          Types.optional(INT64).as(OriginalType.TIMESTAMP_MICROS).named("timestamp-micros"),
+          Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(OriginalType.INTERVAL).named("interval")
       );
+    }
+
+    private static int calculatePrecision(int byteCnt) {
+      String maxValue = BigInteger.valueOf(2L).pow(8 * byteCnt - 1).toString();
+      return maxValue.length() - 1;
     }
 
     @Override
@@ -375,35 +444,35 @@ public class TestStatistics {
       for (int index = 0; index < recordCount; index++) {
         Group group = new SimpleGroup(super.schema);
 
-        if (!intGenerator.shouldGenerateNull()) {
-          group.append("i32", intGenerator.nextValue());
+        for (int column = 0, columnCnt = schema.getFieldCount(); column < columnCnt; ++column) {
+          Type type = schema.getType(column);
+          RandomValueGenerator<?> generator = randomGenerators.get(column);
+          if (type.isRepetition(OPTIONAL) && generator.shouldGenerateNull()) {
+            continue;
+          }
+          switch (type.asPrimitiveType().getPrimitiveTypeName()) {
+          case BINARY:
+          case FIXED_LEN_BYTE_ARRAY:
+          case INT96:
+            group.append(type.getName(), ((RandomBinaryBase<?>) generator).nextBinaryValue());
+            break;
+          case INT32:
+            group.append(type.getName(), (Integer) generator.nextValue());
+            break;
+          case INT64:
+            group.append(type.getName(), (Long) generator.nextValue());
+            break;
+          case FLOAT:
+            group.append(type.getName(), (Float) generator.nextValue());
+            break;
+          case DOUBLE:
+            group.append(type.getName(), (Double) generator.nextValue());
+            break;
+          case BOOLEAN:
+            group.append(type.getName(), (Boolean) generator.nextValue());
+            break;
+          }
         }
-        if (!longGenerator.shouldGenerateNull()) {
-          group.append("i64", longGenerator.nextValue());
-        }
-        if (!int96Generator.shouldGenerateNull()) {
-          group.append("i96", int96Generator.nextBinaryValue());
-        }
-        if (!floatGenerator.shouldGenerateNull()) {
-          group.append("sngl", floatGenerator.nextValue());
-        }
-        if (!doubleGenerator.shouldGenerateNull()) {
-          group.append("dbl", doubleGenerator.nextValue());
-        }
-        if (!stringGenerator.shouldGenerateNull()) {
-          group.append("strings", stringGenerator.nextBinaryValue());
-        }
-        if (!binaryGenerator.shouldGenerateNull()) {
-          group.append("binary", binaryGenerator.nextBinaryValue());
-        }
-        if (!fixedBinaryGenerator.shouldGenerateNull()) {
-          group.append("fixed-binary", fixedBinaryGenerator.nextBinaryValue());
-        }
-        group.append("unconstrained-i32", random.nextInt());
-        group.append("unconstrained-i64", random.nextLong());
-        group.append("unconstrained-sngl", random.nextFloat());
-        group.append("unconstrained-dbl", random.nextDouble());
-
         writer.write(group);
       }
     }
