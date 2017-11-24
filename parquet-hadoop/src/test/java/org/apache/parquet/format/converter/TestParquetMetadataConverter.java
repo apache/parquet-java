@@ -664,29 +664,29 @@ public class TestParquetMetadataConverter {
   @Test
   public void testV2OnlyStats() {
     testV2OnlyStats(createStats(Types.optional(PrimitiveTypeName.INT32).as(OriginalType.UINT_8).named(""),
-        Byte.MAX_VALUE,
-        Byte.MIN_VALUE));
+        0x7F,
+        0x80));
     testV2OnlyStats(createStats(Types.optional(PrimitiveTypeName.INT32).as(OriginalType.UINT_16).named(""),
-        Short.MAX_VALUE,
-        Short.MIN_VALUE));
+        0x7FFF,
+        0x8000));
     testV2OnlyStats(createStats(Types.optional(PrimitiveTypeName.INT32).as(OriginalType.UINT_32).named(""),
-        Integer.MAX_VALUE,
-        Integer.MIN_VALUE));
+        0x7FFFFFFF,
+        0x80000000));
     testV2OnlyStats(createStats(Types.optional(PrimitiveTypeName.INT64).as(OriginalType.UINT_64).named(""),
-        Long.MAX_VALUE,
-        Long.MIN_VALUE));
+        0x7FFFFFFFFFFFFFFFL,
+        0x8000000000000000L));
     testV2OnlyStats(
         createStats(Types.optional(PrimitiveTypeName.BINARY).as(OriginalType.DECIMAL).precision(6).named(""),
-        new BigInteger("-123456"),
-        new BigInteger("123456")));
+            new BigInteger("-765875"),
+            new BigInteger("876856")));
     testV2OnlyStats(createStats(
         Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(14).as(OriginalType.DECIMAL).precision(7)
             .named(""),
-        new BigInteger("-1234567"),
-        new BigInteger("1234567")));
+        new BigInteger("-6769643"),
+        new BigInteger("9864675")));
     testV2OnlyStats(createStats(Types.optional(PrimitiveTypeName.INT96).named(""),
-        new BigInteger("-12345678"),
-        new BigInteger("12345678")));
+        new BigInteger("-75687987"),
+        new BigInteger("45367657")));
   }
 
   private void testV2OnlyStats(Statistics<?> stats) {
@@ -700,27 +700,27 @@ public class TestParquetMetadataConverter {
   @Test
   public void testV2StatsEqualMinMax() {
     testV2StatsEqualMinMax(createStats(Types.optional(PrimitiveTypeName.INT32).as(OriginalType.UINT_8).named(""),
-        Byte.MAX_VALUE,
-        Byte.MAX_VALUE));
+        93,
+        93));
     testV2StatsEqualMinMax(createStats(Types.optional(PrimitiveTypeName.INT32).as(OriginalType.UINT_16).named(""),
-        Short.MIN_VALUE,
-        Short.MIN_VALUE));
+        -5892,
+        -5892));
     testV2StatsEqualMinMax(createStats(Types.optional(PrimitiveTypeName.INT32).as(OriginalType.UINT_32).named(""),
-        Integer.MAX_VALUE,
-        Integer.MAX_VALUE));
+        234998934,
+        234998934));
     testV2StatsEqualMinMax(createStats(Types.optional(PrimitiveTypeName.INT64).as(OriginalType.UINT_64).named(""),
-        Long.MIN_VALUE,
-        Long.MIN_VALUE));
+        -2389943895984985L,
+        -2389943895984985L));
     testV2StatsEqualMinMax(createStats(Types.optional(PrimitiveTypeName.BINARY).as(OriginalType.DECIMAL).precision(6).named(""),
-        new BigInteger("123456"),
-        new BigInteger("123456")));
+            new BigInteger("823749"),
+            new BigInteger("823749")));
     testV2StatsEqualMinMax(createStats(
         Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(14).as(OriginalType.DECIMAL).precision(7).named(""),
-        new BigInteger("-1234567"),
-        new BigInteger("-1234567")));
+        new BigInteger("-8752832"),
+        new BigInteger("-8752832")));
     testV2StatsEqualMinMax(createStats(Types.optional(PrimitiveTypeName.INT96).named(""),
-        new BigInteger("12345678"),
-        new BigInteger("12345678")));
+        new BigInteger("81032984"),
+        new BigInteger("81032984")));
   }
 
   private void testV2StatsEqualMinMax(Statistics<?> stats) {

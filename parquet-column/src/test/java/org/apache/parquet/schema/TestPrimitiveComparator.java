@@ -263,14 +263,14 @@ public class TestPrimitiveComparator {
     }
     if (Float.TYPE != exclude) {
       try {
-        comparator.compare(0F, 0F);
+        comparator.compare(0.0F, 0.0F);
         fail("An UnsupportedOperationException should have been thrown");
       } catch (UnsupportedOperationException e) {
       }
     }
     if (Double.TYPE != exclude) {
       try {
-        comparator.compare(0D, 0D);
+        comparator.compare(0.0, 0.0);
         fail("An UnsupportedOperationException should have been thrown");
       } catch (UnsupportedOperationException e) {
       }

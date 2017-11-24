@@ -397,8 +397,9 @@ public class ParquetMetadataConverter {
       boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
       // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
       // The sort order is checked to avoid returning min/max stats that are not
-      // valid with the type's sort order. Currently, all stats are aggregated
-      // using a signed ordering, which isn't valid for strings or unsigned ints.
+      // valid with the type's sort order. In previous releases, all stats were
+      // aggregated using a signed byte-wise ordering, which isn't valid for all the
+      // types (e.g. strings, decimals etc.).
       if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName()) &&
         (sortOrdersMatch || maxEqualsMin)) {
         if (isSet) {

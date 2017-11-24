@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
@@ -89,10 +90,22 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        if (logicalType == OriginalType.UINT_64) {
-          return PrimitiveComparator.UNSIGNED_INT64_COMPARATOR;
+        if (logicalType == null) {
+          return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
         }
-        return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
+        switch (logicalType) {
+        case UINT_64:
+          return PrimitiveComparator.UNSIGNED_INT64_COMPARATOR;
+        case INT_64:
+        case DECIMAL:
+        case TIME_MICROS:
+        case TIMESTAMP_MILLIS:
+        case TIMESTAMP_MICROS:
+          return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
+        default:
+          throw new ShouldNeverHappenException(
+              "No comparator logic implemented for INT64 logical type: " + logicalType);
+        }
       }
     },
     INT32("getInteger", Integer.TYPE) {
@@ -120,15 +133,25 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        if (logicalType != null) {
-          switch (logicalType) {
-            case UINT_8:
-            case UINT_16:
-            case UINT_32:
-              return PrimitiveComparator.UNSIGNED_INT32_COMPARATOR;
-          }
+        if (logicalType == null) {
+          return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
         }
-        return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
+        switch (logicalType) {
+        case UINT_8:
+        case UINT_16:
+        case UINT_32:
+          return PrimitiveComparator.UNSIGNED_INT32_COMPARATOR;
+        case INT_8:
+        case INT_16:
+        case INT_32:
+        case DECIMAL:
+        case DATE:
+        case TIME_MILLIS:
+          return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
+        default:
+          throw new ShouldNeverHappenException(
+              "No comparator logic implemented for INT32 logical type: " + logicalType);
+        }
       }
     },
     BOOLEAN("getBoolean", Boolean.TYPE) {
@@ -184,10 +207,21 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        if (logicalType == OriginalType.DECIMAL) {
-          return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
+        if (logicalType == null) {
+          return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
         }
-        return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
+        switch (logicalType) {
+        case DECIMAL:
+          return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
+        case UTF8:
+        case ENUM:
+        case JSON:
+        case BSON:
+          return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
+        default:
+          throw new ShouldNeverHappenException(
+              "No comparator logic implemented for BINARY logical type: " + logicalType);
+        }
       }
     },
     FLOAT("getFloat", Float.TYPE) {
@@ -297,10 +331,18 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        if (logicalType == OriginalType.DECIMAL) {
-          return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
+        if (logicalType == null) {
+          return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
         }
-        return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
+        switch (logicalType) {
+        case DECIMAL:
+          return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
+        case INTERVAL:
+          return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
+        default:
+          throw new ShouldNeverHappenException(
+              "No comparator logic implemented for FIXED_LEN_BYTE_ARRAY logical type: " + logicalType);
+        }
       }
     };
 
