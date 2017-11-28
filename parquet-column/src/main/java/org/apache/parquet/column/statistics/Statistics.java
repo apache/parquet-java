@@ -51,8 +51,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    * @param type
    *          PrimitiveTypeName type of the column
    * @return instance of a typed statistics class
-   * @deprecated Use {@link #createStats(Type)} or
-   *             {@link #createLegacyStats(PrimitiveTypeName)} instead
+   * @deprecated Use {@link #createStats(Type)} instead
    */
   @Deprecated
   public static Statistics getStatsBasedOnType(PrimitiveTypeName type) {
@@ -76,18 +75,6 @@ public abstract class Statistics<T extends Comparable<T>> {
       default:
         throw new UnknownColumnTypeException(type);
     }
-  }
-
-  /**
-   * Creates an empty {@code Statistics} instance for the specified type to be
-   * used for reading/writing the legacy min/max statistics.
-   *
-   * @param type
-   *          type of the column
-   * @return instance of a typed statistics class
-   */
-  public static Statistics<?> createLegacyStats(PrimitiveTypeName type) {
-    return getStatsBasedOnType(type);
   }
 
   /**
@@ -203,14 +190,16 @@ public abstract class Statistics<T extends Comparable<T>> {
   public void mergeStatistics(Statistics stats) {
     if (stats.isEmpty()) return;
 
-    if (this.getClass() == stats.getClass()) {
+    // Merge stats only if they have the same type and comparator (the sorting order
+    // is the same)
+    if (this.getClass() == stats.getClass() && Objects.equals(comparator(), stats.comparator())) {
       incrementNumNulls(stats.getNumNulls());
       if (stats.hasNonNullValue()) {
         mergeStatisticsMinMax(stats);
         markAsNotEmpty();
       }
     } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
+      throw StatisticsClassException.create(this, stats);
     }
   }
 

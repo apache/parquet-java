@@ -419,7 +419,8 @@ public class ParquetFileWriter {
         rlEncoding,
         dlEncoding,
         valuesEncoding,
-        out);
+        out,
+        currentChunkType);
     long headerSize = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedPageSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;

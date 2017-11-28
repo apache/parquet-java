@@ -29,6 +29,18 @@ public class StatisticsClassException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
 
   public StatisticsClassException(String className1, String className2) {
-    super("Statistics classes mismatched: " + className1 + " vs. " + className2);
+    this("Statistics classes mismatched: " + className1 + " vs. " + className2);
+  }
+
+  private StatisticsClassException(String msg) {
+    super(msg);
+  }
+
+  static StatisticsClassException create(Statistics<?> stats1, Statistics<?> stats2) {
+    if (stats1.getClass() != stats2.getClass()) {
+      return new StatisticsClassException(stats1.getClass().toString(), stats2.getClass().toString());
+    }
+    return new StatisticsClassException(
+        "Statistics comparator mismatched: " + stats1.comparator() + " vs. " + stats2.comparator());
   }
 }

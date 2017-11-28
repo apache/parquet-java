@@ -50,14 +50,6 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     throw new UnsupportedOperationException("compare(double, double) was called on a non-double comparator");
   }
 
-  /**
-   * Returns whether this comparator is compliant with the sorting definition of
-   * the former V1 min-max statistics.
-   */
-  public boolean isFormerStatsCompliant() {
-    return true;
-  }
-
   static final PrimitiveComparator<Boolean> BOOLEAN_COMPARATOR = new PrimitiveComparator<Boolean>() {
     @Override
     public int compare(Boolean o1, Boolean o2) {
@@ -67,6 +59,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     @Override
     public int compare(boolean b1, boolean b2) {
       return Boolean.compare(b1, b2);
+    }
+
+    @Override
+    public String toString() {
+      return "BOOLEAN_COMPARATOR";
     }
   };
 
@@ -82,6 +79,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     public int compare(int i1, int i2) {
       return Integer.compare(i1, i2);
     }
+
+    @Override
+    public String toString() {
+      return "SIGNED_INT32_COMPARATOR";
+    }
   };
 
   static final PrimitiveComparator<Integer> UNSIGNED_INT32_COMPARATOR = new IntComparator() {
@@ -92,8 +94,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
 
     @Override
-    public boolean isFormerStatsCompliant() {
-      return false;
+    public String toString() {
+      return "UNSIGNED_INT32_COMPARATOR";
     }
   };
 
@@ -109,6 +111,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     public int compare(long l1, long l2) {
       return Long.compare(l1, l2);
     }
+
+    @Override
+    public String toString() {
+      return "SIGNED_INT64_COMPARATOR";
+    }
   };
 
   static final PrimitiveComparator<Long> UNSIGNED_INT64_COMPARATOR = new LongComparator() {
@@ -119,8 +126,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
 
     @Override
-    public boolean isFormerStatsCompliant() {
-      return false;
+    public String toString() {
+      return "UNSIGNED_INT64_COMPARATOR";
     }
   };
 
@@ -134,6 +141,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     public int compare(float f1, float f2) {
       return Float.compare(f1, f2);
     }
+
+    @Override
+    public String toString() {
+      return "FLOAT_COMPARATOR";
+    }
   };
 
   static final PrimitiveComparator<Double> DOUBLE_COMPARATOR = new PrimitiveComparator<Double>() {
@@ -145,6 +157,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     @Override
     public int compare(double d1, double d2) {
       return Double.compare(d1, d2);
+    }
+
+    @Override
+    public String toString() {
+      return "DOUBLE_COMPARATOR";
     }
   };
 
@@ -183,6 +200,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     private int unsignedCompare(byte b1, byte b2) {
       return toUnsigned(b1) - toUnsigned(b2);
     }
+
+    @Override
+    public String toString() {
+      return "LEXICOGRAPHICAL_BINARY_COMPARATOR";
+    }
   };
 
   static final PrimitiveComparator<Binary> SIGNED_BINARY_COMPARATOR = new BinaryComparator() {
@@ -218,8 +240,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
 
     @Override
-    public boolean isFormerStatsCompliant() {
-      return false;
+    public String toString() {
+      return "SIGNED_BINARY_COMPARATOR";
     }
   };
 }
