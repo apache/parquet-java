@@ -84,7 +84,17 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     return list;
   }
 
+  public boolean getFilterResult() {
+  // find out if the predicate thinks we should keep this record
+    boolean keep = IncrementallyUpdatedFilterPredicateEvaluator.evaluate(filterPredicate);
+    // reset the stateful predicate no matter what
+    IncrementallyUpdatedFilterPredicateResetter.reset(filterPredicate);
+    return keep;
+  }
 
+  public T getFilteredCurrentRecord() {
+    return delegate.getCurrentRecord();
+  }
 
   @Override
   public T getCurrentRecord() {

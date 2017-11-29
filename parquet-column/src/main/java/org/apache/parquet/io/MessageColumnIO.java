@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.apache.parquet.column.ColumnWriteStore;
@@ -37,6 +38,9 @@ import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
 import org.apache.parquet.filter2.compat.FilterCompat.UnboundRecordFilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Visitor;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators.ColumnFilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators.UserDefined;
+import org.apache.parquet.filter2.predicate.Operators.BinaryLogicalFilterPredicate;
 import org.apache.parquet.filter2.recordlevel.FilteringRecordMaterializer;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicateBuilder;
@@ -44,6 +48,7 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIterator;
@@ -66,6 +71,7 @@ public class MessageColumnIO extends GroupColumnIO {
   private List<PrimitiveColumnIO> leaves;
 
   private final boolean validating;
+  private boolean isFlatSchema;
   private final String createdBy;
 
   MessageColumnIO(MessageType messageType, boolean validating, String createdBy) {
@@ -93,6 +99,23 @@ public class MessageColumnIO extends GroupColumnIO {
     return getRecordReader(columns, recordMaterializer, FilterCompat.get(filter));
   }
 
+  private void getFilterColumnNames(final FilterPredicate filterPredicate,
+                                    HashSet<String> s) {
+
+    if (filterPredicate instanceof BinaryLogicalFilterPredicate){
+      FilterPredicate left = ((BinaryLogicalFilterPredicate)filterPredicate).getLeft();
+      FilterPredicate right = ((BinaryLogicalFilterPredicate)filterPredicate).getRight();
+      getFilterColumnNames(left, s);
+      getFilterColumnNames(right, s);
+    } else if ( filterPredicate instanceof ColumnFilterPredicate ) {
+      String[] columnPath = ((ColumnFilterPredicate)filterPredicate).getColumn().getColumnPath().toArray();
+      s.add(columnPath[0]);
+    } else if ( filterPredicate instanceof UserDefined ) {
+      String[] columnPath = ((UserDefined)filterPredicate).getColumn().getColumnPath().toArray();
+      s.add(columnPath[0]);
+    }
+  }
+
   public <T> RecordReader<T> getRecordReader(final PageReadStore columns,
                                              final RecordMaterializer<T> recordMaterializer,
                                              final Filter filter) {
@@ -109,14 +132,37 @@ public class MessageColumnIO extends GroupColumnIO {
       public RecordReader<T> visit(FilterPredicateCompat filterPredicateCompat) {
 
         FilterPredicate predicate = filterPredicateCompat.getFilterPredicate();
+        HashSet<String> hSet = new HashSet<String>();
+
+        getFilterColumnNames(predicate, hSet);
         IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder();
         IncrementallyUpdatedFilterPredicate streamingPredicate = builder.build(predicate);
-        RecordMaterializer<T> filteringRecordMaterializer = new FilteringRecordMaterializer<T>(
+        FilteringRecordMaterializer<T> filteringRecordMaterializer = new FilteringRecordMaterializer<T>(
             recordMaterializer,
             leaves,
             builder.getValueInspectorsByColumn(),
             streamingPredicate);
 
+        // if only non-repeating columns present in the schema
+        if (isFlatSchema) {
+          return new FlatSchemaRecordReaderImplementation<T>(
+                  MessageColumnIO.this,
+                  filteringRecordMaterializer,
+                  validating,
+                  new ColumnReadStoreImpl(columns, filteringRecordMaterializer.getRootConverter(), getType(), createdBy),
+                  hSet);
+        }
+
+        if ((hSet.size() > 0) && (hSet.size() != MessageColumnIO.this.getLeaves().size())) {
+          return new OptFilteredRecordReaderImplementation<T>(
+                  MessageColumnIO.this,
+                  filteringRecordMaterializer,
+                  validating,
+                  new ColumnReadStoreImpl(columns, filteringRecordMaterializer.getRootConverter(), getType(), createdBy),
+                  hSet);
+        }
+
+        // If filters are applied on all columns!
         return new RecordReaderImplementation<T>(
             MessageColumnIO.this,
             filteringRecordMaterializer,
@@ -512,6 +558,14 @@ public class MessageColumnIO extends GroupColumnIO {
 
   void setLeaves(List<PrimitiveColumnIO> leaves) {
     this.leaves = leaves;
+    isFlatSchema = true;
+    for (PrimitiveColumnIO primitiveColumnIO : leaves) {
+      if (primitiveColumnIO.getType().getRepetition() == Type.Repetition.REPEATED ||
+        primitiveColumnIO.getDefinitionLevel() > 1) {
+        isFlatSchema = false;
+        break;
+        }
+      }
   }
 
   public List<PrimitiveColumnIO> getLeaves() {
