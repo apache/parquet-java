@@ -178,7 +178,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   }
 
-  static final PrimitiveComparator<Binary> LEXICOGRAPHICAL_BINARY_COMPARATOR = new BinaryComparator() {
+  public static final PrimitiveComparator<Binary> LEXICOGRAPHICAL_BINARY_COMPARATOR = new BinaryComparator() {
     @Override
     int compare(ByteBuffer b1, ByteBuffer b2) {
       int l1 = b1.remaining();
@@ -207,7 +207,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   };
 
-  static final PrimitiveComparator<Binary> SIGNED_BINARY_COMPARATOR = new BinaryComparator() {
+  static final PrimitiveComparator<Binary> BINARY_AS_SIGNED_INTEGER_COMPARATOR = new BinaryComparator() {
     private static final int NEGATIVE_PREFIX = 0xFF;
     private static final int POSITIVE_PREFIX = 0;
 
@@ -241,7 +241,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
     @Override
     public String toString() {
-      return "SIGNED_BINARY_COMPARATOR";
+      return "BINARY_AS_SIGNED_INTEGER_COMPARATOR";
     }
   };
 }

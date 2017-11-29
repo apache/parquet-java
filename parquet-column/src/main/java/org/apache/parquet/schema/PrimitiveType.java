@@ -212,7 +212,7 @@ public final class PrimitiveType extends Type {
         }
         switch (logicalType) {
         case DECIMAL:
-          return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
+          return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
         case UTF8:
         case ENUM:
         case JSON:
@@ -303,7 +303,7 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
-        return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
+        return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
       }
     },
     FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {
@@ -336,7 +336,7 @@ public final class PrimitiveType extends Type {
         }
         switch (logicalType) {
         case DECIMAL:
-          return PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
+          return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
         case INTERVAL:
           return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
         default:

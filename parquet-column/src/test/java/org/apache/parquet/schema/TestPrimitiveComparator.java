@@ -28,7 +28,7 @@ import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.FLOAT_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_BINARY_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_INT32_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_INT64_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_INT32_COMPARATOR;
@@ -70,13 +70,13 @@ public class TestPrimitiveComparator {
   @Test
   public void testUnsignedInt32Comparator() {
     testInt32Comparator(UNSIGNED_INT32_COMPARATOR,
-      0,
-      1,
-      12345,
-      Integer.MAX_VALUE,
-      Integer.MIN_VALUE,
-      -12345,
-      -1);
+      0,                  // 0x00000000
+      1,                  // 0x00000001
+      12345,              // 0x00003039
+      Integer.MAX_VALUE,  // 0x7FFFFFFF
+      Integer.MIN_VALUE,  // 0x80000000
+      -12345,             // 0xFFFFCFC7
+      -1);                // 0xFFFFFFFF
   }
 
   private void testInt32Comparator(PrimitiveComparator<Integer> comparator, int... values) {
@@ -108,13 +108,13 @@ public class TestPrimitiveComparator {
   @Test
   public void testUnsignedInt64Comparator() {
     testInt64Comparator(UNSIGNED_INT64_COMPARATOR,
-      0,
-      1,
-      12345678901L,
-      Long.MAX_VALUE,
-      Long.MIN_VALUE,
-      -12345678901L,
-      -1);
+      0,               // 0x0000000000000000
+      1,               // 0x0000000000000001
+      12345678901L,    // 0x00000002DFDC1C35
+      Long.MAX_VALUE,  // 0x7FFFFFFFFFFFFFFF
+      Long.MIN_VALUE,  // 0x8000000000000000
+      -12345678901L,   // 0xFFFFFFFD2023E3CB
+      -1);             // 0xFFFFFFFFFFFFFFFF
   }
 
   private void testInt64Comparator(PrimitiveComparator<Long> comparator, long... values) {
@@ -186,22 +186,22 @@ public class TestPrimitiveComparator {
   @Test
   public void testLexicographicalBinaryComparator() {
     testObjectComparator(LEXICOGRAPHICAL_BINARY_COMPARATOR,
-      Binary.fromConstantByteArray(new byte[0]),
-      Binary.fromConstantByteArray(new byte[]{127, 127, 0, 127}, 2, 1),
-      Binary.fromCharSequence("aaa"),
-      Binary.fromString("aaaa"),
-      Binary.fromReusedByteArray("aaab".getBytes()),
-      Binary.fromReusedByteArray("azzza".getBytes(), 1, 3),
-      Binary.fromReusedByteBuffer(ByteBuffer.wrap("zzzzzz".getBytes())),
-      Binary.fromReusedByteBuffer(ByteBuffer.wrap("aazzzzzzaa".getBytes(), 2, 7)),
-      Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[]{-128, -128, -128})),
-      Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[]{-128, -128, -1}, 1, 2))
+      Binary.fromConstantByteArray(new byte[0]),                                        // ||
+      Binary.fromConstantByteArray(new byte[]{127, 127, 0, 127}, 2, 1),                 // |00|
+      Binary.fromCharSequence("aaa"),                                                   // |61|61|61|
+      Binary.fromString("aaaa"),                                                        // |61|61|61|61|
+      Binary.fromReusedByteArray("aaab".getBytes()),                                    // |61|61|61|62|
+      Binary.fromReusedByteArray("azzza".getBytes(), 1, 3),                             // |7A|7A|7A|
+      Binary.fromReusedByteBuffer(ByteBuffer.wrap("zzzzzz".getBytes())),                // |7A|7A|7A|7A|7A|7A|
+      Binary.fromReusedByteBuffer(ByteBuffer.wrap("aazzzzzzaa".getBytes(), 2, 7)),      // |7A|7A|7A|7A|7A|7A|61|
+      Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[]{-128, -128, -128})),     // |80|80|80|
+      Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[]{-128, -128, -1}, 1, 2))  // |80|FF|
     );
   }
 
   @Test
-  public void testSignedBinaryComparator() {
-    testObjectComparator(SIGNED_BINARY_COMPARATOR,
+  public void testBinaryAsSignedIntegerComparator() {
+    testObjectComparator(BINARY_AS_SIGNED_INTEGER_COMPARATOR,
       Binary.fromConstantByteArray(new BigInteger("-9999999999999999999999999999999999999999").toByteArray()),
       Binary.fromReusedByteArray(new BigInteger("-9999999999999999999999999999999999999998").toByteArray()),
       Binary.fromConstantByteArray(BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.ONE).toByteArray()),
