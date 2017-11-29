@@ -364,9 +364,41 @@ public class ParquetMetadataConverter {
 
   private static boolean isMinMaxStatsSupported(PrimitiveType type) {
     // Have to handle null type to support deprecated methods
-    return type != null
-        && type.getPrimitiveTypeName() != PrimitiveTypeName.INT96
-        && type.getOriginalType() != OriginalType.INTERVAL;
+    if (type == null || type.getPrimitiveTypeName() == PrimitiveTypeName.INT96) {
+      return false;
+    }
+
+    OriginalType origType = type.getOriginalType();
+    if (origType == null) {
+      // All default primitive types excluding INT96 are supported by statistics
+      return true;
+    }
+
+    // Explicitly listing all the supported logical types to avoid writing statistics for new types accidentally
+    switch (origType) {
+      case INT_8:
+      case INT_16:
+      case INT_32:
+      case INT_64:
+      case UINT_8:
+      case UINT_16:
+      case UINT_32:
+      case UINT_64:
+      case UTF8:
+      case DECIMAL:
+      case DATE:
+      case TIME_MILLIS:
+      case TIME_MICROS:
+      case TIMESTAMP_MILLIS:
+      case TIMESTAMP_MICROS:
+      case ENUM:
+      case JSON:
+      case BSON:
+        return true;
+      case INTERVAL:
+      default:
+        return false;
+    }
   }
 
   /**
