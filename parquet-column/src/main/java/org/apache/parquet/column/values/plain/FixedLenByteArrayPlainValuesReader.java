@@ -46,9 +46,7 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   public Binary readBytes() {
     try {
       return Binary.fromConstantByteBuffer(in.slice(length));
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read bytes at offset " + in.position(), e);
-    } catch (RuntimeException e) {
+    } catch (IOException | RuntimeException e) {
       throw new ParquetDecodingException("could not read bytes at offset " + in.position(), e);
     }
   }
@@ -57,9 +55,7 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   public void skip() {
     try {
       in.skipFully(length);
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not skip bytes at offset " + in.position(), e);
-    } catch (RuntimeException e) {
+    } catch (IOException | RuntimeException e) {
       throw new ParquetDecodingException("could not skip bytes at offset " + in.position(), e);
     }
   }
