@@ -57,6 +57,7 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
+import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
 
 import org.apache.parquet.bytes.BytesInput;
@@ -704,7 +705,12 @@ public class ParquetFileReader implements Closeable {
       levels.add(DICTIONARY);
     }
 
-    return RowGroupFilter.filterRowGroups(levels, options.getRecordFilter(), blocks, this);
+    FilterCompat.Filter recordFilter = options.getRecordFilter();
+    if (recordFilter != null) {
+      return RowGroupFilter.filterRowGroups(levels, recordFilter, blocks, this);
+    }
+
+    return blocks;
   }
 
   public List<BlockMetaData> getRowGroups() {
