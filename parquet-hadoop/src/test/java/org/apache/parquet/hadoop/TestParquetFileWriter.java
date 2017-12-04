@@ -27,6 +27,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;

@@ -17,15 +17,12 @@
  *  under the License.
  */
 
-package org.apache.parquet.hadoop.util;
+package org.apache.parquet.io;
 
-import org.apache.hadoop.fs.PositionedReadable;
-import org.apache.hadoop.fs.Seekable;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 
-class MockInputStream extends ByteArrayInputStream
-    implements Seekable, PositionedReadable {
+class MockInputStream extends ByteArrayInputStream {
+
   static final byte[] TEST_ARRAY = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
   private int[] lengths;
@@ -53,35 +50,7 @@ class MockInputStream extends ByteArrayInputStream
     }
   }
 
-  @Override
-  public int read(long position, byte[] buffer, int offset, int length) throws IOException {
-    seek(position);
-    return read(buffer, offset, length);
-  }
-
-  @Override
-  public void readFully(long position, byte[] buffer, int offset, int length) throws IOException {
-    throw new UnsupportedOperationException("Not actually supported.");
-  }
-
-  @Override
-  public void readFully(long position, byte[] buffer) throws IOException {
-    throw new UnsupportedOperationException("Not actually supported.");
-  }
-
-  @Override
-  public void seek(long pos) throws IOException {
-    this.pos = (int) pos;
-  }
-
-  @Override
-  public long getPos() throws IOException {
+  public long getPos() {
     return this.pos;
-  }
-
-  @Override
-  public boolean seekToNewSource(long targetPos) throws IOException {
-    seek(targetPos);
-    return true;
   }
 }

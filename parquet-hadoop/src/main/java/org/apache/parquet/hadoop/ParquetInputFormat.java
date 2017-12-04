@@ -120,19 +120,16 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * key to configure whether record-level filtering is enabled
    */
   public static final String RECORD_FILTERING_ENABLED = "parquet.filter.record-level.enabled";
-  static final boolean RECORD_FILTERING_ENABLED_DEFAULT = true;
 
   /**
    * key to configure whether row group stats filtering is enabled
    */
   public static final String STATS_FILTERING_ENABLED = "parquet.filter.stats.enabled";
-  static final boolean STATS_FILTERING_ENABLED_DEFAULT = true;
 
   /**
    * key to configure whether row group dictionary filtering is enabled
    */
   public static final String DICTIONARY_FILTERING_ENABLED = "parquet.filter.dictionary.enabled";
-  static final boolean DICTIONARY_FILTERING_ENABLED_DEFAULT = false;
 
   /**
    * key to turn on or off task side metadata loading (default true)

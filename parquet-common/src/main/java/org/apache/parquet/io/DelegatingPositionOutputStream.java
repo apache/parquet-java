@@ -17,43 +17,47 @@
  *  under the License.
  */
 
-package org.apache.parquet.hadoop.util;
+package org.apache.parquet.io;
 
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.io.DelegatingSeekableInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
-/**
- * SeekableInputStream implementation that implements read(ByteBuffer) for
- * Hadoop 1 FSDataInputStream.
- */
-class H1SeekableInputStream extends DelegatingSeekableInputStream {
+public abstract class DelegatingPositionOutputStream extends PositionOutputStream {
+  private final OutputStream stream;
 
-  private final FSDataInputStream stream;
-
-  public H1SeekableInputStream(FSDataInputStream stream) {
-    super(stream);
+  public DelegatingPositionOutputStream(OutputStream stream) {
     this.stream = stream;
   }
 
-  @Override
-  public long getPos() throws IOException {
-    return stream.getPos();
+  public OutputStream getStream() {
+    return stream;
   }
 
   @Override
-  public void seek(long newPos) throws IOException {
-    stream.seek(newPos);
+  public void close() throws IOException {
+    stream.close();
   }
 
   @Override
-  public void readFully(byte[] bytes) throws IOException {
-    stream.readFully(bytes, 0, bytes.length);
+  public void flush() throws IOException {
+    stream.flush();
   }
 
   @Override
-  public void readFully(byte[] bytes, int start, int len) throws IOException {
-    stream.readFully(bytes);
+  public abstract long getPos() throws IOException;
+
+  @Override
+  public void write(int b) throws IOException {
+    stream.write(b);
   }
 
+  @Override
+  public void write(byte[] b) throws IOException {
+    stream.write(b);
+  }
+
+  @Override
+  public void write(byte[] b, int off, int len) throws IOException {
+    stream.write(b, off, len);
+  }
 }

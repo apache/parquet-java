@@ -17,28 +17,31 @@
  *  under the License.
  */
 
-package org.apache.parquet.io;
+package org.apache.parquet.compression;
 
+import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
-/**
- * {@code InputFile} is an interface with the methods needed by Parquet to read
- * data files using {@link SeekableInputStream} instances.
- */
-public interface InputFile {
+public interface CompressionCodecFactory {
 
-  /**
-   * @return the total length of the file, in bytes.
-   * @throws IOException if the length cannot be determined
-   */
-  long getLength() throws IOException;
+  BytesInputCompressor getCompressor(CompressionCodecName codecName);
 
-  /**
-   * Open a new {@link SeekableInputStream} for the underlying data file.
-   *
-   * @return a new {@link SeekableInputStream} to read the file
-   * @throws IOException if the stream cannot be opened
-   */
-  SeekableInputStream newStream() throws IOException;
+  BytesInputDecompressor getDecompressor(CompressionCodecName codecName);
+
+  void release();
+
+  interface BytesInputCompressor {
+    BytesInput compress(BytesInput bytes) throws IOException;
+    CompressionCodecName getCodecName();
+    void release();
+  }
+
+  interface BytesInputDecompressor {
+    BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
+    void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException;
+    void release();
+  }
 
 }
