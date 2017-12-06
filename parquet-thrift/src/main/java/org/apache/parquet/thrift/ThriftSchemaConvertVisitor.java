@@ -331,7 +331,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   @Override
   public ConvertedField visit(StringType stringType, State state) {
-    return visitPrimitiveType(BINARY, UTF8, state);
+    return stringType.isBinary()? visitPrimitiveType(BINARY, state) : visitPrimitiveType(BINARY, UTF8, state);
   }
 
   private static boolean isUnion(StructOrUnionType s) {

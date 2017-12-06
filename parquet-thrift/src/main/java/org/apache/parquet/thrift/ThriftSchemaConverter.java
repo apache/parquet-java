@@ -163,6 +163,9 @@ public class ThriftSchemaConverter {
         break;
       case STRING:
         type = new StringType();
+        if (field.getFieldMetaData() != null && field.getFieldMetaData().valueMetaData.isBinary()) {
+          ((StringType) type).setBinary(true);
+        }
         break;
       case STRUCT:
         type = toStructType(field.gettStructDescriptor());
