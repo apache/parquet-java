@@ -20,27 +20,26 @@ package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 
 public class LongStatistics extends Statistics<Long> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final Type DEFAULT_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT64).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT64).named("");
 
   private long max;
   private long min;
 
   public LongStatistics() {
-    this(DEFAULT_TYPE);
+    this(DEFAULT_FAKE_TYPE);
   }
 
-  LongStatistics(Type type) {
-    super(type.<Long>comparator());
+  LongStatistics(PrimitiveType type) {
+    super(type);
   }
 
   private LongStatistics(LongStatistics other) {
-    super(other.comparator());
+    super(other.type());
     if (other.hasNonNullValue()) {
       initializeStats(other.min, other.max);
     }
@@ -115,11 +114,11 @@ public class LongStatistics extends Statistics<Long> {
     return max;
   }
 
-  public int compareToMin(long value) {
+  public int compareMinToValue(long value) {
     return comparator().compare(min, value);
   }
 
-  public int compareToMax(long value) {
+  public int compareMaxToValue(long value) {
     return comparator().compare(max, value);
   }
 

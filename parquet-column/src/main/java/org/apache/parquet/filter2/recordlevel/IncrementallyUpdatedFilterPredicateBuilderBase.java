@@ -67,7 +67,7 @@ public abstract class IncrementallyUpdatedFilterPredicateBuilderBase implements 
     for (PrimitiveColumnIO leaf : leaves) {
       ColumnDescriptor descriptor = leaf.getColumnDescriptor();
       ColumnPath path = ColumnPath.get(descriptor.getPath());
-      PrimitiveComparator<?> comparator = descriptor.getFullType().comparator();
+      PrimitiveComparator<?> comparator = descriptor.getPrimitiveType().comparator();
       comparatorsByColumn.put(path, comparator);
     }
   }

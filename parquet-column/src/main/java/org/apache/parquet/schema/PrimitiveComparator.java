@@ -31,28 +31,38 @@ import java.util.Comparator;
 public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
   public int compare(boolean b1, boolean b2) {
-    throw new UnsupportedOperationException("compare(boolean, boolean) was called on a non-boolean comparator");
+    throw new UnsupportedOperationException("compare(boolean, boolean) was called on a non-boolean comparator: " + toString());
   }
 
   public int compare(int i1, int i2) {
-    throw new UnsupportedOperationException("compare(int, int) was called on a non-int comparator");
+    throw new UnsupportedOperationException("compare(int, int) was called on a non-int comparator: " + toString());
   }
 
   public int compare(long l1, long l2) {
-    throw new UnsupportedOperationException("compare(long, long) was called on a non-long comparator");
+    throw new UnsupportedOperationException("compare(long, long) was called on a non-long comparator: " + toString());
   }
 
   public int compare(float f1, float f2) {
-    throw new UnsupportedOperationException("compare(float, float) was called on a non-float comparator");
+    throw new UnsupportedOperationException("compare(float, float) was called on a non-float comparator: " + toString());
   }
 
   public int compare(double d1, double d2) {
-    throw new UnsupportedOperationException("compare(double, double) was called on a non-double comparator");
+    throw new UnsupportedOperationException("compare(double, double) was called on a non-double comparator: " + toString());
   }
+
+  @Override
+  public final int compare(T o1, T o2) {
+    if (o1 == null) {
+      return o2 == null ? 0 : -1;
+    }
+    return o2 == null ? 1 : compareNotNulls(o1, o2);
+  }
+
+  abstract int compareNotNulls(T o1, T o2);
 
   static final PrimitiveComparator<Boolean> BOOLEAN_COMPARATOR = new PrimitiveComparator<Boolean>() {
     @Override
-    public int compare(Boolean o1, Boolean o2) {
+    int compareNotNulls(Boolean o1, Boolean o2) {
       return compare(o1.booleanValue(), o2.booleanValue());
     }
 
@@ -69,7 +79,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
   private static abstract class IntComparator extends PrimitiveComparator<Integer> {
     @Override
-    public final int compare(Integer o1, Integer o2) {
+    int compareNotNulls(Integer o1, Integer o2) {
       return compare(o1.intValue(), o2.intValue());
     }
   }
@@ -101,7 +111,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
   private static abstract class LongComparator extends PrimitiveComparator<Long> {
     @Override
-    public final int compare(Long o1, Long o2) {
+    int compareNotNulls(Long o1, Long o2) {
       return compare(o1.longValue(), o2.longValue());
     }
   }
@@ -133,7 +143,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
   static final PrimitiveComparator<Float> FLOAT_COMPARATOR = new PrimitiveComparator<Float>() {
     @Override
-    public int compare(Float o1, Float o2) {
+    int compareNotNulls(Float o1, Float o2) {
       return compare(o1.floatValue(), o2.floatValue());
     }
 
@@ -150,7 +160,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
   static final PrimitiveComparator<Double> DOUBLE_COMPARATOR = new PrimitiveComparator<Double>() {
     @Override
-    public int compare(Double o1, Double o2) {
+    int compareNotNulls(Double o1, Double o2) {
       return compare(o1.doubleValue(), o2.doubleValue());
     }
 
@@ -167,7 +177,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
   private static abstract class BinaryComparator extends PrimitiveComparator<Binary> {
     @Override
-    public final int compare(Binary o1, Binary o2) {
+    int compareNotNulls(Binary o1, Binary o2) {
       return compare(o1.toByteBuffer(), o2.toByteBuffer());
     }
 
@@ -178,7 +188,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   }
 
-  public static final PrimitiveComparator<Binary> LEXICOGRAPHICAL_BINARY_COMPARATOR = new BinaryComparator() {
+  public static final PrimitiveComparator<Binary> UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR = new BinaryComparator() {
     @Override
     int compare(ByteBuffer b1, ByteBuffer b2) {
       int l1 = b1.remaining();
@@ -203,10 +213,15 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
     @Override
     public String toString() {
-      return "LEXICOGRAPHICAL_BINARY_COMPARATOR";
+      return "UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR";
     }
   };
 
+  /*
+   * This comparator is for comparing two signed decimal values represented in twos-complement binary. In case of the
+   * binary length of one value is shorted than the other it will be padded by the related prefix (0xFF for negative,
+   * 0x00 for positive values).
+   */
   static final PrimitiveComparator<Binary> BINARY_AS_SIGNED_INTEGER_COMPARATOR = new BinaryComparator() {
     private static final int NEGATIVE_PREFIX = 0xFF;
     private static final int POSITIVE_PREFIX = 0;
@@ -224,14 +239,38 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
         return isNegative1 ? -1 : 1;
       }
 
-      int maxL = Math.max(l1, l2);
-      int iDiff1 = maxL - l1;
-      int iDiff2 = maxL - l2;
-      int prefix = isNegative1 ? NEGATIVE_PREFIX : POSITIVE_PREFIX;
-      for (int i = 0; i < maxL; ++i) {
-        int value1 = i < iDiff1 ? prefix : toUnsigned(b1.get(p1 + i - iDiff1));
-        int value2 = i < iDiff2 ? prefix : toUnsigned(b2.get(p2 + i - iDiff2));
-        int result = value1 - value2;
+      int result = 0;
+
+      // Compare the beginning of the longer buffer with the proper padding
+      int diff = l1 - l2;
+      if (diff < 0) {
+        result = -compareWithPadding(-diff, b2, p2, isNegative1 ? NEGATIVE_PREFIX : POSITIVE_PREFIX);
+        p2 += -diff;
+      } else if (diff > 0) {
+        result = compareWithPadding(diff, b1, p1, isNegative2 ? NEGATIVE_PREFIX : POSITIVE_PREFIX);
+        p1 += diff;
+      }
+
+      // The beginning of the longer buffer equals to the padding or the lengths are equal
+      if (result == 0) {
+        result = compare(l1, b1, p1, b2, p2);
+      }
+      return result;
+    }
+
+    private int compareWithPadding(int length, ByteBuffer b, int p, int paddingByte) {
+      for (int i = p, n = p + length; i < n; ++i) {
+        int result = toUnsigned(b.get(i)) - paddingByte;
+        if (result != 0) {
+          return result;
+        }
+      }
+      return 0;
+    }
+
+    private int compare(int length, ByteBuffer b1, int p1, ByteBuffer b2, int p2) {
+      for (int i = 0; i < length; ++i) {
+        int result = toUnsigned(b1.get(p1 + i)) - toUnsigned(b2.get(p2 + i));
         if (result != 0) {
           return result;
         }

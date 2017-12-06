@@ -20,27 +20,26 @@ package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 
 public class BooleanStatistics extends Statistics<Boolean> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final Type DEFAULT_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BOOLEAN).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BOOLEAN).named("");
 
   private boolean max;
   private boolean min;
 
   public BooleanStatistics() {
-    this(DEFAULT_TYPE);
+    this(DEFAULT_FAKE_TYPE);
   }
 
-  BooleanStatistics(Type type) {
-    super(type.<Boolean>comparator());
+  BooleanStatistics(PrimitiveType type) {
+    super(type);
   }
 
   private BooleanStatistics(BooleanStatistics other) {
-    super(other.comparator());
+    super(other.type());
     if (other.hasNonNullValue()) {
       initializeStats(other.min, other.max);
     }
@@ -109,11 +108,11 @@ public class BooleanStatistics extends Statistics<Boolean> {
     return max;
   }
 
-  public int compareToMin(boolean value) {
+  public int compareMinToValue(boolean value) {
     return comparator().compare(min, value);
   }
 
-  public int compareToMax(boolean value) {
+  public int compareMaxToValue(boolean value) {
     return comparator().compare(max, value);
   }
 

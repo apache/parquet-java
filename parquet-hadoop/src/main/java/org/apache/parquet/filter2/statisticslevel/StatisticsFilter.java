@@ -134,7 +134,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     // drop if value < min || value > max
-    return stats.compareToMin(value) > 0 || stats.compareToMax(value) < 0;
+    return stats.compareMinToValue(value) > 0 || stats.compareMaxToValue(value) < 0;
   }
 
   @Override
@@ -173,7 +173,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     // drop if this is a column where min = max = value
-    return stats.compareToMin(value) == 0 && stats.compareToMax(value) == 0;
+    return stats.compareMinToValue(value) == 0 && stats.compareMaxToValue(value) == 0;
   }
 
   @Override
@@ -204,7 +204,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = lt.getValue();
 
     // drop if value <= min
-    return stats.compareToMin(value) >= 0;
+    return stats.compareMinToValue(value) >= 0;
   }
 
   @Override
@@ -235,7 +235,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = ltEq.getValue();
 
     // drop if value < min
-    return stats.compareToMin(value) > 0;
+    return stats.compareMinToValue(value) > 0;
   }
 
   @Override
@@ -266,7 +266,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = gt.getValue();
 
     // drop if value >= max
-    return stats.compareToMax(value) <= 0;
+    return stats.compareMaxToValue(value) <= 0;
   }
 
   @Override
@@ -297,7 +297,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T value = gtEq.getValue();
 
     // drop if value > max
-    return stats.compareToMax(value) < 0;
+    return stats.compareMaxToValue(value) < 0;
   }
 
   @Override

@@ -20,27 +20,26 @@ package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 
 public class BinaryStatistics extends Statistics<Binary> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final Type DEFAULT_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).named("");
 
   private Binary max;
   private Binary min;
 
   public BinaryStatistics() {
-    this(DEFAULT_TYPE);
+    this(DEFAULT_FAKE_TYPE);
   }
 
-  BinaryStatistics(Type type) {
-    super(type.<Binary>comparator());
+  BinaryStatistics(PrimitiveType type) {
+    super(type);
   }
 
   private BinaryStatistics(BinaryStatistics other) {
-    super(other.comparator());
+    super(other.type());
     if (other.hasNonNullValue()) {
       initializeStats(other.min, other.max);
     }

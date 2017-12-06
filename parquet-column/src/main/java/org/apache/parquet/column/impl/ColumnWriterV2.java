@@ -77,7 +77,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   }
 
   private void resetStatistics() {
-    this.statistics = Statistics.createStats(path.getFullType());
+    this.statistics = Statistics.createStats(path.getPrimitiveType());
   }
 
   private void definitionLevel(int definitionLevel) {

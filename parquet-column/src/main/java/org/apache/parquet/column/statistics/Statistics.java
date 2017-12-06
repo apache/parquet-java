@@ -18,14 +18,15 @@
  */
 package org.apache.parquet.column.statistics;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
-
-import java.util.Arrays;
-import java.util.Objects;
 
 
 /**
@@ -35,14 +36,16 @@ import java.util.Objects;
  */
 public abstract class Statistics<T extends Comparable<T>> {
 
+  private final PrimitiveType type;
   private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
   private long num_nulls;
 
-  Statistics(PrimitiveComparator<T> comparator) {
+  Statistics(PrimitiveType type) {
+    this.type = type;
+    this.comparator = type.comparator();
     hasNonNullValue = false;
     num_nulls = 0;
-    this.comparator = comparator;
   }
 
   /**
@@ -86,24 +89,24 @@ public abstract class Statistics<T extends Comparable<T>> {
    * @return instance of a typed statistics class
    */
   public static Statistics<?> createStats(Type type) {
-    PrimitiveTypeName primitive = type.asPrimitiveType().getPrimitiveTypeName();
-    switch (primitive) {
+    PrimitiveType primitive = type.asPrimitiveType();
+    switch (primitive.getPrimitiveTypeName()) {
       case INT32:
-        return new IntStatistics(type);
+        return new IntStatistics(primitive);
       case INT64:
-        return new LongStatistics(type);
+        return new LongStatistics(primitive);
       case FLOAT:
-        return new FloatStatistics(type);
+        return new FloatStatistics(primitive);
       case DOUBLE:
-        return new DoubleStatistics(type);
+        return new DoubleStatistics(primitive);
       case BOOLEAN:
-        return new BooleanStatistics(type);
+        return new BooleanStatistics(primitive);
       case BINARY:
       case INT96:
       case FIXED_LEN_BYTE_ARRAY:
-        return new BinaryStatistics(type);
+        return new BinaryStatistics(primitive);
       default:
-        throw new UnknownColumnTypeException(primitive);
+        throw new UnknownColumnTypeException(primitive.getPrimitiveTypeName());
     }
   }
 
@@ -192,7 +195,8 @@ public abstract class Statistics<T extends Comparable<T>> {
 
     // Merge stats only if they have the same type and comparator (the sorting order
     // is the same)
-    if (this.getClass() == stats.getClass() && Objects.equals(comparator(), stats.comparator())) {
+    if (this.getClass() == stats.getClass() && type.getPrimitiveTypeName() == stats.type.getPrimitiveTypeName()
+        && type.getOriginalType() == stats.type.getOriginalType()) {
       incrementNumNulls(stats.getNumNulls());
       if (stats.hasNonNullValue()) {
         mergeStatisticsMinMax(stats);
@@ -220,7 +224,7 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Returns the min value in the statistics. The java natural order of the returned type defined by {@link
    * T#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
-   * natural signed one. Use {@link #compareToMin(Comparable)} or the comparator returned by {@link #comparator()} to
+   * natural signed one. Use {@link #compareMinToValue(Comparable)} or the comparator returned by {@link #comparator()} to
    * always get the proper ordering.
    */
   abstract public T genericGetMin();
@@ -228,34 +232,44 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Returns the max value in the statistics. The java natural order of the returned type defined by {@link
    * T#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
-   * natural signed one. Use {@link #compareToMax(Comparable)} or the comparator returned by {@link #comparator()} to
+   * natural signed one. Use {@link #compareMaxToValue(Comparable)} or the comparator returned by {@link #comparator()} to
    * always get the proper ordering.
    */
   abstract public T genericGetMax();
 
   /**
-   * Returns the comparator to be used to compare two generic values in the proper way (for example, unsigned comparison
-   * for UINT_32).
+   * Returns the {@link PrimitiveComparator} implementation to be used to compare two generic values in the proper way
+   * (for example, unsigned comparison for UINT_32).
    */
   public final PrimitiveComparator<T> comparator() {
     return comparator;
   }
 
   /**
-   * Compares the specified value to min in the proper way.
+   * Compares min to the specified value in the proper way. It does the same as invoking
+   * {@code comparator().compare(genericGetMin(), value)}. The corresponding statistics implementations overload this
+   * method so the one with the primitive argument shall be used to avoid boxing/unboxing.
    *
-   * @see Comparable#compareTo(Object)
+   * @param value
+   *          the value which {@code min} is to be compared to
+   * @return a negative integer, zero, or a positive integer as {@code min} is less than, equal to, or greater than
+   *         {@code value}.
    */
-  public final int compareToMin(T value) {
+  public final int compareMinToValue(T value) {
     return comparator.compare(genericGetMin(), value);
   }
 
   /**
-   * Compares the specified value to max in the proper way.
+   * Compares max to the specified value in the proper way. It does the same as invoking
+   * {@code comparator().compare(genericGetMax(), value)}. The corresponding statistics implementations overload this
+   * method so the one with the primitive argument shall be used to avoid boxing/unboxing.
    *
-   * @see Comparable#compareTo(Object)
+   * @param value
+   *          the value which {@code max} is to be compared to
+   * @return a negative integer, zero, or a positive integer as {@code max} is less than, equal to, or greater than
+   *         {@code value}.
    */
-  public final int compareToMax(T value) {
+  public final int compareMaxToValue(T value) {
     return comparator.compare(genericGetMax(), value);
   }
 
@@ -363,9 +377,15 @@ public abstract class Statistics<T extends Comparable<T>> {
   }
 
   /**
-   * Returns a new independent statistics instance of this class. All the values
-   * are copied.
+   * @return a new independent statistics instance of this class.
    */
   public abstract Statistics<T> copy();
+
+  /**
+   * @return the primitive type object which this statistics is created for
+   */
+  public PrimitiveType type() {
+    return type;
+  }
 }
 

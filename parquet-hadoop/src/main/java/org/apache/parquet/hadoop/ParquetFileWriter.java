@@ -66,7 +66,6 @@ import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.TypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -318,7 +317,7 @@ public class ParquetFileWriter {
     encodingStatsBuilder.clear();
     currentEncodings = new HashSet<Encoding>();
     currentChunkPath = ColumnPath.get(descriptor.getPath());
-    currentChunkType = descriptor.getFullType();
+    currentChunkType = descriptor.getPrimitiveType();
     currentChunkCodec = compressionCodecName;
     currentChunkValueCount = valueCount;
     currentChunkFirstDataPage = out.getPos();
@@ -419,8 +418,7 @@ public class ParquetFileWriter {
         rlEncoding,
         dlEncoding,
         valuesEncoding,
-        out,
-        currentChunkType);
+        out);
     long headerSize = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedPageSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;

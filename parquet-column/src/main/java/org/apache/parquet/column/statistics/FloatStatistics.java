@@ -20,28 +20,27 @@ package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 
 public class FloatStatistics extends Statistics<Float> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final Type DEFAULT_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT).named("");
 
   private float max;
   private float min;
 
   public FloatStatistics() {
     // Creating a fake primitive type to have the proper comparator
-    this(DEFAULT_TYPE);
+    this(DEFAULT_FAKE_TYPE);
   }
 
-  FloatStatistics(Type type) {
-    super(type.<Float>comparator());
+  FloatStatistics(PrimitiveType type) {
+    super(type);
   }
 
   private FloatStatistics(FloatStatistics other) {
-    super(other.comparator());
+    super(other.type());
     if (other.hasNonNullValue()) {
       initializeStats(other.min, other.max);
     }
@@ -115,11 +114,11 @@ public class FloatStatistics extends Statistics<Float> {
     return max;
   }
 
-  public int compareToMin(float value) {
+  public int compareMinToValue(float value) {
     return comparator().compare(min, value);
   }
 
-  public int compareToMax(float value) {
+  public int compareMaxToValue(float value) {
     return comparator().compare(max, value);
   }
 

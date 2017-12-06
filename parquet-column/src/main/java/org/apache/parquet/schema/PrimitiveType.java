@@ -208,7 +208,7 @@ public final class PrimitiveType extends Type {
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
         if (logicalType == null) {
-          return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
+          return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
         }
         switch (logicalType) {
         case DECIMAL:
@@ -217,7 +217,7 @@ public final class PrimitiveType extends Type {
         case ENUM:
         case JSON:
         case BSON:
-          return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
+          return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
         default:
           throw new ShouldNeverHappenException(
               "No comparator logic implemented for BINARY logical type: " + logicalType);
@@ -332,13 +332,13 @@ public final class PrimitiveType extends Type {
       @Override
       PrimitiveComparator<?> comparator(OriginalType logicalType) {
         if (logicalType == null) {
-          return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
+          return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
         }
         switch (logicalType) {
         case DECIMAL:
           return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
         case INTERVAL:
-          return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR;
+          return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
         default:
           throw new ShouldNeverHappenException(
               "No comparator logic implemented for FIXED_LEN_BYTE_ARRAY logical type: " + logicalType);
@@ -649,7 +649,11 @@ public final class PrimitiveType extends Type {
     return builder.as(getOriginalType()).named(getName());
   }
 
-  @Override
+  /**
+   * Returns the {@link Type} specific comparator for properly comparing values. The natural ordering of the values
+   * might not proper in certain cases (e.g. {@code UINT_32} requires unsigned comparison of {@code int} values while
+   * the natural ordering is signed.)
+   */
   @SuppressWarnings("unchecked")
   public <T> PrimitiveComparator<T> comparator() {
     return (PrimitiveComparator<T>) getPrimitiveTypeName().comparator(getOriginalType());

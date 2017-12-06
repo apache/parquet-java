@@ -80,7 +80,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   private void resetStatistics() {
-    this.statistics = Statistics.createStats(this.path.getFullType());
+    this.statistics = Statistics.createStats(this.path.getPrimitiveType());
   }
 
   /**

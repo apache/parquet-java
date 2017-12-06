@@ -397,9 +397,7 @@ public class TestParquetMetadataConverter {
     Assert.assertTrue("Should be smaller than min + max size + 1",
         stats.isSmallerThan(totalLen + 1));
 
-    PrimitiveType type = Types.optional(PrimitiveTypeName.BINARY).named("");
-    org.apache.parquet.format.Statistics formatStats =
-        helper.toParquetStatistics(type, stats);
+    org.apache.parquet.format.Statistics formatStats = helper.toParquetStatistics(stats);
 
     assertFalse("Min should not be set", formatStats.isSetMin());
     assertFalse("Max should not be set", formatStats.isSetMax());
@@ -413,7 +411,7 @@ public class TestParquetMetadataConverter {
     // convert to empty stats because the values are too large
     stats.setMinMaxFromBytes(max, max);
 
-    formatStats = helper.toParquetStatistics(type, stats);
+    formatStats = helper.toParquetStatistics(stats);
 
     Assert.assertFalse("Min should not be set", formatStats.isSetMin());
     Assert.assertFalse("Max should not be set", formatStats.isSetMax());
@@ -448,8 +446,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(min);
     stats.updateStats(max);
 
-    org.apache.parquet.format.Statistics formatStats =
-        helper.toParquetStatistics(Types.optional(PrimitiveTypeName.INT32).named(""), stats);
+    org.apache.parquet.format.Statistics formatStats = helper.toParquetStatistics(stats);
 
     Assert.assertEquals("Min should match",
         min, BytesUtils.bytesToInt(formatStats.getMin()));
@@ -478,8 +475,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(min);
     stats.updateStats(max);
 
-    org.apache.parquet.format.Statistics formatStats =
-        helper.toParquetStatistics(Types.optional(PrimitiveTypeName.INT64).named(""), stats);
+    org.apache.parquet.format.Statistics formatStats = helper.toParquetStatistics(stats);
 
     Assert.assertEquals("Min should match",
         min, BytesUtils.bytesToLong(formatStats.getMin()));
@@ -508,8 +504,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(min);
     stats.updateStats(max);
 
-    org.apache.parquet.format.Statistics formatStats =
-        helper.toParquetStatistics(Types.optional(PrimitiveTypeName.FLOAT).named(""), stats);
+    org.apache.parquet.format.Statistics formatStats = helper.toParquetStatistics(stats);
 
     Assert.assertEquals("Min should match",
         min, Float.intBitsToFloat(BytesUtils.bytesToInt(formatStats.getMin())),
@@ -540,8 +535,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(min);
     stats.updateStats(max);
 
-    org.apache.parquet.format.Statistics formatStats =
-        helper.toParquetStatistics(Types.optional(PrimitiveTypeName.DOUBLE).named(""), stats);
+    org.apache.parquet.format.Statistics formatStats = helper.toParquetStatistics(stats);
 
     Assert.assertEquals("Min should match",
         min, Double.longBitsToDouble(BytesUtils.bytesToLong(formatStats.getMin())),
@@ -572,8 +566,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(min);
     stats.updateStats(max);
 
-    org.apache.parquet.format.Statistics formatStats =
-        helper.toParquetStatistics(Types.optional(PrimitiveTypeName.BOOLEAN).named(""), stats);
+    org.apache.parquet.format.Statistics formatStats = helper.toParquetStatistics(stats);
 
     Assert.assertEquals("Min should match",
         min, BytesUtils.bytesToBool(formatStats.getMin()));
@@ -597,7 +590,7 @@ public class TestParquetMetadataConverter {
         .as(OriginalType.UTF8).named("b");
     Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION,
-        StatsHelper.V1.toParquetStatistics(binaryType, stats),
+        StatsHelper.V1.toParquetStatistics(stats),
         binaryType);
 
     Assert.assertTrue("Stats should be empty: " + convertedStats, convertedStats.isEmpty());
@@ -625,7 +618,7 @@ public class TestParquetMetadataConverter {
     PrimitiveType binaryType = Types.required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("b");
     Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION,
-        ParquetMetadataConverter.toParquetStatistics(stats, binaryType),
+        ParquetMetadataConverter.toParquetStatistics(stats),
         binaryType);
 
     Assert.assertFalse("Stats should not be empty: " + convertedStats, convertedStats.isEmpty());
@@ -659,7 +652,7 @@ public class TestParquetMetadataConverter {
         .as(OriginalType.UTF8).named("b");
     Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION,
-        helper.toParquetStatistics(binaryType, stats),
+        helper.toParquetStatistics(stats),
         binaryType);
 
     Assert.assertFalse("Stats should not be empty", convertedStats.isEmpty());
@@ -687,7 +680,7 @@ public class TestParquetMetadataConverter {
 
   private void testSkippedV2Stats(PrimitiveType type, Object min, Object max) {
     Statistics<?> stats = createStats(type, min, max);
-    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats, type);
+    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
     assertFalse(statistics.isSetMin());
     assertFalse(statistics.isSetMax());
     assertFalse(statistics.isSetMin_value());
@@ -720,7 +713,7 @@ public class TestParquetMetadataConverter {
 
   private void testV2OnlyStats(PrimitiveType type, Object min, Object max) {
     Statistics<?> stats = createStats(type, min, max);
-    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats, type);
+    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
     assertFalse(statistics.isSetMin());
     assertFalse(statistics.isSetMax());
     assertEquals(ByteBuffer.wrap(stats.getMinBytes()), statistics.min_value);
@@ -756,7 +749,7 @@ public class TestParquetMetadataConverter {
 
   private void testV2StatsEqualMinMax(PrimitiveType type, Object min, Object max) {
     Statistics<?> stats = createStats(type, min, max);
-    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats, type);
+    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
     assertEquals(ByteBuffer.wrap(stats.getMinBytes()), statistics.min);
     assertEquals(ByteBuffer.wrap(stats.getMaxBytes()), statistics.max);
     assertEquals(ByteBuffer.wrap(stats.getMinBytes()), statistics.min_value);
@@ -809,8 +802,8 @@ public class TestParquetMetadataConverter {
     // Only min and max are filled (min_value and max_value are not)
     V1() {
       @Override
-      public org.apache.parquet.format.Statistics toParquetStatistics(PrimitiveType type, Statistics<?> stats) {
-        org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats, type);
+      public org.apache.parquet.format.Statistics toParquetStatistics(Statistics<?> stats) {
+        org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
         statistics.unsetMin_value();
         statistics.unsetMax_value();
         return statistics;
@@ -819,11 +812,11 @@ public class TestParquetMetadataConverter {
     // min_value and max_value are filled (min and max might be filled as well)
     V2() {
       @Override
-      public org.apache.parquet.format.Statistics toParquetStatistics(PrimitiveType type, Statistics<?> stats) {
-        return ParquetMetadataConverter.toParquetStatistics(stats, type);
+      public org.apache.parquet.format.Statistics toParquetStatistics(Statistics<?> stats) {
+        return ParquetMetadataConverter.toParquetStatistics(stats);
       }
     };
-    public abstract org.apache.parquet.format.Statistics toParquetStatistics(PrimitiveType type, Statistics<?> stats);
+    public abstract org.apache.parquet.format.Statistics toParquetStatistics(Statistics<?> stats);
   }
 
 }

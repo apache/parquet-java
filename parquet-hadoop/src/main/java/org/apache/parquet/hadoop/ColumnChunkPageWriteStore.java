@@ -108,8 +108,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           rlEncoding,
           dlEncoding,
           valuesEncoding,
-          tempOutputStream,
-          path.getFullType());
+          tempOutputStream);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
@@ -154,8 +153,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           dataEncoding,
           rlByteLength,
           dlByteLength,
-          tempOutputStream,
-          path.getFullType());
+          tempOutputStream);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;

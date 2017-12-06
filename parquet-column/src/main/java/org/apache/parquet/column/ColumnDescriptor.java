@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column;
 
-import org.apache.parquet.example.data.simple.Primitive;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
@@ -102,22 +101,26 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   /**
    * @return the type of that column
+   * @deprecated will removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
+  @Deprecated
   public PrimitiveTypeName getType() {
     return type.getPrimitiveTypeName();
   }
 
   /**
    * @return the size of the type
+   * @deprecated will removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    **/
+  @Deprecated
   public int getTypeLength() {
     return type.getTypeLength();
   }
 
   /**
-   * Returns the full type object of the column
+   * @return the primitive type object of the column
    */
-  public PrimitiveType getFullType() {
+  public PrimitiveType getPrimitiveType() {
     return type;
   }
 

@@ -73,9 +73,9 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   abstract boolean equals(Binary other);
 
   /**
-   * @deprecated The comparison logic depends on the related logical type therefore this one might not be correct. The
-   * {@link java.util.Comparator} implementation for the related type available at {@link Type#comparator()} shall be
-   * used instead.
+   * @deprecated will be removed in 2.0.0. The comparison logic depends on the related logical type therefore this one
+   * might not be correct. The {@link java.util.Comparator} implementation for the related type available at
+   * {@link Type#comparator()} shall be used instead.
    */
   @Deprecated
   abstract public int compareTo(Binary other);
@@ -192,7 +192,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public int compareTo(Binary other) {
-      return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR.compare(this, other);
+      return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR.compare(this, other);
     }
 
     @Override
@@ -338,7 +338,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public int compareTo(Binary other) {
-      return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR.compare(this, other);
+      return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR.compare(this, other);
     }
 
    @Override
@@ -488,7 +488,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public int compareTo(Binary other) {
-      return PrimitiveComparator.LEXICOGRAPHICAL_BINARY_COMPARATOR.compare(this, other);
+      return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR.compare(this, other);
     }
 
     @Override
