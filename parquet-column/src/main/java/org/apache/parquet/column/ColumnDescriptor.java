@@ -18,11 +18,11 @@
  */
 package org.apache.parquet.column;
 
+import java.util.Arrays;
+
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
-
-import java.util.Arrays;
 
 /**
  * Describes a column's type as well as its position in its containing schema.

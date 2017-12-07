@@ -114,7 +114,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.totalValueCount += valueCount;
       this.pageCount += 1;
 
-      // Cloning the statistics if it is not initialized yet so we have the correct typed one
+      // Copying the statistics if it is not initialized yet so we have the correct typed one
       if (totalStatistics == null) {
         totalStatistics = statistics.copy();
       } else {
@@ -159,7 +159,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.totalValueCount += valueCount;
       this.pageCount += 1;
 
-      // Cloning the statistics if it is not initialized yet so we have the correct typed one
+      // Copying the statistics if it is not initialized yet so we have the correct typed one
       if (totalStatistics == null) {
         totalStatistics = statistics.copy();
       } else {

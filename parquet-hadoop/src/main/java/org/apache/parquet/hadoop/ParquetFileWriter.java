@@ -323,7 +323,7 @@ public class ParquetFileWriter {
     currentChunkFirstDataPage = out.getPos();
     compressedLength = 0;
     uncompressedLength = 0;
-    // The statistics will be cloned from the first one added at writeDataPage(s) so we have the correct typed one
+    // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed one
     currentStatistics = null;
   }
 
@@ -425,7 +425,7 @@ public class ParquetFileWriter {
     LOG.debug("{}: write data page content {}", out.getPos(), compressedPageSize);
     bytes.writeAllTo(out);
 
-    // Cloning the statistics if it is not initialized yet so we have the correct typed one
+    // Copying the statistics if it is not initialized yet so we have the correct typed one
     if (currentStatistics == null) {
       currentStatistics = statistics.copy();
     } else {
@@ -605,7 +605,7 @@ public class ParquetFileWriter {
 
       currentBlock.addColumn(ColumnChunkMetaData.get(
           chunk.getPath(),
-          chunk.getFullType(),
+          chunk.getPrimitiveType(),
           chunk.getCodec(),
           chunk.getEncodingStats(),
           chunk.getEncodings(),

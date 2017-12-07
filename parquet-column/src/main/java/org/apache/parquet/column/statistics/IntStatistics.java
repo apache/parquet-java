@@ -30,6 +30,10 @@ public class IntStatistics extends Statistics<Integer> {
   private int max;
   private int min;
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
   public IntStatistics() {
     this(DEFAULT_FAKE_TYPE);
   }

@@ -30,6 +30,10 @@ public class LongStatistics extends Statistics<Long> {
   private long max;
   private long min;
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
   public LongStatistics() {
     this(DEFAULT_FAKE_TYPE);
   }

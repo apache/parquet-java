@@ -30,6 +30,10 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private boolean max;
   private boolean min;
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
   public BooleanStatistics() {
     this(DEFAULT_FAKE_TYPE);
   }

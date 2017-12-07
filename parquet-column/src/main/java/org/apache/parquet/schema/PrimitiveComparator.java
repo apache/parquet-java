@@ -31,7 +31,8 @@ import java.util.Comparator;
 public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
   public int compare(boolean b1, boolean b2) {
-    throw new UnsupportedOperationException("compare(boolean, boolean) was called on a non-boolean comparator: " + toString());
+    throw new UnsupportedOperationException(
+        "compare(boolean, boolean) was called on a non-boolean comparator: " + toString());
   }
 
   public int compare(int i1, int i2) {
@@ -43,11 +44,13 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
   }
 
   public int compare(float f1, float f2) {
-    throw new UnsupportedOperationException("compare(float, float) was called on a non-float comparator: " + toString());
+    throw new UnsupportedOperationException(
+        "compare(float, float) was called on a non-float comparator: " + toString());
   }
 
   public int compare(double d1, double d2) {
-    throw new UnsupportedOperationException("compare(double, double) was called on a non-double comparator: " + toString());
+    throw new UnsupportedOperationException(
+        "compare(double, double) was called on a non-double comparator: " + toString());
   }
 
   @Override

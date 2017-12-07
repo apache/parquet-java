@@ -18,9 +18,6 @@
  */
 package org.apache.parquet.io.api;
 
-import org.apache.parquet.io.api.TestBinary.BinaryFactory.BinaryAndOriginal;
-import org.junit.Test;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -29,11 +26,13 @@ import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.apache.parquet.io.api.TestBinary.BinaryFactory.BinaryAndOriginal;
+import org.junit.Test;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class TestBinary {
 

@@ -326,33 +326,33 @@ public class ParquetMetadataConverter {
   }
 
   public static Statistics toParquetStatistics(
-      org.apache.parquet.column.statistics.Statistics statistics) {
-    Statistics stats = new Statistics();
+      org.apache.parquet.column.statistics.Statistics stats) {
+    Statistics formatStats = new Statistics();
     // Don't write stats larger than the max size rather than truncating. The
     // rationale is that some engines may use the minimum value in the page as
     // the true minimum for aggregations and there is no way to mark that a
     // value has been truncated and is a lower bound and not in the page.
-    if (!statistics.isEmpty() && statistics.isSmallerThan(MAX_STATS_SIZE)) {
-      stats.setNull_count(statistics.getNumNulls());
-      if (statistics.hasNonNullValue()) {
-        byte[] min = statistics.getMinBytes();
-        byte[] max = statistics.getMaxBytes();
+    if (!stats.isEmpty() && stats.isSmallerThan(MAX_STATS_SIZE)) {
+      formatStats.setNull_count(stats.getNumNulls());
+      if (stats.hasNonNullValue()) {
+        byte[] min = stats.getMinBytes();
+        byte[] max = stats.getMaxBytes();
 
         // Fill the former min-max statistics only if the comparison logic is
         // signed so the logic of V1 and V2 stats are the same (which is
         // trivially true for equal min-max values)
-        if (sortOrder(statistics.type()) == SortOrder.SIGNED || Arrays.equals(min, max)) {
-          stats.setMin(min);
-          stats.setMax(max);
+        if (sortOrder(stats.type()) == SortOrder.SIGNED || Arrays.equals(min, max)) {
+          formatStats.setMin(min);
+          formatStats.setMax(max);
         }
 
-        if (isMinMaxStatsSupported(statistics.type()) || Arrays.equals(min, max)) {
-          stats.setMin_value(min);
-          stats.setMax_value(max);
+        if (isMinMaxStatsSupported(stats.type()) || Arrays.equals(min, max)) {
+          formatStats.setMin_value(min);
+          formatStats.setMax_value(max);
         }
       }
     }
-    return stats;
+    return formatStats;
   }
 
   private static boolean isMinMaxStatsSupported(PrimitiveType type) {
@@ -368,28 +368,28 @@ public class ParquetMetadataConverter {
 
     // Explicitly listing all the supported logical types to avoid writing statistics for new types accidentally
     switch (origType) {
-      case INT_8:
-      case INT_16:
-      case INT_32:
-      case INT_64:
-      case UINT_8:
-      case UINT_16:
-      case UINT_32:
-      case UINT_64:
-      case UTF8:
-      case DECIMAL:
-      case DATE:
-      case TIME_MILLIS:
-      case TIME_MICROS:
-      case TIMESTAMP_MILLIS:
-      case TIMESTAMP_MICROS:
-      case ENUM:
-      case JSON:
-      case BSON:
-        return true;
-      case INTERVAL:
-      default:
-        return false;
+    case INT_8:
+    case INT_16:
+    case INT_32:
+    case INT_64:
+    case UINT_8:
+    case UINT_16:
+    case UINT_32:
+    case UINT_64:
+    case UTF8:
+    case DECIMAL:
+    case DATE:
+    case TIME_MILLIS:
+    case TIME_MICROS:
+    case TIMESTAMP_MILLIS:
+    case TIMESTAMP_MICROS:
+    case ENUM:
+    case JSON:
+    case BSON:
+      return true;
+    case INTERVAL:
+    default:
+      return false;
     }
   }
 
@@ -414,24 +414,24 @@ public class ParquetMetadataConverter {
 
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal
-      (String createdBy, Statistics statistics, PrimitiveType type, SortOrder typeSortOrder) {
+      (String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
     // create stats object based on the column type
     org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.createStats(type);
 
-    if (statistics != null) {
+    if (formatStats != null) {
       // Use the new V2 min-max statistics over the former one if it is filled
-      if (statistics.isSetMin_value() && statistics.isSetMax_value()) {
-        byte[] min = statistics.min_value.array();
-        byte[] max = statistics.max_value.array();
+      if (formatStats.isSetMin_value() && formatStats.isSetMax_value()) {
+        byte[] min = formatStats.min_value.array();
+        byte[] max = formatStats.max_value.array();
         // Ordering of INT96 and INTERVAL types is not clear;
         // we only support statistics for them if min and max are equal
         if (isMinMaxStatsSupported(type) || Arrays.equals(min, max)) {
           stats.setMinMaxFromBytes(min, max);
         }
-        stats.setNumNulls(statistics.null_count);
+        stats.setNumNulls(formatStats.null_count);
       } else {
-        boolean isSet = statistics.isSetMax() && statistics.isSetMin();
-        boolean maxEqualsMin = isSet ? Arrays.equals(statistics.getMin(), statistics.getMax()) : false;
+        boolean isSet = formatStats.isSetMax() && formatStats.isSetMin();
+        boolean maxEqualsMin = isSet ? Arrays.equals(formatStats.getMin(), formatStats.getMax()) : false;
         boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
         // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
         // The sort order is checked to avoid returning min/max stats that are not
@@ -441,9 +441,9 @@ public class ParquetMetadataConverter {
         if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName()) &&
             (sortOrdersMatch || maxEqualsMin)) {
           if (isSet) {
-            stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
+            stats.setMinMaxFromBytes(formatStats.min.array(), formatStats.max.array());
           }
-          stats.setNumNulls(statistics.null_count);
+          stats.setNumNulls(formatStats.null_count);
         }
       }
     }

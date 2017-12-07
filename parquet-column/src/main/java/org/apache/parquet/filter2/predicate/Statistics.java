@@ -31,6 +31,9 @@ public class Statistics<T> {
   private final Comparator<T> comparator;
 
   // Intended for use only within Parquet itself.
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link #Statistics(Object, Object, Comparator)} instead
+   */
   @Deprecated
   public Statistics(T min, T max) {
     this.min = checkNotNull(min, "min");

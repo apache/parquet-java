@@ -30,6 +30,10 @@ public class FloatStatistics extends Statistics<Float> {
   private float max;
   private float min;
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
   public FloatStatistics() {
     // Creating a fake primitive type to have the proper comparator
     this(DEFAULT_FAKE_TYPE);

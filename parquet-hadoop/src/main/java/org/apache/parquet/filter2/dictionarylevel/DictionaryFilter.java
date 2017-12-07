@@ -76,7 +76,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   @SuppressWarnings("unchecked")
   private <T extends Comparable<T>> Set<T> expandDictionary(ColumnChunkMetaData meta) throws IOException {
-    ColumnDescriptor col = new ColumnDescriptor(meta.getPath().toArray(), meta.getFullType(), -1, -1);
+    ColumnDescriptor col = new ColumnDescriptor(meta.getPath().toArray(), meta.getPrimitiveType(), -1, -1);
     DictionaryPage page = dictionaries.readDictionaryPage(col);
 
     // the chunk may not be dictionary-encoded
@@ -213,7 +213,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_MIGHT_MATCH;
       }
 
-      Comparator<T> comparator = meta.getFullType().comparator();
+      Comparator<T> comparator = meta.getPrimitiveType().comparator();
       for (T entry : dictSet) {
         if (comparator.compare(value, entry) > 0) {
           return BLOCK_MIGHT_MATCH;
@@ -255,7 +255,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_MIGHT_MATCH;
       }
 
-      Comparator<T> comparator = meta.getFullType().comparator();
+      Comparator<T> comparator = meta.getPrimitiveType().comparator();
       for (T entry : dictSet) {
         if (comparator.compare(value, entry) >= 0) {
           return BLOCK_MIGHT_MATCH;
@@ -295,7 +295,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_MIGHT_MATCH;
       }
 
-      Comparator<T> comparator = meta.getFullType().comparator();
+      Comparator<T> comparator = meta.getPrimitiveType().comparator();
       for (T entry : dictSet) {
         if (comparator.compare(value, entry) < 0) {
           return BLOCK_MIGHT_MATCH;
@@ -337,7 +337,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         return BLOCK_MIGHT_MATCH;
       }
 
-      Comparator<T> comparator = meta.getFullType().comparator();
+      Comparator<T> comparator = meta.getPrimitiveType().comparator();
       for (T entry : dictSet) {
         if (comparator.compare(value, entry) <= 0) {
           return BLOCK_MIGHT_MATCH;

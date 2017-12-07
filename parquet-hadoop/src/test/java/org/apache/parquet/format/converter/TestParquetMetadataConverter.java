@@ -489,12 +489,12 @@ public class TestParquetMetadataConverter {
   public void testFloatStatsV1() {
     testFloatStats(StatsHelper.V1);
   }
-  
+
   @Test
   public void testFloatStatsV2() {
     testFloatStats(StatsHelper.V2);
   }
-  
+
   private void testFloatStats(StatsHelper helper) {
     // make fake stats and verify the size check
     FloatStatistics stats = new FloatStatistics();
@@ -520,12 +520,12 @@ public class TestParquetMetadataConverter {
   public void testDoubleStatsV1() {
     testDoubleStats(StatsHelper.V1);
   }
-  
+
   @Test
   public void testDoubleStatsV2() {
     testDoubleStats(StatsHelper.V2);
   }
-  
+
   private void testDoubleStats(StatsHelper helper) {
     // make fake stats and verify the size check
     DoubleStatistics stats = new DoubleStatistics();
@@ -551,12 +551,12 @@ public class TestParquetMetadataConverter {
   public void testBooleanStatsV1() {
     testBooleanStats(StatsHelper.V1);
   }
-  
+
   @Test
   public void testBooleanStatsV2() {
     testBooleanStats(StatsHelper.V2);
   }
-  
+
   private void testBooleanStats(StatsHelper helper) {
     // make fake stats and verify the size check
     BooleanStatistics stats = new BooleanStatistics();

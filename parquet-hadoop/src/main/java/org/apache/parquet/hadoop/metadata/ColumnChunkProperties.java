@@ -30,12 +30,17 @@ public class ColumnChunkProperties {
 
   private static Canonicalizer<ColumnChunkProperties> properties = new Canonicalizer<ColumnChunkProperties>();
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, Set)}
+   *             instead.
+   */
   @Deprecated
   public static ColumnChunkProperties get(ColumnPath path, PrimitiveTypeName type, CompressionCodecName codec, Set<Encoding> encodings) {
     return get(path, new PrimitiveType(Type.Repetition.OPTIONAL, type, ""), codec, encodings);
   }
 
-  public static ColumnChunkProperties get(ColumnPath path, PrimitiveType type, CompressionCodecName codec, Set<Encoding> encodings) {
+  public static ColumnChunkProperties get(ColumnPath path, PrimitiveType type, CompressionCodecName codec,
+      Set<Encoding> encodings) {
     return properties.canonicalize(new ColumnChunkProperties(codec, path, type, encodings));
   }
 
@@ -63,11 +68,19 @@ public class ColumnChunkProperties {
     return path;
   }
 
+  /**
+   * @return the primitive type name for the column
+   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
+   */
+  @Deprecated
   public PrimitiveTypeName getType() {
     return type.getPrimitiveTypeName();
   }
 
-  public PrimitiveType getFullType() {
+  /**
+   * @return the primitive type object for the column
+   */
+  public PrimitiveType getPrimitiveType() {
     return type;
   }
 

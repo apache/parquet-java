@@ -30,6 +30,10 @@ public class BinaryStatistics extends Statistics<Binary> {
   private Binary max;
   private Binary min;
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
   public BinaryStatistics() {
     this(DEFAULT_FAKE_TYPE);
   }

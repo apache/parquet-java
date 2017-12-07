@@ -67,6 +67,11 @@ abstract public class ColumnChunkMetaData {
         valueCount, totalSize, totalUncompressedSize);
   }
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use
+   *             {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, EncodingStats, Set, Statistics, long, long, long, long, long)}
+   *             instead.
+   */
   @Deprecated
   public static ColumnChunkMetaData get(
       ColumnPath path,
@@ -85,17 +90,17 @@ abstract public class ColumnChunkMetaData {
   }
 
   public static ColumnChunkMetaData get(
-    ColumnPath path,
-    PrimitiveType type,
-    CompressionCodecName codec,
-    EncodingStats encodingStats,
-    Set<Encoding> encodings,
-    Statistics statistics,
-    long firstDataPage,
-    long dictionaryPageOffset,
-    long valueCount,
-    long totalSize,
-    long totalUncompressedSize) {
+      ColumnPath path,
+      PrimitiveType type,
+      CompressionCodecName codec,
+      EncodingStats encodingStats,
+      Set<Encoding> encodings,
+      Statistics statistics,
+      long firstDataPage,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
+      long totalUncompressedSize) {
     // to save space we store those always positive longs in ints when they fit.
     if (positiveLongFitsInAnInt(firstDataPage)
         && positiveLongFitsInAnInt(dictionaryPageOffset)
@@ -168,23 +173,27 @@ abstract public class ColumnChunkMetaData {
   /**
    *
    * @return column identifier
+   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
+  @Deprecated
   public ColumnPath getPath() {
     return properties.getPath();
   }
 
   /**
    * @return type of the column
+   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
+  @Deprecated
   public PrimitiveTypeName getType() {
     return properties.getType();
   }
 
   /**
-   * @return the full type object of the column
+   * @return the primitive type object of the column
    */
-  public PrimitiveType getFullType() {
-    return properties.getFullType();
+  public PrimitiveType getPrimitiveType() {
+    return properties.getPrimitiveType();
   }
 
   /**
