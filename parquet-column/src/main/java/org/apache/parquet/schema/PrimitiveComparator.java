@@ -222,12 +222,12 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
   /*
    * This comparator is for comparing two signed decimal values represented in twos-complement binary. In case of the
-   * binary length of one value is shorted than the other it will be padded by the related prefix (0xFF for negative,
-   * 0x00 for positive values).
+   * binary length of one value is shorter than the other it will be padded by the corresponding prefix (0xFF for
+   * negative, 0x00 for positive values).
    */
   static final PrimitiveComparator<Binary> BINARY_AS_SIGNED_INTEGER_COMPARATOR = new BinaryComparator() {
-    private static final int NEGATIVE_PREFIX = 0xFF;
-    private static final int POSITIVE_PREFIX = 0;
+    private static final int NEGATIVE_PADDING = 0xFF;
+    private static final int POSITIVE_PADDING = 0;
 
     @Override
     int compare(ByteBuffer b1, ByteBuffer b2) {
@@ -245,13 +245,13 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
       int result = 0;
 
       // Compare the beginning of the longer buffer with the proper padding
-      int diff = l1 - l2;
-      if (diff < 0) {
-        result = -compareWithPadding(-diff, b2, p2, isNegative1 ? NEGATIVE_PREFIX : POSITIVE_PREFIX);
-        p2 += -diff;
-      } else if (diff > 0) {
-        result = compareWithPadding(diff, b1, p1, isNegative2 ? NEGATIVE_PREFIX : POSITIVE_PREFIX);
-        p1 += diff;
+      int lengthDiff = l1 - l2;
+      if (lengthDiff < 0) {
+        result = -compareWithPadding(-lengthDiff, b2, p2, isNegative1 ? NEGATIVE_PADDING : POSITIVE_PADDING);
+        p2 += -lengthDiff;
+      } else if (lengthDiff > 0) {
+        result = compareWithPadding(lengthDiff, b1, p1, isNegative2 ? NEGATIVE_PADDING : POSITIVE_PADDING);
+        p1 += lengthDiff;
       }
 
       // The beginning of the longer buffer equals to the padding or the lengths are equal

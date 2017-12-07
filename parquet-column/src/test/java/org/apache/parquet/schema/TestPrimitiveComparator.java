@@ -230,9 +230,11 @@ public class TestPrimitiveComparator {
         Binary.fromConstantByteArray(BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.ONE).toByteArray()),
         Binary.fromConstantByteArray(BigInteger.valueOf(Long.MIN_VALUE).toByteArray()),
         Binary.fromConstantByteArray(BigInteger.valueOf(Long.MIN_VALUE).add(BigInteger.ONE).toByteArray()),
+        Binary.fromReusedByteArray(new byte[] { (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, -2 }, 1, 3),
         Binary.fromReusedByteArray(new BigInteger("-1").toByteArray()),
         Binary.fromConstantByteBuffer(ByteBuffer.wrap(new BigInteger("0").toByteArray())),
-        Binary.fromReusedByteBuffer(ByteBuffer.wrap(new BigInteger("1").toByteArray())),
+        Binary.fromReusedByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, 1 })),
+        Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, 2 }), 2, 2),
         Binary.fromConstantByteBuffer(
             ByteBuffer.wrap(BigInteger.valueOf(Long.MAX_VALUE).subtract(BigInteger.ONE).toByteArray())),
         Binary.fromConstantByteBuffer(ByteBuffer.wrap(BigInteger.valueOf(Long.MAX_VALUE).toByteArray())),
