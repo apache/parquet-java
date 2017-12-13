@@ -179,7 +179,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    protected void release() {
+    public void release() {
       DirectCodecPool.INSTANCE.returnDecompressor(decompressor);
     }
   }
@@ -221,7 +221,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    protected void release() {
+    public void release() {
       DirectCodecPool.INSTANCE.returnDirectDecompressor(decompressor);
       extraDecompressor.release();
     }
@@ -245,7 +245,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    protected void release() {}
+    public void release() {}
 
   }
 
@@ -269,7 +269,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    protected void release() {}
+    public void release() {}
   }
 
   public class SnappyCompressor extends BytesCompressor {
@@ -311,7 +311,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    protected void release() {
+    public void release() {
       outgoing = DirectCodecFactory.this.release(outgoing);
       incoming = DirectCodecFactory.this.release(incoming);
     }
@@ -333,7 +333,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    protected void release() {}
+    public void release() {}
   }
 
   static class DirectCodecPool {

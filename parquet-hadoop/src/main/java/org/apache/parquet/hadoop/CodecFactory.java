@@ -36,9 +36,10 @@ import org.apache.hadoop.util.ReflectionUtils;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
-public class CodecFactory {
+public class CodecFactory implements CompressionCodecFactory {
 
   protected static final Map<String, CompressionCodec> CODEC_BY_NAME = Collections
       .synchronizedMap(new HashMap<String, CompressionCodec>());
@@ -118,7 +119,7 @@ public class CodecFactory {
       output.put(decompressed);
     }
 
-    protected void release() {
+    public void release() {
       if (decompressor != null) {
         CodecPool.returnDecompressor(decompressor);
       }
@@ -171,7 +172,7 @@ public class CodecFactory {
     }
 
     @Override
-    protected void release() {
+    public void release() {
       if (compressor != null) {
         CodecPool.returnCompressor(compressor);
       }
@@ -183,6 +184,7 @@ public class CodecFactory {
 
   }
 
+  @Override
   public BytesCompressor getCompressor(CompressionCodecName codecName) {
     BytesCompressor comp = compressors.get(codecName);
     if (comp == null) {
@@ -192,6 +194,7 @@ public class CodecFactory {
     return comp;
   }
 
+  @Override
   public BytesDecompressor getDecompressor(CompressionCodecName codecName) {
     BytesDecompressor decomp = decompressors.get(codecName);
     if (decomp == null) {
@@ -235,6 +238,7 @@ public class CodecFactory {
     }
   }
 
+  @Override
   public void release() {
     for (BytesCompressor compressor : compressors.values()) {
       compressor.release();
@@ -246,15 +250,23 @@ public class CodecFactory {
     decompressors.clear();
   }
 
-  public static abstract class BytesCompressor {
+  /**
+   * @deprecated will be removed in 2.0.0; use CompressionCodecFactory.BytesInputCompressor instead.
+   */
+  @Deprecated
+  public static abstract class BytesCompressor implements CompressionCodecFactory.BytesInputCompressor {
     public abstract BytesInput compress(BytesInput bytes) throws IOException;
     public abstract CompressionCodecName getCodecName();
-    protected abstract void release();
+    public abstract void release();
   }
 
-  public static abstract class BytesDecompressor {
+  /**
+   * @deprecated will be removed in 2.0.0; use CompressionCodecFactory.BytesInputDecompressor instead.
+   */
+  @Deprecated
+  public static abstract class BytesDecompressor implements CompressionCodecFactory.BytesInputDecompressor {
     public abstract BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
     public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException;
-    protected abstract void release();
+    public abstract void release();
   }
 }

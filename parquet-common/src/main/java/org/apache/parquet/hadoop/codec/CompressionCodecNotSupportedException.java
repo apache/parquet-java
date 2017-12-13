@@ -16,29 +16,23 @@
  *  specific language governing permissions and limitations
  *  under the License.
  */
+package org.apache.parquet.hadoop.codec;
 
-package org.apache.parquet.io;
-
-import java.io.IOException;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 /**
- * {@code InputFile} is an interface with the methods needed by Parquet to read
- * data files using {@link SeekableInputStream} instances.
+ * This exception will be thrown when the codec is not supported by parquet, meaning there is no
+ * matching codec defined in {@link CompressionCodecName}
  */
-public interface InputFile {
+public class CompressionCodecNotSupportedException extends RuntimeException {
+  private final Class codecClass;
 
-  /**
-   * @return the total length of the file, in bytes.
-   * @throws IOException if the length cannot be determined
-   */
-  long getLength() throws IOException;
+  public CompressionCodecNotSupportedException(Class codecClass) {
+    super("codec not supported: " + codecClass.getName());
+    this.codecClass = codecClass;
+  }
 
-  /**
-   * Open a new {@link SeekableInputStream} for the underlying data file.
-   *
-   * @return a new {@link SeekableInputStream} to read the file
-   * @throws IOException if the stream cannot be opened
-   */
-  SeekableInputStream newStream() throws IOException;
-
+  public Class getCodecClass() {
+    return codecClass;
+  }
 }

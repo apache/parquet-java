@@ -21,24 +21,14 @@ package org.apache.parquet.io;
 
 import java.io.IOException;
 
-/**
- * {@code InputFile} is an interface with the methods needed by Parquet to read
- * data files using {@link SeekableInputStream} instances.
- */
-public interface InputFile {
+public interface OutputFile {
 
-  /**
-   * @return the total length of the file, in bytes.
-   * @throws IOException if the length cannot be determined
-   */
-  long getLength() throws IOException;
+  PositionOutputStream create(long blockSizeHint) throws IOException;
 
-  /**
-   * Open a new {@link SeekableInputStream} for the underlying data file.
-   *
-   * @return a new {@link SeekableInputStream} to read the file
-   * @throws IOException if the stream cannot be opened
-   */
-  SeekableInputStream newStream() throws IOException;
+  PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException;
+
+  boolean supportsBlockSize();
+
+  long defaultBlockSize();
 
 }

@@ -17,28 +17,23 @@
  *  under the License.
  */
 
-package org.apache.parquet.io;
+package org.apache.parquet.hadoop.util;
 
-import java.io.IOException;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.compression.CompressionCodecFactory;
+import org.apache.parquet.hadoop.CodecFactory;
 
-/**
- * {@code InputFile} is an interface with the methods needed by Parquet to read
- * data files using {@link SeekableInputStream} instances.
- */
-public interface InputFile {
+public class HadoopCodecs {
+  public static CompressionCodecFactory newFactory(int sizeHint) {
+    return new CodecFactory(new Configuration(), sizeHint);
+  }
 
-  /**
-   * @return the total length of the file, in bytes.
-   * @throws IOException if the length cannot be determined
-   */
-  long getLength() throws IOException;
+  public static CompressionCodecFactory newFactory(Configuration conf, int sizeHint) {
+    return new CodecFactory(conf, sizeHint);
+  }
 
-  /**
-   * Open a new {@link SeekableInputStream} for the underlying data file.
-   *
-   * @return a new {@link SeekableInputStream} to read the file
-   * @throws IOException if the stream cannot be opened
-   */
-  SeekableInputStream newStream() throws IOException;
-
+  public static CompressionCodecFactory newDirectFactory(Configuration conf, ByteBufferAllocator allocator, int sizeHint) {
+    return CodecFactory.createDirectCodecFactory(conf, allocator, sizeHint);
+  }
 }
