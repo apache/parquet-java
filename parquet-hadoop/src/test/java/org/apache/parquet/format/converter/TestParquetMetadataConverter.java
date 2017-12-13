@@ -24,6 +24,7 @@ import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.apache.parquet.format.CompressionCodec.UNCOMPRESSED;
 import static org.apache.parquet.format.Type.INT32;
@@ -51,6 +52,7 @@ import com.google.common.collect.Sets;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.DoubleStatistics;
@@ -67,7 +69,6 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
-
 import org.apache.parquet.example.Paper;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
@@ -79,6 +80,7 @@ import org.apache.parquet.format.PageType;
 import org.apache.parquet.format.RowGroup;
 import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.format.Type;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -105,7 +107,7 @@ public class TestParquetMetadataConverter {
   public void testSchemaConverter() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(Paper.schema);
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
     assertEquals(Paper.schema, schema);
   }
 
@@ -819,4 +821,42 @@ public class TestParquetMetadataConverter {
     public abstract org.apache.parquet.format.Statistics toParquetStatistics(Statistics<?> stats);
   }
 
+  @Test
+  public void testColumnOrders() throws IOException {
+    MessageType schema = parseMessageType("message test {"
+        + "  optional binary binary_col;"               // Normal column with type defined column order -> typeDefined
+        + "  optional group map_col (MAP) {"
+        + "    repeated group map (MAP_KEY_VALUE) {"
+        + "        required binary key (UTF8);"         // Key to be hacked to have unknown column order -> undefined
+        + "        optional group list_col (LIST) {"
+        + "          repeated group list {"
+        + "            optional int96 array_element;"   // INT96 element with type defined column order -> undefined
+        + "          }"
+        + "        }"
+        + "    }"
+        + "  }"
+        + "}");
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData = new org.apache.parquet.hadoop.metadata.FileMetaData(
+        schema, new HashMap<String, String>(), null);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, new ArrayList<BlockMetaData>());
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
+
+    List<org.apache.parquet.format.ColumnOrder> columnOrders = formatMetadata.getColumn_orders();
+    assertEquals(3, columnOrders.size());
+    for (org.apache.parquet.format.ColumnOrder columnOrder : columnOrders) {
+      assertTrue(columnOrder.isSetTYPE_ORDER());
+    }
+
+    // Simulate that thrift got a union type that is not in the generated code
+    // (when the file contains a not-yet-supported column order)
+    columnOrders.get(1).clear();
+
+    MessageType resultSchema = converter.fromParquetMetadata(formatMetadata).getFileMetaData().getSchema();
+    List<ColumnDescriptor> columns = resultSchema.getColumns();
+    assertEquals(3, columns.size());
+    assertEquals(ColumnOrder.typeDefined(), columns.get(0).getPrimitiveType().columnOrder());
+    assertEquals(ColumnOrder.undefined(), columns.get(1).getPrimitiveType().columnOrder());
+    assertEquals(ColumnOrder.undefined(), columns.get(2).getPrimitiveType().columnOrder());
+  }
 }

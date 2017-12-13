@@ -25,7 +25,8 @@ import org.apache.parquet.schema.Types;
 public class IntStatistics extends Statistics<Integer> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT32).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT32)
+      .named("fake_int32_type");
 
   private int max;
   private int min;

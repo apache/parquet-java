@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.ID;
 import org.slf4j.Logger;
@@ -316,6 +317,7 @@ public class Types {
     private int length = NOT_SET;
     private int precision = NOT_SET;
     private int scale = NOT_SET;
+    private ColumnOrder columnOrder;
 
     private BasePrimitiveBuilder(P parent, PrimitiveTypeName type) {
       super(parent);
@@ -371,6 +373,22 @@ public class Types {
      */
     public THIS scale(int scale) {
       this.scale = scale;
+      return self();
+    }
+
+    /**
+     * Adds the column order for the primitive type.
+     * <p>
+     * In case of not set the default column order is {@link ColumnOrderName#TYPE_DEFINED_ORDER} except the type
+     * {@link PrimitiveTypeName#INT96} and the types annotated by {@link OriginalType#INTERVAL} where the default column
+     * order is {@link ColumnOrderName#UNDEFINED}.
+     *
+     * @param columnOrder
+     *          the column order for the primitive type
+     * @return this builder for method chaining
+     */
+    public THIS columnOrder(ColumnOrder columnOrder) {
+      this.columnOrder = columnOrder;
       return self();
     }
 
@@ -457,7 +475,7 @@ public class Types {
         }
       }
 
-      return new PrimitiveType(repetition, primitiveType, length, name, originalType, meta, id);
+      return new PrimitiveType(repetition, primitiveType, length, name, originalType, meta, id, columnOrder);
     }
 
     private static long maxPrecision(int numBytes) {

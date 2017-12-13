@@ -245,11 +245,12 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
       int result = 0;
 
       // Compare the beginning of the longer buffer with the proper padding
-      int lengthDiff = l1 - l2;
-      if (lengthDiff < 0) {
-        result = -compareWithPadding(-lengthDiff, b2, p2, isNegative1 ? NEGATIVE_PADDING : POSITIVE_PADDING);
-        p2 += -lengthDiff;
-      } else if (lengthDiff > 0) {
+      if (l1 < l2) {
+        int lengthDiff = l2 - l1;
+        result = -compareWithPadding(lengthDiff, b2, p2, isNegative1 ? NEGATIVE_PADDING : POSITIVE_PADDING);
+        p2 += lengthDiff;
+      } else if (l1 > l2) {
+        int lengthDiff = l1 - l2;
         result = compareWithPadding(lengthDiff, b1, p1, isNegative2 ? NEGATIVE_PADDING : POSITIVE_PADDING);
         p1 += lengthDiff;
       }

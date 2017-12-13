@@ -25,7 +25,8 @@ import org.apache.parquet.schema.Types;
 public class FloatStatistics extends Statistics<Float> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT)
+      .named("fake_float_type");
 
   private float max;
   private float min;

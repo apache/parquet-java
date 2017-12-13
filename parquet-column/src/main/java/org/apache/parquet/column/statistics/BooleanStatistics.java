@@ -25,7 +25,8 @@ import org.apache.parquet.schema.Types;
 public class BooleanStatistics extends Statistics<Boolean> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BOOLEAN).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BOOLEAN)
+      .named("fake_boolean_type");
 
   private boolean max;
   private boolean min;

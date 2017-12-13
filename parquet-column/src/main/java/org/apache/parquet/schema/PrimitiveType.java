@@ -22,12 +22,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 
 
 /**
@@ -381,6 +383,7 @@ public final class PrimitiveType extends Type {
   private final PrimitiveTypeName primitive;
   private final int length;
   private final DecimalMetadata decimalMeta;
+  private final ColumnOrder columnOrder;
 
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
@@ -438,10 +441,61 @@ public final class PrimitiveType extends Type {
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        int length, String name, OriginalType originalType,
                        DecimalMetadata decimalMeta, ID id) {
+    this(repetition, primitive, length, name, originalType, decimalMeta, id, null);
+  }
+
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+      int length, String name, OriginalType originalType,
+      DecimalMetadata decimalMeta, ID id, ColumnOrder columnOrder) {
     super(name, repetition, originalType, id);
     this.primitive = primitive;
     this.length = length;
     this.decimalMeta = decimalMeta;
+
+    if (columnOrder == null) {
+      columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL
+          ? ColumnOrder.undefined()
+          : ColumnOrder.typeDefined();
+    }
+    this.columnOrder = requireValidColumnOrder(columnOrder);
+  }
+
+  private ColumnOrder requireValidColumnOrder(ColumnOrder columnOrder) {
+    if (primitive == PrimitiveTypeName.INT96) {
+      Preconditions.checkArgument(columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED,
+          "The column order {} is not supported by INT96", columnOrder);
+    }
+    if (getOriginalType() != null) {
+      // Explicitly listing all the logical types to avoid having unsupported column orders new types accidentally
+      switch (getOriginalType()) {
+        case INT_8:
+        case INT_16:
+        case INT_32:
+        case INT_64:
+        case UINT_8:
+        case UINT_16:
+        case UINT_32:
+        case UINT_64:
+        case UTF8:
+        case DECIMAL:
+        case DATE:
+        case TIME_MILLIS:
+        case TIME_MICROS:
+        case TIMESTAMP_MILLIS:
+        case TIMESTAMP_MICROS:
+        case ENUM:
+        case JSON:
+        case BSON:
+          // Currently any available column order is valid
+          break;
+        case INTERVAL:
+        default:
+          Preconditions.checkArgument(columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED,
+              "The column order {} is not supported by {} ({})", columnOrder, primitive, getOriginalType());
+          break;
+      }
+    }
+    return columnOrder;
   }
 
   /**
@@ -450,7 +504,8 @@ public final class PrimitiveType extends Type {
    */
   @Override
   public PrimitiveType withId(int id) {
-    return new PrimitiveType(getRepetition(), primitive, length, getName(), getOriginalType(), decimalMeta, new ID(id));
+    return new PrimitiveType(getRepetition(), primitive, length, getName(), getOriginalType(), decimalMeta, new ID(id),
+        columnOrder);
   }
 
   /**
@@ -542,6 +597,7 @@ public final class PrimitiveType extends Type {
     return super.equals(other)
         && primitive == otherPrimitive.getPrimitiveTypeName()
         && length == otherPrimitive.length
+        && columnOrder.equals(otherPrimitive.columnOrder)
         && eqOrBothNull(decimalMeta, otherPrimitive.decimalMeta);
   }
 
@@ -553,6 +609,7 @@ public final class PrimitiveType extends Type {
     int hash = super.hashCode();
     hash = hash * 31 + primitive.hashCode();
     hash = hash * 31 + length;
+    hash = hash * 31 + columnOrder.hashCode();
     if (decimalMeta != null) {
       hash = hash * 31 + decimalMeta.hashCode();
     }
@@ -620,6 +677,11 @@ public final class PrimitiveType extends Type {
     throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
   }
 
+  private void reportSchemaMergeErrorWithColumnOrder(Type toMerge) {
+    throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " with column order "
+        + toMerge.asPrimitiveType().columnOrder() + " into " + this + " with column order " + columnOrder());
+  }
+
   @Override
   protected Type union(Type toMerge, boolean strict) {
     if (!toMerge.isPrimitive()) {
@@ -637,6 +699,11 @@ public final class PrimitiveType extends Type {
       int toMergeLength = toMerge.asPrimitiveType().getTypeLength();
       if (primitive == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY && length != toMergeLength) {
         reportSchemaMergeError(toMerge);
+      }
+
+      // Can't merge primitive fields with different column orders
+      if (!columnOrder().equals(toMerge.asPrimitiveType().columnOrder())) {
+        reportSchemaMergeErrorWithColumnOrder(toMerge);
       }
     }
 
@@ -657,5 +724,12 @@ public final class PrimitiveType extends Type {
   @SuppressWarnings("unchecked")
   public <T> PrimitiveComparator<T> comparator() {
     return (PrimitiveComparator<T>) getPrimitiveTypeName().comparator(getOriginalType());
+  }
+
+  /**
+   * @return the column order for this type
+   */
+  public ColumnOrder columnOrder() {
+    return columnOrder;
   }
 }

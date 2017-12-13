@@ -25,7 +25,8 @@ import org.apache.parquet.schema.Types;
 public class BinaryStatistics extends Statistics<Binary> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
+      .named("fake_binary_type");
 
   private Binary max;
   private Binary min;

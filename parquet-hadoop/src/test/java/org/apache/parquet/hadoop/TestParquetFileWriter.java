@@ -524,12 +524,12 @@ public class TestParquetFileWriter {
       String str = new String(bsout.getMaxBytes());
       String str2 = new String(bsout.getMinBytes());
 
-      assertTrue(((BinaryStatistics)readFooter.getBlocks().get(0).getColumns().get(0).getStatistics()).equals(bs1));
-      assertTrue(((LongStatistics)readFooter.getBlocks().get(0).getColumns().get(1).getStatistics()).equals(ls1));
+      TestUtils.assertStatsValuesEqual(bs1, readFooter.getBlocks().get(0).getColumns().get(0).getStatistics());
+      TestUtils.assertStatsValuesEqual(ls1, readFooter.getBlocks().get(0).getColumns().get(1).getStatistics());
     }
     { // assert stats are correct for the second block
-      assertTrue(((BinaryStatistics)readFooter.getBlocks().get(1).getColumns().get(0).getStatistics()).equals(bs2));
-      assertTrue(((LongStatistics)readFooter.getBlocks().get(1).getColumns().get(1).getStatistics()).equals(ls2));
+      TestUtils.assertStatsValuesEqual(bs2, readFooter.getBlocks().get(1).getColumns().get(0).getStatistics());
+      TestUtils.assertStatsValuesEqual(ls2, readFooter.getBlocks().get(1).getColumns().get(1).getStatistics());
     }
   }
 

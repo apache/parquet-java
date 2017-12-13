@@ -25,7 +25,8 @@ import org.apache.parquet.schema.Types;
 public class DoubleStatistics extends Statistics<Double> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.DOUBLE).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.DOUBLE)
+      .named("fake_double_type");
 
   private double max;
   private double min;

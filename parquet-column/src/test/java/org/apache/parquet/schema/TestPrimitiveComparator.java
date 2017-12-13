@@ -45,12 +45,12 @@ public class TestPrimitiveComparator {
 
   @Test
   public void testBooleanComparator() {
-    Boolean[] values = { null, false, true };
+    Boolean[] valuesInAscendingOrder = { null, false, true };
 
-    for (int i = 0; i < values.length; ++i) {
-      for (int j = 0; j < values.length; ++j) {
-        Boolean vi = values[i];
-        Boolean vj = values[j];
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        Boolean vi = valuesInAscendingOrder[i];
+        Boolean vj = valuesInAscendingOrder[j];
         int exp = i - j;
         assertSignumEquals(vi, vj, exp, BOOLEAN_COMPARATOR.compare(vi, vj));
         if (vi != null && vj != null) {
@@ -88,11 +88,11 @@ public class TestPrimitiveComparator {
         -1);                // 0xFFFFFFFF
   }
 
-  private void testInt32Comparator(PrimitiveComparator<Integer> comparator, Integer... values) {
-    for (int i = 0; i < values.length; ++i) {
-      for (int j = 0; j < values.length; ++j) {
-        Integer vi = values[i];
-        Integer vj = values[j];
+  private void testInt32Comparator(PrimitiveComparator<Integer> comparator, Integer... valuesInAscendingOrder) {
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        Integer vi = valuesInAscendingOrder[i];
+        Integer vj = valuesInAscendingOrder[j];
         int exp = i - j;
         assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
         if (vi != null && vj != null) {
@@ -130,11 +130,11 @@ public class TestPrimitiveComparator {
         -1L);            // 0xFFFFFFFFFFFFFFFF
   }
 
-  private void testInt64Comparator(PrimitiveComparator<Long> comparator, Long... values) {
-    for (int i = 0; i < values.length; ++i) {
-      for (int j = 0; j < values.length; ++j) {
-        Long vi = values[i];
-        Long vj = values[j];
+  private void testInt64Comparator(PrimitiveComparator<Long> comparator, Long... valuesInAscendingOrder) {
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        Long vi = valuesInAscendingOrder[i];
+        Long vj = valuesInAscendingOrder[j];
         int exp = i - j;
         assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
         if (vi != null && vj != null) {
@@ -148,7 +148,7 @@ public class TestPrimitiveComparator {
 
   @Test
   public void testFloatComparator() {
-    Float[] values = {
+    Float[] valuesInAscendingOrder = {
         null,
         Float.NEGATIVE_INFINITY,
         -Float.MAX_VALUE,
@@ -160,10 +160,10 @@ public class TestPrimitiveComparator {
         Float.MAX_VALUE,
         Float.POSITIVE_INFINITY };
 
-    for (int i = 0; i < values.length; ++i) {
-      for (int j = 0; j < values.length; ++j) {
-        Float vi = values[i];
-        Float vj = values[j];
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        Float vi = valuesInAscendingOrder[i];
+        Float vj = valuesInAscendingOrder[j];
         int exp = i - j;
         assertSignumEquals(vi, vj, exp, FLOAT_COMPARATOR.compare(vi, vj));
         if (vi != null && vj != null) {
@@ -177,7 +177,7 @@ public class TestPrimitiveComparator {
 
   @Test
   public void testDoubleComparator() {
-    Double[] values = {
+    Double[] valuesInAscendingOrder = {
         null,
         Double.NEGATIVE_INFINITY,
         -Double.MAX_VALUE,
@@ -189,10 +189,10 @@ public class TestPrimitiveComparator {
         Double.MAX_VALUE,
         Double.POSITIVE_INFINITY };
 
-    for (int i = 0; i < values.length; ++i) {
-      for (int j = 0; j < values.length; ++j) {
-        Double vi = values[i];
-        Double vj = values[j];
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        Double vi = valuesInAscendingOrder[i];
+        Double vj = valuesInAscendingOrder[j];
         int exp = i - j;
         assertSignumEquals(vi, vj, exp, DOUBLE_COMPARATOR.compare(vi, vj));
         if (vi != null && vj != null) {
@@ -249,11 +249,11 @@ public class TestPrimitiveComparator {
             ByteBuffer.wrap(new BigInteger("9999999999999999999999999999999999999999").toByteArray())));
   }
 
-  private <T> void testObjectComparator(PrimitiveComparator<T> comparator, T... values) {
-    for (int i = 0; i < values.length; ++i) {
-      for (int j = 0; j < values.length; ++j) {
-        T vi = values[i];
-        T vj = values[j];
+  private <T> void testObjectComparator(PrimitiveComparator<T> comparator, T... valuesInAscendingOrder) {
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        T vi = valuesInAscendingOrder[i];
+        T vj = valuesInAscendingOrder[j];
         int exp = i - j;
         assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
       }

@@ -56,25 +56,25 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   @Deprecated
   public static Statistics getStatsBasedOnType(PrimitiveTypeName type) {
-    switch(type) {
-    case INT32:
-      return new IntStatistics();
-    case INT64:
-      return new LongStatistics();
-    case FLOAT:
-      return new FloatStatistics();
-    case DOUBLE:
-      return new DoubleStatistics();
-    case BOOLEAN:
-      return new BooleanStatistics();
-    case BINARY:
-      return new BinaryStatistics();
-    case INT96:
-      return new BinaryStatistics();
-    case FIXED_LEN_BYTE_ARRAY:
-      return new BinaryStatistics();
-    default:
-      throw new UnknownColumnTypeException(type);
+    switch (type) {
+      case INT32:
+        return new IntStatistics();
+      case INT64:
+        return new LongStatistics();
+      case FLOAT:
+        return new FloatStatistics();
+      case DOUBLE:
+        return new DoubleStatistics();
+      case BOOLEAN:
+        return new BooleanStatistics();
+      case BINARY:
+        return new BinaryStatistics();
+      case INT96:
+        return new BinaryStatistics();
+      case FIXED_LEN_BYTE_ARRAY:
+        return new BinaryStatistics();
+      default:
+        throw new UnknownColumnTypeException(type);
     }
   }
 
@@ -89,22 +89,22 @@ public abstract class Statistics<T extends Comparable<T>> {
   public static Statistics<?> createStats(Type type) {
     PrimitiveType primitive = type.asPrimitiveType();
     switch (primitive.getPrimitiveTypeName()) {
-    case INT32:
-      return new IntStatistics(primitive);
-    case INT64:
-      return new LongStatistics(primitive);
-    case FLOAT:
-      return new FloatStatistics(primitive);
-    case DOUBLE:
-      return new DoubleStatistics(primitive);
-    case BOOLEAN:
-      return new BooleanStatistics(primitive);
-    case BINARY:
-    case INT96:
-    case FIXED_LEN_BYTE_ARRAY:
-      return new BinaryStatistics(primitive);
-    default:
-      throw new UnknownColumnTypeException(primitive.getPrimitiveTypeName());
+      case INT32:
+        return new IntStatistics(primitive);
+      case INT64:
+        return new LongStatistics(primitive);
+      case FLOAT:
+        return new FloatStatistics(primitive);
+      case DOUBLE:
+        return new DoubleStatistics(primitive);
+      case BOOLEAN:
+        return new BooleanStatistics(primitive);
+      case BINARY:
+      case INT96:
+      case FIXED_LEN_BYTE_ARRAY:
+        return new BinaryStatistics(primitive);
+      default:
+        throw new UnknownColumnTypeException(primitive.getPrimitiveTypeName());
     }
   }
 
@@ -168,9 +168,10 @@ public abstract class Statistics<T extends Comparable<T>> {
     if (!(other instanceof Statistics))
       return false;
     Statistics stats = (Statistics) other;
-    return Arrays.equals(stats.getMaxBytes(), this.getMaxBytes()) &&
-            Arrays.equals(stats.getMinBytes(), this.getMinBytes()) &&
-            stats.getNumNulls() == this.getNumNulls();
+    return type.equals(stats.type) &&
+        Arrays.equals(stats.getMaxBytes(), this.getMaxBytes()) &&
+        Arrays.equals(stats.getMinBytes(), this.getMinBytes()) &&
+        stats.getNumNulls() == this.getNumNulls();
   }
 
   /**
@@ -179,7 +180,8 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   @Override
   public int hashCode() {
-    return 31 * Arrays.hashCode(getMaxBytes()) + 17 * Arrays.hashCode(getMinBytes()) + Long.valueOf(this.getNumNulls()).hashCode();
+    return 31 * type.hashCode() + 31 * Arrays.hashCode(getMaxBytes()) + 17 * Arrays.hashCode(getMinBytes())
+        + Long.valueOf(this.getNumNulls()).hashCode();
   }
 
   /**
@@ -191,10 +193,8 @@ public abstract class Statistics<T extends Comparable<T>> {
   public void mergeStatistics(Statistics stats) {
     if (stats.isEmpty()) return;
 
-    // Merge stats only if they have the same type and comparator (the sorting order
-    // is the same)
-    if (this.getClass() == stats.getClass() && type.getPrimitiveTypeName() == stats.type.getPrimitiveTypeName()
-        && type.getOriginalType() == stats.type.getOriginalType()) {
+    // Merge stats only if they have the same type
+    if (type.equals(stats.type)) {
       incrementNumNulls(stats.getNumNulls());
       if (stats.hasNonNullValue()) {
         mergeStatisticsMinMax(stats);

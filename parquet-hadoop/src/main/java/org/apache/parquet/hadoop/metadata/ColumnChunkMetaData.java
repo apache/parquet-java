@@ -85,8 +85,8 @@ abstract public class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
-    return get(path, Types.optional(type).named(""), codec, encodingStats, encodings, statistics,
-      firstDataPage, dictionaryPageOffset, valueCount, totalSize, totalUncompressedSize);
+    return get(path, Types.optional(type).named("fake_type"), codec, encodingStats, encodings, statistics,
+        firstDataPage, dictionaryPageOffset, valueCount, totalSize, totalUncompressedSize);
   }
 
   public static ColumnChunkMetaData get(

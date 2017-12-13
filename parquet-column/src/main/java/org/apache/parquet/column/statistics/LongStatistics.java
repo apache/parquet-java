@@ -25,7 +25,8 @@ import org.apache.parquet.schema.Types;
 public class LongStatistics extends Statistics<Long> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT64).named("");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT64)
+      .named("fake_int64_type");
 
   private long max;
   private long min;
