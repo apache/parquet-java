@@ -147,25 +147,25 @@ public class ReadBenchmarks {
 
   @Benchmark
   @Threads(1)
-  public void readUncompressed16Thread(Blackhole blackhole)
+  public void readUncompressedMultiThread(Blackhole blackhole)
     throws IOException, InterruptedException
   {
-    concurrentRead(file_1M_BS64K_PS4K, SIXTEEN_THREADS, blackhole);
+    concurrentRead(file_1M_BS64K_PS4K, THREAD_COUNT, blackhole);
   }
 
   @Benchmark
   @Threads(1)
-  public void readSNAPPY16Thread(Blackhole blackhole)
+  public void readSNAPPYMultiThread(Blackhole blackhole)
     throws IOException, InterruptedException
   {
-    concurrentRead(file_1M_BS64K_PS4K_SNAPPY, SIXTEEN_THREADS, blackhole);
+    concurrentRead(file_1M_BS64K_PS4K_SNAPPY, THREAD_COUNT, blackhole);
   }
 
   @Benchmark
   @Threads(1)
-  public void readGZIP16Thread(Blackhole blackhole)
+  public void readGZIPMultiThread(Blackhole blackhole)
     throws IOException, InterruptedException
   {
-    concurrentRead(file_1M_BS64K_PS4K_GZIP, SIXTEEN_THREADS, blackhole);
+    concurrentRead(file_1M_BS64K_PS4K_GZIP, THREAD_COUNT, blackhole);
   }
 }

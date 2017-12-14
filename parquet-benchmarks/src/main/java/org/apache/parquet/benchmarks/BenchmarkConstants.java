@@ -40,5 +40,5 @@ public class BenchmarkConstants {
 
   public static final int DICT_PAGE_SIZE = 512;
 
-  public static final int SIXTEEN_THREADS = 16;
+  public static final int THREAD_COUNT = 16;
 }
