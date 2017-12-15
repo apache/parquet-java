@@ -43,11 +43,11 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.arrow.vector.types.IntervalUnit;
 
-import org.apache.arrow.flatbuf.IntervalUnit;
-import org.apache.arrow.flatbuf.Precision;
-import org.apache.arrow.flatbuf.TimeUnit;
-import org.apache.arrow.flatbuf.UnionMode;
+import org.apache.arrow.vector.types.UnionMode;
+import org.apache.arrow.vector.types.DateUnit;
+import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -80,13 +80,14 @@ public class TestSchemaConverter {
 
   private final Schema complexArrowSchema = new Schema(asList(
       field("a", false, new ArrowType.Int(8, true)),
-      field("b", new ArrowType.Struct_(),
-          field("c", new ArrowType.Int(16, true)),
-          field("d", new ArrowType.Utf8())),
-      field("e", new ArrowType.List(), field(null, new ArrowType.Date())),
-      field("f", new ArrowType.FloatingPoint(Precision.SINGLE)),
-      field("g", new ArrowType.Timestamp(TimeUnit.MILLISECOND)),
-      field("h", new ArrowType.Interval(IntervalUnit.DAY_TIME))
+      field("b", new ArrowType.Struct(),
+      field("c", new ArrowType.Int(16, true)),
+      field("d", new ArrowType.Utf8())),
+      field("e", new ArrowType.List(), field(null, new ArrowType.Date(DateUnit.DAY))),
+      field("f", new ArrowType.FixedSizeList(1), field(null, new ArrowType.Date(DateUnit.DAY))),
+      field("g", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
+      field("h", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC")),
+      field("i", new ArrowType.Interval(IntervalUnit.DAY_TIME))
       ));
   private final MessageType complexParquetSchema = Types.buildMessage()
       .addField(Types.optional(INT32).as(INT_8).named("a"))
@@ -97,37 +98,41 @@ public class TestSchemaConverter {
       .addField(Types.optionalList().
           setElementType(Types.optional(INT32).as(DATE).named("element"))
           .named("e"))
-      .addField(Types.optional(FLOAT).named("f"))
-      .addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("g"))
-      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("h"))
+      .addField(Types.optionalList().
+          setElementType(Types.optional(INT32).as(DATE).named("element"))
+          .named("f"))
+      .addField(Types.optional(FLOAT).named("g"))
+      .addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("h"))
+      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("i"))
       .named("root");
 
   private final Schema allTypesArrowSchema = new Schema(asList(
       field("a", false, new ArrowType.Null()),
-      field("b", new ArrowType.Struct_(), field("ba", new ArrowType.Null())),
+      field("b", new ArrowType.Struct(), field("ba", new ArrowType.Null())),
       field("c", new ArrowType.List(), field("ca", new ArrowType.Null())),
-      field("d", new ArrowType.Union(UnionMode.Sparse, new int[] {1, 2, 3}), field("da", new ArrowType.Null())),
-      field("e", new ArrowType.Int(8, true)),
-      field("e1", new ArrowType.Int(16, true)),
-      field("e2", new ArrowType.Int(32, true)),
-      field("e3", new ArrowType.Int(64, true)),
-      field("e4", new ArrowType.Int(8, false)),
-      field("e5", new ArrowType.Int(16, false)),
-      field("e6", new ArrowType.Int(32, false)),
-      field("e7", new ArrowType.Int(64, false)),
-      field("f", new ArrowType.FloatingPoint(Precision.SINGLE)),
-      field("f1", new ArrowType.FloatingPoint(Precision.DOUBLE)),
-      field("g", new ArrowType.Utf8()),
-      field("h", new ArrowType.Binary()),
-      field("i", new ArrowType.Bool()),
-      field("j", new ArrowType.Decimal(5, 5)),
-      field("j1", new ArrowType.Decimal(15, 5)),
-      field("j2", new ArrowType.Decimal(25, 5)),
-      field("k", new ArrowType.Date()),
-      field("l", new ArrowType.Time()),
-      field("m", new ArrowType.Timestamp(TimeUnit.MILLISECOND)),
-      field("n", new ArrowType.Interval(IntervalUnit.DAY_TIME)),
-      field("n1", new ArrowType.Interval(IntervalUnit.YEAR_MONTH))
+      field("d", new ArrowType.FixedSizeList(1), field("da", new ArrowType.Null())),
+      field("e", new ArrowType.Union(UnionMode.Sparse, new int[] {1, 2, 3}), field("ea", new ArrowType.Null())),
+      field("f", new ArrowType.Int(8, true)),
+      field("f1", new ArrowType.Int(16, true)),
+      field("f2", new ArrowType.Int(32, true)),
+      field("f3", new ArrowType.Int(64, true)),
+      field("f4", new ArrowType.Int(8, false)),
+      field("f5", new ArrowType.Int(16, false)),
+      field("f6", new ArrowType.Int(32, false)),
+      field("f7", new ArrowType.Int(64, false)),
+      field("g", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
+      field("g1", new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE)),
+      field("h", new ArrowType.Utf8()),
+      field("i", new ArrowType.Binary()),
+      field("j", new ArrowType.Bool()),
+      field("k", new ArrowType.Decimal(5, 5)),
+      field("k1", new ArrowType.Decimal(15, 5)),
+      field("k2", new ArrowType.Decimal(25, 5)),
+      field("l", new ArrowType.Date(DateUnit.DAY)),
+      field("m", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.SECOND, 32)),
+      field("n", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC")),
+      field("o", new ArrowType.Interval(IntervalUnit.DAY_TIME)),
+      field("o1", new ArrowType.Interval(IntervalUnit.YEAR_MONTH))
       ));
   private final MessageType allTypesParquetSchema = Types.buildMessage()
       .addField(Types.optional(BINARY).named("a"))
@@ -137,34 +142,37 @@ public class TestSchemaConverter {
       .addField(Types.optionalList().
           setElementType(Types.optional(BINARY).named("element"))
           .named("c"))
-      .addField(Types.optionalGroup()
-          .addField(Types.optional(BINARY).named("da"))
+      .addField(Types.optionalList().
+          setElementType(Types.optional(BINARY).named("element"))
           .named("d"))
-      .addField(Types.optional(INT32).as(INT_8).named("e"))
-      .addField(Types.optional(INT32).as(INT_16).named("e1"))
-      .addField(Types.optional(INT32).as(INT_32).named("e2"))
-      .addField(Types.optional(INT64).as(INT_64).named("e3"))
-      .addField(Types.optional(INT32).as(UINT_8).named("e4"))
-      .addField(Types.optional(INT32).as(UINT_16).named("e5"))
-      .addField(Types.optional(INT32).as(UINT_32).named("e6"))
-      .addField(Types.optional(INT64).as(UINT_64).named("e7"))
-      .addField(Types.optional(FLOAT).named("f"))
-      .addField(Types.optional(DOUBLE).named("f1"))
-      .addField(Types.optional(BINARY).as(UTF8).named("g"))
-      .addField(Types.optional(BINARY).named("h"))
-      .addField(Types.optional(BOOLEAN).named("i"))
-      .addField(Types.optional(INT32).as(DECIMAL).precision(5).scale(5).named("j"))
-      .addField(Types.optional(INT64).as(DECIMAL).precision(15).scale(5).named("j1"))
-      .addField(Types.optional(BINARY).as(DECIMAL).precision(25).scale(5).named("j2"))
-      .addField(Types.optional(INT32).as(DATE).named("k"))
-      .addField(Types.optional(INT32).as(TIME_MILLIS).named("l"))
-      .addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("m"))
-      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("n"))
-      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("n1"))
+      .addField(Types.optionalGroup()
+          .addField(Types.optional(BINARY).named("ea"))
+          .named("e"))
+      .addField(Types.optional(INT32).as(INT_8).named("f"))
+      .addField(Types.optional(INT32).as(INT_16).named("f1"))
+      .addField(Types.optional(INT32).as(INT_32).named("f2"))
+      .addField(Types.optional(INT64).as(INT_64).named("f3"))
+      .addField(Types.optional(INT32).as(UINT_8).named("f4"))
+      .addField(Types.optional(INT32).as(UINT_16).named("f5"))
+      .addField(Types.optional(INT32).as(UINT_32).named("f6"))
+      .addField(Types.optional(INT64).as(UINT_64).named("f7"))
+      .addField(Types.optional(FLOAT).named("g"))
+      .addField(Types.optional(DOUBLE).named("g1"))
+      .addField(Types.optional(BINARY).as(UTF8).named("h"))
+      .addField(Types.optional(BINARY).named("i"))
+      .addField(Types.optional(BOOLEAN).named("j"))
+      .addField(Types.optional(INT32).as(DECIMAL).precision(5).scale(5).named("k"))
+      .addField(Types.optional(INT64).as(DECIMAL).precision(15).scale(5).named("k1"))
+      .addField(Types.optional(BINARY).as(DECIMAL).precision(25).scale(5).named("k2"))
+      .addField(Types.optional(INT32).as(DATE).named("l"))
+      .addField(Types.optional(INT32).as(TIME_MILLIS).named("m"))
+      .addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("n"))
+      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("o"))
+      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("o1"))
       .named("root");
 
   private final Schema supportedTypesArrowSchema = new Schema(asList(
-      field("b", new ArrowType.Struct_(), field("ba", new ArrowType.Binary())),
+      field("b", new ArrowType.Struct(), field("ba", new ArrowType.Binary())),
       field("c", new ArrowType.List(), field(null, new ArrowType.Binary())),
       field("e", new ArrowType.Int(8, true)),
       field("e1", new ArrowType.Int(16, true)),
@@ -174,17 +182,17 @@ public class TestSchemaConverter {
       field("e5", new ArrowType.Int(16, false)),
       field("e6", new ArrowType.Int(32, false)),
       field("e7", new ArrowType.Int(64, false)),
-      field("f", new ArrowType.FloatingPoint(Precision.SINGLE)),
-      field("f1", new ArrowType.FloatingPoint(Precision.DOUBLE)),
+      field("f", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
+      field("f1", new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE)),
       field("g", new ArrowType.Utf8()),
       field("h", new ArrowType.Binary()),
       field("i", new ArrowType.Bool()),
       field("j", new ArrowType.Decimal(5, 5)),
       field("j1", new ArrowType.Decimal(15, 5)),
       field("j2", new ArrowType.Decimal(25, 5)),
-      field("k", new ArrowType.Date()),
-      field("l", new ArrowType.Time()),
-      field("m", new ArrowType.Timestamp(TimeUnit.MILLISECOND))
+      field("k", new ArrowType.Date(DateUnit.DAY)),
+      field("l", new ArrowType.Date(DateUnit.MILLISECOND)),
+      field("m", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC"))
       ));
 
   private final MessageType supportedTypesParquetSchema = Types.buildMessage()
@@ -217,14 +225,14 @@ public class TestSchemaConverter {
 
   private final Schema paperArrowSchema = new Schema(asList(
       field("DocId", false, new ArrowType.Int(64, true)),
-      field("Links", new ArrowType.Struct_(),
+      field("Links", new ArrowType.Struct(),
           field("Backward", false, new ArrowType.List(), field(null, false, new ArrowType.Int(64, true))),
           field("Forward", false, new ArrowType.List(), field(null, false, new ArrowType.Int(64, true)))
       ),
       field("Name", false, new ArrowType.List(),
-          field(null, false, new ArrowType.Struct_(),
+          field(null, false, new ArrowType.Struct(),
               field("Language", false, new ArrowType.List(),
-                  field(null, false, new ArrowType.Struct_(),
+                  field(null, false, new ArrowType.Struct(),
                       field("Code", false, new ArrowType.Binary()),
                       field("Country", new ArrowType.Binary())
                   )
@@ -286,7 +294,7 @@ public class TestSchemaConverter {
   @Test
   public void testAllMap() throws IOException {
     SchemaMapping map = converter.map(allTypesArrowSchema, allTypesParquetSchema);
-    Assert.assertEquals("p, s<p>, l<p>, u<p>, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p", toSummaryString(map));
+    Assert.assertEquals("p, s<p>, l<p>, l<p>, u<p>, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p", toSummaryString(map));
   }
 
   private String toSummaryString(SchemaMapping map) {
