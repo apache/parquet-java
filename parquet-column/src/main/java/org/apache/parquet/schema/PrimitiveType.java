@@ -377,7 +377,6 @@ public final class PrimitiveType extends Type {
     abstract public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E;
 
     abstract PrimitiveComparator<?> comparator(OriginalType logicalType);
-
   }
 
   private final PrimitiveTypeName primitive;
@@ -731,5 +730,14 @@ public final class PrimitiveType extends Type {
    */
   public ColumnOrder columnOrder() {
     return columnOrder;
+  }
+
+  /**
+   * @return the {@link Type} specific stringifier for generating the proper string representation of the values.
+   */
+  @SuppressWarnings("unchecked")
+  public PrimitiveStringifier stringifier() {
+    OriginalType originalType = getOriginalType();
+    return originalType == null ? PrimitiveStringifier.DEFAULT_STRINGIFIER : originalType.stringifier(this);
   }
 }

@@ -88,8 +88,8 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  String toString(Double value) {
-    return String.format("%.5f", value);
+  String stringify(Double value) {
+    return stringifier.stringify(value);
   }
 
   @Override

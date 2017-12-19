@@ -57,6 +57,7 @@ import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.tools.util.MetadataUtils;
 import org.apache.parquet.tools.util.PrettyPrintWriter;
 import org.apache.parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
@@ -309,16 +310,29 @@ public class DumpCommand extends ArgsOnlyCommand {
 
             out.format("value %d: R:%d D:%d V:", offset+i, rlvl, dlvl);
             if (dlvl == dmax) {
-                switch (column.getType()) {
-                case BINARY:  out.format("%s", binaryToString(creader.getBinary())); break;
-                case BOOLEAN: out.format("%s", creader.getBoolean()); break;
-                case DOUBLE:  out.format("%s", creader.getDouble()); break;
-                case FLOAT:   out.format("%s", creader.getFloat()); break;
-                case INT32:   out.format("%s", creader.getInteger()); break;
-                case INT64:   out.format("%s", creader.getLong()); break;
-                case INT96:   out.format("%s", binaryToBigInteger(creader.getBinary())); break;
-                case FIXED_LEN_BYTE_ARRAY: out.format("%s", binaryToString(creader.getBinary())); break;
-                }
+              PrimitiveStringifier stringifier =  column.getPrimitiveType().stringifier();
+              switch (column.getType()) {
+                case FIXED_LEN_BYTE_ARRAY:
+                case INT96:
+                case BINARY:
+                  out.print(stringifier.stringify(creader.getBinary()));
+                  break;
+                case BOOLEAN:
+                  out.print(stringifier.stringify(creader.getBoolean()));
+                  break;
+                case DOUBLE:
+                  out.print(stringifier.stringify(creader.getDouble()));
+                  break;
+                case FLOAT:
+                  out.print(stringifier.stringify(creader.getFloat()));
+                  break;
+                case INT32:
+                  out.print(stringifier.stringify(creader.getInteger()));
+                  break;
+                case INT64:
+                  out.print(stringifier.stringify(creader.getLong()));
+                  break;
+              }
             } else {
                 out.format("<null>");
             }

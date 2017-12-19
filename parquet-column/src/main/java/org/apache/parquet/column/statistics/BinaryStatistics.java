@@ -94,9 +94,8 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  String toString(Binary value) {
-    // TODO: have separate toString for different logical types?
-    return value == null ? "null" : value.toStringUsingUTF8();
+  String stringify(Binary value) {
+    return stringifier.stringify(value);
   }
 
   @Override

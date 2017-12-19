@@ -19,11 +19,10 @@
 package org.apache.parquet.column.statistics;
 
 import java.util.Arrays;
-import java.util.Objects;
-
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
+import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
@@ -40,10 +39,12 @@ public abstract class Statistics<T extends Comparable<T>> {
   private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
   private long num_nulls;
+  final PrimitiveStringifier stringifier;
 
   Statistics(PrimitiveType type) {
     this.type = type;
     this.comparator = type.comparator();
+    this.stringifier = type.stringifier();
     hasNonNullValue = false;
     num_nulls = 0;
   }
@@ -287,19 +288,17 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Returns the string representation of min for debugging/logging purposes.
    */
   public String minAsString() {
-    return toString(genericGetMin());
+    return stringify(genericGetMin());
   }
 
   /**
    * Returns the string representation of max for debugging/logging purposes.
    */
   public String maxAsString() {
-    return toString(genericGetMax());
+    return stringify(genericGetMax());
   }
 
-  String toString(T value) {
-    return Objects.toString(value);
-  }
+  abstract String stringify(T value);
 
   /**
    * Abstract method to return whether the min and max values fit in the given
