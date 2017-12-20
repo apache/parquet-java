@@ -37,8 +37,8 @@ public class RandomValues {
       return (random.nextInt(10) == 0);
     }
 
-    public int randomInt() { return randomInt(Integer.MAX_VALUE - 1); }
-    public int randomInt(int maximum) {
+    public int randomInt() { return random.nextInt(); }
+    public int randomPositiveInt(int maximum) {
       // Maximum may be a random number (which may be negative).
       return random.nextInt(Math.abs(maximum) + 1);
     }
@@ -63,11 +63,11 @@ public class RandomValues {
     }
 
     public char randomLetter() {
-      return ALPHABET.charAt(randomInt() % ALPHABET.length());
+      return ALPHABET.charAt(randomPositiveInt(ALPHABET.length() - 1));
     }
 
     public String randomString(int maxLength) {
-      return randomFixedLengthString(randomInt(maxLength));
+      return randomFixedLengthString(randomPositiveInt(maxLength));
     }
 
     public String randomFixedLengthString(int length) {
@@ -122,7 +122,26 @@ public class RandomValues {
 
     @Override
     public Integer nextValue() {
-      return (minimum + randomInt(range));
+      return (minimum + randomPositiveInt(range));
+    }
+  }
+
+  public static class UIntGenerator extends IntGenerator {
+    private final int mask;
+
+    public UIntGenerator(long seed, byte minimum, byte maximum) {
+      super(seed, minimum, maximum);
+      mask = 0xFF;
+    }
+
+    public UIntGenerator(long seed, short minimum, short maximum) {
+      super(seed, minimum, maximum);
+      mask = 0xFFFF;
+    }
+
+    @Override
+    public Integer nextValue() {
+      return super.nextValue() & mask;
     }
   }
 
@@ -249,7 +268,7 @@ public class RandomValues {
 
     @Override
     public String nextValue() {
-      int stringLength = randomInt(15) + 1;
+      int stringLength = randomPositiveInt(15) + 1;
       return randomString(stringLength);
     }
 
@@ -268,7 +287,7 @@ public class RandomValues {
     @Override
     public Binary nextValue() {
       // use a random length, but ensure it is at least a few bytes
-      int length = 5 + randomInt(buffer.length - 5);
+      int length = 5 + randomPositiveInt(buffer.length - 5);
       for (int index = 0; index < length; index++) {
         buffer[index] = (byte) randomInt();
       }
