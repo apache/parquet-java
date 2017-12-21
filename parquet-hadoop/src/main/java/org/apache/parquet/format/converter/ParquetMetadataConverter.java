@@ -82,6 +82,7 @@ import org.slf4j.LoggerFactory;
 // TODO: Lets split it up: https://issues.apache.org/jira/browse/PARQUET-310
 public class ParquetMetadataConverter {
 
+  private static final TypeDefinedOrder TYPE_DEFINED_ORDER = new TypeDefinedOrder();
   public static final MetadataFilter NO_FILTER = new NoFilter();
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
@@ -150,7 +151,7 @@ public class ParquetMetadataConverter {
     // TypeDefinedOrder even if some types (e.g. INT96) have undefined column orders.
     for (int i = 0, n = schema.getPaths().size(); i < n; ++i) {
       ColumnOrder columnOrder = new ColumnOrder();
-      columnOrder.setTYPE_ORDER(new TypeDefinedOrder());
+      columnOrder.setTYPE_ORDER(TYPE_DEFINED_ORDER);
       columnOrders.add(columnOrder);
     }
     return columnOrders;
