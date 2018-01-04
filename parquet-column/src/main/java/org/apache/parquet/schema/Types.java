@@ -1030,12 +1030,18 @@ public class Types {
       if (keyType == null) {
         keyType = STRING_KEY;
       }
+
+      GroupBuilder<GroupType> builder = buildGroup(repetition).as(OriginalType.MAP);
+      if (id != null) {
+        builder.id(id.intValue());
+      }
+
       if (valueType != null) {
-        return buildGroup(repetition).as(OriginalType.MAP)
+        return builder
             .repeatedGroup().addFields(keyType, valueType).named("map")
             .named(name);
       } else {
-        return buildGroup(repetition).as(OriginalType.MAP)
+        return builder
             .repeatedGroup().addFields(keyType).named("map")
             .named(name);
       }
@@ -1170,7 +1176,13 @@ public class Types {
       Preconditions.checkState(originalType == null,
           "LIST is already the logical type and can't be changed");
       Preconditions.checkNotNull(elementType, "List element type");
-      return buildGroup(repetition).as(OriginalType.LIST)
+
+      GroupBuilder<GroupType> builder = buildGroup(repetition).as(OriginalType.LIST);
+      if (id != null) {
+        builder.id(id.intValue());
+      }
+
+      return builder
           .repeatedGroup().addFields(elementType).named("list")
           .named(name);
     }

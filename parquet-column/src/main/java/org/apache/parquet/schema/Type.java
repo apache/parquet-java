@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
+import java.io.Serializable;
 import java.util.List;
 
 import org.apache.parquet.io.InvalidRecordException;
@@ -43,6 +44,15 @@ abstract public class Type {
 
     public ID(int id) {
       this.id = id;
+    }
+
+    /**
+     * For bean serialization, used by Cascading 3.
+     * @deprecated use {@link #intValue()} instead.
+     */
+    @Deprecated
+    public int getId() {
+      return id;
     }
 
     public int intValue() {

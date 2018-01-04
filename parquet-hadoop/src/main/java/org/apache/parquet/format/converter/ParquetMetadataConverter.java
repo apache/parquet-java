@@ -162,12 +162,18 @@ public class ParquetMetadataConverter {
         if (primitiveType.getTypeLength() > 0) {
           element.setType_length(primitiveType.getTypeLength());
         }
+        if (primitiveType.getId() != null) {
+          element.setField_id(primitiveType.getId().intValue());
+        }
         result.add(element);
       }
 
       @Override
       public void visit(MessageType messageType) {
         SchemaElement element = new SchemaElement(messageType.getName());
+        if (messageType.getId() != null) {
+          element.setField_id(messageType.getId().intValue());
+        }
         visitChildren(result, messageType.asGroupType(), element);
       }
 
@@ -177,6 +183,9 @@ public class ParquetMetadataConverter {
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getOriginalType() != null) {
           element.setConverted_type(getConvertedType(groupType.getOriginalType()));
+        }
+        if (groupType.getId() != null) {
+          element.setField_id(groupType.getId().intValue());
         }
         visitChildren(result, groupType, element);
       }
@@ -881,6 +890,9 @@ public class ParquetMetadataConverter {
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
     Types.MessageTypeBuilder builder = Types.buildMessage();
+    if (root.isSetField_id()) {
+      builder.id(root.field_id);
+    }
     buildChildren(builder, iterator, root.getNum_children());
     return builder.named(root.name);
   }
