@@ -41,6 +41,10 @@ public final class MessageType extends GroupType {
     super(Repetition.REPEATED, name, fields);
   }
 
+  public MessageType(String name) {
+    super(Repetition.REPEATED, name);
+  }
+
  /**
   *
   * @param name the name of the type
@@ -146,3 +150,4 @@ public final class MessageType extends GroupType {
   }
 
 }
+

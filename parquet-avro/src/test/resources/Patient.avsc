@@ -1,0 +1,1693 @@
+{
+  "type" : "record",
+  "name" : "Patient",
+  "fields" : [ {
+    "name" : "__change_type",
+    "type" : [ "null", "string" ],
+    "doc" : "Indicates how the row is to be processed: Insert, Update, Delete, upsert/Autocorrect, eXterminate, Truncate",
+    "default" : "NULL"
+  }, {
+    "name" : "__change_time",
+    "type" : [ "null", "long" ],
+    "doc" : "Timestamp of the transaction. All rows of the transaction have the same value.",
+    "default" : "NULL"
+  }, {
+    "name" : "__source_rowid",
+    "type" : [ "null", "string" ],
+    "doc" : "Optional unqiue and static pointer to the row, e.g. Oracle rowid",
+    "default" : "NULL"
+  }, {
+    "name" : "__source_transaction",
+    "type" : [ "null", "string" ],
+    "doc" : "Optional source transaction information for auditing",
+    "default" : "NULL"
+  }, {
+    "name" : "id",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "id"
+  }, {
+    "name" : "meta",
+    "type" : [ "null", {
+      "type" : "record",
+      "name" : "Meta",
+      "namespace" : "Meta",
+      "fields" : [ {
+        "name" : "id",
+        "type" : [ "null", "string" ],
+        "default" : "NULL",
+        "__source_data_type" : "string"
+      }, {
+        "name" : "extension",
+        "type" : [ "null", {
+          "type" : "array",
+          "items" : {
+            "type" : "record",
+            "name" : "Extension",
+            "namespace" : "Meta.Extension",
+            "fields" : [ {
+              "name" : "id",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "string"
+            }, {
+              "name" : "extension",
+              "type" : [ "null", {
+                "type" : "array",
+                "items" : "Extension"
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Extension"
+            }, {
+              "name" : "url",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "uri"
+            }, {
+              "name" : "valueBase64Binary",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "base64Binary"
+            }, {
+              "name" : "valueBoolean",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "boolean"
+            }, {
+              "name" : "valueCode",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "code"
+            }, {
+              "name" : "valueDate",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "date"
+            }, {
+              "name" : "valueDateTime",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "dateTime"
+            }, {
+              "name" : "valueDecimal",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "decimal"
+            }, {
+              "name" : "valueId",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "id"
+            }, {
+              "name" : "valueInstant",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "instant"
+            }, {
+              "name" : "valueInteger",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "integer"
+            }, {
+              "name" : "valueMarkdown",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "markdown"
+            }, {
+              "name" : "valueOid",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "oid"
+            }, {
+              "name" : "valuePositiveInt",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "positiveInt"
+            }, {
+              "name" : "valueString",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "string"
+            }, {
+              "name" : "valueTime",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "time"
+            }, {
+              "name" : "valueUnsignedInt",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "unsignedInt"
+            }, {
+              "name" : "valueUri",
+              "type" : [ "null", "string" ],
+              "default" : "NULL",
+              "__source_data_type" : "uri"
+            }, {
+              "name" : "valueAddress",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Address",
+                "namespace" : "Meta.Extension.Address",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "use",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "type",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "text",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "line",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "string"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "city",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "district",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "state",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "postalCode",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "country",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "period",
+                  "type" : [ "null", {
+                    "type" : "record",
+                    "name" : "Period",
+                    "namespace" : "Meta.Extension.Address.Period",
+                    "fields" : [ {
+                      "name" : "id",
+                      "type" : [ "null", "string" ],
+                      "default" : "NULL",
+                      "__source_data_type" : "string"
+                    }, {
+                      "name" : "extension",
+                      "type" : [ "null", {
+                        "type" : "array",
+                        "items" : "Meta.Extension.Extension"
+                      } ],
+                      "default" : "NULL",
+                      "__source_data_type" : "Extension"
+                    }, {
+                      "name" : "start",
+                      "type" : [ "null", "string" ],
+                      "default" : "NULL",
+                      "__source_data_type" : "dateTime"
+                    }, {
+                      "name" : "end",
+                      "type" : [ "null", "string" ],
+                      "default" : "NULL",
+                      "__source_data_type" : "dateTime"
+                    } ]
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Period"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Address"
+            }, {
+              "name" : "valueAge",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Age",
+                "namespace" : "Meta.Extension.Age",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "value",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "comparator",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "unit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "system",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "uri"
+                }, {
+                  "name" : "code",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Age"
+            }, {
+              "name" : "valueAnnotation",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Annotation",
+                "namespace" : "Meta.Extension.Annotation",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "authorReference",
+                  "type" : [ "null", {
+                    "type" : "record",
+                    "name" : "Reference",
+                    "namespace" : "Meta.Extension.Annotation.Reference",
+                    "fields" : [ {
+                      "name" : "id",
+                      "type" : [ "null", "string" ],
+                      "default" : "NULL",
+                      "__source_data_type" : "string"
+                    }, {
+                      "name" : "extension",
+                      "type" : [ "null", {
+                        "type" : "array",
+                        "items" : "Meta.Extension.Extension"
+                      } ],
+                      "default" : "NULL",
+                      "__source_data_type" : "Extension"
+                    }, {
+                      "name" : "reference",
+                      "type" : [ "null", "string" ],
+                      "default" : "NULL",
+                      "__source_data_type" : "string"
+                    }, {
+                      "name" : "identifier",
+                      "type" : [ "null", {
+                        "type" : "record",
+                        "name" : "Identifier",
+                        "namespace" : "Meta.Extension.Annotation.Reference.Identifier",
+                        "fields" : [ {
+                          "name" : "id",
+                          "type" : [ "null", "string" ],
+                          "default" : "NULL",
+                          "__source_data_type" : "string"
+                        }, {
+                          "name" : "extension",
+                          "type" : [ "null", {
+                            "type" : "array",
+                            "items" : "Meta.Extension.Extension"
+                          } ],
+                          "default" : "NULL",
+                          "__source_data_type" : "Extension"
+                        }, {
+                          "name" : "use",
+                          "type" : [ "null", "string" ],
+                          "default" : "NULL",
+                          "__source_data_type" : "code"
+                        }, {
+                          "name" : "type",
+                          "type" : [ "null", {
+                            "type" : "record",
+                            "name" : "CodeableConcept",
+                            "namespace" : "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept",
+                            "fields" : [ {
+                              "name" : "id",
+                              "type" : [ "null", "string" ],
+                              "default" : "NULL",
+                              "__source_data_type" : "string"
+                            }, {
+                              "name" : "extension",
+                              "type" : [ "null", {
+                                "type" : "array",
+                                "items" : "Meta.Extension.Extension"
+                              } ],
+                              "default" : "NULL",
+                              "__source_data_type" : "Extension"
+                            }, {
+                              "name" : "coding",
+                              "type" : [ "null", {
+                                "type" : "array",
+                                "items" : {
+                                  "type" : "record",
+                                  "name" : "Coding",
+                                  "namespace" : "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.Coding",
+                                  "fields" : [ {
+                                    "name" : "id",
+                                    "type" : [ "null", "string" ],
+                                    "default" : "NULL",
+                                    "__source_data_type" : "string"
+                                  }, {
+                                    "name" : "extension",
+                                    "type" : [ "null", {
+                                      "type" : "array",
+                                      "items" : "Meta.Extension.Extension"
+                                    } ],
+                                    "default" : "NULL",
+                                    "__source_data_type" : "Extension"
+                                  }, {
+                                    "name" : "system",
+                                    "type" : [ "null", "string" ],
+                                    "default" : "NULL",
+                                    "__source_data_type" : "uri"
+                                  }, {
+                                    "name" : "version",
+                                    "type" : [ "null", "string" ],
+                                    "default" : "NULL",
+                                    "__source_data_type" : "string"
+                                  }, {
+                                    "name" : "code",
+                                    "type" : [ "null", "string" ],
+                                    "default" : "NULL",
+                                    "__source_data_type" : "code"
+                                  }, {
+                                    "name" : "display",
+                                    "type" : [ "null", "string" ],
+                                    "default" : "NULL",
+                                    "__source_data_type" : "string"
+                                  }, {
+                                    "name" : "userSelected",
+                                    "type" : [ "null", "string" ],
+                                    "default" : "NULL",
+                                    "__source_data_type" : "boolean"
+                                  } ]
+                                }
+                              } ],
+                              "default" : "NULL",
+                              "__source_data_type" : "Coding"
+                            }, {
+                              "name" : "text",
+                              "type" : [ "null", "string" ],
+                              "default" : "NULL",
+                              "__source_data_type" : "string"
+                            } ]
+                          } ],
+                          "default" : "NULL",
+                          "__source_data_type" : "CodeableConcept"
+                        }, {
+                          "name" : "system",
+                          "type" : [ "null", "string" ],
+                          "default" : "NULL",
+                          "__source_data_type" : "uri"
+                        }, {
+                          "name" : "value",
+                          "type" : [ "null", "string" ],
+                          "default" : "NULL",
+                          "__source_data_type" : "string"
+                        }, {
+                          "name" : "period",
+                          "type" : [ "null", "Meta.Extension.Address.Period.Period" ],
+                          "default" : "NULL",
+                          "__source_data_type" : "Period"
+                        }, {
+                          "name" : "assigner",
+                          "type" : [ "null", "Meta.Extension.Annotation.Reference.Reference" ],
+                          "default" : "NULL",
+                          "__source_data_type" : "Reference"
+                        } ]
+                      } ],
+                      "default" : "NULL",
+                      "__source_data_type" : "Identifier"
+                    }, {
+                      "name" : "display",
+                      "type" : [ "null", "string" ],
+                      "default" : "NULL",
+                      "__source_data_type" : "string"
+                    } ]
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Reference"
+                }, {
+                  "name" : "authorString",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "time",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "dateTime"
+                }, {
+                  "name" : "text",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Annotation"
+            }, {
+              "name" : "valueAttachment",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Attachment",
+                "namespace" : "Meta.Extension.Attachment",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "contentType",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "language",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "data",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "base64Binary"
+                }, {
+                  "name" : "url",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "uri"
+                }, {
+                  "name" : "size",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "unsignedInt"
+                }, {
+                  "name" : "hash",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "base64Binary"
+                }, {
+                  "name" : "title",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "creation",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "dateTime"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Attachment"
+            }, {
+              "name" : "valueCodeableConcept",
+              "type" : [ "null", "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.CodeableConcept" ],
+              "default" : "NULL",
+              "__source_data_type" : "CodeableConcept"
+            }, {
+              "name" : "valueCoding",
+              "type" : [ "null", "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.Coding.Coding" ],
+              "default" : "NULL",
+              "__source_data_type" : "Coding"
+            }, {
+              "name" : "valueContactPoint",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "ContactPoint",
+                "namespace" : "Meta.Extension.ContactPoint",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "system",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "value",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "use",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "rank",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "positiveInt"
+                }, {
+                  "name" : "period",
+                  "type" : [ "null", "Meta.Extension.Address.Period.Period" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Period"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "ContactPoint"
+            }, {
+              "name" : "valueCount",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Count",
+                "namespace" : "Meta.Extension.Count",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "value",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "comparator",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "unit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "system",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "uri"
+                }, {
+                  "name" : "code",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Count"
+            }, {
+              "name" : "valueDistance",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Distance",
+                "namespace" : "Meta.Extension.Distance",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "value",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "comparator",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "unit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "system",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "uri"
+                }, {
+                  "name" : "code",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Distance"
+            }, {
+              "name" : "valueDuration",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Duration",
+                "namespace" : "Meta.Extension.Duration",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "value",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "comparator",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "unit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "system",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "uri"
+                }, {
+                  "name" : "code",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Duration"
+            }, {
+              "name" : "valueHumanName",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "HumanName",
+                "namespace" : "Meta.Extension.HumanName",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "use",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "text",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "family",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "given",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "string"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "prefix",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "string"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "suffix",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "string"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "period",
+                  "type" : [ "null", "Meta.Extension.Address.Period.Period" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Period"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "HumanName"
+            }, {
+              "name" : "valueIdentifier",
+              "type" : [ "null", "Meta.Extension.Annotation.Reference.Identifier.Identifier" ],
+              "default" : "NULL",
+              "__source_data_type" : "Identifier"
+            }, {
+              "name" : "valueMoney",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Money",
+                "namespace" : "Meta.Extension.Money",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "value",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "comparator",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "unit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "system",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "uri"
+                }, {
+                  "name" : "code",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Money"
+            }, {
+              "name" : "valuePeriod",
+              "type" : [ "null", "Meta.Extension.Address.Period.Period" ],
+              "default" : "NULL",
+              "__source_data_type" : "Period"
+            }, {
+              "name" : "valueQuantity",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Quantity",
+                "namespace" : "Meta.Extension.Quantity",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "value",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "comparator",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "unit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "system",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "uri"
+                }, {
+                  "name" : "code",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Quantity"
+            }, {
+              "name" : "valueRange",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Range",
+                "namespace" : "Meta.Extension.Range",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "low",
+                  "type" : [ "null", "Meta.Extension.Quantity.Quantity" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Quantity"
+                }, {
+                  "name" : "high",
+                  "type" : [ "null", "Meta.Extension.Quantity.Quantity" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Quantity"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Range"
+            }, {
+              "name" : "valueRatio",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Ratio",
+                "namespace" : "Meta.Extension.Ratio",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "numerator",
+                  "type" : [ "null", "Meta.Extension.Quantity.Quantity" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Quantity"
+                }, {
+                  "name" : "denominator",
+                  "type" : [ "null", "Meta.Extension.Quantity.Quantity" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Quantity"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Ratio"
+            }, {
+              "name" : "valueReference",
+              "type" : [ "null", "Meta.Extension.Annotation.Reference.Reference" ],
+              "default" : "NULL",
+              "__source_data_type" : "Reference"
+            }, {
+              "name" : "valueSampledData",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "SampledData",
+                "namespace" : "Meta.Extension.SampledData",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "origin",
+                  "type" : [ "null", "Meta.Extension.Quantity.Quantity" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Quantity"
+                }, {
+                  "name" : "period",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "factor",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "lowerLimit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "upperLimit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "dimensions",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "positiveInt"
+                }, {
+                  "name" : "data",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "SampledData"
+            }, {
+              "name" : "valueSignature",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Signature",
+                "namespace" : "Meta.Extension.Signature",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "type",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.Coding.Coding"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Coding"
+                }, {
+                  "name" : "when",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "instant"
+                }, {
+                  "name" : "whoUri",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "uri"
+                }, {
+                  "name" : "whoReference",
+                  "type" : [ "null", "Meta.Extension.Annotation.Reference.Reference" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Reference"
+                }, {
+                  "name" : "onBehalfOfUri",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "uri"
+                }, {
+                  "name" : "onBehalfOfReference",
+                  "type" : [ "null", "Meta.Extension.Annotation.Reference.Reference" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Reference"
+                }, {
+                  "name" : "contentType",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "blob",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "base64Binary"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Signature"
+            }, {
+              "name" : "valueTiming",
+              "type" : [ "null", {
+                "type" : "record",
+                "name" : "Timing",
+                "namespace" : "Meta.Extension.Timing",
+                "fields" : [ {
+                  "name" : "id",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "string"
+                }, {
+                  "name" : "extension",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "Meta.Extension.Extension"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Extension"
+                }, {
+                  "name" : "event",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "string"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "dateTime"
+                }, {
+                  "name" : "repeat",
+                  "type" : [ "null", {
+                    "type" : "record",
+                    "name" : "Element",
+                    "namespace" : "Meta.Extension.Timing.Element",
+                    "fields" : [ {
+                      "name" : "id",
+                      "type" : [ "null", "string" ],
+                      "default" : "NULL",
+                      "__source_data_type" : "string"
+                    }, {
+                      "name" : "extension",
+                      "type" : [ "null", {
+                        "type" : "array",
+                        "items" : "Meta.Extension.Extension"
+                      } ],
+                      "default" : "NULL",
+                      "__source_data_type" : "Extension"
+                    } ]
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Element"
+                }, {
+                  "name" : "boundsDuration",
+                  "type" : [ "null", "Meta.Extension.Duration.Duration" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Duration"
+                }, {
+                  "name" : "boundsRange",
+                  "type" : [ "null", "Meta.Extension.Range.Range" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Range"
+                }, {
+                  "name" : "boundsPeriod",
+                  "type" : [ "null", "Meta.Extension.Address.Period.Period" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "Period"
+                }, {
+                  "name" : "count",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "integer"
+                }, {
+                  "name" : "countMax",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "integer"
+                }, {
+                  "name" : "duration",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "durationMax",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "durationUnit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "frequency",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "integer"
+                }, {
+                  "name" : "frequencyMax",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "integer"
+                }, {
+                  "name" : "period",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "periodMax",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "decimal"
+                }, {
+                  "name" : "periodUnit",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "dayOfWeek",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "string"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "timeOfDay",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "string"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "time"
+                }, {
+                  "name" : "when",
+                  "type" : [ "null", {
+                    "type" : "array",
+                    "items" : "string"
+                  } ],
+                  "default" : "NULL",
+                  "__source_data_type" : "code"
+                }, {
+                  "name" : "offset",
+                  "type" : [ "null", "string" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "unsignedInt"
+                }, {
+                  "name" : "code",
+                  "type" : [ "null", "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.CodeableConcept" ],
+                  "default" : "NULL",
+                  "__source_data_type" : "CodeableConcept"
+                } ]
+              } ],
+              "default" : "NULL",
+              "__source_data_type" : "Timing"
+            }, {
+              "name" : "valueMeta",
+              "type" : [ "null", "Meta.Meta" ],
+              "default" : "NULL",
+              "__source_data_type" : "Meta"
+            } ]
+          }
+        } ],
+        "default" : "NULL",
+        "__source_data_type" : "Extension"
+      }, {
+        "name" : "versionId",
+        "type" : [ "null", "string" ],
+        "default" : "NULL",
+        "__source_data_type" : "id"
+      }, {
+        "name" : "lastUpdated",
+        "type" : [ "null", "string" ],
+        "default" : "NULL",
+        "__source_data_type" : "instant"
+      }, {
+        "name" : "profile",
+        "type" : [ "null", {
+          "type" : "array",
+          "items" : "string"
+        } ],
+        "default" : "NULL",
+        "__source_data_type" : "uri"
+      }, {
+        "name" : "security",
+        "type" : [ "null", {
+          "type" : "array",
+          "items" : "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.Coding.Coding"
+        } ],
+        "default" : "NULL",
+        "__source_data_type" : "Coding"
+      }, {
+        "name" : "tag",
+        "type" : [ "null", {
+          "type" : "array",
+          "items" : "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.Coding.Coding"
+        } ],
+        "default" : "NULL",
+        "__source_data_type" : "Coding"
+      } ]
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Meta"
+  }, {
+    "name" : "implicitRules",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "uri"
+  }, {
+    "name" : "language",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "code"
+  }, {
+    "name" : "text",
+    "type" : [ "null", {
+      "type" : "record",
+      "name" : "Narrative",
+      "namespace" : "Narrative",
+      "fields" : [ {
+        "name" : "id",
+        "type" : [ "null", "string" ],
+        "default" : "NULL",
+        "__source_data_type" : "string"
+      }, {
+        "name" : "extension",
+        "type" : [ "null", {
+          "type" : "array",
+          "items" : "Meta.Extension.Extension"
+        } ],
+        "default" : "NULL",
+        "__source_data_type" : "Extension"
+      }, {
+        "name" : "status",
+        "type" : [ "null", "string" ],
+        "default" : "NULL",
+        "__source_data_type" : "code"
+      }, {
+        "name" : "div",
+        "type" : [ "null", "string" ],
+        "default" : "NULL",
+        "__source_data_type" : "xhtml"
+      } ]
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Narrative"
+  }, {
+    "name" : "extension",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : "Meta.Extension.Extension"
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Extension"
+  }, {
+    "name" : "modifierExtension",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : "Meta.Extension.Extension"
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Extension"
+  }, {
+    "name" : "identifier",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : "Meta.Extension.Annotation.Reference.Identifier.Identifier"
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Identifier"
+  }, {
+    "name" : "active",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "boolean"
+  }, {
+    "name" : "name",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : "Meta.Extension.HumanName.HumanName"
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "HumanName"
+  }, {
+    "name" : "telecom",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : "Meta.Extension.ContactPoint.ContactPoint"
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "ContactPoint"
+  }, {
+    "name" : "gender",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "code"
+  }, {
+    "name" : "birthDate",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "date"
+  }, {
+    "name" : "deceasedBoolean",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "boolean"
+  }, {
+    "name" : "deceasedDateTime",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "dateTime"
+  }, {
+    "name" : "address",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : "Meta.Extension.Address.Address"
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Address"
+  }, {
+    "name" : "maritalStatus",
+    "type" : [ "null", "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.CodeableConcept" ],
+    "default" : "NULL",
+    "__source_data_type" : "CodeableConcept"
+  }, {
+    "name" : "multipleBirthBoolean",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "boolean"
+  }, {
+    "name" : "multipleBirthInteger",
+    "type" : [ "null", "string" ],
+    "default" : "NULL",
+    "__source_data_type" : "integer"
+  }, {
+    "name" : "photo",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : "Meta.Extension.Attachment.Attachment"
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Attachment"
+  }, {
+    "name" : "contact",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : {
+        "type" : "record",
+        "name" : "contact",
+        "namespace" : "Patient",
+        "fields" : [ {
+          "name" : "id",
+          "type" : [ "null", "string" ],
+          "default" : "NULL",
+          "__source_data_type" : "string"
+        }, {
+          "name" : "extension",
+          "type" : [ "null", {
+            "type" : "array",
+            "items" : "Meta.Extension.Extension"
+          } ],
+          "default" : "NULL",
+          "__source_data_type" : "Extension"
+        }, {
+          "name" : "modifierExtension",
+          "type" : [ "null", {
+            "type" : "array",
+            "items" : "Meta.Extension.Extension"
+          } ],
+          "default" : "NULL",
+          "__source_data_type" : "Extension"
+        }, {
+          "name" : "relationship",
+          "type" : [ "null", {
+            "type" : "array",
+            "items" : "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.CodeableConcept"
+          } ],
+          "default" : "NULL",
+          "__source_data_type" : "CodeableConcept"
+        }, {
+          "name" : "name",
+          "type" : [ "null", "Meta.Extension.HumanName.HumanName" ],
+          "default" : "NULL",
+          "__source_data_type" : "HumanName"
+        }, {
+          "name" : "telecom",
+          "type" : [ "null", {
+            "type" : "array",
+            "items" : "Meta.Extension.ContactPoint.ContactPoint"
+          } ],
+          "default" : "NULL",
+          "__source_data_type" : "ContactPoint"
+        }, {
+          "name" : "address",
+          "type" : [ "null", "Meta.Extension.Address.Address" ],
+          "default" : "NULL",
+          "__source_data_type" : "Address"
+        }, {
+          "name" : "gender",
+          "type" : [ "null", "string" ],
+          "default" : "NULL",
+          "__source_data_type" : "code"
+        }, {
+          "name" : "organization",
+          "type" : [ "null", "Meta.Extension.Annotation.Reference.Reference" ],
+          "default" : "NULL",
+          "__source_data_type" : "Reference"
+        }, {
+          "name" : "period",
+          "type" : [ "null", "Meta.Extension.Address.Period.Period" ],
+          "default" : "NULL",
+          "__source_data_type" : "Period"
+        } ]
+      }
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Patient.contact"
+  }, {
+    "name" : "animal",
+    "type" : [ "null", {
+      "type" : "record",
+      "name" : "animal",
+      "namespace" : "Patient",
+      "fields" : [ {
+        "name" : "id",
+        "type" : [ "null", "string" ],
+        "default" : "NULL",
+        "__source_data_type" : "string"
+      }, {
+        "name" : "extension",
+        "type" : [ "null", {
+          "type" : "array",
+          "items" : "Meta.Extension.Extension"
+        } ],
+        "default" : "NULL",
+        "__source_data_type" : "Extension"
+      }, {
+        "name" : "modifierExtension",
+        "type" : [ "null", {
+          "type" : "array",
+          "items" : "Meta.Extension.Extension"
+        } ],
+        "default" : "NULL",
+        "__source_data_type" : "Extension"
+      }, {
+        "name" : "species",
+        "type" : [ "null", "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.CodeableConcept" ],
+        "default" : "NULL",
+        "__source_data_type" : "CodeableConcept"
+      }, {
+        "name" : "breed",
+        "type" : [ "null", "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.CodeableConcept" ],
+        "default" : "NULL",
+        "__source_data_type" : "CodeableConcept"
+      }, {
+        "name" : "genderStatus",
+        "type" : [ "null", "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.CodeableConcept" ],
+        "default" : "NULL",
+        "__source_data_type" : "CodeableConcept"
+      } ]
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Patient.animal"
+  }, {
+    "name" : "communication",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : {
+        "type" : "record",
+        "name" : "communication",
+        "namespace" : "Patient",
+        "fields" : [ {
+          "name" : "id",
+          "type" : [ "null", "string" ],
+          "default" : "NULL",
+          "__source_data_type" : "string"
+        }, {
+          "name" : "extension",
+          "type" : [ "null", {
+            "type" : "array",
+            "items" : "Meta.Extension.Extension"
+          } ],
+          "default" : "NULL",
+          "__source_data_type" : "Extension"
+        }, {
+          "name" : "modifierExtension",
+          "type" : [ "null", {
+            "type" : "array",
+            "items" : "Meta.Extension.Extension"
+          } ],
+          "default" : "NULL",
+          "__source_data_type" : "Extension"
+        }, {
+          "name" : "language",
+          "type" : [ "null", "Meta.Extension.Annotation.Reference.Identifier.CodeableConcept.CodeableConcept" ],
+          "default" : "NULL",
+          "__source_data_type" : "CodeableConcept"
+        }, {
+          "name" : "preferred",
+          "type" : [ "null", "string" ],
+          "default" : "NULL",
+          "__source_data_type" : "boolean"
+        } ]
+      }
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Patient.communication"
+  }, {
+    "name" : "generalPractitioner",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : "Meta.Extension.Annotation.Reference.Reference"
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Reference"
+  }, {
+    "name" : "managingOrganization",
+    "type" : [ "null", "Meta.Extension.Annotation.Reference.Reference" ],
+    "default" : "NULL",
+    "__source_data_type" : "Reference"
+  }, {
+    "name" : "link",
+    "type" : [ "null", {
+      "type" : "array",
+      "items" : {
+        "type" : "record",
+        "name" : "link",
+        "namespace" : "Patient",
+        "fields" : [ {
+          "name" : "id",
+          "type" : [ "null", "string" ],
+          "default" : "NULL",
+          "__source_data_type" : "string"
+        }, {
+          "name" : "extension",
+          "type" : [ "null", {
+            "type" : "array",
+            "items" : "Meta.Extension.Extension"
+          } ],
+          "default" : "NULL",
+          "__source_data_type" : "Extension"
+        }, {
+          "name" : "modifierExtension",
+          "type" : [ "null", {
+            "type" : "array",
+            "items" : "Meta.Extension.Extension"
+          } ],
+          "default" : "NULL",
+          "__source_data_type" : "Extension"
+        }, {
+          "name" : "other",
+          "type" : [ "null", "Meta.Extension.Annotation.Reference.Reference" ],
+          "default" : "NULL",
+          "__source_data_type" : "Reference"
+        }, {
+          "name" : "type",
+          "type" : [ "null", "string" ],
+          "default" : "NULL",
+          "__source_data_type" : "code"
+        } ]
+      }
+    } ],
+    "default" : "NULL",
+    "__source_data_type" : "Patient.link"
+  } ],
+  "__SchemaID" : "15"
+}
