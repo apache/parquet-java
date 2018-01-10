@@ -24,6 +24,7 @@ import java.util.concurrent.Callable;
 import org.junit.Assert;
 import org.junit.Test;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type.Repetition;
 
 import static org.apache.parquet.schema.OriginalType.*;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
@@ -1348,6 +1349,52 @@ public class TestTypeBuilders {
     Assert.assertEquals(expected, actual);
   }
 
+  @Test
+  public void testTypeConstructionWithUndefinedColumnOrder() {
+    PrimitiveTypeName[] types = new PrimitiveTypeName[] {
+        BOOLEAN, INT32, INT64, INT96, FLOAT, DOUBLE, BINARY, FIXED_LEN_BYTE_ARRAY
+    };
+    for (PrimitiveTypeName type : types) {
+      String name = type.toString() + "_";
+      int len = type == FIXED_LEN_BYTE_ARRAY ? 42 : 0;
+      PrimitiveType expected = new PrimitiveType(Repetition.OPTIONAL, type, len, name, null, null, null,
+          ColumnOrder.undefined());
+      PrimitiveType built = Types.optional(type).length(len).columnOrder(ColumnOrder.undefined()).named(name);
+      Assert.assertEquals(expected, built);
+    }
+  }
+
+  @Test
+  public void testTypeConstructionWithTypeDefinedColumnOrder() {
+    PrimitiveTypeName[] types = new PrimitiveTypeName[] {
+        BOOLEAN, INT32, INT64, FLOAT, DOUBLE, BINARY, FIXED_LEN_BYTE_ARRAY
+    };
+    for (PrimitiveTypeName type : types) {
+      String name = type.toString() + "_";
+      int len = type == FIXED_LEN_BYTE_ARRAY ? 42 : 0;
+      PrimitiveType expected = new PrimitiveType(Repetition.OPTIONAL, type, len, name, null, null, null,
+          ColumnOrder.typeDefined());
+      PrimitiveType built = Types.optional(type).length(len).columnOrder(ColumnOrder.typeDefined()).named(name);
+      Assert.assertEquals(expected, built);
+    }
+  }
+
+  @Test
+  public void testTypeConstructionWithUnsupportedColumnOrder() {
+    assertThrows(null, IllegalArgumentException.class, new Callable<PrimitiveType>() {
+      @Override
+      public PrimitiveType call() {
+        return Types.optional(INT96).columnOrder(ColumnOrder.typeDefined()).named("int96_unsupported");
+      }
+    });
+    assertThrows(null, IllegalArgumentException.class, new Callable<PrimitiveType>() {
+      @Override
+      public PrimitiveType call() {
+        return Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL)
+            .columnOrder(ColumnOrder.typeDefined()).named("interval_unsupported");
+      }
+    });
+  }
 
   /**
    * A convenience method to avoid a large number of @Test(expected=...) tests

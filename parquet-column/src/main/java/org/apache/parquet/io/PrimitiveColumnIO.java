@@ -52,10 +52,9 @@ public class PrimitiveColumnIO extends ColumnIO {
     super.setLevels(r, d, fieldPath, fieldIndexPath, repetition, path);
     PrimitiveType type = getType().asPrimitiveType();
     this.columnDescriptor = new ColumnDescriptor(
-        fieldPath, 
-        type.getPrimitiveTypeName(),
-        type.getTypeLength(),
-        getRepetitionLevel(), 
+        fieldPath,
+        type,
+        getRepetitionLevel(),
         getDefinitionLevel());
     this.path = path.toArray(new ColumnIO[path.size()]);
   }

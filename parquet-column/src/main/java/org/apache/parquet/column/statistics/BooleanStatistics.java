@@ -19,11 +19,37 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 
 public class BooleanStatistics extends Statistics<Boolean> {
 
+  // A fake type object to be used to generate the proper comparator
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BOOLEAN)
+      .named("fake_boolean_type");
+
   private boolean max;
   private boolean min;
+
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
+  public BooleanStatistics() {
+    this(DEFAULT_FAKE_TYPE);
+  }
+
+  BooleanStatistics(PrimitiveType type) {
+    super(type);
+  }
+
+  private BooleanStatistics(BooleanStatistics other) {
+    super(other.type());
+    if (other.hasNonNullValue()) {
+      initializeStats(other.min, other.max);
+    }
+    setNumNulls(other.getNumNulls());
+  }
 
   @Override
   public void updateStats(boolean value) {
@@ -66,19 +92,9 @@ public class BooleanStatistics extends Statistics<Boolean> {
     return !hasNonNullValue() || (2 < size);
   }
 
-  @Override
-  public String toString() {
-    if (this.hasNonNullValue())
-      return String.format("min: %b, max: %b, num_nulls: %d", min, max, this.getNumNulls());
-    else if(!this.isEmpty())
-      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
-    else  
-      return "no stats for this column";
-  }
-
   public void updateStats(boolean min_value, boolean max_value) {
-    if (min && !min_value) { min = min_value; }
-    if (!max && max_value) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) { min = min_value; }
+    if (comparator().compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(boolean min_value, boolean max_value) {
@@ -97,6 +113,14 @@ public class BooleanStatistics extends Statistics<Boolean> {
     return max;
   }
 
+  public int compareMinToValue(boolean value) {
+    return comparator().compare(min, value);
+  }
+
+  public int compareMaxToValue(boolean value) {
+    return comparator().compare(max, value);
+  }
+
   public boolean getMax() {
     return max;
   }
@@ -109,5 +133,10 @@ public class BooleanStatistics extends Statistics<Boolean> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public BooleanStatistics copy() {
+    return new BooleanStatistics(this);
   }
 }

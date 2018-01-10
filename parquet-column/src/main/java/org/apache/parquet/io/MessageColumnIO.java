@@ -109,7 +109,7 @@ public class MessageColumnIO extends GroupColumnIO {
       public RecordReader<T> visit(FilterPredicateCompat filterPredicateCompat) {
 
         FilterPredicate predicate = filterPredicateCompat.getFilterPredicate();
-        IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder();
+        IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder(leaves);
         IncrementallyUpdatedFilterPredicate streamingPredicate = builder.build(predicate);
         RecordMaterializer<T> filteringRecordMaterializer = new FilteringRecordMaterializer<T>(
             recordMaterializer,

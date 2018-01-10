@@ -26,7 +26,7 @@ import java.util.Random;
 public class RandomValues {
   private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
 
-  private static abstract class RandomValueGenerator<T extends Comparable<T>> {
+  static abstract class RandomValueGenerator<T extends Comparable<T>> {
     private final Random random;
 
     protected RandomValueGenerator(long seed) {
@@ -37,8 +37,8 @@ public class RandomValues {
       return (random.nextInt(10) == 0);
     }
 
-    public int randomInt() { return randomInt(Integer.MAX_VALUE - 1); }
-    public int randomInt(int maximum) {
+    public int randomInt() { return random.nextInt(); }
+    public int randomPositiveInt(int maximum) {
       // Maximum may be a random number (which may be negative).
       return random.nextInt(Math.abs(maximum) + 1);
     }
@@ -63,11 +63,11 @@ public class RandomValues {
     }
 
     public char randomLetter() {
-      return ALPHABET.charAt(randomInt() % ALPHABET.length());
+      return ALPHABET.charAt(randomPositiveInt(ALPHABET.length() - 1));
     }
 
     public String randomString(int maxLength) {
-      return randomFixedLengthString(randomInt(maxLength));
+      return randomFixedLengthString(randomPositiveInt(maxLength));
     }
 
     public String randomFixedLengthString(int length) {
@@ -82,7 +82,7 @@ public class RandomValues {
     public abstract T nextValue();
   }
 
-  private static abstract class RandomBinaryBase<T extends Comparable<T>> extends RandomValueGenerator<T> {
+  static abstract class RandomBinaryBase<T extends Comparable<T>> extends RandomValueGenerator<T> {
     protected final int bufferLength;
     protected final byte[] buffer;
 
@@ -103,18 +103,56 @@ public class RandomValues {
   }
 
   public static class IntGenerator extends RandomValueGenerator<Integer> {
-    private final RandomRange<Integer> randomRange = new RandomRange<Integer>(randomInt(), randomInt());
-    private final int minimum = randomRange.minimum();
-    private final int maximum = randomRange.maximum();
-    private final int range = (maximum - minimum);
+    private final int minimum;
+    private final int range;
 
     public IntGenerator(long seed) {
+      super(seed);
+      RandomRange<Integer> randomRange = new RandomRange<>(randomInt(), randomInt());
+      this.minimum = randomRange.minimum();
+      this.range = (randomRange.maximum() - this.minimum);
+    }
+
+    public IntGenerator(long seed, int minimum, int maximum) {
+      super(seed);
+      RandomRange<Integer> randomRange = new RandomRange<>(minimum, maximum);
+      this.minimum = randomRange.minimum();
+      this.range = randomRange.maximum() - this.minimum;
+    }
+
+    @Override
+    public Integer nextValue() {
+      return (minimum + randomPositiveInt(range));
+    }
+  }
+
+  public static class UIntGenerator extends IntGenerator {
+    private final int mask;
+
+    public UIntGenerator(long seed, byte minimum, byte maximum) {
+      super(seed, minimum, maximum);
+      mask = 0xFF;
+    }
+
+    public UIntGenerator(long seed, short minimum, short maximum) {
+      super(seed, minimum, maximum);
+      mask = 0xFFFF;
+    }
+
+    @Override
+    public Integer nextValue() {
+      return super.nextValue() & mask;
+    }
+  }
+
+  public static class UnconstrainedIntGenerator extends RandomValueGenerator<Integer> {
+    public UnconstrainedIntGenerator(long seed) {
       super(seed);
     }
 
     @Override
     public Integer nextValue() {
-      return (minimum + randomInt(range));
+      return randomInt();
     }
   }
 
@@ -131,6 +169,17 @@ public class RandomValues {
     @Override
     public Long nextValue() {
       return (minimum + randomLong(range));
+    }
+  }
+
+  public static class UnconstrainedLongGenerator extends RandomValueGenerator<Long> {
+    public UnconstrainedLongGenerator(long seed) {
+      super(seed);
+    }
+
+    @Override
+    public Long nextValue() {
+      return randomLong();
     }
   }
 
@@ -173,6 +222,17 @@ public class RandomValues {
     }
   }
 
+  public static class UnconstrainedFloatGenerator extends RandomValueGenerator<Float> {
+    public UnconstrainedFloatGenerator(long seed) {
+      super(seed);
+    }
+
+    @Override
+    public Float nextValue() {
+      return randomFloat();
+    }
+  }
+
   public static class DoubleGenerator extends RandomValueGenerator<Double> {
     private final RandomRange<Double> randomRange = new RandomRange<Double>(randomDouble(), randomDouble());
     private final double minimum = randomRange.minimum();
@@ -189,6 +249,17 @@ public class RandomValues {
     }
   }
 
+  public static class UnconstrainedDoubleGenerator extends RandomValueGenerator<Double> {
+    public UnconstrainedDoubleGenerator(long seed) {
+      super(seed);
+    }
+
+    @Override
+    public Double nextValue() {
+      return randomDouble();
+    }
+  }
+
   public static class StringGenerator extends RandomBinaryBase<String> {
     private static final int MAX_STRING_LENGTH = 16;
     public StringGenerator(long seed) {
@@ -197,7 +268,7 @@ public class RandomValues {
 
     @Override
     public String nextValue() {
-      int stringLength = randomInt(15) + 1;
+      int stringLength = randomPositiveInt(15) + 1;
       return randomString(stringLength);
     }
 
@@ -216,7 +287,7 @@ public class RandomValues {
     @Override
     public Binary nextValue() {
       // use a random length, but ensure it is at least a few bytes
-      int length = 5 + randomInt(buffer.length - 5);
+      int length = 5 + randomPositiveInt(buffer.length - 5);
       for (int index = 0; index < length; index++) {
         buffer[index] = (byte) randomInt();
       }

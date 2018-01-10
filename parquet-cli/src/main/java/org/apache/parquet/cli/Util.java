@@ -29,10 +29,6 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.BooleanStatistics;
-import org.apache.parquet.column.statistics.DoubleStatistics;
-import org.apache.parquet.column.statistics.FloatStatistics;
-import org.apache.parquet.column.statistics.IntStatistics;
-import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
@@ -40,7 +36,6 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 import java.util.Set;
 
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
@@ -96,34 +91,14 @@ public class Util {
       return "";
     }
     // TODO: use original types when showing decimal, timestamp, etc.
-    if (stats instanceof BooleanStatistics) {
-      return String.format("%s / %s",
-          ((BooleanStatistics) stats).getMin(),
-          ((BooleanStatistics) stats).getMax());
-    } else if (stats instanceof IntStatistics) {
-      return String.format("%d / %d",
-          ((IntStatistics) stats).getMin(),
-          ((IntStatistics) stats).getMax());
-    } else if (stats instanceof LongStatistics) {
-      return String.format("%d / %d",
-          ((LongStatistics) stats).getMin(),
-          ((LongStatistics) stats).getMax());
-    } else if (stats instanceof FloatStatistics) {
-      return String.format("%f / %f",
-          ((FloatStatistics) stats).getMin(),
-          ((FloatStatistics) stats).getMax());
-    } else if (stats instanceof DoubleStatistics) {
-      return String.format("%f / %f",
-          ((DoubleStatistics) stats).getMin(),
-          ((DoubleStatistics) stats).getMax());
-    } else if (stats instanceof BinaryStatistics) {
+    if (stats instanceof BinaryStatistics) {
       byte[] minBytes = stats.getMinBytes();
       byte[] maxBytes = stats.getMaxBytes();
       return String.format("%s / %s",
           printable(minBytes, annotation == OriginalType.UTF8, 30),
           printable(maxBytes, annotation == OriginalType.UTF8, 30));
     } else {
-      throw new RuntimeException("Unknown stats type: " + stats);
+      return String.format("%s / %s", stats.minAsString(), stats.maxAsString());
     }
   }
 
@@ -134,24 +109,6 @@ public class Util {
     // TODO: use original types when showing decimal, timestamp, etc.
     if (stats instanceof BooleanStatistics) {
       return String.format("nulls: %d/%d", stats.getNumNulls(), count);
-    } else if (stats instanceof IntStatistics) {
-      return String.format("min: %d max: %d nulls: %d/%d",
-          ((IntStatistics) stats).getMin(), ((IntStatistics) stats).getMax(),
-          stats.getNumNulls(), count);
-    } else if (stats instanceof LongStatistics) {
-      return String.format("min: %d max: %d nulls: %d/%d",
-          ((LongStatistics) stats).getMin(), ((LongStatistics) stats).getMax(),
-          stats.getNumNulls(), count);
-    } else if (stats instanceof FloatStatistics) {
-      return String.format("min: %f max: %f nulls: %d/%d",
-          ((FloatStatistics) stats).getMin(),
-          ((FloatStatistics) stats).getMax(),
-          stats.getNumNulls(), count);
-    } else if (stats instanceof DoubleStatistics) {
-      return String.format("min: %f max: %f nulls: %d/%d",
-          ((DoubleStatistics) stats).getMin(),
-          ((DoubleStatistics) stats).getMax(),
-          stats.getNumNulls(), count);
     } else if (stats instanceof BinaryStatistics) {
       byte[] minBytes = stats.getMinBytes();
       byte[] maxBytes = stats.getMaxBytes();
@@ -160,7 +117,8 @@ public class Util {
           printable(maxBytes, annotation == OriginalType.UTF8, 30),
           stats.getNumNulls(), count);
     } else {
-      throw new RuntimeException("Unknown stats type: " + stats);
+      return String.format("min: %s max: %s nulls: %d/%d",
+        stats.minAsString(), stats.maxAsString(), stats.getNumNulls(), count);
     }
   }
 
