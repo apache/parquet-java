@@ -38,6 +38,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
+import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
@@ -89,8 +91,16 @@ public class ParquetMetadataConverter {
     this(false);
   }
 
+  /**
+   * @deprecated will be removed in 2.0.0; use {@code ParquetMetadataConverter(ParquetReadOptions)}
+   */
+  @Deprecated
   public ParquetMetadataConverter(Configuration conf) {
     this(conf.getBoolean("parquet.strings.signed-min-max.enabled", false));
+  }
+
+  public ParquetMetadataConverter(ParquetReadOptions options) {
+    this(options.useSignedStringMinMax());
   }
 
   private ParquetMetadataConverter(boolean useSignedStringMinMax) {
@@ -152,12 +162,18 @@ public class ParquetMetadataConverter {
         if (primitiveType.getTypeLength() > 0) {
           element.setType_length(primitiveType.getTypeLength());
         }
+        if (primitiveType.getId() != null) {
+          element.setField_id(primitiveType.getId().intValue());
+        }
         result.add(element);
       }
 
       @Override
       public void visit(MessageType messageType) {
         SchemaElement element = new SchemaElement(messageType.getName());
+        if (messageType.getId() != null) {
+          element.setField_id(messageType.getId().intValue());
+        }
         visitChildren(result, messageType.asGroupType(), element);
       }
 
@@ -167,6 +183,9 @@ public class ParquetMetadataConverter {
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getOriginalType() != null) {
           element.setConverted_type(getConvertedType(groupType.getOriginalType()));
+        }
+        if (groupType.getId() != null) {
+          element.setField_id(groupType.getId().intValue());
         }
         visitChildren(result, groupType, element);
       }
@@ -193,7 +212,7 @@ public class ParquetMetadataConverter {
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
           Arrays.asList(columnMetaData.getPath().toArray()),
-          columnMetaData.getCodec().getParquetCompressionCodec(),
+          toFormatCodec(columnMetaData.getCodec()),
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
           columnMetaData.getTotalSize(),
@@ -244,6 +263,14 @@ public class ParquetMetadataConverter {
     }
 
     return cached;
+  }
+
+  private CompressionCodecName fromFormatCodec(CompressionCodec codec) {
+    return CompressionCodecName.valueOf(codec.toString());
+  }
+
+  private CompressionCodec toFormatCodec(CompressionCodecName codec) {
+    return CompressionCodec.valueOf(codec.toString());
   }
 
   public org.apache.parquet.column.Encoding getEncoding(Encoding encoding) {
@@ -340,13 +367,16 @@ public class ParquetMetadataConverter {
     org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type);
     // If there was no statistics written to the footer, create an empty Statistics object and return
 
+    boolean isSet = statistics != null && statistics.isSetMax() && statistics.isSetMin();
+    boolean maxEqualsMin = isSet ? Arrays.equals(statistics.getMin(), statistics.getMax()) : false;
+    boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
     // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
     // The sort order is checked to avoid returning min/max stats that are not
     // valid with the type's sort order. Currently, all stats are aggregated
     // using a signed ordering, which isn't valid for strings or unsigned ints.
     if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type) &&
-        SortOrder.SIGNED == typeSortOrder) {
-      if (statistics.isSetMax() && statistics.isSetMin()) {
+        ( sortOrdersMatch || maxEqualsMin)) {
+      if (isSet) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
       }
       stats.setNumNulls(statistics.null_count);
@@ -817,7 +847,7 @@ public class ParquetMetadataConverter {
           ColumnChunkMetaData column = ColumnChunkMetaData.get(
               path,
               messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
-              CompressionCodecName.fromParquet(metaData.codec),
+              fromFormatCodec(metaData.codec),
               convertEncodingStats(metaData.getEncoding_stats()),
               fromFormatEncodings(metaData.encodings),
               fromParquetStatistics(
@@ -860,6 +890,9 @@ public class ParquetMetadataConverter {
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
     Types.MessageTypeBuilder builder = Types.buildMessage();
+    if (root.isSetField_id()) {
+      builder.id(root.field_id);
+    }
     buildChildren(builder, iterator, root.getNum_children());
     return builder.named(root.name);
   }

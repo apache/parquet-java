@@ -35,6 +35,8 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
@@ -105,7 +107,7 @@ public class TestInputOutputFormatWithPadding {
 
   @Test
   public void testBasicBehaviorWithPadding() throws Exception {
-    ParquetFileWriter.BLOCK_FS_SCHEMES.add("file");
+    HadoopOutputFile.getBlockFileSystems().add("file");
 
     File inputFile = temp.newFile();
     FileOutputStream out = new FileOutputStream(inputFile);
@@ -186,7 +188,7 @@ public class TestInputOutputFormatWithPadding {
     Assert.assertEquals("Should match written file content",
         FILE_CONTENT, reconstructed);
 
-    ParquetFileWriter.BLOCK_FS_SCHEMES.remove("file");
+    HadoopOutputFile.getBlockFileSystems().remove("file");
   }
 
   private void waitForJob(Job job) throws Exception {

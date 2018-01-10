@@ -55,6 +55,12 @@
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
       <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -138,9 +144,9 @@
 
       <!--for scrooge and thrift -->
         <plugin>
-            <groupId>org.apache.thrift.tools</groupId>
-            <artifactId>maven-thrift-plugin</artifactId>
-            <version>${maven-thrift-plugin.version}</version>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>thrift-maven-plugin</artifactId>
+            <version>${thrift-maven-plugin.version}</version>
             <configuration>
                 <thriftExecutable>${thrift.executable}</thriftExecutable>
             </configuration>

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -47,7 +47,6 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
-import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -91,7 +90,7 @@ public class DumpCommand extends ArgsOnlyCommand {
 
         Option cl = OptionBuilder.withLongOpt("column")
                                  .withDescription("Dump only the given column, can be specified more than once")
-                                 .hasArgs()
+                                 .hasArg()
                                  .create('c');
 
         OPTIONS.addOption(md);
@@ -114,7 +113,12 @@ public class DumpCommand extends ArgsOnlyCommand {
         return USAGE;
     }
 
-    @Override
+  @Override
+  public String getCommandDescription() {
+    return "Prints the content and metadata of a Parquet file";
+  }
+
+  @Override
     public void execute(CommandLine options) throws Exception {
         super.execute(options);
 

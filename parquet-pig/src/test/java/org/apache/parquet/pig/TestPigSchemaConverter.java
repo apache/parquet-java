@@ -244,6 +244,34 @@ public class TestPigSchemaConverter {
   }
 
   @Test
+  public void testMapWithFixedWithoutOriginalType() throws Exception {
+    testFixedConversion(
+      "message spark_schema {\n" +
+      "  optional binary a;\n" +
+      "  optional group b (MAP) {\n" +
+      "    repeated group map {\n" +
+      "      required binary key;\n" +
+      "      optional group value {\n" +
+      "        optional fixed_len_byte_array(5) c;\n" +
+      "        optional fixed_len_byte_array(7) d;\n" +
+      "      }\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n",
+      "a:bytearray, b:[(c:bytearray, d:bytearray)]");
+  }
+
+  @Test
+  public void testInt96() throws Exception {
+    testFixedConversion(
+      "message spark_schema {\n" +
+        "  optional int96 datetime;\n" +
+        "}",
+      "datetime:bytearray"
+    );
+  }
+
+  @Test
   public void testAnnonymousField() throws Exception {
     testConversion(
         "a:chararray, int",

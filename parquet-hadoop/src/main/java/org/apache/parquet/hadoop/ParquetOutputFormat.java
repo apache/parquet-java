@@ -42,6 +42,7 @@ import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -406,8 +407,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
 
     WriteContext init = writeSupport.init(conf);
-    ParquetFileWriter w = new ParquetFileWriter(
-        conf, init.getSchema(), file, Mode.CREATE, blockSize, maxPaddingSize);
+    ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
+        init.getSchema(), Mode.CREATE, blockSize, maxPaddingSize);
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,

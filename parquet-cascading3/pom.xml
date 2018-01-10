@@ -172,9 +172,9 @@
         <artifactId>maven-jar-plugin</artifactId>
       </plugin>
       <plugin>
-        <groupId>org.apache.thrift.tools</groupId>
-        <artifactId>maven-thrift-plugin</artifactId>
-        <version>${maven-thrift-plugin.version}</version>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>thrift-maven-plugin</artifactId>
+        <version>${thrift-maven-plugin.version}</version>
         <configuration>
           <thriftExecutable>${thrift.executable}</thriftExecutable>
           <thriftSourceRoot>../parquet-cascading-common23/src/main/thrift</thriftSourceRoot>

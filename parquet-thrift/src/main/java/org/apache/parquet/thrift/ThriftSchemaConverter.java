@@ -35,6 +35,7 @@ import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.*;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 import org.apache.parquet.thrift.struct.ThriftTypeID;
+import org.apache.thrift.meta_data.FieldMetaData;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -162,7 +163,12 @@ public class ThriftSchemaConverter {
         type = new I64Type();
         break;
       case STRING:
-        type = new StringType();
+        StringType stringType = new StringType();
+        FieldMetaData fieldMetaData = field.getFieldMetaData();
+        if (fieldMetaData != null && fieldMetaData.valueMetaData.isBinary()) {
+          stringType.setBinary(true);
+        }
+        type = stringType;
         break;
       case STRUCT:
         type = toStructType(field.gettStructDescriptor());

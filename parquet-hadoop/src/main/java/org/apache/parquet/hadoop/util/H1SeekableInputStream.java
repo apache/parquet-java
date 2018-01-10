@@ -20,29 +20,20 @@
 package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.io.SeekableInputStream;
-import java.io.EOFException;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * SeekableInputStream implementation that implements read(ByteBuffer) for
  * Hadoop 1 FSDataInputStream.
  */
-class H1SeekableInputStream extends SeekableInputStream {
-
-  private final int COPY_BUFFER_SIZE = 8192;
-  private final byte[] temp = new byte[COPY_BUFFER_SIZE];
+class H1SeekableInputStream extends DelegatingSeekableInputStream {
 
   private final FSDataInputStream stream;
 
   public H1SeekableInputStream(FSDataInputStream stream) {
+    super(stream);
     this.stream = stream;
-  }
-
-  @Override
-  public void close() throws IOException {
-    stream.close();
   }
 
   @Override
@@ -56,16 +47,6 @@ class H1SeekableInputStream extends SeekableInputStream {
   }
 
   @Override
-  public int read() throws IOException {
-    return stream.read();
-  }
-
-  @Override
-  public int read(byte[] b, int off, int len) throws IOException {
-    return stream.read(b, off, len);
-  }
-
-  @Override
   public void readFully(byte[] bytes) throws IOException {
     stream.readFully(bytes, 0, bytes.length);
   }
@@ -75,80 +56,4 @@ class H1SeekableInputStream extends SeekableInputStream {
     stream.readFully(bytes);
   }
 
-  @Override
-  public int read(ByteBuffer buf) throws IOException {
-    if (buf.hasArray()) {
-      return readHeapBuffer(stream, buf);
-    } else {
-      return readDirectBuffer(stream, buf, temp);
-    }
-  }
-
-  @Override
-  public void readFully(ByteBuffer buf) throws IOException {
-    if (buf.hasArray()) {
-      readFullyHeapBuffer(stream, buf);
-    } else {
-      readFullyDirectBuffer(stream, buf, temp);
-    }
-  }
-
-  // Visible for testing
-  static int readHeapBuffer(FSDataInputStream f, ByteBuffer buf) throws IOException {
-    int bytesRead = f.read(buf.array(), buf.arrayOffset() + buf.position(), buf.remaining());
-    if (bytesRead < 0) {
-      // if this resulted in EOF, don't update position
-      return bytesRead;
-    } else {
-      buf.position(buf.position() + bytesRead);
-      return bytesRead;
-    }
-  }
-
-  // Visible for testing
-  static void readFullyHeapBuffer(FSDataInputStream f, ByteBuffer buf) throws IOException {
-    f.readFully(buf.array(), buf.arrayOffset() + buf.position(), buf.remaining());
-    buf.position(buf.limit());
-  }
-
-  // Visible for testing
-  static int readDirectBuffer(FSDataInputStream f, ByteBuffer buf, byte[] temp) throws IOException {
-    // copy all the bytes that return immediately, stopping at the first
-    // read that doesn't return a full buffer.
-    int nextReadLength = Math.min(buf.remaining(), temp.length);
-    int totalBytesRead = 0;
-    int bytesRead;
-
-    while ((bytesRead = f.read(temp, 0, nextReadLength)) == temp.length) {
-      buf.put(temp);
-      totalBytesRead += bytesRead;
-      nextReadLength = Math.min(buf.remaining(), temp.length);
-    }
-
-    if (bytesRead < 0) {
-      // return -1 if nothing was read
-      return totalBytesRead == 0 ? -1 : totalBytesRead;
-    } else {
-      // copy the last partial buffer
-      buf.put(temp, 0, bytesRead);
-      totalBytesRead += bytesRead;
-      return totalBytesRead;
-    }
-  }
-
-  // Visible for testing
-  static void readFullyDirectBuffer(FSDataInputStream f, ByteBuffer buf, byte[] temp) throws IOException {
-    int nextReadLength = Math.min(buf.remaining(), temp.length);
-    int bytesRead = 0;
-
-    while (nextReadLength > 0 && (bytesRead = f.read(temp, 0, nextReadLength)) >= 0) {
-      buf.put(temp, 0, bytesRead);
-      nextReadLength = Math.min(buf.remaining(), temp.length);
-    }
-
-    if (bytesRead < 0 && buf.remaining() > 0) {
-      throw new EOFException(
-          "Reached the end of stream. Still have: " + buf.remaining() + " bytes left");
-    }
-  }
 }

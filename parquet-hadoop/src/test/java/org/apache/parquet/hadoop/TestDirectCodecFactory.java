@@ -18,7 +18,9 @@
 package org.apache.parquet.hadoop;
 
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -29,6 +31,11 @@ import org.junit.Test;
 
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.BROTLI;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZO;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 
 public class TestDirectCodecFactory {
 
@@ -146,13 +153,16 @@ public class TestDirectCodecFactory {
   public void compressionCodecs() throws Exception {
     final int[] sizes = { 4 * 1024, 1 * 1024 * 1024 };
     final boolean[] comp = { true, false };
+    Set<CompressionCodecName> codecsToSkip = new HashSet<>();
+    codecsToSkip.add(LZO); // not distributed because it is GPL
+    codecsToSkip.add(LZ4); // not distributed in the default version of Hadoop
+    codecsToSkip.add(ZSTD); // not distributed in the default version of Hadoop
 
     for (final int size : sizes) {
       for (final boolean useOnHeapComp : comp) {
         for (final Decompression decomp : Decompression.values()) {
           for (final CompressionCodecName codec : CompressionCodecName.values()) {
-            if (codec == CompressionCodecName.LZO) {
-              // not installed as gpl.
+            if (codecsToSkip.contains(codec)) {
               continue;
             }
             test(size, codec, useOnHeapComp, decomp);

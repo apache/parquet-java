@@ -17,19 +17,119 @@
  *  under the License.
  */
 
-package org.apache.parquet.hadoop.util;
+package org.apache.parquet.io;
 
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.hadoop.TestUtils;
+import org.apache.parquet.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import java.io.EOFException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.Callable;
 
-import static org.apache.parquet.hadoop.util.MockInputStream.TEST_ARRAY;
+import static org.apache.parquet.io.MockInputStream.TEST_ARRAY;
 
-public class TestHadoop1ByteBufferReads {
+
+public class TestDelegatingSeekableInputStream {
+
+  @Test
+  public void testReadFully() throws Exception {
+    byte[] buffer = new byte[5];
+
+    MockInputStream stream = new MockInputStream();
+    DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
+
+    Assert.assertArrayEquals("Byte array contents should match",
+        Arrays.copyOfRange(TEST_ARRAY, 0, 5), buffer);
+    Assert.assertEquals("Stream position should reflect bytes read", 5, stream.getPos());
+  }
+
+  @Test
+  public void testReadFullySmallReads() throws Exception {
+    byte[] buffer = new byte[5];
+
+    MockInputStream stream = new MockInputStream(2, 3, 3);
+    DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
+
+    Assert.assertArrayEquals("Byte array contents should match",
+        Arrays.copyOfRange(TEST_ARRAY, 0, 5), buffer);
+    Assert.assertEquals("Stream position should reflect bytes read", 5, stream.getPos());
+  }
+
+  @Test
+  public void testReadFullyJustRight() throws Exception {
+    final byte[] buffer = new byte[10];
+
+    final MockInputStream stream = new MockInputStream(2, 3, 3);
+    DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
+
+    Assert.assertArrayEquals("Byte array contents should match", TEST_ARRAY, buffer);
+    Assert.assertEquals("Stream position should reflect bytes read", 10, stream.getPos());
+
+    TestUtils.assertThrows("Should throw EOFException if no more bytes left",
+        EOFException.class, new Callable<Void>() {
+          @Override
+          public Void call() throws IOException {
+            DelegatingSeekableInputStream.readFully(stream, buffer, 0, 1);
+            return null;
+          }
+        });
+  }
+
+  @Test
+  public void testReadFullyUnderflow() throws Exception {
+    final byte[] buffer = new byte[11];
+
+    final MockInputStream stream = new MockInputStream(2, 3, 3);
+
+    TestUtils.assertThrows("Should throw EOFException if no more bytes left",
+        EOFException.class, new Callable<Void>() {
+          @Override
+          public Void call() throws IOException {
+            DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
+            return null;
+          }
+        });
+
+    Assert.assertArrayEquals("Should have consumed bytes",
+        TEST_ARRAY, Arrays.copyOfRange(buffer, 0, 10));
+    Assert.assertEquals("Stream position should reflect bytes read", 10, stream.getPos());
+  }
+
+  @Test
+  public void testReadFullyStartAndLength() throws IOException {
+    byte[] buffer = new byte[10];
+
+    MockInputStream stream = new MockInputStream();
+    DelegatingSeekableInputStream.readFully(stream, buffer, 2, 5);
+
+    Assert.assertArrayEquals("Byte array contents should match",
+        Arrays.copyOfRange(TEST_ARRAY, 0, 5), Arrays.copyOfRange(buffer, 2, 7));
+    Assert.assertEquals("Stream position should reflect bytes read", 5, stream.getPos());
+  }
+
+  @Test
+  public void testReadFullyZeroByteRead() throws IOException {
+    byte[] buffer = new byte[0];
+
+    MockInputStream stream = new MockInputStream();
+    DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
+
+    Assert.assertEquals("Stream position should reflect bytes read", 0, stream.getPos());
+  }
+
+  @Test
+  public void testReadFullySmallReadsWithStartAndLength() throws IOException {
+    byte[] buffer = new byte[10];
+
+    MockInputStream stream = new MockInputStream(2, 2, 3);
+    DelegatingSeekableInputStream.readFully(stream, buffer, 2, 5);
+
+    Assert.assertArrayEquals("Byte array contents should match",
+        Arrays.copyOfRange(TEST_ARRAY, 0, 5), Arrays.copyOfRange(buffer, 2, 7));
+    Assert.assertEquals("Stream position should reflect bytes read", 5, stream.getPos());
+  }
 
   private static final ThreadLocal<byte[]> TEMP = new ThreadLocal<byte[]>() {
     @Override
@@ -42,14 +142,14 @@ public class TestHadoop1ByteBufferReads {
   public void testHeapRead() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocate(20);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockInputStream stream = new MockInputStream();
 
-    int len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    int len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(10, len);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(20, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(-1, len);
 
     readBuffer.flip();
@@ -61,14 +161,14 @@ public class TestHadoop1ByteBufferReads {
   public void testHeapSmallBuffer() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocate(5);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockInputStream stream = new MockInputStream();
 
-    int len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    int len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(5, len);
     Assert.assertEquals(5, readBuffer.position());
     Assert.assertEquals(5, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(0, len);
 
     readBuffer.flip();
@@ -80,24 +180,24 @@ public class TestHadoop1ByteBufferReads {
   public void testHeapSmallReads() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocate(10);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    int len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    int len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(2, len);
     Assert.assertEquals(2, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(3, len);
     Assert.assertEquals(5, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(3, len);
     Assert.assertEquals(8, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(2, len);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
@@ -113,19 +213,19 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.position(10);
     readBuffer.mark();
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(8));
+    MockInputStream stream = new MockInputStream(8);
 
-    int len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    int len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(8, len);
     Assert.assertEquals(18, readBuffer.position());
     Assert.assertEquals(20, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(2, len);
     Assert.assertEquals(20, readBuffer.position());
     Assert.assertEquals(20, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(-1, len);
 
     readBuffer.reset();
@@ -138,19 +238,19 @@ public class TestHadoop1ByteBufferReads {
     ByteBuffer readBuffer = ByteBuffer.allocate(20);
     readBuffer.limit(8);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(7));
+    MockInputStream stream = new MockInputStream(7);
 
-    int len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    int len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(7, len);
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(8, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(1, len);
     Assert.assertEquals(8, readBuffer.position());
     Assert.assertEquals(8, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(0, len);
 
     readBuffer.flip();
@@ -165,19 +265,19 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.limit(13);
     readBuffer.mark();
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(7));
+    MockInputStream stream = new MockInputStream(7);
 
-    int len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    int len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(7, len);
     Assert.assertEquals(12, readBuffer.position());
     Assert.assertEquals(13, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(1, len);
     Assert.assertEquals(13, readBuffer.position());
     Assert.assertEquals(13, readBuffer.limit());
 
-    len = H1SeekableInputStream.readHeapBuffer(hadoopStream, readBuffer);
+    len = DelegatingSeekableInputStream.readHeapBuffer(stream, readBuffer);
     Assert.assertEquals(0, len);
 
     readBuffer.reset();
@@ -189,14 +289,14 @@ public class TestHadoop1ByteBufferReads {
   public void testDirectRead() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocateDirect(20);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockInputStream stream = new MockInputStream();
 
-    int len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    int len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(10, len);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(20, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(-1, len);
 
     readBuffer.flip();
@@ -208,14 +308,14 @@ public class TestHadoop1ByteBufferReads {
   public void testDirectSmallBuffer() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocateDirect(5);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockInputStream stream = new MockInputStream();
 
-    int len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    int len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(5, len);
     Assert.assertEquals(5, readBuffer.position());
     Assert.assertEquals(5, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(0, len);
 
     readBuffer.flip();
@@ -227,24 +327,24 @@ public class TestHadoop1ByteBufferReads {
   public void testDirectSmallReads() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    int len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    int len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(2, len);
     Assert.assertEquals(2, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(3, len);
     Assert.assertEquals(5, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(3, len);
     Assert.assertEquals(8, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(2, len);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
@@ -260,19 +360,19 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.position(10);
     readBuffer.mark();
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(8));
+    MockInputStream stream = new MockInputStream(8);
 
-    int len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    int len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(8, len);
     Assert.assertEquals(18, readBuffer.position());
     Assert.assertEquals(20, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(2, len);
     Assert.assertEquals(20, readBuffer.position());
     Assert.assertEquals(20, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(-1, len);
 
     readBuffer.reset();
@@ -285,19 +385,19 @@ public class TestHadoop1ByteBufferReads {
     ByteBuffer readBuffer = ByteBuffer.allocate(20);
     readBuffer.limit(8);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(7));
+    MockInputStream stream = new MockInputStream(7);
 
-    int len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    int len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(7, len);
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(8, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(1, len);
     Assert.assertEquals(8, readBuffer.position());
     Assert.assertEquals(8, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(0, len);
 
     readBuffer.flip();
@@ -312,19 +412,19 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.limit(13);
     readBuffer.mark();
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(7));
+    MockInputStream stream = new MockInputStream(7);
 
-    int len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    int len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(7, len);
     Assert.assertEquals(12, readBuffer.position());
     Assert.assertEquals(13, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(1, len);
     Assert.assertEquals(13, readBuffer.position());
     Assert.assertEquals(13, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(0, len);
 
     readBuffer.reset();
@@ -338,29 +438,29 @@ public class TestHadoop1ByteBufferReads {
 
     ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    int len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, temp);
+    int len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(2, len);
     Assert.assertEquals(2, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, temp);
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(3, len);
     Assert.assertEquals(5, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, temp);
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(3, len);
     Assert.assertEquals(8, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, temp);
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(2, len);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, temp);
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(-1, len);
 
     readBuffer.flip();
@@ -377,19 +477,19 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.limit(13);
     readBuffer.mark();
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(7));
+    MockInputStream stream = new MockInputStream(7);
 
-    int len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, temp);
+    int len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(7, len);
     Assert.assertEquals(12, readBuffer.position());
     Assert.assertEquals(13, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, temp);
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(1, len);
     Assert.assertEquals(13, readBuffer.position());
     Assert.assertEquals(13, readBuffer.limit());
 
-    len = H1SeekableInputStream.readDirectBuffer(hadoopStream, readBuffer, temp);
+    len = DelegatingSeekableInputStream.readDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(0, len);
 
     readBuffer.reset();
@@ -401,13 +501,13 @@ public class TestHadoop1ByteBufferReads {
   public void testHeapReadFullySmallBuffer() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocate(8);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockInputStream stream = new MockInputStream();
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(8, readBuffer.position());
     Assert.assertEquals(8, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(8, readBuffer.position());
     Assert.assertEquals(8, readBuffer.limit());
 
@@ -420,13 +520,13 @@ public class TestHadoop1ByteBufferReads {
   public void testHeapReadFullyLargeBuffer() throws Exception {
     final ByteBuffer readBuffer = ByteBuffer.allocate(20);
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    final MockInputStream stream = new MockInputStream();
 
     TestUtils.assertThrows("Should throw EOFException",
         EOFException.class, new Callable() {
           @Override
           public Object call() throws Exception {
-            H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+            DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
             return null;
           }
         });
@@ -439,15 +539,15 @@ public class TestHadoop1ByteBufferReads {
   public void testHeapReadFullyJustRight() throws Exception {
     final ByteBuffer readBuffer = ByteBuffer.allocate(10);
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockInputStream stream = new MockInputStream();
 
     // reads all of the bytes available without EOFException
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
     // trying to read 0 more bytes doesn't result in EOFException
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -460,13 +560,13 @@ public class TestHadoop1ByteBufferReads {
   public void testHeapReadFullySmallReads() throws Exception {
     final ByteBuffer readBuffer = ByteBuffer.allocate(10);
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -481,13 +581,13 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.position(3);
     readBuffer.mark();
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -501,13 +601,13 @@ public class TestHadoop1ByteBufferReads {
     final ByteBuffer readBuffer = ByteBuffer.allocate(10);
     readBuffer.limit(7);
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
@@ -517,7 +617,7 @@ public class TestHadoop1ByteBufferReads {
 
     readBuffer.position(7);
     readBuffer.limit(10);
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -533,13 +633,13 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.limit(7);
     readBuffer.mark();
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
@@ -549,7 +649,7 @@ public class TestHadoop1ByteBufferReads {
 
     readBuffer.position(7);
     readBuffer.limit(10);
-    H1SeekableInputStream.readFullyHeapBuffer(hadoopStream, readBuffer);
+    DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -562,13 +662,13 @@ public class TestHadoop1ByteBufferReads {
   public void testDirectReadFullySmallBuffer() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocateDirect(8);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockInputStream stream = new MockInputStream();
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(8, readBuffer.position());
     Assert.assertEquals(8, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(8, readBuffer.position());
     Assert.assertEquals(8, readBuffer.limit());
 
@@ -581,13 +681,13 @@ public class TestHadoop1ByteBufferReads {
   public void testDirectReadFullyLargeBuffer() throws Exception {
     final ByteBuffer readBuffer = ByteBuffer.allocateDirect(20);
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    final MockInputStream stream = new MockInputStream();
 
     TestUtils.assertThrows("Should throw EOFException",
         EOFException.class, new Callable() {
           @Override
           public Object call() throws Exception {
-            H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+            DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
             return null;
           }
         });
@@ -606,15 +706,15 @@ public class TestHadoop1ByteBufferReads {
   public void testDirectReadFullyJustRight() throws Exception {
     final ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    MockInputStream stream = new MockInputStream();
 
     // reads all of the bytes available without EOFException
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
     // trying to read 0 more bytes doesn't result in EOFException
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -627,13 +727,13 @@ public class TestHadoop1ByteBufferReads {
   public void testDirectReadFullySmallReads() throws Exception {
     final ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -648,13 +748,13 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.position(3);
     readBuffer.mark();
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -668,13 +768,13 @@ public class TestHadoop1ByteBufferReads {
     final ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
     readBuffer.limit(7);
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
@@ -684,7 +784,7 @@ public class TestHadoop1ByteBufferReads {
 
     readBuffer.position(7);
     readBuffer.limit(10);
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -700,13 +800,13 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.limit(7);
     readBuffer.mark();
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
@@ -716,7 +816,7 @@ public class TestHadoop1ByteBufferReads {
 
     readBuffer.position(7);
     readBuffer.limit(10);
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, TEMP.get());
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 
@@ -734,13 +834,13 @@ public class TestHadoop1ByteBufferReads {
     readBuffer.limit(7);
     readBuffer.mark();
 
-    final FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, temp);
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, temp);
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(7, readBuffer.position());
     Assert.assertEquals(7, readBuffer.limit());
 
@@ -750,7 +850,7 @@ public class TestHadoop1ByteBufferReads {
 
     readBuffer.position(7);
     readBuffer.limit(10);
-    H1SeekableInputStream.readFullyDirectBuffer(hadoopStream, readBuffer, temp);
+    DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, temp);
     Assert.assertEquals(10, readBuffer.position());
     Assert.assertEquals(10, readBuffer.limit());
 

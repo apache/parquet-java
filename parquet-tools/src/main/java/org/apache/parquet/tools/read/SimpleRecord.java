@@ -20,7 +20,11 @@ package org.apache.parquet.tools.read;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
@@ -28,7 +32,6 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.BinaryNode;
 
 public class SimpleRecord {
-  public static final int TAB_SIZE = 2;
   protected final List<NameValue> values;
 
   public SimpleRecord() {

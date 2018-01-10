@@ -32,6 +32,8 @@ public final class Registry {
     registry.put("meta", ShowMetaCommand.class);
     registry.put("dump", DumpCommand.class);
     registry.put("merge", MergeCommand.class);
+    registry.put("rowcount", RowCountCommand.class);
+    registry.put("size", SizeCommand.class);
   }
 
   public static Map<String,Command> allCommands() {
