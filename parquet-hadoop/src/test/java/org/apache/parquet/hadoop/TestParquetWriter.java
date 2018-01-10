@@ -142,6 +142,82 @@ public class TestParquetWriter {
     }
   }
 
+  @Test
+  public void testQuotedColumns() throws Exception {
+    Configuration conf = new Configuration();
+    Path root = new Path("target/tests/TestParquetWriter/");
+    enforceEmptyDir(conf, root);
+    MessageType schema = parseMessageType(
+        "message test { "
+        + "required binary `binary field`; "
+        + "required int32 `int32.field`; "
+        + "required int64 `int64``field`; "
+        + "required boolean `boolean,field`; "
+        + "required float `!float field!`; "
+        + "required double double@#$field; "
+        + "required fixed_len_byte_array(3) flba+&field; "
+        + "required int96 int96!; "
+        + "} ");
+    GroupWriteSupport.setSchema(schema, conf);
+    SimpleGroupFactory f = new SimpleGroupFactory(schema);
+    Map<String, Encoding> expected = new HashMap<String, Encoding>();
+    expected.put("10-" + PARQUET_1_0, PLAIN_DICTIONARY);
+    expected.put("1000-" + PARQUET_1_0, PLAIN);
+    expected.put("10-" + PARQUET_2_0, RLE_DICTIONARY);
+    expected.put("1000-" + PARQUET_2_0, DELTA_BYTE_ARRAY);
+    for (int modulo : asList(10, 1000)) {
+      for (WriterVersion version : WriterVersion.values()) {
+        Path file = new Path(root, version.name() + "_" + modulo);
+        ParquetWriter<Group> writer = new ParquetWriter<Group>(
+            file,
+            new GroupWriteSupport(),
+            UNCOMPRESSED, 1024, 1024, 512, true, false, version, conf);
+        for (int i = 0; i < 1000; i++) {
+          writer.write(
+              f.newGroup()
+              .append("binary field", "test" + (i % modulo))
+              .append("int32.field", 32)
+              .append("int64`field", 64l)
+              .append("boolean,field", true)
+              .append("!float field!", 1.0f)
+              .append("double@#$field", 2.0d)
+              .append("flba+&field", "foo")
+              .append("int96!", Binary.fromConstantByteArray(new byte[12])));
+        }
+        writer.close();
+        ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build();
+        for (int i = 0; i < 1000; i++) {
+          Group group = reader.read();
+          assertEquals("test" + (i % modulo), group.getBinary("binary field", 0).toStringUsingUTF8());
+          assertEquals(32, group.getInteger("int32.field", 0));
+          assertEquals(64l, group.getLong("int64`field", 0));
+          assertEquals(true, group.getBoolean("boolean,field", 0));
+          assertEquals(1.0f, group.getFloat("!float field!", 0), 0.001);
+          assertEquals(2.0d, group.getDouble("double@#$field", 0), 0.001);
+          assertEquals("foo", group.getBinary("flba+&field", 0).toStringUsingUTF8());
+          assertEquals(Binary.fromConstantByteArray(new byte[12]),
+              group.getInt96("int96!",0));
+        }
+        reader.close();
+        ParquetMetadata footer = readFooter(conf, file, NO_FILTER);
+        for (BlockMetaData blockMetaData : footer.getBlocks()) {
+          for (ColumnChunkMetaData column : blockMetaData.getColumns()) {
+            if (column.getPath().toDotString().equals("binary field")) {
+              String key = modulo + "-" + version;
+              Encoding expectedEncoding = expected.get(key);
+              assertTrue(
+                  key + ":" + column.getEncodings() + " should contain " + expectedEncoding,
+                  column.getEncodings().contains(expectedEncoding));
+            }
+          }
+        }
+        assertEquals("Object model property should be example",
+            "example", footer.getFileMetaData().getKeyValueMetaData()
+                .get(ParquetWriter.OBJECT_MODEL_NAME_PROP));
+      }
+    }
+  }
+
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
 

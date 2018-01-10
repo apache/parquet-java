@@ -128,6 +128,15 @@ public class TestTypeBuilders {
   }
 
   @Test
+  public void testPrimitiveTypeConstructionWithQuotedColumnName() {
+    String name = "Foo Bar";
+    Type.Repetition repetition = Type.Repetition.REQUIRED;
+    PrimitiveType expected = new PrimitiveType(repetition, INT32, name);
+    PrimitiveType built = Types.primitive(INT32, repetition).named(name);
+    Assert.assertEquals(expected, built);
+  }
+
+  @Test
   public void testFixedTypeConstruction() {
     String name = "fixed_";
     int len = 5;

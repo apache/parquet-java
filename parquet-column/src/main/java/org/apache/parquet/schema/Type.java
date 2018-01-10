@@ -23,6 +23,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 import java.io.Serializable;
 import java.util.List;
 
+import org.apache.parquet.QuotedIdentifiers;
 import org.apache.parquet.io.InvalidRecordException;
 
 /**
@@ -150,8 +151,11 @@ abstract public class Type {
    */
   Type(String name, Repetition repetition, OriginalType originalType, ID id) {
     super();
-    this.name = checkNotNull(name, "name");
+
+    name = checkNotNull(name, "name");
+
     this.repetition = checkNotNull(repetition, "repetition");
+    this.name = name;
     this.originalType = originalType;
     this.id = id;
   }
@@ -167,6 +171,13 @@ abstract public class Type {
    */
   public String getName() {
     return name;
+  }
+
+  /**
+   * @return the name of the type, possibly wrapped in backquotes.
+   */
+  public String getQuotedName() {
+    return QuotedIdentifiers.getName(name);
   }
 
   /**

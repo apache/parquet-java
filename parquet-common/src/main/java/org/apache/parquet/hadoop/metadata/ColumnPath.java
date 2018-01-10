@@ -22,7 +22,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import org.apache.parquet.Strings;
+import org.apache.parquet.QuotedIdentifiers;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
@@ -41,7 +41,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
 
   public static ColumnPath fromDotString(String path) {
     checkNotNull(path, "path");
-    return get(path.split("\\."));
+    return get(QuotedIdentifiers.getParts(path));
   }
 
   public static ColumnPath get(String... path){
@@ -68,7 +68,14 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   }
 
   public String toDotString() {
-    return Strings.join(p, ".");
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < p.length; ++i) {
+      if (i > 0) {
+        sb.append(".");
+      }
+      sb.append(QuotedIdentifiers.getName(p[i]));
+    }
+    return sb.toString();
   }
 
   @Override

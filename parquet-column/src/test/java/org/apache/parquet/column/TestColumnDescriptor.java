@@ -48,5 +48,9 @@ public class TestColumnDescriptor {
     assertEquals(column("").compareTo(column("")), 0);
     assertEquals(column("").compareTo(column("a")), -1);
     assertEquals(column("a").compareTo(column("")), 1);
+
+    assertEquals(column("foo bar").compareTo(column("foo bar")), 0);
+    assertEquals(column("foo`bar").compareTo(column("foo`bar")), 0);
+    assertEquals(column("foo#@bar").compareTo(column("foo#@bar")), 0);
   }
 }

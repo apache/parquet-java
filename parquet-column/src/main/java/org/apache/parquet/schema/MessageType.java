@@ -64,7 +64,7 @@ public final class MessageType extends GroupType {
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     sb.append("message ")
-        .append(getName())
+        .append(getQuotedName())
         .append(getOriginalType() == null ? "" : " (" + getOriginalType() +")")
         .append(" {\n");
     membersDisplayString(sb, "  ");

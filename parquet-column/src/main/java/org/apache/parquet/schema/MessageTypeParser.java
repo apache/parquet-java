@@ -39,23 +39,66 @@ public class MessageTypeParser {
 
   private static class Tokenizer {
 
-    private StringTokenizer st;
+    private String[] st;
+    private int stpos = 0;
 
     private int line = 0;
     private StringBuffer currentLine = new StringBuffer();
 
     public Tokenizer(String schemaString, String string) {
-      st = new StringTokenizer(schemaString, " ,;{}()\n\t=", true);
+      StringTokenizer tokenizer = new StringTokenizer(schemaString, " ,;{}()`\n\t=", true);
+      st = new String[tokenizer.countTokens()];
+      int i = 0;
+      while (tokenizer.hasMoreTokens()) {
+        st[i++] = tokenizer.nextToken();
+      }
     }
 
     public String nextToken() {
-      while (st.hasMoreTokens()) {
-        String t = st.nextToken();
+      while (stpos < st.length) {
+        String t = st[stpos++];
         if (t.equals("\n")) {
           ++ line;
           currentLine.setLength(0);
         } else {
           currentLine.append(t);
+        }
+        if (!isWhitespace(t)) {
+          return t;
+        }
+      }
+      throw new IllegalArgumentException("unexpected end of schema");
+    }
+
+    public String getName() {
+      while (stpos < st.length) {
+        String t = st[stpos++];
+        if (t.equals("\n")) {
+          ++line;
+          currentLine.setLength(0);
+        } else {
+          currentLine.append(t);
+        }
+        if (t.equals("`")) {
+          StringBuilder sb = new StringBuilder();
+          while (stpos < st.length) {
+            t = st[stpos++];
+            if (t.equals("`")) {
+              if (stpos < st.length) {
+                t = st[stpos];
+                if (t.equals("`")) {
+                  sb.append(t);
+                  ++stpos;
+                  continue;
+                }
+              }
+              String name = sb.toString();
+              currentLine.append(name);
+              return name;
+            }
+            sb.append(t);
+          }
+          throw new IllegalArgumentException("unexpected end of schema");
         }
         if (!isWhitespace(t)) {
           return t;
@@ -85,7 +128,7 @@ public class MessageTypeParser {
   }
 
   private static MessageType parse(String schemaString) {
-    Tokenizer st = new Tokenizer(schemaString, " ;{}()\n\t");
+    Tokenizer st = new Tokenizer(schemaString, " ;{}()`\n\t");
     Types.MessageTypeBuilder builder = Types.buildMessage();
 
     String t = st.nextToken();
@@ -155,7 +198,7 @@ public class MessageTypeParser {
       check(st.nextToken(), ")", "type length ended by )", st);
     }
 
-    String name = st.nextToken();
+    String name = st.getName();
 
     // Read annotation, if any.
     t = st.nextToken();
