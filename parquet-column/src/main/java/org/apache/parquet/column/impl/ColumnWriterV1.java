@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -98,13 +98,13 @@ final class ColumnWriterV1 implements ColumnWriter {
           + dataColumn.getBufferedSize();
       if (memSize > props.getPageSizeThreshold()) {
         // we will write the current page and check again the size at the predicted middle of next page
-        if (props.estimateNextSizeCheck()) {
+        if (props.estimateNextPageSizeCheck()) {
           valueCountForNextSizeCheck = valueCount / 2;
         } else {
           valueCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
         }
         writePage();
-      } else if (props.estimateNextSizeCheck()) {
+      } else if (props.estimateNextPageSizeCheck()) {
         // not reached the threshold, will check again midway
         valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * props.getPageSizeThreshold() / memSize)) / 2 + 1;
       } else {
