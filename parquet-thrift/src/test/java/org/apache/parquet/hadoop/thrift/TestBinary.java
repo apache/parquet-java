@@ -81,9 +81,9 @@ public class TestBinary {
   private void assertSchema(ParquetMetadata parquetMetadata) {
     List<Type> fields = parquetMetadata.getFileMetaData().getSchema().getFields();
     assertEquals(2, fields.size());
-    assertEquals(Types.required(PrimitiveType.PrimitiveTypeName.BINARY).named("s"), fields.get(0));
+    assertEquals(Types.required(PrimitiveType.PrimitiveTypeName.BINARY).id(1).named("s"), fields.get(0));
     assertEquals(OriginalType.UTF8, fields.get(0).getOriginalType());
-    assertEquals(Types.required(PrimitiveType.PrimitiveTypeName.BINARY).named("b"), fields.get(1));
+    assertEquals(Types.required(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("b"), fields.get(1));
     assertNull(fields.get(1).getOriginalType());
   }
 }
