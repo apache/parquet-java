@@ -411,7 +411,7 @@ public class SchemaConverter {
           case TIMESTAMP_MILLIS:
             return field(new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC"));
           case TIME_MILLIS:
-            return field(new ArrowType.Date(DateUnit.MILLISECOND));
+            return field(new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, 32));
           default:
           case TIME_MICROS:
           case INT_64:
@@ -459,8 +459,6 @@ public class SchemaConverter {
             return field(new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MICROSECOND, "UTC"));
           case TIMESTAMP_MILLIS:
             return field(new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC"));
-          case TIME_MILLIS:
-            return field(new ArrowType.Date(DateUnit.MILLISECOND));
           default:
           case TIME_MICROS:
           case UTF8:
@@ -471,6 +469,7 @@ public class SchemaConverter {
           case LIST:
           case MAP:
           case MAP_KEY_VALUE:
+          case TIME_MILLIS:
             throw new IllegalArgumentException("illegal type " + type);
         }
       }

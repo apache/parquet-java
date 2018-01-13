@@ -191,7 +191,7 @@ public class TestSchemaConverter {
     field("j1", new ArrowType.Decimal(15, 5)),
     field("j2", new ArrowType.Decimal(25, 5)),
     field("k", new ArrowType.Date(DateUnit.DAY)),
-    field("l", new ArrowType.Date(DateUnit.MILLISECOND)),
+    field("l", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, 32)),
     field("m", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC"))
   ));
 
