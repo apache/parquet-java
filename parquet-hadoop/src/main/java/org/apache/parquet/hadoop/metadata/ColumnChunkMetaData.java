@@ -24,7 +24,9 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Types;
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
@@ -65,9 +67,31 @@ abstract public class ColumnChunkMetaData {
         valueCount, totalSize, totalUncompressedSize);
   }
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use
+   *             {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, EncodingStats, Set, Statistics, long, long, long, long, long)}
+   *             instead.
+   */
+  @Deprecated
   public static ColumnChunkMetaData get(
       ColumnPath path,
       PrimitiveTypeName type,
+      CompressionCodecName codec,
+      EncodingStats encodingStats,
+      Set<Encoding> encodings,
+      Statistics statistics,
+      long firstDataPage,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
+      long totalUncompressedSize) {
+    return get(path, Types.optional(type).named("fake_type"), codec, encodingStats, encodings, statistics,
+        firstDataPage, dictionaryPageOffset, valueCount, totalSize, totalUncompressedSize);
+  }
+
+  public static ColumnChunkMetaData get(
+      ColumnPath path,
+      PrimitiveType type,
       CompressionCodecName codec,
       EncodingStats encodingStats,
       Set<Encoding> encodings,
@@ -149,16 +173,27 @@ abstract public class ColumnChunkMetaData {
   /**
    *
    * @return column identifier
+   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
+  @Deprecated
   public ColumnPath getPath() {
     return properties.getPath();
   }
 
   /**
    * @return type of the column
+   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
+  @Deprecated
   public PrimitiveTypeName getType() {
     return properties.getType();
+  }
+
+  /**
+   * @return the primitive type object of the column
+   */
+  public PrimitiveType getPrimitiveType() {
+    return properties.getPrimitiveType();
   }
 
   /**
@@ -231,7 +266,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
    */
   IntColumnChunkMetaData(
       ColumnPath path,
-      PrimitiveTypeName type,
+      PrimitiveType type,
       CompressionCodecName codec,
       EncodingStats encodingStats,
       Set<Encoding> encodings,
@@ -336,7 +371,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
    */
   LongColumnChunkMetaData(
       ColumnPath path,
-      PrimitiveTypeName type,
+      PrimitiveType type,
       CompressionCodecName codec,
       EncodingStats encodingStats,
       Set<Encoding> encodings,

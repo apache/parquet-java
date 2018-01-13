@@ -21,9 +21,12 @@ package org.apache.parquet.schema;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.OriginalType.LIST;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
@@ -186,6 +189,48 @@ public class TestMessageType {
                 new GroupType(REQUIRED, "g3",
                     new PrimitiveType(OPTIONAL, BINARY, "c")))),
         t5.union(t6));
+  }
+
+  @Test
+  public void testMergeSchemaWithColumnOrder() {
+    MessageType m1 = Types.buildMessage().addFields(
+        Types.requiredList().element(
+            Types.optional(BINARY).columnOrder(ColumnOrder.undefined()).named("a")
+            ).named("g"),
+        Types.optional(INT96).named("b")
+        ).named("root");
+    MessageType m2 = Types.buildMessage().addFields(
+        Types.requiredList().element(
+            Types.optional(BINARY).columnOrder(ColumnOrder.undefined()).named("a")
+            ).named("g"),
+        Types.optional(BINARY).named("c")
+        ).named("root");
+    MessageType m3 = Types.buildMessage().addFields(
+        Types.requiredList().element(
+            Types.optional(BINARY).named("a")
+            ).named("g")
+        ).named("root");
+
+    assertEquals(
+        Types.buildMessage().addFields(
+            Types.requiredList().element(
+                Types.optional(BINARY).named("a")
+                ).named("g"),
+            Types.optional(INT96).named("b"),
+            Types.optional(BINARY).named("c")
+            ).named("root"),
+        m1.union(m2));
+    try {
+      m1.union(m3);
+      fail("An IncompatibleSchemaModificationException should have been thrown");
+    } catch (Exception e) {
+      assertTrue(
+          "The thrown exception should have been IncompatibleSchemaModificationException but was " + e.getClass(),
+          e instanceof IncompatibleSchemaModificationException);
+      assertEquals(
+          "can not merge type optional binary a with column order TYPE_DEFINED_ORDER into optional binary a with column order UNDEFINED",
+          e.getMessage());
+    }
   }
 
   @Test

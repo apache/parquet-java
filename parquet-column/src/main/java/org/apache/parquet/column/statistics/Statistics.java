@@ -18,10 +18,15 @@
  */
 package org.apache.parquet.column.statistics;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.PrimitiveComparator;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import java.util.Arrays;
+import org.apache.parquet.schema.Type;
 
 
 /**
@@ -31,10 +36,14 @@ import java.util.Arrays;
  */
 public abstract class Statistics<T extends Comparable<T>> {
 
+  private final PrimitiveType type;
+  private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
   private long num_nulls;
 
-  public Statistics() {
+  Statistics(PrimitiveType type) {
+    this.type = type;
+    this.comparator = type.comparator();
     hasNonNullValue = false;
     num_nulls = 0;
   }
@@ -43,27 +52,59 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Returns the typed statistics object based on the passed type parameter
    * @param type PrimitiveTypeName type of the column
    * @return instance of a typed statistics class
+   * @deprecated Use {@link #createStats(Type)} instead
    */
+  @Deprecated
   public static Statistics getStatsBasedOnType(PrimitiveTypeName type) {
-    switch(type) {
-    case INT32:
-      return new IntStatistics();
-    case INT64:
-      return new LongStatistics();
-    case FLOAT:
-      return new FloatStatistics();
-    case DOUBLE:
-      return new DoubleStatistics();
-    case BOOLEAN:
-      return new BooleanStatistics();
-    case BINARY:
-      return new BinaryStatistics();
-    case INT96:
-      return new BinaryStatistics();
-    case FIXED_LEN_BYTE_ARRAY:
-      return new BinaryStatistics();
-    default:
-      throw new UnknownColumnTypeException(type);
+    switch (type) {
+      case INT32:
+        return new IntStatistics();
+      case INT64:
+        return new LongStatistics();
+      case FLOAT:
+        return new FloatStatistics();
+      case DOUBLE:
+        return new DoubleStatistics();
+      case BOOLEAN:
+        return new BooleanStatistics();
+      case BINARY:
+        return new BinaryStatistics();
+      case INT96:
+        return new BinaryStatistics();
+      case FIXED_LEN_BYTE_ARRAY:
+        return new BinaryStatistics();
+      default:
+        throw new UnknownColumnTypeException(type);
+    }
+  }
+
+  /**
+   * Creates an empty {@code Statistics} instance for the specified type to be
+   * used for reading/writing the new min/max statistics used in the V2 format.
+   *
+   * @param type
+   *          type of the column
+   * @return instance of a typed statistics class
+   */
+  public static Statistics<?> createStats(Type type) {
+    PrimitiveType primitive = type.asPrimitiveType();
+    switch (primitive.getPrimitiveTypeName()) {
+      case INT32:
+        return new IntStatistics(primitive);
+      case INT64:
+        return new LongStatistics(primitive);
+      case FLOAT:
+        return new FloatStatistics(primitive);
+      case DOUBLE:
+        return new DoubleStatistics(primitive);
+      case BOOLEAN:
+        return new BooleanStatistics(primitive);
+      case BINARY:
+      case INT96:
+      case FIXED_LEN_BYTE_ARRAY:
+        return new BinaryStatistics(primitive);
+      default:
+        throw new UnknownColumnTypeException(primitive.getPrimitiveTypeName());
     }
   }
 
@@ -127,9 +168,10 @@ public abstract class Statistics<T extends Comparable<T>> {
     if (!(other instanceof Statistics))
       return false;
     Statistics stats = (Statistics) other;
-    return Arrays.equals(stats.getMaxBytes(), this.getMaxBytes()) &&
-            Arrays.equals(stats.getMinBytes(), this.getMinBytes()) &&
-            stats.getNumNulls() == this.getNumNulls();
+    return type.equals(stats.type) &&
+        Arrays.equals(stats.getMaxBytes(), this.getMaxBytes()) &&
+        Arrays.equals(stats.getMinBytes(), this.getMinBytes()) &&
+        stats.getNumNulls() == this.getNumNulls();
   }
 
   /**
@@ -138,7 +180,8 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   @Override
   public int hashCode() {
-    return 31 * Arrays.hashCode(getMaxBytes()) + 17 * Arrays.hashCode(getMinBytes()) + Long.valueOf(this.getNumNulls()).hashCode();
+    return 31 * type.hashCode() + 31 * Arrays.hashCode(getMaxBytes()) + 17 * Arrays.hashCode(getMinBytes())
+        + Long.valueOf(this.getNumNulls()).hashCode();
   }
 
   /**
@@ -150,14 +193,15 @@ public abstract class Statistics<T extends Comparable<T>> {
   public void mergeStatistics(Statistics stats) {
     if (stats.isEmpty()) return;
 
-    if (this.getClass() == stats.getClass()) {
+    // Merge stats only if they have the same type
+    if (type.equals(stats.type)) {
       incrementNumNulls(stats.getNumNulls());
       if (stats.hasNonNullValue()) {
         mergeStatisticsMinMax(stats);
         markAsNotEmpty();
       }
     } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
+      throw StatisticsClassException.create(this, stats);
     }
   }
 
@@ -175,8 +219,57 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
+  /**
+   * Returns the min value in the statistics. The java natural order of the returned type defined by {@link
+   * T#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
+   * natural signed one. Use {@link #compareMinToValue(Comparable)} or the comparator returned by {@link #comparator()} to
+   * always get the proper ordering.
+   */
   abstract public T genericGetMin();
+
+  /**
+   * Returns the max value in the statistics. The java natural order of the returned type defined by {@link
+   * T#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
+   * natural signed one. Use {@link #compareMaxToValue(Comparable)} or the comparator returned by {@link #comparator()} to
+   * always get the proper ordering.
+   */
   abstract public T genericGetMax();
+
+  /**
+   * Returns the {@link PrimitiveComparator} implementation to be used to compare two generic values in the proper way
+   * (for example, unsigned comparison for UINT_32).
+   */
+  public final PrimitiveComparator<T> comparator() {
+    return comparator;
+  }
+
+  /**
+   * Compares min to the specified value in the proper way. It does the same as invoking
+   * {@code comparator().compare(genericGetMin(), value)}. The corresponding statistics implementations overload this
+   * method so the one with the primitive argument shall be used to avoid boxing/unboxing.
+   *
+   * @param value
+   *          the value which {@code min} is to be compared to
+   * @return a negative integer, zero, or a positive integer as {@code min} is less than, equal to, or greater than
+   *         {@code value}.
+   */
+  public final int compareMinToValue(T value) {
+    return comparator.compare(genericGetMin(), value);
+  }
+
+  /**
+   * Compares max to the specified value in the proper way. It does the same as invoking
+   * {@code comparator().compare(genericGetMax(), value)}. The corresponding statistics implementations overload this
+   * method so the one with the primitive argument shall be used to avoid boxing/unboxing.
+   *
+   * @param value
+   *          the value which {@code max} is to be compared to
+   * @return a negative integer, zero, or a positive integer as {@code max} is less than, equal to, or greater than
+   *         {@code value}.
+   */
+  public final int compareMaxToValue(T value) {
+    return comparator.compare(genericGetMax(), value);
+  }
 
   /**
    * Abstract method to return the max value as a byte array
@@ -191,6 +284,24 @@ public abstract class Statistics<T extends Comparable<T>> {
   abstract public byte[] getMinBytes();
 
   /**
+   * Returns the string representation of min for debugging/logging purposes.
+   */
+  public String minAsString() {
+    return toString(genericGetMin());
+  }
+
+  /**
+   * Returns the string representation of max for debugging/logging purposes.
+   */
+  public String maxAsString() {
+    return toString(genericGetMax());
+  }
+
+  String toString(T value) {
+    return Objects.toString(value);
+  }
+
+  /**
    * Abstract method to return whether the min and max values fit in the given
    * size.
    * @param size a size in bytes
@@ -198,11 +309,15 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   abstract public boolean isSmallerThan(long size);
 
-  /**
-   * toString() to display min, max, num_nulls in a string
-   */
-  abstract public String toString();
-
+  @Override
+  public String toString() {
+    if (this.hasNonNullValue())
+      return String.format("min: %s, max: %s, num_nulls: %d", minAsString(), maxAsString(), this.getNumNulls());
+    else if (!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
+    else
+      return "no stats for this column";
+  }
 
   /**
    * Increments the null count by one
@@ -250,13 +365,25 @@ public abstract class Statistics<T extends Comparable<T>> {
   public boolean hasNonNullValue() {
     return hasNonNullValue;
   }
- 
+
   /**
    * Sets the page/column as having a valid non-null value
    * kind of misnomer here
-   */ 
+   */
   protected void markAsNotEmpty() {
     hasNonNullValue = true;
+  }
+
+  /**
+   * @return a new independent statistics instance of this class.
+   */
+  public abstract Statistics<T> copy();
+
+  /**
+   * @return the primitive type object which this statistics is created for
+   */
+  public PrimitiveType type() {
+    return type;
   }
 }
 

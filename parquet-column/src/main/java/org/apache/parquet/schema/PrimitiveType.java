@@ -22,11 +22,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 
 
 /**
@@ -86,6 +89,26 @@ public final class PrimitiveType extends Type {
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertINT64(this);
       }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        if (logicalType == null) {
+          return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
+        }
+        switch (logicalType) {
+        case UINT_64:
+          return PrimitiveComparator.UNSIGNED_INT64_COMPARATOR;
+        case INT_64:
+        case DECIMAL:
+        case TIME_MICROS:
+        case TIMESTAMP_MILLIS:
+        case TIMESTAMP_MICROS:
+          return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
+        default:
+          throw new ShouldNeverHappenException(
+              "No comparator logic implemented for INT64 logical type: " + logicalType);
+        }
+      }
     },
     INT32("getInteger", Integer.TYPE) {
       @Override
@@ -108,6 +131,29 @@ public final class PrimitiveType extends Type {
       @Override
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertINT32(this);
+      }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        if (logicalType == null) {
+          return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
+        }
+        switch (logicalType) {
+        case UINT_8:
+        case UINT_16:
+        case UINT_32:
+          return PrimitiveComparator.UNSIGNED_INT32_COMPARATOR;
+        case INT_8:
+        case INT_16:
+        case INT_32:
+        case DECIMAL:
+        case DATE:
+        case TIME_MILLIS:
+          return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
+        default:
+          throw new ShouldNeverHappenException(
+              "No comparator logic implemented for INT32 logical type: " + logicalType);
+        }
       }
     },
     BOOLEAN("getBoolean", Boolean.TYPE) {
@@ -132,6 +178,11 @@ public final class PrimitiveType extends Type {
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertBOOLEAN(this);
       }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        return PrimitiveComparator.BOOLEAN_COMPARATOR;
+      }
     },
     BINARY("getBinary", Binary.class) {
       @Override
@@ -154,6 +205,25 @@ public final class PrimitiveType extends Type {
       @Override
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertBINARY(this);
+      }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        if (logicalType == null) {
+          return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
+        }
+        switch (logicalType) {
+        case DECIMAL:
+          return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
+        case UTF8:
+        case ENUM:
+        case JSON:
+        case BSON:
+          return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
+        default:
+          throw new ShouldNeverHappenException(
+              "No comparator logic implemented for BINARY logical type: " + logicalType);
+        }
       }
     },
     FLOAT("getFloat", Float.TYPE) {
@@ -178,6 +248,11 @@ public final class PrimitiveType extends Type {
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertFLOAT(this);
       }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        return PrimitiveComparator.FLOAT_COMPARATOR;
+      }
     },
     DOUBLE("getDouble", Double.TYPE) {
       @Override
@@ -201,6 +276,11 @@ public final class PrimitiveType extends Type {
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertDOUBLE(this);
       }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        return PrimitiveComparator.DOUBLE_COMPARATOR;
+      }
     },
     INT96("getBinary", Binary.class) {
       @Override
@@ -221,6 +301,11 @@ public final class PrimitiveType extends Type {
       @Override
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertINT96(this);
+      }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
       }
     },
     FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {
@@ -244,6 +329,22 @@ public final class PrimitiveType extends Type {
       @Override
       public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertFIXED_LEN_BYTE_ARRAY(this);
+      }
+
+      @Override
+      PrimitiveComparator<?> comparator(OriginalType logicalType) {
+        if (logicalType == null) {
+          return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
+        }
+        switch (logicalType) {
+        case DECIMAL:
+          return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
+        case INTERVAL:
+          return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
+        default:
+          throw new ShouldNeverHappenException(
+              "No comparator logic implemented for FIXED_LEN_BYTE_ARRAY logical type: " + logicalType);
+        }
       }
     };
 
@@ -275,11 +376,14 @@ public final class PrimitiveType extends Type {
 
     abstract public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E;
 
+    abstract PrimitiveComparator<?> comparator(OriginalType logicalType);
+
   }
 
   private final PrimitiveTypeName primitive;
   private final int length;
   private final DecimalMetadata decimalMeta;
+  private final ColumnOrder columnOrder;
 
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
@@ -337,10 +441,61 @@ public final class PrimitiveType extends Type {
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        int length, String name, OriginalType originalType,
                        DecimalMetadata decimalMeta, ID id) {
+    this(repetition, primitive, length, name, originalType, decimalMeta, id, null);
+  }
+
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+      int length, String name, OriginalType originalType,
+      DecimalMetadata decimalMeta, ID id, ColumnOrder columnOrder) {
     super(name, repetition, originalType, id);
     this.primitive = primitive;
     this.length = length;
     this.decimalMeta = decimalMeta;
+
+    if (columnOrder == null) {
+      columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL
+          ? ColumnOrder.undefined()
+          : ColumnOrder.typeDefined();
+    }
+    this.columnOrder = requireValidColumnOrder(columnOrder);
+  }
+
+  private ColumnOrder requireValidColumnOrder(ColumnOrder columnOrder) {
+    if (primitive == PrimitiveTypeName.INT96) {
+      Preconditions.checkArgument(columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED,
+          "The column order {} is not supported by INT96", columnOrder);
+    }
+    if (getOriginalType() != null) {
+      // Explicitly listing all the logical types to avoid having unsupported column orders new types accidentally
+      switch (getOriginalType()) {
+        case INT_8:
+        case INT_16:
+        case INT_32:
+        case INT_64:
+        case UINT_8:
+        case UINT_16:
+        case UINT_32:
+        case UINT_64:
+        case UTF8:
+        case DECIMAL:
+        case DATE:
+        case TIME_MILLIS:
+        case TIME_MICROS:
+        case TIMESTAMP_MILLIS:
+        case TIMESTAMP_MICROS:
+        case ENUM:
+        case JSON:
+        case BSON:
+          // Currently any available column order is valid
+          break;
+        case INTERVAL:
+        default:
+          Preconditions.checkArgument(columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED,
+              "The column order {} is not supported by {} ({})", columnOrder, primitive, getOriginalType());
+          break;
+      }
+    }
+    return columnOrder;
   }
 
   /**
@@ -349,7 +504,8 @@ public final class PrimitiveType extends Type {
    */
   @Override
   public PrimitiveType withId(int id) {
-    return new PrimitiveType(getRepetition(), primitive, length, getName(), getOriginalType(), decimalMeta, new ID(id));
+    return new PrimitiveType(getRepetition(), primitive, length, getName(), getOriginalType(), decimalMeta, new ID(id),
+        columnOrder);
   }
 
   /**
@@ -441,6 +597,7 @@ public final class PrimitiveType extends Type {
     return super.equals(other)
         && primitive == otherPrimitive.getPrimitiveTypeName()
         && length == otherPrimitive.length
+        && columnOrder.equals(otherPrimitive.columnOrder)
         && eqOrBothNull(decimalMeta, otherPrimitive.decimalMeta);
   }
 
@@ -452,6 +609,7 @@ public final class PrimitiveType extends Type {
     int hash = super.hashCode();
     hash = hash * 31 + primitive.hashCode();
     hash = hash * 31 + length;
+    hash = hash * 31 + columnOrder.hashCode();
     if (decimalMeta != null) {
       hash = hash * 31 + decimalMeta.hashCode();
     }
@@ -519,6 +677,11 @@ public final class PrimitiveType extends Type {
     throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
   }
 
+  private void reportSchemaMergeErrorWithColumnOrder(Type toMerge) {
+    throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " with column order "
+        + toMerge.asPrimitiveType().columnOrder() + " into " + this + " with column order " + columnOrder());
+  }
+
   @Override
   protected Type union(Type toMerge, boolean strict) {
     if (!toMerge.isPrimitive()) {
@@ -537,6 +700,11 @@ public final class PrimitiveType extends Type {
       if (primitive == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY && length != toMergeLength) {
         reportSchemaMergeError(toMerge);
       }
+
+      // Can't merge primitive fields with different column orders
+      if (!columnOrder().equals(toMerge.asPrimitiveType().columnOrder())) {
+        reportSchemaMergeErrorWithColumnOrder(toMerge);
+      }
     }
 
     Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive, toMerge.getRepetition());
@@ -546,5 +714,22 @@ public final class PrimitiveType extends Type {
     }
 
     return builder.as(getOriginalType()).named(getName());
+  }
+
+  /**
+   * Returns the {@link Type} specific comparator for properly comparing values. The natural ordering of the values
+   * might not proper in certain cases (e.g. {@code UINT_32} requires unsigned comparison of {@code int} values while
+   * the natural ordering is signed.)
+   */
+  @SuppressWarnings("unchecked")
+  public <T> PrimitiveComparator<T> comparator() {
+    return (PrimitiveComparator<T>) getPrimitiveTypeName().comparator(getOriginalType());
+  }
+
+  /**
+   * @return the column order for this type
+   */
+  public ColumnOrder columnOrder() {
+    return columnOrder;
   }
 }

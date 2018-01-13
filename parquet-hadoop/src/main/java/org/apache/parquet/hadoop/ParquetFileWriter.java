@@ -65,7 +65,7 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.TypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,7 +116,7 @@ public class ParquetFileWriter {
   // column chunk data set at the start of a column
   private CompressionCodecName currentChunkCodec; // set in startColumn
   private ColumnPath currentChunkPath;            // set in startColumn
-  private PrimitiveTypeName currentChunkType;     // set in startColumn
+  private PrimitiveType currentChunkType;         // set in startColumn
   private long currentChunkValueCount;            // set in startColumn
   private long currentChunkFirstDataPage;         // set in startColumn (out.pos())
   private long currentChunkDictionaryPageOffset;  // set in writeDictionaryPage
@@ -317,15 +317,14 @@ public class ParquetFileWriter {
     encodingStatsBuilder.clear();
     currentEncodings = new HashSet<Encoding>();
     currentChunkPath = ColumnPath.get(descriptor.getPath());
-    currentChunkType = descriptor.getType();
+    currentChunkType = descriptor.getPrimitiveType();
     currentChunkCodec = compressionCodecName;
     currentChunkValueCount = valueCount;
     currentChunkFirstDataPage = out.getPos();
     compressedLength = 0;
     uncompressedLength = 0;
-    // need to know what type of stats to initialize to
-    // better way to do this?
-    currentStatistics = Statistics.getStatsBasedOnType(currentChunkType);
+    // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed one
+    currentStatistics = null;
   }
 
   /**
@@ -425,7 +424,14 @@ public class ParquetFileWriter {
     this.compressedLength += compressedPageSize + headerSize;
     LOG.debug("{}: write data page content {}", out.getPos(), compressedPageSize);
     bytes.writeAllTo(out);
-    currentStatistics.mergeStatistics(statistics);
+
+    // Copying the statistics if it is not initialized yet so we have the correct typed one
+    if (currentStatistics == null) {
+      currentStatistics = statistics.copy();
+    } else {
+      currentStatistics.mergeStatistics(statistics);
+    }
+
     encodingStatsBuilder.addDataEncoding(valuesEncoding);
     currentEncodings.add(rlEncoding);
     currentEncodings.add(dlEncoding);
@@ -599,7 +605,7 @@ public class ParquetFileWriter {
 
       currentBlock.addColumn(ColumnChunkMetaData.get(
           chunk.getPath(),
-          chunk.getType(),
+          chunk.getPrimitiveType(),
           chunk.getCodec(),
           chunk.getEncodingStats(),
           chunk.getEncodings(),

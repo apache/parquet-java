@@ -44,6 +44,7 @@ import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
+import org.apache.parquet.format.ColumnOrder;
 import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
@@ -58,12 +59,14 @@ import org.apache.parquet.format.RowGroup;
 import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.format.Statistics;
 import org.apache.parquet.format.Type;
+import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
@@ -79,6 +82,7 @@ import org.slf4j.LoggerFactory;
 // TODO: Lets split it up: https://issues.apache.org/jira/browse/PARQUET-310
 public class ParquetMetadataConverter {
 
+  private static final TypeDefinedOrder TYPE_DEFINED_ORDER = new TypeDefinedOrder();
   public static final MetadataFilter NO_FILTER = new NoFilter();
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
@@ -135,7 +139,22 @@ public class ParquetMetadataConverter {
     }
 
     fileMetaData.setCreated_by(parquetMetadata.getFileMetaData().getCreatedBy());
+
+    fileMetaData.setColumn_orders(getColumnOrders(parquetMetadata.getFileMetaData().getSchema()));
+
     return fileMetaData;
+  }
+
+  private List<ColumnOrder> getColumnOrders(MessageType schema) {
+    List<ColumnOrder> columnOrders = new ArrayList<>();
+    // Currently, only TypeDefinedOrder is supported, so we create a column order for each columns with
+    // TypeDefinedOrder even if some types (e.g. INT96) have undefined column orders.
+    for (int i = 0, n = schema.getPaths().size(); i < n; ++i) {
+      ColumnOrder columnOrder = new ColumnOrder();
+      columnOrder.setTYPE_ORDER(TYPE_DEFINED_ORDER);
+      columnOrders.add(columnOrder);
+    }
+    return columnOrders;
   }
 
   // Visible for testing
@@ -326,20 +345,37 @@ public class ParquetMetadataConverter {
   }
 
   public static Statistics toParquetStatistics(
-      org.apache.parquet.column.statistics.Statistics statistics) {
-    Statistics stats = new Statistics();
+      org.apache.parquet.column.statistics.Statistics stats) {
+    Statistics formatStats = new Statistics();
     // Don't write stats larger than the max size rather than truncating. The
     // rationale is that some engines may use the minimum value in the page as
     // the true minimum for aggregations and there is no way to mark that a
     // value has been truncated and is a lower bound and not in the page.
-    if (!statistics.isEmpty() && statistics.isSmallerThan(MAX_STATS_SIZE)) {
-      stats.setNull_count(statistics.getNumNulls());
-      if (statistics.hasNonNullValue()) {
-        stats.setMax(statistics.getMaxBytes());
-        stats.setMin(statistics.getMinBytes());
+    if (!stats.isEmpty() && stats.isSmallerThan(MAX_STATS_SIZE)) {
+      formatStats.setNull_count(stats.getNumNulls());
+      if (stats.hasNonNullValue()) {
+        byte[] min = stats.getMinBytes();
+        byte[] max = stats.getMaxBytes();
+
+        // Fill the former min-max statistics only if the comparison logic is
+        // signed so the logic of V1 and V2 stats are the same (which is
+        // trivially true for equal min-max values)
+        if (sortOrder(stats.type()) == SortOrder.SIGNED || Arrays.equals(min, max)) {
+          formatStats.setMin(min);
+          formatStats.setMax(max);
+        }
+
+        if (isMinMaxStatsSupported(stats.type()) || Arrays.equals(min, max)) {
+          formatStats.setMin_value(min);
+          formatStats.setMax_value(max);
+        }
       }
     }
-    return stats;
+    return formatStats;
+  }
+
+  private static boolean isMinMaxStatsSupported(PrimitiveType type) {
+    return type.columnOrder().getColumnOrderName() == ColumnOrderName.TYPE_DEFINED_ORDER;
   }
 
   /**
@@ -357,29 +393,42 @@ public class ParquetMetadataConverter {
   @Deprecated
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics
       (String createdBy, Statistics statistics, PrimitiveTypeName type) {
-    return fromParquetStatisticsInternal(createdBy, statistics, type, defaultSortOrder(type));
+    return fromParquetStatisticsInternal(createdBy, statistics,
+        new PrimitiveType(Repetition.OPTIONAL, type, "fake_type"), defaultSortOrder(type));
   }
 
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal
-      (String createdBy, Statistics statistics, PrimitiveTypeName type, SortOrder typeSortOrder) {
+      (String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
     // create stats object based on the column type
-    org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type);
-    // If there was no statistics written to the footer, create an empty Statistics object and return
+    org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.createStats(type);
 
-    boolean isSet = statistics != null && statistics.isSetMax() && statistics.isSetMin();
-    boolean maxEqualsMin = isSet ? Arrays.equals(statistics.getMin(), statistics.getMax()) : false;
-    boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
-    // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
-    // The sort order is checked to avoid returning min/max stats that are not
-    // valid with the type's sort order. Currently, all stats are aggregated
-    // using a signed ordering, which isn't valid for strings or unsigned ints.
-    if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type) &&
-        ( sortOrdersMatch || maxEqualsMin)) {
-      if (isSet) {
-        stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
+    if (formatStats != null) {
+      // Use the new V2 min-max statistics over the former one if it is filled
+      if (formatStats.isSetMin_value() && formatStats.isSetMax_value()) {
+        byte[] min = formatStats.min_value.array();
+        byte[] max = formatStats.max_value.array();
+        if (isMinMaxStatsSupported(type) || Arrays.equals(min, max)) {
+          stats.setMinMaxFromBytes(min, max);
+        }
+        stats.setNumNulls(formatStats.null_count);
+      } else {
+        boolean isSet = formatStats.isSetMax() && formatStats.isSetMin();
+        boolean maxEqualsMin = isSet ? Arrays.equals(formatStats.getMin(), formatStats.getMax()) : false;
+        boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
+        // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
+        // The sort order is checked to avoid returning min/max stats that are not
+        // valid with the type's sort order. In previous releases, all stats were
+        // aggregated using a signed byte-wise ordering, which isn't valid for all the
+        // types (e.g. strings, decimals etc.).
+        if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName()) &&
+            (sortOrdersMatch || maxEqualsMin)) {
+          if (isSet) {
+            stats.setMinMaxFromBytes(formatStats.min.array(), formatStats.max.array());
+          }
+          stats.setNumNulls(formatStats.null_count);
+        }
       }
-      stats.setNumNulls(statistics.null_count);
     }
     return stats;
   }
@@ -389,7 +438,7 @@ public class ParquetMetadataConverter {
     SortOrder expectedOrder = overrideSortOrderToSigned(type) ?
         SortOrder.SIGNED : sortOrder(type);
     return fromParquetStatisticsInternal(
-        createdBy, statistics, type.getPrimitiveTypeName(), expectedOrder);
+        createdBy, statistics, type, expectedOrder);
   }
 
   /**
@@ -827,7 +876,7 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
-    MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
+    MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
     if (row_groups != null) {
@@ -846,7 +895,7 @@ public class ParquetMetadataConverter {
           ColumnPath path = getPath(metaData);
           ColumnChunkMetaData column = ColumnChunkMetaData.get(
               path,
-              messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
+              messageType.getType(path.toArray()).asPrimitiveType(),
               fromFormatCodec(metaData.codec),
               convertEncodingStats(metaData.getEncoding_stats()),
               fromFormatEncodings(metaData.encodings),
@@ -886,20 +935,22 @@ public class ParquetMetadataConverter {
   }
 
   // Visible for testing
-  MessageType fromParquetSchema(List<SchemaElement> schema) {
+  MessageType fromParquetSchema(List<SchemaElement> schema, List<ColumnOrder> columnOrders) {
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
     Types.MessageTypeBuilder builder = Types.buildMessage();
     if (root.isSetField_id()) {
       builder.id(root.field_id);
     }
-    buildChildren(builder, iterator, root.getNum_children());
+    buildChildren(builder, iterator, root.getNum_children(), columnOrders, 0);
     return builder.named(root.name);
   }
 
   private void buildChildren(Types.GroupBuilder builder,
                              Iterator<SchemaElement> schema,
-                             int childrenCount) {
+                             int childrenCount,
+                             List<ColumnOrder> columnOrders,
+                             int columnCount) {
     for (int i = 0; i < childrenCount; i++) {
       SchemaElement schemaElement = schema.next();
 
@@ -918,11 +969,21 @@ public class ParquetMetadataConverter {
         if (schemaElement.isSetScale()) {
           primitiveBuilder.scale(schemaElement.scale);
         }
+        if (columnOrders != null) {
+          org.apache.parquet.schema.ColumnOrder columnOrder = fromParquetColumnOrder(columnOrders.get(columnCount));
+          // As per parquet format 2.4.0 no UNDEFINED order is supported. So, set undefined column order for the types
+          // where ordering is not supported.
+          if (columnOrder.getColumnOrderName() == ColumnOrderName.TYPE_DEFINED_ORDER
+              && (schemaElement.type == Type.INT96 || schemaElement.converted_type == ConvertedType.INTERVAL)) {
+            columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
+          }
+          primitiveBuilder.columnOrder(columnOrder);
+        }
         childBuilder = primitiveBuilder;
 
       } else {
         childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));
-        buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children);
+        buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children, columnOrders, columnCount);
       }
 
       if (schemaElement.isSetConverted_type()) {
@@ -933,6 +994,7 @@ public class ParquetMetadataConverter {
       }
 
       childBuilder.named(schemaElement.name);
+      ++columnCount;
     }
   }
 
@@ -944,6 +1006,14 @@ public class ParquetMetadataConverter {
   // Visible for testing
   Repetition fromParquetRepetition(FieldRepetitionType repetition) {
     return Repetition.valueOf(repetition.name());
+  }
+
+  private static org.apache.parquet.schema.ColumnOrder fromParquetColumnOrder(ColumnOrder columnOrder) {
+    if (columnOrder.isSetTYPE_ORDER()) {
+      return org.apache.parquet.schema.ColumnOrder.typeDefined();
+    }
+    // The column order is not yet supported by this API
+    return org.apache.parquet.schema.ColumnOrder.undefined();
   }
 
   @Deprecated
@@ -994,8 +1064,7 @@ public class ParquetMetadataConverter {
         getEncoding(dlEncoding),
         getEncoding(rlEncoding)));
     if (!statistics.isEmpty()) {
-      pageHeader.getData_page_header().setStatistics(
-          toParquetStatistics(statistics));
+      pageHeader.getData_page_header().setStatistics(toParquetStatistics(statistics));
     }
     return pageHeader;
   }
