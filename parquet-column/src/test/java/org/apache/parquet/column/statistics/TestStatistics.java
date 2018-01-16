@@ -21,6 +21,7 @@ package org.apache.parquet.column.statistics;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
+import java.util.Locale;
 
 import org.junit.Test;
 
@@ -326,6 +327,24 @@ public class TestStatistics {
 
     // Test print formatting
     assertEquals("min: 1.0E-5, max: 944.5, num_nulls: 0", stats.toString());
+  }
+
+  @Test
+  public void testFloatingPointStringIndependentFromLocale() {
+    Statistics<?> floatStats = Statistics.createStats(Types.optional(PrimitiveTypeName.FLOAT).named("test-float"));
+    floatStats.updateStats(123.456f);
+    Statistics<?> doubleStats = Statistics.createStats(Types.optional(PrimitiveTypeName.DOUBLE).named("test-double"));
+    doubleStats.updateStats(12345.6789);
+
+    Locale defaultLocale = Locale.getDefault();
+    try {
+      // Set the locale to French where the decimal separator would be ',' instead of '.'
+      Locale.setDefault(Locale.FRENCH);
+      assertEquals("min: 123.456, max: 123.456, num_nulls: 0", floatStats.toString());
+      assertEquals("min: 12345.6789, max: 12345.6789, num_nulls: 0", doubleStats.toString());
+    } finally {
+      Locale.setDefault(defaultLocale);
+    }
   }
 
   @Test
