@@ -27,6 +27,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
@@ -231,7 +232,7 @@ public abstract class PrimitiveStringifier {
       if (value.length() != 12) {
         return BINARY_INVALID;
       }
-      ByteBuffer buffer = value.toByteBuffer();
+      ByteBuffer buffer = value.toByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
       int pos = buffer.position();
       String months = UNSIGNED_STRINGIFIER.stringify(buffer.getInt(pos));
       String days = UNSIGNED_STRINGIFIER.stringify(buffer.getInt(pos + 4));
@@ -308,15 +309,16 @@ public abstract class PrimitiveStringifier {
   static final PrimitiveStringifier TIME_STRINGIFIER = new PrimitiveStringifier("TIME_STRINGIFIER") {
     @Override
     public String stringify(int millis) {
-      return toTimeString("%02d:%02d:%02d.%03d", millis, MILLISECONDS);
+      return toTimeString(millis, MILLISECONDS);
     }
 
     @Override
     public String stringify(long micros) {
-      return toTimeString("%02d:%02d:%02d.%06d", micros, MICROSECONDS);
+      return toTimeString(micros, MICROSECONDS);
     }
 
-    private String toTimeString(String format, long duration, TimeUnit unit) {
+    private String toTimeString(long duration, TimeUnit unit) {
+      String format = "%02d:%02d:%02d.%0" + (unit == MILLISECONDS ? "3d" : "6d");
       return String.format(format,
           unit.toHours(duration),
           convert(duration, unit, MINUTES, HOURS),

@@ -122,17 +122,17 @@ public class TestPrimitiveStringifier {
     assertEquals("interval(0 months, 0 days, 0 millis)",
         stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
 
-    buffer.putInt(123);
-    buffer.putInt(456);
-    buffer.putInt(789);
+    buffer.put((byte) 12).put((byte) 0).put((byte) 0).put((byte) 0); // 12 in little-endian int
+    buffer.put((byte) 34).put((byte) 0).put((byte) 0).put((byte) 0); // 34 in little-endian int
+    buffer.put((byte) 56).put((byte) 0).put((byte) 0).put((byte) 0); // 56 in little-endian int
     buffer.flip();
-    assertEquals("interval(123 months, 456 days, 789 millis)",
+    assertEquals("interval(12 months, 34 days, 56 millis)",
         stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
 
     buffer.clear();
     buffer.putInt(0xFFFFFFFF);
-    buffer.putInt(0xFFFFFFFE);
-    buffer.putInt(0xFFFFFFFD);
+    buffer.putInt(0xFEFFFFFF);
+    buffer.putInt(0xFDFFFFFF);
     buffer.flip();
     assertEquals("interval(4294967295 months, 4294967294 days, 4294967293 millis)",
         stringifier.stringify(Binary.fromReusedByteBuffer(buffer)));
