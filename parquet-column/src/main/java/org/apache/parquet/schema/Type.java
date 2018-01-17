@@ -20,7 +20,6 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
-import java.io.Serializable;
 import java.util.List;
 
 import org.apache.parquet.io.InvalidRecordException;
@@ -262,7 +261,8 @@ abstract public class Type {
         name.equals(other.name)
         && repetition == other.repetition
         && eqOrBothNull(repetition, other.repetition)
-        && eqOrBothNull(id, other.id);
+        && eqOrBothNull(id, other.id)
+        && eqOrBothNull(originalType, other.originalType);
   };
 
   @Override

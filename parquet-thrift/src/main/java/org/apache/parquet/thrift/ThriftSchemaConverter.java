@@ -165,6 +165,8 @@ public class ThriftSchemaConverter {
       case STRING:
         StringType stringType = new StringType();
         FieldMetaData fieldMetaData = field.getFieldMetaData();
+        // There is no real binary type (see THRIFT-1920) in Thrift,
+        // binary data is represented by String type with an additional binary flag.
         if (fieldMetaData != null && fieldMetaData.valueMetaData.isBinary()) {
           stringType.setBinary(true);
         }
