@@ -450,6 +450,7 @@
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
+        <version>0.12</version>
         <executions>
           <execution>
             <phase>test</phase>
@@ -459,6 +460,7 @@
           </execution>
         </executions>
         <configuration>
+          <consoleOutput>true</consoleOutput>
           <excludes>
             <exclude>**/*.parquet</exclude>
             <exclude>**/*.avro</exclude>
