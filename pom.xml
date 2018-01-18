@@ -170,6 +170,7 @@
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
+        <version>0.12</version>
         <executions>
           <execution>
             <phase>test</phase>
@@ -179,6 +180,7 @@
           </execution>
         </executions>
         <configuration>
+          <consoleOutput>true</consoleOutput>
           <excludes>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.avsc</exclude>
