@@ -27,15 +27,12 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
-import org.apache.parquet.column.statistics.BinaryStatistics;
-import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
-import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
@@ -90,46 +87,15 @@ public class Util {
     if (!stats.hasNonNullValue()) {
       return "";
     }
-    // TODO: use original types when showing decimal, timestamp, etc.
-    if (stats instanceof BinaryStatistics) {
-      byte[] minBytes = stats.getMinBytes();
-      byte[] maxBytes = stats.getMaxBytes();
-      return String.format("%s / %s",
-          printable(minBytes, annotation == OriginalType.UTF8, 30),
-          printable(maxBytes, annotation == OriginalType.UTF8, 30));
-    } else {
-      return String.format("%s / %s", stats.minAsString(), stats.maxAsString());
-    }
+    return String.format("%s / %s", humanReadable(stats.minAsString(), 30), humanReadable(stats.maxAsString(), 30));
   }
 
   public static String toString(Statistics stats, long count, OriginalType annotation) {
     if (stats == null) {
       return "no stats";
     }
-    // TODO: use original types when showing decimal, timestamp, etc.
-    if (stats instanceof BooleanStatistics) {
-      return String.format("nulls: %d/%d", stats.getNumNulls(), count);
-    } else if (stats instanceof BinaryStatistics) {
-      byte[] minBytes = stats.getMinBytes();
-      byte[] maxBytes = stats.getMaxBytes();
-      return String.format("min: %s max: %s nulls: %d/%d",
-          printable(minBytes, annotation == OriginalType.UTF8, 30),
-          printable(maxBytes, annotation == OriginalType.UTF8, 30),
-          stats.getNumNulls(), count);
-    } else {
-      return String.format("min: %s max: %s nulls: %d/%d",
-        stats.minAsString(), stats.maxAsString(), stats.getNumNulls(), count);
-    }
-  }
-
-  private static String printable(byte[] bytes, boolean isUtf8, int len) {
-    if (bytes == null) {
-      return "null";
-    } else if (isUtf8) {
-      return humanReadable(new String(bytes, StandardCharsets.UTF_8), len);
-    } else {
-      return humanReadable(bytes, len);
-    }
+    return String.format("min: %s max: %s nulls: %d/%d",
+        humanReadable(stats.minAsString(), 30), humanReadable(stats.maxAsString(), 30), stats.getNumNulls(), count);
   }
 
   public static String humanReadable(String str, int len) {

@@ -88,9 +88,8 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  String toString(Long value) {
-    // TODO: implement unsigned int as required
-    return value.toString();
+  String stringify(Long value) {
+    return stringifier.stringify(value);
   }
 
   @Override

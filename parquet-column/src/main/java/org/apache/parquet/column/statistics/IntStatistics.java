@@ -88,9 +88,8 @@ public class IntStatistics extends Statistics<Integer> {
   }
 
   @Override
-  String toString(Integer value) {
-    // TODO: implement unsigned int as required
-    return value.toString();
+  String stringify(Integer value) {
+    return stringifier.stringify(value);
   }
 
   @Override

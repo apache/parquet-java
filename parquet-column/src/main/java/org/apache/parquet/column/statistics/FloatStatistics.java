@@ -89,8 +89,8 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  String toString(Float value) {
-    return String.format("%.5f", value);
+  String stringify(Float value) {
+    return stringifier.stringify(value);
   }
 
   @Override

@@ -88,6 +88,11 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
+  String stringify(Boolean value) {
+    return stringifier.stringify(value);
+  }
+
+  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || (2 < size);
   }

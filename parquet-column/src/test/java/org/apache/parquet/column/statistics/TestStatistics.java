@@ -21,10 +21,15 @@ package org.apache.parquet.column.statistics;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
+import java.util.Locale;
 
 import org.junit.Test;
 
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class TestStatistics {
   private int[] integerArray;
@@ -253,7 +258,7 @@ public class TestStatistics {
     assertEquals(statsFromBytesMinMax.getMin(), Float.MIN_VALUE, 1e-10);
 
     // Test print formatting
-    assertEquals(stats.toString(), String.format("min: %.5f, max: %.5f, num_nulls: %d", 0.00010, 553.59998, 0));
+    assertEquals("min: 1.0E-4, max: 553.6, num_nulls: 0", stats.toString());
   }
 
   @Test
@@ -321,7 +326,25 @@ public class TestStatistics {
     assertEquals(statsFromBytesMinMax.getMin(), Double.MIN_VALUE, 1e-10);
 
     // Test print formatting
-    assertEquals(stats.toString(), String.format("min: %.5f, max: %.5f, num_nulls: %d", 0.00001, 944.50000, 0));
+    assertEquals("min: 1.0E-5, max: 944.5, num_nulls: 0", stats.toString());
+  }
+
+  @Test
+  public void testFloatingPointStringIndependentFromLocale() {
+    Statistics<?> floatStats = Statistics.createStats(Types.optional(PrimitiveTypeName.FLOAT).named("test-float"));
+    floatStats.updateStats(123.456f);
+    Statistics<?> doubleStats = Statistics.createStats(Types.optional(PrimitiveTypeName.DOUBLE).named("test-double"));
+    doubleStats.updateStats(12345.6789);
+
+    Locale defaultLocale = Locale.getDefault();
+    try {
+      // Set the locale to French where the decimal separator would be ',' instead of '.'
+      Locale.setDefault(Locale.FRENCH);
+      assertEquals("min: 123.456, max: 123.456, num_nulls: 0", floatStats.toString());
+      assertEquals("min: 12345.6789, max: 12345.6789, num_nulls: 0", doubleStats.toString());
+    } finally {
+      Locale.setDefault(defaultLocale);
+    }
   }
 
   @Test
@@ -376,23 +399,24 @@ public class TestStatistics {
   public void testBinaryMinMax() {
     //Test basic max/min
     stringArray = new String[] {"hello", "world", "this", "is", "a", "test", "of", "the", "stats", "class"};
-    BinaryStatistics stats = new BinaryStatistics();
+    PrimitiveType type = Types.optional(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("test_binary_utf8");
+    BinaryStatistics stats = (BinaryStatistics) Statistics.createStats(type);
 
     for (String s: stringArray) {
       stats.updateStats(Binary.fromString(s));
     }
-    assertEquals(stats.getMax(), Binary.fromString("world"));
-    assertEquals(stats.getMin(), Binary.fromString("a"));
+    assertEquals(stats.genericGetMax(), Binary.fromString("world"));
+    assertEquals(stats.genericGetMin(), Binary.fromString("a"));
 
     // Test empty string
     stringArray = new String[] {"", "", "", "", ""};
-    BinaryStatistics statsEmpty = new BinaryStatistics();
+    BinaryStatistics statsEmpty = (BinaryStatistics) Statistics.createStats(type);
 
     for (String s: stringArray) {
       statsEmpty.updateStats(Binary.fromString(s));
     }
-    assertEquals(statsEmpty.getMax(), Binary.fromString(""));
-    assertEquals(statsEmpty.getMin(), Binary.fromString(""));
+    assertEquals(statsEmpty.genericGetMax(), Binary.fromString(""));
+    assertEquals(statsEmpty.genericGetMin(), Binary.fromString(""));
 
     // Test converting to and from byte[]
     byte[] stringMaxBytes = stats.getMaxBytes();
@@ -401,11 +425,11 @@ public class TestStatistics {
     assertEquals(new String(stringMaxBytes), "world");
     assertEquals(new String(stringMinBytes), "a");
 
-    BinaryStatistics statsFromBytes = new BinaryStatistics();
+    BinaryStatistics statsFromBytes = (BinaryStatistics) Statistics.createStats(type);
     statsFromBytes.setMinMaxFromBytes(stringMinBytes, stringMaxBytes);
 
-    assertEquals(statsFromBytes.getMax(), Binary.fromString("world"));
-    assertEquals(statsFromBytes.getMin(), Binary.fromString("a"));
+    assertEquals(statsFromBytes.genericGetMax(), Binary.fromString("world"));
+    assertEquals(statsFromBytes.genericGetMin(), Binary.fromString("a"));
 
     // Test print formatting
     assertEquals(stats.toString(), "min: a, max: world, num_nulls: 0");
