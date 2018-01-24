@@ -495,7 +495,6 @@ public class ParquetMetadataConverter {
         return SortOrder.SIGNED;
       case BINARY:
       case FIXED_LEN_BYTE_ARRAY:
-      case INT96: // only used for timestamp, which uses unsigned values
         return SortOrder.UNSIGNED;
     }
     return SortOrder.UNKNOWN;
