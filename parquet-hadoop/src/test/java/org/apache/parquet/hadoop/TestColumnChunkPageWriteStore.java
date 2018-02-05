@@ -19,7 +19,10 @@
 package org.apache.parquet.hadoop;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.isNull;
+import static org.mockito.Matchers.same;
 import static org.mockito.Mockito.inOrder;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.RLE;
@@ -50,7 +53,10 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.LittleEndianDataInputStream;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.columnindex.ColumnIndexBuilder;
+import org.apache.parquet.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.column.page.DataPageV2;
+import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.page.PageWriter;
@@ -175,8 +181,20 @@ public class TestColumnChunkPageWriteStore {
     store.flushToFileWriter(mockFileWriter);
 
     for (ColumnDescriptor col : schema.getColumns()) {
-      inOrder.verify(mockFileWriter).startColumn(
-          eq(col), eq((long) fakeCount), eq(UNCOMPRESSED));
+      inOrder.verify(mockFileWriter).writeColumnChunk(
+          eq(col),
+          eq((long) fakeCount),
+          eq(UNCOMPRESSED),
+          isNull(DictionaryPage.class),
+          any(),
+          eq(fakeData.size()),
+          eq(fakeData.size()),
+          eq(fakeStats),
+          same(ColumnIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no column index
+          same(OffsetIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no offset index
+          any(),
+          any(),
+          any());
     }
   }
 

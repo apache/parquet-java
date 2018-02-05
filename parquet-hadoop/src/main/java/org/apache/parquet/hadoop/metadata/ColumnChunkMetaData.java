@@ -168,6 +168,9 @@ abstract public class ColumnChunkMetaData {
   // we save 3 references by storing together the column properties that have few distinct values
   private final ColumnChunkProperties properties;
 
+  private IndexReference columnIndexReference;
+  private IndexReference offsetIndexReference;
+
   protected ColumnChunkMetaData(ColumnChunkProperties columnChunkProperties) {
     this(null, columnChunkProperties);
   }
@@ -236,6 +239,36 @@ abstract public class ColumnChunkMetaData {
    * @return the stats for this column
    */
   abstract public Statistics getStatistics();
+
+  /**
+   * @return the reference to the column index
+   */
+  public IndexReference getColumnIndexReference() {
+    return columnIndexReference;
+  }
+
+  /**
+   * @param indexReference
+   *          the reference to the column index
+   */
+  public void setColumnIndexReference(IndexReference indexReference) {
+    this.columnIndexReference = indexReference;
+  }
+
+  /**
+   * @return the reference to the offset index
+   */
+  public IndexReference getOffsetIndexReference() {
+    return offsetIndexReference;
+  }
+
+  /**
+   * @param offsetIndexReference
+   *          the reference to the offset index
+   */
+  public void setOffsetIndexReference(IndexReference offsetIndexReference) {
+    this.offsetIndexReference = offsetIndexReference;
+  }
 
   /**
    * @return all the encodings used in this column

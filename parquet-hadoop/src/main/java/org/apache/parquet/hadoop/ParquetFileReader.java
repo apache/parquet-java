@@ -55,6 +55,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.columnindex.ColumnIndex;
+import org.apache.parquet.column.columnindex.OffsetIndex;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -79,6 +81,7 @@ import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
+import org.apache.parquet.hadoop.metadata.IndexReference;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.HadoopReadOptions;
@@ -901,6 +904,38 @@ public class ParquetFileReader implements Closeable {
     return new DictionaryPage(
         bin, uncompressedPageSize, dictHeader.getNum_values(),
         converter.getEncoding(dictHeader.getEncoding()));
+  }
+
+  /**
+   * @param column
+   *          the column chunk which the column index is to be returned for
+   * @return the column index for the specified column chunk or {@code null} if the there is no index
+   * @throws IOException
+   *           if any I/O error occurs during reading the file
+   */
+  public ColumnIndex readColumnIndex(ColumnChunkMetaData column) throws IOException {
+    IndexReference ref = column.getColumnIndexReference();
+    if (ref == null) {
+      return null;
+    }
+    f.seek(ref.getOffset());
+    return ParquetMetadataConverter.fromParquetColumnIndex(column.getPrimitiveType(), Util.readColumnIndex(f));
+  }
+
+  /**
+   * @param column
+   *          the column chunk which the offset index is to be returned for
+   * @return the offset index for the specified column chunk or {@code null} if the there is no index
+   * @throws IOException
+   *           if any I/O error occurs during reading the file
+   */
+  public OffsetIndex readOffsetIndex(ColumnChunkMetaData column) throws IOException {
+    IndexReference ref = column.getOffsetIndexReference();
+    if (ref == null) {
+      return null;
+    }
+    f.seek(ref.getOffset());
+    return ParquetMetadataConverter.fromParquetOffsetIndex(Util.readOffsetIndex(f));
   }
 
   @Override
