@@ -289,13 +289,13 @@ public class TestParquetMetadataConverter {
   public void randomTestFilterMetaData() {
     // randomized property based testing
     // if it fails add the case above
-    Random random = new Random(System.currentTimeMillis());
+    Random random = new Random(42);
     for (int j = 0; j < 100; j++) {
       long[] rgs = new long[random.nextInt(50)];
       for (int i = 0; i < rgs.length; i++) {
         rgs[i] = random.nextInt(10000) + 1; // No empty row groups
       }
-      int splitSize = random.nextInt(10000);
+      int splitSize = random.nextInt(10000) + 1;
       try {
         verifyAllFilters(metadata(rgs), splitSize);
       } catch (AssertionError e) {
