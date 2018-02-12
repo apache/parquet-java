@@ -32,6 +32,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.api.RecordConsumer;
@@ -94,6 +95,10 @@ class InternalParquetRecordWriter<T> {
     this.validating = validating;
     this.props = props;
     initStore();
+  }
+
+  public ParquetMetadata getFooter() {
+    return parquetFileWriter.getFooter();
   }
 
   private void initStore() {
