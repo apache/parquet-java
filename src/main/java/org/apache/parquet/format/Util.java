@@ -57,6 +57,22 @@ import org.apache.parquet.format.event.TypedConsumer.StringConsumer;
  */
 public class Util {
 
+  public static void writeColumnIndex(ColumnIndex columnIndex, OutputStream to) throws IOException {
+    write(columnIndex, to);
+  }
+
+  public static ColumnIndex readColumnIndex(InputStream from) throws IOException {
+    return read(from, new ColumnIndex());
+  }
+
+  public static void writeOffsetIndex(OffsetIndex offsetIndex, OutputStream to) throws IOException {
+    write(offsetIndex, to);
+  }
+
+  public static OffsetIndex readOffsetIndex(InputStream from) throws IOException {
+    return read(from, new OffsetIndex());
+  }
+
   public static void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
     write(pageHeader, to);
   }
