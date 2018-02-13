@@ -23,6 +23,7 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.filte
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -53,6 +54,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.columnindex.BoundaryOrder;
+import org.apache.parquet.column.columnindex.ColumnIndex;
+import org.apache.parquet.column.columnindex.ColumnIndexBuilder;
+import org.apache.parquet.column.columnindex.OffsetIndex;
+import org.apache.parquet.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.DoubleStatistics;
@@ -891,5 +897,61 @@ public class TestParquetMetadataConverter {
     assertEquals(ColumnOrder.typeDefined(), columns.get(0).getPrimitiveType().columnOrder());
     assertEquals(ColumnOrder.undefined(), columns.get(1).getPrimitiveType().columnOrder());
     assertEquals(ColumnOrder.undefined(), columns.get(2).getPrimitiveType().columnOrder());
+  }
+
+  @Test
+  public void testOffsetIndexConversion() {
+    OffsetIndexBuilder builder = OffsetIndexBuilder.getBuilder();
+    builder.add(1000, 10000, 0);
+    builder.add(22000, 12000, 100);
+    OffsetIndex offsetIndex = ParquetMetadataConverter
+        .fromParquetOffsetIndex(ParquetMetadataConverter.toParquetOffsetIndex(builder.build(100000)));
+    assertEquals(2, offsetIndex.getPageCount());
+    assertEquals(101000, offsetIndex.getOffset(0));
+    assertEquals(10000, offsetIndex.getCompressedPageSize(0));
+    assertEquals(0, offsetIndex.getFirstRowIndex(0));
+    assertEquals(122000, offsetIndex.getOffset(1));
+    assertEquals(12000, offsetIndex.getCompressedPageSize(1));
+    assertEquals(100, offsetIndex.getFirstRowIndex(1));
+  }
+
+  @Test
+  public void testColumnIndexConversion() {
+    PrimitiveType type = Types.required(PrimitiveTypeName.INT64).named("test_int64");
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    Statistics<?> stats = Statistics.createStats(type);
+    stats.incrementNumNulls(16);
+    stats.updateStats(-100l);
+    stats.updateStats(100l);
+    builder.add(stats);
+    stats = Statistics.createStats(type);
+    stats.incrementNumNulls(111);
+    builder.add(stats);
+    stats = Statistics.createStats(type);
+    stats.updateStats(200l);
+    stats.updateStats(500l);
+    builder.add(stats);
+    org.apache.parquet.format.ColumnIndex parquetColumnIndex = 
+        ParquetMetadataConverter.toParquetColumnIndex(type, builder.build());
+    ColumnIndex columnIndex = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
+    assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
+    assertTrue(Arrays.asList(false, true, false).equals(columnIndex.getNullPages()));
+    assertTrue(Arrays.asList(16l, 111l, 0l).equals(columnIndex.getNullCounts()));
+    assertTrue(Arrays.asList(
+        ByteBuffer.wrap(BytesUtils.longToBytes(-100l)),
+        ByteBuffer.allocate(0),
+        ByteBuffer.wrap(BytesUtils.longToBytes(200l))).equals(columnIndex.getMinValues()));
+    assertTrue(Arrays.asList(
+        ByteBuffer.wrap(BytesUtils.longToBytes(100l)),
+        ByteBuffer.allocate(0),
+        ByteBuffer.wrap(BytesUtils.longToBytes(500l))).equals(columnIndex.getMaxValues()));
+
+    assertNull("Should handle null column index", ParquetMetadataConverter
+        .toParquetColumnIndex(Types.required(PrimitiveTypeName.INT32).named("test_int32"), null));
+    assertNull("Should handle unsupported types", ParquetMetadataConverter
+        .toParquetColumnIndex(Types.required(PrimitiveTypeName.INT96).named("test_int96"), columnIndex));
+    assertNull("Should handle unsupported types",
+        ParquetMetadataConverter.fromParquetColumnIndex(Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+            .length(12).as(OriginalType.INTERVAL).named("test_interval"), parquetColumnIndex));
   }
 }

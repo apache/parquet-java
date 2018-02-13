@@ -135,6 +135,8 @@ public class OffsetIndexBuilder {
   }
 
   /**
+   * Builds the offset index. It also resets all the collected data.
+   *
    * @return the newly created offset index or {@code null} if the {@link OffsetIndex} object would be empty
    */
   public OffsetIndex build() {
@@ -142,6 +144,8 @@ public class OffsetIndexBuilder {
   }
 
   /**
+   * Builds the offset index. It also resets all the collected data.
+   *
    * @param firstPageOffset
    *          the actual offset in the file to be used to translate all the collected offsets
    * @return the newly created offset index or {@code null} if the {@link OffsetIndex} object would be empty
@@ -160,6 +164,13 @@ public class OffsetIndexBuilder {
     offsetIndex.offsets = offsets;
     offsetIndex.compressedPageSizes = compressedPageSizes.toIntArray();
     offsetIndex.firstRowIndexes = firstRowIndexes.toLongArray();
+
+    this.compressedPageSizes.clear();
+    this.firstRowIndexes.clear();
+    this.offsets.clear();
+    previousOffset = previousRowCount = previousRowIndex = 0;
+    previousPageSize = 0;
+
     return offsetIndex;
   }
 

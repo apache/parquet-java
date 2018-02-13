@@ -120,7 +120,7 @@ public abstract class ColumnIndexBuilder {
     public String toString() {
       try (Formatter formatter = new Formatter()) {
         formatter.format("Boudary order: %s\n", boundaryOrder);
-        String minMaxPart = "  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s  %- " + MAX_VALUE_LENGTH_FOR_TOSTRING + "s\n";
+        String minMaxPart = "  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s\n";
         formatter.format("%-10s  %20s" + minMaxPart, "", "null count", "min", "max");
         String format = "page-%-5d  %20s" + minMaxPart;
         for (int i = 0, n = nullPages.length; i < n; ++i) {
@@ -327,7 +327,11 @@ public abstract class ColumnIndexBuilder {
    */
   public ColumnIndex build() {
     ColumnIndexBase columnIndex = build(type);
+    if (columnIndex == null) {
+      return null;
+    }
     columnIndex.boundaryOrder = calculateBoundaryOrder(type.comparator());
+    clear();
     return columnIndex;
   }
 
@@ -346,27 +350,49 @@ public abstract class ColumnIndexBuilder {
   }
 
   private BoundaryOrder calculateBoundaryOrder(PrimitiveComparator<Binary> comparator) {
-    int prevCmp = 0;
+    if (isAscending(comparator)) {
+      return BoundaryOrder.ASCENDING;
+    } else if (isDescending(comparator)) {
+      return BoundaryOrder.DESCENDING;
+    } else {
+      return BoundaryOrder.UNORDERED;
+    }
+  }
+
+  // max_i <= min_i+1
+  private boolean isAscending(PrimitiveComparator<Binary> comparator) {
     int prevPage = nextNonNullPage(0);
     // All pages are null-page
     if (prevPage < 0) {
-      return BoundaryOrder.UNORDERED;
+      return false;
     }
-    int nextPage = nextNonNullPage(prevPage);
+    int nextPage = nextNonNullPage(prevPage + 1);
     while (nextPage > 0) {
-      int cmp = compareMaxMin(comparator, prevPage, nextPage);
-      if ((cmp < 0 && prevCmp > 0) || (cmp > 0 && prevCmp < 0)) {
-        return BoundaryOrder.UNORDERED;
-      }
-
-      if (prevCmp == 0) {
-        prevCmp = cmp;
+      if (compareMaxMin(comparator, prevPage, nextPage) > 0) {
+        return false;
       }
       prevPage = nextPage;
-      nextPage = nextNonNullPage(nextPage);
+      nextPage = nextNonNullPage(nextPage + 1);
     }
+    return true;
+  }
 
-    return prevCmp <= 0 ? BoundaryOrder.ASCENDING : BoundaryOrder.DESCENDING;
+  // min_i >= max_i+1
+  private boolean isDescending(PrimitiveComparator<Binary> comparator) {
+    int prevPage = nextNonNullPage(0);
+    // All pages are null-page
+    if (prevPage < 0) {
+      return false;
+    }
+    int nextPage = nextNonNullPage(prevPage + 1);
+    while (nextPage > 0) {
+      if (compareMaxMin(comparator, nextPage, prevPage) > 0) {
+        return false;
+      }
+      prevPage = nextPage;
+      nextPage = nextNonNullPage(nextPage + 1);
+    }
+    return true;
   }
 
   private int nextNonNullPage(int startIndex) {

@@ -18,8 +18,9 @@
  */
 package org.apache.parquet.column.columnindex;
 
-import java.nio.ByteBuffer;
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
 
+import java.nio.ByteBuffer;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
@@ -61,11 +62,11 @@ class LongColumnIndexBuilder extends ColumnIndexBuilder {
   private final LongList maxValues = new LongArrayList();
 
   private static long convert(ByteBuffer buffer) {
-    return buffer.getLong(0);
+    return buffer.order(LITTLE_ENDIAN).getLong(0);
   }
 
   private static ByteBuffer convert(long value) {
-    return ByteBuffer.allocate(Long.SIZE / 8).putLong(0, value);
+    return ByteBuffer.allocate(Long.SIZE / 8).order(LITTLE_ENDIAN).putLong(0, value);
   }
 
   @Override

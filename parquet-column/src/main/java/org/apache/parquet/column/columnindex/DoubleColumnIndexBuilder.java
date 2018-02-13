@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.columnindex;
 
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
+
 import java.nio.ByteBuffer;
 
 import org.apache.parquet.io.api.Binary;
@@ -61,11 +63,11 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
   private final DoubleList maxValues = new DoubleArrayList();
 
   private static double convert(ByteBuffer buffer) {
-    return buffer.getDouble(0);
+    return buffer.order(LITTLE_ENDIAN).getDouble(0);
   }
 
   private static ByteBuffer convert(double value) {
-    return ByteBuffer.allocate(Double.SIZE / 8).putDouble(0, value);
+    return ByteBuffer.allocate(Double.SIZE / 8).order(LITTLE_ENDIAN).putDouble(0, value);
   }
 
   @Override

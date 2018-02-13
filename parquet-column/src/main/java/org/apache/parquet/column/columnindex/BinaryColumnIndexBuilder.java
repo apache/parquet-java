@@ -60,10 +60,7 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
   private final List<Binary> maxValues = new ArrayList<>();
 
   private static Binary convert(ByteBuffer buffer) {
-    // Ensure copying the bytes
-    byte[] array = new byte[buffer.remaining()];
-    buffer.get(array);
-    return Binary.fromConstantByteArray(array);
+    return Binary.fromReusedByteBuffer(buffer);
   }
 
   private static ByteBuffer convert(Binary value) {
