@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.io.InputFile;
 
 /**
  * Read Avro records from a Parquet file.
@@ -35,6 +36,10 @@ import org.apache.parquet.hadoop.api.ReadSupport;
 public class AvroParquetReader<T> extends ParquetReader<T> {
 
   public static <T> Builder<T> builder(Path file) {
+    return new Builder<T>(file);
+  }
+
+  public static <T> Builder<T> builder(InputFile file) {
     return new Builder<T>(file);
   }
 
@@ -78,6 +83,10 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
 
     private Builder(Path path) {
       super(path);
+    }
+
+    private Builder(InputFile file) {
+      super(file);
     }
 
     public Builder<T> withDataModel(GenericData model) {
