@@ -69,14 +69,17 @@ public class TestColumnIndexBuilder {
     assertThat(builder, instanceOf(BinaryColumnIndexBuilder.class));
     assertNull(builder.build());
 
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, decimalBinary("-0.17"), decimalBinary("1234567890.12")));
-    builder.add(stats(type, decimalBinary("-234.23"), null, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, decimalBinary("-9999293.23"), decimalBinary("2348978.45")));
-    builder.add(stats(type, null, null, null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, decimalBinary("87656273")));
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, decimalBinary("-0.17"), decimalBinary("1234567890.12")));
+    builder.add(sb.stats(type, decimalBinary("-234.23"), null, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, decimalBinary("-9999293.23"), decimalBinary("2348978.45")));
+    builder.add(sb.stats(type, null, null, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, decimalBinary("87656273")));
+    assertEquals(8, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     ColumnIndex columnIndex = builder.build();
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 0, 3, 3, 0, 4, 2, 0);
@@ -101,14 +104,17 @@ public class TestColumnIndexBuilder {
         decimalBinary("87656273"));
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null, null, null));
-    builder.add(stats(type, decimalBinary("-9999293.23"), decimalBinary("-234.23")));
-    builder.add(stats(type, decimalBinary("-0.17"), decimalBinary("87656273")));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, decimalBinary("87656273")));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, decimalBinary("1234567890.12"), null, null, null));
-    builder.add(stats(type, null, null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null, null, null));
+    builder.add(sb.stats(type, decimalBinary("-9999293.23"), decimalBinary("-234.23")));
+    builder.add(sb.stats(type, decimalBinary("-0.17"), decimalBinary("87656273")));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, decimalBinary("87656273")));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, decimalBinary("1234567890.12"), null, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    assertEquals(8, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 4, 0, 0, 2, 0, 2, 3, 3);
@@ -133,14 +139,17 @@ public class TestColumnIndexBuilder {
         null);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, decimalBinary("1234567890.12"), null, null, null));
-    builder.add(stats(type, null, null, null, null));
-    builder.add(stats(type, decimalBinary("1234567890.12"), decimalBinary("87656273")));
-    builder.add(stats(type, decimalBinary("987656273"), decimalBinary("-0.17")));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, decimalBinary("-234.23"), decimalBinary("-9999293.23")));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, decimalBinary("1234567890.12"), null, null, null));
+    builder.add(sb.stats(type, null, null, null, null));
+    builder.add(sb.stats(type, decimalBinary("1234567890.12"), decimalBinary("87656273")));
+    builder.add(sb.stats(type, decimalBinary("987656273"), decimalBinary("-0.17")));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, decimalBinary("-234.23"), decimalBinary("-9999293.23")));
+    assertEquals(8, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 3, 2, 3, 4, 0, 0, 2, 0);
@@ -172,14 +181,17 @@ public class TestColumnIndexBuilder {
     assertThat(builder, instanceOf(BinaryColumnIndexBuilder.class));
     assertNull(builder.build());
 
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, stringBinary("Jeltz"), stringBinary("Slartibartfast"), null, null));
-    builder.add(stats(type, null, null, null, null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, stringBinary("Beeblebrox"), stringBinary("Prefect")));
-    builder.add(stats(type, stringBinary("Dent"), stringBinary("Trilian"), null));
-    builder.add(stats(type, stringBinary("Beeblebrox")));
-    builder.add(stats(type, null, null));
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, stringBinary("Jeltz"), stringBinary("Slartibartfast"), null, null));
+    builder.add(sb.stats(type, null, null, null, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, stringBinary("Beeblebrox"), stringBinary("Prefect")));
+    builder.add(sb.stats(type, stringBinary("Dent"), stringBinary("Trilian"), null));
+    builder.add(sb.stats(type, stringBinary("Beeblebrox")));
+    builder.add(sb.stats(type, null, null));
+    assertEquals(8, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     ColumnIndex columnIndex = builder.build();
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 5, 2, 0, 1, 0, 2);
@@ -204,14 +216,17 @@ public class TestColumnIndexBuilder {
         null);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, stringBinary("Beeblebrox"), stringBinary("Dent"), null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null, null, null, null));
-    builder.add(stats(type, stringBinary("Dent"), stringBinary("Jeltz")));
-    builder.add(stats(type, stringBinary("Dent"), stringBinary("Prefect"), null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, stringBinary("Slartibartfast")));
-    builder.add(stats(type, null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, stringBinary("Beeblebrox"), stringBinary("Dent"), null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null, null, null, null));
+    builder.add(sb.stats(type, stringBinary("Dent"), stringBinary("Jeltz")));
+    builder.add(sb.stats(type, stringBinary("Dent"), stringBinary("Prefect"), null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, stringBinary("Slartibartfast")));
+    builder.add(sb.stats(type, null, null));
+    assertEquals(8, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 5, 0, 1, 2, 0, 2);
@@ -236,14 +251,17 @@ public class TestColumnIndexBuilder {
         null);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, stringBinary("Slartibartfast")));
-    builder.add(stats(type, null, null, null, null, null));
-    builder.add(stats(type, stringBinary("Prefect"), stringBinary("Jeltz"), null));
-    builder.add(stats(type, stringBinary("Dent"), stringBinary("Dent")));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, stringBinary("Dent"), stringBinary("Beeblebrox"), null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, stringBinary("Slartibartfast")));
+    builder.add(sb.stats(type, null, null, null, null, null));
+    builder.add(sb.stats(type, stringBinary("Prefect"), stringBinary("Jeltz"), null));
+    builder.add(sb.stats(type, stringBinary("Dent"), stringBinary("Dent")));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, stringBinary("Dent"), stringBinary("Beeblebrox"), null, null));
+    assertEquals(8, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 0, 5, 1, 0, 2, 2, 2);
@@ -323,11 +341,15 @@ public class TestColumnIndexBuilder {
     assertThat(builder, instanceOf(BooleanColumnIndexBuilder.class));
     assertNull(builder.build());
 
-    builder.add(stats(type, false, true));
-    builder.add(stats(type, true, false, null));
-    builder.add(stats(type, true, true, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, false, false));
+    builder = ColumnIndexBuilder.getBuilder(type);
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, false, true));
+    builder.add(sb.stats(type, true, false, null));
+    builder.add(sb.stats(type, true, true, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, false, false));
+    assertEquals(5, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     ColumnIndex columnIndex = builder.build();
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 0, 1, 2, 3, 0);
@@ -336,13 +358,16 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), false, false, true, null, false);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, false, false));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, null, null, null, null));
-    builder.add(stats(type, false, true, null));
-    builder.add(stats(type, false, true, null, null));
-    builder.add(stats(type, null, null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, false, false));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, null, null, null, null));
+    builder.add(sb.stats(type, false, true, null));
+    builder.add(sb.stats(type, false, true, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    assertEquals(7, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 0, 3, 4, 1, 2, 3);
@@ -351,13 +376,16 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), null, false, null, null, false, false, null);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, true, true));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, null, null, null, null));
-    builder.add(stats(type, true, false, null));
-    builder.add(stats(type, false, false, null, null));
-    builder.add(stats(type, null, null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, true, true));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, null, null, null, null));
+    builder.add(sb.stats(type, true, false, null));
+    builder.add(sb.stats(type, false, false, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    assertEquals(7, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 0, 3, 4, 1, 2, 3);
@@ -389,12 +417,15 @@ public class TestColumnIndexBuilder {
     assertThat(builder, instanceOf(DoubleColumnIndexBuilder.class));
     assertNull(builder.build());
 
-    builder.add(stats(type, -4.2, -4.1));
-    builder.add(stats(type, -11.7, 7.0, null));
-    builder.add(stats(type, 2.2, 2.2, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 1.9, 2.32));
-    builder.add(stats(type, -21.0, 8.1));
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, -4.2, -4.1));
+    builder.add(sb.stats(type, -11.7, 7.0, null));
+    builder.add(sb.stats(type, 2.2, 2.2, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 1.9, 2.32));
+    builder.add(sb.stats(type, -21.0, 8.1));
+    assertEquals(6, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     ColumnIndex columnIndex = builder.build();
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 0, 1, 2, 3, 0, 0);
@@ -403,15 +434,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), -4.2, -11.7, 2.2, null, 1.9, -21.0);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, -532.3, -345.2, null, null));
-    builder.add(stats(type, -234.7, -234.6, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, -234.6, 2.99999));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 3.0, 42.83));
-    builder.add(stats(type, null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, -532.3, -345.2, null, null));
+    builder.add(sb.stats(type, -234.7, -234.6, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, -234.6, 2.99999));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 3.0, 42.83));
+    builder.add(sb.stats(type, null, null));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 1, 2, 3, 0, 2, 0, 2);
@@ -420,15 +454,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), null, -532.3, -234.7, null, null, -234.6, null, 3.0, null);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null, null, null, null));
-    builder.add(stats(type, 532.3, 345.2));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 234.7, 234.6, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 234.69, -2.99999));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, -3.0, -42.83));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null, null, null, null));
+    builder.add(sb.stats(type, 532.3, 345.2));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 234.7, 234.6, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 234.69, -2.99999));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, -3.0, -42.83));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 5, 0, 3, 1, 2, 0, 2, 2, 0);
@@ -460,12 +497,15 @@ public class TestColumnIndexBuilder {
     assertThat(builder, instanceOf(FloatColumnIndexBuilder.class));
     assertNull(builder.build());
 
-    builder.add(stats(type, -4.2f, -4.1f));
-    builder.add(stats(type, -11.7f, 7.0f, null));
-    builder.add(stats(type, 2.2f, 2.2f, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 1.9f, 2.32f));
-    builder.add(stats(type, -21.0f, 8.1f));
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, -4.2f, -4.1f));
+    builder.add(sb.stats(type, -11.7f, 7.0f, null));
+    builder.add(sb.stats(type, 2.2f, 2.2f, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 1.9f, 2.32f));
+    builder.add(sb.stats(type, -21.0f, 8.1f));
+    assertEquals(6, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     ColumnIndex columnIndex = builder.build();
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 0, 1, 2, 3, 0, 0);
@@ -474,15 +514,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), -4.2f, -11.7f, 2.2f, null, 1.9f, -21.0f);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, -532.3f, -345.2f, null, null));
-    builder.add(stats(type, -300.6f, -234.7f, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, -234.6f, 2.99999f));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 3.0f, 42.83f));
-    builder.add(stats(type, null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, -532.3f, -345.2f, null, null));
+    builder.add(sb.stats(type, -300.6f, -234.7f, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, -234.6f, 2.99999f));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 3.0f, 42.83f));
+    builder.add(sb.stats(type, null, null));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 1, 2, 3, 0, 2, 0, 2);
@@ -491,15 +534,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), null, -532.3f, -300.6f, null, null, -234.6f, null, 3.0f, null);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null, null, null, null));
-    builder.add(stats(type, 532.3f, 345.2f));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 234.7f, 234.6f, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 234.6f, -2.99999f));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, -3.0f, -42.83f));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null, null, null, null));
+    builder.add(sb.stats(type, 532.3f, 345.2f));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 234.7f, 234.6f, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 234.6f, -2.99999f));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, -3.0f, -42.83f));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 5, 0, 3, 1, 2, 0, 2, 2, 0);
@@ -531,12 +577,15 @@ public class TestColumnIndexBuilder {
     assertThat(builder, instanceOf(IntColumnIndexBuilder.class));
     assertNull(builder.build());
 
-    builder.add(stats(type, -4, 10));
-    builder.add(stats(type, -11, 7, null));
-    builder.add(stats(type, 2, 2, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 1, 2));
-    builder.add(stats(type, -21, 8));
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, -4, 10));
+    builder.add(sb.stats(type, -11, 7, null));
+    builder.add(sb.stats(type, 2, 2, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 1, 2));
+    builder.add(sb.stats(type, -21, 8));
+    assertEquals(6, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     ColumnIndex columnIndex = builder.build();
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 0, 1, 2, 3, 0, 0);
@@ -545,15 +594,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), -4, -11, 2, null, 1, -21);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, -532, -345, null, null));
-    builder.add(stats(type, -500, -42, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, -42, 2));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 3, 42));
-    builder.add(stats(type, null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, -532, -345, null, null));
+    builder.add(sb.stats(type, -500, -42, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, -42, 2));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 3, 42));
+    builder.add(sb.stats(type, null, null));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 1, 2, 3, 0, 2, 0, 2);
@@ -562,15 +614,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), null, -532, -500, null, null, -42, null, 3, null);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null, null, null, null));
-    builder.add(stats(type, 532, 345));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 234, 42, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 42, -2));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, -3, -42));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null, null, null, null));
+    builder.add(sb.stats(type, 532, 345));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 234, 42, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 42, -2));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, -3, -42));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 5, 0, 3, 1, 2, 0, 2, 2, 0);
@@ -602,12 +657,15 @@ public class TestColumnIndexBuilder {
     assertThat(builder, instanceOf(IntColumnIndexBuilder.class));
     assertNull(builder.build());
 
-    builder.add(stats(type, 4, 10));
-    builder.add(stats(type, 11, 17, null));
-    builder.add(stats(type, 2, 2, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 1, 0xFF));
-    builder.add(stats(type, 0xEF, 0xFA));
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, 4, 10));
+    builder.add(sb.stats(type, 11, 17, null));
+    builder.add(sb.stats(type, 2, 2, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 1, 0xFF));
+    builder.add(sb.stats(type, 0xEF, 0xFA));
+    assertEquals(6, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     ColumnIndex columnIndex = builder.build();
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 0, 1, 2, 3, 0, 0);
@@ -616,15 +674,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), 4, 11, 2, null, 1, 0xEF);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 0, 0, null, null));
-    builder.add(stats(type, 0, 42, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 42, 0xEE));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 0xEF, 0xFF));
-    builder.add(stats(type, null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 0, 0, null, null));
+    builder.add(sb.stats(type, 0, 42, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 42, 0xEE));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 0xEF, 0xFF));
+    builder.add(sb.stats(type, null, null));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 1, 2, 3, 0, 2, 0, 2);
@@ -633,15 +694,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), null, 0, 0, null, null, 42, null, 0xEF, null);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null, null, null, null));
-    builder.add(stats(type, 0xFF, 0xFF));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 0xEF, 0xEA, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 0xEE, 42));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 41, 0));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null, null, null, null));
+    builder.add(sb.stats(type, 0xFF, 0xFF));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 0xEF, 0xEA, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 0xEE, 42));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 41, 0));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 5, 0, 3, 1, 2, 0, 2, 2, 0);
@@ -657,12 +721,15 @@ public class TestColumnIndexBuilder {
     assertThat(builder, instanceOf(LongColumnIndexBuilder.class));
     assertNull(builder.build());
 
-    builder.add(stats(type, -4l, 10l));
-    builder.add(stats(type, -11l, 7l, null));
-    builder.add(stats(type, 2l, 2l, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 1l, 2l));
-    builder.add(stats(type, -21l, 8l));
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, -4l, 10l));
+    builder.add(sb.stats(type, -11l, 7l, null));
+    builder.add(sb.stats(type, 2l, 2l, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 1l, 2l));
+    builder.add(sb.stats(type, -21l, 8l));
+    assertEquals(6, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     ColumnIndex columnIndex = builder.build();
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 0l, 1l, 2l, 3l, 0l, 0l);
@@ -671,15 +738,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), -4l, -11l, 2l, null, 1l, -21l);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, -532l, -345l, null, null));
-    builder.add(stats(type, -234l, -42l, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, -42l, 2l));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, -3l, 42l));
-    builder.add(stats(type, null, null));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, -532l, -345l, null, null));
+    builder.add(sb.stats(type, -234l, -42l, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, -42l, 2l));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, -3l, 42l));
+    builder.add(sb.stats(type, null, null));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 1, 2, 3, 0, 2, 0, 2);
@@ -688,15 +758,18 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMinValues(), null, -532l, -234l, null, null, -42l, null, -3l, null);
 
     builder = ColumnIndexBuilder.getBuilder(type);
-    builder.add(stats(type, null, null, null, null, null));
-    builder.add(stats(type, 532l, 345l));
-    builder.add(stats(type, null, null, null));
-    builder.add(stats(type, 234l, 42l, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, 42l, -2l));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, null, null));
-    builder.add(stats(type, -3l, -42l));
+    sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null, null, null, null));
+    builder.add(sb.stats(type, 532l, 345l));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 234l, 42l, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, 42l, -2l));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, -3l, -42l));
+    assertEquals(9, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
     columnIndex = builder.build();
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 5, 0, 3, 1, 2, 0, 2, 2, 0);
@@ -724,12 +797,15 @@ public class TestColumnIndexBuilder {
   @Test
   public void testNoOpBuilder() {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getNoOpBuilder();
-    builder.add(stats(Types.required(BINARY).as(UTF8).named("test_binary_utf8"), stringBinary("Jeltz"),
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(Types.required(BINARY).as(UTF8).named("test_binary_utf8"), stringBinary("Jeltz"),
         stringBinary("Slartibartfast"), null, null));
-    builder.add(stats(Types.required(BOOLEAN).named("test_boolean"), true, true, null, null));
-    builder.add(stats(Types.required(DOUBLE).named("test_double"), null, null, null));
-    builder.add(stats(Types.required(INT32).named("test_int32"), null, null));
-    builder.add(stats(Types.required(INT64).named("test_int64"), -234l, -42l, null));
+    builder.add(sb.stats(Types.required(BOOLEAN).named("test_boolean"), true, true, null, null));
+    builder.add(sb.stats(Types.required(DOUBLE).named("test_double"), null, null, null));
+    builder.add(sb.stats(Types.required(INT32).named("test_int32"), null, null));
+    builder.add(sb.stats(Types.required(INT64).named("test_int64"), -234l, -42l, null));
+    assertEquals(0, builder.getPageCount());
+    assertEquals(0, builder.getMinMaxSize());
     assertNull(builder.build());
   }
 
@@ -912,38 +988,50 @@ public class TestColumnIndexBuilder {
     }
   }
 
-  private static Statistics<?> stats(PrimitiveType type, Object... values) {
-    Statistics<?> stats = Statistics.createStats(type);
-    for (Object value : values) {
-      if (value == null) {
-        stats.incrementNumNulls();
-        continue;
+  private static class StatsBuilder {
+    private long minMaxSize;
+
+    Statistics<?> stats(PrimitiveType type, Object... values) {
+      Statistics<?> stats = Statistics.createStats(type);
+      for (Object value : values) {
+        if (value == null) {
+          stats.incrementNumNulls();
+          continue;
+        }
+        switch (type.getPrimitiveTypeName()) {
+          case BINARY:
+          case FIXED_LEN_BYTE_ARRAY:
+          case INT96:
+            stats.updateStats((Binary) value);
+            break;
+          case BOOLEAN:
+            stats.updateStats((boolean) value);
+            break;
+          case DOUBLE:
+            stats.updateStats((double) value);
+            break;
+          case FLOAT:
+            stats.updateStats((float) value);
+            break;
+          case INT32:
+            stats.updateStats((int) value);
+            break;
+          case INT64:
+            stats.updateStats((long) value);
+            break;
+          default:
+            fail("Unsupported value type for stats: " + value.getClass());
+        }
       }
-      switch (type.getPrimitiveTypeName()) {
-        case BINARY:
-        case FIXED_LEN_BYTE_ARRAY:
-        case INT96:
-          stats.updateStats((Binary) value);
-          break;
-        case BOOLEAN:
-          stats.updateStats((boolean) value);
-          break;
-        case DOUBLE:
-          stats.updateStats((double) value);
-          break;
-        case FLOAT:
-          stats.updateStats((float) value);
-          break;
-        case INT32:
-          stats.updateStats((int) value);
-          break;
-        case INT64:
-          stats.updateStats((long) value);
-          break;
-        default:
-          fail("Unsupported value type for stats: " + value.getClass());
+      if (stats.hasNonNullValue()) {
+        minMaxSize += stats.getMinBytes().length;
+        minMaxSize += stats.getMaxBytes().length;
       }
+      return stats;
     }
-    return stats;
+
+    long getMinMaxSize() {
+      return minMaxSize;
+    }
   }
 }

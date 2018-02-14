@@ -67,7 +67,7 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
   }
 
   private static ByteBuffer convert(float value) {
-    return ByteBuffer.allocate(Float.SIZE / 8).order(LITTLE_ENDIAN).putFloat(0, value);
+    return ByteBuffer.allocate(Float.BYTES).order(LITTLE_ENDIAN).putFloat(0, value);
   }
 
   @Override
@@ -104,5 +104,10 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
   @Override
   int compareMaxValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
     return comparator.compare(maxValues.get(index1), maxValues.get(index2));
+  }
+
+  @Override
+  int sizeOf(Object value) {
+    return Float.BYTES;
   }
 }

@@ -103,4 +103,9 @@ class BooleanColumnIndexBuilder extends ColumnIndexBuilder {
   int compareMaxValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
     return comparator.compare(maxValues.get(index1), maxValues.get(index2));
   }
+
+  @Override
+  int sizeOf(Object value) {
+    return 1;
+  }
 }

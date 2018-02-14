@@ -65,6 +65,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.*;
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.PLAIN;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.MAX_STATS_SIZE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.Type.Repetition.*;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
@@ -813,7 +814,12 @@ public class TestParquetFileWriter {
     w.endBlock();
     w.startBlock(4);
     w.startColumn(C1, 7, CODEC);
-    w.writeDataPage(7, 4, BytesInput.from(BYTES3), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3),
+        // Creating huge stats so the column index will reach the limit and won't be written
+        statsC1(
+            Binary.fromConstantByteArray(new byte[(int) MAX_STATS_SIZE]),
+            Binary.fromConstantByteArray(new byte[1])),
+        4, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.startColumn(C2, 8, CODEC);
     w.writeDataPage(8, 4, BytesInput.from(BYTES4), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
@@ -876,6 +882,8 @@ public class TestParquetFileWriter {
       assertEquals(0, offsetIndex.getFirstRowIndex(0));
       assertEquals(1, offsetIndex.getFirstRowIndex(1));
       assertEquals(3, offsetIndex.getFirstRowIndex(2));
+
+      assertNull(reader.readColumnIndex(footer.getBlocks().get(2).getColumns().get(0)));
     }
   }
 
