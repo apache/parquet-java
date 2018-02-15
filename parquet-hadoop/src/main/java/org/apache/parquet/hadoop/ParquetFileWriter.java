@@ -121,6 +121,9 @@ public class ParquetFileWriter {
   private long currentChunkFirstDataPage;         // set in startColumn (out.pos())
   private long currentChunkDictionaryPageOffset;  // set in writeDictionaryPage
 
+  // set when end is called
+  private ParquetMetadata footer = null;
+
   /**
    * Captures the order in which methods should be called
    *
@@ -670,7 +673,7 @@ public class ParquetFileWriter {
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
     LOG.debug("{}: end", out.getPos());
-    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
+    this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
     serializeFooter(footer, out);
     out.close();
   }
@@ -682,6 +685,11 @@ public class ParquetFileWriter {
     LOG.debug("{}: footer length = {}" , out.getPos(), (out.getPos() - footerIndex));
     BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
     out.write(MAGIC);
+  }
+
+  public ParquetMetadata getFooter() {
+    Preconditions.checkState(state == STATE.ENDED, "Cannot return unfinished footer.");
+    return footer;
   }
 
   /**
