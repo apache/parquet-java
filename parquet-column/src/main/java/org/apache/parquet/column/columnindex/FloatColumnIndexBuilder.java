@@ -21,6 +21,7 @@ package org.apache.parquet.column.columnindex;
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 
 import java.nio.ByteBuffer;
+
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
@@ -96,7 +97,12 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
   }
 
   @Override
-  int compareMaxMin(PrimitiveComparator<Binary> comparator, int maxIndex, int minIndex) {
-    return comparator.compare(maxValues.get(maxIndex), minValues.get(minIndex));
+  int compareMinValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
+    return comparator.compare(minValues.get(index1), minValues.get(index2));
+  }
+
+  @Override
+  int compareMaxValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
+    return comparator.compare(maxValues.get(index1), maxValues.get(index2));
   }
 }

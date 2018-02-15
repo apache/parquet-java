@@ -183,7 +183,12 @@ public abstract class ColumnIndexBuilder {
     }
 
     @Override
-    int compareMaxMin(PrimitiveComparator<Binary> comparator, int maxIndex, int minIndex) {
+    int compareMinValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
+      return 0;
+    }
+
+    @Override
+    int compareMaxValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
       return 0;
     }
   };
@@ -359,7 +364,7 @@ public abstract class ColumnIndexBuilder {
     }
   }
 
-  // max_i <= min_i+1
+  // min_i <= min_i+1 && max_i <= max_i+1
   private boolean isAscending(PrimitiveComparator<Binary> comparator) {
     int prevPage = nextNonNullPage(0);
     // All pages are null-page
@@ -368,7 +373,8 @@ public abstract class ColumnIndexBuilder {
     }
     int nextPage = nextNonNullPage(prevPage + 1);
     while (nextPage > 0) {
-      if (compareMaxMin(comparator, prevPage, nextPage) > 0) {
+      if (compareMinValues(comparator, prevPage, nextPage) > 0
+          || compareMaxValues(comparator, prevPage, nextPage) > 0) {
         return false;
       }
       prevPage = nextPage;
@@ -377,7 +383,7 @@ public abstract class ColumnIndexBuilder {
     return true;
   }
 
-  // min_i >= max_i+1
+  // min_i >= min_i+1 && max_i >= max_i+1
   private boolean isDescending(PrimitiveComparator<Binary> comparator) {
     int prevPage = nextNonNullPage(0);
     // All pages are null-page
@@ -386,7 +392,8 @@ public abstract class ColumnIndexBuilder {
     }
     int nextPage = nextNonNullPage(prevPage + 1);
     while (nextPage > 0) {
-      if (compareMaxMin(comparator, nextPage, prevPage) > 0) {
+      if (compareMinValues(comparator, prevPage, nextPage) < 0
+          || compareMaxValues(comparator, prevPage, nextPage) < 0) {
         return false;
       }
       prevPage = nextPage;
@@ -404,7 +411,9 @@ public abstract class ColumnIndexBuilder {
     return -1;
   }
 
-  abstract int compareMaxMin(PrimitiveComparator<Binary> comparator, int maxIndex, int minIndex);
+  abstract int compareMinValues(PrimitiveComparator<Binary> comparator, int index1, int index2);
+
+  abstract int compareMaxValues(PrimitiveComparator<Binary> comparator, int index1, int index2);
 
   private void clear() {
     nullPages.clear();

@@ -94,7 +94,12 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
   }
 
   @Override
-  int compareMaxMin(PrimitiveComparator<Binary> comparator, int maxIndex, int minIndex) {
-    return comparator.compare(maxValues.get(maxIndex), minValues.get(minIndex));
+  int compareMinValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
+    return comparator.compare(minValues.get(index1), minValues.get(index2));
+  }
+
+  @Override
+  int compareMaxValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
+    return comparator.compare(maxValues.get(index1), maxValues.get(index2));
   }
 }
