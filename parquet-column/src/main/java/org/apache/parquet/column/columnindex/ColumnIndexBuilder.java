@@ -47,7 +47,7 @@ import it.unimi.dsi.fastutil.longs.LongLists;
 public abstract class ColumnIndexBuilder {
 
   static abstract class ColumnIndexBase implements ColumnIndex {
-    private static ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
+    private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
     private static final int MAX_VALUE_LENGTH_FOR_TOSTRING = 40;
     private static final String INNER_ETC = "(...)";
     private static final int FIRST_LENGTH = (MAX_VALUE_LENGTH_FOR_TOSTRING - INNER_ETC.length()) / 2;
