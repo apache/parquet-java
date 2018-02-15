@@ -28,6 +28,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.MessageType;
@@ -308,6 +309,13 @@ public class ParquetWriter<T> implements Closeable {
       // release after the writer closes in case it is used for a last flush
       codecFactory.release();
     }
+  }
+
+  /**
+   * @return the ParquetMetadata written to the (closed) file.
+   */
+  public ParquetMetadata getFooter() {
+    return writer.getFooter();
   }
 
   /**
