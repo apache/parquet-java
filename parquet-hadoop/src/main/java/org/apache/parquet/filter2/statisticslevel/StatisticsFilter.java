@@ -40,7 +40,6 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 
-import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
@@ -133,6 +132,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     // drop if value < min || value > max
     return stats.compareMinToValue(value) > 0 || stats.compareMaxToValue(value) < 0;
   }
@@ -172,6 +176,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     // drop if this is a column where min = max = value
     return stats.compareMinToValue(value) == 0 && stats.compareMaxToValue(value) == 0;
   }
@@ -199,6 +208,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       // we are looking for records where v < someValue
       // this chunk is all nulls, so we can drop it
       return BLOCK_CANNOT_MATCH;
+    }
+
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
     }
 
     T value = lt.getValue();
@@ -232,6 +246,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = ltEq.getValue();
 
     // drop if value < min
@@ -263,6 +282,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = gt.getValue();
 
     // drop if value >= max
@@ -292,6 +316,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       // we are looking for records where v >= someValue
       // this chunk is all nulls, so we can drop it
       return BLOCK_CANNOT_MATCH;
+    }
+
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
     }
 
     T value = gtEq.getValue();
@@ -353,6 +382,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       } else {
         return !udp.keep(null);
       }
+    }
+
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
     }
 
     org.apache.parquet.filter2.predicate.Statistics<T> udpStats =
