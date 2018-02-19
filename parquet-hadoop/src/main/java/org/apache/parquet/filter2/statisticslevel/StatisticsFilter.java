@@ -121,6 +121,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     if (value == null) {
+      // We don't know anything about the nulls in this chunk
+      if (!stats.isNumNullsSet()) {
+        return BLOCK_MIGHT_MATCH;
+      }
       // we are looking for records where v eq(null)
       // so drop if there are no nulls in this chunk
       return !hasNulls(meta);
@@ -170,7 +174,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return isAllNulls(meta);
     }
 
-    if (hasNulls(meta)) {
+    if (stats.isNumNullsSet() && hasNulls(meta)) {
       // we are looking for records where v notEq(someNonNull)
       // but this chunk contains nulls, we cannot drop it
       return BLOCK_MIGHT_MATCH;

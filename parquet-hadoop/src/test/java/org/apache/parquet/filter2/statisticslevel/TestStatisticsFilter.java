@@ -38,6 +38,7 @@ import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Types;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.io.api.Binary.fromString;
@@ -61,7 +62,8 @@ import static org.apache.parquet.filter2.statisticslevel.StatisticsFilter.canDro
 
 public class TestStatisticsFilter {
 
-  private static ColumnChunkMetaData getIntColumnMeta(IntStatistics stats, long valueCount) {
+  private static ColumnChunkMetaData getIntColumnMeta(org.apache.parquet.column.statistics.Statistics<?> stats,
+      long valueCount) {
     return ColumnChunkMetaData.get(ColumnPath.get("int", "column"),
         PrimitiveTypeName.INT32,
         CompressionCodecName.GZIP,
@@ -70,7 +72,8 @@ public class TestStatisticsFilter {
         0L, 0L, valueCount, 0L, 0L);
   }
 
-  private static ColumnChunkMetaData getDoubleColumnMeta(DoubleStatistics stats, long valueCount) {
+  private static ColumnChunkMetaData getDoubleColumnMeta(org.apache.parquet.column.statistics.Statistics<?> stats,
+      long valueCount) {
     return ColumnChunkMetaData.get(ColumnPath.get("double", "column"),
         PrimitiveTypeName.DOUBLE,
         CompressionCodecName.GZIP,
@@ -86,18 +89,17 @@ public class TestStatisticsFilter {
 
   private static final IntStatistics intStats = new IntStatistics();
   private static final IntStatistics nullIntStats = new IntStatistics();
-  private static final IntStatistics missingMinMaxIntStats = new IntStatistics();
+  private static final org.apache.parquet.column.statistics.Statistics<?> missingMinMaxIntStats = org.apache.parquet.column.statistics.Statistics
+      .getBuilder(Types.required(PrimitiveTypeName.INT32).named("test_int32")).build();
   private static final DoubleStatistics doubleStats = new DoubleStatistics();
-  private static final DoubleStatistics missingMinMaxDoubleStats = new DoubleStatistics();
+  private static final org.apache.parquet.column.statistics.Statistics<?> missingMinMaxDoubleStats = org.apache.parquet.column.statistics.Statistics
+      .getBuilder(Types.required(PrimitiveTypeName.DOUBLE).named("test_double")).withNumNulls(100).build();
 
   static {
     intStats.setMinMax(10, 100);
     doubleStats.setMinMax(10, 100);
 
-    nullIntStats.setMinMax(0, 0);
     nullIntStats.setNumNulls(177);
-
-    missingMinMaxDoubleStats.setNumNulls(100);
   }
 
   private static final List<ColumnChunkMetaData> columnMetas = Arrays.asList(

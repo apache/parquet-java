@@ -35,6 +35,44 @@ import org.apache.parquet.schema.Type;
  */
 public abstract class Statistics<T extends Comparable<T>> {
 
+  /**
+   * Builder class to build Statistics objects. Used to read the statistics from the Parquet file.
+   */
+  public static class StatisticsBuilder {
+    private final PrimitiveType type;
+    private byte[] min;
+    private byte[] max;
+    private long numNulls = -1;
+
+    private StatisticsBuilder(PrimitiveType type) {
+      this.type = type;
+    }
+
+    public StatisticsBuilder withMin(byte[] min) {
+      this.min = min;
+      return this;
+    }
+
+    public StatisticsBuilder withMax(byte[] max) {
+      this.max = max;
+      return this;
+    }
+
+    public StatisticsBuilder withNumNulls(long numNulls) {
+      this.numNulls = numNulls;
+      return this;
+    }
+
+    public Statistics<?> build() {
+      Statistics<?> stats = createStats(type);
+      if (min != null && max != null) {
+        stats.setMinMaxFromBytes(min, max);
+      }
+      stats.num_nulls = this.numNulls;
+      return stats;
+    }
+  }
+
   private final PrimitiveType type;
   private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
@@ -107,6 +145,17 @@ public abstract class Statistics<T extends Comparable<T>> {
       default:
         throw new UnknownColumnTypeException(primitive.getPrimitiveTypeName());
     }
+  }
+
+  /**
+   * Returns a builder to create new statistics object. Used to read the statistics form the parquet file.
+   *
+   * @param type
+   *          type of the column
+   * @return builder to create new statistics object
+   */
+  public static StatisticsBuilder getBuilder(PrimitiveType type) {
+    return new StatisticsBuilder(type);
   }
 
   /**
@@ -217,7 +266,9 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Abstract method to set min and max values from byte arrays.
    * @param minBytes byte array to set the min value to
    * @param maxBytes byte array to set the max value to
+   * @deprecated will be removed in 2.0.0. Use {@link #getBuilder(PrimitiveType)} instead.
    */
+  @Deprecated
   abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
   /**
@@ -310,9 +361,13 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   @Override
   public String toString() {
-    if (this.hasNonNullValue())
-      return String.format("min: %s, max: %s, num_nulls: %d", minAsString(), maxAsString(), this.getNumNulls());
-    else if (!this.isEmpty())
+    if (this.hasNonNullValue()) {
+      if (isNumNullsSet()) {
+        return String.format("min: %s, max: %s, num_nulls: %d", minAsString(), maxAsString(), this.getNumNulls());
+      } else {
+        return String.format("min: %s, max: %s, num_nulls not defined", minAsString(), maxAsString());
+      }
+    } else if (!this.isEmpty())
       return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
     else
       return "no stats for this column";
@@ -335,7 +390,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Returns the null count
-   * @return null count
+   * @return null count or {@code -1} if the null count is not set
    */
   public long getNumNulls() {
     return num_nulls;
@@ -343,8 +398,12 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Sets the number of nulls to the parameter value
-   * @param nulls null count to set the count to
+   *
+   * @param nulls
+   *          null count to set the count to
+   * @deprecated will be removed in 2.0.0. Use {@link #getBuilder(PrimitiveType)} instead.
    */
+  @Deprecated
   public void setNumNulls(long nulls) {
     num_nulls = nulls;
   }
@@ -355,7 +414,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    * @return true if object is empty, false otherwise
    */
   public boolean isEmpty() {
-    return !hasNonNullValue && num_nulls == 0;
+    return !hasNonNullValue && !isNumNullsSet();
   }
 
   /**
@@ -363,6 +422,13 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   public boolean hasNonNullValue() {
     return hasNonNullValue;
+  }
+
+  /**
+   * @return whether numNulls is set and can be used
+   */
+  public boolean isNumNullsSet() {
+    return num_nulls >= 0;
   }
 
   /**
