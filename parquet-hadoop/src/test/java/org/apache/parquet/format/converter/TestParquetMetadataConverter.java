@@ -295,7 +295,7 @@ public class TestParquetMetadataConverter {
       for (int i = 0; i < rgs.length; i++) {
         rgs[i] = random.nextInt(10000) + 1; // No empty row groups
       }
-      int splitSize = random.nextInt(10000) + 1;
+      int splitSize = random.nextInt(10000) + 1; // 0 would lead to an infinite loop
       try {
         verifyAllFilters(metadata(rgs), splitSize);
       } catch (AssertionError e) {
