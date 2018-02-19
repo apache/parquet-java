@@ -89,7 +89,7 @@ public class TestStatisticsFilter {
 
   private static final IntStatistics intStats = new IntStatistics();
   private static final IntStatistics nullIntStats = new IntStatistics();
-  private static final org.apache.parquet.column.statistics.Statistics<?> missingMinMaxIntStats = org.apache.parquet.column.statistics.Statistics
+  private static final org.apache.parquet.column.statistics.Statistics<?> emptyIntStats = org.apache.parquet.column.statistics.Statistics
       .getBuilder(Types.required(PrimitiveTypeName.INT32).named("test_int32")).build();
   private static final DoubleStatistics doubleStats = new DoubleStatistics();
   private static final org.apache.parquet.column.statistics.Statistics<?> missingMinMaxDoubleStats = org.apache.parquet.column.statistics.Statistics
@@ -111,7 +111,7 @@ public class TestStatisticsFilter {
       getDoubleColumnMeta(doubleStats, 177L));
 
   private static final List<ColumnChunkMetaData> missingMinMaxColumnMetas = Arrays.asList(
-      getIntColumnMeta(missingMinMaxIntStats, 177L),        // missing min/max, no null values => stats is empty
+      getIntColumnMeta(emptyIntStats, 177L),                // missing min/max values and numNulls => stats is empty
       getDoubleColumnMeta(missingMinMaxDoubleStats, 177L)); // missing min/max, some null values
 
   @Test

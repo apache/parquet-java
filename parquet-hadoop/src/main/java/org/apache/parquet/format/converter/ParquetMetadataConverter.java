@@ -402,7 +402,7 @@ public class ParquetMetadataConverter {
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal
       (String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
     // create stats object based on the column type
-    StatisticsBuilder builder = org.apache.parquet.column.statistics.Statistics.getBuilder(type);
+    StatisticsBuilder statsBuilder = org.apache.parquet.column.statistics.Statistics.getBuilder(type);
 
     if (formatStats != null) {
       // Use the new V2 min-max statistics over the former one if it is filled
@@ -410,11 +410,11 @@ public class ParquetMetadataConverter {
         byte[] min = formatStats.min_value.array();
         byte[] max = formatStats.max_value.array();
         if (isMinMaxStatsSupported(type) || Arrays.equals(min, max)) {
-          builder.withMin(min);
-          builder.withMax(max);
+          statsBuilder.withMin(min);
+          statsBuilder.withMax(max);
         }
         if (formatStats.isSetNull_count()) {
-          builder.withNumNulls(formatStats.null_count);
+          statsBuilder.withNumNulls(formatStats.null_count);
         }
       } else {
         boolean isSet = formatStats.isSetMax() && formatStats.isSetMin();
@@ -428,16 +428,16 @@ public class ParquetMetadataConverter {
         if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName()) &&
             (sortOrdersMatch || maxEqualsMin)) {
           if (isSet) {
-            builder.withMin(formatStats.min.array());
-            builder.withMax(formatStats.max.array());
+            statsBuilder.withMin(formatStats.min.array());
+            statsBuilder.withMax(formatStats.max.array());
           }
           if (formatStats.isSetNull_count()) {
-            builder.withNumNulls(formatStats.null_count);
+            statsBuilder.withNumNulls(formatStats.null_count);
           }
         }
       }
     }
-    return builder.build();
+    return statsBuilder.build();
   }
 
   public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(

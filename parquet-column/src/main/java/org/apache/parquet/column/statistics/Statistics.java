@@ -148,7 +148,7 @@ public abstract class Statistics<T extends Comparable<T>> {
   }
 
   /**
-   * Returns a builder to create new statistics object. Used to read the statistics form the parquet file.
+   * Returns a builder to create new statistics object. Used to read the statistics from the parquet file.
    *
    * @param type
    *          type of the column
