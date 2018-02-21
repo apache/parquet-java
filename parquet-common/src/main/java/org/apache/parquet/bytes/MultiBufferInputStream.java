@@ -23,7 +23,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -32,7 +31,7 @@ import java.util.NoSuchElementException;
 class MultiBufferInputStream extends ByteBufferInputStream {
   private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
 
-  private final Collection<ByteBuffer> buffers;
+  private final List<ByteBuffer> buffers;
   private final long length;
 
   private Iterator<ByteBuffer> iterator;
@@ -43,7 +42,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   private long markLimit = 0;
   private List<ByteBuffer> markBuffers = new ArrayList<>();
 
-  MultiBufferInputStream(Collection<ByteBuffer> buffers) {
+  MultiBufferInputStream(List<ByteBuffer> buffers) {
     this.buffers = buffers;
 
     long totalLen = 0;
@@ -171,10 +170,11 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     }
 
     List<ByteBuffer> buffers = new ArrayList<>();
-    int bytesAccumulated = 0;
+    long bytesAccumulated = 0;
     while (bytesAccumulated < len) {
       if (current.remaining() > 0) {
         // get a slice of the current buffer to return
+        // always fits in an int because remaining returns an int that is >= 0
         int bufLen = (int) Math.min(len - bytesAccumulated, current.remaining());
         ByteBuffer slice = current.duplicate();
         slice.limit(slice.position() + bufLen);
@@ -211,6 +211,9 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   @Override
   public int read(byte[] bytes, int off, int len) {
     if (len <= 0) {
+      if (len < 0) {
+        throw new IndexOutOfBoundsException("Read length must be greater than 0: " + len);
+      }
       return 0;
     }
 
@@ -267,7 +270,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
-  public synchronized void mark(int readlimit) {
+  public void mark(int readlimit) {
     if (mark >= 0) {
       discardMark();
     }
@@ -279,7 +282,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
-  public synchronized void reset() throws IOException {
+  public void reset() throws IOException {
     if (mark >= 0 && position < markLimit) {
       this.position = mark;
       // replace the current iterator with one that adds back the buffers that
@@ -288,11 +291,11 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       discardMark();
       nextBuffer(); // go back to the marked buffers
     } else {
-      throw new IOException("No mark defined");
+      throw new IOException("No mark defined or has read past the previous mark limit");
     }
   }
 
-  private synchronized void discardMark() {
+  private void discardMark() {
     this.mark = -1;
     this.markLimit = 0;
     markBuffers = new ArrayList<>();
@@ -353,13 +356,18 @@ class MultiBufferInputStream extends ByteBufferInputStream {
 
     @Override
     public E next() {
-      if (!hasNext()) {
+      if (useFirst && !first.hasNext()) {
+        useFirst = false;
+      }
+
+      if (!useFirst && !second.hasNext()) {
         throw new NoSuchElementException();
       }
 
       if (useFirst) {
         return first.next();
       }
+
       return second.next();
     }
 
