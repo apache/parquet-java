@@ -195,8 +195,11 @@ public class AvroSchemaConverter {
 
   private Type convertUnion(String fieldName, Schema schema, Type.Repetition repetition) {
     List<Schema> nonNullSchemas = new ArrayList<Schema>(schema.getTypes().size());
+    // Found any schemas in the union? Required for the edge case, where the union contains only a single type.
+    boolean foundNullSchema = false;
     for (Schema childSchema : schema.getTypes()) {
       if (childSchema.getType().equals(Schema.Type.NULL)) {
+        foundNullSchema = true;
         if (Type.Repetition.REQUIRED == repetition) {
           repetition = Type.Repetition.OPTIONAL;
         }
@@ -211,16 +214,21 @@ public class AvroSchemaConverter {
         throw new UnsupportedOperationException("Cannot convert Avro union of only nulls");
 
       case 1:
-        return convertField(fieldName, nonNullSchemas.get(0), repetition);
+        return foundNullSchema ? convertField(fieldName, nonNullSchemas.get(0), repetition) :
+          convertUnionToGroupType(fieldName, repetition, nonNullSchemas);
 
       default: // complex union type
-        List<Type> unionTypes = new ArrayList<Type>(nonNullSchemas.size());
-        int index = 0;
-        for (Schema childSchema : nonNullSchemas) {
-          unionTypes.add( convertField("member" + index++, childSchema, Type.Repetition.OPTIONAL));
-        }
-        return new GroupType(repetition, fieldName, unionTypes);
+        return convertUnionToGroupType(fieldName, repetition, nonNullSchemas);
     }
+  }
+
+  private Type convertUnionToGroupType(String fieldName, Type.Repetition repetition, List<Schema> nonNullSchemas) {
+    List<Type> unionTypes = new ArrayList<Type>(nonNullSchemas.size());
+    int index = 0;
+    for (Schema childSchema : nonNullSchemas) {
+      unionTypes.add( convertField("member" + index++, childSchema, Type.Repetition.OPTIONAL));
+    }
+    return new GroupType(repetition, fieldName, unionTypes);
   }
 
   private Type convertField(Schema.Field field) {

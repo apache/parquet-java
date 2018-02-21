@@ -647,6 +647,37 @@ public class TestReadWrite {
 
   }
 
+  @Test
+  public void testUnionWithSingleNonNullType() throws Exception {
+    Schema avroSchema = Schema.createRecord("SingleStringUnionRecord", null, null, false);
+    avroSchema.setFields(
+      Collections.singletonList(new Schema.Field("value",
+        Schema.createUnion(Schema.create(Schema.Type.STRING)), null, null)));
+
+    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
+    tmp.deleteOnExit();
+    tmp.delete();
+    Path file = new Path(tmp.getPath());
+
+    // Parquet writer
+    ParquetWriter parquetWriter = AvroParquetWriter.builder(file).withSchema(avroSchema)
+      .withConf(new Configuration())
+      .build();
+
+    GenericRecord record = new GenericRecordBuilder(avroSchema)
+      .set("value", "theValue")
+      .build();
+
+    parquetWriter.write(record);
+    parquetWriter.close();
+
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
+    GenericRecord nextRecord = reader.read();
+
+    assertNotNull(nextRecord);
+    assertEquals(str("theValue"), nextRecord.get("value"));
+  }
+
   /**
    * Return a String or Utf8 depending on whether compatibility is on
    */
