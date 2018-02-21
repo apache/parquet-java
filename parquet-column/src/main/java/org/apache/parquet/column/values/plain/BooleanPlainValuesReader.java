@@ -21,8 +21,8 @@ package org.apache.parquet.column.values.plain;
 import static org.apache.parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import org.slf4j.Logger;
@@ -60,17 +60,11 @@ public class BooleanPlainValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int valueCount, ByteBuffer page, int offset)
+   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, ByteBufferInputStream)
    */
   @Override
-  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
-    LOG.debug("init from page at offset {} for length {}", offset, (in.limit() - offset));
-    this.in.initFromPage(valueCount, in, offset);
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
+    LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
+    this.in.initFromPage(valueCount, stream);
   }
-  
-  @Override
-  public int getNextOffset() {
-    return this.in.getNextOffset();
-  }
-
 }

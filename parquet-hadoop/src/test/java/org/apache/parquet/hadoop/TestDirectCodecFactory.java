@@ -73,7 +73,7 @@ public class TestDirectCodecFactory {
       if (useOnHeapCompression) {
         compressed = c.compress(BytesInput.from(rawArr));
       } else {
-        compressed = c.compress(BytesInput.from(rawBuf, 0, rawBuf.remaining()));
+        compressed = c.compress(BytesInput.from(rawBuf));
       }
 
       switch (decomp) {
@@ -95,11 +95,11 @@ public class TestDirectCodecFactory {
 
         case OFF_HEAP_BYTES_INPUT: {
           final ByteBuffer buf = compressed.toByteBuffer();
-          final ByteBuffer b = allocator.allocate(buf.capacity());
+          final ByteBuffer b = allocator.allocate(buf.limit());
           try {
             b.put(buf);
             b.flip();
-            final BytesInput input = d.decompress(BytesInput.from(b, 0, b.capacity()), size);
+            final BytesInput input = d.decompress(BytesInput.from(b), size);
             Assert.assertArrayEquals(
                 String.format("While testing codec %s", codec),
                 input.toByteArray(), rawArr);

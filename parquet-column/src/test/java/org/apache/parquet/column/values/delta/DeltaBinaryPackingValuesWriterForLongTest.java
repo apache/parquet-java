@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -157,12 +158,14 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
     int contentOffsetInPage = 33;
     System.arraycopy(valueContent, 0, pageContent, contentOffsetInPage, valueContent.length);
 
-    //offset should be correct
-    reader.initFromPage(100, ByteBuffer.wrap(pageContent), contentOffsetInPage);
-    int offset = reader.getNextOffset();
+    // offset should be correct
+    ByteBufferInputStream stream = ByteBufferInputStream.wrap(ByteBuffer.wrap(pageContent));
+    stream.skipFully(contentOffsetInPage);
+    reader.initFromPage(100, stream);
+    long offset = stream.position();
     assertEquals(valueContent.length + contentOffsetInPage, offset);
 
-    //should be able to read data correclty
+    // should be able to read data correctly
     for (long i : data) {
       assertEquals(i, reader.readLong());
     }
@@ -190,7 +193,7 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
     }
     writeData(data);
     reader = new DeltaBinaryPackingValuesReader();
-    reader.initFromPage(100, writer.getBytes().toByteBuffer(), 0);
+    reader.initFromPage(100, writer.getBytes().toInputStream());
     for (int i = 0; i < data.length; i++) {
       if (i % 3 == 0) {
         reader.skip();
@@ -244,7 +247,7 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
         + blockFlushed * miniBlockNum //bitWidth of mini blocks
         + (10.0 * blockFlushed);//min delta for each block
     assertTrue(estimatedSize >= page.length);
-    reader.initFromPage(100, page, 0);
+    reader.initFromPage(100, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
 
     for (int i = 0; i < length; i++) {
       assertEquals(data[i], reader.readLong());

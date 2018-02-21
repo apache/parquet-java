@@ -37,6 +37,8 @@ import static org.apache.parquet.hadoop.UnmaterializableRecordCounter.BAD_RECORD
 public class HadoopReadOptions extends ParquetReadOptions {
   private final Configuration conf;
 
+  private static final String ALLOCATION_SIZE = "parquet.read.allocation.size";
+
   private HadoopReadOptions(boolean useSignedStringMinMax,
                             boolean useStatsFilter,
                             boolean useDictionaryFilter,
@@ -45,11 +47,12 @@ public class HadoopReadOptions extends ParquetReadOptions {
                             MetadataFilter metadataFilter,
                             CompressionCodecFactory codecFactory,
                             ByteBufferAllocator allocator,
+                            int maxAllocationSize,
                             Map<String, String> properties,
                             Configuration conf) {
     super(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter, recordFilter,
-        metadataFilter, codecFactory, allocator, properties
+        metadataFilter, codecFactory, allocator, maxAllocationSize, properties
     );
     this.conf = conf;
   }
@@ -82,6 +85,7 @@ public class HadoopReadOptions extends ParquetReadOptions {
       useRecordFilter(conf.getBoolean(RECORD_FILTERING_ENABLED, true));
       withCodecFactory(HadoopCodecs.newFactory(conf, 0));
       withRecordFilter(getFilter(conf));
+      withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
       String badRecordThresh = conf.get(BAD_RECORD_THRESHOLD_CONF_KEY);
       if (badRecordThresh != null) {
         set(BAD_RECORD_THRESHOLD_CONF_KEY, badRecordThresh);
@@ -92,7 +96,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
     public ParquetReadOptions build() {
       return new HadoopReadOptions(
           useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-          recordFilter, metadataFilter, codecFactory, allocator, properties, conf);
+          recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, properties,
+          conf);
     }
   }
 }

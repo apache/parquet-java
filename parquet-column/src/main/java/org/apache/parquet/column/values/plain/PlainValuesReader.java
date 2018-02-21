@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.plain;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.LittleEndianDataInputStream;
@@ -39,18 +38,10 @@ abstract public class PlainValuesReader extends ValuesReader {
 
   protected LittleEndianDataInputStream in;
 
-  /**
-   * {@inheritDoc}
-   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, ByteBuffer, int)
-   */
   @Override
-  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
-    LOG.debug("init from page at offset {} for length {}", offset , (in.limit() - offset));
-    this.in = new LittleEndianDataInputStream(toInputStream(in, offset));
-  }
-
-  private ByteBufferInputStream toInputStream(ByteBuffer in, int offset) {
-    return new ByteBufferInputStream(in.duplicate(), offset, in.limit() - offset);
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
+    LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
+    this.in = new LittleEndianDataInputStream(stream.remainingStream());
   }
 
   public static class DoublePlainValuesReader extends PlainValuesReader {

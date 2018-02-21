@@ -21,6 +21,7 @@ package org.apache.parquet.column.impl;
 import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.SemanticVersion;
 import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -100,13 +101,13 @@ public class TestCorruptDeltaByteArrays {
     ByteBuffer corruptPageBytes = writer.getBytes().toByteBuffer();
 
     DeltaByteArrayReader firstPageReader = new DeltaByteArrayReader();
-    firstPageReader.initFromPage(10, firstPageBytes, 0);
+    firstPageReader.initFromPage(10, ByteBufferInputStream.wrap(firstPageBytes));
     for (int i = 0; i < 10; i += 1) {
-      assertEquals(firstPageReader.readBytes().toStringUsingUTF8(), str(i));
+      assertEquals(str(i), firstPageReader.readBytes().toStringUsingUTF8());
     }
 
     DeltaByteArrayReader corruptPageReader = new DeltaByteArrayReader();
-    corruptPageReader.initFromPage(10, corruptPageBytes, 0);
+    corruptPageReader.initFromPage(10, ByteBufferInputStream.wrap(corruptPageBytes));
     try {
       corruptPageReader.readBytes();
       fail("Corrupt page did not throw an exception when read");
@@ -115,7 +116,7 @@ public class TestCorruptDeltaByteArrays {
     }
 
     DeltaByteArrayReader secondPageReader = new DeltaByteArrayReader();
-    secondPageReader.initFromPage(10, corruptPageBytes, 0);
+    secondPageReader.initFromPage(10, ByteBufferInputStream.wrap(corruptPageBytes));
     secondPageReader.setPreviousReader(firstPageReader);
 
     for (int i = 10; i < 20; i += 1) {
@@ -140,13 +141,13 @@ public class TestCorruptDeltaByteArrays {
     ByteBuffer secondPageBytes = writer.getBytes().toByteBuffer();
 
     DeltaByteArrayReader firstPageReader = new DeltaByteArrayReader();
-    firstPageReader.initFromPage(10, firstPageBytes, 0);
+    firstPageReader.initFromPage(10, ByteBufferInputStream.wrap(firstPageBytes));
     for (int i = 0; i < 10; i += 1) {
       assertEquals(firstPageReader.readBytes().toStringUsingUTF8(), str(i));
     }
 
     DeltaByteArrayReader secondPageReader = new DeltaByteArrayReader();
-    secondPageReader.initFromPage(10, secondPageBytes, 0);
+    secondPageReader.initFromPage(10, ByteBufferInputStream.wrap(secondPageBytes));
     secondPageReader.setPreviousReader(firstPageReader);
 
     for (int i = 10; i < 20; i += 1) {
@@ -171,13 +172,13 @@ public class TestCorruptDeltaByteArrays {
     ByteBuffer secondPageBytes = writer.getBytes().toByteBuffer();
 
     DeltaByteArrayReader firstPageReader = new DeltaByteArrayReader();
-    firstPageReader.initFromPage(10, firstPageBytes, 0);
+    firstPageReader.initFromPage(10, ByteBufferInputStream.wrap(firstPageBytes));
     for (int i = 0; i < 10; i += 1) {
       assertEquals(firstPageReader.readBytes().toStringUsingUTF8(), str(i));
     }
 
     DeltaByteArrayReader secondPageReader = new DeltaByteArrayReader();
-    secondPageReader.initFromPage(10, secondPageBytes, 0);
+    secondPageReader.initFromPage(10, ByteBufferInputStream.wrap(secondPageBytes));
 
     for (int i = 10; i < 20; i += 1) {
       assertEquals(secondPageReader.readBytes().toStringUsingUTF8(), str(i));

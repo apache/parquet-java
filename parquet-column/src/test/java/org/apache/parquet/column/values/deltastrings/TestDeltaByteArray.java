@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.deltastrings;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.junit.Test;
 import org.junit.Assert;
 
@@ -63,7 +64,7 @@ public class TestDeltaByteArray {
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
     Utils.writeData(writer, values);
-    byte[] data = writer.getBytes().toByteArray();
+    ByteBufferInputStream data = writer.getBytes().toInputStream();
     int[] bin = Utils.readInts(reader, data, values.length);
 
     // test prefix lengths
@@ -71,9 +72,8 @@ public class TestDeltaByteArray {
     Assert.assertEquals(7, bin[1]);
     Assert.assertEquals(7, bin[2]);
 
-    int offset = reader.getNextOffset();
     reader = new DeltaBinaryPackingValuesReader();
-    bin = Utils.readInts(reader, writer.getBytes().toByteArray(), offset, values.length);
+    bin = Utils.readInts(reader, data, values.length);
     // test suffix lengths
     Assert.assertEquals(10, bin[0]);
     Assert.assertEquals(0, bin[1]);
@@ -82,7 +82,7 @@ public class TestDeltaByteArray {
 
   private void assertReadWrite(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
     Utils.writeData(writer, vals);
-    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), vals.length);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), vals.length);
 
     for(int i = 0; i< bin.length ; i++) {
       Assert.assertEquals(Binary.fromString(vals[i]), bin[i]);
@@ -92,7 +92,7 @@ public class TestDeltaByteArray {
   private void assertReadWriteWithSkip(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
     Utils.writeData(writer, vals);
 
-    reader.initFromPage(vals.length, writer.getBytes().toByteBuffer(), 0);
+    reader.initFromPage(vals.length, writer.getBytes().toInputStream());
     for (int i = 0; i < vals.length; i += 2) {
       Assert.assertEquals(Binary.fromString(vals[i]), reader.readBytes());
       reader.skip();

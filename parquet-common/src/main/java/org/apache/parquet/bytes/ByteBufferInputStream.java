@@ -16,67 +16,57 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.parquet.bytes;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
 
-/**
- * This ByteBufferInputStream does not consume the ByteBuffer being passed in, 
- * but will create a slice of the current buffer.
- */
-public class ByteBufferInputStream extends InputStream {
-	
-  protected ByteBuffer byteBuf;
-  protected int initPos;
-  protected int count;
-  public ByteBufferInputStream(ByteBuffer buffer) {
-    this(buffer, buffer.position(), buffer.remaining());
-  }
-  
-  public ByteBufferInputStream(ByteBuffer buffer, int offset, int count) {
-    ByteBuffer temp = buffer.duplicate();
-    temp.position(offset);
-    byteBuf = temp.slice();
-    byteBuf.limit(count);
-    this.initPos = offset;
-    this.count = count;
-  }
-  
-  public ByteBuffer toByteBuffer() {
-    return byteBuf.slice();
-  }
-  
-  @Override
-  public int read() throws IOException {
-    if (!byteBuf.hasRemaining()) {
-    	return -1;
+public abstract class ByteBufferInputStream extends InputStream {
+
+  public static ByteBufferInputStream wrap(ByteBuffer... buffers) {
+    if (buffers.length == 1) {
+      return new SingleBufferInputStream(buffers[0]);
+    } else {
+      return new MultiBufferInputStream(Arrays.asList(buffers));
     }
-    //Workaround for unsigned byte
-    return byteBuf.get() & 0xFF;
   }
 
-  @Override
-  public int read(byte[] bytes, int offset, int length) throws IOException {
-    int count = Math.min(byteBuf.remaining(), length);
-    if (count == 0) return -1;
-    byteBuf.get(bytes, offset, count);
-    return count;
-  }
-  
-  @Override
-  public long skip(long n) {
-	  if (n > byteBuf.remaining())
-	    n = byteBuf.remaining();
-	  int pos = byteBuf.position();
-	  byteBuf.position((int)(pos + n));
-	  return n;
+  public static ByteBufferInputStream wrap(List<ByteBuffer> buffers) {
+    if (buffers.size() == 1) {
+      return new SingleBufferInputStream(buffers.get(0));
+    } else {
+      return new MultiBufferInputStream(buffers);
+    }
   }
 
+  public abstract long position();
 
-  @Override
-  public int available() {
-    return byteBuf.remaining();
+  public void skipFully(long n) throws IOException {
+    long skipped = skip(n);
+    if (skipped < n) {
+      throw new EOFException(
+          "Not enough bytes to skip: " + skipped + " < " + n);
+    }
+  }
+
+  public abstract int read(ByteBuffer out);
+
+  public abstract ByteBuffer slice(int length) throws EOFException;
+
+  public abstract List<ByteBuffer> sliceBuffers(long length) throws EOFException;
+
+  public ByteBufferInputStream sliceStream(long length) throws EOFException {
+    return ByteBufferInputStream.wrap(sliceBuffers(length));
+  }
+
+  public abstract List<ByteBuffer> remainingBuffers();
+
+  public ByteBufferInputStream remainingStream() {
+    return ByteBufferInputStream.wrap(remainingBuffers());
   }
 }

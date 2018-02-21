@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.deltastrings.benchmark;
 import java.io.IOException;
 import java.util.Arrays;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -59,9 +60,9 @@ public class BenchmarkDeltaByteArray {
     BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
 
     Utils.writeData(writer, values);
-    byte [] data = writer.getBytes().toByteArray();
+    ByteBufferInputStream data = writer.getBytes().toInputStream();
     Binary[] bin = Utils.readData(reader, data, values.length);
-    System.out.println("size " + data.length);
+    System.out.println("size " + data.position());
   }
 
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
@@ -71,9 +72,9 @@ public class BenchmarkDeltaByteArray {
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
     Utils.writeData(writer, values);
-    byte [] data = writer.getBytes().toByteArray();
+    ByteBufferInputStream data = writer.getBytes().toInputStream();
     Binary[] bin = Utils.readData(reader, data, values.length);
-    System.out.println("size " + data.length);
+    System.out.println("size " + data.position());
   }
 
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
@@ -83,9 +84,9 @@ public class BenchmarkDeltaByteArray {
     BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
 
     Utils.writeData(writer, sortedVals);
-    byte [] data = writer.getBytes().toByteArray();
+    ByteBufferInputStream data = writer.getBytes().toInputStream();
     Binary[] bin = Utils.readData(reader, data, values.length);
-    System.out.println("size " + data.length);
+    System.out.println("size " + data.position());
   }
 
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
@@ -95,8 +96,8 @@ public class BenchmarkDeltaByteArray {
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
     Utils.writeData(writer, sortedVals);
-    byte [] data = writer.getBytes().toByteArray();
+    ByteBufferInputStream data = writer.getBytes().toInputStream();
     Binary[] bin = Utils.readData(reader, data, values.length);
-    System.out.println("size " + data.length);
+    System.out.println("size " + data.position());
   }
 }

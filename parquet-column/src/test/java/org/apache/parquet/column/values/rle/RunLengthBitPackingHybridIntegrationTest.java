@@ -72,7 +72,7 @@ public class RunLengthBitPackingHybridIntegrationTest {
     numValues += 1000;
 
     ByteBuffer encodedBytes = encoder.toBytes().toByteBuffer();
-    ByteBufferInputStream in = new ByteBufferInputStream(encodedBytes);
+    ByteBufferInputStream in = ByteBufferInputStream.wrap(encodedBytes);
 
     RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
 
