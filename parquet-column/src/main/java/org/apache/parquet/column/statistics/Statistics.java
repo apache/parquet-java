@@ -38,27 +38,27 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Builder class to build Statistics objects. Used to read the statistics from the Parquet file.
    */
-  public static class StatisticsBuilder {
+  public static class Builder {
     private final PrimitiveType type;
     private byte[] min;
     private byte[] max;
     private long numNulls = -1;
 
-    private StatisticsBuilder(PrimitiveType type) {
+    private Builder(PrimitiveType type) {
       this.type = type;
     }
 
-    public StatisticsBuilder withMin(byte[] min) {
+    public Builder withMin(byte[] min) {
       this.min = min;
       return this;
     }
 
-    public StatisticsBuilder withMax(byte[] max) {
+    public Builder withMax(byte[] max) {
       this.max = max;
       return this;
     }
 
-    public StatisticsBuilder withNumNulls(long numNulls) {
+    public Builder withNumNulls(long numNulls) {
       this.numNulls = numNulls;
       return this;
     }
@@ -154,8 +154,8 @@ public abstract class Statistics<T extends Comparable<T>> {
    *          type of the column
    * @return builder to create new statistics object
    */
-  public static StatisticsBuilder getBuilder(PrimitiveType type) {
-    return new StatisticsBuilder(type);
+  public static Builder getBuilder(PrimitiveType type) {
+    return new Builder(type);
   }
 
   /**

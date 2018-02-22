@@ -64,7 +64,6 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.column.EncodingStats;
-import org.apache.parquet.column.statistics.Statistics.StatisticsBuilder;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
@@ -402,7 +401,8 @@ public class ParquetMetadataConverter {
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal
       (String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
     // create stats object based on the column type
-    StatisticsBuilder statsBuilder = org.apache.parquet.column.statistics.Statistics.getBuilder(type);
+    org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
+        org.apache.parquet.column.statistics.Statistics.getBuilder(type);
 
     if (formatStats != null) {
       // Use the new V2 min-max statistics over the former one if it is filled
