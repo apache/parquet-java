@@ -37,6 +37,7 @@ public class TestStatistics {
   @Test
   public void testNumNulls() {
     IntStatistics stats = new IntStatistics();
+    assertTrue(stats.isNumNullsSet());
     assertEquals(stats.getNumNulls(), 0);
 
     stats.incrementNumNulls();
