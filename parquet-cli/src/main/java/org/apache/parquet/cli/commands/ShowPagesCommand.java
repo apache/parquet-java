@@ -191,7 +191,7 @@ public class ShowPagesCommand extends BaseCommand {
       String enc = encodingAsString(page.getValueEncoding(), false);
       long totalSize = page.getCompressedSize();
       int count = page.getValueCount();
-      long numNulls = page.getStatistics().getNumNulls();
+      String numNulls = page.getStatistics().isNumNullsSet() ? Long.toString(page.getStatistics().getNumNulls()) : "";
       float perValue = ((float) totalSize) / count;
       String minMax = minMaxAsString(page.getStatistics(), type.getOriginalType());
       return String.format("%3d-%-3d  %-5s %s %-2s %-7d %-10s %-10s %-8s %-7s %s",

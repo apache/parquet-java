@@ -168,12 +168,12 @@ public class ParquetMetadataCommand extends BaseCommand {
     if (typeName == PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
       console.info(String.format("%-" + width + "s  FIXED[%d] %s %-7s %-9d %-8s %-7s %s",
           name, type.getTypeLength(), shortCodec(codec), encodingSummary, count,
-          humanReadable(perValue), stats == null ? "" : String.valueOf(stats.getNumNulls()),
+          humanReadable(perValue), stats == null || !stats.isNumNullsSet() ? "" : String.valueOf(stats.getNumNulls()),
           minMaxAsString(stats, type.getOriginalType())));
     } else {
       console.info(String.format("%-" + width + "s  %-9s %s %-7s %-9d %-10s %-7s %s",
           name, typeName, shortCodec(codec), encodingSummary, count, humanReadable(perValue),
-          stats == null ? "" : String.valueOf(stats.getNumNulls()),
+          stats == null || !stats.isNumNullsSet() ? "" : String.valueOf(stats.getNumNulls()),
           minMaxAsString(stats, type.getOriginalType())));
     }
   }
