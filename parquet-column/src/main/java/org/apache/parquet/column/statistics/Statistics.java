@@ -31,6 +31,44 @@ import java.util.Arrays;
  */
 public abstract class Statistics<T extends Comparable<T>> {
 
+  /**
+   * Builder class to build Statistics objects. Used to read the statistics from the Parquet file.
+   */
+  public static class Builder {
+    private final PrimitiveTypeName type;
+    private byte[] min;
+    private byte[] max;
+    private long numNulls = -1;
+
+    private Builder(PrimitiveTypeName type) {
+      this.type = type;
+    }
+
+    public Builder withMin(byte[] min) {
+      this.min = min;
+      return this;
+    }
+
+    public Builder withMax(byte[] max) {
+      this.max = max;
+      return this;
+    }
+
+    public Builder withNumNulls(long numNulls) {
+      this.numNulls = numNulls;
+      return this;
+    }
+
+    public Statistics<?> build() {
+      Statistics<?> stats = getStatsBasedOnType(type);
+      if (min != null && max != null) {
+        stats.setMinMaxFromBytes(min, max);
+      }
+      stats.num_nulls = this.numNulls;
+      return stats;
+    }
+  }
+
   private boolean hasNonNullValue;
   private long num_nulls;
 
@@ -65,6 +103,17 @@ public abstract class Statistics<T extends Comparable<T>> {
     default:
       throw new UnknownColumnTypeException(type);
     }
+  }
+
+  /**
+   * Returns a builder to create new statistics object. Used to read the statistics from the parquet file.
+   *
+   * @param type
+   *          type of the column
+   * @return builder to create new statistics object
+   */
+  public static Builder getBuilder(PrimitiveTypeName type) {
+    return new Builder(type);
   }
 
   /**
@@ -172,7 +221,9 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Abstract method to set min and max values from byte arrays.
    * @param minBytes byte array to set the min value to
    * @param maxBytes byte array to set the max value to
+   * @deprecated will be removed in 2.0.0. Use {@link #getBuilder(PrimitiveType)} instead.
    */
+  @Deprecated
   abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
   abstract public T genericGetMin();
@@ -221,7 +272,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Returns the null count
-   * @return null count
+   * @return null count or {@code -1} if the null count is not set
    */
   public long getNumNulls() {
     return num_nulls;
@@ -229,8 +280,12 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Sets the number of nulls to the parameter value
-   * @param nulls null count to set the count to
+   *
+   * @param nulls
+   *          null count to set the count to
+   * @deprecated will be removed in 2.0.0. Use {@link #getBuilder(PrimitiveType)} instead.
    */
+  @Deprecated
   public void setNumNulls(long nulls) {
     num_nulls = nulls;
   }
@@ -241,7 +296,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    * @return true if object is empty, false otherwise
    */
   public boolean isEmpty() {
-    return !hasNonNullValue && num_nulls == 0;
+    return !hasNonNullValue && !isNumNullsSet();
   }
 
   /**
@@ -251,6 +306,13 @@ public abstract class Statistics<T extends Comparable<T>> {
     return hasNonNullValue;
   }
  
+  /**
+   * @return whether numNulls is set and can be used
+   */
+  public boolean isNumNullsSet() {
+    return num_nulls >= 0;
+  }
+
   /**
    * Sets the page/column as having a valid non-null value
    * kind of misnomer here

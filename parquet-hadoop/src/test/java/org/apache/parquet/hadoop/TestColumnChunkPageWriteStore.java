@@ -54,12 +54,12 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.page.PageWriter;
-import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 
 public class TestColumnChunkPageWriteStore {
@@ -90,7 +90,7 @@ public class TestColumnChunkPageWriteStore {
     int v = 3;
     BytesInput definitionLevels = BytesInput.fromInt(d);
     BytesInput repetitionLevels = BytesInput.fromInt(r);
-    Statistics<?> statistics = new BinaryStatistics();
+    Statistics<?> statistics = Statistics.getBuilder(PrimitiveTypeName.BINARY).build();
     BytesInput data = BytesInput.fromInt(v);
     int rowCount = 5;
     int nullCount = 1;
@@ -155,13 +155,13 @@ public class TestColumnChunkPageWriteStore {
 
     BytesInput fakeData = BytesInput.fromInt(34);
     int fakeCount = 3;
-    BinaryStatistics fakeStats = new BinaryStatistics();
 
     ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
         compressor(UNCOMPRESSED), schema);
 
     for (ColumnDescriptor col : schema.getColumns()) {
       PageWriter pageWriter = store.getPageWriter(col);
+      Statistics<?> fakeStats = Statistics.getStatsBasedOnType(col.getType());
       pageWriter.writePage(fakeData, fakeCount, fakeStats, RLE, RLE, PLAIN);
     }
 
