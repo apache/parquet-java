@@ -30,6 +30,9 @@ public class TestOffsetIndexBuilder {
   @Test
   public void testBuilderWithSizeAndRowCount() {
     OffsetIndexBuilder builder = OffsetIndexBuilder.getBuilder();
+    assertNull(builder.build());
+    assertNull(builder.build(1234));
+
     builder.add(1000, 10);
     builder.add(2000, 19);
     builder.add(3000, 27);
@@ -39,9 +42,8 @@ public class TestOffsetIndexBuilder {
         1000, 2000, 10,
         3000, 3000, 29,
         6000, 1200, 56);
-    assertNull(builder.build());
-    assertNull(builder.build(1234));
 
+    builder = OffsetIndexBuilder.getBuilder();
     builder.add(1000, 10);
     builder.add(2000, 19);
     builder.add(3000, 27);
@@ -51,8 +53,6 @@ public class TestOffsetIndexBuilder {
         11000, 2000, 10,
         13000, 3000, 29,
         16000, 1200, 56);
-    assertNull(builder.build());
-    assertNull(builder.build(1234));
   }
 
   @Test
@@ -73,6 +73,9 @@ public class TestOffsetIndexBuilder {
   @Test
   public void testBuilderWithOffsetSizeIndex() {
     OffsetIndexBuilder builder = OffsetIndexBuilder.getBuilder();
+    assertNull(builder.build());
+    assertNull(builder.build(1234));
+
     builder.add(1000, 10000, 0);
     builder.add(22000, 12000, 100);
     builder.add(48000, 22000, 211);
@@ -82,9 +85,8 @@ public class TestOffsetIndexBuilder {
         22000, 12000, 100,
         48000, 22000, 211,
         90000, 30000, 361);
-    assertNull(builder.build());
-    assertNull(builder.build(1234));
 
+    builder = OffsetIndexBuilder.getBuilder();
     builder.add(1000, 10000, 0);
     builder.add(22000, 12000, 100);
     builder.add(48000, 22000, 211);
@@ -94,8 +96,6 @@ public class TestOffsetIndexBuilder {
         122000, 12000, 100,
         148000, 22000, 211,
         190000, 30000, 361);
-    assertNull(builder.build());
-    assertNull(builder.build(1234));
   }
 
   @Test

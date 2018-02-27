@@ -103,7 +103,8 @@ public class OffsetIndexBuilder {
   }
 
   /**
-   * Adds the specified parameters to this builder
+   * Adds the specified parameters to this builder. Used by the writers to building up {@link OffsetIndex} objects to be
+   * written to the Parquet file.
    *
    * @param compressedPageSize
    *          the size of the page (including header)
@@ -116,7 +117,8 @@ public class OffsetIndexBuilder {
   }
 
   /**
-   * Adds the specified parameters to this builder
+   * Adds the specified parameters to this builder. Used by the metadata converter to building up {@link OffsetIndex}
+   * objects read from the Parquet file.
    *
    * @param offset
    *          the offset of the page in the file
@@ -135,7 +137,8 @@ public class OffsetIndexBuilder {
   }
 
   /**
-   * Builds the offset index. It also resets all the collected data.
+   * Builds the offset index. Used by the metadata converter to building up {@link OffsetIndex}
+   * objects read from the Parquet file.
    *
    * @return the newly created offset index or {@code null} if the {@link OffsetIndex} object would be empty
    */
@@ -144,7 +147,8 @@ public class OffsetIndexBuilder {
   }
 
   /**
-   * Builds the offset index. It also resets all the collected data.
+   * Builds the offset index. Used by the writers to building up {@link OffsetIndex} objects to be
+   * written to the Parquet file.
    *
    * @param firstPageOffset
    *          the actual offset in the file to be used to translate all the collected offsets
@@ -164,12 +168,6 @@ public class OffsetIndexBuilder {
     offsetIndex.offsets = offsets;
     offsetIndex.compressedPageSizes = compressedPageSizes.toIntArray();
     offsetIndex.firstRowIndexes = firstRowIndexes.toLongArray();
-
-    this.compressedPageSizes.clear();
-    this.firstRowIndexes.clear();
-    this.offsets.clear();
-    previousOffset = previousRowCount = previousRowIndex = 0;
-    previousPageSize = 0;
 
     return offsetIndex;
   }

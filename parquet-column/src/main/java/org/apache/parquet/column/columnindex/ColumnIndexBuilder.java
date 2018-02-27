@@ -49,9 +49,12 @@ public abstract class ColumnIndexBuilder {
   static abstract class ColumnIndexBase implements ColumnIndex {
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
     private static final int MAX_VALUE_LENGTH_FOR_TOSTRING = 40;
-    private static final String INNER_ETC = "(...)";
-    private static final int FIRST_LENGTH = (MAX_VALUE_LENGTH_FOR_TOSTRING - INNER_ETC.length()) / 2;
-    private static final int LAST_LENGTH = MAX_VALUE_LENGTH_FOR_TOSTRING - INNER_ETC.length() - FIRST_LENGTH;
+    private static final String TOSTRING_TRUNCATION_MARKER = "(...)";
+    private static final int TOSTRING_TRUNCATION_START_POS =
+        (MAX_VALUE_LENGTH_FOR_TOSTRING - TOSTRING_TRUNCATION_MARKER.length()) / 2;
+    private static final int TOSTRING_TRUNCATION_END_POS =
+        MAX_VALUE_LENGTH_FOR_TOSTRING - TOSTRING_TRUNCATION_MARKER.length() - TOSTRING_TRUNCATION_START_POS;
+    private static final String TOSTRING_MISSING_VALUE_MARKER = "<none>";
 
     final PrimitiveStringifier stringifier;
     final PrimitiveComparator<Binary> comparator;
@@ -64,7 +67,8 @@ public abstract class ColumnIndexBuilder {
       if (str.length() <= MAX_VALUE_LENGTH_FOR_TOSTRING) {
         return str;
       }
-      return str.substring(0, FIRST_LENGTH) + INNER_ETC + str.substring(str.length() - LAST_LENGTH);
+      return str.substring(0, TOSTRING_TRUNCATION_START_POS) + TOSTRING_TRUNCATION_MARKER
+          + str.substring(str.length() - TOSTRING_TRUNCATION_END_POS);
     }
 
     ColumnIndexBase(PrimitiveType type) {
@@ -124,10 +128,10 @@ public abstract class ColumnIndexBuilder {
         formatter.format("%-10s  %20s" + minMaxPart, "", "null count", "min", "max");
         String format = "page-%-5d  %20s" + minMaxPart;
         for (int i = 0, n = nullPages.length; i < n; ++i) {
-          String nullCount = nullCounts == null ? "--" : Long.toString(nullCounts[i]);
+          String nullCount = nullCounts == null ? TOSTRING_MISSING_VALUE_MARKER : Long.toString(nullCounts[i]);
           String min, max;
           if (nullPages[i]) {
-            min = max = "--";
+            min = max = TOSTRING_MISSING_VALUE_MARKER;
           } else {
             min = truncate(getMinValueAsString(i));
             max = truncate(getMaxValueAsString(i));
@@ -245,7 +249,8 @@ public abstract class ColumnIndexBuilder {
    * @param boundaryOrder
    *          the boundary order of the min/max values
    * @param nullPages
-   *          the null pages
+   *          the null pages (one boolean value for each page that signifies whether the page consists of nulls
+   *          entirely)
    * @param nullCounts
    *          the number of null values for each page
    * @param minValues
@@ -326,8 +331,6 @@ public abstract class ColumnIndexBuilder {
   }
 
   /**
-   * Builds the column index. It also resets all the collected data.
-   *
    * @return the newly created column index or {@code null} if the {@link ColumnIndex} would be empty
    */
   public ColumnIndex build() {
@@ -336,7 +339,6 @@ public abstract class ColumnIndexBuilder {
       return null;
     }
     columnIndex.boundaryOrder = calculateBoundaryOrder(type.comparator());
-    clear();
     return columnIndex;
   }
 
@@ -364,7 +366,7 @@ public abstract class ColumnIndexBuilder {
     }
   }
 
-  // min_i <= min_i+1 && max_i <= max_i+1
+  // min[i] <= min[i+1] && max[i] <= max[i+1]
   private boolean isAscending(PrimitiveComparator<Binary> comparator) {
     int prevPage = nextNonNullPage(0);
     // All pages are null-page
@@ -383,7 +385,7 @@ public abstract class ColumnIndexBuilder {
     return true;
   }
 
-  // min_i >= min_i+1 && max_i >= max_i+1
+  // min[i] >= min[i+1] && max[i] >= max[i+1]
   private boolean isDescending(PrimitiveComparator<Binary> comparator) {
     int prevPage = nextNonNullPage(0);
     // All pages are null-page
