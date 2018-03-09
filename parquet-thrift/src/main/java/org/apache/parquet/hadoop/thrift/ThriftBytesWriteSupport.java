@@ -19,6 +19,8 @@
 package org.apache.parquet.hadoop.thrift;
 
 import java.io.ByteArrayInputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
@@ -28,7 +30,8 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -45,6 +48,7 @@ import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
 public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
+  private static final Logger LOG = LoggerFactory.getLogger(ThriftBytesWriteSupport.class);
   private static final String PARQUET_PROTOCOL_CLASS = "parquet.protocol.class";
 
   public static <U extends TProtocol> void setTProtocolClass(Configuration conf, Class<U> tProtocolClass) {
@@ -123,8 +127,32 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
     return thriftWriteSupport.init(configuration);
   }
 
+  private static Method SET_READ_LENGTH;
+  static {
+    try {
+      SET_READ_LENGTH = TBinaryProtocol.class.getMethod("setReadLength", int.class);
+    } catch (NoSuchMethodException e) {
+      SET_READ_LENGTH = null;
+    }
+  }
+
   private TProtocol protocol(BytesWritable record) {
-    return protocolFactory.getProtocol(new TIOStreamTransport(new ByteArrayInputStream(record.getBytes())));
+    TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(new ByteArrayInputStream(record.getBytes())));
+
+    /* Reduce the chance of OOM when data is corrupted. When readBinary is called on TBinaryProtocol, it reads the length of the binary first,
+     so if the data is corrupted, it could read a big integer as the length of the binary and therefore causes OOM to happen.
+     Currently this fix only applies to TBinaryProtocol which has the setReadLength defined (thrift 0.7).
+      */
+    if (SET_READ_LENGTH != null && protocol instanceof TBinaryProtocol) {
+      try {
+        SET_READ_LENGTH.invoke(protocol, new Object[]{record.getLength()});
+      } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+        LOG.warn("setReadLength should not throw an exception", e);
+        SET_READ_LENGTH = null;
+      }
+    }
+
+    return protocol;
   }
 
   @Override
