@@ -18,13 +18,24 @@
  */
 package org.apache.parquet.column.statistics;
 
+import static java.lang.Double.doubleToLongBits;
+import static java.lang.Float.floatToIntBits;
+import static org.apache.parquet.bytes.BytesUtils.intToBytes;
+import static org.apache.parquet.bytes.BytesUtils.longToBytes;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 import java.util.Locale;
 
 import org.junit.Test;
-
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -636,5 +647,107 @@ public class TestStatistics {
 
     assertEquals(stats.getMax(), Binary.fromString("zzzz"));
     assertEquals(stats.getMin(), Binary.fromString(""));
+  }
+
+  @Test
+  public void testBuilder() {
+    testBuilder(Types.required(BOOLEAN).named("test_boolean"), false, new byte[] { 0 }, true, new byte[] { 1 });
+    testBuilder(Types.required(INT32).named("test_int32"), -42, intToBytes(-42), 42, intToBytes(42));
+    testBuilder(Types.required(INT64).named("test_int64"), -42l, longToBytes(-42), 42l, longToBytes(42));
+    testBuilder(Types.required(FLOAT).named("test_float"), -42.0f, intToBytes(floatToIntBits(-42.0f)), 42.0f,
+        intToBytes(floatToIntBits(42.0f)));
+    testBuilder(Types.required(DOUBLE).named("test_double"), -42.0, longToBytes(doubleToLongBits(-42.0)), 42.0,
+        longToBytes(Double.doubleToLongBits(42.0f)));
+
+    byte[] min = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+    byte[] max = { 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 };
+    testBuilder(Types.required(INT96).named("test_int96"), Binary.fromConstantByteArray(min), min,
+        Binary.fromConstantByteArray(max), max);
+    testBuilder(Types.required(FIXED_LEN_BYTE_ARRAY).length(12).named("test_fixed"), Binary.fromConstantByteArray(min),
+        min,
+        Binary.fromConstantByteArray(max), max);
+    testBuilder(Types.required(BINARY).named("test_binary"), Binary.fromConstantByteArray(min), min,
+        Binary.fromConstantByteArray(max), max);
+  }
+
+  private void testBuilder(PrimitiveType type, Object min, byte[] minBytes, Object max, byte[] maxBytes) {
+    Statistics.Builder builder = Statistics.getBuilderForReading(type);
+    Statistics<?> stats = builder.build();
+    assertTrue(stats.isEmpty());
+    assertFalse(stats.isNumNullsSet());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withNumNulls(0).withMin(minBytes).build();
+    assertFalse(stats.isEmpty());
+    assertTrue(stats.isNumNullsSet());
+    assertFalse(stats.hasNonNullValue());
+    assertEquals(0, stats.getNumNulls());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withNumNulls(11).withMax(maxBytes).build();
+    assertFalse(stats.isEmpty());
+    assertTrue(stats.isNumNullsSet());
+    assertFalse(stats.hasNonNullValue());
+    assertEquals(11, stats.getNumNulls());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withNumNulls(42).withMin(minBytes).withMax(maxBytes).build();
+    assertFalse(stats.isEmpty());
+    assertTrue(stats.isNumNullsSet());
+    assertTrue(stats.hasNonNullValue());
+    assertEquals(42, stats.getNumNulls());
+    assertEquals(min, stats.genericGetMin());
+    assertEquals(max, stats.genericGetMax());
+  }
+
+  @Test
+  public void testSpecBuilderForFloat() {
+    PrimitiveType type = Types.required(FLOAT).named("test_float");
+    Statistics.Builder builder = Statistics.getBuilderForReading(type);
+    Statistics<?> stats = builder.withMin(intToBytes(floatToIntBits(Float.NaN)))
+        .withMax(intToBytes(floatToIntBits(42.0f))).withNumNulls(0).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(0, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(-42.0f)))
+        .withMax(intToBytes(floatToIntBits(Float.NaN))).withNumNulls(11).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(11, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(Float.NaN)))
+        .withMax(intToBytes(floatToIntBits(Float.NaN))).withNumNulls(42).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(42, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+  }
+
+  @Test
+  public void testSpecBuilderForDouble() {
+    PrimitiveType type = Types.required(DOUBLE).named("test_double");
+    Statistics.Builder builder = Statistics.getBuilderForReading(type);
+    Statistics<?> stats = builder.withMin(longToBytes(doubleToLongBits(Double.NaN)))
+        .withMax(longToBytes(doubleToLongBits(42.0))).withNumNulls(0).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(0, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(-42.0)))
+        .withMax(longToBytes(doubleToLongBits(Double.NaN))).withNumNulls(11).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(11, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(Double.NaN)))
+        .withMax(longToBytes(doubleToLongBits(Double.NaN))).withNumNulls(42).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(42, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
   }
 }
