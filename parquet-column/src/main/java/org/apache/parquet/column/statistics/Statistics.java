@@ -92,12 +92,13 @@ public abstract class Statistics<T extends Comparable<T>> {
           ((Statistics<?>) stats).hasNonNullValue = false;
         } else {
           // Updating min to -0.0 and max to +0.0 to ensure that no 0.0 values would be skipped
-          if (min == 0.0f) {
-            stats.setMinMax(-0.0f, max);
+          if (Float.compare(min, 0.0f) == 0) {
             min = -0.0f;
+            stats.setMinMax(min, max);
           }
-          if (max == -0.0f) {
-            stats.setMinMax(min, 0.0f);
+          if (Float.compare(max, -0.0f) == 0) {
+            max = 0.0f;
+            stats.setMinMax(min, max);
           }
         }
       }
@@ -124,12 +125,13 @@ public abstract class Statistics<T extends Comparable<T>> {
           ((Statistics<?>) stats).hasNonNullValue = false;
         } else {
           // Updating min to -0.0 and max to +0.0 to ensure that no 0.0 values would be skipped
-          if (min == 0.0) {
-            stats.setMinMax(-0.0, max);
+          if (Double.compare(min, 0.0) == 0) {
             min = -0.0;
+            stats.setMinMax(min, max);
           }
-          if (max == -0.0) {
-            stats.setMinMax(min, 0.0);
+          if (Double.compare(max, -0.0) == 0) {
+            max = 0.0;
+            stats.setMinMax(min, max);
           }
         }
       }

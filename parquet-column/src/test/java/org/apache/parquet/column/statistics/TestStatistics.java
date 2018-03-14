@@ -724,6 +724,24 @@ public class TestStatistics {
     assertTrue(stats.isNumNullsSet());
     assertEquals(42, stats.getNumNulls());
     assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(0.0f)))
+        .withMax(intToBytes(floatToIntBits(42.0f))).build();
+    assertEquals(0, Float.compare(-0.0f, (Float) stats.genericGetMin()));
+    assertEquals(0, Float.compare(42.0f, (Float) stats.genericGetMax()));
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(-42.0f)))
+        .withMax(intToBytes(floatToIntBits(-0.0f))).build();
+    assertEquals(0, Float.compare(-42.0f, (Float) stats.genericGetMin()));
+    assertEquals(0, Float.compare(0.0f, (Float) stats.genericGetMax()));
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(0.0f)))
+        .withMax(intToBytes(floatToIntBits(-0.0f))).build();
+    assertEquals(0, Float.compare(-0.0f, (Float) stats.genericGetMin()));
+    assertEquals(0, Float.compare(0.0f, (Float) stats.genericGetMax()));
   }
 
   @Test
@@ -749,5 +767,23 @@ public class TestStatistics {
     assertTrue(stats.isNumNullsSet());
     assertEquals(42, stats.getNumNulls());
     assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(0.0)))
+        .withMax(longToBytes(doubleToLongBits(42.0))).build();
+    assertEquals(0, Double.compare(-0.0, (Double) stats.genericGetMin()));
+    assertEquals(0, Double.compare(42.0, (Double) stats.genericGetMax()));
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(-42.0)))
+        .withMax(longToBytes(doubleToLongBits(-0.0))).build();
+    assertEquals(0, Double.compare(-42.0, (Double) stats.genericGetMin()));
+    assertEquals(0, Double.compare(0.0, (Double) stats.genericGetMax()));
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(0.0)))
+        .withMax(longToBytes(doubleToLongBits(-0.0))).build();
+    assertEquals(0, Double.compare(-0.0, (Double) stats.genericGetMin()));
+    assertEquals(0, Double.compare(0.0, (Double) stats.genericGetMax()));
   }
 }
