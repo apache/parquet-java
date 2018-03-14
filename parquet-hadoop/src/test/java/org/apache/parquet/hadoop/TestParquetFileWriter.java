@@ -96,7 +96,7 @@ public class TestParquetFileWriter {
   private static final CompressionCodecName CODEC = CompressionCodecName.UNCOMPRESSED;
 
   private static final org.apache.parquet.column.statistics.Statistics<?> EMPTY_STATS = org.apache.parquet.column.statistics.Statistics
-      .getBuilder(Types.required(PrimitiveTypeName.BINARY).named("test_binary")).build();
+      .getBuilderForReading(Types.required(PrimitiveTypeName.BINARY).named("test_binary")).build();
 
   private String writeSchema;
 

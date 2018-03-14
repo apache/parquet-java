@@ -73,6 +73,72 @@ public abstract class Statistics<T extends Comparable<T>> {
     }
   }
 
+  // Builder for FLOAT type to handle special cases of min/max values like NaN, -0.0, and 0.0
+  private static class FloatBuilder extends Builder {
+    public FloatBuilder(PrimitiveType type) {
+      super(type);
+      assert type.getPrimitiveTypeName() == PrimitiveTypeName.FLOAT;
+    }
+
+    @Override
+    public Statistics<?> build() {
+      FloatStatistics stats = (FloatStatistics) super.build();
+      if (stats.hasNonNullValue()) {
+        Float min = stats.genericGetMin();
+        Float max = stats.genericGetMax();
+        // Drop min/max values in case of NaN as the sorting order of values is undefined for this case
+        if (min.isNaN() || max.isNaN()) {
+          stats.setMinMax(0.0f, 0.0f);
+          ((Statistics<?>) stats).hasNonNullValue = false;
+        } else {
+          // Updating min to -0.0 and max to +0.0 to ensure that no 0.0 values would be skipped
+          if (Float.compare(min, 0.0f) == 0) {
+            min = -0.0f;
+            stats.setMinMax(min, max);
+          }
+          if (Float.compare(max, -0.0f) == 0) {
+            max = 0.0f;
+            stats.setMinMax(min, max);
+          }
+        }
+      }
+      return stats;
+    }
+  }
+
+  // Builder for DOUBLE type to handle special cases of min/max values like NaN, -0.0, and 0.0
+  private static class DoubleBuilder extends Builder {
+    public DoubleBuilder(PrimitiveType type) {
+      super(type);
+      assert type.getPrimitiveTypeName() == PrimitiveTypeName.DOUBLE;
+    }
+
+    @Override
+    public Statistics<?> build() {
+      DoubleStatistics stats = (DoubleStatistics) super.build();
+      if (stats.hasNonNullValue()) {
+        Double min = stats.genericGetMin();
+        Double max = stats.genericGetMax();
+        // Drop min/max values in case of NaN as the sorting order of values is undefined for this case
+        if (min.isNaN() || max.isNaN()) {
+          stats.setMinMax(0.0, 0.0);
+          ((Statistics<?>) stats).hasNonNullValue = false;
+        } else {
+          // Updating min to -0.0 and max to +0.0 to ensure that no 0.0 values would be skipped
+          if (Double.compare(min, 0.0) == 0) {
+            min = -0.0;
+            stats.setMinMax(min, max);
+          }
+          if (Double.compare(max, -0.0) == 0) {
+            max = 0.0;
+            stats.setMinMax(min, max);
+          }
+        }
+      }
+      return stats;
+    }
+  }
+
   private final PrimitiveType type;
   private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
@@ -154,8 +220,15 @@ public abstract class Statistics<T extends Comparable<T>> {
    *          type of the column
    * @return builder to create new statistics object
    */
-  public static Builder getBuilder(PrimitiveType type) {
-    return new Builder(type);
+  public static Builder getBuilderForReading(PrimitiveType type) {
+    switch (type.getPrimitiveTypeName()) {
+      case FLOAT:
+        return new FloatBuilder(type);
+      case DOUBLE:
+        return new DoubleBuilder(type);
+      default:
+        return new Builder(type);
+    }
   }
 
   /**
@@ -266,7 +339,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Abstract method to set min and max values from byte arrays.
    * @param minBytes byte array to set the min value to
    * @param maxBytes byte array to set the max value to
-   * @deprecated will be removed in 2.0.0. Use {@link #getBuilder(PrimitiveType)} instead.
+   * @deprecated will be removed in 2.0.0. Use {@link #getBuilderForReading(PrimitiveType)} instead.
    */
   @Deprecated
   abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
@@ -401,7 +474,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    *
    * @param nulls
    *          null count to set the count to
-   * @deprecated will be removed in 2.0.0. Use {@link #getBuilder(PrimitiveType)} instead.
+   * @deprecated will be removed in 2.0.0. Use {@link #getBuilderForReading(PrimitiveType)} instead.
    */
   @Deprecated
   public void setNumNulls(long nulls) {
