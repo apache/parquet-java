@@ -402,7 +402,7 @@ public class ParquetMetadataConverter {
       (String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
     // create stats object based on the column type
     org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
-        org.apache.parquet.column.statistics.Statistics.getBuilder(type);
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
 
     if (formatStats != null) {
       // Use the new V2 min-max statistics over the former one if it is filled
