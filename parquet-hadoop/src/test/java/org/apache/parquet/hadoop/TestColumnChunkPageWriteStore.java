@@ -18,7 +18,9 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isNull;
@@ -53,7 +55,9 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.LittleEndianDataInputStream;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.columnindex.ColumnIndex;
 import org.apache.parquet.column.columnindex.ColumnIndexBuilder;
+import org.apache.parquet.column.columnindex.OffsetIndex;
 import org.apache.parquet.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
@@ -62,8 +66,13 @@ import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
+import org.apache.parquet.io.OutputFile;
+import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -71,6 +80,40 @@ import org.apache.parquet.schema.Types;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 public class TestColumnChunkPageWriteStore {
+
+  // OutputFile implementation to reach out the PositionOutputStream internally used by the writer
+  private static class OutputFileForTesting implements OutputFile {
+    private PositionOutputStream out;
+    private final HadoopOutputFile file;
+
+    OutputFileForTesting(Path path, Configuration conf) throws IOException {
+      file = HadoopOutputFile.fromPath(path, conf);
+    }
+
+    PositionOutputStream out() {
+      return out;
+    }
+
+    @Override
+    public PositionOutputStream create(long blockSizeHint) throws IOException {
+      return out = file.create(blockSizeHint);
+    }
+
+    @Override
+    public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
+      return out = file.createOrOverwrite(blockSizeHint);
+    }
+
+    @Override
+    public boolean supportsBlockSize() {
+      return file.supportsBlockSize();
+    }
+
+    @Override
+    public long defaultBlockSize() {
+      return file.defaultBlockSize();
+    }
+  }
 
   private int pageSize = 1024;
   private int initialSize = 1024;
@@ -104,11 +147,18 @@ public class TestColumnChunkPageWriteStore {
     BytesInput data = BytesInput.fromInt(v);
     int rowCount = 5;
     int nullCount = 1;
+    statistics.incrementNumNulls(nullCount);
+    statistics.setMinMaxFromBytes(new byte[] {0, 1, 2}, new byte[] {0, 1, 2, 3});
+    long pageOffset;
+    long pageSize;
 
     {
-      ParquetFileWriter writer = new ParquetFileWriter(conf, schema, file);
+      OutputFileForTesting outputFile = new OutputFileForTesting(file, conf);
+      ParquetFileWriter writer = new ParquetFileWriter(outputFile, schema, Mode.CREATE,
+          ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
       writer.start();
       writer.startBlock(rowCount);
+      pageOffset = outputFile.out().getPos();
       {
         ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor(GZIP), schema , new HeapByteBufferAllocator());
         PageWriter pageWriter = store.getPageWriter(col);
@@ -118,6 +168,7 @@ public class TestColumnChunkPageWriteStore {
             dataEncoding, data,
             statistics);
         store.flushToFileWriter(writer);
+        pageSize = outputFile.out().getPos() - pageOffset;
       }
       writer.endBlock();
       writer.end(new HashMap<String, String>());
@@ -138,6 +189,20 @@ public class TestColumnChunkPageWriteStore {
       assertEquals(dataEncoding, page.getDataEncoding());
       assertEquals(v, intValue(page.getData()));
       assertEquals(statistics.toString(), page.getStatistics().toString());
+
+      // Checking column/offset indexes for the one page
+      ColumnChunkMetaData column = footer.getBlocks().get(0).getColumns().get(0);
+      ColumnIndex columnIndex = reader.readColumnIndex(column);
+      assertArrayEquals(statistics.getMinBytes(), columnIndex.getMinValues().get(0).array());
+      assertArrayEquals(statistics.getMaxBytes(), columnIndex.getMaxValues().get(0).array());
+      assertEquals(statistics.getNumNulls(), columnIndex.getNullCounts().get(0).longValue());
+      assertFalse(columnIndex.getNullPages().get(0));
+      OffsetIndex offsetIndex = reader.readOffsetIndex(column);
+      assertEquals(1, offsetIndex.getPageCount());
+      assertEquals(pageSize, offsetIndex.getCompressedPageSize(0));
+      assertEquals(0, offsetIndex.getFirstRowIndex(0));
+      assertEquals(pageOffset, offsetIndex.getOffset(0));
+
       reader.close();
     }
   }
