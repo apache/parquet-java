@@ -450,6 +450,11 @@ public final class PrimitiveType extends Type {
     this.primitive = primitive;
     this.length = length;
     this.decimalMeta = decimalMeta;
+    if (originalType == OriginalType.DECIMAL) {
+      OriginalLogicalType.DecimalLogicalType originalLogicalType = (OriginalLogicalType.DecimalLogicalType) getOriginalLogicalType();
+      originalLogicalType.setPrecision(decimalMeta.getPrecision());
+      originalLogicalType.setScale(decimalMeta.getScale());
+    }
 
     if (columnOrder == null) {
       columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -119,7 +119,7 @@ abstract public class Type {
 
   private final String name;
   private final Repetition repetition;
-  private final OriginalType originalType;
+  private final OriginalLogicalType originalLogicalType;
   private final ID id;
 
   /**
@@ -151,7 +151,7 @@ abstract public class Type {
     super();
     this.name = checkNotNull(name, "name");
     this.repetition = checkNotNull(repetition, "repetition");
-    this.originalType = originalType;
+    this.originalLogicalType = originalType == null ? null : OriginalLogicalType.fromOriginalType(originalType);
     this.id = id;
   }
 
@@ -190,11 +190,15 @@ abstract public class Type {
     return id;
   }
 
+  public OriginalLogicalType getOriginalLogicalType() {
+    return originalLogicalType;
+  }
+
   /**
    * @return the original type (LIST, MAP, ...)
    */
   public OriginalType getOriginalType() {
-    return originalType;
+    return originalLogicalType == null ? null : originalLogicalType.toOriginalType();
   }
 
   /**
@@ -247,8 +251,8 @@ abstract public class Type {
   public int hashCode() {
     int c = repetition.hashCode();
     c = 31 * c + name.hashCode();
-    if (originalType != null) {
-      c = 31 * c +  originalType.hashCode();
+    if (originalLogicalType != null) {
+      c = 31 * c +  originalLogicalType.hashCode();
     }
     if (id != null) {
       c = 31 * c + id.hashCode();
@@ -262,7 +266,7 @@ abstract public class Type {
         && repetition == other.repetition
         && eqOrBothNull(repetition, other.repetition)
         && eqOrBothNull(id, other.id)
-        && eqOrBothNull(originalType, other.originalType);
+        && eqOrBothNull(originalLogicalType, other.originalLogicalType);
   };
 
   @Override

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -60,6 +60,8 @@ import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.format.DecimalType;
+import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -67,6 +69,7 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.OriginalLogicalType;
 import org.junit.Assert;
 import org.junit.Test;
 import org.apache.parquet.example.Paper;
@@ -130,12 +133,14 @@ public class TestParquetMetadataConverter {
             .setRepetition_type(FieldRepetitionType.REQUIRED)
             .setType(Type.BYTE_ARRAY)
             .setConverted_type(ConvertedType.DECIMAL)
+            .setLogicalType(LogicalType.DECIMAL(new DecimalType(2, 9)))
             .setPrecision(9).setScale(2),
         new SchemaElement("aFixedDecimal")
             .setRepetition_type(FieldRepetitionType.OPTIONAL)
             .setType(Type.FIXED_LEN_BYTE_ARRAY)
             .setType_length(4)
             .setConverted_type(ConvertedType.DECIMAL)
+            .setLogicalType(LogicalType.DECIMAL(new DecimalType(2, 9)))
             .setPrecision(9).setScale(2)
     );
     Assert.assertEquals(expected, schemaElements);
@@ -163,10 +168,11 @@ public class TestParquetMetadataConverter {
       assertEquals(type, parquetMetadataConverter.getType(parquetMetadataConverter.getPrimitive(type)));
     }
     for (OriginalType original : OriginalType.values()) {
-      assertEquals(original, parquetMetadataConverter.getOriginalType(parquetMetadataConverter.getConvertedType(original)));
+      assertEquals(original, parquetMetadataConverter.getOriginalType(
+        parquetMetadataConverter.getConvertedType(OriginalLogicalType.fromOriginalType(original)), null).toOriginalType());
     }
     for (ConvertedType converted : ConvertedType.values()) {
-      assertEquals(converted, parquetMetadataConverter.getConvertedType(parquetMetadataConverter.getOriginalType(converted)));
+      assertEquals(converted, parquetMetadataConverter.getConvertedType(parquetMetadataConverter.getOriginalType(converted, null)));
     }
   }
 
@@ -336,7 +342,7 @@ public class TestParquetMetadataConverter {
             0, 0, 0, 0, 0);
     return md;
   }
-  
+
   @Test
   public void testEncodingsCache() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();

@@ -198,7 +198,7 @@ public class Types {
     protected final Class<? extends P> returnClass;
 
     protected Type.Repetition repetition = null;
-    protected OriginalType originalType = null;
+    protected OriginalLogicalType originalLogicalType = null;
     protected Type.ID id = null;
     private boolean repetitionAlreadySet = false;
 
@@ -252,7 +252,12 @@ public class Types {
      * @return this builder for method chaining
      */
     public THIS as(OriginalType type) {
-      this.originalType = type;
+      this.originalLogicalType = OriginalLogicalType.fromOriginalType(type);
+      return self();
+    }
+
+    public THIS as(OriginalLogicalType type) {
+      this.originalLogicalType = type;
       return self();
     }
 
@@ -303,6 +308,9 @@ public class Types {
       }
     }
 
+    protected OriginalType getOriginalType () {
+      return originalLogicalType == null ? null : originalLogicalType.toOriginalType();
+    }
   }
 
   public abstract static class
@@ -402,7 +410,8 @@ public class Types {
       DecimalMetadata meta = decimalMetadata();
 
       // validate type annotations and required metadata
-      if (originalType != null) {
+      if (originalLogicalType != null) {
+        OriginalType originalType = originalLogicalType.toOriginalType();
         switch (originalType) {
           case UTF8:
           case JSON:
@@ -475,7 +484,7 @@ public class Types {
         }
       }
 
-      return new PrimitiveType(repetition, primitiveType, length, name, originalType, meta, id, columnOrder);
+      return new PrimitiveType(repetition, primitiveType, length, name, getOriginalType(), meta, id, columnOrder);
     }
 
     private static long maxPrecision(int numBytes) {
@@ -488,7 +497,7 @@ public class Types {
 
     protected DecimalMetadata decimalMetadata() {
       DecimalMetadata meta = null;
-      if (OriginalType.DECIMAL == originalType) {
+      if (OriginalType.DECIMAL == getOriginalType()) {
         Preconditions.checkArgument(precision > 0,
             "Invalid DECIMAL precision: " + precision);
         Preconditions.checkArgument(scale >= 0,
@@ -648,7 +657,7 @@ public class Types {
 
     @Override
     protected GroupType build(String name) {
-      return new GroupType(repetition, name, originalType, fields, id);
+      return new GroupType(repetition, name, getOriginalType(), fields, id);
     }
 
     public MapBuilder<THIS> map(
@@ -1043,7 +1052,7 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(originalType == null,
+      Preconditions.checkState(originalLogicalType == null,
           "MAP is already a logical type and can't be changed.");
       if (keyType == null) {
         keyType = STRING_KEY;
@@ -1191,7 +1200,7 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(originalType == null,
+      Preconditions.checkState(originalLogicalType == null,
           "LIST is already the logical type and can't be changed");
       Preconditions.checkNotNull(elementType, "List element type");
 

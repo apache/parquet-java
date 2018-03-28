@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -40,7 +40,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.format.CompressionCodec;
+import org.apache.parquet.format.DecimalType;
+import org.apache.parquet.format.IntType;
+import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.PageEncodingStats;
+import org.apache.parquet.format.TimeType;
+import org.apache.parquet.format.TimeUnit;
+import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
@@ -75,6 +81,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.TypeVisitor;
 import org.apache.parquet.schema.Types;
+import org.apache.parquet.schema.OriginalLogicalType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -171,8 +178,9 @@ public class ParquetMetadataConverter {
         SchemaElement element = new SchemaElement(primitiveType.getName());
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
-        if (primitiveType.getOriginalType() != null) {
-          element.setConverted_type(getConvertedType(primitiveType.getOriginalType()));
+        if (primitiveType.getOriginalLogicalType() != null) {
+          element.setConverted_type(getConvertedType(primitiveType.getOriginalLogicalType()));
+          element.setLogicalType(primitiveType.getOriginalLogicalType().toLogicalType());
         }
         if (primitiveType.getDecimalMetadata() != null) {
           element.setPrecision(primitiveType.getDecimalMetadata().getPrecision());
@@ -200,8 +208,9 @@ public class ParquetMetadataConverter {
       public void visit(GroupType groupType) {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
-        if (groupType.getOriginalType() != null) {
-          element.setConverted_type(getConvertedType(groupType.getOriginalType()));
+        if (groupType.getOriginalLogicalType() != null) {
+          element.setConverted_type(getConvertedType(groupType.getOriginalLogicalType()));
+          element.setLogicalType(groupType.getOriginalLogicalType().toLogicalType());
         }
         if (groupType.getId() != null) {
           element.setField_id(groupType.getId().intValue());
@@ -586,60 +595,113 @@ public class ParquetMetadataConverter {
   }
 
   // Visible for testing
-  OriginalType getOriginalType(ConvertedType type) {
+  OriginalLogicalType getOriginalType(ConvertedType type, SchemaElement schemaElement) {
     switch (type) {
       case UTF8:
-        return OriginalType.UTF8;
+        return OriginalLogicalType.StringLogicalType.create();
       case MAP:
-        return OriginalType.MAP;
+        return OriginalLogicalType.MapLogicalType.create();
       case MAP_KEY_VALUE:
-        return OriginalType.MAP_KEY_VALUE;
+        return OriginalLogicalType.MapKeyValueType.create();
       case LIST:
-        return OriginalType.LIST;
+        return OriginalLogicalType.ListLogicalType.create();
       case ENUM:
-        return OriginalType.ENUM;
+        return OriginalLogicalType.EnumLogicalType.create();
       case DECIMAL:
-        return OriginalType.DECIMAL;
+        if (schemaElement == null) {
+          return OriginalLogicalType.DecimalLogicalType.create();
+        }
+        return OriginalLogicalType.DecimalLogicalType.create(schemaElement.scale, schemaElement.precision);
       case DATE:
-        return OriginalType.DATE;
+        return OriginalLogicalType.DateLogicalType.create();
       case TIME_MILLIS:
-        return OriginalType.TIME_MILLIS;
+        return OriginalLogicalType.TimeLogicalType.create(true, OriginalLogicalType.TimeUnit.MILLIS);
       case TIME_MICROS:
-        return OriginalType.TIME_MICROS;
+        return OriginalLogicalType.TimeLogicalType.create(true, OriginalLogicalType.TimeUnit.MICROS);
       case TIMESTAMP_MILLIS:
-        return OriginalType.TIMESTAMP_MILLIS;
+        return OriginalLogicalType.TimestampLogicalType.create(true, OriginalLogicalType.TimeUnit.MILLIS);
       case TIMESTAMP_MICROS:
-        return OriginalType.TIMESTAMP_MICROS;
+        return OriginalLogicalType.TimestampLogicalType.create(true, OriginalLogicalType.TimeUnit.MICROS);
       case INTERVAL:
-        return OriginalType.INTERVAL;
+        return OriginalLogicalType.IntervalLogicalType.create();
       case INT_8:
-        return OriginalType.INT_8;
+        return OriginalLogicalType.IntLogicalType.create((byte) 8, true);
       case INT_16:
-        return OriginalType.INT_16;
+        return OriginalLogicalType.IntLogicalType.create((byte) 16, true);
       case INT_32:
-        return OriginalType.INT_32;
+        return OriginalLogicalType.IntLogicalType.create((byte) 32, true);
       case INT_64:
-        return OriginalType.INT_64;
+        return OriginalLogicalType.IntLogicalType.create((byte) 64, true);
       case UINT_8:
-        return OriginalType.UINT_8;
+        return OriginalLogicalType.IntLogicalType.create((byte) 8, false);
       case UINT_16:
-        return OriginalType.UINT_16;
+        return OriginalLogicalType.IntLogicalType.create((byte) 16, false);
       case UINT_32:
-        return OriginalType.UINT_32;
+        return OriginalLogicalType.IntLogicalType.create((byte) 32, false);
       case UINT_64:
-        return OriginalType.UINT_64;
+        return OriginalLogicalType.IntLogicalType.create((byte) 64, false);
       case JSON:
-        return OriginalType.JSON;
+        return OriginalLogicalType.JsonLogicalType.create();
       case BSON:
-        return OriginalType.BSON;
+        return OriginalLogicalType.BsonLogicalType.create();
       default:
-        throw new RuntimeException("Unknown converted type " + type);
+        return OriginalLogicalType.NullLogicalType.create();
+    }
+  }
+
+  OriginalLogicalType getOriginalType(LogicalType type) {
+    switch (type.getSetField()) {
+      case MAP:
+        return OriginalLogicalType.MapLogicalType.create();
+      case BSON:
+        return OriginalLogicalType.BsonLogicalType.create();
+      case DATE:
+        return OriginalLogicalType.DateLogicalType.create();
+      case ENUM:
+        return OriginalLogicalType.EnumLogicalType.create();
+      case JSON:
+        return OriginalLogicalType.JsonLogicalType.create();
+      case LIST:
+        return OriginalLogicalType.ListLogicalType.create();
+      case TIME:
+        TimeType time = type.getTIME();
+        return OriginalLogicalType.TimeLogicalType.create(time.isAdjustedToUTC, convertTimeUnit(time.unit));
+      case STRING:
+        return OriginalLogicalType.StringLogicalType.create();
+      case DECIMAL:
+        DecimalType decimal = type.getDECIMAL();
+        return OriginalLogicalType.DecimalLogicalType.create(decimal.scale, decimal.precision);
+      case INTEGER:
+        IntType integer = type.getINTEGER();
+        return OriginalLogicalType.IntLogicalType.create(integer.bitWidth, integer.isSigned);
+      case UNKNOWN:
+        return null;
+      case TIMESTAMP:
+        TimestampType timestamp = type.getTIMESTAMP();
+        return OriginalLogicalType.TimestampLogicalType.create(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
+      default:
+        throw new RuntimeException("Unknown logical type " + type);
+    }
+  }
+
+  OriginalLogicalType.TimeUnit convertTimeUnit(TimeUnit unit) {
+    switch (unit.getSetField()) {
+      case MICROS:
+        return OriginalLogicalType.TimeUnit.MICROS;
+      case MILLIS:
+        return OriginalLogicalType.TimeUnit.MILLIS;
+      default:
+        throw new RuntimeException("Unknown time unit " + unit);
     }
   }
 
   // Visible for testing
-  ConvertedType getConvertedType(OriginalType type) {
-    switch (type) {
+  ConvertedType getConvertedType(OriginalLogicalType type) {
+    OriginalType originalType = type.toOriginalType();
+    if (originalType == null) {
+      return null;
+    }
+    switch (originalType) {
       case UTF8:
         return ConvertedType.UTF8;
       case MAP:
@@ -985,8 +1047,15 @@ public class ParquetMetadataConverter {
         buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children, columnOrders, columnCount);
       }
 
+      if (schemaElement.isSetLogicalType()) {
+        childBuilder.as(getOriginalType(schemaElement.logicalType));
+      }
       if (schemaElement.isSetConverted_type()) {
-        childBuilder.as(getOriginalType(schemaElement.converted_type));
+        OriginalLogicalType originalType = getOriginalType(schemaElement.converted_type, schemaElement);
+        OriginalLogicalType newLogicalType = getOriginalType(schemaElement.logicalType);
+        if (!originalType.equals(newLogicalType)) {
+          childBuilder.as(getOriginalType(schemaElement.converted_type, schemaElement));
+        }
       }
       if (schemaElement.isSetField_id()) {
         childBuilder.id(schemaElement.field_id);
