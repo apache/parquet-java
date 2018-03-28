@@ -38,7 +38,7 @@
   <scm>
     <connection>scm:git:git@github.com:apache/parquet-format.git</connection>
     <url>scm:git:git@github.com:apache/parquet-format.git</url>
-    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/parquet-format.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:apache/parquet-format.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 
