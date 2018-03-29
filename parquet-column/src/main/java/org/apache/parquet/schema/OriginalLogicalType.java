@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.schema;
 
-import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.format.BsonType;
+import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DateType;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.EnumType;
@@ -41,9 +41,16 @@ public interface OriginalLogicalType {
   /**
    * Convert this parquet-mr logical type to parquet-format LogicalType.
    *
-   * @return the parquet-format representation of this logical type implementation
+   * @return the parquet-format LogicalType representation of this logical type implementation
    */
   LogicalType toLogicalType();
+
+  /**
+   * Convert this parquet-mr logical type to parquet-format ConvertedType.
+   *
+   * @return the parquet-format ConvertedType representation of this logical type implementation
+   */
+  ConvertedType toConvertedType();
 
   /**
    * Convert this logical type to old logical type representation in parquet-mr (if there's any).
@@ -126,6 +133,11 @@ public interface OriginalLogicalType {
     }
 
     @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.UTF8;
+    }
+
+    @Override
     public OriginalType toOriginalType() {
       return OriginalType.UTF8;
     }
@@ -155,6 +167,11 @@ public interface OriginalLogicalType {
     @Override
     public LogicalType toLogicalType() {
       return LogicalType.MAP(new MapType());
+    }
+
+    @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.MAP;
     }
 
     @Override
@@ -190,6 +207,11 @@ public interface OriginalLogicalType {
     }
 
     @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.LIST;
+    }
+
+    @Override
     public OriginalType toOriginalType() {
       return OriginalType.LIST;
     }
@@ -219,6 +241,11 @@ public interface OriginalLogicalType {
     @Override
     public LogicalType toLogicalType() {
       return LogicalType.ENUM(new EnumType());
+    }
+
+    @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.ENUM;
     }
 
     @Override
@@ -270,6 +297,11 @@ public interface OriginalLogicalType {
     }
 
     @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.DECIMAL;
+    }
+
+    @Override
     public OriginalType toOriginalType() {
       return OriginalType.DECIMAL;
     }
@@ -305,6 +337,11 @@ public interface OriginalLogicalType {
     }
 
     @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.DATE;
+    }
+
+    @Override
     public OriginalType toOriginalType() {
       return OriginalType.DATE;
     }
@@ -333,7 +370,7 @@ public interface OriginalLogicalType {
       case MILLIS:
         return org.apache.parquet.format.TimeUnit.MILLIS(new MilliSeconds());
       default:
-        throw new ShouldNeverHappenException();
+        throw new RuntimeException("Unknown time unit " + unit);
     }
   }
 
@@ -356,15 +393,27 @@ public interface OriginalLogicalType {
     }
 
     @Override
+    public ConvertedType toConvertedType() {
+      switch (toOriginalType()) {
+        case TIME_MILLIS:
+          return ConvertedType.TIME_MILLIS;
+        case TIME_MICROS:
+          return ConvertedType.TIME_MICROS;
+        default:
+          throw new RuntimeException("Unknown converted type for " + toOriginalType());
+      }
+    }
+
+    @Override
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
           return OriginalType.TIME_MILLIS;
         case MICROS:
           return OriginalType.TIME_MICROS;
+        default:
+          throw new RuntimeException("Unknown original type for " + unit);
       }
-
-      throw new ShouldNeverHappenException();
     }
 
     @Override
@@ -401,6 +450,18 @@ public interface OriginalLogicalType {
     }
 
     @Override
+    public ConvertedType toConvertedType() {
+      switch (toOriginalType()) {
+        case TIMESTAMP_MICROS:
+          return ConvertedType.TIMESTAMP_MICROS;
+        case TIMESTAMP_MILLIS:
+          return ConvertedType.TIMESTAMP_MILLIS;
+        default:
+          throw new RuntimeException("Unknown converted type for " + unit);
+      }
+    }
+
+    @Override
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -408,7 +469,7 @@ public interface OriginalLogicalType {
         case MICROS:
           return OriginalType.TIMESTAMP_MICROS;
         default:
-          throw new ShouldNeverHappenException();
+          throw new RuntimeException("Unknown original type for " + unit);
       }
     }
 
@@ -446,6 +507,30 @@ public interface OriginalLogicalType {
     }
 
     @Override
+    public ConvertedType toConvertedType() {
+      switch (toOriginalType()) {
+        case INT_8:
+          return ConvertedType.INT_8;
+        case INT_16:
+          return ConvertedType.INT_16;
+        case INT_32:
+          return ConvertedType.INT_32;
+        case INT_64:
+          return ConvertedType.INT_64;
+        case UINT_8:
+          return ConvertedType.UINT_8;
+        case UINT_16:
+          return ConvertedType.UINT_16;
+        case UINT_32:
+          return ConvertedType.UINT_32;
+        case UINT_64:
+          return ConvertedType.UINT_64;
+        default:
+          throw new RuntimeException("Unknown original type " + toOriginalType());
+      }
+    }
+
+    @Override
     public OriginalType toOriginalType() {
       switch (bitWidth) {
         case 8:
@@ -457,7 +542,7 @@ public interface OriginalLogicalType {
         case 64:
           return isSigned ? OriginalType.INT_64 : OriginalType.UINT_64;
         default:
-          throw new ShouldNeverHappenException();
+          throw new RuntimeException("Unknown original type " + toOriginalType());
       }
     }
 
@@ -489,6 +574,11 @@ public interface OriginalLogicalType {
     @Override
     public LogicalType toLogicalType() {
       return LogicalType.UNKNOWN(new NullType());
+    }
+
+    @Override
+    public ConvertedType toConvertedType() {
+      return null;
     }
 
     @Override
@@ -524,6 +614,11 @@ public interface OriginalLogicalType {
     }
 
     @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.JSON;
+    }
+
+    @Override
     public OriginalType toOriginalType() {
       return OriginalType.JSON;
     }
@@ -553,6 +648,11 @@ public interface OriginalLogicalType {
     @Override
     public LogicalType toLogicalType() {
       return LogicalType.BSON(new BsonType());
+    }
+
+    @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.BSON;
     }
 
     @Override
@@ -588,6 +688,11 @@ public interface OriginalLogicalType {
     }
 
     @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.INTERVAL;
+    }
+
+    @Override
     public OriginalType toOriginalType() {
       return OriginalType.INTERVAL;
     }
@@ -617,6 +722,11 @@ public interface OriginalLogicalType {
     @Override
     public LogicalType toLogicalType() {
       return LogicalType.UNKNOWN(new NullType());
+    }
+
+    @Override
+    public ConvertedType toConvertedType() {
+      return ConvertedType.MAP_KEY_VALUE;
     }
 
     @Override

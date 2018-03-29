@@ -169,10 +169,10 @@ public class TestParquetMetadataConverter {
     }
     for (OriginalType original : OriginalType.values()) {
       assertEquals(original, parquetMetadataConverter.getOriginalType(
-        parquetMetadataConverter.getConvertedType(OriginalLogicalType.fromOriginalType(original)), null).toOriginalType());
+        OriginalLogicalType.fromOriginalType(original).toConvertedType(), null).toOriginalType());
     }
     for (ConvertedType converted : ConvertedType.values()) {
-      assertEquals(converted, parquetMetadataConverter.getConvertedType(parquetMetadataConverter.getOriginalType(converted, null)));
+      assertEquals(converted, parquetMetadataConverter.getOriginalType(converted, null).toConvertedType());
     }
   }
 

@@ -179,7 +179,7 @@ public class ParquetMetadataConverter {
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         if (primitiveType.getOriginalLogicalType() != null) {
-          element.setConverted_type(getConvertedType(primitiveType.getOriginalLogicalType()));
+          element.setConverted_type(primitiveType.getOriginalLogicalType().toConvertedType());
           element.setLogicalType(primitiveType.getOriginalLogicalType().toLogicalType());
         }
         if (primitiveType.getDecimalMetadata() != null) {
@@ -209,7 +209,7 @@ public class ParquetMetadataConverter {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getOriginalLogicalType() != null) {
-          element.setConverted_type(getConvertedType(groupType.getOriginalLogicalType()));
+          element.setConverted_type(groupType.getOriginalLogicalType().toConvertedType());
           element.setLogicalType(groupType.getOriginalLogicalType().toLogicalType());
         }
         if (groupType.getId() != null) {
@@ -694,62 +694,6 @@ public class ParquetMetadataConverter {
         throw new RuntimeException("Unknown time unit " + unit);
     }
   }
-
-  // Visible for testing
-  ConvertedType getConvertedType(OriginalLogicalType type) {
-    OriginalType originalType = type.toOriginalType();
-    if (originalType == null) {
-      return null;
-    }
-    switch (originalType) {
-      case UTF8:
-        return ConvertedType.UTF8;
-      case MAP:
-        return ConvertedType.MAP;
-      case MAP_KEY_VALUE:
-        return ConvertedType.MAP_KEY_VALUE;
-      case LIST:
-        return ConvertedType.LIST;
-      case ENUM:
-        return ConvertedType.ENUM;
-      case DECIMAL:
-        return ConvertedType.DECIMAL;
-      case DATE:
-        return ConvertedType.DATE;
-      case TIME_MILLIS:
-        return ConvertedType.TIME_MILLIS;
-      case TIME_MICROS:
-        return ConvertedType.TIME_MICROS;
-      case TIMESTAMP_MILLIS:
-        return ConvertedType.TIMESTAMP_MILLIS;
-      case TIMESTAMP_MICROS:
-        return ConvertedType.TIMESTAMP_MICROS;
-      case INTERVAL:
-        return ConvertedType.INTERVAL;
-      case INT_8:
-        return ConvertedType.INT_8;
-      case INT_16:
-        return ConvertedType.INT_16;
-      case INT_32:
-        return ConvertedType.INT_32;
-      case INT_64:
-        return ConvertedType.INT_64;
-      case UINT_8:
-        return ConvertedType.UINT_8;
-      case UINT_16:
-        return ConvertedType.UINT_16;
-      case UINT_32:
-        return ConvertedType.UINT_32;
-      case UINT_64:
-        return ConvertedType.UINT_64;
-      case JSON:
-        return ConvertedType.JSON;
-      case BSON:
-        return ConvertedType.BSON;
-      default:
-        throw new RuntimeException("Unknown original type " + type);
-     }
-   }
 
   private static void addKeyValue(FileMetaData fileMetaData, String key, String value) {
     KeyValue keyValue = new KeyValue(key);
