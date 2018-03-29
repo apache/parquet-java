@@ -119,7 +119,7 @@ abstract public class Type {
 
   private final String name;
   private final Repetition repetition;
-  private final OriginalLogicalType originalLogicalType;
+  private final LogicalTypeAnnotation logicalTypeAnnotation;
   private final ID id;
 
   /**
@@ -151,7 +151,7 @@ abstract public class Type {
     super();
     this.name = checkNotNull(name, "name");
     this.repetition = checkNotNull(repetition, "repetition");
-    this.originalLogicalType = originalType == null ? null : OriginalLogicalType.fromOriginalType(originalType);
+    this.logicalTypeAnnotation = originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType);
     this.id = id;
   }
 
@@ -190,15 +190,15 @@ abstract public class Type {
     return id;
   }
 
-  public OriginalLogicalType getOriginalLogicalType() {
-    return originalLogicalType;
+  public LogicalTypeAnnotation getLogicalTypeAnnotation() {
+    return logicalTypeAnnotation;
   }
 
   /**
    * @return the original type (LIST, MAP, ...)
    */
   public OriginalType getOriginalType() {
-    return originalLogicalType == null ? null : originalLogicalType.toOriginalType();
+    return logicalTypeAnnotation == null ? null : logicalTypeAnnotation.toOriginalType();
   }
 
   /**
@@ -251,8 +251,8 @@ abstract public class Type {
   public int hashCode() {
     int c = repetition.hashCode();
     c = 31 * c + name.hashCode();
-    if (originalLogicalType != null) {
-      c = 31 * c +  originalLogicalType.hashCode();
+    if (logicalTypeAnnotation != null) {
+      c = 31 * c +  logicalTypeAnnotation.hashCode();
     }
     if (id != null) {
       c = 31 * c + id.hashCode();
@@ -266,7 +266,7 @@ abstract public class Type {
         && repetition == other.repetition
         && eqOrBothNull(repetition, other.repetition)
         && eqOrBothNull(id, other.id)
-        && eqOrBothNull(originalLogicalType, other.originalLogicalType);
+        && eqOrBothNull(logicalTypeAnnotation, other.logicalTypeAnnotation);
   };
 
   @Override

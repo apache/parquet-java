@@ -37,7 +37,7 @@ import org.apache.parquet.format.TimestampType;
 
 import java.util.Objects;
 
-public interface OriginalLogicalType {
+public interface LogicalTypeAnnotation {
   /**
    * Convert this parquet-mr logical type to parquet-format LogicalType.
    *
@@ -63,68 +63,68 @@ public interface OriginalLogicalType {
   /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
    */
-  static OriginalLogicalType fromOriginalType(OriginalType originalType) {
+  static LogicalTypeAnnotation fromOriginalType(OriginalType originalType) {
     if (originalType == null) {
       return null;
     }
     switch (originalType) {
       case UTF8:
-        return OriginalLogicalType.StringLogicalType.create();
+        return StringLogicalTypeAnnotation.create();
       case MAP:
-        return OriginalLogicalType.MapLogicalType.create();
+        return MapLogicalTypeAnnotation.create();
       case DECIMAL:
-        return OriginalLogicalType.DecimalLogicalType.create();
+        return DecimalLogicalTypeAnnotation.create();
       case LIST:
-        return OriginalLogicalType.ListLogicalType.create();
+        return ListLogicalTypeAnnotation.create();
       case DATE:
-        return OriginalLogicalType.DateLogicalType.create();
+        return DateLogicalTypeAnnotation.create();
       case INTERVAL:
-        return OriginalLogicalType.IntervalLogicalType.create();
+        return IntervalLogicalTypeAnnotation.create();
       case TIMESTAMP_MILLIS:
-        return OriginalLogicalType.TimestampLogicalType.create(true, OriginalLogicalType.TimeUnit.MILLIS);
+        return TimestampLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIMESTAMP_MICROS:
-        return OriginalLogicalType.TimestampLogicalType.create(true, OriginalLogicalType.TimeUnit.MICROS);
+        return TimestampLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case TIME_MILLIS:
-        return OriginalLogicalType.TimeLogicalType.create(true, OriginalLogicalType.TimeUnit.MILLIS);
+        return TimeLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIME_MICROS:
-        return OriginalLogicalType.TimeLogicalType.create(true, OriginalLogicalType.TimeUnit.MICROS);
+        return TimeLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case UINT_8:
-        return OriginalLogicalType.IntLogicalType.create((byte) 8, false);
+        return IntLogicalTypeAnnotation.create((byte) 8, false);
       case UINT_16:
-        return OriginalLogicalType.IntLogicalType.create((byte) 16, false);
+        return IntLogicalTypeAnnotation.create((byte) 16, false);
       case UINT_32:
-        return OriginalLogicalType.IntLogicalType.create((byte) 32, false);
+        return IntLogicalTypeAnnotation.create((byte) 32, false);
       case UINT_64:
-        return OriginalLogicalType.IntLogicalType.create((byte) 64, false);
+        return IntLogicalTypeAnnotation.create((byte) 64, false);
       case INT_8:
-        return OriginalLogicalType.IntLogicalType.create((byte) 8, true);
+        return IntLogicalTypeAnnotation.create((byte) 8, true);
       case INT_16:
-        return OriginalLogicalType.IntLogicalType.create((byte) 16, true);
+        return IntLogicalTypeAnnotation.create((byte) 16, true);
       case INT_32:
-        return OriginalLogicalType.IntLogicalType.create((byte) 32, true);
+        return IntLogicalTypeAnnotation.create((byte) 32, true);
       case INT_64:
-        return OriginalLogicalType.IntLogicalType.create((byte) 64, true);
+        return IntLogicalTypeAnnotation.create((byte) 64, true);
       case ENUM:
-        return OriginalLogicalType.EnumLogicalType.create();
+        return EnumLogicalTypeAnnotation.create();
       case JSON:
-        return OriginalLogicalType.JsonLogicalType.create();
+        return JsonLogicalTypeAnnotation.create();
       case BSON:
-        return OriginalLogicalType.BsonLogicalType.create();
+        return BsonLogicalTypeAnnotation.create();
       case MAP_KEY_VALUE:
-        return OriginalLogicalType.MapKeyValueType.create();
+        return MapKeyValueTypeAnnotation.create();
       default:
-        return OriginalLogicalType.NullLogicalType.create();
+        return NullLogicalTypeAnnotation.create();
     }
   }
 
-  class StringLogicalType implements OriginalLogicalType {
-    private static final StringLogicalType INSTANCE = new StringLogicalType();
+  class StringLogicalTypeAnnotation implements LogicalTypeAnnotation {
+    private static final StringLogicalTypeAnnotation INSTANCE = new StringLogicalTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private StringLogicalType() {
+    private StringLogicalTypeAnnotation() {
     }
 
     @Override
@@ -144,7 +144,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof StringLogicalType;
+      return obj instanceof StringLogicalTypeAnnotation;
     }
 
     @Override
@@ -154,14 +154,14 @@ public interface OriginalLogicalType {
     }
   }
 
-  class MapLogicalType implements OriginalLogicalType {
-    private static final MapLogicalType INSTANCE = new MapLogicalType();
+  class MapLogicalTypeAnnotation implements LogicalTypeAnnotation {
+    private static final MapLogicalTypeAnnotation INSTANCE = new MapLogicalTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private MapLogicalType() {
+    private MapLogicalTypeAnnotation() {
     }
 
     @Override
@@ -181,7 +181,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof MapLogicalType;
+      return obj instanceof MapLogicalTypeAnnotation;
     }
 
     @Override
@@ -191,14 +191,14 @@ public interface OriginalLogicalType {
     }
   }
 
-  class ListLogicalType implements OriginalLogicalType {
-    private static final ListLogicalType INSTANCE = new ListLogicalType();
+  class ListLogicalTypeAnnotation implements LogicalTypeAnnotation {
+    private static final ListLogicalTypeAnnotation INSTANCE = new ListLogicalTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private ListLogicalType() {
+    private ListLogicalTypeAnnotation() {
     }
 
     @Override
@@ -218,7 +218,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof ListLogicalType;
+      return obj instanceof ListLogicalTypeAnnotation;
     }
 
     @Override
@@ -228,14 +228,14 @@ public interface OriginalLogicalType {
     }
   }
 
-  class EnumLogicalType implements OriginalLogicalType {
-    private static final EnumLogicalType INSTANCE = new EnumLogicalType();
+  class EnumLogicalTypeAnnotation implements LogicalTypeAnnotation {
+    private static final EnumLogicalTypeAnnotation INSTANCE = new EnumLogicalTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private EnumLogicalType() {
+    private EnumLogicalTypeAnnotation() {
     }
 
     @Override
@@ -255,7 +255,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof EnumLogicalType;
+      return obj instanceof EnumLogicalTypeAnnotation;
     }
 
     @Override
@@ -265,20 +265,20 @@ public interface OriginalLogicalType {
     }
   }
 
-  class DecimalLogicalType implements OriginalLogicalType {
+  class DecimalLogicalTypeAnnotation implements LogicalTypeAnnotation {
 
     private int scale;
     private int precision;
 
-    public static OriginalLogicalType create() {
-      return new DecimalLogicalType(0, 0);
+    public static LogicalTypeAnnotation create() {
+      return new DecimalLogicalTypeAnnotation(0, 0);
     }
 
-    public static OriginalLogicalType create(int scale, int precision) {
-      return new DecimalLogicalType(scale, precision);
+    public static LogicalTypeAnnotation create(int scale, int precision) {
+      return new DecimalLogicalTypeAnnotation(scale, precision);
     }
 
-    private DecimalLogicalType(int scale, int precision) {
+    private DecimalLogicalTypeAnnotation(int scale, int precision) {
       this.scale = scale;
       this.precision = precision;
     }
@@ -308,10 +308,10 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof DecimalLogicalType)) {
+      if (!(obj instanceof DecimalLogicalTypeAnnotation)) {
         return false;
       }
-      DecimalLogicalType other = (DecimalLogicalType) obj;
+      DecimalLogicalTypeAnnotation other = (DecimalLogicalTypeAnnotation) obj;
       return scale == other.scale && precision == other.precision;
     }
 
@@ -321,14 +321,14 @@ public interface OriginalLogicalType {
     }
   }
 
-  class DateLogicalType implements OriginalLogicalType {
-    private static final DateLogicalType INSTANCE = new DateLogicalType();
+  class DateLogicalTypeAnnotation implements LogicalTypeAnnotation {
+    private static final DateLogicalTypeAnnotation INSTANCE = new DateLogicalTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private DateLogicalType() {
+    private DateLogicalTypeAnnotation() {
     }
 
     @Override
@@ -348,7 +348,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof DateLogicalType;
+      return obj instanceof DateLogicalTypeAnnotation;
     }
 
     @Override
@@ -374,15 +374,15 @@ public interface OriginalLogicalType {
     }
   }
 
-  class TimeLogicalType implements OriginalLogicalType {
+  class TimeLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private final boolean isAdjustedToUTC;
     private final TimeUnit unit;
 
-    public static OriginalLogicalType create(boolean isAdjustedToUTC, TimeUnit unit) {
-      return new TimeLogicalType(isAdjustedToUTC, unit);
+    public static LogicalTypeAnnotation create(boolean isAdjustedToUTC, TimeUnit unit) {
+      return new TimeLogicalTypeAnnotation(isAdjustedToUTC, unit);
     }
 
-    private TimeLogicalType(boolean isAdjustedToUTC, TimeUnit unit) {
+    private TimeLogicalTypeAnnotation(boolean isAdjustedToUTC, TimeUnit unit) {
       this.isAdjustedToUTC = isAdjustedToUTC;
       this.unit = unit;
     }
@@ -418,10 +418,10 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof TimeLogicalType)) {
+      if (!(obj instanceof TimeLogicalTypeAnnotation)) {
         return false;
       }
-      TimeLogicalType other = (TimeLogicalType) obj;
+      TimeLogicalTypeAnnotation other = (TimeLogicalTypeAnnotation) obj;
       return isAdjustedToUTC == other.isAdjustedToUTC && unit == other.unit;
     }
 
@@ -431,15 +431,15 @@ public interface OriginalLogicalType {
     }
   }
 
-  class TimestampLogicalType implements OriginalLogicalType {
+  class TimestampLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private final boolean isAdjustedToUTC;
     private final TimeUnit unit;
 
-    public static OriginalLogicalType create(boolean isAdjustedToUTC, TimeUnit unit) {
-      return new TimestampLogicalType(isAdjustedToUTC, unit);
+    public static LogicalTypeAnnotation create(boolean isAdjustedToUTC, TimeUnit unit) {
+      return new TimestampLogicalTypeAnnotation(isAdjustedToUTC, unit);
     }
 
-    private TimestampLogicalType(boolean isAdjustedToUTC, TimeUnit unit) {
+    private TimestampLogicalTypeAnnotation(boolean isAdjustedToUTC, TimeUnit unit) {
       this.isAdjustedToUTC = isAdjustedToUTC;
       this.unit = unit;
     }
@@ -475,10 +475,10 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof TimestampLogicalType)) {
+      if (!(obj instanceof TimestampLogicalTypeAnnotation)) {
         return false;
       }
-      TimestampLogicalType other = (TimestampLogicalType) obj;
+      TimestampLogicalTypeAnnotation other = (TimestampLogicalTypeAnnotation) obj;
       return (isAdjustedToUTC == other.isAdjustedToUTC) && (unit == other.unit);
     }
 
@@ -488,15 +488,15 @@ public interface OriginalLogicalType {
     }
   }
 
-  class IntLogicalType implements OriginalLogicalType {
+  class IntLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private final byte bitWidth;
     private final boolean isSigned;
 
-    public static OriginalLogicalType create(byte bitWidth, boolean isSigned) {
-      return new IntLogicalType(bitWidth, isSigned);
+    public static LogicalTypeAnnotation create(byte bitWidth, boolean isSigned) {
+      return new IntLogicalTypeAnnotation(bitWidth, isSigned);
     }
 
-    private IntLogicalType(byte bitWidth, boolean isSigned) {
+    private IntLogicalTypeAnnotation(byte bitWidth, boolean isSigned) {
       this.bitWidth = bitWidth;
       this.isSigned = isSigned;
     }
@@ -548,10 +548,10 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof IntLogicalType)) {
+      if (!(obj instanceof IntLogicalTypeAnnotation)) {
         return false;
       }
-      IntLogicalType other = (IntLogicalType) obj;
+      IntLogicalTypeAnnotation other = (IntLogicalTypeAnnotation) obj;
       return (bitWidth == other.bitWidth) && (isSigned == other.isSigned);
     }
 
@@ -561,14 +561,14 @@ public interface OriginalLogicalType {
     }
   }
 
-  class NullLogicalType implements OriginalLogicalType {
-    private static final NullLogicalType INSTANCE = new NullLogicalType();
+  class NullLogicalTypeAnnotation implements LogicalTypeAnnotation {
+    private static final NullLogicalTypeAnnotation INSTANCE = new NullLogicalTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private NullLogicalType() {
+    private NullLogicalTypeAnnotation() {
     }
 
     @Override
@@ -588,7 +588,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof NullLogicalType;
+      return obj instanceof NullLogicalTypeAnnotation;
     }
 
     @Override
@@ -598,14 +598,14 @@ public interface OriginalLogicalType {
     }
   }
 
-  class JsonLogicalType implements OriginalLogicalType {
-    private static final JsonLogicalType INSTANCE = new JsonLogicalType();
+  class JsonLogicalTypeAnnotation implements LogicalTypeAnnotation {
+    private static final JsonLogicalTypeAnnotation INSTANCE = new JsonLogicalTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private JsonLogicalType() {
+    private JsonLogicalTypeAnnotation() {
     }
 
     @Override
@@ -625,7 +625,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof JsonLogicalType;
+      return obj instanceof JsonLogicalTypeAnnotation;
     }
 
     @Override
@@ -635,14 +635,14 @@ public interface OriginalLogicalType {
     }
   }
 
-  class BsonLogicalType implements OriginalLogicalType {
-    private static final BsonLogicalType INSTANCE = new BsonLogicalType();
+  class BsonLogicalTypeAnnotation implements LogicalTypeAnnotation {
+    private static final BsonLogicalTypeAnnotation INSTANCE = new BsonLogicalTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private BsonLogicalType() {
+    private BsonLogicalTypeAnnotation() {
     }
 
     @Override
@@ -662,7 +662,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof BsonLogicalType;
+      return obj instanceof BsonLogicalTypeAnnotation;
     }
 
     @Override
@@ -672,14 +672,14 @@ public interface OriginalLogicalType {
     }
   }
 
-  class IntervalLogicalType implements OriginalLogicalType {
-    private static IntervalLogicalType INSTANCE = new IntervalLogicalType();
+  class IntervalLogicalTypeAnnotation implements LogicalTypeAnnotation {
+    private static IntervalLogicalTypeAnnotation INSTANCE = new IntervalLogicalTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private IntervalLogicalType() {
+    private IntervalLogicalTypeAnnotation() {
     }
 
     @Override
@@ -699,7 +699,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof IntervalLogicalType;
+      return obj instanceof IntervalLogicalTypeAnnotation;
     }
 
     @Override
@@ -709,14 +709,14 @@ public interface OriginalLogicalType {
     }
   }
 
-  class MapKeyValueType implements OriginalLogicalType {
-    private static MapKeyValueType INSTANCE = new MapKeyValueType();
+  class MapKeyValueTypeAnnotation implements LogicalTypeAnnotation {
+    private static MapKeyValueTypeAnnotation INSTANCE = new MapKeyValueTypeAnnotation();
 
-    public static OriginalLogicalType create() {
+    public static LogicalTypeAnnotation create() {
       return INSTANCE;
     }
 
-    private MapKeyValueType() {
+    private MapKeyValueTypeAnnotation() {
     }
 
     @Override
@@ -736,7 +736,7 @@ public interface OriginalLogicalType {
 
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof MapKeyValueType;
+      return obj instanceof MapKeyValueTypeAnnotation;
     }
 
     @Override

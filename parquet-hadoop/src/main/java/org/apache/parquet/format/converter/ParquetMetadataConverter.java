@@ -81,7 +81,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.TypeVisitor;
 import org.apache.parquet.schema.Types;
-import org.apache.parquet.schema.OriginalLogicalType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -178,9 +178,9 @@ public class ParquetMetadataConverter {
         SchemaElement element = new SchemaElement(primitiveType.getName());
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
-        if (primitiveType.getOriginalLogicalType() != null) {
-          element.setConverted_type(primitiveType.getOriginalLogicalType().toConvertedType());
-          element.setLogicalType(primitiveType.getOriginalLogicalType().toLogicalType());
+        if (primitiveType.getLogicalTypeAnnotation() != null) {
+          element.setConverted_type(primitiveType.getLogicalTypeAnnotation().toConvertedType());
+          element.setLogicalType(primitiveType.getLogicalTypeAnnotation().toLogicalType());
         }
         if (primitiveType.getDecimalMetadata() != null) {
           element.setPrecision(primitiveType.getDecimalMetadata().getPrecision());
@@ -208,9 +208,9 @@ public class ParquetMetadataConverter {
       public void visit(GroupType groupType) {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
-        if (groupType.getOriginalLogicalType() != null) {
-          element.setConverted_type(groupType.getOriginalLogicalType().toConvertedType());
-          element.setLogicalType(groupType.getOriginalLogicalType().toLogicalType());
+        if (groupType.getLogicalTypeAnnotation() != null) {
+          element.setConverted_type(groupType.getLogicalTypeAnnotation().toConvertedType());
+          element.setLogicalType(groupType.getLogicalTypeAnnotation().toLogicalType());
         }
         if (groupType.getId() != null) {
           element.setField_id(groupType.getId().intValue());
@@ -595,101 +595,101 @@ public class ParquetMetadataConverter {
   }
 
   // Visible for testing
-  OriginalLogicalType getOriginalType(ConvertedType type, SchemaElement schemaElement) {
+  LogicalTypeAnnotation getOriginalType(ConvertedType type, SchemaElement schemaElement) {
     switch (type) {
       case UTF8:
-        return OriginalLogicalType.StringLogicalType.create();
+        return LogicalTypeAnnotation.StringLogicalTypeAnnotation.create();
       case MAP:
-        return OriginalLogicalType.MapLogicalType.create();
+        return LogicalTypeAnnotation.MapLogicalTypeAnnotation.create();
       case MAP_KEY_VALUE:
-        return OriginalLogicalType.MapKeyValueType.create();
+        return LogicalTypeAnnotation.MapKeyValueTypeAnnotation.create();
       case LIST:
-        return OriginalLogicalType.ListLogicalType.create();
+        return LogicalTypeAnnotation.ListLogicalTypeAnnotation.create();
       case ENUM:
-        return OriginalLogicalType.EnumLogicalType.create();
+        return LogicalTypeAnnotation.EnumLogicalTypeAnnotation.create();
       case DECIMAL:
         if (schemaElement == null) {
-          return OriginalLogicalType.DecimalLogicalType.create();
+          return LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create();
         }
-        return OriginalLogicalType.DecimalLogicalType.create(schemaElement.scale, schemaElement.precision);
+        return LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(schemaElement.scale, schemaElement.precision);
       case DATE:
-        return OriginalLogicalType.DateLogicalType.create();
+        return LogicalTypeAnnotation.DateLogicalTypeAnnotation.create();
       case TIME_MILLIS:
-        return OriginalLogicalType.TimeLogicalType.create(true, OriginalLogicalType.TimeUnit.MILLIS);
+        return LogicalTypeAnnotation.TimeLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIME_MICROS:
-        return OriginalLogicalType.TimeLogicalType.create(true, OriginalLogicalType.TimeUnit.MICROS);
+        return LogicalTypeAnnotation.TimeLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case TIMESTAMP_MILLIS:
-        return OriginalLogicalType.TimestampLogicalType.create(true, OriginalLogicalType.TimeUnit.MILLIS);
+        return LogicalTypeAnnotation.TimestampLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIMESTAMP_MICROS:
-        return OriginalLogicalType.TimestampLogicalType.create(true, OriginalLogicalType.TimeUnit.MICROS);
+        return LogicalTypeAnnotation.TimestampLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case INTERVAL:
-        return OriginalLogicalType.IntervalLogicalType.create();
+        return LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.create();
       case INT_8:
-        return OriginalLogicalType.IntLogicalType.create((byte) 8, true);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 8, true);
       case INT_16:
-        return OriginalLogicalType.IntLogicalType.create((byte) 16, true);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 16, true);
       case INT_32:
-        return OriginalLogicalType.IntLogicalType.create((byte) 32, true);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 32, true);
       case INT_64:
-        return OriginalLogicalType.IntLogicalType.create((byte) 64, true);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 64, true);
       case UINT_8:
-        return OriginalLogicalType.IntLogicalType.create((byte) 8, false);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 8, false);
       case UINT_16:
-        return OriginalLogicalType.IntLogicalType.create((byte) 16, false);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 16, false);
       case UINT_32:
-        return OriginalLogicalType.IntLogicalType.create((byte) 32, false);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 32, false);
       case UINT_64:
-        return OriginalLogicalType.IntLogicalType.create((byte) 64, false);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 64, false);
       case JSON:
-        return OriginalLogicalType.JsonLogicalType.create();
+        return LogicalTypeAnnotation.JsonLogicalTypeAnnotation.create();
       case BSON:
-        return OriginalLogicalType.BsonLogicalType.create();
+        return LogicalTypeAnnotation.BsonLogicalTypeAnnotation.create();
       default:
-        return OriginalLogicalType.NullLogicalType.create();
+        return LogicalTypeAnnotation.NullLogicalTypeAnnotation.create();
     }
   }
 
-  OriginalLogicalType getOriginalType(LogicalType type) {
+  LogicalTypeAnnotation getOriginalType(LogicalType type) {
     switch (type.getSetField()) {
       case MAP:
-        return OriginalLogicalType.MapLogicalType.create();
+        return LogicalTypeAnnotation.MapLogicalTypeAnnotation.create();
       case BSON:
-        return OriginalLogicalType.BsonLogicalType.create();
+        return LogicalTypeAnnotation.BsonLogicalTypeAnnotation.create();
       case DATE:
-        return OriginalLogicalType.DateLogicalType.create();
+        return LogicalTypeAnnotation.DateLogicalTypeAnnotation.create();
       case ENUM:
-        return OriginalLogicalType.EnumLogicalType.create();
+        return LogicalTypeAnnotation.EnumLogicalTypeAnnotation.create();
       case JSON:
-        return OriginalLogicalType.JsonLogicalType.create();
+        return LogicalTypeAnnotation.JsonLogicalTypeAnnotation.create();
       case LIST:
-        return OriginalLogicalType.ListLogicalType.create();
+        return LogicalTypeAnnotation.ListLogicalTypeAnnotation.create();
       case TIME:
         TimeType time = type.getTIME();
-        return OriginalLogicalType.TimeLogicalType.create(time.isAdjustedToUTC, convertTimeUnit(time.unit));
+        return LogicalTypeAnnotation.TimeLogicalTypeAnnotation.create(time.isAdjustedToUTC, convertTimeUnit(time.unit));
       case STRING:
-        return OriginalLogicalType.StringLogicalType.create();
+        return LogicalTypeAnnotation.StringLogicalTypeAnnotation.create();
       case DECIMAL:
         DecimalType decimal = type.getDECIMAL();
-        return OriginalLogicalType.DecimalLogicalType.create(decimal.scale, decimal.precision);
+        return LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(decimal.scale, decimal.precision);
       case INTEGER:
         IntType integer = type.getINTEGER();
-        return OriginalLogicalType.IntLogicalType.create(integer.bitWidth, integer.isSigned);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(integer.bitWidth, integer.isSigned);
       case UNKNOWN:
         return null;
       case TIMESTAMP:
         TimestampType timestamp = type.getTIMESTAMP();
-        return OriginalLogicalType.TimestampLogicalType.create(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
+        return LogicalTypeAnnotation.TimestampLogicalTypeAnnotation.create(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
   }
 
-  OriginalLogicalType.TimeUnit convertTimeUnit(TimeUnit unit) {
+  LogicalTypeAnnotation.TimeUnit convertTimeUnit(TimeUnit unit) {
     switch (unit.getSetField()) {
       case MICROS:
-        return OriginalLogicalType.TimeUnit.MICROS;
+        return LogicalTypeAnnotation.TimeUnit.MICROS;
       case MILLIS:
-        return OriginalLogicalType.TimeUnit.MILLIS;
+        return LogicalTypeAnnotation.TimeUnit.MILLIS;
       default:
         throw new RuntimeException("Unknown time unit " + unit);
     }
@@ -995,8 +995,8 @@ public class ParquetMetadataConverter {
         childBuilder.as(getOriginalType(schemaElement.logicalType));
       }
       if (schemaElement.isSetConverted_type()) {
-        OriginalLogicalType originalType = getOriginalType(schemaElement.converted_type, schemaElement);
-        OriginalLogicalType newLogicalType = getOriginalType(schemaElement.logicalType);
+        LogicalTypeAnnotation originalType = getOriginalType(schemaElement.converted_type, schemaElement);
+        LogicalTypeAnnotation newLogicalType = getOriginalType(schemaElement.logicalType);
         if (!originalType.equals(newLogicalType)) {
           childBuilder.as(getOriginalType(schemaElement.converted_type, schemaElement));
         }

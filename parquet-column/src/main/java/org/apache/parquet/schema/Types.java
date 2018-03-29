@@ -198,7 +198,7 @@ public class Types {
     protected final Class<? extends P> returnClass;
 
     protected Type.Repetition repetition = null;
-    protected OriginalLogicalType originalLogicalType = null;
+    protected LogicalTypeAnnotation logicalTypeAnnotation = null;
     protected Type.ID id = null;
     private boolean repetitionAlreadySet = false;
 
@@ -252,12 +252,12 @@ public class Types {
      * @return this builder for method chaining
      */
     public THIS as(OriginalType type) {
-      this.originalLogicalType = OriginalLogicalType.fromOriginalType(type);
+      this.logicalTypeAnnotation = LogicalTypeAnnotation.fromOriginalType(type);
       return self();
     }
 
-    public THIS as(OriginalLogicalType type) {
-      this.originalLogicalType = type;
+    public THIS as(LogicalTypeAnnotation type) {
+      this.logicalTypeAnnotation = type;
       return self();
     }
 
@@ -309,7 +309,7 @@ public class Types {
     }
 
     protected OriginalType getOriginalType () {
-      return originalLogicalType == null ? null : originalLogicalType.toOriginalType();
+      return logicalTypeAnnotation == null ? null : logicalTypeAnnotation.toOriginalType();
     }
   }
 
@@ -410,8 +410,8 @@ public class Types {
       DecimalMetadata meta = decimalMetadata();
 
       // validate type annotations and required metadata
-      if (originalLogicalType != null) {
-        OriginalType originalType = originalLogicalType.toOriginalType();
+      if (logicalTypeAnnotation != null) {
+        OriginalType originalType = logicalTypeAnnotation.toOriginalType();
         switch (originalType) {
           case UTF8:
           case JSON:
@@ -1052,7 +1052,7 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(originalLogicalType == null,
+      Preconditions.checkState(logicalTypeAnnotation == null,
           "MAP is already a logical type and can't be changed.");
       if (keyType == null) {
         keyType = STRING_KEY;
@@ -1200,7 +1200,7 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(originalLogicalType == null,
+      Preconditions.checkState(logicalTypeAnnotation == null,
           "LIST is already the logical type and can't be changed");
       Preconditions.checkNotNull(elementType, "List element type");
 

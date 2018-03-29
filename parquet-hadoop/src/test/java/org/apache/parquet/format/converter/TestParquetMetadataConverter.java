@@ -69,7 +69,7 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.OriginalLogicalType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.junit.Assert;
 import org.junit.Test;
 import org.apache.parquet.example.Paper;
@@ -169,7 +169,7 @@ public class TestParquetMetadataConverter {
     }
     for (OriginalType original : OriginalType.values()) {
       assertEquals(original, parquetMetadataConverter.getOriginalType(
-        OriginalLogicalType.fromOriginalType(original).toConvertedType(), null).toOriginalType());
+        LogicalTypeAnnotation.fromOriginalType(original).toConvertedType(), null).toOriginalType());
     }
     for (ConvertedType converted : ConvertedType.values()) {
       assertEquals(converted, parquetMetadataConverter.getOriginalType(converted, null).toConvertedType());

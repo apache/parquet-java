@@ -451,7 +451,7 @@ public final class PrimitiveType extends Type {
     this.length = length;
     this.decimalMeta = decimalMeta;
     if (originalType == OriginalType.DECIMAL) {
-      OriginalLogicalType.DecimalLogicalType originalLogicalType = (OriginalLogicalType.DecimalLogicalType) getOriginalLogicalType();
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation originalLogicalType = (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) getLogicalTypeAnnotation();
       originalLogicalType.setPrecision(decimalMeta.getPrecision());
       originalLogicalType.setScale(decimalMeta.getScale());
     }
