@@ -35,6 +35,10 @@ import org.apache.parquet.io.InputFile;
  */
 public class AvroParquetReader<T> extends ParquetReader<T> {
 
+  /**
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
+   */
+  @Deprecated
   public static <T> Builder<T> builder(Path file) {
     return new Builder<T>(file);
   }
@@ -81,6 +85,7 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
     private boolean enableCompatibility = true;
     private boolean isReflect = true;
 
+    @Deprecated
     private Builder(Path path) {
       super(path);
     }
