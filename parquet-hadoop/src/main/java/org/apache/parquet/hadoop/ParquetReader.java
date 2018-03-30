@@ -177,14 +177,16 @@ public class ParquetReader<T> implements Closeable {
     private final InputFile file;
     private final Path path;
     private Filter filter = null;
-    protected Configuration conf = new Configuration();
-    private ParquetReadOptions.Builder optionsBuilder = HadoopReadOptions.builder(conf);
+    protected Configuration conf;
+    private ParquetReadOptions.Builder optionsBuilder;
 
     @Deprecated
     private Builder(ReadSupport<T> readSupport, Path path) {
       this.readSupport = checkNotNull(readSupport, "readSupport");
       this.file = null;
       this.path = checkNotNull(path, "path");
+      this.conf = new Configuration();
+      this.optionsBuilder = HadoopReadOptions.builder(conf);
     }
 
     @Deprecated
@@ -192,12 +194,20 @@ public class ParquetReader<T> implements Closeable {
       this.readSupport = null;
       this.file = null;
       this.path = checkNotNull(path, "path");
+      this.conf = new Configuration();
+      this.optionsBuilder = HadoopReadOptions.builder(conf);
     }
 
     protected Builder(InputFile file) {
       this.readSupport = null;
       this.file = checkNotNull(file, "file");
       this.path = null;
+      if (file instanceof HadoopInputFile) {
+        this.conf = ((HadoopInputFile) file).getConfiguration();
+      } else {
+        this.conf = new Configuration();
+      }
+      optionsBuilder = HadoopReadOptions.builder(conf);
     }
 
     // when called, resets options to the defaults from conf
