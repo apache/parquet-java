@@ -19,6 +19,69 @@
 
 # Parquet #
 
+### Version 1.10.0 ###
+
+Release Notes - Parquet - Version 1.10.0
+
+#### Bug
+
+*   [PARQUET-196](https://issues.apache.org/jira/browse/PARQUET-196) \- parquet-tools command to get rowcount & size
+*   [PARQUET-357](https://issues.apache.org/jira/browse/PARQUET-357) \- Parquet-thrift generates wrong schema for Thrift binary fields
+*   [PARQUET-765](https://issues.apache.org/jira/browse/PARQUET-765) \- Upgrade Avro to 1.8.1
+*   [PARQUET-783](https://issues.apache.org/jira/browse/PARQUET-783) \- H2SeekableInputStream does not close its underlying FSDataInputStream, leading to connection leaks
+*   [PARQUET-786](https://issues.apache.org/jira/browse/PARQUET-786) \- parquet-tools README incorrectly has 'java jar' instead of 'java -jar'
+*   [PARQUET-791](https://issues.apache.org/jira/browse/PARQUET-791) \- Predicate pushing down on missing columns should work on UserDefinedPredicate too
+*   [PARQUET-1005](https://issues.apache.org/jira/browse/PARQUET-1005) \- Fix DumpCommand parsing to allow column projection
+*   [PARQUET-1028](https://issues.apache.org/jira/browse/PARQUET-1028) \- \[JAVA\] When reading old Spark-generated files with INT96, stats are reported as valid when they aren't
+*   [PARQUET-1065](https://issues.apache.org/jira/browse/PARQUET-1065) \- Deprecate type-defined sort ordering for INT96 type
+*   [PARQUET-1077](https://issues.apache.org/jira/browse/PARQUET-1077) \- \[MR\] Switch to long key ids in KEYs file
+*   [PARQUET-1141](https://issues.apache.org/jira/browse/PARQUET-1141) \- IDs are dropped in metadata conversion
+*   [PARQUET-1152](https://issues.apache.org/jira/browse/PARQUET-1152) \- Parquet-thrift doesn't compile with Thrift 0.9.3
+*   [PARQUET-1153](https://issues.apache.org/jira/browse/PARQUET-1153) \- Parquet-thrift doesn't compile with Thrift 0.10.0
+*   [PARQUET-1156](https://issues.apache.org/jira/browse/PARQUET-1156) \- dev/merge\_parquet\_pr.py problems
+*   [PARQUET-1185](https://issues.apache.org/jira/browse/PARQUET-1185) \- TestBinary#testBinary unit test fails after PARQUET-1141
+*   [PARQUET-1191](https://issues.apache.org/jira/browse/PARQUET-1191) \- Type.hashCode() takes originalType into account but Type.equals() does not
+*   [PARQUET-1208](https://issues.apache.org/jira/browse/PARQUET-1208) \- Occasional endless loop in unit test
+*   [PARQUET-1217](https://issues.apache.org/jira/browse/PARQUET-1217) \- Incorrect handling of missing values in Statistics
+*   [PARQUET-1246](https://issues.apache.org/jira/browse/PARQUET-1246) \- Ignore float/double statistics in case of NaN
+*   [PARQUET-1258](https://issues.apache.org/jira/browse/PARQUET-1258) \- Update scm developer connection to github
+
+#### New Feature
+
+*   [PARQUET-1025](https://issues.apache.org/jira/browse/PARQUET-1025) \- Support new min-max statistics in parquet-mr
+
+#### Improvement
+
+*   [PARQUET-220](https://issues.apache.org/jira/browse/PARQUET-220) \- Unnecessary warning in ParquetRecordReader.initialize
+*   [PARQUET-321](https://issues.apache.org/jira/browse/PARQUET-321) \- Set the HDFS padding default to 8MB
+*   [PARQUET-386](https://issues.apache.org/jira/browse/PARQUET-386) \- Printing out the statistics of metadata in parquet-tools
+*   [PARQUET-423](https://issues.apache.org/jira/browse/PARQUET-423) \- Make writing Avro to Parquet less noisy
+*   [PARQUET-755](https://issues.apache.org/jira/browse/PARQUET-755) \- create parquet-arrow module with schema converter
+*   [PARQUET-777](https://issues.apache.org/jira/browse/PARQUET-777) \- Add new Parquet CLI tools
+*   [PARQUET-787](https://issues.apache.org/jira/browse/PARQUET-787) \- Add a size limit for heap allocations when reading
+*   [PARQUET-801](https://issues.apache.org/jira/browse/PARQUET-801) \- Allow UserDefinedPredicates in DictionaryFilter
+*   [PARQUET-852](https://issues.apache.org/jira/browse/PARQUET-852) \- Slowly ramp up sizes of byte\[\] in ByteBasedBitPackingEncoder
+*   [PARQUET-884](https://issues.apache.org/jira/browse/PARQUET-884) \- Add support for Decimal datatype to Parquet-Pig record reader
+*   [PARQUET-969](https://issues.apache.org/jira/browse/PARQUET-969) \- Decimal datatype support for parquet-tools output
+*   [PARQUET-990](https://issues.apache.org/jira/browse/PARQUET-990) \- More detailed error messages in footer parsing
+*   [PARQUET-1024](https://issues.apache.org/jira/browse/PARQUET-1024) \- allow for case insensitive parquet-xxx prefix in PR title
+*   [PARQUET-1026](https://issues.apache.org/jira/browse/PARQUET-1026) \- allow unsigned binary stats when min == max
+*   [PARQUET-1115](https://issues.apache.org/jira/browse/PARQUET-1115) \- Warn users when misusing parquet-tools merge
+*   [PARQUET-1135](https://issues.apache.org/jira/browse/PARQUET-1135) \- upgrade thrift and protobuf dependencies
+*   [PARQUET-1142](https://issues.apache.org/jira/browse/PARQUET-1142) \- Avoid leaking Hadoop API to downstream libraries
+*   [PARQUET-1149](https://issues.apache.org/jira/browse/PARQUET-1149) \- Upgrade Avro dependancy to 1.8.2
+*   [PARQUET-1170](https://issues.apache.org/jira/browse/PARQUET-1170) \- Logical-type-based toString for proper representeation in tools/logs
+*   [PARQUET-1183](https://issues.apache.org/jira/browse/PARQUET-1183) \- AvroParquetWriter needs OutputFile based Builder
+*   [PARQUET-1197](https://issues.apache.org/jira/browse/PARQUET-1197) \- Log rat failures
+*   [PARQUET-1198](https://issues.apache.org/jira/browse/PARQUET-1198) \- Bump java source and target to java8
+*   [PARQUET-1215](https://issues.apache.org/jira/browse/PARQUET-1215) \- Add accessor for footer after a file is closed
+*   [PARQUET-1263](https://issues.apache.org/jira/browse/PARQUET-1263) \- ParquetReader's builder should use Configuration from the InputFile
+
+#### Task
+
+*   [PARQUET-768](https://issues.apache.org/jira/browse/PARQUET-768) \- Add Uwe L. Korn to KEYS
+*   [PARQUET-1189](https://issues.apache.org/jira/browse/PARQUET-1189) \- Release Parquet Java 1.10
+
 ### Version 1.9.0 ###
 
 #### Bug
