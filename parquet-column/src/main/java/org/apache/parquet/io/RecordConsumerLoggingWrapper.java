@@ -40,7 +40,7 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
 
     /**
      * all calls a delegate to the wrapped delegate
-     * @param delegate
+     * @param delegate a wrapped record consumer that does the real work
      */
     public RecordConsumerLoggingWrapper(RecordConsumer delegate) {
       this.delegate = delegate;

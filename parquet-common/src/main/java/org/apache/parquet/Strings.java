@@ -78,6 +78,9 @@ public final class Strings {
 
   /**
    * Returns true if s.isEmpty() or s == null
+   *
+   * @param s a string that may be null or empty
+   * @return true if the string s is null or is empty
    */
   public static boolean isNullOrEmpty(String s) {
     return s == null || s.isEmpty();
@@ -93,10 +96,10 @@ public final class Strings {
    * its elements with commas, and a one-of group may contain sub one-of groups.
    *
    * For example:
-   * start{a,b,c}end -> startaend, startbend, startcend
-   * start{a,{b,c},d} -> startaend, startbend, startcend, startdend
-   * {a,b,c} -> a, b, c
-   * start{a, b{x,y}} -> starta, startbx, startby
+   * start{a,b,c}end -&gt; startaend, startbend, startcend
+   * start{a,{b,c},d} -&gt; startaend, startbend, startcend, startdend
+   * {a,b,c} -&gt; a, b, c
+   * start{a, b{x,y}} -&gt; starta, startbx, startby
    *
    * @param globPattern a string in the format described above
    * @return a list of all the strings that would satisfy globPattern, including duplicates
@@ -111,6 +114,7 @@ public final class Strings {
    *
    * @param globPattern a String to be passed to {@link #expandGlob(String)}
    * @param delim the delimeter used by {@link WildcardPath}
+   * @return a list of wildcard paths, one for each expanded result
    */
   public static List<WildcardPath> expandGlobToWildCardPaths(String globPattern, char delim) {
     List<WildcardPath> ret = new ArrayList<WildcardPath>();

@@ -22,6 +22,11 @@ package org.apache.parquet;
 public class Exceptions {
   /**
    * If the given throwable is an instance of E, throw it as an E.
+   *
+   * @param t an exception instance
+   * @param excClass an exception class t may be an instance of
+   * @param <E> the type of exception that will be thrown if throwable is an instance
+   * @throws E if t is an instance of E
    */
   public static <E extends Exception> void throwIfInstance(Throwable t,
                                                            Class<E> excClass)

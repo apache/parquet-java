@@ -68,6 +68,18 @@ abstract public class ColumnChunkMetaData {
   }
 
   /**
+   * @param path the path of this column in the write schema
+   * @param type primitive type for this column
+   * @param codec the compression codec used to compress
+   * @param encodingStats EncodingStats for the encodings used in this column
+   * @param encodings a set of encoding used in this column
+   * @param statistics statistics for the data in this column
+   * @param firstDataPage offset of the first non-dictionary page
+   * @param dictionaryPageOffset offset of the the dictionary page
+   * @param valueCount number of values
+   * @param totalSize total compressed size
+   * @param totalUncompressedSize uncompressed data size
+   * @return a column chunk metadata instance
    * @deprecated will be removed in 2.0.0. Use
    *             {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, EncodingStats, Set, Statistics, long, long, long, long, long)}
    *             instead.
@@ -145,7 +157,7 @@ abstract public class ColumnChunkMetaData {
   /**
    * checks that a positive long value fits in an int.
    * (reindexed on Integer.MIN_VALUE)
-   * @param value
+   * @param value a long value
    * @return whether it fits
    */
   protected static boolean positiveLongFitsInAnInt(long value) {

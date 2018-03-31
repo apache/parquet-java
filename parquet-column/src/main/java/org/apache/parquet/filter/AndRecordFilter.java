@@ -37,6 +37,7 @@ public final class AndRecordFilter implements RecordFilter {
    * Returns builder for creating an and filter.
    * @param filter1 The first filter to check.
    * @param filter2 The second filter to check.
+   * @return an unbound and filter
    */
   public static final UnboundRecordFilter and( final UnboundRecordFilter filter1, final UnboundRecordFilter filter2 ) {
     Preconditions.checkNotNull( filter1, "filter1" );

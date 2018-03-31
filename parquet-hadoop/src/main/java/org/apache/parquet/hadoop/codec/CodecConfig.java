@@ -58,6 +58,7 @@ public abstract class CodecConfig {
 
   /**
    * use mapred api to read codec config
+   * @param jobConf a mapred job configuration
    * @return  MapredCodecConfig
    */
   public static CodecConfig from(JobConf jobConf) {
@@ -66,6 +67,7 @@ public abstract class CodecConfig {
 
   /**
    * use mapreduce api to read codec config
+   * @param context a mapreduce task attempt context
    * @return MapreduceCodecConfig
    */
   public static CodecConfig from(TaskAttemptContext context) {

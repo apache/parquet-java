@@ -84,7 +84,12 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   /**
-   * @deprecated use {@link #getRecordReader(PageReadStore, RecordMaterializer, Filter)}
+   * @param columns a page read store with the column data
+   * @param recordMaterializer a record materializer
+   * @param filter a record filter
+   * @param <T> the type of records returned by the reader
+   * @return a record reader
+   * @deprecated use getRecordReader(PageReadStore, RecordMaterializer, Filter)
    */
   @Deprecated
   public <T> RecordReader<T> getRecordReader(PageReadStore columns,

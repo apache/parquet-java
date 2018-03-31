@@ -49,6 +49,10 @@ public class CorruptStatistics {
   /**
    * Decides if the statistics from a file created by createdBy (the created_by field from parquet format)
    * should be ignored because they are potentially corrupt.
+   *
+   * @param createdBy the created-by string from a file footer
+   * @param columnType the type of the column that this is checking
+   * @return true if the statistics may be invalid and should be ignored, false otherwise
    */
   public static boolean shouldIgnoreStatistics(String createdBy, PrimitiveTypeName columnType) {
 

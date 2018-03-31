@@ -27,7 +27,7 @@ import java.io.IOException;
 public class IOExceptionUtils {
 
 	/**
-	 * Call the #close() method on a {@see Closable}, wrapping any IOException
+	 * Call the close method on a {@link Closeable}, wrapping any IOException
 	 * in a runtime exception.
 	 *
 	 * @param closeable - resource to close

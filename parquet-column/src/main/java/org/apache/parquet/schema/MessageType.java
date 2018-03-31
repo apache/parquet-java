@@ -72,6 +72,7 @@ public final class MessageType extends GroupType {
   }
 
   /**
+   * @param path an array of strings representing the name path in this type
    * @return the max repetition level that might be needed to encode the
    * type at 'path'.
    */
@@ -80,6 +81,7 @@ public final class MessageType extends GroupType {
   }
 
   /**
+   * @param path an array of strings representing the name path in this type
    * @return the max repetition level that might be needed to encode the
    * type at 'path'.
    */

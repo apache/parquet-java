@@ -81,6 +81,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    * @param minSlabSize no matter what we shouldn't make slabs any smaller than this
    * @param targetCapacity after we've allocated targetNumSlabs how much capacity should we have?
    * @param targetNumSlabs how many slabs should it take to reach targetCapacity?
+   * @return an initial slab size
    */
   public static int initialSlabSizeHeuristic(int minSlabSize, int targetCapacity, int targetNumSlabs) {
     // initialSlabSize = (targetCapacity / (2^targetNumSlabs)) means we double targetNumSlabs times
@@ -98,6 +99,12 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   /**
    * Construct a CapacityByteArrayOutputStream configured such that its initial slab size is
    * determined by {@link #initialSlabSizeHeuristic}, with targetCapacity == maxCapacityHint
+   *
+   * @param minSlabSize a minimum slab size
+   * @param maxCapacityHint a hint for the maximum required capacity
+   * @param targetNumSlabs the target number of slabs
+   * @param allocator an allocator to use when creating byte buffers for slabs
+   * @return a capacity baos
    */
   public static CapacityByteArrayOutputStream withTargetNumSlabs(
       int minSlabSize, int maxCapacityHint, int targetNumSlabs, ByteBufferAllocator allocator) {
@@ -109,7 +116,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
 
   /**
    * Defaults maxCapacityHint to 1MB
-   * @param initialSlabSize
+   * @param initialSlabSize an initial slab size
    * @deprecated use {@link CapacityByteArrayOutputStream#CapacityByteArrayOutputStream(int, int, ByteBufferAllocator)}
    */
   @Deprecated
@@ -119,7 +126,8 @@ public class CapacityByteArrayOutputStream extends OutputStream {
 
   /**
    * Defaults maxCapacityHint to 1MB
-   * @param initialSlabSize
+   * @param initialSlabSize an initial slab size
+   * @param allocator an allocator to use when creating byte buffers for slabs
    * @deprecated use {@link CapacityByteArrayOutputStream#CapacityByteArrayOutputStream(int, int, ByteBufferAllocator)}
    */
   @Deprecated
@@ -140,6 +148,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   /**
    * @param initialSlabSize the size to make the first slab
    * @param maxCapacityHint a hint (not guarantee) of the max amount of data written to this stream
+   * @param allocator an allocator to use when creating byte buffers for slabs
    */
   public CapacityByteArrayOutputStream(int initialSlabSize, int maxCapacityHint, ByteBufferAllocator allocator) {
     checkArgument(initialSlabSize > 0, "initialSlabSize must be > 0");

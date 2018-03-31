@@ -42,8 +42,7 @@ public class ParquetMetadata {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   /**
-   *
-   * @param parquetMetaData
+   * @param parquetMetaData an instance of parquet metadata to convert
    * @return the json representation
    */
   public static String toJSON(ParquetMetadata parquetMetaData) {
@@ -52,7 +51,7 @@ public class ParquetMetadata {
 
   /**
    *
-   * @param parquetMetaData
+   * @param parquetMetaData an instance of parquet metadata to convert
    * @return the pretty printed json representation
    */
   public static String toPrettyJSON(ParquetMetadata parquetMetaData) {

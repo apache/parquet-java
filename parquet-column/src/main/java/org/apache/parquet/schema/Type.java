@@ -47,6 +47,7 @@ abstract public class Type {
 
     /**
      * For bean serialization, used by Cascading 3.
+     * @return this type's id
      * @deprecated use {@link #intValue()} instead.
      */
     @Deprecated
@@ -110,7 +111,7 @@ abstract public class Type {
     ;
 
     /**
-     * @param other
+     * @param other a repetition to test
      * @return true if it is strictly more restrictive than other
      */
     abstract public boolean isMoreRestrictiveThan(Repetition other);
@@ -156,7 +157,7 @@ abstract public class Type {
   }
 
   /**
-   * @param id
+   * @param id an integer id
    * @return the same type with the id field set
    */
   public abstract Type withId(int id);
@@ -169,7 +170,7 @@ abstract public class Type {
   }
 
   /**
-   * @param rep
+   * @param rep repetition level to test
    * @return if repetition of the type is rep
    */
   public boolean isRepetition(Repetition rep) {
@@ -319,7 +320,9 @@ abstract public class Type {
 
   /**
    *
+   * @param path a list of groups to convert
    * @param converter logic to convert the tree
+   * @param <T> the type returned by the converter
    * @return the converted tree
    */
    abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);

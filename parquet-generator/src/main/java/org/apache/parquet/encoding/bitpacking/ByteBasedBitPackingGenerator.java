@@ -76,8 +76,8 @@ public class ByteBasedBitPackingGenerator {
         fw.append(" * Packs from the Least Significant Bit first\n");
       }
       fw.append(" * \n");
+      fw.append(" * See ByteBasedBitPackingGenerator to make changes to this file\n");
       fw.append(" * @author automatically generated\n");
-      fw.append(" * @see ByteBasedBitPackingGenerator\n");
       fw.append(" *\n");
       fw.append(" */\n");
       fw.append("public abstract class " + className + " {\n");

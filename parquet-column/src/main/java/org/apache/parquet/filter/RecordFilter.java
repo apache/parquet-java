@@ -28,6 +28,7 @@ public interface RecordFilter {
 
   /**
    * Works out whether the current record can pass through the filter.
+   * @return true if the current value for the column reader matches the predicate.
    */
   boolean isMatch();
 

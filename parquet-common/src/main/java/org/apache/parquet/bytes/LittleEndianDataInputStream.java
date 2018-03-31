@@ -118,8 +118,8 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @return
-   * @throws IOException
+   * @return the next byte in the stream as an int
+   * @throws IOException if there is an exception while reading
    * @see java.io.InputStream#read()
    */
   public int read() throws IOException {
@@ -127,7 +127,7 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @return
+   * @return the hash code of the wrapped input stream
    * @see java.lang.Object#hashCode()
    */
   public int hashCode() {
@@ -135,9 +135,9 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @param b
-   * @return
-   * @throws IOException
+   * @param b a byte array
+   * @return the number of bytes read
+   * @throws IOException if there was an exception while reading
    * @see java.io.InputStream#read(byte[])
    */
   public int read(byte[] b) throws IOException {
@@ -145,8 +145,8 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @param obj
-   * @return
+   * @param obj another object
+   * @return true if this is equal to the object
    * @see java.lang.Object#equals(java.lang.Object)
    */
   public boolean equals(Object obj) {
@@ -154,11 +154,11 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @param b
-   * @param off
-   * @param len
-   * @return
-   * @throws IOException
+   * @param b a byte array
+   * @param off an offset into the byte array
+   * @param len the length to read
+   * @return the number of bytes read
+   * @throws IOException if there was an exception while reading
    * @see java.io.InputStream#read(byte[], int, int)
    */
   public int read(byte[] b, int off, int len) throws IOException {
@@ -166,9 +166,9 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @param n
-   * @return
-   * @throws IOException
+   * @param n the number of bytes to skip
+   * @return the number of bytes skipped
+   * @throws IOException if there was an exception while reading
    * @see java.io.InputStream#skip(long)
    */
   public long skip(long n) throws IOException {
@@ -176,8 +176,8 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @return
-   * @throws IOException
+   * @return the number of bytes available in the wrapped stream
+   * @throws IOException if there was an exception while getting the number of available bytes
    * @see java.io.InputStream#available()
    */
   public int available() throws IOException {
@@ -185,7 +185,7 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @throws IOException
+   * @throws IOException if there was an exception while closing the underlying stream
    * @see java.io.InputStream#close()
    */
   public void close() throws IOException {
@@ -193,7 +193,7 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @param readlimit
+   * @param readlimit the number of bytes the mark will be valid for
    * @see java.io.InputStream#mark(int)
    */
   public void mark(int readlimit) {
@@ -201,7 +201,7 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @throws IOException
+   * @throws IOException if there is an exception while resetting the underlying stream
    * @see java.io.InputStream#reset()
    */
   public void reset() throws IOException {
@@ -209,7 +209,7 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @return
+   * @return true if mark is supported
    * @see java.io.InputStream#markSupported()
    */
   public boolean markSupported() {

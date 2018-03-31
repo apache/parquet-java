@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * this class is thread safe
  * @author Julien Le Dem
  *
- * @param <T>
+ * @param <T> the type of values canonicalized by subclasses
  */
 public class Canonicalizer<T> {
 

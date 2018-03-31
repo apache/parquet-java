@@ -55,6 +55,7 @@ public class ByteBasedBitPackingEncoder {
 
   /**
    * @param bitWidth the number of bits used to encode an int
+   * @param packer factory for bit packing implementations
    */
   public ByteBasedBitPackingEncoder(int bitWidth, Packer packer) {
     this.bitWidth = bitWidth;
@@ -68,9 +69,9 @@ public class ByteBasedBitPackingEncoder {
 
   /**
    * writes an int using the requested number of bits.
-   * accepts only value < 2^bitWidth
+   * accepts only values less than 2^bitWidth
    * @param value the value to write
-   * @throws IOException
+   * @throws IOException if there is an exception while writing
    */
   public void writeInt(int value) throws IOException {
     input[inputSize] = value;
@@ -102,7 +103,7 @@ public class ByteBasedBitPackingEncoder {
 
   /**
    * @return the bytes representing the packed values
-   * @throws IOException
+   * @throws IOException if there is an exception while creating the BytesInput
    */
   public BytesInput toBytes() throws IOException {
     int packedByteLength = packedPosition + BytesUtils.paddedByteCountFromBits(inputSize * bitWidth);

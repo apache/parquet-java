@@ -107,7 +107,7 @@ public class GroupType extends Type {
   }
 
   /**
-   * @param newFields
+   * @param newFields a list of types to use as fields in a copy of this group
    * @return a group with the same attributes and new fields.
    */
   public GroupType withNewFields(List<Type> newFields) {
@@ -115,7 +115,7 @@ public class GroupType extends Type {
   }
 
   /**
-   * @param newFields
+   * @param newFields an array of types to use as fields in a copy of this group
    * @return a group with the same attributes and new fields.
    */
   public GroupType withNewFields(Type... newFields) {
@@ -141,7 +141,7 @@ public class GroupType extends Type {
 
   /**
    *
-   * @param name
+   * @param name string name of a field
    * @return the index of the field with that name
    */
   public int getFieldIndex(String name) {
@@ -174,7 +174,7 @@ public class GroupType extends Type {
   }
 
   /**
-   * @param fieldName
+   * @param fieldName string name of a field
    * @return the type of this field by name
    */
   public Type getType(String fieldName) {
@@ -182,7 +182,7 @@ public class GroupType extends Type {
   }
 
   /**
-   * @param index
+   * @param index integer index of a field
    * @return the type of this field by index
    */
   public Type getType(int index) {

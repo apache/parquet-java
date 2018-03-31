@@ -35,9 +35,9 @@ public abstract class ConversionPatterns {
   /**
    * to preserve the difference between empty list and null when optional
    *
-   * @param repetition
+   * @param repetition   repetition for the list or map
    * @param alias        name of the field
-   * @param originalType
+   * @param originalType original type for the list or map
    * @param nested       the nested repeated field
    * @return a group type
    */
@@ -92,10 +92,10 @@ public abstract class ConversionPatterns {
   }
 
   /**
-   * @param repetition
+   * @param repetition repetition for the list
    * @param alias      name of the field
-   * @param nestedType
-   * @return
+   * @param nestedType type of elements in the list
+   * @return a group representing the list using a 2-level representation
    * @deprecated use listOfElements instead
    */
   @Deprecated

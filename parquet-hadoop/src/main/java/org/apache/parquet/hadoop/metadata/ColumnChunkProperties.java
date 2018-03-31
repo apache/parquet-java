@@ -31,6 +31,11 @@ public class ColumnChunkProperties {
   private static Canonicalizer<ColumnChunkProperties> properties = new Canonicalizer<ColumnChunkProperties>();
 
   /**
+   * @param path the path of this column in the write schema
+   * @param type the primitive type of this column
+   * @param codec the compression codec used for this column
+   * @param encodings a set of encodings used by this column
+   * @return column chunk properties
    * @deprecated will be removed in 2.0.0. Use {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, Set)}
    *             instead.
    */

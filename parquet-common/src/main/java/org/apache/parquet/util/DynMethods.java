@@ -232,8 +232,6 @@ public class DynMethods {
      * @param methodName name of a method (different from constructor)
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
-     * @see {@link java.lang.Class#forName(String)}
-     * @see {@link java.lang.Class#getMethod(String, Class[])}
      */
     public Builder impl(String className, String methodName, Class<?>... argClasses) {
       // don't do any work if an implementation has been found
@@ -258,8 +256,6 @@ public class DynMethods {
      * @param className name of a class
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
-     * @see {@link java.lang.Class#forName(String)}
-     * @see {@link java.lang.Class#getMethod(String, Class[])}
      */
     public Builder impl(String className, Class<?>... argClasses) {
       impl(className, name, argClasses);
@@ -269,11 +265,10 @@ public class DynMethods {
     /**
      * Checks for a method implementation.
      *
+     * @param targetClass the class to check for an implementation
      * @param methodName name of a method (different from constructor)
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
-     * @see {@link java.lang.Class#forName(String)}
-     * @see {@link java.lang.Class#getMethod(String, Class[])}
      */
     public Builder impl(Class<?> targetClass, String methodName, Class<?>... argClasses) {
       // don't do any work if an implementation has been found
@@ -295,10 +290,9 @@ public class DynMethods {
      *
      * The name passed to the constructor is the method name used.
      *
+     * @param targetClass the class to check for an implementation
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
-     * @see {@link java.lang.Class#forName(String)}
-     * @see {@link java.lang.Class#getMethod(String, Class[])}
      */
     public Builder impl(Class<?> targetClass, Class<?>... argClasses) {
       impl(targetClass, name, argClasses);
@@ -344,8 +338,6 @@ public class DynMethods {
      * @param methodName name of a method (different from constructor)
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
-     * @see {@link java.lang.Class#forName(String)}
-     * @see {@link java.lang.Class#getMethod(String, Class[])}
      */
     public Builder hiddenImpl(String className, String methodName, Class<?>... argClasses) {
       // don't do any work if an implementation has been found
@@ -370,8 +362,6 @@ public class DynMethods {
      * @param className name of a class
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
-     * @see {@link java.lang.Class#forName(String)}
-     * @see {@link java.lang.Class#getMethod(String, Class[])}
      */
     public Builder hiddenImpl(String className, Class<?>... argClasses) {
       hiddenImpl(className, name, argClasses);
@@ -381,11 +371,10 @@ public class DynMethods {
     /**
      * Checks for a method implementation.
      *
+     * @param targetClass the class to check for an implementation
      * @param methodName name of a method (different from constructor)
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
-     * @see {@link java.lang.Class#forName(String)}
-     * @see {@link java.lang.Class#getMethod(String, Class[])}
      */
     public Builder hiddenImpl(Class<?> targetClass, String methodName, Class<?>... argClasses) {
       // don't do any work if an implementation has been found
@@ -410,10 +399,9 @@ public class DynMethods {
      *
      * The name passed to the constructor is the method name used.
      *
+     * @param targetClass the class to check for an implementation
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
-     * @see {@link java.lang.Class#forName(String)}
-     * @see {@link java.lang.Class#getMethod(String, Class[])}
      */
     public Builder hiddenImpl(Class<?> targetClass, Class<?>... argClasses) {
       hiddenImpl(targetClass, name, argClasses);

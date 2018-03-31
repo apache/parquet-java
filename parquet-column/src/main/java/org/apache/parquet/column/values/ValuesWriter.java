@@ -80,7 +80,7 @@ public abstract class ValuesWriter {
   }
 
   /**
-   * ( > {@link #getBufferedSize} )
+   * ( &gt; {@link #getBufferedSize} )
    * @return the allocated size of the buffer
    */
   abstract public long getAllocatedSize();

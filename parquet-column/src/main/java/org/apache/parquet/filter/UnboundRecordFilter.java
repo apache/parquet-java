@@ -31,6 +31,9 @@ public interface UnboundRecordFilter {
 
   /**
    * Call to bind to actual columns and create filter.
+   *
+   * @param readers an iterable of readers to bind this filter to
+   * @return this unbound filter as a filter bound to the readers
    */
   RecordFilter bind( Iterable<ColumnReader> readers);
 }

@@ -41,7 +41,7 @@ public interface PageWriter {
    * @param rlEncoding repetition level encoding
    * @param dlEncoding definition level encoding
    * @param valuesEncoding values encoding
-   * @throws IOException
+   * @throws IOException if there is an exception while writing page data
    */
   void writePage(BytesInput bytesInput, int valueCount, Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
 
@@ -55,7 +55,7 @@ public interface PageWriter {
    * @param dataEncoding the encoding for the data
    * @param data the data encoded with dataEncoding
    * @param statistics optional stats for this page
-   * @throws IOException
+   * @throws IOException if there is an exception while writing page data
    */
   void writePageV2(
       int rowCount, int nullCount, int valueCount,
@@ -70,13 +70,14 @@ public interface PageWriter {
   long getMemSize();
 
   /**
-   * @return the allocated size for the buffer ( > getMemSize() )
+   * @return the allocated size for the buffer ( &gt; getMemSize() )
    */
   long allocatedSize();
 
   /**
    * writes a dictionary page
    * @param dictionaryPage the dictionary page containing the dictionary data
+   * @throws IOException if there was an exception while writing
    */
   void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException;
 

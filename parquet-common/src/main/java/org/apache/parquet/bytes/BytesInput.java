@@ -67,7 +67,7 @@ abstract public class BytesInput {
   }
 
   /**
-   * @param in
+   * @param in an input stream
    * @param bytes number of bytes to read
    * @return a BytesInput that will read that number of bytes from the stream
    */
@@ -76,7 +76,7 @@ abstract public class BytesInput {
   }
 
   /**
-   * @param buffers
+   * @param buffers an array of byte buffers
    * @return a BytesInput that will read the given bytes from the ByteBuffers
    */
   public static BytesInput from(ByteBuffer... buffers) {
@@ -87,7 +87,7 @@ abstract public class BytesInput {
   }
 
   /**
-   * @param buffers
+   * @param buffers a list of byte buffers
    * @return a BytesInput that will read the given bytes from the ByteBuffers
    */
   public static BytesInput from(List<ByteBuffer> buffers) {
@@ -99,7 +99,7 @@ abstract public class BytesInput {
 
   /**
    *
-   * @param in
+   * @param in a byte array
    * @return a Bytes input that will write the given bytes
    */
   public static BytesInput from(byte[] in) {
@@ -131,6 +131,7 @@ abstract public class BytesInput {
   /**
    *
    * @param intValue the int to write
+   * @return a ByteInput that contains the int value as a variable-length zig-zag encoded int
    */
   public static BytesInput fromZigZagVarInt(int intValue) {
     int zigZag = (intValue << 1) ^ (intValue >> 31);
@@ -148,6 +149,7 @@ abstract public class BytesInput {
   /**
    *
    * @param longValue the long to write
+   * @return a ByteInput that contains the long value as a variable-length zig-zag encoded long
    */
   public static BytesInput fromZigZagVarLong(long longValue) {
     long zigZag = (longValue << 1) ^ (longValue >> 63);
@@ -155,7 +157,7 @@ abstract public class BytesInput {
   }
 
   /**
-   * @param arrayOut
+   * @param arrayOut a capacity byte array output stream to wrap into a BytesInput
    * @return a BytesInput that will write the content of the buffer
    */
   public static BytesInput from(CapacityByteArrayOutputStream arrayOut) {
@@ -179,9 +181,9 @@ abstract public class BytesInput {
 
   /**
    * copies the input into a new byte array
-   * @param bytesInput
-   * @return
-   * @throws IOException
+   * @param bytesInput a BytesInput
+   * @return a copy of the BytesInput
+   * @throws IOException if there is an exception when reading bytes from the BytesInput
    */
   public static BytesInput copy(BytesInput bytesInput) throws IOException {
     return from(bytesInput.toByteArray());
@@ -189,15 +191,15 @@ abstract public class BytesInput {
 
   /**
    * writes the bytes into a stream
-   * @param out
-   * @throws IOException
+   * @param out an output stream
+   * @throws IOException if there is an exception writing
    */
   abstract public void writeAllTo(OutputStream out) throws IOException;
 
   /**
    *
    * @return a new byte array materializing the contents of this input
-   * @throws IOException
+   * @throws IOException if there is an exception reading
    */
   public byte[] toByteArray() throws IOException {
     BAOS baos = new BAOS((int)size());
@@ -209,7 +211,7 @@ abstract public class BytesInput {
   /**
    *
    * @return a new ByteBuffer materializing the contents of this input
-   * @throws IOException
+   * @throws IOException if there is an exception reading
    */
   public ByteBuffer toByteBuffer() throws IOException {
     return ByteBuffer.wrap(toByteArray());
@@ -218,7 +220,7 @@ abstract public class BytesInput {
   /**
    *
    * @return a new InputStream materializing the contents of this input
-   * @throws IOException
+   * @throws IOException if there is an exception reading
    */
   public ByteBufferInputStream toInputStream() throws IOException {
     return ByteBufferInputStream.wrap(toByteBuffer());

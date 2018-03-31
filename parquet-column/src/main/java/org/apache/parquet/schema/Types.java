@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  *   Types.optional(INT32).named("number");
  * </pre>
  * <p>
- * The {@link #required(PrimitiveTypeName)} factory method produces a primitive
+ * The required(PrimitiveTypeName) factory method produces a primitive
  * type builder, and the {@link PrimitiveBuilder#named(String)} builds the
  * {@link PrimitiveType}. Between {@code required} and {@code named}, other
  * builder methods can be used to add type annotations or other type metadata:
@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
  *   Types.optional(FIXED_LEN_BYTE_ARRAY).length(20).named("sha1");
  * </pre>
  * <p>
- * Optional types are built using {@link #optional(PrimitiveTypeName)} to get
+ * Optional types are built using optional(PrimitiveTypeName) to get
  * the builder.
  * <p>
  * Groups are built similarly, using {@code requiredGroup()} (or the optional
@@ -105,6 +105,7 @@ import org.slf4j.LoggerFactory;
  * can be built using {@code requiredGroupValue()} (or the optionalGroupValue()
  * version) that returns MapGroupValue builder.
  *
+ * <pre>
  *   // required group zipMap (MAP) {
  *   //   repeated group map (MAP_KEY_VALUE) {
  *   //     required float key
@@ -629,6 +630,7 @@ public class Types {
     /**
      * Adds {@code type} as a sub-field to the group configured by this builder.
      *
+     * @param type the type to add as a field
      * @return this builder for additional fields.
      */
     public THIS addField(Type type) {
@@ -639,6 +641,7 @@ public class Types {
     /**
      * Adds {@code types} as sub-fields of the group configured by this builder.
      *
+     * @param types an array of types to add as fields
      * @return this builder for additional fields.
      */
     public THIS addFields(Type... types) {

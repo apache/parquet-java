@@ -26,9 +26,9 @@ import org.apache.parquet.column.statistics.Statistics;
 public class DataPageV2 extends DataPage {
 
   /**
-   * @param rowCount
-   * @param nullCount
-   * @param valueCount
+   * @param rowCount count of rows
+   * @param nullCount count of nulls
+   * @param valueCount count of values
    * @param repetitionLevels RLE encoded repetition levels
    * @param definitionLevels RLE encoded definition levels
    * @param dataEncoding encoding for the data
@@ -51,9 +51,9 @@ public class DataPageV2 extends DataPage {
   }
 
   /**
-   * @param rowCount
-   * @param nullCount
-   * @param valueCount
+   * @param rowCount count of rows
+   * @param nullCount count of nulls
+   * @param valueCount count of values
    * @param repetitionLevels RLE encoded repetition levels
    * @param definitionLevels RLE encoded definition levels
    * @param dataEncoding encoding for the data

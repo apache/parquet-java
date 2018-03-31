@@ -53,7 +53,7 @@ public abstract class ValuesReader {
    * @param valueCount count of values in this page
    * @param in an input stream containing the page data at the correct offset
    *
-   * @throws IOException
+   * @throws IOException if there is an exception while reading from the input stream
    */
   public abstract void initFromPage(int valueCount, ByteBufferInputStream in) throws IOException;
 
