@@ -148,10 +148,14 @@ abstract public class Type {
    * @param id (optional) the id of the fields.
    */
   Type(String name, Repetition repetition, OriginalType originalType, ID id) {
+    this(name, repetition, originalType, null, id);
+  }
+
+  Type(String name, Repetition repetition, OriginalType originalType, DecimalMetadata decimalMetadata, ID id) {
     super();
     this.name = checkNotNull(name, "name");
     this.repetition = checkNotNull(repetition, "repetition");
-    this.logicalTypeAnnotation = originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType);
+    this.logicalTypeAnnotation = originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType, decimalMetadata);
     this.id = id;
   }
 

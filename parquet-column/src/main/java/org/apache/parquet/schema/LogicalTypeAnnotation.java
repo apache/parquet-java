@@ -63,7 +63,7 @@ public interface LogicalTypeAnnotation {
   /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
    */
-  static LogicalTypeAnnotation fromOriginalType(OriginalType originalType) {
+  static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
     if (originalType == null) {
       return null;
     }
@@ -73,7 +73,9 @@ public interface LogicalTypeAnnotation {
       case MAP:
         return MapLogicalTypeAnnotation.create();
       case DECIMAL:
-        return DecimalLogicalTypeAnnotation.create();
+        int scale = (decimalMetadata == null ? 0 : decimalMetadata.getScale());
+        int precision = (decimalMetadata == null ? 0 : decimalMetadata.getPrecision());
+        return DecimalLogicalTypeAnnotation.create(scale, precision);
       case LIST:
         return ListLogicalTypeAnnotation.create();
       case DATE:
@@ -113,7 +115,7 @@ public interface LogicalTypeAnnotation {
       case MAP_KEY_VALUE:
         return MapKeyValueTypeAnnotation.create();
       default:
-        return NullLogicalTypeAnnotation.create();
+        throw new RuntimeException("Can't convert original type to logical type, unknown original type " + originalType);
     }
   }
 
@@ -266,13 +268,8 @@ public interface LogicalTypeAnnotation {
   }
 
   class DecimalLogicalTypeAnnotation implements LogicalTypeAnnotation {
-
-    private int scale;
-    private int precision;
-
-    public static LogicalTypeAnnotation create() {
-      return new DecimalLogicalTypeAnnotation(0, 0);
-    }
+    private final int scale;
+    private final int precision;
 
     public static LogicalTypeAnnotation create(int scale, int precision) {
       return new DecimalLogicalTypeAnnotation(scale, precision);
@@ -281,14 +278,6 @@ public interface LogicalTypeAnnotation {
     private DecimalLogicalTypeAnnotation(int scale, int precision) {
       this.scale = scale;
       this.precision = precision;
-    }
-
-    public void setPrecision(int precision) {
-      this.precision = precision;
-    }
-
-    public void setScale(int scale) {
-      this.scale = scale;
     }
 
     @Override
@@ -561,43 +550,6 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class NullLogicalTypeAnnotation implements LogicalTypeAnnotation {
-    private static final NullLogicalTypeAnnotation INSTANCE = new NullLogicalTypeAnnotation();
-
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
-
-    private NullLogicalTypeAnnotation() {
-    }
-
-    @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.UNKNOWN(new NullType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return null;
-    }
-
-    @Override
-    public OriginalType toOriginalType() {
-      return null;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      return obj instanceof NullLogicalTypeAnnotation;
-    }
-
-    @Override
-    public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
-      return getClass().hashCode();
-    }
-  }
-
   class JsonLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static final JsonLogicalTypeAnnotation INSTANCE = new JsonLogicalTypeAnnotation();
 
@@ -672,6 +624,9 @@ public interface LogicalTypeAnnotation {
     }
   }
 
+  // This logical type annotation is implemented to support backward compatibility with ConvertedType.
+  // The new logical type representation in parquet-format doesn't have any interval type,
+  // thus this annotation is mapped to UNKNOWN.
   class IntervalLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static IntervalLogicalTypeAnnotation INSTANCE = new IntervalLogicalTypeAnnotation();
 
@@ -709,6 +664,9 @@ public interface LogicalTypeAnnotation {
     }
   }
 
+  // This logical type annotation is implemented to support backward compatibility with ConvertedType.
+  // The new logical type representation in parquet-format doesn't have any key-value type,
+  // thus this annotation is mapped to UNKNOWN. This type shouldn't be used.
   class MapKeyValueTypeAnnotation implements LogicalTypeAnnotation {
     private static MapKeyValueTypeAnnotation INSTANCE = new MapKeyValueTypeAnnotation();
 

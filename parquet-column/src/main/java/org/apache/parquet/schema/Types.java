@@ -252,7 +252,7 @@ public class Types {
      * @return this builder for method chaining
      */
     public THIS as(OriginalType type) {
-      this.logicalTypeAnnotation = LogicalTypeAnnotation.fromOriginalType(type);
+      this.logicalTypeAnnotation = LogicalTypeAnnotation.fromOriginalType(type, null);
       return self();
     }
 

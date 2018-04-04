@@ -608,10 +608,9 @@ public class ParquetMetadataConverter {
       case ENUM:
         return LogicalTypeAnnotation.EnumLogicalTypeAnnotation.create();
       case DECIMAL:
-        if (schemaElement == null) {
-          return LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create();
-        }
-        return LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(schemaElement.scale, schemaElement.precision);
+        int scale = (schemaElement == null ? 0 : schemaElement.scale);
+        int precision = (schemaElement == null ? 0 : schemaElement.precision);
+        return LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(scale, precision);
       case DATE:
         return LogicalTypeAnnotation.DateLogicalTypeAnnotation.create();
       case TIME_MILLIS:
@@ -645,7 +644,7 @@ public class ParquetMetadataConverter {
       case BSON:
         return LogicalTypeAnnotation.BsonLogicalTypeAnnotation.create();
       default:
-        return LogicalTypeAnnotation.NullLogicalTypeAnnotation.create();
+        throw new RuntimeException("Can't convert converted type to logical type, unknown converted type " + type);
     }
   }
 
@@ -684,7 +683,7 @@ public class ParquetMetadataConverter {
     }
   }
 
-  LogicalTypeAnnotation.TimeUnit convertTimeUnit(TimeUnit unit) {
+  private LogicalTypeAnnotation.TimeUnit convertTimeUnit(TimeUnit unit) {
     switch (unit.getSetField()) {
       case MICROS:
         return LogicalTypeAnnotation.TimeUnit.MICROS;

@@ -446,15 +446,10 @@ public final class PrimitiveType extends Type {
   PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
       int length, String name, OriginalType originalType,
       DecimalMetadata decimalMeta, ID id, ColumnOrder columnOrder) {
-    super(name, repetition, originalType, id);
+    super(name, repetition, originalType, decimalMeta, id);
     this.primitive = primitive;
     this.length = length;
     this.decimalMeta = decimalMeta;
-    if (originalType == OriginalType.DECIMAL) {
-      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation originalLogicalType = (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) getLogicalTypeAnnotation();
-      originalLogicalType.setPrecision(decimalMeta.getPrecision());
-      originalLogicalType.setScale(decimalMeta.getScale());
-    }
 
     if (columnOrder == null) {
       columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL
