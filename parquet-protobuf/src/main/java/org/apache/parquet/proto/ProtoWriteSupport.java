@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,6 +21,7 @@ package org.apache.parquet.proto;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
+import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.TextFormat;
@@ -51,6 +52,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private static final Logger LOG = LoggerFactory.getLogger(ProtoWriteSupport.class);
   public static final String PB_CLASS_WRITE = "parquet.proto.writeClass";
+  private static Descriptor descriptor;
 
   private RecordConsumer recordConsumer;
   private Class<? extends Message> protoMessage;
@@ -70,6 +72,10 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   public static void setSchema(Configuration configuration, Class<? extends Message> protoClass) {
     configuration.setClass(PB_CLASS_WRITE, protoClass, Message.class);
+  }
+
+  public static void setDescriptor(Descriptor descriptor) {
+    ProtoWriteSupport.descriptor = descriptor;
   }
 
   /**
@@ -97,29 +103,43 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   @Override
   public WriteContext init(Configuration configuration) {
 
-    // if no protobuf descriptor was given in constructor, load descriptor from configuration (set with setProtobufClass)
-    if (protoMessage == null) {
-      Class<? extends Message> pbClass = configuration.getClass(PB_CLASS_WRITE, null, Message.class);
-      if (pbClass != null) {
-        protoMessage = pbClass;
-      } else {
-        String msg = "Protocol buffer class not specified.";
-        String hint = " Please use method ProtoParquetOutputFormat.setProtobufClass(...) or other similar method.";
-        throw new BadConfigurationException(msg + hint);
+    MessageType rootSchema;
+    Descriptors.Descriptor messageDescriptor;
+    Map<String, String> extraMetaData = new HashMap<String, String>();
+
+    if (descriptor != null && protoMessage !=null) {
+      String msg = "Protocol buffer class and descriptor specified.";
+      String hint = " Please only specify one or the other.";
+      throw new BadConfigurationException(msg + hint);
+    } else if (descriptor != null) {
+      messageDescriptor = descriptor;
+    } else{
+      if (protoMessage == null) {
+        Class<? extends Message> pbClass = configuration.getClass(PB_CLASS_WRITE, null, Message.class);
+        if (pbClass == null) {
+          String msg = "Protocol buffer class not specified.";
+          String hint = " Please use method ProtoParquetOutputFormat.setProtobufClass(...) or other similar method.";
+          throw new BadConfigurationException(msg + hint);
+        }else{
+          protoMessage = pbClass;
+        }
+
       }
+      extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
+      extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
+      messageDescriptor = new ProtoSchemaConverter().convert(protoMessage);
     }
 
-    MessageType rootSchema = new ProtoSchemaConverter().convert(protoMessage);
-    Descriptors.Descriptor messageDescriptor = Protobufs.getMessageDescriptor(protoMessage);
+    rootSchema = new ProtoSchemaConverter().convert(messageDescriptor);
     validatedMapping(messageDescriptor, rootSchema);
 
     this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
 
-    Map<String, String> extraMetaData = new HashMap<String, String>();
-    extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
-    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
+
+
     return new WriteContext(rootSchema, extraMetaData);
   }
+
 
 
   class FieldWriter {
