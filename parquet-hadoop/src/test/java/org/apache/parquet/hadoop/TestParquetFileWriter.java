@@ -785,10 +785,10 @@ public class TestParquetFileWriter {
     w.start();
     w.startBlock(4);
     w.startColumn(C1, 7, CODEC);
-    w.writeDataPage(7, 4, BytesInput.from(BYTES3), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.startColumn(C2, 8, CODEC);
-    w.writeDataPage(8, 4, BytesInput.from(BYTES4), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(8, 4, BytesInput.from(BYTES4), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.endBlock();
     w.startBlock(4);
@@ -813,10 +813,10 @@ public class TestParquetFileWriter {
     w.endBlock();
     w.startBlock(4);
     w.startColumn(C1, 7, CODEC);
-    w.writeDataPage(7, 4, BytesInput.from(BYTES3), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.startColumn(C2, 8, CODEC);
-    w.writeDataPage(8, 4, BytesInput.from(BYTES4), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(8, 4, BytesInput.from(BYTES4), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.endBlock();
     w.end(new HashMap<String, String>());
