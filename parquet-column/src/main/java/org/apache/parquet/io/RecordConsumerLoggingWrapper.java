@@ -27,9 +27,6 @@ import java.util.Arrays;
 
 /**
  * This class can be used to wrap an actual RecordConsumer and log all calls
- *
- * @author Julien Le Dem
- *
  */
 public class RecordConsumerLoggingWrapper extends RecordConsumer {
     private static final Logger LOG = LoggerFactory.getLogger(RecordConsumerLoggingWrapper.class);

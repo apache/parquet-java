@@ -22,9 +22,6 @@ import org.apache.parquet.ParquetRuntimeException;
 
 /**
  * thrown when an invalid record is encountered
- *
- * @author Julien Le Dem
- *
  */
 public class InvalidRecordException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;

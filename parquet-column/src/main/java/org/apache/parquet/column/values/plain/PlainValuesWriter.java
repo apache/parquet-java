@@ -34,9 +34,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Plain encoding except for booleans
- *
- * @author Julien Le Dem
- *
  */
 public class PlainValuesWriter extends ValuesWriter {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);

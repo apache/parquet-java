@@ -40,9 +40,6 @@ import org.slf4j.LoggerFactory;
  * For example if it is referring to a stream,
  * subsequent BytesInput reads from the stream will be incorrect
  * if the previous has not been consumed.
- *
- * @author Julien Le Dem
- *
  */
 abstract public class BytesInput {
   private static final Logger LOG = LoggerFactory.getLogger(BytesInput.class);

@@ -28,8 +28,6 @@ import java.util.*;
 
 /**
  * fill in default value for required fields in TProtocols after projection is specified.
- *
- * @author Tianshuo Deng
  */
 public class ProtocolEventsAmender {
   List<TProtocol> rootEvents;
@@ -44,8 +42,8 @@ public class ProtocolEventsAmender {
    * and create default value if a required field is missing
    *
    * @param recordThriftType the Thrift Struct definition for events
-   * @return
-   * @throws TException
+   * @return a list of events
+   * @throws TException if there is an error while amending events
    */
   public List<TProtocol> amendMissingRequiredFields(StructType recordThriftType) throws TException {
     Iterator<TProtocol> protocolIter = rootEvents.iterator();

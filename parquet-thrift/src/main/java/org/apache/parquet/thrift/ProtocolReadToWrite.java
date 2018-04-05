@@ -29,9 +29,6 @@ import org.apache.thrift.protocol.TType;
 
 /**
  * Class to read from one protocol and write to another one
- *
- * @author Julien Le Dem
- *
  */
 public class ProtocolReadToWrite implements ProtocolPipe {
 
@@ -40,7 +37,7 @@ public class ProtocolReadToWrite implements ProtocolPipe {
    * exceptions are not recoverable as record might be halfway written
    * @param in input protocol
    * @param out output protocol
-   * @throws TException
+   * @throws TException if there is an error while reading or writing
    */
   @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {

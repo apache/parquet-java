@@ -96,6 +96,7 @@ public class ParquetMetadataConverter {
   }
 
   /**
+   * @param conf a configuration
    * @deprecated will be removed in 2.0.0; use {@code ParquetMetadataConverter(ParquetReadOptions)}
    */
   @Deprecated
@@ -379,8 +380,10 @@ public class ParquetMetadataConverter {
   }
 
   /**
-   * @deprecated Replaced by {@link #fromParquetStatistics(
-   * String createdBy, Statistics statistics, PrimitiveTypeName type)}
+   * @param statistics parquet format statistics
+   * @param type a primitive type name
+   * @return the statistics
+   * @deprecated will be removed in 2.0.0.
    */
   @Deprecated
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(Statistics statistics, PrimitiveTypeName type) {
@@ -388,7 +391,11 @@ public class ParquetMetadataConverter {
   }
 
   /**
-   * @deprecated Use {@link #fromParquetStatistics(String, Statistics, PrimitiveType)} instead.
+   * @param createdBy the created-by string from the file
+   * @param statistics parquet format statistics
+   * @param type a primitive type name
+   * @return the statistics
+   * @deprecated will be removed in 2.0.0.
    */
   @Deprecated
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics
@@ -716,9 +723,9 @@ public class ParquetMetadataConverter {
 
   /**
    * [ startOffset, endOffset )
-   * @param startOffset
-   * @param endOffset
-   * @return the filter
+   * @param startOffset a start offset (inclusive)
+   * @param endOffset an end offset (exclusive)
+   * @return a range filter from the offsets
    */
   public static MetadataFilter range(long startOffset, long endOffset) {
     return new RangeMetadataFilter(startOffset, endOffset);
@@ -757,7 +764,6 @@ public class ParquetMetadataConverter {
 
   /**
    * [ startOffset, endOffset )
-   * @author Julien Le Dem
    */
   // Visible for testing
   static final class RangeMetadataFilter extends MetadataFilter {

@@ -32,9 +32,6 @@ import org.apache.thrift.protocol.TStruct;
 
 /**
  * Allows simple implementation of partial protocols
- *
- * @author Julien Le Dem
- *
  */
 public abstract class ParquetProtocol extends TProtocol {
 

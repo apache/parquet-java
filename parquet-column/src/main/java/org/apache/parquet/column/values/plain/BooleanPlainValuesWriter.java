@@ -29,9 +29,6 @@ import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
 
 /**
  * An implementation of the PLAIN encoding
- *
- * @author Julien Le Dem
- *
  */
 public class BooleanPlainValuesWriter extends ValuesWriter {
 

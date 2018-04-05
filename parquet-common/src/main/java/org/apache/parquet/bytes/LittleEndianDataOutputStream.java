@@ -26,9 +26,6 @@ import java.io.OutputStream;
 
 /**
  * Based on DataOutputStream but in little endian and without the String/char methods
- *
- * @author Julien Le Dem
- *
  */
 public class LittleEndianDataOutputStream extends OutputStream {
 

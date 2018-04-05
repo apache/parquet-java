@@ -43,10 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p/>
  * Converts a Protocol Buffer Descriptor into a Parquet schema.
- *
- * @author Lukas Nalezenec
  */
 public class ProtoSchemaConverter {
 

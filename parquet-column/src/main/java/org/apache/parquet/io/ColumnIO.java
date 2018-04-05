@@ -27,9 +27,6 @@ import org.apache.parquet.schema.Type.Repetition;
 
 /**
  * a structure used to serialize deserialize records
- *
- * @author Julien Le Dem
- *
  */
 abstract public class ColumnIO {
 

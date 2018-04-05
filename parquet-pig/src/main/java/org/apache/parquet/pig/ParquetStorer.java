@@ -46,9 +46,6 @@ import org.apache.parquet.io.ParquetEncodingException;
  * It uses a TupleWriteSupport to write Tuples into the ParquetOutputFormat
  * The Pig schema is automatically converted to the Parquet schema using {@link PigSchemaConverter}
  * and stored in the file
- *
- * @author Julien Le Dem
- *
  */
 public class ParquetStorer extends StoreFunc implements StoreMetadata {
 

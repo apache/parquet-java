@@ -59,7 +59,7 @@ public class ParquetReader<T> implements Closeable {
   /**
    * @param file the file to read
    * @param readSupport to materialize records
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    * @deprecated use {@link #builder(ReadSupport, Path)}
    */
   @Deprecated
@@ -71,7 +71,7 @@ public class ParquetReader<T> implements Closeable {
    * @param conf the configuration
    * @param file the file to read
    * @param readSupport to materialize records
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    * @deprecated use {@link #builder(ReadSupport, Path)}
    */
   @Deprecated
@@ -83,7 +83,7 @@ public class ParquetReader<T> implements Closeable {
    * @param file the file to read
    * @param readSupport to materialize records
    * @param unboundRecordFilter the filter to use to filter records
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    * @deprecated use {@link #builder(ReadSupport, Path)}
    */
   @Deprecated
@@ -96,7 +96,7 @@ public class ParquetReader<T> implements Closeable {
    * @param file the file to read
    * @param readSupport to materialize records
    * @param unboundRecordFilter the filter to use to filter records
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    * @deprecated use {@link #builder(ReadSupport, Path)}
    */
   @Deprecated
@@ -125,7 +125,7 @@ public class ParquetReader<T> implements Closeable {
 
   /**
    * @return the next record or null if finished
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    */
   public T read() throws IOException {
     try {

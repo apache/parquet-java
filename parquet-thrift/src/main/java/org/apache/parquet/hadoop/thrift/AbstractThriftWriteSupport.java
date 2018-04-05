@@ -69,7 +69,6 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   /**
    * used from hadoop
    * the configuration must contain a thriftClass setting
-   * @see AbstractThriftWriteSupport#setThriftClass(Configuration, Class)
    */
   public AbstractThriftWriteSupport() {
   }

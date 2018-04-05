@@ -25,9 +25,6 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 /**
  * summary data for a bag
- *
- * @author Julien Le Dem
- *
  */
 public class BagSummaryData extends SummaryData {
 
@@ -35,11 +32,6 @@ public class BagSummaryData extends SummaryData {
 
   private FieldSummaryData content;
 
-  /**
-   * add a bag to the summary data
-   *
-   * @param bag
-   */
   public void add(Schema schema, DataBag bag) {
     super.add(bag);
     size.add(bag.size());

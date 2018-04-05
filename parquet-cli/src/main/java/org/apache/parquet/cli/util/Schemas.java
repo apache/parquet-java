@@ -454,6 +454,9 @@ public class Schemas {
    * the incoming schema.
    * <p>
    * Fields cannot be used in more than one record (not Immutable?).
+   *
+   * @param field an Avro schema field
+   * @return a copy of the field
    */
   public static Schema.Field copy(Schema.Field field) {
     return new Schema.Field(

@@ -49,8 +49,6 @@ package org.apache.parquet.io.api;
  *   }
  * }
  * </pre>
- * @author Julien Le Dem
- *
  */
 abstract public class RecordConsumer {
 

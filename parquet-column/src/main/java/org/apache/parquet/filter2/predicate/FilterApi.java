@@ -45,17 +45,15 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefinedByInstance;
 
 /**
  * The Filter API is expressed through these static methods.
- *
+ * <p>
  * Example usage:
- * {@code
- *
+ * <pre>
  *   IntColumn foo = intColumn("foo");
  *   DoubleColumn bar = doubleColumn("x.y.bar");
  *
- *   // foo == 10 || bar <= 17.0
+ *   // foo == 10 || bar &lt;= 17.0
  *   FilterPredicate pred = or(eq(foo, 10), ltEq(bar, 17.0));
- *
- * }
+ * </pre>
  */
 // TODO: Support repeated columns (https://issues.apache.org/jira/browse/PARQUET-34)
 //
@@ -94,9 +92,16 @@ public final class FilterApi {
   /**
    * Keeps records if their value is equal to the provided value.
    * Nulls are treated the same way the java programming language does.
+   * <p>
    * For example:
    *   eq(column, null) will keep all records whose value is null.
    *   eq(column, 7) will keep all records whose value is 7, and will drop records whose value is null
+   *
+   * @param column a column reference created by FilterApi
+   * @param value a value that matches the column's type
+   * @param <T> the Java type of values in the column
+   * @param <C> the column type that corresponds to values of type T
+   * @return an equals predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> Eq<T> eq(C column, T value) {
     return new Eq<T>(column, value);
@@ -105,6 +110,7 @@ public final class FilterApi {
   /**
    * Keeps records if their value is not equal to the provided value.
    * Nulls are treated the same way the java programming language does.
+   * <p>
    * For example:
    *   notEq(column, null) will keep all records whose value is not null.
    *   notEq(column, 7) will keep all records whose value is not 7, including records whose value is null.
@@ -115,6 +121,12 @@ public final class FilterApi {
    *
    *   NOTE: be sure to read the {@link #lt}, {@link #ltEq}, {@link #gt}, {@link #gtEq} operator's docs
    *         for how they handle nulls
+   *
+   * @param column a column reference created by FilterApi
+   * @param value a value that matches the column's type
+   * @param <T> the Java type of values in the column
+   * @param <C> the column type that corresponds to values of type T
+   * @return a not-equals predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> NotEq<T> notEq(C column, T value) {
     return new NotEq<T>(column, value);
@@ -124,8 +136,15 @@ public final class FilterApi {
    * Keeps records if their value is less than (but not equal to) the provided value.
    * The provided value cannot be null, as less than null has no meaning.
    * Records with null values will be dropped.
+   * <p>
    * For example:
    *   lt(column, 7) will keep all records whose value is less than (but not equal to) 7, and not null.
+   *
+   * @param column a column reference created by FilterApi
+   * @param value a value that matches the column's type
+   * @param <T> the Java type of values in the column
+   * @param <C> the column type that corresponds to values of type T
+   * @return a less-than predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> Lt<T> lt(C column, T value) {
     return new Lt<T>(column, value);
@@ -135,8 +154,15 @@ public final class FilterApi {
    * Keeps records if their value is less than or equal to the provided value.
    * The provided value cannot be null, as less than null has no meaning.
    * Records with null values will be dropped.
+   * <p>
    * For example:
    *   ltEq(column, 7) will keep all records whose value is less than or equal to 7, and not null.
+   *
+   * @param column a column reference created by FilterApi
+   * @param value a value that matches the column's type
+   * @param <T> the Java type of values in the column
+   * @param <C> the column type that corresponds to values of type T
+   * @return a less-than-or-equal predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> LtEq<T> ltEq(C column, T value) {
     return new LtEq<T>(column, value);
@@ -146,8 +172,15 @@ public final class FilterApi {
    * Keeps records if their value is greater than (but not equal to) the provided value.
    * The provided value cannot be null, as less than null has no meaning.
    * Records with null values will be dropped.
+   * <p>
    * For example:
    *   gt(column, 7) will keep all records whose value is greater than (but not equal to) 7, and not null.
+   *
+   * @param column a column reference created by FilterApi
+   * @param value a value that matches the column's type
+   * @param <T> the Java type of values in the column
+   * @param <C> the column type that corresponds to values of type T
+   * @return a greater-than predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> Gt<T> gt(C column, T value) {
     return new Gt<T>(column, value);
@@ -157,8 +190,15 @@ public final class FilterApi {
    * Keeps records if their value is greater than or equal to the provided value.
    * The provided value cannot be null, as less than null has no meaning.
    * Records with null values will be dropped.
+   * <p>
    * For example:
    *   gtEq(column, 7) will keep all records whose value is greater than or equal to 7, and not null.
+   *
+   * @param column a column reference created by FilterApi
+   * @param value a value that matches the column's type
+   * @param <T> the Java type of values in the column
+   * @param <C> the column type that corresponds to values of type T
+   * @return a greater-than-or-equal predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> GtEq<T> gtEq(C column, T value) {
     return new GtEq<T>(column, value);
@@ -166,9 +206,15 @@ public final class FilterApi {
 
   /**
    * Keeps records that pass the provided {@link UserDefinedPredicate}
-   *
+   * <p>
    * The provided class must have a default constructor. To use an instance
-   * of a UserDefinedPredicate instead, see {@link #userDefined(column, udp)} below.
+   * of a UserDefinedPredicate instead, see userDefined below.
+   *
+   * @param column a column reference created by FilterApi
+   * @param clazz a user-defined predicate class
+   * @param <T> the Java type of values in the column
+   * @param <U> a user-defined predicate for values of type T
+   * @return a user-defined predicate for the given column
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T>>
     UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz) {
@@ -177,8 +223,14 @@ public final class FilterApi {
   
   /**
    * Keeps records that pass the provided {@link UserDefinedPredicate}
-   *
+   * <p>
    * The provided instance of UserDefinedPredicate must be serializable.
+   *
+   * @param column a column reference created by FilterApi
+   * @param udp a user-defined predicate instance
+   * @param <T> the Java type of values in the column
+   * @param <U> a user-defined predicate for values of type T
+   * @return a user-defined predicate for the given column
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable>
     UserDefined<T, U> userDefined(Column<T> column, U udp) {
@@ -188,6 +240,10 @@ public final class FilterApi {
   /**
    * Constructs the logical and of two predicates. Records will be kept if both the left and right predicate agree
    * that the record should be kept.
+   *
+   * @param left a predicate
+   * @param right a predicate
+   * @return an and predicate from the result of the left and right predicates
    */
   public static FilterPredicate and(FilterPredicate left, FilterPredicate right) {
     return new And(left, right);
@@ -196,6 +252,10 @@ public final class FilterApi {
   /**
    * Constructs the logical or of two predicates. Records will be kept if either the left or right predicate
    * is satisfied (or both).
+   *
+   * @param left a predicate
+   * @param right a predicate
+   * @return an or predicate from the result of the left and right predicates
    */
   public static FilterPredicate or(FilterPredicate left, FilterPredicate right) {
     return new Or(left, right);
@@ -204,6 +264,9 @@ public final class FilterApi {
   /**
    * Constructs the logical not (or inverse) of a predicate.
    * Records will be kept if the provided predicate is not satisfied.
+   *
+   * @param predicate a predicate
+   * @return a not predicate wrapping the result of the given predicate
    */
   public static FilterPredicate not(FilterPredicate predicate) {
     return new Not(predicate);

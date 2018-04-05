@@ -21,8 +21,6 @@ package org.apache.parquet.filter;
 
 /**
  * Filter to be applied to a record to work out whether to skip it.
- *
- * @author Jacob Metcalf
  */
 public interface RecordFilter {
 

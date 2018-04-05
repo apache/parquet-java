@@ -20,9 +20,6 @@ package org.apache.parquet.column.page;
 
 /**
  * one data page in a chunk
- *
- * @author Julien Le Dem
- *
  */
 abstract public class DataPage extends Page {
 

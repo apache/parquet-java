@@ -30,10 +30,6 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * Primitive level of the IO structure
- *
- *
- * @author Julien Le Dem
- *
  */
 public class PrimitiveColumnIO extends ColumnIO {
 //  private static final Logger logger = Logger.getLogger(PrimitiveColumnIO.class.getName());

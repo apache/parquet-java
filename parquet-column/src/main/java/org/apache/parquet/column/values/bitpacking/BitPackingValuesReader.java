@@ -33,9 +33,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * a column reader that packs the ints in the number of bits required based on the maximum size.
- *
- * @author Julien Le Dem
- *
  */
 public class BitPackingValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(BitPackingValuesReader.class);

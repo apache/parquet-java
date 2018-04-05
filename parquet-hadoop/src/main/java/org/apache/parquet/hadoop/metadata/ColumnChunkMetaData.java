@@ -30,7 +30,6 @@ import org.apache.parquet.schema.Types;
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
- * @author Julien Le Dem
  */
 abstract public class ColumnChunkMetaData {
 

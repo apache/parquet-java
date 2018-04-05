@@ -30,9 +30,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * utility methods to deal with bytes
- *
- * @author Julien Le Dem
- *
  */
 public class BytesUtils {
   private static final Logger LOG = LoggerFactory.getLogger(BytesUtils.class);

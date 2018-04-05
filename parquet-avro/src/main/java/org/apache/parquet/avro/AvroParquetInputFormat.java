@@ -26,6 +26,8 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
+ *
+ * @param <T> the Java type of objects produced by this InputFormat
  */
 public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
   public AvroParquetInputFormat() {
@@ -45,8 +47,8 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * in the projection then it must either not be included or be optional in the read
    * schema. Use {@link #setAvroReadSchema(org.apache.hadoop.mapreduce.Job,
    * org.apache.avro.Schema)} to set a read schema, if needed.
-   * @param job
-   * @param requestedProjection
+   * @param job a job
+   * @param requestedProjection the requested projection schema
    * @see #setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
@@ -61,8 +63,8 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * <p>
    * Differences between the read and write schemas are resolved using
    * <a href="http://avro.apache.org/docs/current/spec.html#Schema+Resolution">Avro's schema resolution rules</a>.
-   * @param job
-   * @param avroReadSchema
+   * @param job a job
+   * @param avroReadSchema the requested schema
    * @see #setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
@@ -74,8 +76,8 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * Uses an instance of the specified {@link AvroDataSupplier} class to control how the
    * {@link org.apache.avro.specific.SpecificData} instance that is used to find
    * Avro specific records is created.
-   * @param job
-   * @param supplierClass
+   * @param job a job
+   * @param supplierClass an avro data supplier class
    */
   public static void setAvroDataSupplier(Job job,
       Class<? extends AvroDataSupplier> supplierClass) {

@@ -39,6 +39,8 @@ public class RecordException extends RuntimeException {
    *          thrown
    * @param message
    *          A String message for the exception.
+   * @param args
+   *          Args to fill into the message using String.format
    */
   public static void check(boolean isValid, String message, Object... args) {
     if (!isValid) {

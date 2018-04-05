@@ -26,9 +26,6 @@ import org.apache.parquet.bytes.DirectByteBufferAllocator;
 
 import static org.junit.Assert.assertEquals;
 
-/**
- * @author Alex Levenson
- */
 public class RunLengthBitPackingHybridIntegrationTest {
 
   @Test

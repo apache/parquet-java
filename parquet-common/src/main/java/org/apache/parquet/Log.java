@@ -30,9 +30,6 @@ import java.util.logging.Level;
  * <code>
  *   if (DEBUG) LOG.debug("removed by the compiler if DEBUG is a false constant")
  * </code>
- *
- * @author Julien Le Dem
- *
  */
 public class Log {
 

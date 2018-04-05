@@ -24,9 +24,6 @@ import java.io.InputStream;
 
 /**
  * Based on DataInputStream but little endian and without the String/char methods
- *
- * @author Julien Le Dem
- *
  */
 public final class LittleEndianDataInputStream extends InputStream {
 

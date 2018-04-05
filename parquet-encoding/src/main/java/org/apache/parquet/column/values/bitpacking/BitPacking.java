@@ -29,18 +29,12 @@ import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 // TODO: rework the whole thing. It does not need to use streams at all
 /**
  * provides the correct implementation of a bitpacking based on the width in bits
- *
- * @author Julien Le Dem
- *
  */
 public class BitPacking {
 
   /**
    * to writes ints to a stream packed to only the needed bits.
    * there is no guarantee of corecteness if ints larger than the max size are written
-   *
-   * @author Julien Le Dem
-   *
    */
   abstract public static class BitPackingWriter {
     /**
@@ -59,9 +53,6 @@ public class BitPacking {
 
   /**
    * to read back what has been written with the corresponding  writer
-   *
-   * @author Julien Le Dem
-   *
    */
   abstract public static class BitPackingReader {
 

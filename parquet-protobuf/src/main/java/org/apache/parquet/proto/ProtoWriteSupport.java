@@ -45,7 +45,6 @@ import java.util.Map;
 
 /**
  * Implementation of {@link WriteSupport} for writing Protocol Buffers.
- * @author Lukas Nalezenec
  */
 public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<T> {
 

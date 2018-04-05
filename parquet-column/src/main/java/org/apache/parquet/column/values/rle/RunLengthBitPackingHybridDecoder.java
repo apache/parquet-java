@@ -33,8 +33,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Decodes values written in the grammar described in {@link RunLengthBitPackingHybridEncoder}
- *
- * @author Julien Le Dem
  */
 public class RunLengthBitPackingHybridDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(RunLengthBitPackingHybridDecoder.class);

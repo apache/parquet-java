@@ -55,9 +55,7 @@ import org.slf4j.LoggerFactory;
  *       portion of the above grammar. The {@code <length>} portion is done by
  *       {@link RunLengthBitPackingHybridValuesWriter}
  * <p>
- * Only supports values >= 0 // TODO: is that ok? Should we make a signed version?
- *
- * @author Alex Levenson
+ * Only supports positive values (including 0) // TODO: is that ok? Should we make a signed version?
  */
 public class RunLengthBitPackingHybridEncoder {
   private static final Logger LOG = LoggerFactory.getLogger(RunLengthBitPackingHybridEncoder.class);

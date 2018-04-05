@@ -32,10 +32,15 @@ import org.apache.parquet.io.InputFile;
 
 /**
  * Read Avro records from a Parquet file.
+ *
+ * @param <T> the Java type of records created by this reader
  */
 public class AvroParquetReader<T> extends ParquetReader<T> {
 
   /**
+   * @param file a file path
+   * @param <T> the Java type of records to read from the file
+   * @return an Avro reader builder
    * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
    */
   @Deprecated
@@ -48,7 +53,9 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
   }
 
   /**
-   * @deprecated use {@link #builder(Path)}
+   * @param file a file path
+   * @throws IOException if there is an error while reading
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
    */
   @Deprecated
   public AvroParquetReader(Path file) throws IOException {
@@ -56,7 +63,10 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
   }
 
   /**
-   * @deprecated use {@link #builder(Path)}
+   * @param file a file path
+   * @param unboundRecordFilter an unbound record filter (from the old filter API)
+   * @throws IOException if there is an error while reading
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
    */
   @Deprecated
   public AvroParquetReader(Path file, UnboundRecordFilter unboundRecordFilter) throws IOException {
@@ -64,7 +74,10 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
   }
 
   /**
-   * @deprecated use {@link #builder(Path)}
+   * @param conf a configuration
+   * @param file a file path
+   * @throws IOException if there is an error while reading
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
    */
   @Deprecated
   public AvroParquetReader(Configuration conf, Path file) throws IOException {
@@ -72,7 +85,11 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
   }
 
   /**
-   * @deprecated use {@link #builder(Path)}
+   * @param conf a configuration
+   * @param file a file path
+   * @param unboundRecordFilter an unbound record filter (from the old filter API)
+   * @throws IOException if there is an error while reading
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
    */
   @Deprecated
   public AvroParquetReader(Configuration conf, Path file, UnboundRecordFilter unboundRecordFilter) throws IOException {

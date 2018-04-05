@@ -49,15 +49,11 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- *
  * Converts a Pig Schema into a Parquet schema
  *
  * Bags are converted into an optional group containing one repeated group field to preserve distinction between empty bag and null.
  * Map are converted into an optional group containing one repeated group field of (key, value).
  * anonymous fields are named field_{index}. (in most cases pig already gives them an alias val_{int}, so this rarely happens)
- *
- * @author Julien Le Dem
- *
  */
 public class PigSchemaConverter {
   private static final Logger LOG = LoggerFactory.getLogger(PigSchemaConverter.class);

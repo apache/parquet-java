@@ -102,6 +102,10 @@ public class Expressions {
    * * fields should match by name
    * * arrays are dereferenced by position [n] =&gt; schema is the element schema
    * * maps are dereferenced by key =&gt; schema is the value schema
+   *
+   * @param schema an Avro schema
+   * @param fieldPaths selected field paths
+   * @return a filtered schema
    */
   public static Schema filterSchema(Schema schema, String... fieldPaths) {
     return filterSchema(schema, Lists.newArrayList(fieldPaths));

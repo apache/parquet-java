@@ -77,7 +77,7 @@ public abstract class BaseCommand implements Command, Configurable {
 
   /**
    * @return FileSystem to use when no file system scheme is present in a path
-   * @throws IOException
+   * @throws IOException if there is an error loading the default fs
    */
   public FileSystem defaultFS() throws IOException {
     if (localFS == null) {
@@ -94,7 +94,7 @@ public abstract class BaseCommand implements Command, Configurable {
    * @param content String content to write
    * @param console A {@link Logger} for writing to the console
    * @param filename The destination {@link Path} as a String
-   * @throws IOException
+   * @throws IOException if there is an error while writing
    */
   public void output(String content, Logger console, String filename)
       throws IOException {
@@ -120,7 +120,7 @@ public abstract class BaseCommand implements Command, Configurable {
    *
    * @param filename The filename to create
    * @return An open FSDataOutputStream
-   * @throws IOException
+   * @throws IOException if there is an error creating the file
    */
   public FSDataOutputStream create(String filename) throws IOException {
     return create(filename, true);
@@ -136,7 +136,7 @@ public abstract class BaseCommand implements Command, Configurable {
    *
    * @param filename The filename to create
    * @return An open FSDataOutputStream
-   * @throws IOException
+   * @throws IOException if there is an error creating the file
    */
   public FSDataOutputStream createWithChecksum(String filename)
       throws IOException {
@@ -161,7 +161,7 @@ public abstract class BaseCommand implements Command, Configurable {
    *
    * @param filename The filename to qualify
    * @return A qualified Path for the filename
-   * @throws IOException
+   * @throws IOException if there is an error creating a qualified path
    */
   public Path qualifiedPath(String filename) throws IOException {
     Path cwd = defaultFS().makeQualified(new Path("."));
@@ -176,7 +176,7 @@ public abstract class BaseCommand implements Command, Configurable {
    *
    * @param filename The filename to qualify
    * @return A qualified URI for the filename
-   * @throws IOException
+   * @throws IOException if there is an error creating a qualified URI
    */
   public URI qualifiedURI(String filename) throws IOException {
     URI fileURI = URI.create(filename);
@@ -194,7 +194,7 @@ public abstract class BaseCommand implements Command, Configurable {
    *
    * @param filename The filename to open.
    * @return An open InputStream with the file contents
-   * @throws IOException
+   * @throws IOException if there is an error opening the file
    * @throws IllegalArgumentException If the file does not exist
    */
   public InputStream open(String filename) throws IOException {
@@ -236,7 +236,8 @@ public abstract class BaseCommand implements Command, Configurable {
    *
    * @param jars A list of jar paths
    * @param paths A list of directories containing .class files
-   * @throws MalformedURLException
+   * @return a classloader for the jars and paths
+   * @throws MalformedURLException if  a jar or path is invalid
    */
   protected static ClassLoader loaderFor(List<String> jars, List<String> paths)
       throws MalformedURLException {
@@ -247,7 +248,8 @@ public abstract class BaseCommand implements Command, Configurable {
    * Returns a {@link ClassLoader} for a set of jars.
    *
    * @param jars A list of jar paths
-   * @throws MalformedURLException
+   * @return a classloader for the jars
+   * @throws MalformedURLException if a URL is invalid
    */
   protected static ClassLoader loaderForJars(List<String> jars)
       throws MalformedURLException {
@@ -258,7 +260,8 @@ public abstract class BaseCommand implements Command, Configurable {
    * Returns a {@link ClassLoader} for a set of directories.
    *
    * @param paths A list of directories containing .class files
-   * @throws MalformedURLException
+   * @return a classloader for the paths
+   * @throws MalformedURLException if a path is invalid
    */
   protected static ClassLoader loaderForPaths(List<String> paths)
       throws MalformedURLException {

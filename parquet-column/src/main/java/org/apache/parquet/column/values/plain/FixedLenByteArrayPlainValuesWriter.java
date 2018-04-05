@@ -33,8 +33,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * ValuesWriter for FIXED_LEN_BYTE_ARRAY.
- *
- * @author David Z. Chen <dchen@linkedin.com>
  */
 public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);

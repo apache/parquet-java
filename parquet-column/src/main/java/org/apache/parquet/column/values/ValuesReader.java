@@ -31,8 +31,6 @@ import org.apache.parquet.io.api.Binary;
  *
  * Given that pages are homogeneous (store only a single type), typical subclasses
  * will only override one of the read*() methods.
- *
- * @author Julien Le Dem
  */
 public abstract class ValuesReader {
 

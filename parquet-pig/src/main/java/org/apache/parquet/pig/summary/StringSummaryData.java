@@ -31,9 +31,6 @@ import org.apache.parquet.pig.summary.EnumStat.EnumValueCount;
 
 /**
  * Summary data for a String
- *
- * @author Julien Le Dem
- *
  */
 @JsonWriteNullProperties(value = false)
 public class StringSummaryData extends SummaryData {

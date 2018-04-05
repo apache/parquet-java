@@ -29,7 +29,7 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
- * Contains all valid mappings from class -> parquet type (and vice versa) for use in
+ * Contains all valid mappings from class -&gt; parquet type (and vice versa) for use in
  * {@link FilterPredicate}s
  *
  * This is a bit ugly, but it allows us to provide good error messages at runtime
@@ -82,6 +82,7 @@ public class ValidTypeMap {
    *
    * @param foundColumn the column as declared by the user
    * @param primitiveType the primitive type according to the schema
+   * @param <T> the java Type of values in the column, must be Comparable
    */
   public static <T extends Comparable<T>> void assertTypeValid(Column<T> foundColumn, PrimitiveTypeName primitiveType) {
     Class<T> foundColumnType = foundColumn.getColumnType();

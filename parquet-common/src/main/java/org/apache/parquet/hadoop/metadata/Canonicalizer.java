@@ -24,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * returns canonical representation of objects (similar to String.intern()) to save memory
  * if a.equals(b) then canonicalize(a) == canonicalize(b)
  * this class is thread safe
- * @author Julien Le Dem
  *
  * @param <T> the type of values canonicalized by subclasses
  */

@@ -22,8 +22,6 @@ import org.apache.parquet.ParquetRuntimeException;
 
 /**
  * Thrown if the specified column is unknown in the underlying storage
- *
- * @author Julien Le Dem
  */
 public class UnknownColumnException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;

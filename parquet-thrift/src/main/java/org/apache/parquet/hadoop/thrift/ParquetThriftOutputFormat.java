@@ -24,9 +24,6 @@ import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.util.ContextUtil;
 
 /**
- *
- * @author Julien Le Dem
- *
  * @param <T> the thrift class use for serialization
  */
 public class ParquetThriftOutputFormat<T extends TBase<?,?>> extends ParquetOutputFormat<T> {

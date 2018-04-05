@@ -80,12 +80,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
  * A Pig Loader for the Parquet file format.
- *
- *
- * @author Julien Le Dem
- *
  */
 public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown, LoadPredicatePushdown {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetLoader.class);
@@ -148,7 +143,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
    * The same as the string based constructor but for programmatic use.
    *
    * @param requestedSchema a subset of the original pig schema in the file
-   * @param columnIndexAccess
+   * @param columnIndexAccess use column index positions as opposed to name (default: false)
    */
   public ParquetLoader(Schema requestedSchema, boolean columnIndexAccess) {
     this.requestedSchema = requestedSchema;

@@ -211,9 +211,9 @@ public class SchemaConverter {
       }
 
       /**
-       * @see https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#decimal
-       * @param type
-       * @return
+       * See https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#decimal
+       * @param type an arrow decimal type
+       * @return a mapping from the arrow decimal to the Parquet type
        */
       @Override
       public TypeMapping visit(Decimal type) {
@@ -245,7 +245,7 @@ public class SchemaConverter {
       }
 
       /**
-       * @see https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#interval
+       * See https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#interval
        */
       @Override
       public TypeMapping visit(Interval type) {
@@ -311,7 +311,7 @@ public class SchemaConverter {
    * @param type parquet type
    * @param name overrides parquet.getName)
    * @param repetition overrides parquet.getRepetition()
-   * @return
+   * @return a type mapping from the Parquet type to an Arrow type
    */
   private TypeMapping fromParquet(Type type, String name, Repetition repetition) {
     if (repetition == REPEATED) {
@@ -511,8 +511,8 @@ public class SchemaConverter {
   /**
    * Maps a Parquet and Arrow Schema
    * For now does not validate primitive type compatibility
-   * @param arrowSchema
-   * @param parquetSchema
+   * @param arrowSchema an Arrow schema
+   * @param parquetSchema a Parquet message type
    * @return the mapping between the 2
    */
   public SchemaMapping map(Schema arrowSchema, MessageType parquetSchema) {

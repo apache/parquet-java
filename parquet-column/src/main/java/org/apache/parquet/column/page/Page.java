@@ -20,9 +20,6 @@ package org.apache.parquet.column.page;
 
 /**
  * one page in a chunk
- *
- * @author Julien Le Dem
- *
  */
 abstract public class Page {
 

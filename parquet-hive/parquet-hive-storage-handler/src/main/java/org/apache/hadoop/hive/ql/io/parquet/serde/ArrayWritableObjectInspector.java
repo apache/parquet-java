@@ -36,10 +36,9 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.ArrayWritable;
 
 /**
- *
- * The ArrayWritableObjectInspector will inspect an ArrayWritable, considering it as a Hive struct.<br />
+ * The ArrayWritableObjectInspector will inspect an ArrayWritable, considering it as a Hive struct.
+ * <p>
  * It can also inspect a List if Hive decides to inspect the result of an inspection.
- *
  */
 public class ArrayWritableObjectInspector extends SettableStructObjectInspector {
 

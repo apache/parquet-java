@@ -33,11 +33,7 @@ import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 
 
 /**
- *
  * Representation of a Primitive type
- *
- * @author Julien Le Dem
- *
  */
 public final class PrimitiveType extends Type {
 
@@ -63,8 +59,6 @@ public final class PrimitiveType extends Type {
 
   /**
    * Supported Primitive types
-   *
-   * @author Julien Le Dem
    */
   public static enum PrimitiveTypeName {
     INT64("getLong", Long.TYPE) {

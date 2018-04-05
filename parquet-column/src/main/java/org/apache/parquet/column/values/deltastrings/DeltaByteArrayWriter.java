@@ -34,8 +34,6 @@ import org.apache.parquet.io.api.Binary;
  *   delta-length-byte-array : prefix-length* suffixes*
  *   }
  * </pre>
- * @author Aniket Mokashi
- *
  */
 public class DeltaByteArrayWriter extends ValuesWriter{
 

@@ -31,9 +31,6 @@ import org.apache.parquet.io.api.Binary;
 
 /**
  * Reads binary data written by {@link DeltaByteArrayWriter}
- * 
- * @author Aniket Mokashi
- *
  */
 public class DeltaByteArrayReader extends ValuesReader implements RequiresPreviousReader {
   private ValuesReader prefixLengthReader;

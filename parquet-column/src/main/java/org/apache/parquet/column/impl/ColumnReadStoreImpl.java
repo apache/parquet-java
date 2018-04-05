@@ -37,9 +37,6 @@ import org.apache.parquet.schema.Type;
  * Implementation of the ColumnReadStore
  *
  * Initializes individual columns based on schema and converter
- *
- * @author Julien Le Dem
- *
  */
 public class ColumnReadStoreImpl implements ColumnReadStore {
 
@@ -52,6 +49,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
    * @param pageReadStore underlying page storage
    * @param recordConverter the user provided converter to materialize records
    * @param schema the schema we are reading
+   * @param createdBy writer version string from the Parquet file being read
    */
   public ColumnReadStoreImpl(PageReadStore pageReadStore,
                              GroupConverter recordConverter,

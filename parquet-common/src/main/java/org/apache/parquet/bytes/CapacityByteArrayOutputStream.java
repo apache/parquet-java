@@ -51,9 +51,6 @@ import org.slf4j.LoggerFactory;
  * When reusing this stream it will adjust the initial slab size based on the previous data size, aiming for fewer
  * allocations, with the assumption that a similar amount of data will be written to this stream on re-use.
  * See ({@link CapacityByteArrayOutputStream#reset()}).
- *
- * @author Julien Le Dem
- *
  */
 public class CapacityByteArrayOutputStream extends OutputStream {
   private static final Logger LOG = LoggerFactory.getLogger(CapacityByteArrayOutputStream.class);

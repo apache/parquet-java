@@ -20,11 +20,6 @@ package org.apache.parquet.column.values;
 
 import java.util.Random;
 
-/**
- * 
- * @author Aniket Mokashi
- *
- */
 public class RandomStr {
   private final char[] alphanumeric=alphanumeric();
   private final Random rand;

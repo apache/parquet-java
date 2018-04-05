@@ -48,9 +48,6 @@ import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
 /**
  * Descriptor for a Thrift class.
  * Used to persist the thrift schema
- *
- * @author Julien Le Dem
- *
  */
 @JsonTypeInfo(use = Id.NAME, include = As.PROPERTY, property = "id")
 @JsonSubTypes({

@@ -23,8 +23,6 @@ import org.apache.parquet.column.ColumnReader;
 
 /**
  * Provides ability to negate the result of a filter.
- *
- * @author Frank Austin Nothaft
  */
 public final class NotRecordFilter implements RecordFilter {
 

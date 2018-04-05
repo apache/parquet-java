@@ -31,7 +31,7 @@ import org.apache.parquet.schema.Type;
 /**
  * Statistics class to keep track of statistics in parquet pages and column chunks
  *
- * @author Katya Gonina
+ * @param <T> the Java type described by this Statistics instance
  */
 public abstract class Statistics<T extends Comparable<T>> {
 
@@ -346,23 +346,29 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Returns the min value in the statistics. The java natural order of the returned type defined by {@link
-   * T#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
+   * Comparable#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
    * natural signed one. Use {@link #compareMinToValue(Comparable)} or the comparator returned by {@link #comparator()} to
    * always get the proper ordering.
+   *
+   * @return the min value
    */
   abstract public T genericGetMin();
 
   /**
    * Returns the max value in the statistics. The java natural order of the returned type defined by {@link
-   * T#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
+   * Comparable#compareTo(Object)} might not be the proper one. For example, UINT_32 requires unsigned comparison instead of the
    * natural signed one. Use {@link #compareMaxToValue(Comparable)} or the comparator returned by {@link #comparator()} to
    * always get the proper ordering.
+   *
+   * @return the max value
    */
   abstract public T genericGetMax();
 
   /**
    * Returns the {@link PrimitiveComparator} implementation to be used to compare two generic values in the proper way
    * (for example, unsigned comparison for UINT_32).
+   *
+   * @return the comparator for data described by this Statistics instance
    */
   public final PrimitiveComparator<T> comparator() {
     return comparator;
@@ -410,6 +416,8 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Returns the string representation of min for debugging/logging purposes.
+   *
+   * @return the min value as a string
    */
   public String minAsString() {
     return stringify(genericGetMin());
@@ -417,6 +425,8 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Returns the string representation of max for debugging/logging purposes.
+   *
+   * @return the max value as a string
    */
   public String maxAsString() {
     return stringify(genericGetMax());
@@ -492,6 +502,8 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Returns whether there have been non-null values added to this statistics
+   *
+   * @return true if the values contained at least one non-null value
    */
   public boolean hasNonNullValue() {
     return hasNonNullValue;

@@ -33,9 +33,6 @@ import org.codehaus.jackson.map.SerializationConfig.Feature;
 /**
  * Meta Data block stored in the footer of the file
  * contains file level (Codec, Schema, ...) and block level (location, columns, record count, ...) meta data
- *
- * @author Julien Le Dem
- *
  */
 public class ParquetMetadata {
 

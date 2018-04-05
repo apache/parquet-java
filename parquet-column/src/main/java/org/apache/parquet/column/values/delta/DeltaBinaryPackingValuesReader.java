@@ -31,8 +31,6 @@ import java.nio.ByteBuffer;
 
 /**
  * Read values written by {@link DeltaBinaryPackingValuesWriter}
- *
- * @author Tianshuo Deng
  */
 public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private int totalValueCount;

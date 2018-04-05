@@ -37,9 +37,6 @@ import org.apache.parquet.schema.MessageType;
 
 /**
  * This class represents all the configurable Parquet properties.
- *
- * @author amokashi
- *
  */
 public class ParquetProperties {
 

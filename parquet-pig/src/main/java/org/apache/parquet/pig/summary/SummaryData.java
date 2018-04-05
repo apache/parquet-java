@@ -34,9 +34,6 @@ import org.codehaus.jackson.map.SerializationConfig.Feature;
 
 /**
  * Base class for a node of the data summary tree
- *
- * @author Julien Le Dem
- *
  */
 @JsonWriteNullProperties(value = false)
 public abstract class SummaryData {
@@ -71,13 +68,6 @@ public abstract class SummaryData {
     return stringWriter.toString();
   }
 
-  /**
-   * parses JSON into the given class
-   *
-   * @param json
-   * @param clazz
-   * @return
-   */
   public static <T extends SummaryData> T fromJSON(String json, Class<T> clazz) {
     try {
       return objectMapper.readValue(new StringReader(json), clazz);
@@ -90,12 +80,6 @@ public abstract class SummaryData {
     }
   }
 
-  /**
-   * merges s2 into s1
-   * @param s1
-   * @param s2
-   * @return
-   */
   public static <T extends SummaryData> T merge(T s1, T s2) {
     if (s1 == null) {
       return s2;

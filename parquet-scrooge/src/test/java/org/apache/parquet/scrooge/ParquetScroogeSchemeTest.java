@@ -68,8 +68,6 @@ import static org.junit.Assert.assertEquals;
 
 /**
  * Write data in thrift, read in scrooge
- *
- * @author Tianshuo Deng
  */
 public class ParquetScroogeSchemeTest {
 

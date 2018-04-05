@@ -24,8 +24,6 @@ import org.apache.parquet.column.ColumnReader;
  * Builder for a record filter. Idea is that each filter provides a create function
  * which returns an unbound filter. This only becomes a filter when it is bound to the actual
  * columns.
- *
- * @author Jacob Metcalf
  */
 public interface UnboundRecordFilter {
 

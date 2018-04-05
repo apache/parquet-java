@@ -28,7 +28,6 @@ import org.apache.parquet.hadoop.util.counters.ICounter;
 /**
  * Concrete factory for counters in mapred API,
  * get a counter using mapreduce API when the corresponding flag is set, otherwise return a NullCounter
- * @author Tianshuo Deng
  */
 public class MapReduceCounterLoader implements CounterLoader {
   private TaskAttemptContext context;

@@ -26,19 +26,14 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.OutputFormat} for Protocol Buffer Parquet files.
- * <p/>
+ * <p>
  * Usage:
- * <p/>
  * <pre>
- * {@code
  * final Job job = new Job(conf, "Parquet writing job");
  * job.setOutputFormatClass(ProtoParquetOutputFormat.class);
  * ProtoParquetOutputFormat.setOutputPath(job, parquetPath);
  * ProtoParquetOutputFormat.setProtobufClass(job, YourProtocolbuffer.class);
- * }
  * </pre>
- *
- * @author Lukas Nalezenec
  */
 public class ProtoParquetOutputFormat<T extends MessageOrBuilder> extends ParquetOutputFormat<T> {
 

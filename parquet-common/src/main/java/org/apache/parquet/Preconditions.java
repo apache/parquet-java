@@ -20,9 +20,6 @@ package org.apache.parquet;
 
 /**
  * Utility for parameter validation
- *
- * @author Julien Le Dem
- *
  */
 public final class Preconditions {
   private Preconditions() { }

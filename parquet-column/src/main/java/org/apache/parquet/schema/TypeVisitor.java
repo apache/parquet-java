@@ -22,9 +22,6 @@ package org.apache.parquet.schema;
  * Implement this interface to visit a schema
  *
  * type.accept(new TypeVisitor() { ... });
- *
- * @author Julien Le Dem
- *
  */
 public interface TypeVisitor {
 

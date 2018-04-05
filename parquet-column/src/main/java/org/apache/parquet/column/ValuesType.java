@@ -20,9 +20,6 @@ package org.apache.parquet.column;
 
 /**
  * The different type of values we can store in columns
- *
- * @author Julien Le Dem
- *
  */
 public enum ValuesType {
   REPETITION_LEVEL, DEFINITION_LEVEL, VALUES;

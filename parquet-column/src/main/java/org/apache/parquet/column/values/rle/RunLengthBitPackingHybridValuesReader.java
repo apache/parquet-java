@@ -28,8 +28,6 @@ import org.apache.parquet.io.ParquetDecodingException;
 /**
  * This ValuesReader does all the reading in {@link #initFromPage}
  * and stores the values in an in memory buffer, which is less than ideal.
- *
- * @author Alex Levenson
  */
 public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   private final int bitWidth;

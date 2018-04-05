@@ -26,6 +26,7 @@
  * </p>
  *
  * <table>
+ *   <caption>Avro to Parquet type mapping</caption>
  *   <tr>
  *     <th>Avro type</th>
  *     <th>Parquet type</th>
@@ -96,6 +97,8 @@
  * or a default Avro schema will be derived using the following mapping.
  * </p>
  *
+ * <table>
+ *   <caption>Parquet to Avro type mapping</caption>
  *   <tr>
  *     <th>Parquet type</th>
  *     <th>Avro type</th>

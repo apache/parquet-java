@@ -24,9 +24,6 @@ import org.apache.parquet.column.ColumnDescriptor;
  * contains all the readers for all the columns of the corresponding row group
  *
  * TODO: rename to RowGroup?
- * 
- * @author Julien Le Dem
- *
  */
 public interface PageReadStore {
 

@@ -26,7 +26,7 @@ public interface Command {
    * Runs this {@code Command}.
    *
    * @return a return code for the process, 0 indicates success.
-   * @throws IOException
+   * @throws IOException if there is an error while running the command
    */
   int run() throws IOException;
 

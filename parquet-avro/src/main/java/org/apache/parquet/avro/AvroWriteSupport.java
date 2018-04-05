@@ -80,7 +80,9 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   }
 
   /**
-   * @deprecated use {@link AvroWriteSupport(MessageType, Schema, Configuration)}
+   * @param schema the write parquet schema
+   * @param avroSchema the write avro schema
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public AvroWriteSupport(MessageType schema, Schema avroSchema) {
@@ -104,6 +106,8 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   }
 
   /**
+   * @param configuration a configuration
+   * @param schema the write schema
    * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setSchema(Configuration configuration, Schema schema) {

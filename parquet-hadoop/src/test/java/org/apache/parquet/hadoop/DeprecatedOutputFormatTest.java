@@ -39,7 +39,6 @@ import java.io.IOException;
 /**
  * DeprecatedParquetInputFormat is used by cascading. It initializes the recordReader using an initialize method with
  * different parameters than ParquetInputFormat
- * @author Tianshuo Deng
  */
 public class DeprecatedOutputFormatTest {
   final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");

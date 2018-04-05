@@ -21,7 +21,6 @@ package org.apache.parquet.io;
 
 /**
  * used to read reassembled records
- * @author Julien Le Dem
  *
  * @param <T> the type of the materialized record
  */

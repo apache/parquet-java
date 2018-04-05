@@ -27,8 +27,6 @@ import org.apache.parquet.io.ParquetDecodingException;
  * Each record will be wrapped by {@link GroupConverter#start()} and {@link GroupConverter#end()},
  * between which the appropriate fields will be materialized.
  *
- * @author Julien Le Dem
- *
  * @param <T> the materialized object class
  */
 abstract public class RecordMaterializer<T> {

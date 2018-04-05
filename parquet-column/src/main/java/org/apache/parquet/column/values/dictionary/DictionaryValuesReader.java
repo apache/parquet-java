@@ -34,9 +34,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Reads values that have been dictionary encoded
- *
- * @author Julien Le Dem
- *
  */
 public class DictionaryValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(DictionaryValuesReader.class);

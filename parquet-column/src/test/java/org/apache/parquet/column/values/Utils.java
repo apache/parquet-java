@@ -27,9 +27,6 @@ import org.apache.parquet.io.api.Binary;
 
 /**
  * Test Utility class
- * 
- * @author Aniket Mokashi
- *
  */
 public class Utils {
   private static Random randomLen = new Random();

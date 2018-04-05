@@ -31,9 +31,6 @@ import org.apache.parquet.schema.PrimitiveType;
 
 /**
  * Examples from the Dremel Paper
- *
- * @author Julien Le Dem
- *
  */
 public class Paper {
   public static final MessageType schema =

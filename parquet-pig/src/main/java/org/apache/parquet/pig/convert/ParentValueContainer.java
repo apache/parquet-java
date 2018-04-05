@@ -20,9 +20,6 @@ package org.apache.parquet.pig.convert;
 
 /**
  * for converters to add their current value to their parent
- *
- * @author Julien Le Dem
- *
  */
 abstract public class ParentValueContainer {
 

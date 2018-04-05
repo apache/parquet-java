@@ -22,9 +22,6 @@ import org.apache.parquet.column.Dictionary;
 
 /**
  * converter for leaves of the schema
- *
- * @author Julien Le Dem
- *
  */
 abstract public class PrimitiveConverter extends Converter {
 
@@ -55,7 +52,7 @@ abstract public class PrimitiveConverter extends Converter {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** runtime calls  **/
+  /* runtime calls  */
 
   /**
    * add a value based on the dictionary set with setDictionary()

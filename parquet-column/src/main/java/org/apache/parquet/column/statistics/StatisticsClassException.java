@@ -22,8 +22,6 @@ import org.apache.parquet.ParquetRuntimeException;
 
 /**
  * Thrown if the two Statistics objects have mismatching types
- *
- * @author  Katya Gonina
  */
 public class StatisticsClassException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;

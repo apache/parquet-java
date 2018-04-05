@@ -54,9 +54,6 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * Message level of the IO structure
- *
- *
- * @author Julien Le Dem
  */
 public class MessageColumnIO extends GroupColumnIO {
   private static final Logger LOG = LoggerFactory.getLogger(MessageColumnIO.class);

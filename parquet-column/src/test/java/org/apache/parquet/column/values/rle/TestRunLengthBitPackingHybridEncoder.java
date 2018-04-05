@@ -32,9 +32,6 @@ import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 
-/**
- * @author Alex Levenson
- */
 public class TestRunLengthBitPackingHybridEncoder {
 
   private RunLengthBitPackingHybridEncoder getRunLengthBitPackingHybridEncoder() {

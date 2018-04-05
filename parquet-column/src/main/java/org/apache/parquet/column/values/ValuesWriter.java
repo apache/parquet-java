@@ -25,9 +25,6 @@ import org.apache.parquet.io.api.Binary;
 
 /**
  * base class to implement an encoding for a given column
- *
- * @author Julien Le Dem
- *
  */
 public abstract class ValuesWriter {
 

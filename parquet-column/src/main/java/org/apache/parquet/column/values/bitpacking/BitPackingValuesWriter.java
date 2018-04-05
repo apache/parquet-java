@@ -34,9 +34,6 @@ import org.apache.parquet.io.ParquetEncodingException;
 
 /**
  * a column writer that packs the ints in the number of bits required based on the maximum size.
- *
- * @author Julien Le Dem
- *
  */
 public class BitPackingValuesWriter extends ValuesWriter {
 

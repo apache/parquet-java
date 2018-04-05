@@ -22,9 +22,6 @@ import org.apache.parquet.ParquetRuntimeException;
 
 /**
  * thrown when a problem occured while compiling the column reader
- *
- * @author Julien Le Dem
- *
  */
 public class CompilationException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;

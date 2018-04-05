@@ -22,9 +22,6 @@ import org.apache.parquet.column.ColumnDescriptor;
 
 /**
  * contains all the writers for the columns in the corresponding row group
- *
- * @author Julien Le Dem
- *
  */
 public interface PageWriteStore {
 

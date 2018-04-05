@@ -44,7 +44,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
   /**
    * @param dictionaryPage the PLAIN encoded content of the dictionary
-   * @throws IOException
+   * @throws IOException if there is an exception while decoding the dictionary page
    */
   protected PlainValuesDictionary(DictionaryPage dictionaryPage) throws IOException {
     super(dictionaryPage.getEncoding());
@@ -68,7 +68,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
      * length.
      *
      * @param dictionaryPage a {@code DictionaryPage} of encoded binary values
-     * @throws IOException
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainBinaryDictionary(DictionaryPage dictionaryPage) throws IOException {
       this(dictionaryPage, null);
@@ -84,7 +84,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
      *
      * @param dictionaryPage a {@code DictionaryPage} of encoded binary values
      * @param length a fixed length of binary arrays, or null if not fixed
-     * @throws IOException
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainBinaryDictionary(DictionaryPage dictionaryPage, Integer length) throws IOException {
       super(dictionaryPage);
@@ -146,8 +146,8 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private long[] longDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
-     * @throws IOException
+     * @param dictionaryPage a dictionary page of encoded long values
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainLongDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
@@ -189,8 +189,8 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private double[] doubleDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
-     * @throws IOException
+     * @param dictionaryPage a dictionary page of encoded double values
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainDoubleDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
@@ -232,8 +232,8 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private int[] intDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
-     * @throws IOException
+     * @param dictionaryPage a dictionary page of encoded integer values
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainIntegerDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
@@ -275,8 +275,8 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private float[] floatDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
-     * @throws IOException
+     * @param dictionaryPage a dictionary page of encoded float values
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainFloatDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);

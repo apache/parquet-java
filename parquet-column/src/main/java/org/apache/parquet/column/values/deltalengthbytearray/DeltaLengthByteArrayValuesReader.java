@@ -32,9 +32,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Reads binary data written by {@link DeltaLengthByteArrayValuesWriter}
- *
- * @author Aniket Mokashi
- *
  */
 public class DeltaLengthByteArrayValuesReader extends ValuesReader {
 

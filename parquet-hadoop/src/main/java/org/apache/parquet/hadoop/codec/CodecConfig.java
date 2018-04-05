@@ -34,8 +34,6 @@ import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESS
  * Template class and factory for accessing codec related configurations in different APIs(mapreduce or mapred),
  * use {@link #from(org.apache.hadoop.mapred.JobConf)} for mapred API,
  * use {@link #from(org.apache.hadoop.mapreduce.TaskAttemptContext)} for mapreduce API
- *
- * @author Tianshuo Deng
  */
 public abstract class CodecConfig {
   private static final Logger LOG = LoggerFactory.getLogger(CodecConfig.class);

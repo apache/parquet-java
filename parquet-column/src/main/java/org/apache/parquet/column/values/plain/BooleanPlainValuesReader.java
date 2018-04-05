@@ -30,9 +30,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * encodes boolean for the plain encoding: one bit at a time (0 = false)
- *
- * @author Julien Le Dem
- *
  */
 public class BooleanPlainValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(BooleanPlainValuesReader.class);

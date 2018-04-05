@@ -46,6 +46,9 @@ public interface IncrementallyUpdatedFilterPredicate {
 
   /**
    * A {@link IncrementallyUpdatedFilterPredicate} must accept a {@link Visitor}, per the visitor pattern.
+   *
+   * @param visitor a Visitor
+   * @return the result of this predicate
    */
   boolean accept(Visitor visitor);
 
@@ -81,6 +84,8 @@ public interface IncrementallyUpdatedFilterPredicate {
 
     /**
      * Subclasses should call this method to signal that the result of this predicate is known.
+     *
+     * @param result the result of this predicate, when it is determined
      */
     protected final void setResult(boolean result) {
       if (isKnown) {
@@ -93,6 +98,8 @@ public interface IncrementallyUpdatedFilterPredicate {
 
     /**
      * Should only be called if {@link #isKnown} return true.
+     *
+     * @return the result of this predicate
      */
     public final boolean getResult() {
       if (!isKnown) {
@@ -103,6 +110,8 @@ public interface IncrementallyUpdatedFilterPredicate {
 
     /**
      * Return true if this inspector has received a value yet, false otherwise.
+     *
+     * @return true if the value of this predicate has been determined
      */
     public final boolean isKnown() {
       return isKnown;

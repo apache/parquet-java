@@ -29,8 +29,6 @@ import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 /**
  * Improvable micro benchmark for bitpacking
  * run with: -verbose:gc -Xmx2g -Xms2g
- * @author Julien Le Dem
- *
  */
 public class BitPackingPerfTest {
 

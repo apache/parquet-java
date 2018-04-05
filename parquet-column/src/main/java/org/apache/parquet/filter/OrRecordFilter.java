@@ -23,8 +23,6 @@ import org.apache.parquet.column.ColumnReader;
 
 /**
  * Provides ability to chain two filters together.
- *
- * @author Frank Austin Nothaft
  */
 public final class OrRecordFilter implements RecordFilter {
 

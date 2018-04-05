@@ -66,8 +66,8 @@ public class ParquetWriter<T> implements Closeable {
    * @param compressionCodecName the compression codec to use
    * @param blockSize the block size threshold
    * @param pageSize the page size threshold
-   * @throws IOException
-   * @see #ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, boolean, boolean)
+   * @throws IOException if there is an error while writing
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetWriter(Path file, WriteSupport<T> writeSupport, CompressionCodecName compressionCodecName, int blockSize, int pageSize) throws IOException {
@@ -85,8 +85,8 @@ public class ParquetWriter<T> implements Closeable {
    * @param pageSize the page size threshold (both data and dictionary)
    * @param enableDictionary to turn dictionary encoding on
    * @param validating to turn on validation using the schema
-   * @throws IOException
-   * @see #ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, int, boolean, boolean)
+   * @throws IOException if there is an error while writing
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetWriter(
@@ -111,8 +111,8 @@ public class ParquetWriter<T> implements Closeable {
    * @param dictionaryPageSize the page size threshold for the dictionary pages
    * @param enableDictionary to turn dictionary encoding on
    * @param validating to turn on validation using the schema
-   * @throws IOException
-   * @see #ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, int, boolean, boolean, WriterVersion)
+   * @throws IOException if there is an error while writing
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetWriter(
@@ -144,8 +144,8 @@ public class ParquetWriter<T> implements Closeable {
    * @param enableDictionary to turn dictionary encoding on
    * @param validating to turn on validation using the schema
    * @param writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
-   * @throws IOException
-   * @see #ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, int, boolean, boolean, WriterVersion, Configuration)
+   * @throws IOException if there is an error while writing
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetWriter(
@@ -174,7 +174,8 @@ public class ParquetWriter<T> implements Closeable {
    * @param validating to turn on validation using the schema
    * @param writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
    * @param conf Hadoop configuration to use while accessing the filesystem
-   * @throws IOException
+   * @throws IOException if there is an error while writing
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetWriter(
@@ -207,7 +208,8 @@ public class ParquetWriter<T> implements Closeable {
    * @param validating to turn on validation using the schema
    * @param writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
    * @param conf Hadoop configuration to use while accessing the filesystem
-   * @throws IOException
+   * @throws IOException if there is an error while writing
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetWriter(
@@ -239,7 +241,8 @@ public class ParquetWriter<T> implements Closeable {
    *
    * @param file the file to create
    * @param writeSupport the implementation to write a record to a RecordConsumer
-   * @throws IOException
+   * @throws IOException if there is an error while writing
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetWriter(Path file, WriteSupport<T> writeSupport) throws IOException {
@@ -360,6 +363,7 @@ public class ParquetWriter<T> implements Closeable {
     protected abstract SELF self();
 
     /**
+     * @param conf a configuration
      * @return an appropriate WriteSupport for the object model.
      */
     protected abstract WriteSupport<T> getWriteSupport(Configuration conf);
@@ -517,7 +521,7 @@ public class ParquetWriter<T> implements Closeable {
      * Build a {@link ParquetWriter} with the accumulated configuration.
      *
      * @return a configured {@code ParquetWriter} instance.
-     * @throws IOException
+     * @throws IOException if there is an error while creating the writer
      */
     public ParquetWriter<T> build() throws IOException {
       if (file != null) {

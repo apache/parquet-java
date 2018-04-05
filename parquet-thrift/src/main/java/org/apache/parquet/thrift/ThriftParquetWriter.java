@@ -31,8 +31,6 @@ import org.apache.parquet.hadoop.thrift.TBaseWriteSupport;
 /**
  * To generate Parquet files using thrift
  *
- * @author Julien Le Dem
- *
  * @param <T> the type of the thrift class used to write data
  */
 public class ThriftParquetWriter<T extends TBase<?,?>> extends ParquetWriter<T> {

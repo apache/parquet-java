@@ -30,11 +30,6 @@ import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
-/**
- *
- *
- * @author Mickaël Lacour <m.lacour@criteo.com>
- */
 public class TupleWriteSupport extends WriteSupport<TupleEntry> {
 
   private RecordConsumer recordConsumer;

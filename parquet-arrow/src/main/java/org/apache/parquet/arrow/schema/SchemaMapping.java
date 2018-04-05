@@ -33,8 +33,6 @@ import org.apache.parquet.schema.Type;
 /**
  * The mapping between an Arrow and a Parquet schema
  * @see SchemaConverter
- *
- * @author Julien Le Dem
  */
 public class SchemaMapping {
 
@@ -66,7 +64,7 @@ public class SchemaMapping {
 
   /**
    * To traverse a schema mapping
-   * @param <T>
+   * @param <T> the Java return type of the visitor
    */
   public interface TypeMappingVisitor<T> {
     T visit(PrimitiveTypeMapping primitiveTypeMapping);

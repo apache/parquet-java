@@ -31,8 +31,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Parses a schema from a textual format similar to that described in the Dremel paper.
- *
- * @author Julien Le Dem
  */
 public class MessageTypeParser {
   private static final Logger LOG = LoggerFactory.getLogger(MessageTypeParser.class);

@@ -32,9 +32,6 @@ import org.apache.parquet.io.InvalidRecordException;
 
 /**
  * Represents a group type: a list of fields
- *
- * @author Julien Le Dem
- *
  */
 public class GroupType extends Type {
 

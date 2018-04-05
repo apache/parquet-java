@@ -72,9 +72,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Internal implementation of the Parquet file writer as a block container
- *
- * @author Julien Le Dem
- *
  */
 public class ParquetFileWriter {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileWriter.class);
@@ -126,9 +123,6 @@ public class ParquetFileWriter {
 
   /**
    * Captures the order in which methods should be called
-   *
-   * @author Julien Le Dem
-   *
    */
   private enum STATE {
     NOT_STARTED {
@@ -182,8 +176,7 @@ public class ParquetFileWriter {
    * @param schema the schema of the data
    * @param file the file to write to
    * @throws IOException if the file can not be created
-   * @deprecated will be removed in 2.0.0;
-   *             use {@link ParquetFileWriter(OutputFile,MessageType,Mode,long,long)} instead
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetFileWriter(Configuration configuration, MessageType schema,
@@ -198,8 +191,7 @@ public class ParquetFileWriter {
    * @param file the file to write to
    * @param mode file creation mode
    * @throws IOException if the file can not be created
-   * @deprecated will be removed in 2.0.0;
-   *             use {@link ParquetFileWriter(OutputFile,MessageType,Mode,long,long)} instead
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetFileWriter(Configuration configuration, MessageType schema,
@@ -216,8 +208,7 @@ public class ParquetFileWriter {
    * @param rowGroupSize the row group size
    * @param maxPaddingSize the maximum padding
    * @throws IOException if the file can not be created
-   * @deprecated will be removed in 2.0.0;
-   *             use {@link ParquetFileWriter(OutputFile,MessageType,Mode,long,long)} instead
+   * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetFileWriter(Configuration configuration, MessageType schema,
@@ -267,6 +258,7 @@ public class ParquetFileWriter {
    * @param schema the schema of the data
    * @param file the file to write to
    * @param rowAndBlockSize the row group size
+   * @param maxPaddingSize the maximum padding
    * @throws IOException if the file can not be created
    */
   ParquetFileWriter(Configuration configuration, MessageType schema,
@@ -282,7 +274,7 @@ public class ParquetFileWriter {
   }
   /**
    * start the file
-   * @throws IOException
+   * @throws IOException if there is an error while writing
    */
   public void start() throws IOException {
     state = state.start();
@@ -293,7 +285,7 @@ public class ParquetFileWriter {
   /**
    * start a block
    * @param recordCount the record count in this block
-   * @throws IOException
+   * @throws IOException if there is an error while writing
    */
   public void startBlock(long recordCount) throws IOException {
     state = state.startBlock();
@@ -310,8 +302,8 @@ public class ParquetFileWriter {
    * start a column inside a block
    * @param descriptor the column descriptor
    * @param valueCount the value count in this column
-   * @param compressionCodecName
-   * @throws IOException
+   * @param compressionCodecName a compression codec name
+   * @throws IOException if there is an error while writing
    */
   public void startColumn(ColumnDescriptor descriptor,
                           long valueCount,
@@ -333,6 +325,7 @@ public class ParquetFileWriter {
   /**
    * writes a dictionary page page
    * @param dictionaryPage the dictionary page
+   * @throws IOException if there is an error while writing
    */
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
     state = state.write();
@@ -364,6 +357,7 @@ public class ParquetFileWriter {
    * @param rlEncoding encoding of the repetition level
    * @param dlEncoding encoding of the definition level
    * @param valuesEncoding encoding of values
+   * @throws IOException if there is an error while writing
    */
   @Deprecated
   public void writeDataPage(
@@ -399,9 +393,11 @@ public class ParquetFileWriter {
    * @param valueCount count of values
    * @param uncompressedPageSize the size of the data once uncompressed
    * @param bytes the compressed data for the page without header
+   * @param statistics statistics for the page
    * @param rlEncoding encoding of the repetition level
    * @param dlEncoding encoding of the definition level
    * @param valuesEncoding encoding of values
+   * @throws IOException if there is an error while writing
    */
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
@@ -446,7 +442,7 @@ public class ParquetFileWriter {
    * @param bytes bytes to be written including page headers
    * @param uncompressedTotalPageSize total uncompressed size (without page headers)
    * @param compressedTotalPageSize total compressed size (without page headers)
-   * @throws IOException
+   * @throws IOException if there is an error while writing
    */
   void writeDataPages(BytesInput bytes,
                       long uncompressedTotalPageSize,
@@ -474,7 +470,7 @@ public class ParquetFileWriter {
 
   /**
    * end a column (once all rep, def and data have been written)
-   * @throws IOException
+   * @throws IOException if there is an error while writing
    */
   public void endColumn() throws IOException {
     state = state.endColumn();
@@ -498,7 +494,7 @@ public class ParquetFileWriter {
 
   /**
    * ends a block once all column chunks have been written
-   * @throws IOException
+   * @throws IOException if there is an error while writing
    */
   public void endBlock() throws IOException {
     state = state.endBlock();
@@ -509,6 +505,9 @@ public class ParquetFileWriter {
   }
 
   /**
+   * @param conf a configuration
+   * @param file a file path to append the contents of to this file
+   * @throws IOException if there is an error while reading or writing
    * @deprecated will be removed in 2.0.0; use {@link #appendFile(InputFile)} instead
    */
   @Deprecated
@@ -521,6 +520,10 @@ public class ParquetFileWriter {
   }
 
   /**
+   * @param file a file stream to read from
+   * @param rowGroups row groups to copy
+   * @param dropColumns whether to drop columns from the file that are not in this file's schema
+   * @throws IOException if there is an error while reading or writing
    * @deprecated will be removed in 2.0.0;
    *             use {@link #appendRowGroups(SeekableInputStream,List,boolean)} instead
    */
@@ -540,6 +543,10 @@ public class ParquetFileWriter {
   }
 
   /**
+   * @param from a file stream to read from
+   * @param rowGroup row group to copy
+   * @param dropColumns whether to drop columns from the file that are not in this file's schema
+   * @throws IOException if there is an error while reading or writing
    * @deprecated will be removed in 2.0.0;
    *             use {@link #appendRowGroup(SeekableInputStream,BlockMetaData,boolean)} instead
    */
@@ -643,7 +650,7 @@ public class ParquetFileWriter {
    * @param to any {@link PositionOutputStream}
    * @param start where in the from stream to start copying
    * @param length the number of bytes to copy
-   * @throws IOException
+   * @throws IOException if there is an error while reading or writing
    */
   private static void copy(SeekableInputStream from, PositionOutputStream to,
                            long start, long length) throws IOException{
@@ -668,7 +675,7 @@ public class ParquetFileWriter {
    * ends a file once all blocks have been written.
    * closes the file.
    * @param extraMetaData the extra meta data to write in the footer
-   * @throws IOException
+   * @throws IOException if there is an error while writing
    */
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
@@ -695,6 +702,10 @@ public class ParquetFileWriter {
   /**
    * Given a list of metadata files, merge them into a single ParquetMetadata
    * Requires that the schemas be compatible, and the extraMetadata be exactly equal.
+   * @param files a list of files to merge metadata from
+   * @param conf a configuration
+   * @return merged parquet metadata for the files
+   * @throws IOException if there is an error while writing
    * @deprecated metadata files are not recommended and will be removed in 2.0.0
    */
   @Deprecated
@@ -720,6 +731,10 @@ public class ParquetFileWriter {
    * Requires that the schemas be compatible, and the extraMetaData be exactly equal.
    * This is useful when merging 2 directories of parquet files into a single directory, as long
    * as both directories were written with compatible schemas and equal extraMetaData.
+   * @param files a list of files to merge metadata from
+   * @param outputPath path to write merged metadata to
+   * @param conf a configuration
+   * @throws IOException if there is an error while reading or writing
    * @deprecated metadata files are not recommended and will be removed in 2.0.0
    */
   @Deprecated
@@ -733,7 +748,7 @@ public class ParquetFileWriter {
    * @param configuration the configuration to use to get the FileSystem
    * @param outputPath the directory to write the _metadata file to
    * @param footers the list of footers to merge
-   * @throws IOException
+   * @throws IOException if there is an error while writing
    * @deprecated metadata files are not recommended and will be removed in 2.0.0
    */
   @Deprecated
@@ -743,6 +758,11 @@ public class ParquetFileWriter {
 
   /**
    * writes _common_metadata file, and optionally a _metadata file depending on the {@link JobSummaryLevel} provided
+   * @param configuration the configuration to use to get the FileSystem
+   * @param outputPath the directory to write the _metadata file to
+   * @param footers the list of footers to merge
+   * @param level level of summary to write
+   * @throws IOException if there is an error while writing
    * @deprecated metadata files are not recommended and will be removed in 2.0.0
    */
   @Deprecated
@@ -808,7 +828,7 @@ public class ParquetFileWriter {
 
   /**
    * @return the current position in the underlying file
-   * @throws IOException
+   * @throws IOException if there is an error while getting the current stream's position
    */
   public long getPos() throws IOException {
     return out.getPos();

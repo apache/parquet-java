@@ -26,9 +26,6 @@ import java.io.IOException;
  *
  * This class generates bit packers that pack the most significant bit first.
  * The result of the generation is checked in. To regenerate the code run this class and check in the result.
- *
- * @author Julien Le Dem
- *
  */
 public class ByteBasedBitPackingGenerator {
 
@@ -77,7 +74,7 @@ public class ByteBasedBitPackingGenerator {
       }
       fw.append(" * \n");
       fw.append(" * See ByteBasedBitPackingGenerator to make changes to this file\n");
-      fw.append(" * @author automatically generated\n");
+      fw.append(" * Automatically generated\n");
       fw.append(" *\n");
       fw.append(" */\n");
       fw.append("public abstract class " + className + " {\n");

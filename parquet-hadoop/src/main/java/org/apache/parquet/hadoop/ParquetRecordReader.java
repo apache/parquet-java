@@ -57,8 +57,6 @@ import org.slf4j.LoggerFactory;
  *
  * @see ParquetInputFormat
  *
- * @author Julien Le Dem
- *
  * @param <T> type of the materialized records
  */
 public class ParquetRecordReader<T> extends RecordReader<Void, T> {
@@ -84,7 +82,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    * @param filter for filtering individual records
-   * @deprecated use {@link #ParquetRecordReader(ReadSupport, Filter)}
+   * @deprecated will be removed in 2.0.0.
    */
   @Deprecated
   public ParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {

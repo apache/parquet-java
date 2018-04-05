@@ -32,6 +32,8 @@ import org.apache.parquet.schema.MessageType;
  * Avro implementation of {@link ReadSupport} for avro generic, specific, and
  * reflect models. Use {@link AvroParquetReader} or
  * {@link AvroParquetInputFormat} rather than using this class directly.
+ *
+ * @param <T> the Java type of records created by this ReadSupport
  */
 public class AvroReadSupport<T> extends ReadSupport<T> {
 
@@ -50,6 +52,8 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   public static final boolean AVRO_DEFAULT_COMPATIBILITY = true;
 
   /**
+   * @param configuration a configuration
+   * @param requestedProjection the requested projection schema
    * @see org.apache.parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setRequestedProjection(Configuration configuration, Schema requestedProjection) {
@@ -57,6 +61,8 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   }
 
   /**
+   * @param configuration a configuration
+   * @param avroReadSchema the read schema
    * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setAvroReadSchema(Configuration configuration, Schema avroReadSchema) {

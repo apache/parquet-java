@@ -34,9 +34,6 @@ abstract public class Type {
 
   /**
    * represents a field ID
-   *
-   * @author Julien Le Dem
-   *
    */
   public static final class ID {
     private final int id;
@@ -77,8 +74,6 @@ abstract public class Type {
 
   /**
    * Constraint on the repetition of a field
-   *
-   * @author Julien Le Dem
    */
   public static enum Repetition {
     /**

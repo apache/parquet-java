@@ -29,9 +29,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Plain encoding for float, double, int, long
- *
- * @author Julien Le Dem
- *
  */
 abstract public class PlainValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesReader.class);

@@ -23,9 +23,6 @@ import java.io.IOException;
 
 /**
  * The parent class for all runtime exceptions
- *
- * @author Julien Le Dem
- *
  */
 abstract public class ParquetRuntimeException extends RuntimeException {
   private static final long serialVersionUID = 1L;

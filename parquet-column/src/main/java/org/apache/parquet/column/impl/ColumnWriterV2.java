@@ -38,9 +38,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
- *
- * @author Julien Le Dem
- *
  */
 final class ColumnWriterV2 implements ColumnWriter {
   private static final Logger LOG = LoggerFactory.getLogger(ColumnWriterV2.class);

@@ -53,18 +53,12 @@ import org.slf4j.LoggerFactory;
 
 /**
  * ColumnReader implementation
- *
- * @author Julien Le Dem
- *
  */
 public class ColumnReaderImpl implements ColumnReader {
   private static final Logger LOG = LoggerFactory.getLogger(ColumnReaderImpl.class);
 
   /**
    * binds the lower level page decoder to the record converter materializing the records
-   *
-   * @author Julien Le Dem
-   *
    */
   private static abstract class Binding {
 
@@ -331,6 +325,8 @@ public class ColumnReaderImpl implements ColumnReader {
    * creates a reader for triplets
    * @param path the descriptor for the corresponding column
    * @param pageReader the underlying store to read from
+   * @param converter a converter that materializes the values in this column in the current record
+   * @param writerVersion writer version string from the Parquet file being read
    */
   public ColumnReaderImpl(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter, ParsedVersion writerVersion) {
     this.path = checkNotNull(path, "path");

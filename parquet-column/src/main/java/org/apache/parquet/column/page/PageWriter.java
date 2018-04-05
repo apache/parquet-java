@@ -27,9 +27,6 @@ import org.apache.parquet.column.statistics.Statistics;
 
 /**
  * a writer for all the pages of a given column chunk
- *
- * @author Julien Le Dem
- *
  */
 public interface PageWriter {
 

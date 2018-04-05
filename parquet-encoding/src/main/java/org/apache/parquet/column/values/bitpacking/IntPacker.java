@@ -24,9 +24,6 @@ package org.apache.parquet.column.values.bitpacking;
  * packing unpacking treats:
  *  - 32 values at a time
  *  - bitWidth ints at a time.
- *
- * @author Julien Le Dem
- *
  */
 public abstract class IntPacker {
 

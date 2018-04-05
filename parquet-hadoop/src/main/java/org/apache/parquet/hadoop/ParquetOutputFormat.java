@@ -97,8 +97,6 @@ import org.slf4j.LoggerFactory;
  *
  * if none of those is set the data is uncompressed.
  *
- * @author Julien Le Dem
- *
  * @param <T> the type of the materialized records
  */
 public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
@@ -319,7 +317,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   /**
    * constructor used when this OutputFormat in wrapped in another one (In Pig for example)
+   *
    * @param writeSupport the class used to convert the incoming records
+   * @param <S> the Java write support type
    */
   public <S extends WriteSupport<T>> ParquetOutputFormat(S writeSupport) {
     this.writeSupport = writeSupport;
@@ -328,6 +328,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   /**
    * used when directly using the output format and configuring the write support implementation
    * using parquet.write.support.class
+   *
+   * @param <S> the Java write support type
    */
   public <S extends WriteSupport<T>> ParquetOutputFormat() {
   }

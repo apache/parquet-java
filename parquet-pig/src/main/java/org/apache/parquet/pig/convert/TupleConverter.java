@@ -50,11 +50,7 @@ import org.apache.parquet.schema.Type.Repetition;
 
 /**
  * converts a group into a tuple
- *
- * @author Julien Le Dem
- *
  */
-
 public class TupleConverter extends GroupConverter {
 
   private static final TupleFactory TF = TupleFactory.getInstance();
@@ -221,8 +217,6 @@ public class TupleConverter extends GroupConverter {
   /**
    * handle string values.
    * In case of dictionary encoding, the strings will be decoded only once.
-   * @author Julien Le Dem
-   *
    */
   static final class FieldStringConverter extends PrimitiveConverter {
 
@@ -289,8 +283,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * handles DataByteArrays
-   * @author Julien Le Dem
-   *
    */
   static final class FieldByteArrayConverter extends PrimitiveConverter {
 
@@ -309,8 +301,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * Handles doubles
-   * @author Julien Le Dem
-   *
    */
   static final class FieldDoubleConverter extends PrimitiveConverter {
 
@@ -354,8 +344,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * handles floats
-   * @author Julien Le Dem
-   *
    */
   static final class FieldFloatConverter extends PrimitiveConverter {
 
@@ -399,9 +387,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * Handles longs
-   *
-   * @author Julien Le Dem
-   *
    */
   static final class FieldLongConverter extends PrimitiveConverter {
 
@@ -445,8 +430,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * handle integers
-   * @author Julien Le Dem
-   *
    */
   static final class FieldIntegerConverter extends PrimitiveConverter {
 
@@ -490,8 +473,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * handle booleans
-   * @author Julien Le Dem
-   *
    */
   static final class FieldBooleanConverter extends PrimitiveConverter {
 
@@ -536,7 +517,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * handle decimal type
-   *
    */
   static final class FieldBigDecimalConverter extends PrimitiveConverter {
     private final ParentValueContainer parent;
@@ -558,9 +538,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * Converts groups into bags
-   *
-   * @author Julien Le Dem
-   *
    */
   static class BagConverter extends GroupConverter {
 

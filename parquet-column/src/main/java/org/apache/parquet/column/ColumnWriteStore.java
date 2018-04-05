@@ -21,8 +21,6 @@ package org.apache.parquet.column;
 /**
  * Container which can construct writers for multiple columns to be stored
  * together.
- *
- * @author Julien Le Dem
  */
 public interface ColumnWriteStore {
   /**
