@@ -131,12 +131,13 @@ class ProtoMessageConverter extends GroupConverter {
       };
     }
 
-    OriginalType originalType = parquetType.getOriginalType() == null ? OriginalType.UTF8 : parquetType.getOriginalType();
-    switch (originalType) {
-      case LIST: return new ListConverter(parentBuilder, fieldDescriptor, parquetType);
-      case MAP: return new MapConverter(parentBuilder, fieldDescriptor, parquetType);
-      default: return newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType);
+    if (OriginalType.LIST == parquetType.getOriginalType()) {
+      return new ListConverter(parentBuilder, fieldDescriptor, parquetType);
     }
+    if (OriginalType.MAP == parquetType.getOriginalType()) {
+      return new MapConverter(parentBuilder, fieldDescriptor, parquetType);
+    }
+    return newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType);
   }
 
   private Converter newScalarConverter(ParentValueContainer pvc, Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
@@ -363,38 +364,38 @@ class ProtoMessageConverter extends GroupConverter {
    * <p>
    * A LIST wrapper is created in parquet for the above mentioned protobuf schema:
    * message SimpleList {
-   *   required group first_array (LIST) = 1 {
-   *     repeated int32 element;
+   *   optional group first_array (LIST) = 1 {
+   *     repeated group list {
+   *         optional int32 element;
+   *     }
    *   }
    * }
    * <p>
    * The LIST wrappers are used by 3rd party tools, such as Hive, to read parquet arrays. The wrapper contains
-   * one only one field: either a primitive field (like in the example above, where we have an array of ints) or
-   * another group (array of messages).
+   * a repeated group named 'list', itself containing only one field called 'element' of the type of the repeated
+   * object (can be a primitive as in this example or a group in case of a repeated message in protobuf).
    */
   final class ListConverter extends GroupConverter {
     private final Converter converter;
-    private final boolean listOfMessage;
 
     public ListConverter(Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
       OriginalType originalType = parquetType.getOriginalType();
-      if (originalType != OriginalType.LIST) {
+      if (originalType != OriginalType.LIST || parquetType.isPrimitive()) {
         throw new ParquetDecodingException("Expected LIST wrapper. Found: " + originalType + " instead.");
       }
 
-      listOfMessage = fieldDescriptor.getJavaType() == JavaType.MESSAGE;
-
-      Type parquetSchema;
-      if (parquetType.asGroupType().containsField("list")) {
-        parquetSchema = parquetType.asGroupType().getType("list");
-        if (parquetSchema.asGroupType().containsField("element")) {
-          parquetSchema = parquetSchema.asGroupType().getType("element");
-        }
-      } else {
-        throw new ParquetDecodingException("Expected list but got: " + parquetType);
+      GroupType rootWrapperType = parquetType.asGroupType();
+      if (!rootWrapperType.containsField("list") || rootWrapperType.getType("list").isPrimitive()) {
+        throw new ParquetDecodingException("Expected repeated 'list' group inside LIST wrapperr but got: " + rootWrapperType);
       }
 
-      converter = newMessageConverter(parentBuilder, fieldDescriptor, parquetSchema);
+      GroupType listType = rootWrapperType.getType("list").asGroupType();
+      if (!listType.containsField("element")) {
+        throw new ParquetDecodingException("Expected 'element' inside repeated list group but got: " + listType);
+      }
+
+      Type elementType = listType.getType("element");
+      converter = newMessageConverter(parentBuilder, fieldDescriptor, elementType);
     }
 
     @Override

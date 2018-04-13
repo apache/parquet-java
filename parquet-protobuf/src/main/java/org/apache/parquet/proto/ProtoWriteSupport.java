@@ -47,7 +47,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private static final Logger LOG = LoggerFactory.getLogger(ProtoWriteSupport.class);
   public static final String PB_CLASS_WRITE = "parquet.proto.writeClass";
+  // PARQUET-968 introduces changes to allow writing specs compliant schemas with parquet-protobuf.
+  // In the past, collection were not written using the LIST and MAP wrappers and thus were not compliant
+  // with the parquet specs. This flag, is set to true, allows to write using spec compliant schemas
+  // but is set to false by default to keep backward compatibility
+  public static final String PB_SPECS_COMPLIANT_WRITE = "parquet.proto.writeSpecsCompliant";
 
+  private boolean writeSpecsCompliant = false;
   private RecordConsumer recordConsumer;
   private Class<? extends Message> protoMessage;
   private MessageWriter messageWriter;
@@ -66,6 +72,16 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   public static void setSchema(Configuration configuration, Class<? extends Message> protoClass) {
     configuration.setClass(PB_CLASS_WRITE, protoClass, Message.class);
+  }
+
+  /**
+   * Make parquet-protobuf use the LIST and MAP wrappers for collections. Set to false if you need backward
+   * compatibility with parquet before PARQUET-968 (1.9.0 and older).
+   * @param configuration           The hadoop configuration
+   * @param writeSpecsCompliant     If set to true, the old schema style will be used (without wrappers).
+   */
+  public static void setWriteSpecsCompliant(Configuration configuration, boolean writeSpecsCompliant) {
+    configuration.setBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
   }
 
   /**
@@ -105,7 +121,8 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       }
     }
 
-    MessageType rootSchema = new ProtoSchemaConverter().convert(protoMessage);
+    writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
+    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(protoMessage);
     Descriptor messageDescriptor = Protobufs.getMessageDescriptor(protoMessage);
     validatedMapping(messageDescriptor, rootSchema);
 
@@ -114,6 +131,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     Map<String, String> extraMetaData = new HashMap<String, String>();
     extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
+    extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
     return new WriteContext(rootSchema, extraMetaData);
   }
 
@@ -158,8 +176,12 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         Type type = schema.getType(name);
         FieldWriter writer = createWriter(fieldDescriptor, type);
 
-        if(fieldDescriptor.isRepeated() && !fieldDescriptor.isMapField()) {
-         writer = new ArrayWriter(writer);
+        if(writeSpecsCompliant && fieldDescriptor.isRepeated() && !fieldDescriptor.isMapField()) {
+          writer = new ArrayWriter(writer);
+        }
+        else if (!writeSpecsCompliant && fieldDescriptor.isRepeated()) {
+          // the old schemas style used to write maps as repeated fields instead of wrapping them in a LIST
+          writer = new RepeatedWriter(writer);
         }
 
         writer.setFieldName(name);
@@ -187,7 +209,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     private FieldWriter createMessageWriter(FieldDescriptor fieldDescriptor, Type type) {
-      if (fieldDescriptor.isMapField()) {
+      if (fieldDescriptor.isMapField() && writeSpecsCompliant) {
         return createMapWriter(fieldDescriptor, type);
       }
 
@@ -235,16 +257,16 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     /** Writes message as part of repeated field. It cannot start field*/
     @Override
     final void writeRawValue(Object value) {
+      recordConsumer.startGroup();
       writeAllFields((MessageOrBuilder) value);
+      recordConsumer.endGroup();
     }
 
     /** Used for writing nonrepeated (optional, required) fields*/
     @Override
     final void writeField(Object value) {
       recordConsumer.startField(fieldName, index);
-      recordConsumer.startGroup();
-      writeAllFields((MessageOrBuilder) value);
-      recordConsumer.endGroup();
+      writeRawValue(value);
       recordConsumer.endField(fieldName, index);
     }
 
@@ -288,21 +310,11 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       recordConsumer.startField("list", 0); // This is the wrapper group for the array field
       for (Object listEntry: list) {
         recordConsumer.startGroup();
-
         recordConsumer.startField("element", 0); // This is the mandatory inner field
-
-        if (!isPrimitive(listEntry)) {
-          recordConsumer.startGroup();
-        }
 
         fieldWriter.writeRawValue(listEntry);
 
-        if (!isPrimitive(listEntry)) {
-          recordConsumer.endGroup();
-        }
-
         recordConsumer.endField("element", 0);
-
         recordConsumer.endGroup();
       }
       recordConsumer.endField("list", 0);
@@ -312,8 +324,33 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
   }
 
-  private boolean isPrimitive(Object listEntry) {
-    return !(listEntry instanceof Message);
+  /**
+   * The RepeatedWriter is used to write collections (lists and maps) using the old style (without LIST and MAP
+   * wrappers).
+   */
+  class RepeatedWriter extends FieldWriter {
+    final FieldWriter fieldWriter;
+
+    RepeatedWriter(FieldWriter fieldWriter) {
+      this.fieldWriter = fieldWriter;
+    }
+
+    @Override
+    final void writeRawValue(Object value) {
+      throw new UnsupportedOperationException("Array has no raw value");
+    }
+
+    @Override
+    final void writeField(Object value) {
+      recordConsumer.startField(fieldName, index);
+      List<?> list = (List<?>) value;
+
+      for (Object listEntry: list) {
+        fieldWriter.writeRawValue(listEntry);
+      }
+
+      recordConsumer.endField(fieldName, index);
+    }
   }
 
   /** validates mapping between protobuffer fields and parquet fields.*/
@@ -440,5 +477,4 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     DescriptorProtos.DescriptorProto asProto = descriptor.toProto();
     return TextFormat.printToString(asProto);
   }
-
 }
