@@ -389,9 +389,8 @@ public final class PrimitiveType extends Type {
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
    */
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-                       String name) {
-    this(repetition, primitive, 0, name, null, null, null);
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name) {
+    this(repetition, primitive, 0, name, (LogicalTypeAnnotation) null, null, null);
   }
 
   /**
@@ -401,7 +400,7 @@ public final class PrimitiveType extends Type {
    * @param name the name of the type
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name) {
-    this(repetition, primitive, length, name, null, null, null);
+    this(repetition, primitive, length, name, (LogicalTypeAnnotation) null, null, null);
   }
 
   /**
@@ -409,7 +408,10 @@ public final class PrimitiveType extends Type {
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
    * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   *
+   * @deprecated use {@link #PrimitiveType(Repetition, PrimitiveTypeName, String, LogicalTypeAnnotation)} instead
    */
+  @Deprecated
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        String name, OriginalType originalType) {
     this(repetition, primitive, 0, name, originalType, null, null);
@@ -436,13 +438,20 @@ public final class PrimitiveType extends Type {
    * @param originalType (optional) the original type (MAP, DECIMAL, UTF8, ...)
    * @param decimalMeta (optional) metadata about the decimal type
    * @param id the id of the field
+   *
+   * @deprecated use {@link #PrimitiveType(Repetition, PrimitiveTypeName, int, String, LogicalTypeAnnotation, ID)} instead
    */
+  @Deprecated
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        int length, String name, OriginalType originalType,
                        DecimalMetadata decimalMeta, ID id) {
     this(repetition, primitive, length, name, originalType, decimalMeta, id, null);
   }
 
+  /**
+   * @deprecated use {@link #PrimitiveType(Repetition, PrimitiveTypeName, int, String, LogicalTypeAnnotation, ID, ColumnOrder)} instead
+   */
+  @Deprecated
   PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
       int length, String name, OriginalType originalType,
       DecimalMetadata decimalMeta, ID id, ColumnOrder columnOrder) {
@@ -455,6 +464,37 @@ public final class PrimitiveType extends Type {
       columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL
           ? ColumnOrder.undefined()
           : ColumnOrder.typeDefined();
+    }
+    this.columnOrder = requireValidColumnOrder(columnOrder);
+  }
+
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+                       String name, LogicalTypeAnnotation logicalTypeAnnotation) {
+    this(repetition, primitive, 0, name, logicalTypeAnnotation, null, null);
+  }
+
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+                       int length, String name, LogicalTypeAnnotation logicalTypeAnnotation, ID id) {
+    this(repetition, primitive, length, name, logicalTypeAnnotation, id, null);
+  }
+
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+                int length, String name, LogicalTypeAnnotation logicalTypeAnnotation,
+                ID id, ColumnOrder columnOrder) {
+    super(name, repetition, logicalTypeAnnotation, id);
+    this.primitive = primitive;
+    this.length = length;
+    if (getOriginalType() == OriginalType.DECIMAL) {
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimal = (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) logicalTypeAnnotation;
+      this.decimalMeta = new DecimalMetadata(decimal.getPrecision(), decimal.getScale());
+    } else {
+      this.decimalMeta = null;
+    }
+
+    if (columnOrder == null) {
+      columnOrder = primitive == PrimitiveTypeName.INT96 || getOriginalType() == OriginalType.INTERVAL
+        ? ColumnOrder.undefined()
+        : ColumnOrder.typeDefined();
     }
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }

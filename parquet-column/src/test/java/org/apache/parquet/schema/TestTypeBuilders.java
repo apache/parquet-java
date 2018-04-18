@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -1394,6 +1394,47 @@ public class TestTypeBuilders {
             .columnOrder(ColumnOrder.typeDefined()).named("interval_unsupported");
       }
     });
+  }
+
+  @Test
+  public void testDecimalLogicalType() {
+    PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "aDecimal",
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4));
+    PrimitiveType actual = Types.required(BINARY)
+      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4)).named("aDecimal");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testDecimalLogicalTypeWithDeprecatedScale() {
+    PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "aDecimal",
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4));
+    PrimitiveType actual = Types.required(BINARY)
+      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4)).scale(3).named("aDecimal");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testDecimalLogicalTypeWithDeprecatedPrecision() {
+    PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "aDecimal",
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4));
+    PrimitiveType actual = Types.required(BINARY)
+      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4)).precision(4).named("aDecimal");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testDecimalLogicalTypeWithDeprecatedScaleMismatch() {
+    Types.required(BINARY)
+      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4))
+      .scale(4).named("aDecimal");
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testDecimalLogicalTypeWithDeprecatedPrecisionMismatch() {
+    Types.required(BINARY)
+      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4))
+      .precision(5).named("aDecimal");
   }
 
   /**

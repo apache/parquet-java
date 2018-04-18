@@ -128,7 +128,7 @@ abstract public class Type {
    */
   @Deprecated
   public Type(String name, Repetition repetition) {
-    this(name, repetition, null, null);
+    this(name, repetition, (LogicalTypeAnnotation) null, null);
   }
 
   /**
@@ -146,16 +146,35 @@ abstract public class Type {
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param id (optional) the id of the fields.
+   *
+   * @deprecated use {@link #Type(String, Repetition, LogicalTypeAnnotation, ID)} instead
    */
+  @Deprecated
   Type(String name, Repetition repetition, OriginalType originalType, ID id) {
     this(name, repetition, originalType, null, id);
   }
 
+  /**
+   * @deprecated use {@link #Type(String, Repetition, LogicalTypeAnnotation, ID)} instead
+   */
+  @Deprecated
   Type(String name, Repetition repetition, OriginalType originalType, DecimalMetadata decimalMetadata, ID id) {
     super();
     this.name = checkNotNull(name, "name");
     this.repetition = checkNotNull(repetition, "repetition");
     this.logicalTypeAnnotation = originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType, decimalMetadata);
+    this.id = id;
+  }
+
+  public Type(String name, Repetition repetition, LogicalTypeAnnotation logicalTypeAnnotation) {
+    this(name, repetition, logicalTypeAnnotation, null);
+  }
+
+  Type(String name, Repetition repetition, LogicalTypeAnnotation logicalTypeAnnotation, ID id) {
+    super();
+    this.name = checkNotNull(name, "name");
+    this.repetition = checkNotNull(repetition, "repetition");
+    this.logicalTypeAnnotation = logicalTypeAnnotation;
     this.id = id;
   }
 

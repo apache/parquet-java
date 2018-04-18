@@ -280,6 +280,14 @@ public interface LogicalTypeAnnotation {
       this.precision = precision;
     }
 
+    public int getPrecision() {
+      return precision;
+    }
+
+    public int getScale() {
+      return scale;
+    }
+
     @Override
     public LogicalType toLogicalType() {
       return LogicalType.DECIMAL(new DecimalType(scale, precision));
