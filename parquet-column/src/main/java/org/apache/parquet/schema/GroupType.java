@@ -88,7 +88,6 @@ public class GroupType extends Type {
    * @param fields the contained fields
    * @param id the id of the field
    */
-  @Deprecated
   GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, ID id) {
     super(name, repetition, originalType, id);
     this.fields = fields;

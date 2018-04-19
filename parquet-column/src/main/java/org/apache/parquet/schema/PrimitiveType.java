@@ -409,7 +409,7 @@ public final class PrimitiveType extends Type {
    * @param name the name of the type
    * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
    *
-   * @deprecated use {@link #PrimitiveType(Repetition, PrimitiveTypeName, String, LogicalTypeAnnotation)} instead
+   * @deprecated will be removed in 2.0.0; use {@link #PrimitiveType(Repetition, PrimitiveTypeName, String, LogicalTypeAnnotation)} instead
    */
   @Deprecated
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
@@ -439,7 +439,7 @@ public final class PrimitiveType extends Type {
    * @param decimalMeta (optional) metadata about the decimal type
    * @param id the id of the field
    *
-   * @deprecated use {@link #PrimitiveType(Repetition, PrimitiveTypeName, int, String, LogicalTypeAnnotation, ID)} instead
+   * @deprecated will be removed in 2.0.0; use {@link #PrimitiveType(Repetition, PrimitiveTypeName, int, String, LogicalTypeAnnotation, ID)} instead
    */
   @Deprecated
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
@@ -448,10 +448,6 @@ public final class PrimitiveType extends Type {
     this(repetition, primitive, length, name, originalType, decimalMeta, id, null);
   }
 
-  /**
-   * @deprecated use {@link #PrimitiveType(Repetition, PrimitiveTypeName, int, String, LogicalTypeAnnotation, ID, ColumnOrder)} instead
-   */
-  @Deprecated
   PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
       int length, String name, OriginalType originalType,
       DecimalMetadata decimalMeta, ID id, ColumnOrder columnOrder) {
@@ -473,7 +469,7 @@ public final class PrimitiveType extends Type {
     this(repetition, primitive, 0, name, logicalTypeAnnotation, null, null);
   }
 
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        int length, String name, LogicalTypeAnnotation logicalTypeAnnotation, ID id) {
     this(repetition, primitive, length, name, logicalTypeAnnotation, id, null);
   }

@@ -146,18 +146,11 @@ abstract public class Type {
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param id (optional) the id of the fields.
-   *
-   * @deprecated use {@link #Type(String, Repetition, LogicalTypeAnnotation, ID)} instead
    */
-  @Deprecated
   Type(String name, Repetition repetition, OriginalType originalType, ID id) {
     this(name, repetition, originalType, null, id);
   }
 
-  /**
-   * @deprecated use {@link #Type(String, Repetition, LogicalTypeAnnotation, ID)} instead
-   */
-  @Deprecated
   Type(String name, Repetition repetition, OriginalType originalType, DecimalMetadata decimalMetadata, ID id) {
     super();
     this.name = checkNotNull(name, "name");
