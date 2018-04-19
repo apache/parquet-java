@@ -1,12 +1,19 @@
 language: java
+jdk: openjdk7
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install build-essential
   - mkdir protobuf_install
   - pushd protobuf_install
-  - wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
+  - wget https://github.com/google/protobuf/archive/v2.5.0.tar.gz -O protobuf-2.5.0.tar.gz
   - tar xzf protobuf-2.5.0.tar.gz
-  - cd  protobuf-2.5.0
+  - cd protobuf-2.5.0
+  - sudo apt-get install autoconf automake libtool curl make g++ unzip
+# Getting gtest before executing autogen.sh as it contains invalid link to googlecode.com
+  - wget https://github.com/google/googletest/archive/release-1.5.0.tar.gz
+  - tar xzf release-1.5.0.tar.gz
+  - mv googletest-release-1.5.0 gtest
+  - ./autogen.sh
   - ./configure
   - make
   - sudo make install
@@ -19,7 +26,7 @@ before_install:
   - tar zxf thrift-0.7.0.tar.gz
   - cd thrift-0.7.0
   - chmod +x ./configure
-  - ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
+  - ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php --without-nodejs
   - sudo make install
   - cd ..
 
