@@ -9,7 +9,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.10.1-SNAPSHOT</version>
+  <version>1.10.1-rms-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -213,86 +213,86 @@
             </execution>
           </executions>
         </plugin>
-        
+
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-resources-plugin</artifactId>
           <version>2.7</version>
         </plugin>
-              
-        <plugin>
-          <artifactId>maven-enforcer-plugin</artifactId>
-          <version>1.3.1</version>
-          <dependencies>
-            <dependency>
-              <groupId>org.semver</groupId>
-              <artifactId>enforcer-rule</artifactId>
-              <version>0.9.28</version>
-            </dependency>
-         </dependencies>
-         <executions>
-           <execution>
-             <id>check</id>
-             <phase>verify</phase>
-             <goals>
-               <goal>enforce</goal>
-             </goals>
-             <configuration>
-               <rules>
-                 <requireBackwardCompatibility implementation="org.semver.enforcer.RequireSemanticVersioningConformance">
-                   <dumpDetails>true</dumpDetails>
-                   <previousVersion>${previous.version}</previousVersion>
-                   <excludes>
-                     <exclude>org/apache/parquet/hadoop/util/**</exclude>
-                     <exclude>org/apache/parquet/thrift/projection/**</exclude>
-                     <exclude>org/apache/parquet/thrift/ThriftSchemaConverter</exclude>
-                     <exclude>org/apache/parquet/filter2/**</exclude>
-                     <exclude>org/apache/parquet/column/**</exclude>
-                     <exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>
-                     <exclude>org/apache/parquet/hadoop/CodecFactory**</exclude>
-                     <exclude>shaded/**</exclude> <!-- shaded by parquet -->
-                     <exclude>org/apache/parquet/it/unimi/dsi/fastutil/**</exclude> <!-- Another shaded dependency from parquet-column -->
-                     <exclude>org/apache/parquet/benchmarks/**</exclude>
-                     <exclude>org/openjdk/**</exclude>
-                     <!-- temporary exclusions for false-positives -->
-                     <exclude>org/apache/parquet/Version</exclude>
-                     <exclude>org/apache/parquet/schema/**</exclude> <!-- methods moved to new superclass -->
-                     <exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> <!-- not public -->
-                     <exclude>org/apache/parquet/avro/AvroParquetReader</exclude> <!-- returns subclass of old return class -->
-                     <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> <!-- made public -->
-                     <exclude>org/apache/parquet/io/ColumnIOFactory$ColumnIOCreatorVisitor</exclude> <!-- removed non-API class -->
-                     <exclude>org/apache/parquet/io/ColumnIOFactory/**</exclude> <!-- removed non-API class and methods-->
-                     <exclude>org/apache/parquet/hadoop/codec/SnappyCompressor</exclude> <!-- added synchronized modifier -->
-                     <exclude>org/apache/parquet/bytes/BytesInput</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/bytes/CapacityByteArrayOutputStream</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/bytes/ConcatenatingByteArrayCollector</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/bytes/LittleEndianDataInputStream</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/bytes/LittleEndianDataOutputStream</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/hadoop/metadata/CompressionCodecName</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/hadoop/codec/CompressionCodecNotSupportedException</exclude> <!-- moved to parquet-common -->
-                   </excludes>
-                 </requireBackwardCompatibility>
-               </rules>
-             </configuration>
-           </execution>
-           <execution>
-            <id>enforce-banned-dependencies</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <bannedDependencies>
-                  <excludes>
-                    <exclude>org.slf4j:slf4j-log4j12</exclude>
-                  </excludes>
-                </bannedDependencies>
-              </rules>
-              <fail>true</fail>
-            </configuration>
-          </execution>
-         </executions>
-        </plugin>
+
+        <!--<plugin>-->
+          <!--<artifactId>maven-enforcer-plugin</artifactId>-->
+          <!--<version>1.3.1</version>-->
+          <!--<dependencies>-->
+            <!--<dependency>-->
+              <!--<groupId>org.semver</groupId>-->
+              <!--<artifactId>enforcer-rule</artifactId>-->
+              <!--<version>0.9.28</version>-->
+            <!--</dependency>-->
+         <!--</dependencies>-->
+         <!--<executions>-->
+           <!--<execution>-->
+             <!--<id>check</id>-->
+             <!--<phase>verify</phase>-->
+             <!--<goals>-->
+               <!--<goal>enforce</goal>-->
+             <!--</goals>-->
+             <!--<configuration>-->
+               <!--<rules>-->
+                 <!--&lt;!&ndash;<requireBackwardCompatibility implementation="org.semver.enforcer.RequireSemanticVersioningConformance">&ndash;&gt;-->
+                   <!--&lt;!&ndash;<dumpDetails>true</dumpDetails>&ndash;&gt;-->
+                   <!--&lt;!&ndash;<previousVersion>${previous.version}</previousVersion>&ndash;&gt;-->
+                   <!--&lt;!&ndash;<excludes>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/hadoop/util/**</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/thrift/projection/**</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/thrift/ThriftSchemaConverter</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/filter2/**</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/column/**</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/hadoop/CodecFactory**</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>shaded/**</exclude> &lt;!&ndash; shaded by parquet &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/it/unimi/dsi/fastutil/**</exclude> &lt;!&ndash; Another shaded dependency from parquet-column &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/benchmarks/**</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/openjdk/**</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;&lt;!&ndash; temporary exclusions for false-positives &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/Version</exclude>&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/schema/**</exclude> &lt;!&ndash; methods moved to new superclass &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> &lt;!&ndash; not public &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/avro/AvroParquetReader</exclude> &lt;!&ndash; returns subclass of old return class &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> &lt;!&ndash; made public &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/io/ColumnIOFactory$ColumnIOCreatorVisitor</exclude> &lt;!&ndash; removed non-API class &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/io/ColumnIOFactory/**</exclude> &lt;!&ndash; removed non-API class and methods&ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/hadoop/codec/SnappyCompressor</exclude> &lt;!&ndash; added synchronized modifier &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/bytes/BytesInput</exclude> &lt;!&ndash; moved to parquet-common &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/bytes/CapacityByteArrayOutputStream</exclude> &lt;!&ndash; moved to parquet-common &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/bytes/ConcatenatingByteArrayCollector</exclude> &lt;!&ndash; moved to parquet-common &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/bytes/LittleEndianDataInputStream</exclude> &lt;!&ndash; moved to parquet-common &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/bytes/LittleEndianDataOutputStream</exclude> &lt;!&ndash; moved to parquet-common &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/hadoop/metadata/CompressionCodecName</exclude> &lt;!&ndash; moved to parquet-common &ndash;&gt;&ndash;&gt;-->
+                     <!--&lt;!&ndash;<exclude>org/apache/parquet/hadoop/codec/CompressionCodecNotSupportedException</exclude> &lt;!&ndash; moved to parquet-common &ndash;&gt;&ndash;&gt;-->
+                   <!--&lt;!&ndash;</excludes>&ndash;&gt;-->
+                 <!--&lt;!&ndash;</requireBackwardCompatibility>&ndash;&gt;-->
+               <!--</rules>-->
+             <!--</configuration>-->
+           <!--</execution>-->
+           <!--<execution>-->
+            <!--<id>enforce-banned-dependencies</id>-->
+            <!--<goals>-->
+              <!--<goal>enforce</goal>-->
+            <!--</goals>-->
+            <!--<configuration>-->
+              <!--<rules>-->
+                <!--<bannedDependencies>-->
+                  <!--<excludes>-->
+                    <!--<exclude>org.slf4j:slf4j-log4j12</exclude>-->
+                  <!--</excludes>-->
+                <!--</bannedDependencies>-->
+              <!--</rules>-->
+              <!--<fail>true</fail>-->
+            <!--</configuration>-->
+          <!--</execution>-->
+         <!--</executions>-->
+        <!--</plugin>-->
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
@@ -373,7 +373,7 @@
           </execution>
         </executions-->
       </plugin>
-      
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
@@ -388,8 +388,8 @@
             <skip>true</skip>
           </configuration>
       </plugin>
-      
-            
+
+
       <plugin>
         <!-- Override source and target from the ASF parent -->
         <groupId>org.apache.maven.plugins</groupId>
