@@ -33,7 +33,7 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
-    <arrow.version>0.8.0-rms</arrow.version>
+    <arrow.version>0.8.1-rms-SNAPSHOT</arrow.version>
   </properties>
 
   <dependencies>
