@@ -159,7 +159,7 @@ abstract public class Type {
     this.id = id;
   }
 
-  public Type(String name, Repetition repetition, LogicalTypeAnnotation logicalTypeAnnotation) {
+  Type(String name, Repetition repetition, LogicalTypeAnnotation logicalTypeAnnotation) {
     this(name, repetition, logicalTypeAnnotation, null);
   }
 

@@ -624,21 +624,21 @@ public class ParquetMetadataConverter {
       case INTERVAL:
         return LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.create();
       case INT_8:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 8, true);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(8, true);
       case INT_16:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 16, true);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(16, true);
       case INT_32:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 32, true);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(32, true);
       case INT_64:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 64, true);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(64, true);
       case UINT_8:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 8, false);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(8, false);
       case UINT_16:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 16, false);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(16, false);
       case UINT_32:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 32, false);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(32, false);
       case UINT_64:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create((byte) 64, false);
+        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(64, false);
       case JSON:
         return LogicalTypeAnnotation.JsonLogicalTypeAnnotation.create();
       case BSON:

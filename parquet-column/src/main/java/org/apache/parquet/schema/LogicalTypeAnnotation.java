@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.schema;
 
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.format.BsonType;
 import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DateType;
@@ -61,6 +62,13 @@ public interface LogicalTypeAnnotation {
   OriginalType toOriginalType();
 
   /**
+   * Visits this logical type with the given visitor
+   *
+   * @param logicalTypeAnnotationVisitor the visitor to visit this type
+   */
+  void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor);
+
+  /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
    */
   static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
@@ -91,21 +99,21 @@ public interface LogicalTypeAnnotation {
       case TIME_MICROS:
         return TimeLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case UINT_8:
-        return IntLogicalTypeAnnotation.create((byte) 8, false);
+        return IntLogicalTypeAnnotation.create(8, false);
       case UINT_16:
-        return IntLogicalTypeAnnotation.create((byte) 16, false);
+        return IntLogicalTypeAnnotation.create(16, false);
       case UINT_32:
-        return IntLogicalTypeAnnotation.create((byte) 32, false);
+        return IntLogicalTypeAnnotation.create(32, false);
       case UINT_64:
-        return IntLogicalTypeAnnotation.create((byte) 64, false);
+        return IntLogicalTypeAnnotation.create(64, false);
       case INT_8:
-        return IntLogicalTypeAnnotation.create((byte) 8, true);
+        return IntLogicalTypeAnnotation.create(8, true);
       case INT_16:
-        return IntLogicalTypeAnnotation.create((byte) 16, true);
+        return IntLogicalTypeAnnotation.create(16, true);
       case INT_32:
-        return IntLogicalTypeAnnotation.create((byte) 32, true);
+        return IntLogicalTypeAnnotation.create(32, true);
       case INT_64:
-        return IntLogicalTypeAnnotation.create((byte) 64, true);
+        return IntLogicalTypeAnnotation.create(64, true);
       case ENUM:
         return EnumLogicalTypeAnnotation.create();
       case JSON:
@@ -142,6 +150,11 @@ public interface LogicalTypeAnnotation {
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.UTF8;
+    }
+
+    @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -182,6 +195,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof MapLogicalTypeAnnotation;
     }
@@ -219,6 +237,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof ListLogicalTypeAnnotation;
     }
@@ -253,6 +276,11 @@ public interface LogicalTypeAnnotation {
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.ENUM;
+    }
+
+    @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -304,6 +332,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
     public boolean equals(Object obj) {
       if (!(obj instanceof DecimalLogicalTypeAnnotation)) {
         return false;
@@ -341,6 +374,11 @@ public interface LogicalTypeAnnotation {
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.DATE;
+    }
+
+    @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -414,6 +452,19 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    public TimeUnit getUnit() {
+      return unit;
+    }
+
+    public boolean isAdjustedToUTC() {
+      return isAdjustedToUTC;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       if (!(obj instanceof TimeLogicalTypeAnnotation)) {
         return false;
@@ -471,6 +522,19 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    public TimeUnit getUnit() {
+      return unit;
+    }
+
+    public boolean isAdjustedToUTC() {
+      return isAdjustedToUTC;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       if (!(obj instanceof TimestampLogicalTypeAnnotation)) {
         return false;
@@ -486,21 +550,25 @@ public interface LogicalTypeAnnotation {
   }
 
   class IntLogicalTypeAnnotation implements LogicalTypeAnnotation {
-    private final byte bitWidth;
+    private final int bitWidth;
     private final boolean isSigned;
 
-    public static LogicalTypeAnnotation create(byte bitWidth, boolean isSigned) {
+    public static LogicalTypeAnnotation create(int bitWidth, boolean isSigned) {
+      Preconditions.checkArgument(
+        bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
+        "Invalid bit width for integer logical type, " + bitWidth + " is not allowed, " +
+          "valid bit width values: 8, 16, 32, 64");
       return new IntLogicalTypeAnnotation(bitWidth, isSigned);
     }
 
-    private IntLogicalTypeAnnotation(byte bitWidth, boolean isSigned) {
+    private IntLogicalTypeAnnotation(int bitWidth, boolean isSigned) {
       this.bitWidth = bitWidth;
       this.isSigned = isSigned;
     }
 
     @Override
     public LogicalType toLogicalType() {
-      return LogicalType.INTEGER(new IntType(bitWidth, isSigned));
+      return LogicalType.INTEGER(new IntType((byte) bitWidth, isSigned));
     }
 
     @Override
@@ -544,6 +612,19 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    public int getBitWidth() {
+      return bitWidth;
+    }
+
+    public boolean isSigned() {
+      return isSigned;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       if (!(obj instanceof IntLogicalTypeAnnotation)) {
         return false;
@@ -584,6 +665,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof JsonLogicalTypeAnnotation;
     }
@@ -618,6 +704,11 @@ public interface LogicalTypeAnnotation {
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.BSON;
+    }
+
+    @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -661,6 +752,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof IntervalLogicalTypeAnnotation;
     }
@@ -701,6 +797,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
+      logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof MapKeyValueTypeAnnotation;
     }
@@ -709,6 +810,53 @@ public interface LogicalTypeAnnotation {
     public int hashCode() {
       // This type doesn't have any parameters, thus use class hashcode
       return getClass().hashCode();
+    }
+  }
+
+  /**
+   * Implement this interface to visit a logical type annotation in the schema.
+   * The default implementation for each logical type specific visitor method is empty.
+   *
+   * Example usage: logicalTypeAnnotation.accept(new LogicalTypeAnnotationVisitor() { ... });
+   */
+  interface LogicalTypeAnnotationVisitor {
+    default void visit(StringLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(MapLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(ListLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(DateLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(IntLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+    }
+
+    default void visit(MapKeyValueTypeAnnotation logicalTypeAnnotation) {
     }
   }
 }

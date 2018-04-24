@@ -409,7 +409,7 @@ public final class PrimitiveType extends Type {
    * @param name the name of the type
    * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
    *
-   * @deprecated will be removed in 2.0.0; use {@link #PrimitiveType(Repetition, PrimitiveTypeName, String, LogicalTypeAnnotation)} instead
+   * @deprecated will be removed in 2.0.0; use builders in {@link Types} instead
    */
   @Deprecated
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
@@ -439,7 +439,7 @@ public final class PrimitiveType extends Type {
    * @param decimalMeta (optional) metadata about the decimal type
    * @param id the id of the field
    *
-   * @deprecated will be removed in 2.0.0; use {@link #PrimitiveType(Repetition, PrimitiveTypeName, int, String, LogicalTypeAnnotation, ID)} instead
+   * @deprecated will be removed in 2.0.0; use builders in {@link Types} instead
    */
   @Deprecated
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
@@ -464,7 +464,7 @@ public final class PrimitiveType extends Type {
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }
 
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        String name, LogicalTypeAnnotation logicalTypeAnnotation) {
     this(repetition, primitive, 0, name, logicalTypeAnnotation, null, null);
   }
