@@ -77,62 +77,115 @@ public interface LogicalTypeAnnotation {
     }
     switch (originalType) {
       case UTF8:
-        return StringLogicalTypeAnnotation.create();
+        return stringType();
       case MAP:
-        return MapLogicalTypeAnnotation.create();
+        return mapType();
       case DECIMAL:
         int scale = (decimalMetadata == null ? 0 : decimalMetadata.getScale());
         int precision = (decimalMetadata == null ? 0 : decimalMetadata.getPrecision());
-        return DecimalLogicalTypeAnnotation.create(scale, precision);
+        return decimalType(scale, precision);
       case LIST:
-        return ListLogicalTypeAnnotation.create();
+        return listType();
       case DATE:
-        return DateLogicalTypeAnnotation.create();
+        return dateType();
       case INTERVAL:
-        return IntervalLogicalTypeAnnotation.create();
+        return intervalType();
       case TIMESTAMP_MILLIS:
-        return TimestampLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+        return timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIMESTAMP_MICROS:
-        return TimestampLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+        return timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case TIME_MILLIS:
-        return TimeLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+        return timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIME_MICROS:
-        return TimeLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+        return timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case UINT_8:
-        return IntLogicalTypeAnnotation.create(8, false);
+        return intType(8, false);
       case UINT_16:
-        return IntLogicalTypeAnnotation.create(16, false);
+        return intType(16, false);
       case UINT_32:
-        return IntLogicalTypeAnnotation.create(32, false);
+        return intType(32, false);
       case UINT_64:
-        return IntLogicalTypeAnnotation.create(64, false);
+        return intType(64, false);
       case INT_8:
-        return IntLogicalTypeAnnotation.create(8, true);
+        return intType(8, true);
       case INT_16:
-        return IntLogicalTypeAnnotation.create(16, true);
+        return intType(16, true);
       case INT_32:
-        return IntLogicalTypeAnnotation.create(32, true);
+        return intType(32, true);
       case INT_64:
-        return IntLogicalTypeAnnotation.create(64, true);
+        return intType(64, true);
       case ENUM:
-        return EnumLogicalTypeAnnotation.create();
+        return enumType();
       case JSON:
-        return JsonLogicalTypeAnnotation.create();
+        return jsonType();
       case BSON:
-        return BsonLogicalTypeAnnotation.create();
+        return bsonType();
       case MAP_KEY_VALUE:
-        return MapKeyValueTypeAnnotation.create();
+        return mapKeyValueType();
       default:
         throw new RuntimeException("Can't convert original type to logical type, unknown original type " + originalType);
     }
   }
 
+
+  static StringLogicalTypeAnnotation stringType() {
+    return StringLogicalTypeAnnotation.INSTANCE;
+  }
+
+  static MapLogicalTypeAnnotation mapType() {
+    return MapLogicalTypeAnnotation.INSTANCE;
+  }
+
+  static ListLogicalTypeAnnotation listType() {
+    return ListLogicalTypeAnnotation.INSTANCE;
+  }
+
+  static EnumLogicalTypeAnnotation enumType() {
+    return EnumLogicalTypeAnnotation.INSTANCE;
+  }
+
+  static DecimalLogicalTypeAnnotation decimalType(final int scale, final int precision) {
+    return new DecimalLogicalTypeAnnotation(scale, precision);
+  }
+
+  static DateLogicalTypeAnnotation dateType() {
+    return DateLogicalTypeAnnotation.INSTANCE;
+  }
+
+  static TimeLogicalTypeAnnotation timeType(final boolean isAdjustedToUTC, final TimeUnit unit) {
+    return new TimeLogicalTypeAnnotation(isAdjustedToUTC, unit);
+  }
+
+  static TimestampLogicalTypeAnnotation timestampType(final boolean isAdjustedToUTC, final TimeUnit unit) {
+    return new TimestampLogicalTypeAnnotation(isAdjustedToUTC, unit);
+  }
+
+  static IntLogicalTypeAnnotation intType(final int bitWidth, final boolean isSigned) {
+    Preconditions.checkArgument(
+      bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
+      "Invalid bit width for integer logical type, " + bitWidth + " is not allowed, " +
+        "valid bit width values: 8, 16, 32, 64");
+    return new IntLogicalTypeAnnotation(bitWidth, isSigned);
+  }
+
+  static JsonLogicalTypeAnnotation jsonType() {
+    return JsonLogicalTypeAnnotation.INSTANCE;
+  }
+
+  static BsonLogicalTypeAnnotation bsonType() {
+    return BsonLogicalTypeAnnotation.INSTANCE;
+  }
+
+  static IntervalLogicalTypeAnnotation intervalType() {
+    return IntervalLogicalTypeAnnotation.INSTANCE;
+  }
+
+  static MapKeyValueTypeAnnotation mapKeyValueType() {
+    return MapKeyValueTypeAnnotation.INSTANCE;
+  }
+
   class StringLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static final StringLogicalTypeAnnotation INSTANCE = new StringLogicalTypeAnnotation();
-
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
 
     private StringLogicalTypeAnnotation() {
     }
@@ -164,17 +217,13 @@ public interface LogicalTypeAnnotation {
 
     @Override
     public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
+      // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
   }
 
   class MapLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static final MapLogicalTypeAnnotation INSTANCE = new MapLogicalTypeAnnotation();
-
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
 
     private MapLogicalTypeAnnotation() {
     }
@@ -206,17 +255,13 @@ public interface LogicalTypeAnnotation {
 
     @Override
     public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
+      // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
   }
 
   class ListLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static final ListLogicalTypeAnnotation INSTANCE = new ListLogicalTypeAnnotation();
-
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
 
     private ListLogicalTypeAnnotation() {
     }
@@ -248,17 +293,13 @@ public interface LogicalTypeAnnotation {
 
     @Override
     public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
+      // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
   }
 
   class EnumLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static final EnumLogicalTypeAnnotation INSTANCE = new EnumLogicalTypeAnnotation();
-
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
 
     private EnumLogicalTypeAnnotation() {
     }
@@ -290,7 +331,7 @@ public interface LogicalTypeAnnotation {
 
     @Override
     public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
+      // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
   }
@@ -298,10 +339,6 @@ public interface LogicalTypeAnnotation {
   class DecimalLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private final int scale;
     private final int precision;
-
-    public static LogicalTypeAnnotation create(int scale, int precision) {
-      return new DecimalLogicalTypeAnnotation(scale, precision);
-    }
 
     private DecimalLogicalTypeAnnotation(int scale, int precision) {
       this.scale = scale;
@@ -354,10 +391,6 @@ public interface LogicalTypeAnnotation {
   class DateLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static final DateLogicalTypeAnnotation INSTANCE = new DateLogicalTypeAnnotation();
 
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
-
     private DateLogicalTypeAnnotation() {
     }
 
@@ -388,7 +421,7 @@ public interface LogicalTypeAnnotation {
 
     @Override
     public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
+      // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
   }
@@ -412,10 +445,6 @@ public interface LogicalTypeAnnotation {
   class TimeLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private final boolean isAdjustedToUTC;
     private final TimeUnit unit;
-
-    public static LogicalTypeAnnotation create(boolean isAdjustedToUTC, TimeUnit unit) {
-      return new TimeLogicalTypeAnnotation(isAdjustedToUTC, unit);
-    }
 
     private TimeLogicalTypeAnnotation(boolean isAdjustedToUTC, TimeUnit unit) {
       this.isAdjustedToUTC = isAdjustedToUTC;
@@ -483,10 +512,6 @@ public interface LogicalTypeAnnotation {
     private final boolean isAdjustedToUTC;
     private final TimeUnit unit;
 
-    public static LogicalTypeAnnotation create(boolean isAdjustedToUTC, TimeUnit unit) {
-      return new TimestampLogicalTypeAnnotation(isAdjustedToUTC, unit);
-    }
-
     private TimestampLogicalTypeAnnotation(boolean isAdjustedToUTC, TimeUnit unit) {
       this.isAdjustedToUTC = isAdjustedToUTC;
       this.unit = unit;
@@ -553,13 +578,6 @@ public interface LogicalTypeAnnotation {
     private final int bitWidth;
     private final boolean isSigned;
 
-    public static LogicalTypeAnnotation create(int bitWidth, boolean isSigned) {
-      Preconditions.checkArgument(
-        bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
-        "Invalid bit width for integer logical type, " + bitWidth + " is not allowed, " +
-          "valid bit width values: 8, 16, 32, 64");
-      return new IntLogicalTypeAnnotation(bitWidth, isSigned);
-    }
 
     private IntLogicalTypeAnnotation(int bitWidth, boolean isSigned) {
       this.bitWidth = bitWidth;
@@ -642,10 +660,6 @@ public interface LogicalTypeAnnotation {
   class JsonLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static final JsonLogicalTypeAnnotation INSTANCE = new JsonLogicalTypeAnnotation();
 
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
-
     private JsonLogicalTypeAnnotation() {
     }
 
@@ -676,17 +690,13 @@ public interface LogicalTypeAnnotation {
 
     @Override
     public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
+      // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
   }
 
   class BsonLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static final BsonLogicalTypeAnnotation INSTANCE = new BsonLogicalTypeAnnotation();
-
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
 
     private BsonLogicalTypeAnnotation() {
     }
@@ -718,7 +728,7 @@ public interface LogicalTypeAnnotation {
 
     @Override
     public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
+      // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
   }
@@ -728,10 +738,6 @@ public interface LogicalTypeAnnotation {
   // thus this annotation is mapped to UNKNOWN.
   class IntervalLogicalTypeAnnotation implements LogicalTypeAnnotation {
     private static IntervalLogicalTypeAnnotation INSTANCE = new IntervalLogicalTypeAnnotation();
-
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
 
     private IntervalLogicalTypeAnnotation() {
     }
@@ -763,7 +769,7 @@ public interface LogicalTypeAnnotation {
 
     @Override
     public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
+      // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
   }
@@ -773,10 +779,6 @@ public interface LogicalTypeAnnotation {
   // thus this annotation is mapped to UNKNOWN. This type shouldn't be used.
   class MapKeyValueTypeAnnotation implements LogicalTypeAnnotation {
     private static MapKeyValueTypeAnnotation INSTANCE = new MapKeyValueTypeAnnotation();
-
-    public static LogicalTypeAnnotation create() {
-      return INSTANCE;
-    }
 
     private MapKeyValueTypeAnnotation() {
     }
@@ -808,7 +810,7 @@ public interface LogicalTypeAnnotation {
 
     @Override
     public int hashCode() {
-      // This type doesn't have any parameters, thus use class hashcode
+      // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
   }

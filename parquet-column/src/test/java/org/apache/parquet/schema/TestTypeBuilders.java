@@ -1399,41 +1399,41 @@ public class TestTypeBuilders {
   @Test
   public void testDecimalLogicalType() {
     PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "aDecimal",
-      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4));
+      LogicalTypeAnnotation.decimalType(3, 4));
     PrimitiveType actual = Types.required(BINARY)
-      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4)).named("aDecimal");
+      .as(LogicalTypeAnnotation.decimalType(3, 4)).named("aDecimal");
     Assert.assertEquals(expected, actual);
   }
 
   @Test
   public void testDecimalLogicalTypeWithDeprecatedScale() {
     PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "aDecimal",
-      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4));
+      LogicalTypeAnnotation.decimalType(3, 4));
     PrimitiveType actual = Types.required(BINARY)
-      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4)).scale(3).named("aDecimal");
+      .as(LogicalTypeAnnotation.decimalType(3, 4)).scale(3).named("aDecimal");
     Assert.assertEquals(expected, actual);
   }
 
   @Test
   public void testDecimalLogicalTypeWithDeprecatedPrecision() {
     PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "aDecimal",
-      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4));
+      LogicalTypeAnnotation.decimalType(3, 4));
     PrimitiveType actual = Types.required(BINARY)
-      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4)).precision(4).named("aDecimal");
+      .as(LogicalTypeAnnotation.decimalType(3, 4)).precision(4).named("aDecimal");
     Assert.assertEquals(expected, actual);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testDecimalLogicalTypeWithDeprecatedScaleMismatch() {
     Types.required(BINARY)
-      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4))
+      .as(LogicalTypeAnnotation.decimalType(3, 4))
       .scale(4).named("aDecimal");
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testDecimalLogicalTypeWithDeprecatedPrecisionMismatch() {
     Types.required(BINARY)
-      .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(3, 4))
+      .as(LogicalTypeAnnotation.decimalType(3, 4))
       .precision(5).named("aDecimal");
   }
 

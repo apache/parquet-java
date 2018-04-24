@@ -598,51 +598,51 @@ public class ParquetMetadataConverter {
   LogicalTypeAnnotation getOriginalType(ConvertedType type, SchemaElement schemaElement) {
     switch (type) {
       case UTF8:
-        return LogicalTypeAnnotation.StringLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.stringType();
       case MAP:
-        return LogicalTypeAnnotation.MapLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.mapType();
       case MAP_KEY_VALUE:
-        return LogicalTypeAnnotation.MapKeyValueTypeAnnotation.create();
+        return LogicalTypeAnnotation.mapKeyValueType();
       case LIST:
-        return LogicalTypeAnnotation.ListLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.listType();
       case ENUM:
-        return LogicalTypeAnnotation.EnumLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.enumType();
       case DECIMAL:
         int scale = (schemaElement == null ? 0 : schemaElement.scale);
         int precision = (schemaElement == null ? 0 : schemaElement.precision);
-        return LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(scale, precision);
+        return LogicalTypeAnnotation.decimalType(scale, precision);
       case DATE:
-        return LogicalTypeAnnotation.DateLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.dateType();
       case TIME_MILLIS:
-        return LogicalTypeAnnotation.TimeLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIME_MICROS:
-        return LogicalTypeAnnotation.TimeLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case TIMESTAMP_MILLIS:
-        return LogicalTypeAnnotation.TimestampLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIMESTAMP_MICROS:
-        return LogicalTypeAnnotation.TimestampLogicalTypeAnnotation.create(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case INTERVAL:
-        return LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.intervalType();
       case INT_8:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(8, true);
+        return LogicalTypeAnnotation.intType(8, true);
       case INT_16:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(16, true);
+        return LogicalTypeAnnotation.intType(16, true);
       case INT_32:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(32, true);
+        return LogicalTypeAnnotation.intType(32, true);
       case INT_64:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(64, true);
+        return LogicalTypeAnnotation.intType(64, true);
       case UINT_8:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(8, false);
+        return LogicalTypeAnnotation.intType(8, false);
       case UINT_16:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(16, false);
+        return LogicalTypeAnnotation.intType(16, false);
       case UINT_32:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(32, false);
+        return LogicalTypeAnnotation.intType(32, false);
       case UINT_64:
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(64, false);
+        return LogicalTypeAnnotation.intType(64, false);
       case JSON:
-        return LogicalTypeAnnotation.JsonLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.jsonType();
       case BSON:
-        return LogicalTypeAnnotation.BsonLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.bsonType();
       default:
         throw new RuntimeException("Can't convert converted type to logical type, unknown converted type " + type);
     }
@@ -651,33 +651,33 @@ public class ParquetMetadataConverter {
   LogicalTypeAnnotation getOriginalType(LogicalType type) {
     switch (type.getSetField()) {
       case MAP:
-        return LogicalTypeAnnotation.MapLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.mapType();
       case BSON:
-        return LogicalTypeAnnotation.BsonLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.bsonType();
       case DATE:
-        return LogicalTypeAnnotation.DateLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.dateType();
       case ENUM:
-        return LogicalTypeAnnotation.EnumLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.enumType();
       case JSON:
-        return LogicalTypeAnnotation.JsonLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.jsonType();
       case LIST:
-        return LogicalTypeAnnotation.ListLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.listType();
       case TIME:
         TimeType time = type.getTIME();
-        return LogicalTypeAnnotation.TimeLogicalTypeAnnotation.create(time.isAdjustedToUTC, convertTimeUnit(time.unit));
+        return LogicalTypeAnnotation.timeType(time.isAdjustedToUTC, convertTimeUnit(time.unit));
       case STRING:
-        return LogicalTypeAnnotation.StringLogicalTypeAnnotation.create();
+        return LogicalTypeAnnotation.stringType();
       case DECIMAL:
         DecimalType decimal = type.getDECIMAL();
-        return LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.create(decimal.scale, decimal.precision);
+        return LogicalTypeAnnotation.decimalType(decimal.scale, decimal.precision);
       case INTEGER:
         IntType integer = type.getINTEGER();
-        return LogicalTypeAnnotation.IntLogicalTypeAnnotation.create(integer.bitWidth, integer.isSigned);
+        return LogicalTypeAnnotation.intType(integer.bitWidth, integer.isSigned);
       case UNKNOWN:
         return null;
       case TIMESTAMP:
         TimestampType timestamp = type.getTIMESTAMP();
-        return LogicalTypeAnnotation.TimestampLogicalTypeAnnotation.create(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
+        return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
