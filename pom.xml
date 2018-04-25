@@ -16,6 +16,12 @@
   <url>https://parquet.apache.org</url>
   <description>Parquet is a columnar storage format that supports nested data. This provides the java implementation.</description>
 
+  <scm>
+    <connection>scm:git:git@github.com:apache/parquet-mr.git</connection>
+    <url>scm:git:git@github.com:apache/parquet-mr.git</url>
+    <developerConnection>scm:git:https://github.com/apache/parquet-mr.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
 
   <!-- Artifactory information used for deployment -->
   <distributionManagement>
@@ -28,7 +34,7 @@
       <url>http://eastus-artifactory.azure.rmsonecloud.net:8081/artifactory/rms-one-maven-local</url>
     </snapshotRepository>
   </distributionManagement>
-    
+
   <licenses>
     <license>
       <name>The Apache Software License, Version 2.0</name>
@@ -114,19 +120,16 @@
   </properties>
 
   <modules>
-
-    <!-- we only use parquet-arrow -->
     <module>parquet-arrow</module>
-
     <!--<module>parquet-avro</module>-->
     <!--<module>parquet-benchmarks</module>-->
     <!--<module>parquet-cascading</module>-->
     <!--<module>parquet-cascading3</module>-->
     <!--<module>parquet-cli</module>-->
-    <!--<module>parquet-column</module>-->
-    <!--<module>parquet-common</module>-->
-    <!--<module>parquet-encoding</module>-->
-    <!--<module>parquet-generator</module>-->
+    <module>parquet-column</module>
+    <module>parquet-common</module>
+    <module>parquet-encoding</module>
+    <module>parquet-generator</module>
     <!--<module>parquet-hadoop</module>-->
     <!--<module>parquet-jackson</module>-->
     <!--<module>parquet-pig</module>-->
@@ -212,23 +215,96 @@
   <build>
     <pluginManagement>
       <plugins>
-        <!--<plugin>-->
-          <!--&lt;!&ndash; Disable the source artifact from ASF parent &ndash;&gt;-->
-          <!--<artifactId>maven-assembly-plugin</artifactId>-->
-          <!--<executions>-->
-            <!--<execution>-->
-              <!--<id>source-release-assembly</id>-->
-              <!--<phase>none</phase>-->
-            <!--</execution>-->
-          <!--</executions>-->
-        <!--</plugin>-->
+        <plugin>
+          <!-- Disable the source artifact from ASF parent -->
+          <artifactId>maven-assembly-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>source-release-assembly</id>
+              <phase>none</phase>
+            </execution>
+          </executions>
+        </plugin>
 
-        <!--<plugin>-->
-          <!--<groupId>org.apache.maven.plugins</groupId>-->
-          <!--<artifactId>maven-resources-plugin</artifactId>-->
-          <!--<version>2.7</version>-->
-        <!--</plugin>-->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-resources-plugin</artifactId>
+          <version>2.7</version>
+        </plugin>
 
+        <plugin>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>1.3.1</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.semver</groupId>
+              <artifactId>enforcer-rule</artifactId>
+              <version>0.9.28</version>
+            </dependency>
+         </dependencies>
+         <executions>
+           <execution>
+             <id>check</id>
+             <phase>verify</phase>
+             <goals>
+               <goal>enforce</goal>
+             </goals>
+             <configuration>
+               <rules>
+                 <requireBackwardCompatibility implementation="org.semver.enforcer.RequireSemanticVersioningConformance">
+                   <dumpDetails>true</dumpDetails>
+                   <previousVersion>${previous.version}</previousVersion>
+                   <excludes>
+                     <exclude>org/apache/parquet/hadoop/util/**</exclude>
+                     <exclude>org/apache/parquet/thrift/projection/**</exclude>
+                     <exclude>org/apache/parquet/thrift/ThriftSchemaConverter</exclude>
+                     <exclude>org/apache/parquet/filter2/**</exclude>
+                     <exclude>org/apache/parquet/column/**</exclude>
+                     <exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>org/apache/parquet/hadoop/CodecFactory**</exclude>
+                     <exclude>shaded/**</exclude> <!-- shaded by parquet -->
+                     <exclude>org/apache/parquet/it/unimi/dsi/fastutil/**</exclude> <!-- Another shaded dependency from parquet-column -->
+                     <exclude>org/apache/parquet/benchmarks/**</exclude>
+                     <exclude>org/openjdk/**</exclude>
+                     <!-- temporary exclusions for false-positives -->
+                     <exclude>org/apache/parquet/Version</exclude>
+                     <exclude>org/apache/parquet/schema/**</exclude> <!-- methods moved to new superclass -->
+                     <exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> <!-- not public -->
+                     <exclude>org/apache/parquet/avro/AvroParquetReader</exclude> <!-- returns subclass of old return class -->
+                     <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> <!-- made public -->
+                     <exclude>org/apache/parquet/io/ColumnIOFactory$ColumnIOCreatorVisitor</exclude> <!-- removed non-API class -->
+                     <exclude>org/apache/parquet/io/ColumnIOFactory/**</exclude> <!-- removed non-API class and methods-->
+                     <exclude>org/apache/parquet/hadoop/codec/SnappyCompressor</exclude> <!-- added synchronized modifier -->
+                     <exclude>org/apache/parquet/bytes/BytesInput</exclude> <!-- moved to parquet-common -->
+                     <exclude>org/apache/parquet/bytes/CapacityByteArrayOutputStream</exclude> <!-- moved to parquet-common -->
+                     <exclude>org/apache/parquet/bytes/ConcatenatingByteArrayCollector</exclude> <!-- moved to parquet-common -->
+                     <exclude>org/apache/parquet/bytes/LittleEndianDataInputStream</exclude> <!-- moved to parquet-common -->
+                     <exclude>org/apache/parquet/bytes/LittleEndianDataOutputStream</exclude> <!-- moved to parquet-common -->
+                     <exclude>org/apache/parquet/hadoop/metadata/CompressionCodecName</exclude> <!-- moved to parquet-common -->
+                     <exclude>org/apache/parquet/hadoop/codec/CompressionCodecNotSupportedException</exclude> <!-- moved to parquet-common -->
+                   </excludes>
+                 </requireBackwardCompatibility>
+               </rules>
+             </configuration>
+           </execution>
+           <execution>
+            <id>enforce-banned-dependencies</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <excludes>
+                    <exclude>org.slf4j:slf4j-log4j12</exclude>
+                  </excludes>
+                </bannedDependencies>
+              </rules>
+              <fail>true</fail>
+            </configuration>
+          </execution>
+         </executions>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
@@ -270,34 +346,61 @@
             </execution>
           </executions>
         </plugin>
-        <!--<plugin>-->
-          <!--<groupId>org.apache.maven.plugins</groupId>-->
-          <!--<artifactId>maven-jar-plugin</artifactId>-->
-          <!--<version>${maven-jar-plugin.version}</version>-->
-          <!--<configuration>-->
-            <!--<archive>-->
-              <!--<manifestEntries>-->
-                <!--<git-SHA-1>${buildNumber}</git-SHA-1>-->
-              <!--</manifestEntries>-->
-            <!--</archive>-->
-          <!--</configuration>-->
-          <!--<executions>-->
-            <!--<execution>-->
-              <!--<goals>-->
-                <!--<goal>test-jar</goal>-->
-              <!--</goals>-->
-            <!--</execution>-->
-          <!--</executions>-->
-        <!--</plugin>-->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>${maven-jar-plugin.version}</version>
+          <configuration>
+            <archive>
+              <manifestEntries>
+                <git-SHA-1>${buildNumber}</git-SHA-1>
+              </manifestEntries>
+            </archive>
+          </configuration>
+          <executions>
+            <execution>
+              <goals>
+                <goal>test-jar</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
+      <plugin>
+        <groupId>com.mycila.maven-license-plugin</groupId>
+        <artifactId>maven-license-plugin</artifactId>
+        <version>1.10.b1</version>
+        <configuration>
+          <header>src/license.txt</header>
+          <strictCheck>true</strictCheck>
+        </configuration>
+        <!--executions>
+          <execution>
+            <phase>test</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions-->
+      </plugin>
 
-      <!--<plugin>-->
-        <!--<groupId>org.apache.maven.plugins</groupId>-->
-        <!--<artifactId>maven-resources-plugin</artifactId>-->
-        <!--<version>2.7</version>-->
-      <!--</plugin>-->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>2.7</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-remote-resources-plugin</artifactId>
+          <version>1.5</version>
+          <configuration>
+            <skip>true</skip>
+          </configuration>
+      </plugin>
+
 
       <plugin>
         <!-- Override source and target from the ASF parent -->
@@ -309,7 +412,6 @@
           <target>${maven.compiler.target}</target>
         </configuration>
       </plugin>
-
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
@@ -344,21 +446,148 @@
           </excludes>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>buildnumber-maven-plugin</artifactId>
+        <version>1.1</version>
+        <executions>
+          <execution>
+            <phase>validate</phase>
+            <goals>
+              <goal>create</goal>
+            </goals>
+         </execution>
+       </executions>
+      </plugin>
       <!--<plugin>-->
-        <!--<groupId>org.codehaus.mojo</groupId>-->
-        <!--<artifactId>buildnumber-maven-plugin</artifactId>-->
-        <!--<version>1.1</version>-->
+        <!--<groupId>org.apache.rat</groupId>-->
+        <!--<artifactId>apache-rat-plugin</artifactId>-->
+        <!--<version>0.12</version>-->
         <!--<executions>-->
           <!--<execution>-->
-            <!--<phase>validate</phase>-->
+            <!--<phase>test</phase>-->
             <!--<goals>-->
-              <!--<goal>create</goal>-->
+              <!--<goal>check</goal>-->
             <!--</goals>-->
-         <!--</execution>-->
-       <!--</executions>-->
+          <!--</execution>-->
+        <!--</executions>-->
+        <!--<configuration>-->
+          <!--<consoleOutput>true</consoleOutput>-->
+          <!--<excludes>-->
+            <!--<exclude>**/*.parquet</exclude>-->
+            <!--<exclude>**/*.avro</exclude>-->
+            <!--<exclude>**/*.json</exclude>-->
+            <!--<exclude>**/names.txt</exclude> &lt;!&ndash; parquet-cascading test data &ndash;&gt;-->
+            <!--<exclude>**/*.avsc</exclude>-->
+            <!--<exclude>**/*.iml</exclude>-->
+            <!--<exclude>**/*.log</exclude>-->
+            <!--<exclude>**/*.md.vm</exclude>-->
+            <!--<exclude>**/.classpath</exclude>-->
+            <!--<exclude>**/.project</exclude>-->
+            <!--<exclude>**/.settings/**</exclude>-->
+            <!--<exclude>**/build/**</exclude>-->
+            <!--<exclude>**/target/**</exclude>-->
+            <!--<exclude>.git/**</exclude>-->
+            <!--<exclude>.gitignore</exclude>-->
+            <!--<exclude>.idea/**</exclude>-->
+            <!--<exclude>*/jdiff/*.xml</exclude>-->
+            <!--<exclude>.travis.yml</exclude>-->
+            <!--<exclude>licenses/**</exclude>-->
+            <!--<exclude>protobuf_install/**</exclude>-->
+            <!--<exclude>thrift-${thrift.version}/**</exclude>-->
+            <!--<exclude>thrift-${thrift.version}.tar.gz</exclude>-->
+            <!--<exclude>**/dependency-reduced-pom.xml</exclude>-->
+          <!--</excludes>-->
+        <!--</configuration>-->
       <!--</plugin>-->
-
     </plugins>
   </build>
 
+  <profiles>
+    <profile>
+      <id>update-github-site</id>
+      <reporting>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-project-info-reports-plugin</artifactId>
+            <version>2.7</version>
+            <reportSets>
+              <reportSet>
+                <reports>
+                  <report>index</report>
+                  <report>mailing-list</report>
+                  <report>dependency-info</report>
+                  <report>project-team</report>
+                  <report>dependencies</report>
+                  <report>license</report>
+                  <report>scm</report>
+                </reports>
+              </reportSet>
+            </reportSets>
+          </plugin>
+        </plugins>
+      </reporting>
+      <distributionManagement>
+        <site>
+          <id>github-pages-site</id>
+          <name>Deployment through GitHub's site deployment plugin</name>
+          <url>site/${project.version}</url>
+        </site>
+      </distributionManagement>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-site-plugin</artifactId>
+            <version>3.3</version>
+            <configuration>
+              <skipDeploy>true</skipDeploy>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>com.github.github</groupId>
+            <artifactId>site-maven-plugin</artifactId>
+            <version>0.8</version>
+            <configuration>
+              <message>Creating site for ${project.version}</message>
+              <path>${project.distributionManagement.site.url}</path>
+              <merge>true</merge>
+            </configuration>
+            <executions>
+              <execution>
+                <id>github-site</id>
+                <goals>
+                  <goal>site</goal>
+                </goals>
+                <phase>site-deploy</phase>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
+      <id>hadoop-1</id>
+      <activation>
+        <property>
+          <name>hadoop.profile</name>
+          <value>hadoop1</value>
+        </property>
+      </activation>
+      <properties>
+        <!-- test hadoop-1 with the same jars that were produced for default profile -->
+        <maven.main.skip>true</maven.main.skip>
+        <hadoop.version>${hadoop1.version}</hadoop.version>
+        <pig.classifier />
+      </properties>
+    </profile>
+    <profile>
+      <id>thrift9</id>
+      <properties>
+        <thrift.version>0.9.0</thrift.version>
+      </properties>
+    </profile>
+  </profiles>
 </project>
