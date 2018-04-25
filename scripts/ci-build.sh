@@ -7,6 +7,4 @@ if [ "$SMOKE_TEST" ]; then
   exit
 fi
 
-cd parquet-arrow
-
 /home/ubuntu/rms-one-deployment/scripts/ci-build
