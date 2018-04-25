@@ -19,6 +19,18 @@
 
 # Parquet #
 
+### Version 1.8.3 ###
+
+#### Bug
+
+*   [PARQUET-1217](https://issues.apache.org/jira/browse/PARQUET-1217) - Incorrect handling of missing values in Statistics
+*   [PARQUET-1246](https://issues.apache.org/jira/browse/PARQUET-1246) - Ignore float/double statistics in case of NaN
+*   [PARQUET-1275](https://issues.apache.org/jira/browse/PARQUET-1275) - Travis fails on branch 1.8.x
+
+#### Task
+
+*   [PARQUET-1277](https://issues.apache.org/jira/browse/PARQUET-1277) - Release Parquet-mr 1.8.3
+
 ### Version 1.8.2 ###
 
 #### Bug
