@@ -18,13 +18,25 @@
  */
 package org.apache.parquet.column.statistics;
 
+import static java.lang.Double.doubleToLongBits;
+import static java.lang.Float.floatToIntBits;
+import static org.apache.parquet.bytes.BytesUtils.intToBytes;
+import static org.apache.parquet.bytes.BytesUtils.longToBytes;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
-
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class TestStatistics {
   private int[] integerArray;
@@ -584,5 +596,143 @@ public class TestStatistics {
 
     assertEquals(stats.getMax(), Binary.fromString("zzzz"));
     assertEquals(stats.getMin(), Binary.fromString(""));
+  }
+
+  @Test
+  public void testBuilder() {
+    testBuilder(BOOLEAN, false, new byte[] { 0 }, true, new byte[] { 1 });
+    testBuilder(INT32, -42, intToBytes(-42), 42, intToBytes(42));
+    testBuilder(INT64, -42l, longToBytes(-42), 42l, longToBytes(42));
+    testBuilder(FLOAT, -42.0f, intToBytes(floatToIntBits(-42.0f)), 42.0f,
+        intToBytes(floatToIntBits(42.0f)));
+    testBuilder(DOUBLE, -42.0, longToBytes(doubleToLongBits(-42.0)), 42.0,
+        longToBytes(Double.doubleToLongBits(42.0f)));
+
+    byte[] min = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+    byte[] max = { 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 };
+    testBuilder(INT96, Binary.fromConstantByteArray(min), min,
+        Binary.fromConstantByteArray(max), max);
+    testBuilder(FIXED_LEN_BYTE_ARRAY, Binary.fromConstantByteArray(min),
+        min,
+        Binary.fromConstantByteArray(max), max);
+    testBuilder(BINARY, Binary.fromConstantByteArray(min), min,
+        Binary.fromConstantByteArray(max), max);
+  }
+
+  private void testBuilder(PrimitiveTypeName type, Object min, byte[] minBytes, Object max, byte[] maxBytes) {
+    Statistics.Builder builder = Statistics.getBuilderForReading(type);
+    Statistics<?> stats = builder.build();
+    assertTrue(stats.isEmpty());
+    assertFalse(stats.isNumNullsSet());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withNumNulls(0).withMin(minBytes).build();
+    assertFalse(stats.isEmpty());
+    assertTrue(stats.isNumNullsSet());
+    assertFalse(stats.hasNonNullValue());
+    assertEquals(0, stats.getNumNulls());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withNumNulls(11).withMax(maxBytes).build();
+    assertFalse(stats.isEmpty());
+    assertTrue(stats.isNumNullsSet());
+    assertFalse(stats.hasNonNullValue());
+    assertEquals(11, stats.getNumNulls());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withNumNulls(42).withMin(minBytes).withMax(maxBytes).build();
+    assertFalse(stats.isEmpty());
+    assertTrue(stats.isNumNullsSet());
+    assertTrue(stats.hasNonNullValue());
+    assertEquals(42, stats.getNumNulls());
+    assertEquals(min, stats.genericGetMin());
+    assertEquals(max, stats.genericGetMax());
+  }
+
+  @Test
+  public void testSpecBuilderForFloat() {
+    PrimitiveTypeName type = FLOAT;
+    Statistics.Builder builder = Statistics.getBuilderForReading(type);
+    Statistics<?> stats = builder.withMin(intToBytes(floatToIntBits(Float.NaN)))
+        .withMax(intToBytes(floatToIntBits(42.0f))).withNumNulls(0).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(0, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(-42.0f)))
+        .withMax(intToBytes(floatToIntBits(Float.NaN))).withNumNulls(11).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(11, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(Float.NaN)))
+        .withMax(intToBytes(floatToIntBits(Float.NaN))).withNumNulls(42).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(42, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(0.0f)))
+        .withMax(intToBytes(floatToIntBits(42.0f))).build();
+    assertEquals(0, Float.compare(-0.0f, (Float) stats.genericGetMin()));
+    assertEquals(0, Float.compare(42.0f, (Float) stats.genericGetMax()));
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(-42.0f)))
+        .withMax(intToBytes(floatToIntBits(-0.0f))).build();
+    assertEquals(0, Float.compare(-42.0f, (Float) stats.genericGetMin()));
+    assertEquals(0, Float.compare(0.0f, (Float) stats.genericGetMax()));
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(intToBytes(floatToIntBits(0.0f)))
+        .withMax(intToBytes(floatToIntBits(-0.0f))).build();
+    assertEquals(0, Float.compare(-0.0f, (Float) stats.genericGetMin()));
+    assertEquals(0, Float.compare(0.0f, (Float) stats.genericGetMax()));
+  }
+
+  @Test
+  public void testSpecBuilderForDouble() {
+    PrimitiveTypeName type = DOUBLE;
+    Statistics.Builder builder = Statistics.getBuilderForReading(type);
+    Statistics<?> stats = builder.withMin(longToBytes(doubleToLongBits(Double.NaN)))
+        .withMax(longToBytes(doubleToLongBits(42.0))).withNumNulls(0).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(0, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(-42.0)))
+        .withMax(longToBytes(doubleToLongBits(Double.NaN))).withNumNulls(11).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(11, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(Double.NaN)))
+        .withMax(longToBytes(doubleToLongBits(Double.NaN))).withNumNulls(42).build();
+    assertTrue(stats.isNumNullsSet());
+    assertEquals(42, stats.getNumNulls());
+    assertFalse(stats.hasNonNullValue());
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(0.0)))
+        .withMax(longToBytes(doubleToLongBits(42.0))).build();
+    assertEquals(0, Double.compare(-0.0, (Double) stats.genericGetMin()));
+    assertEquals(0, Double.compare(42.0, (Double) stats.genericGetMax()));
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(-42.0)))
+        .withMax(longToBytes(doubleToLongBits(-0.0))).build();
+    assertEquals(0, Double.compare(-42.0, (Double) stats.genericGetMin()));
+    assertEquals(0, Double.compare(0.0, (Double) stats.genericGetMax()));
+
+    builder = Statistics.getBuilderForReading(type);
+    stats = builder.withMin(longToBytes(doubleToLongBits(0.0)))
+        .withMax(longToBytes(doubleToLongBits(-0.0))).build();
+    assertEquals(0, Double.compare(-0.0, (Double) stats.genericGetMin()));
+    assertEquals(0, Double.compare(0.0, (Double) stats.genericGetMax()));
   }
 }

@@ -90,7 +90,7 @@ public class TestColumnChunkPageWriteStore {
     int v = 3;
     BytesInput definitionLevels = BytesInput.fromInt(d);
     BytesInput repetitionLevels = BytesInput.fromInt(r);
-    Statistics<?> statistics = Statistics.getBuilder(PrimitiveTypeName.BINARY).build();
+    Statistics<?> statistics = Statistics.getBuilderForReading(PrimitiveTypeName.BINARY).build();
     BytesInput data = BytesInput.fromInt(v);
     int rowCount = 5;
     int nullCount = 1;
