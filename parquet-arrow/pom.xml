@@ -35,7 +35,7 @@
 
 
   <properties>
-    <arrow.version>0.8.1-rms-SNAPSHOT</arrow.version>
+    <arrow.version>2.0.0-rms-SNAPSHOT</arrow.version>
   </properties>
 
   <dependencies>
