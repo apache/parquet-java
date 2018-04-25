@@ -32,17 +32,6 @@
   <name>Apache Parquet Arrow</name>
   <url>https://parquet.apache.org</url>
 
-  <!-- Artifactory information used for deployment -->
-  <distributionManagement>
-    <repository>
-      <id>central</id>
-      <url>http://eastus-artifactory.azure.rmsonecloud.net:8081/artifactory/rms-one-maven-local</url>
-    </repository>
-    <snapshotRepository>
-      <id>snapshots</id>
-      <url>http://eastus-artifactory.azure.rmsonecloud.net:8081/artifactory/rms-one-maven-local</url>
-    </snapshotRepository>
-  </distributionManagement>
 
 
   <properties>

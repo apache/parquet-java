@@ -16,6 +16,19 @@
   <url>https://parquet.apache.org</url>
   <description>Parquet is a columnar storage format that supports nested data. This provides the java implementation.</description>
 
+
+  <!-- Artifactory information used for deployment -->
+  <distributionManagement>
+    <repository>
+      <id>central</id>
+      <url>http://eastus-artifactory.azure.rmsonecloud.net:8081/artifactory/rms-one-maven-local</url>
+    </repository>
+    <snapshotRepository>
+      <id>snapshots</id>
+      <url>http://eastus-artifactory.azure.rmsonecloud.net:8081/artifactory/rms-one-maven-local</url>
+    </snapshotRepository>
+  </distributionManagement>
+    
   <licenses>
     <license>
       <name>The Apache Software License, Version 2.0</name>
