@@ -32,14 +32,17 @@ public class ProtoSchemaConverterTest {
   /**
    * Converts given pbClass to parquet schema and compares it with expected parquet schema.
    */
-  private void testConversion(Class<? extends Message> pbClass, String parquetSchemaString) throws
+  private void testConversion(Class<? extends Message> pbClass, String parquetSchemaString, boolean parquetSpecsCompliant) throws
           Exception {
-    ProtoSchemaConverter protoSchemaConverter = new ProtoSchemaConverter();
+    ProtoSchemaConverter protoSchemaConverter = new ProtoSchemaConverter(parquetSpecsCompliant);
     MessageType schema = protoSchemaConverter.convert(pbClass);
     MessageType expectedMT = MessageTypeParser.parseMessageType(parquetSchemaString);
     assertEquals(expectedMT.toString(), schema.toString());
   }
 
+  private void testConversion(Class<? extends Message> pbClass, String parquetSchemaString) throws Exception {
+    testConversion(pbClass, parquetSchemaString, true);
+  }
 
   /**
    * Tests that all protocol buffer datatypes are converted to correct parquet datatypes.
@@ -103,10 +106,12 @@ public class ProtoSchemaConverterTest {
         "  optional binary optionalEnum (ENUM) = 18;" +
         "  optional int32 someInt32 = 19;" +
         "  optional binary someString (UTF8) = 20;" +
-        "  repeated group optionalMap = 21 {\n" +
-        "    optional int64 key = 1;\n" +
-        "    optional group value = 2 {\n" +
-        "      optional int32 someId = 3;\n" +
+        "  optional group optionalMap (MAP) = 21 {\n" +
+        "    repeated group key_value {\n" +
+        "      required int64 key;\n" +
+        "      optional group value {\n" +
+        "        optional int32 someId = 3;\n" +
+        "      }\n" +
         "    }\n" +
         "  }\n" +
         "}";
@@ -120,16 +125,24 @@ public class ProtoSchemaConverterTest {
       "message TestProtobuf.SchemaConverterRepetition {\n" +
         "  optional int32 optionalPrimitive = 1;\n" +
         "  required int32 requiredPrimitive = 2;\n" +
-        "  repeated int32 repeatedPrimitive = 3;\n" +
+        "  optional group repeatedPrimitive (LIST) = 3 {\n" +
+        "    repeated group list {\n" +
+        "      required int32 element;\n" +
+        "    }\n" +
+        "  }\n" +
         "  optional group optionalMessage = 7 {\n" +
         "    optional int32 someId = 3;\n" +
         "  }\n" +
-        "  required group requiredMessage = 8 {" +
+        "  required group requiredMessage = 8 {\n" +
         "    optional int32 someId= 3;\n" +
         "  }\n" +
-        "  repeated group repeatedMessage = 9 {" +
-        "    optional int32 someId = 3;\n" +
-        "  }\n" +
+        "  optional group repeatedMessage (LIST) = 9 {\n" +
+        "    repeated group list {\n" +
+        "      optional group element {\n" +
+        "        optional int32 someId = 3;\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }" +
         "}";
 
     testConversion(TestProtobuf.SchemaConverterRepetition.class, expectedSchema);
@@ -140,15 +153,193 @@ public class ProtoSchemaConverterTest {
     String expectedSchema =
       "message TestProto3.SchemaConverterRepetition {\n" +
         "  optional int32 optionalPrimitive = 1;\n" +
-        "  repeated int32 repeatedPrimitive = 3;\n" +
+        "  optional group repeatedPrimitive (LIST) = 3 {\n" +
+        "    repeated group list {\n" +
+        "      required int32 element;\n" +
+        "    }\n" +
+        "  }\n" +
         "  optional group optionalMessage = 7 {\n" +
         "    optional int32 someId = 3;\n" +
         "  }\n" +
-        "  repeated group repeatedMessage = 9 {" +
-        "    optional int32 someId = 3;\n" +
+        "  optional group repeatedMessage (LIST) = 9 {\n" +
+        "    repeated group list {\n" +
+        "      optional group element {\n" +
+        "        optional int32 someId = 3;\n" +
+        "      }\n" +
+        "    }\n" +
         "  }\n" +
         "}";
 
     testConversion(TestProto3.SchemaConverterRepetition.class, expectedSchema);
+  }
+
+  @Test
+  public void testConvertRepeatedIntMessage() throws Exception {
+    String expectedSchema =
+      "message TestProtobuf.RepeatedIntMessage {\n" +
+        "  optional group repeatedInt (LIST) = 1 {\n" +
+        "    repeated group list {\n" +
+        "      required int32 element;\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProtobuf.RepeatedIntMessage.class, expectedSchema);
+  }
+
+  @Test
+  public void testConvertRepeatedIntMessageNonSpecsCompliant() throws Exception {
+    String expectedSchema =
+      "message TestProtobuf.RepeatedIntMessage {\n" +
+        "  repeated int32 repeatedInt = 1;\n" +
+        "}";
+
+    testConversion(TestProtobuf.RepeatedIntMessage.class, expectedSchema, false);
+  }
+
+  @Test
+  public void testProto3ConvertRepeatedIntMessage() throws Exception {
+    String expectedSchema =
+      "message TestProto3.RepeatedIntMessage {\n" +
+        "  optional group repeatedInt (LIST) = 1 {\n" +
+        "    repeated group list {\n" +
+        "      required int32 element;\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProto3.RepeatedIntMessage.class, expectedSchema);
+  }
+
+  @Test
+  public void testProto3ConvertRepeatedIntMessageNonSpecsCompliant() throws Exception {
+    String expectedSchema =
+      "message TestProto3.RepeatedIntMessage {\n" +
+        "  repeated int32 repeatedInt = 1;\n" +
+        "}";
+
+    testConversion(TestProto3.RepeatedIntMessage.class, expectedSchema, false);
+  }
+
+  @Test
+  public void testConvertRepeatedInnerMessage() throws Exception {
+    String expectedSchema =
+      "message TestProtobuf.RepeatedInnerMessage {\n" +
+        "  optional group repeatedInnerMessage (LIST) = 1 {\n" +
+        "    repeated group list {\n" +
+        "      optional group element {\n" +
+        "        optional binary one (UTF8) = 1;\n" +
+        "        optional binary two (UTF8) = 2;\n" +
+        "        optional binary three (UTF8) = 3;\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProtobuf.RepeatedInnerMessage.class, expectedSchema);
+  }
+
+  @Test
+  public void testConvertRepeatedInnerMessageNonSpecsCompliant() throws Exception {
+    String expectedSchema =
+      "message TestProtobuf.RepeatedInnerMessage {\n" +
+        "  repeated group repeatedInnerMessage = 1 {\n" +
+        "    optional binary one (UTF8) = 1;\n" +
+        "    optional binary two (UTF8) = 2;\n" +
+        "    optional binary three (UTF8) = 3;\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProtobuf.RepeatedInnerMessage.class, expectedSchema, false);
+  }
+
+  @Test
+  public void testProto3ConvertRepeatedInnerMessage() throws Exception {
+    String expectedSchema =
+      "message TestProto3.RepeatedInnerMessage {\n" +
+        "  optional group repeatedInnerMessage (LIST) = 1 {\n" +
+        "    repeated group list {\n" +
+        "      optional group element {\n" +
+        "        optional binary one (UTF8) = 1;\n" +
+        "        optional binary two (UTF8) = 2;\n" +
+        "        optional binary three (UTF8) = 3;\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProto3.RepeatedInnerMessage.class, expectedSchema);
+  }
+
+  @Test
+  public void testProto3ConvertRepeatedInnerMessageNonSpecsCompliant() throws Exception {
+    String expectedSchema =
+      "message TestProto3.RepeatedInnerMessage {\n" +
+        "  repeated group repeatedInnerMessage = 1 {\n" +
+        "    optional binary one (UTF8) = 1;\n" +
+        "    optional binary two (UTF8) = 2;\n" +
+        "    optional binary three (UTF8) = 3;\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProto3.RepeatedInnerMessage.class, expectedSchema, false);
+  }
+
+  @Test
+  public void testConvertMapIntMessage() throws Exception {
+    String expectedSchema =
+      "message TestProtobuf.MapIntMessage {\n" +
+        "  optional group mapInt (MAP) = 1 {\n" +
+        "    repeated group key_value {\n" +
+        "      required int32 key;\n" +
+        "      optional int32 value;\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProtobuf.MapIntMessage.class, expectedSchema);
+  }
+
+  @Test
+  public void testConvertMapIntMessageNonSpecsCompliant() throws Exception {
+    String expectedSchema =
+      "message TestProtobuf.MapIntMessage {\n" +
+        "  repeated group mapInt = 1 {\n" +
+        "    optional int32 key = 1;\n" +
+        "    optional int32 value = 2;\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProtobuf.MapIntMessage.class, expectedSchema, false);
+  }
+
+  @Test
+  public void testProto3ConvertMapIntMessage() throws Exception {
+    String expectedSchema =
+      "message TestProto3.MapIntMessage {\n" +
+        "  optional group mapInt (MAP) = 1 {\n" +
+        "    repeated group key_value {\n" +
+        "      required int32 key;\n" +
+        "      optional int32 value;\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProto3.MapIntMessage.class, expectedSchema);
+  }
+
+  @Test
+  public void testProto3ConvertMapIntMessageNonSpecsCompliant() throws Exception {
+    String expectedSchema =
+      "message TestProto3.MapIntMessage {\n" +
+        "  repeated group mapInt = 1 {\n" +
+        "    optional int32 key = 1;\n" +
+        "    optional int32 value = 2;\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProto3.MapIntMessage.class, expectedSchema, false);
   }
 }
