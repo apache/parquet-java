@@ -19,20 +19,7 @@
 package org.apache.parquet.arrow.schema;
 
 import static java.util.Arrays.asList;
-import static org.apache.parquet.schema.OriginalType.DATE;
-import static org.apache.parquet.schema.OriginalType.DECIMAL;
-import static org.apache.parquet.schema.OriginalType.INTERVAL;
-import static org.apache.parquet.schema.OriginalType.INT_16;
-import static org.apache.parquet.schema.OriginalType.INT_32;
-import static org.apache.parquet.schema.OriginalType.INT_64;
-import static org.apache.parquet.schema.OriginalType.INT_8;
-import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
-import static org.apache.parquet.schema.OriginalType.TIME_MILLIS;
-import static org.apache.parquet.schema.OriginalType.UINT_16;
-import static org.apache.parquet.schema.OriginalType.UINT_32;
-import static org.apache.parquet.schema.OriginalType.UINT_64;
-import static org.apache.parquet.schema.OriginalType.UINT_8;
-import static org.apache.parquet.schema.OriginalType.UTF8;
+import static org.apache.parquet.schema.OriginalType.*;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
@@ -111,7 +98,7 @@ public class TestSchemaConverter {
     field("b", new ArrowType.Struct(), field("ba", new ArrowType.Null())),
     field("c", new ArrowType.List(), field("ca", new ArrowType.Null())),
     field("d", new ArrowType.FixedSizeList(1), field("da", new ArrowType.Null())),
-    field("e", new ArrowType.Union(UnionMode.Sparse, new int[] {1, 2, 3}), field("ea", new ArrowType.Null())),
+    field("e", new ArrowType.Union(UnionMode.Sparse, new int[]{1, 2, 3}), field("ea", new ArrowType.Null())),
     field("f", new ArrowType.Int(8, true)),
     field("f1", new ArrowType.Int(16, true)),
     field("f2", new ArrowType.Int(32, true)),
@@ -129,11 +116,12 @@ public class TestSchemaConverter {
     field("k1", new ArrowType.Decimal(15, 5)),
     field("k2", new ArrowType.Decimal(25, 5)),
     field("l", new ArrowType.Date(DateUnit.DAY)),
-    field("m", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.SECOND, 32)),
+    field("m", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, 32)),
     field("n", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC")),
     field("o", new ArrowType.Interval(IntervalUnit.DAY_TIME)),
     field("o1", new ArrowType.Interval(IntervalUnit.YEAR_MONTH))
   ));
+
   private final MessageType allTypesParquetSchema = Types.buildMessage()
     .addField(Types.optional(BINARY).named("a"))
     .addField(Types.optionalGroup()
@@ -277,6 +265,7 @@ public class TestSchemaConverter {
 
   /**
    * for more pinpointed error on what is different
+   *
    * @param left
    * @param right
    */
@@ -347,5 +336,35 @@ public class TestSchemaConverter {
   public void testRepeatedMap() throws IOException {
     SchemaMapping map = converter.map(paperArrowSchema, Paper.schema);
     Assert.assertEquals("p, s<r<p>, r<p>>, r<s<r<s<p, p>>, p>>", toSummaryString(map));
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testArrowTimeSecondToParquet() {
+    converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.SECOND, 32))
+    ))).getParquetSchema();
+  }
+
+  @Test
+  public void testArrowTimeMillisecondToParquet() {
+    MessageType parquet = converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, 32))
+    ))).getParquetSchema();
+    Assert.assertEquals(Types.buildMessage().addField(Types.optional(INT32).as(TIME_MILLIS).named("a")).named("root"), parquet);
+  }
+
+  @Test
+  public void testArrowTimeMicrosecondToParquet() {
+    MessageType parquet = converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MICROSECOND, 64))
+    ))).getParquetSchema();
+    Assert.assertEquals(Types.buildMessage().addField(Types.optional(INT64).as(TIME_MICROS).named("a")).named("root"), parquet);
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testArrowTimeNanosecondToParquet() {
+    converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.NANOSECOND, 64))
+    ))).getParquetSchema();
   }
 }
