@@ -19,7 +19,21 @@
 package org.apache.parquet.arrow.schema;
 
 import static java.util.Arrays.asList;
-import static org.apache.parquet.schema.OriginalType.*;
+import static org.apache.parquet.schema.OriginalType.DATE;
+import static org.apache.parquet.schema.OriginalType.DECIMAL;
+import static org.apache.parquet.schema.OriginalType.INTERVAL;
+import static org.apache.parquet.schema.OriginalType.INT_16;
+import static org.apache.parquet.schema.OriginalType.INT_32;
+import static org.apache.parquet.schema.OriginalType.INT_64;
+import static org.apache.parquet.schema.OriginalType.INT_8;
+import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
+import static org.apache.parquet.schema.OriginalType.TIME_MILLIS;
+import static org.apache.parquet.schema.OriginalType.TIME_MICROS;
+import static org.apache.parquet.schema.OriginalType.UINT_16;
+import static org.apache.parquet.schema.OriginalType.UINT_32;
+import static org.apache.parquet.schema.OriginalType.UINT_64;
+import static org.apache.parquet.schema.OriginalType.UINT_8;
+import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
