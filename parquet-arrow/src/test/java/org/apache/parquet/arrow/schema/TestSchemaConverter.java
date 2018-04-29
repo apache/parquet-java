@@ -112,7 +112,7 @@ public class TestSchemaConverter {
     field("b", new ArrowType.Struct(), field("ba", new ArrowType.Null())),
     field("c", new ArrowType.List(), field("ca", new ArrowType.Null())),
     field("d", new ArrowType.FixedSizeList(1), field("da", new ArrowType.Null())),
-    field("e", new ArrowType.Union(UnionMode.Sparse, new int[]{1, 2, 3}), field("ea", new ArrowType.Null())),
+    field("e", new ArrowType.Union(UnionMode.Sparse, new int[] {1, 2, 3}), field("ea", new ArrowType.Null())),
     field("f", new ArrowType.Int(8, true)),
     field("f1", new ArrowType.Int(16, true)),
     field("f2", new ArrowType.Int(32, true)),
@@ -279,7 +279,6 @@ public class TestSchemaConverter {
 
   /**
    * for more pinpointed error on what is different
-   *
    * @param left
    * @param right
    */
