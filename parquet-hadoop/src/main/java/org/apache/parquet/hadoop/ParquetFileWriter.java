@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.format.Util.writeFileMetaData;
+import static org.apache.parquet.format.Util.writeFileCryptoMetaData;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
@@ -48,8 +49,10 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.crypto.ParquetFileEncryptor;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.format.BlockCrypto;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -81,6 +84,8 @@ public class ParquetFileWriter {
   public static final String PARQUET_METADATA_FILE = "_metadata";
   public static final String MAGIC_STR = "PAR1";
   public static final byte[] MAGIC = MAGIC_STR.getBytes(Charset.forName("ASCII"));
+    public static final String E_MAGIC_STR = "PAR2";
+  public static final byte[] EMAGIC = E_MAGIC_STR.getBytes(Charset.forName("ASCII"));
   public static final String PARQUET_COMMON_METADATA_FILE = "_common_metadata";
   public static final int CURRENT_VERSION = 1;
 
@@ -93,6 +98,7 @@ public class ParquetFileWriter {
   private final MessageType schema;
   private final PositionOutputStream out;
   private final AlignmentStrategy alignment;
+  private final ParquetFileEncryptor fileEncryptor;
 
   // file data
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -230,10 +236,16 @@ public class ParquetFileWriter {
   public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
                            long rowGroupSize, int maxPaddingSize)
       throws IOException {
+    this(file, schema, mode, rowGroupSize, maxPaddingSize, (ParquetFileEncryptor) null);
+  }
+      
+  public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
+                           long rowGroupSize, int maxPaddingSize, ParquetFileEncryptor fileEncryptor)
+      throws IOException {
     TypeUtil.checkValidWriteSchema(schema);
 
     this.schema = schema;
-
+    this.fileEncryptor = fileEncryptor;
     long blockSize = rowGroupSize;
     if (file.supportsBlockSize()) {
       blockSize = Math.max(file.defaultBlockSize(), rowGroupSize);
@@ -271,6 +283,7 @@ public class ParquetFileWriter {
     this.out = HadoopStreams.wrap(
         fs.create(file, true, 8192, fs.getDefaultReplication(file), rowAndBlockSize));
     this.encodingStatsBuilder = new EncodingStats.Builder();
+    this.fileEncryptor = null;
   }
   /**
    * start the file
@@ -279,7 +292,8 @@ public class ParquetFileWriter {
   public void start() throws IOException {
     state = state.start();
     LOG.debug("{}: start", out.getPos());
-    out.write(MAGIC);
+    byte[] magic = ((null == fileEncryptor)?MAGIC:EMAGIC);
+    out.write(magic);
   }
 
   /**
@@ -328,6 +342,10 @@ public class ParquetFileWriter {
    * @throws IOException if there is an error while writing
    */
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
+    writeDictionaryPage(dictionaryPage, (BlockCrypto.Encryptor) null);
+  }
+  
+  public void writeDictionaryPage(DictionaryPage dictionaryPage, BlockCrypto.Encryptor blockEncryptor) throws IOException {
     state = state.write();
     LOG.debug("{}: write dictionary page: {} values", out.getPos(), dictionaryPage.getDictionarySize());
     currentChunkDictionaryPageOffset = out.getPos();
@@ -338,7 +356,7 @@ public class ParquetFileWriter {
         compressedPageSize,
         dictionaryPage.getDictionarySize(),
         dictionaryPage.getEncoding(),
-        out);
+        out, blockEncryptor);
     long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
     this.uncompressedLength += uncompressedSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
@@ -681,17 +699,28 @@ public class ParquetFileWriter {
     state = state.end();
     LOG.debug("{}: end", out.getPos());
     this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
-    serializeFooter(footer, out);
+    serializeFooter(footer, out, fileEncryptor);
     out.close();
   }
 
-  private static void serializeFooter(ParquetMetadata footer, PositionOutputStream out) throws IOException {
+  private static void serializeFooter(ParquetMetadata footer, PositionOutputStream out, ParquetFileEncryptor fileEncryptor) throws IOException {
     long footerIndex = out.getPos();
     org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
-    writeFileMetaData(parquetMetadata, out);
-    LOG.debug("{}: footer length = {}" , out.getPos(), (out.getPos() - footerIndex));
-    BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
-    out.write(MAGIC);
+    if (null == fileEncryptor) {
+      writeFileMetaData(parquetMetadata, out);
+      LOG.debug("{}: footer length = {}" , out.getPos(), (out.getPos() - footerIndex));
+      BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
+      out.write(MAGIC);
+    }
+    else {
+      writeFileMetaData(parquetMetadata, out, fileEncryptor.getFooterEncryptor());
+      long cryptoMDIndex = out.getPos();
+      writeFileCryptoMetaData(fileEncryptor.getFileCryptoMetaData(footerIndex), out);
+      int cryptoMDLength = (int)(out.getPos() - cryptoMDIndex);
+      LOG.debug("{}: crypto metedata length = {}" , out.getPos(), cryptoMDLength);
+      BytesUtils.writeIntLittleEndian(out, cryptoMDLength);
+      out.write(EMAGIC);
+    }
   }
 
   public ParquetMetadata getFooter() {
@@ -800,7 +829,7 @@ public class ParquetFileWriter {
       throws IOException {
     PositionOutputStream metadata = HadoopStreams.wrap(fs.create(outputPath));
     metadata.write(MAGIC);
-    serializeFooter(metadataFooter, metadata);
+    serializeFooter(metadataFooter, metadata, (ParquetFileEncryptor) null);
     metadata.close();
   }
 

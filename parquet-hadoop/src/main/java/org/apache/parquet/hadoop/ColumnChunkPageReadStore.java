@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.parquet.Ints;
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
@@ -35,6 +36,7 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
+import org.apache.parquet.format.BlockCrypto;
 import org.apache.parquet.hadoop.CodecFactory.BytesDecompressor;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
@@ -62,9 +64,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final long valueCount;
     private final List<DataPage> compressedPages;
     private final DictionaryPage compressedDictionaryPage;
+    private final BlockCrypto.Decryptor blockDecryptor;
 
-    ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages, DictionaryPage compressedDictionaryPage) {
+    ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages, DictionaryPage compressedDictionaryPage,
+        BlockCrypto.Decryptor blockDecryptor) {
       this.decompressor = decompressor;
+      this.blockDecryptor = blockDecryptor;
       this.compressedPages = new LinkedList<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
       long count = 0;
@@ -89,8 +94,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         @Override
         public DataPage visit(DataPageV1 dataPageV1) {
           try {
+            BytesInput bytes = dataPageV1.getBytes();
+            if (null != blockDecryptor) {
+              bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray()));
+            }
             return new DataPageV1(
-                decompressor.decompress(dataPageV1.getBytes(), dataPageV1.getUncompressedSize()),
+                decompressor.decompress(bytes, dataPageV1.getUncompressedSize()),
                 dataPageV1.getValueCount(),
                 dataPageV1.getUncompressedSize(),
                 dataPageV1.getStatistics(),
@@ -112,6 +121,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 dataPageV2.getUncompressedSize()
                 - dataPageV2.getDefinitionLevels().size()
                 - dataPageV2.getRepetitionLevels().size());
+            BytesInput bytes = dataPageV2.getData();
+            if (null != blockDecryptor) {
+              bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray()));
+            }
             return DataPageV2.uncompressed(
                 dataPageV2.getRowCount(),
                 dataPageV2.getNullCount(),
@@ -119,7 +132,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 dataPageV2.getRepetitionLevels(),
                 dataPageV2.getDefinitionLevels(),
                 dataPageV2.getDataEncoding(),
-                decompressor.decompress(dataPageV2.getData(), uncompressedSize),
+                decompressor.decompress(bytes, uncompressedSize),
                 dataPageV2.getStatistics()
                 );
           } catch (IOException e) {
@@ -135,8 +148,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         return null;
       }
       try {
+        BytesInput bytes = compressedDictionaryPage.getBytes();
+        if (null != blockDecryptor) {
+          bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray()));
+        }
         return new DictionaryPage(
-            decompressor.decompress(compressedDictionaryPage.getBytes(), compressedDictionaryPage.getUncompressedSize()),
+            decompressor.decompress(bytes, compressedDictionaryPage.getUncompressedSize()),
             compressedDictionaryPage.getDictionarySize(),
             compressedDictionaryPage.getEncoding());
       } catch (IOException e) {

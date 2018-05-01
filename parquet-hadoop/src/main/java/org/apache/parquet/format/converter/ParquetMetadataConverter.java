@@ -42,6 +42,7 @@ import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.format.BlockCrypto;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.ColumnOrder;
@@ -858,27 +859,31 @@ public class ParquetMetadataConverter {
     }
     return offset;
   }
-
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter) throws IOException {
+    return readParquetMetadata(from, filter, (BlockCrypto.Decryptor) null);
+  }
+  
+  public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter,
+      final BlockCrypto.Decryptor blockDecryptor) throws IOException {
     FileMetaData fileMetaData = filter.accept(new MetadataFilterVisitor<FileMetaData, IOException>() {
       @Override
       public FileMetaData visit(NoFilter filter) throws IOException {
-        return readFileMetaData(from);
+        return readFileMetaData(from, blockDecryptor);
       }
 
       @Override
       public FileMetaData visit(SkipMetadataFilter filter) throws IOException {
-        return readFileMetaData(from, true);
+        return readFileMetaData(from, true, blockDecryptor);
       }
 
       @Override
       public FileMetaData visit(OffsetMetadataFilter filter) throws IOException {
-        return filterFileMetaDataByStart(readFileMetaData(from), filter);
+        return filterFileMetaDataByStart(readFileMetaData(from, blockDecryptor), filter);
       }
 
       @Override
       public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
-        return filterFileMetaDataByMidpoint(readFileMetaData(from), filter);
+        return filterFileMetaDataByMidpoint(readFileMetaData(from, blockDecryptor), filter);
       }
     });
     LOG.debug("{}", fileMetaData);
@@ -1045,7 +1050,7 @@ public class ParquetMetadataConverter {
                                       dlEncoding,
                                       valuesEncoding), to);
   }
-
+  
   public void writeDataPageHeader(
       int uncompressedSize,
       int compressedSize,
@@ -1055,10 +1060,24 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding dlEncoding,
       org.apache.parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
+    writeDataPageHeader(uncompressedSize, compressedSize, valueCount, statistics,
+        rlEncoding, dlEncoding, valuesEncoding, to, (BlockCrypto.Encryptor) null);
+  }
+
+  public void writeDataPageHeader(
+      int uncompressedSize,
+      int compressedSize,
+      int valueCount,
+      org.apache.parquet.column.statistics.Statistics statistics,
+      org.apache.parquet.column.Encoding rlEncoding,
+      org.apache.parquet.column.Encoding dlEncoding,
+      org.apache.parquet.column.Encoding valuesEncoding,
+      OutputStream to,
+      BlockCrypto.Encryptor blockEncryptor) throws IOException {
     writePageHeader(
         newDataPageHeader(uncompressedSize, compressedSize, valueCount, statistics,
             rlEncoding, dlEncoding, valuesEncoding),
-        to);
+        to, blockEncryptor);
   }
 
   private PageHeader newDataPageHeader(
@@ -1080,7 +1099,7 @@ public class ParquetMetadataConverter {
     }
     return pageHeader;
   }
-
+  
   public void writeDataPageV2Header(
       int uncompressedSize, int compressedSize,
       int valueCount, int nullCount, int rowCount,
@@ -1088,14 +1107,27 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding dataEncoding,
       int rlByteLength, int dlByteLength,
       OutputStream to) throws IOException {
+    writeDataPageV2Header(uncompressedSize, compressedSize, valueCount, nullCount, rowCount,
+       statistics, dataEncoding, rlByteLength,  dlByteLength, to, (BlockCrypto.Encryptor) null);   
+  }
+
+  public void writeDataPageV2Header(
+      int uncompressedSize, int compressedSize,
+      int valueCount, int nullCount, int rowCount,
+      org.apache.parquet.column.statistics.Statistics statistics,
+      org.apache.parquet.column.Encoding dataEncoding,
+      int rlByteLength, int dlByteLength,
+      OutputStream to,
+      BlockCrypto.Encryptor blockEncryptor) throws IOException {
     writePageHeader(
         newDataPageV2Header(
             uncompressedSize, compressedSize,
             valueCount, nullCount, rowCount,
             statistics,
             dataEncoding,
-            rlByteLength, dlByteLength), to);
+            rlByteLength, dlByteLength), to, blockEncryptor);
   }
+
 
   private PageHeader newDataPageV2Header(
       int uncompressedSize, int compressedSize,
@@ -1120,9 +1152,15 @@ public class ParquetMetadataConverter {
   public void writeDictionaryPageHeader(
       int uncompressedSize, int compressedSize, int valueCount,
       org.apache.parquet.column.Encoding valuesEncoding, OutputStream to) throws IOException {
+    writeDictionaryPageHeader(uncompressedSize, compressedSize, valueCount, valuesEncoding, to, (BlockCrypto.Encryptor) null);
+  }
+
+  public void writeDictionaryPageHeader(
+      int uncompressedSize, int compressedSize, int valueCount,
+      org.apache.parquet.column.Encoding valuesEncoding, OutputStream to, BlockCrypto.Encryptor blockEncryptor) throws IOException {
     PageHeader pageHeader = new PageHeader(PageType.DICTIONARY_PAGE, uncompressedSize, compressedSize);
     pageHeader.setDictionary_page_header(new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding)));
-    writePageHeader(pageHeader, to);
+    writePageHeader(pageHeader, to, blockEncryptor);
   }
 
 }

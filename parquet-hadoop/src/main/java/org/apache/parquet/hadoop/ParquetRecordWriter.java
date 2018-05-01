@@ -27,6 +27,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.crypto.ParquetFileEncryptor;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -137,6 +138,21 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param validating if schema validation should be turned on
    * @param props parquet encoding properties
    */
+   ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      long blockSize,
+      CompressionCodecName codec,
+      boolean validating,
+      ParquetProperties props,
+      MemoryManager memoryManager,
+      Configuration conf)  throws IOException {
+    this(w, writeSupport, schema, extraMetaData, blockSize, codec, validating,
+      props, memoryManager, conf, (ParquetFileEncryptor) null);
+  }
+  
   ParquetRecordWriter(
       ParquetFileWriter w,
       WriteSupport<T> writeSupport,
@@ -147,11 +163,12 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       boolean validating,
       ParquetProperties props,
       MemoryManager memoryManager,
-      Configuration conf) {
+      Configuration conf,
+      ParquetFileEncryptor fileEncryptor)  throws IOException {
     this.codecFactory = new CodecFactory(conf, props.getPageSizeThreshold());
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, codecFactory.getCompressor(codec), validating,
-        props);
+        props, fileEncryptor);
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(internalWriter, blockSize);
   }

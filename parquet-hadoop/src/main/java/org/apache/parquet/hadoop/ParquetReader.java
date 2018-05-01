@@ -35,6 +35,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.compression.CompressionCodecFactory;
+import org.apache.parquet.crypto.ParquetFileDecryptor;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -53,8 +54,9 @@ public class ParquetReader<T> implements Closeable {
   private final ReadSupport<T> readSupport;
   private final Iterator<InputFile> filesIterator;
   private final ParquetReadOptions options;
-
+  
   private InternalParquetRecordReader<T> reader;
+  private ParquetFileDecryptor fileDecryptor;
 
   /**
    * @param file the file to read
@@ -112,15 +114,17 @@ public class ParquetReader<T> implements Closeable {
         HadoopReadOptions.builder(conf)
             .withRecordFilter(checkNotNull(filter, "filter"))
             .build(),
-        readSupport);
+        readSupport, (ParquetFileDecryptor) null);
   }
 
   private ParquetReader(List<InputFile> files,
                         ParquetReadOptions options,
-                        ReadSupport<T> readSupport) throws IOException {
+                        ReadSupport<T> readSupport,
+                        ParquetFileDecryptor fileDecryptor) throws IOException {
     this.readSupport = readSupport;
     this.options = options;
     this.filesIterator = files.iterator();
+    this.fileDecryptor = fileDecryptor;
   }
 
   /**
@@ -149,7 +153,7 @@ public class ParquetReader<T> implements Closeable {
     if (filesIterator.hasNext()) {
       InputFile file = filesIterator.next();
 
-      ParquetFileReader fileReader = ParquetFileReader.open(file, options);
+      ParquetFileReader fileReader = ParquetFileReader.open(file, options, fileDecryptor);
 
       reader = new InternalParquetRecordReader<>(readSupport, options.getRecordFilter());
 
@@ -179,6 +183,7 @@ public class ParquetReader<T> implements Closeable {
     private Filter filter = null;
     protected Configuration conf;
     private ParquetReadOptions.Builder optionsBuilder;
+    private ParquetFileDecryptor fileDecryptor = null;
 
     @Deprecated
     private Builder(ReadSupport<T> readSupport, Path path) {
@@ -279,6 +284,11 @@ public class ParquetReader<T> implements Closeable {
       optionsBuilder.withCodecFactory(codecFactory);
       return this;
     }
+    
+    public Builder<T> withDecryptor(ParquetFileDecryptor fileDecryptor) {
+      this.fileDecryptor = fileDecryptor;
+      return this;
+    }
 
     public Builder<T> set(String key, String value) {
       optionsBuilder.set(key, value);
@@ -303,18 +313,18 @@ public class ParquetReader<T> implements Closeable {
           return new ParquetReader<>(
               Collections.singletonList((InputFile) HadoopInputFile.fromStatus(stat, conf)),
               options,
-              getReadSupport());
+              getReadSupport(), fileDecryptor);
 
         } else {
           List<InputFile> files = new ArrayList<>();
           for (FileStatus fileStatus : fs.listStatus(path, HiddenFileFilter.INSTANCE)) {
             files.add(HadoopInputFile.fromStatus(fileStatus, conf));
           }
-          return new ParquetReader<T>(files, options, getReadSupport());
+          return new ParquetReader<T>(files, options, getReadSupport(), fileDecryptor);
         }
 
       } else {
-        return new ParquetReader<>(Collections.singletonList(file), options, getReadSupport());
+        return new ParquetReader<>(Collections.singletonList(file), options, getReadSupport(), fileDecryptor);
       }
     }
   }

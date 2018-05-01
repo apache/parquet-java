@@ -29,6 +29,7 @@ import java.util.Map;
 
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.crypto.ParquetFileEncryptor;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
@@ -66,6 +67,8 @@ class InternalParquetRecordWriter<T> {
   private ColumnWriteStore columnStore;
   private ColumnChunkPageWriteStore pageStore;
   private RecordConsumer recordConsumer;
+  
+  private ParquetFileEncryptor fileEncryptor;
 
   /**
    * @param parquetFileWriter the file to write to
@@ -96,13 +99,45 @@ class InternalParquetRecordWriter<T> {
     this.props = props;
     initStore();
   }
+  
+  public InternalParquetRecordWriter(
+      ParquetFileWriter parquetFileWriter,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      long rowGroupSize,
+      BytesCompressor compressor,
+      boolean validating,
+      ParquetProperties props,
+      ParquetFileEncryptor fileEncryptor) throws IOException { // TODO
+    this.parquetFileWriter = parquetFileWriter;
+    this.writeSupport = checkNotNull(writeSupport, "writeSupport");
+    this.schema = schema;
+    this.extraMetaData = extraMetaData;
+    this.rowGroupSize = rowGroupSize;
+    this.rowGroupSizeThreshold = rowGroupSize;
+    this.nextRowGroupSize = rowGroupSizeThreshold;
+    this.compressor = compressor;
+    this.validating = validating;
+    this.props = props;
+    this.fileEncryptor = fileEncryptor;
+    initStore(fileEncryptor);
+  }
 
   public ParquetMetadata getFooter() {
     return parquetFileWriter.getFooter();
   }
-
+  
   private void initStore() {
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator());
+    try {
+      initStore((ParquetFileEncryptor) null);
+    } catch (IOException e) {
+      LOG.error("Should not be here", e);
+    }
+  }
+
+  private void initStore(ParquetFileEncryptor fileEncryptor) throws IOException {
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator(), fileEncryptor);
     columnStore = props.newColumnWriteStore(schema, pageStore);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);
@@ -146,7 +181,7 @@ class InternalParquetRecordWriter<T> {
       if (memSize > (nextRowGroupSize - 2 * recordSize)) {
         LOG.info("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
         flushRowGroupToStore();
-        initStore();
+        initStore(fileEncryptor);
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
         this.lastRowGroupEndPos = parquetFileWriter.getPos();
       } else {
