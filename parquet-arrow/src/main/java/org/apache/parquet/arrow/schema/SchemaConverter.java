@@ -50,6 +50,7 @@ import java.util.List;
 
 import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
+import org.apache.arrow.vector.types.TimeUnit;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.ArrowType.ArrowTypeVisitor;
 import org.apache.arrow.vector.types.pojo.ArrowType.Binary;
@@ -247,10 +248,10 @@ public class SchemaConverter {
       @Override
       public TypeMapping visit(Time type) {
         int bitWidth = type.getBitWidth();
-        org.apache.arrow.vector.types.TimeUnit timeUnit = type.getUnit();
-        if (bitWidth == 32 && timeUnit == org.apache.arrow.vector.types.TimeUnit.MILLISECOND) {
+        TimeUnit timeUnit = type.getUnit();
+        if (bitWidth == 32 && timeUnit == TimeUnit.MILLISECOND) {
           return primitive(INT32, TIME_MILLIS);
-        } else if (bitWidth == 64 && timeUnit == org.apache.arrow.vector.types.TimeUnit.MICROSECOND) {
+        } else if (bitWidth == 64 && timeUnit == TimeUnit.MICROSECOND) {
           return primitive(INT64, TIME_MICROS);
         }
         throw new UnsupportedOperationException("Unsupported type " + type);
@@ -415,11 +416,11 @@ public class SchemaConverter {
           case DATE:
             return field(new ArrowType.Date(DateUnit.DAY));
           case TIMESTAMP_MICROS:
-            return field(new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MICROSECOND, "UTC"));
+            return field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC"));
           case TIMESTAMP_MILLIS:
-            return field(new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC"));
+            return field(new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC"));
           case TIME_MILLIS:
-            return field(new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, 32));
+            return field(new ArrowType.Time(TimeUnit.MILLISECOND, 32));
           default:
           case TIME_MICROS:
           case INT_64:
@@ -464,9 +465,9 @@ public class SchemaConverter {
           case DATE:
             return field(new ArrowType.Date(DateUnit.DAY));
           case TIMESTAMP_MICROS:
-            return field(new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MICROSECOND, "UTC"));
+            return field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC"));
           case TIMESTAMP_MILLIS:
-            return field(new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC"));
+            return field(new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC"));
           default:
           case TIME_MICROS:
           case UTF8:

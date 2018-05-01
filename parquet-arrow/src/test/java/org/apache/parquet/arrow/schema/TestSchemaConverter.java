@@ -44,11 +44,12 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.arrow.vector.types.IntervalUnit;
 
-import org.apache.arrow.vector.types.UnionMode;
 import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
+import org.apache.arrow.vector.types.IntervalUnit;
+import org.apache.arrow.vector.types.TimeUnit;
+import org.apache.arrow.vector.types.UnionMode;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -87,7 +88,7 @@ public class TestSchemaConverter {
     field("e", new ArrowType.List(), field(null, new ArrowType.Date(DateUnit.DAY))),
     field("f", new ArrowType.FixedSizeList(1), field(null, new ArrowType.Date(DateUnit.DAY))),
     field("g", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
-    field("h", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC")),
+    field("h", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC")),
     field("i", new ArrowType.Interval(IntervalUnit.DAY_TIME))
   ));
   private final MessageType complexParquetSchema = Types.buildMessage()
@@ -130,8 +131,8 @@ public class TestSchemaConverter {
     field("k1", new ArrowType.Decimal(15, 5)),
     field("k2", new ArrowType.Decimal(25, 5)),
     field("l", new ArrowType.Date(DateUnit.DAY)),
-    field("m", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, 32)),
-    field("n", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC")),
+    field("m", new ArrowType.Time(TimeUnit.MILLISECOND, 32)),
+    field("n", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC")),
     field("o", new ArrowType.Interval(IntervalUnit.DAY_TIME)),
     field("o1", new ArrowType.Interval(IntervalUnit.YEAR_MONTH))
   ));
@@ -193,8 +194,8 @@ public class TestSchemaConverter {
     field("j1", new ArrowType.Decimal(15, 5)),
     field("j2", new ArrowType.Decimal(25, 5)),
     field("k", new ArrowType.Date(DateUnit.DAY)),
-    field("l", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, 32)),
-    field("m", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC"))
+    field("l", new ArrowType.Time(TimeUnit.MILLISECOND, 32)),
+    field("m", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC"))
   ));
 
   private final MessageType supportedTypesParquetSchema = Types.buildMessage()
@@ -354,14 +355,14 @@ public class TestSchemaConverter {
   @Test(expected = UnsupportedOperationException.class)
   public void testArrowTimeSecondToParquet() {
     converter.fromArrow(new Schema(asList(
-      field("a", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.SECOND, 32))
+      field("a", new ArrowType.Time(TimeUnit.SECOND, 32))
     ))).getParquetSchema();
   }
 
   @Test
   public void testArrowTimeMillisecondToParquet() {
     MessageType parquet = converter.fromArrow(new Schema(asList(
-      field("a", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, 32))
+      field("a", new ArrowType.Time(TimeUnit.MILLISECOND, 32))
     ))).getParquetSchema();
     Assert.assertEquals(Types.buildMessage().addField(Types.optional(INT32).as(TIME_MILLIS).named("a")).named("root"), parquet);
   }
@@ -369,7 +370,7 @@ public class TestSchemaConverter {
   @Test
   public void testArrowTimeMicrosecondToParquet() {
     MessageType parquet = converter.fromArrow(new Schema(asList(
-      field("a", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MICROSECOND, 64))
+      field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64))
     ))).getParquetSchema();
     Assert.assertEquals(Types.buildMessage().addField(Types.optional(INT64).as(TIME_MICROS).named("a")).named("root"), parquet);
   }
@@ -377,7 +378,7 @@ public class TestSchemaConverter {
   @Test(expected = UnsupportedOperationException.class)
   public void testArrowTimeNanosecondToParquet() {
     converter.fromArrow(new Schema(asList(
-      field("a", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.NANOSECOND, 64))
+      field("a", new ArrowType.Time(TimeUnit.NANOSECOND, 64))
     ))).getParquetSchema();
   }
 }
