@@ -361,18 +361,18 @@ public class TestSchemaConverter {
 
   @Test
   public void testArrowTimeMillisecondToParquet() {
-    MessageType parquet = converter.fromArrow(new Schema(asList(
+    MessageType expected = converter.fromArrow(new Schema(asList(
       field("a", new ArrowType.Time(TimeUnit.MILLISECOND, 32))
     ))).getParquetSchema();
-    Assert.assertEquals(Types.buildMessage().addField(Types.optional(INT32).as(TIME_MILLIS).named("a")).named("root"), parquet);
+    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT32).as(TIME_MILLIS).named("a")).named("root"));
   }
 
   @Test
   public void testArrowTimeMicrosecondToParquet() {
-    MessageType parquet = converter.fromArrow(new Schema(asList(
+    MessageType expected = converter.fromArrow(new Schema(asList(
       field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64))
     ))).getParquetSchema();
-    Assert.assertEquals(Types.buildMessage().addField(Types.optional(INT64).as(TIME_MICROS).named("a")).named("root"), parquet);
+    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT64).as(TIME_MICROS).named("a")).named("root"));
   }
 
   @Test(expected = UnsupportedOperationException.class)
