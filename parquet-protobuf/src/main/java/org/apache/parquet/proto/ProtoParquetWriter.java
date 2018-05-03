@@ -69,14 +69,15 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
             compressionCodecName, blockSize, pageSize, enableDictionary, validating);
   }
 
-  /**
-   * Create a new {@link ProtoParquetWriter}. The default block size is 50 MB.The default
-   * page size is 1 MB.  Default compression is no compression. (Inherited from {@link ParquetWriter})
-   *
-   * @param file The file name to write to.
-   * @param protoMessage         Protobuf message class
-   * @throws IOException if there is an error while writing
-   */
+    /**
+     * Create a new {@link ProtoParquetWriter}. The default block size is {@link ParquetWriter#DEFAULT_BLOCK_SIZE} bytes.The
+     * default page size is {@link ParquetWriter#DEFAULT_PAGE_SIZE} bytes. Default compression is no compression. (Inherited from
+     * {@link ParquetWriter})
+     *
+     * @param file The file name to write to.
+     * @param protoMessage Protobuf message class
+     * @throws IOException if there is an error while writing
+     */
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage) throws IOException {
     this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
             DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
@@ -122,8 +123,8 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
   }
 
   /**
-   * Create a new {@link ProtoParquetWriter}. The default block size is 50 MB.The default
-   * page size is 1 MB.  Default compression is no compression. (Inherited from {@link ParquetWriter})
+   * Create a new {@link ProtoParquetWriter}. The default block size is {@link ParquetWriter#DEFAULT_BLOCK_SIZE} bytes.The
+   * default page size is {@link ParquetWriter#DEFAULT_PAGE_SIZE} bytes. Default compression is no compression.
    *
    * @param file                 The file name to write to.
    * @param protoMessage         Protobuf message class
