@@ -392,6 +392,16 @@ public class TestSchemaConverter {
     Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
   }
 
+  @Test
+  public void testParquetInt64TimeMicrosToArrow() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(INT64).as(TIME_MICROS).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64))
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
   @Test(expected = IllegalStateException.class)
   public void testParquetInt64TimeMillisToArrow() {
     converter.fromParquet(Types.buildMessage()
