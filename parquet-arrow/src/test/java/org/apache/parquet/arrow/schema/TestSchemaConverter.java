@@ -381,4 +381,26 @@ public class TestSchemaConverter {
       field("a", new ArrowType.Time(TimeUnit.NANOSECOND, 64))
     ))).getParquetSchema();
   }
+
+  @Test
+  public void testParquetInt32TimeMillisToArrow() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(INT32).as(TIME_MILLIS).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Time(TimeUnit.MILLISECOND, 32))
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testParquetInt64TimeMillisToArrow() {
+    converter.fromParquet(Types.buildMessage()
+      .addField(Types.optional(INT64).as(TIME_MILLIS).named("a")).named("root"));
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testParquetInt32TimeMicrosToArrow() {
+    converter.fromParquet(Types.buildMessage()
+      .addField(Types.optional(INT32).as(TIME_MICROS).named("a")).named("root"));
+  }
 }

@@ -468,8 +468,9 @@ public class SchemaConverter {
             return field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC"));
           case TIMESTAMP_MILLIS:
             return field(new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC"));
-          default:
           case TIME_MICROS:
+            return field(new ArrowType.Time(TimeUnit.MICROSECOND, 64));
+          default:
           case UTF8:
           case ENUM:
           case BSON:
