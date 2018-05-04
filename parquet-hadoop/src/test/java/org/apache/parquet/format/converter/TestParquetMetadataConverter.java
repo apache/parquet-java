@@ -948,9 +948,9 @@ public class TestParquetMetadataConverter {
 
     assertNull("Should handle null column index", ParquetMetadataConverter
         .toParquetColumnIndex(Types.required(PrimitiveTypeName.INT32).named("test_int32"), null));
-    assertNull("Should handle unsupported types", ParquetMetadataConverter
+    assertNull("Should ignore unsupported types", ParquetMetadataConverter
         .toParquetColumnIndex(Types.required(PrimitiveTypeName.INT96).named("test_int96"), columnIndex));
-    assertNull("Should handle unsupported types",
+    assertNull("Should ignore unsupported types",
         ParquetMetadataConverter.fromParquetColumnIndex(Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
             .length(12).as(OriginalType.INTERVAL).named("test_interval"), parquetColumnIndex));
   }

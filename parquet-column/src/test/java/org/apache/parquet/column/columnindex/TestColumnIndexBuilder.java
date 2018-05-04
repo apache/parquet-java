@@ -167,7 +167,7 @@ public class TestColumnIndexBuilder {
     builder.add(stats(type, stringBinary("Jeltz"), stringBinary("Slartibartfast"), null, null));
     builder.add(stats(type, null, null, null, null, null));
     builder.add(stats(type, null, null));
-    builder.add(stats(type, stringBinary("Beeblebrox"), stringBinary("Perfect")));
+    builder.add(stats(type, stringBinary("Beeblebrox"), stringBinary("Prefect")));
     builder.add(stats(type, stringBinary("Dent"), stringBinary("Trilian"), null));
     builder.add(stats(type, stringBinary("Beeblebrox")));
     builder.add(stats(type, null, null));
@@ -180,7 +180,7 @@ public class TestColumnIndexBuilder {
         stringBinary("Slartibartfast"),
         null,
         null,
-        stringBinary("Perfect"),
+        stringBinary("Prefect"),
         stringBinary("Trilian"),
         stringBinary("Beeblebrox"),
         null);
@@ -199,7 +199,7 @@ public class TestColumnIndexBuilder {
     builder.add(stats(type, null, null));
     builder.add(stats(type, null, null, null, null, null));
     builder.add(stats(type, stringBinary("Dent"), stringBinary("Jeltz")));
-    builder.add(stats(type, stringBinary("Dent"), stringBinary("Perfect"), null));
+    builder.add(stats(type, stringBinary("Dent"), stringBinary("Prefect"), null));
     builder.add(stats(type, null, null));
     builder.add(stats(type, stringBinary("Slartibartfast")));
     builder.add(stats(type, null, null));
@@ -212,7 +212,7 @@ public class TestColumnIndexBuilder {
         null,
         null,
         stringBinary("Jeltz"),
-        stringBinary("Perfect"),
+        stringBinary("Prefect"),
         null,
         stringBinary("Slartibartfast"),
         null);
@@ -230,7 +230,7 @@ public class TestColumnIndexBuilder {
     builder.add(stats(type, null, null));
     builder.add(stats(type, stringBinary("Slartibartfast")));
     builder.add(stats(type, null, null, null, null, null));
-    builder.add(stats(type, stringBinary("Perfect"), stringBinary("Jeltz"), null));
+    builder.add(stats(type, stringBinary("Prefect"), stringBinary("Jeltz"), null));
     builder.add(stats(type, stringBinary("Dent"), stringBinary("Dent")));
     builder.add(stats(type, null, null));
     builder.add(stats(type, null, null));
@@ -243,7 +243,7 @@ public class TestColumnIndexBuilder {
         null,
         stringBinary("Slartibartfast"),
         null,
-        stringBinary("Perfect"),
+        stringBinary("Prefect"),
         stringBinary("Dent"),
         null,
         null,
@@ -281,7 +281,7 @@ public class TestColumnIndexBuilder {
             stringBinary("Dent"),
             stringBinary("Dent"),
             null,
-            stringBinary("Perfect"),
+            stringBinary("Prefect"),
             null,
             stringBinary("Slartibartfast")));
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
@@ -293,7 +293,7 @@ public class TestColumnIndexBuilder {
         stringBinary("Dent"),
         stringBinary("Dent"),
         null,
-        stringBinary("Perfect"),
+        stringBinary("Prefect"),
         null,
         stringBinary("Slartibartfast"));
     assertCorrectValues(columnIndex.getMinValues(),

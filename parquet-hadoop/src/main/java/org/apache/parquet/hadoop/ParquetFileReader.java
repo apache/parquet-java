@@ -909,7 +909,7 @@ public class ParquetFileReader implements Closeable {
   /**
    * @param column
    *          the column chunk which the column index is to be returned for
-   * @return the column index for the specified column chunk or {@code null} if the there is no index
+   * @return the column index for the specified column chunk or {@code null} if there is no index
    * @throws IOException
    *           if any I/O error occurs during reading the file
    */
@@ -925,7 +925,7 @@ public class ParquetFileReader implements Closeable {
   /**
    * @param column
    *          the column chunk which the offset index is to be returned for
-   * @return the offset index for the specified column chunk or {@code null} if the there is no index
+   * @return the offset index for the specified column chunk or {@code null} if there is no index
    * @throws IOException
    *           if any I/O error occurs during reading the file
    */

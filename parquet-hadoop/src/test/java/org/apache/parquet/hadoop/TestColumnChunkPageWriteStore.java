@@ -81,7 +81,7 @@ import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 public class TestColumnChunkPageWriteStore {
 
-  // OutputFile implementation to reach out the PositionOutputStream internally used by the writer
+  // OutputFile implementation to expose the PositionOutputStream internally used by the writer
   private static class OutputFileForTesting implements OutputFile {
     private PositionOutputStream out;
     private final HadoopOutputFile file;

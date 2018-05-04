@@ -42,12 +42,6 @@ public class TestOffsetIndexBuilder {
         1000, 2000, 10,
         3000, 3000, 29,
         6000, 1200, 56);
-
-    builder = OffsetIndexBuilder.getBuilder();
-    builder.add(1000, 10);
-    builder.add(2000, 19);
-    builder.add(3000, 27);
-    builder.add(1200, 9);
     assertCorrectValues(builder.build(10000),
         10000, 1000, 0,
         11000, 2000, 10,
@@ -63,10 +57,6 @@ public class TestOffsetIndexBuilder {
     builder.add(5, 6);
     builder.add(7, 8);
     assertNull(builder.build());
-    builder.add(1, 2);
-    builder.add(3, 4);
-    builder.add(5, 6);
-    builder.add(7, 8);
     assertNull(builder.build(1000));
   }
 
@@ -85,12 +75,6 @@ public class TestOffsetIndexBuilder {
         22000, 12000, 100,
         48000, 22000, 211,
         90000, 30000, 361);
-
-    builder = OffsetIndexBuilder.getBuilder();
-    builder.add(1000, 10000, 0);
-    builder.add(22000, 12000, 100);
-    builder.add(48000, 22000, 211);
-    builder.add(90000, 30000, 361);
     assertCorrectValues(builder.build(100000),
         101000, 10000, 0,
         122000, 12000, 100,
@@ -99,17 +83,13 @@ public class TestOffsetIndexBuilder {
   }
 
   @Test
-  public void testNoOpBuidlerWithOffsetSizeIndex() {
+  public void testNoOpBuilderWithOffsetSizeIndex() {
     OffsetIndexBuilder builder = OffsetIndexBuilder.getNoOpBuilder();
     builder.add(1, 2, 3);
     builder.add(4, 5, 6);
     builder.add(7, 8, 9);
     builder.add(10, 11, 12);
     assertNull(builder.build());
-    builder.add(1, 2, 3);
-    builder.add(4, 5, 6);
-    builder.add(7, 8, 9);
-    builder.add(10, 11, 12);
     assertNull(builder.build(1000));
   }
 
