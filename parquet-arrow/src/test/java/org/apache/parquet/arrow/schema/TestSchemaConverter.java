@@ -28,6 +28,7 @@ import static org.apache.parquet.schema.OriginalType.INT_64;
 import static org.apache.parquet.schema.OriginalType.INT_8;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
 import static org.apache.parquet.schema.OriginalType.TIME_MILLIS;
+import static org.apache.parquet.schema.OriginalType.TIME_MICROS;
 import static org.apache.parquet.schema.OriginalType.UINT_16;
 import static org.apache.parquet.schema.OriginalType.UINT_32;
 import static org.apache.parquet.schema.OriginalType.UINT_64;
@@ -43,11 +44,12 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.arrow.vector.types.IntervalUnit;
 
-import org.apache.arrow.vector.types.UnionMode;
 import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
+import org.apache.arrow.vector.types.IntervalUnit;
+import org.apache.arrow.vector.types.TimeUnit;
+import org.apache.arrow.vector.types.UnionMode;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -86,7 +88,7 @@ public class TestSchemaConverter {
     field("e", new ArrowType.List(), field(null, new ArrowType.Date(DateUnit.DAY))),
     field("f", new ArrowType.FixedSizeList(1), field(null, new ArrowType.Date(DateUnit.DAY))),
     field("g", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
-    field("h", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC")),
+    field("h", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC")),
     field("i", new ArrowType.Interval(IntervalUnit.DAY_TIME))
   ));
   private final MessageType complexParquetSchema = Types.buildMessage()
@@ -129,11 +131,12 @@ public class TestSchemaConverter {
     field("k1", new ArrowType.Decimal(15, 5)),
     field("k2", new ArrowType.Decimal(25, 5)),
     field("l", new ArrowType.Date(DateUnit.DAY)),
-    field("m", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.SECOND, 32)),
-    field("n", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC")),
+    field("m", new ArrowType.Time(TimeUnit.MILLISECOND, 32)),
+    field("n", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC")),
     field("o", new ArrowType.Interval(IntervalUnit.DAY_TIME)),
     field("o1", new ArrowType.Interval(IntervalUnit.YEAR_MONTH))
   ));
+
   private final MessageType allTypesParquetSchema = Types.buildMessage()
     .addField(Types.optional(BINARY).named("a"))
     .addField(Types.optionalGroup()
@@ -191,8 +194,8 @@ public class TestSchemaConverter {
     field("j1", new ArrowType.Decimal(15, 5)),
     field("j2", new ArrowType.Decimal(25, 5)),
     field("k", new ArrowType.Date(DateUnit.DAY)),
-    field("l", new ArrowType.Time(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, 32)),
-    field("m", new ArrowType.Timestamp(org.apache.arrow.vector.types.TimeUnit.MILLISECOND, "UTC"))
+    field("l", new ArrowType.Time(TimeUnit.MILLISECOND, 32)),
+    field("m", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC"))
   ));
 
   private final MessageType supportedTypesParquetSchema = Types.buildMessage()
@@ -347,5 +350,67 @@ public class TestSchemaConverter {
   public void testRepeatedMap() throws IOException {
     SchemaMapping map = converter.map(paperArrowSchema, Paper.schema);
     Assert.assertEquals("p, s<r<p>, r<p>>, r<s<r<s<p, p>>, p>>", toSummaryString(map));
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testArrowTimeSecondToParquet() {
+    converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Time(TimeUnit.SECOND, 32))
+    ))).getParquetSchema();
+  }
+
+  @Test
+  public void testArrowTimeMillisecondToParquet() {
+    MessageType expected = converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Time(TimeUnit.MILLISECOND, 32))
+    ))).getParquetSchema();
+    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT32).as(TIME_MILLIS).named("a")).named("root"));
+  }
+
+  @Test
+  public void testArrowTimeMicrosecondToParquet() {
+    MessageType expected = converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64))
+    ))).getParquetSchema();
+    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT64).as(TIME_MICROS).named("a")).named("root"));
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testArrowTimeNanosecondToParquet() {
+    converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Time(TimeUnit.NANOSECOND, 64))
+    ))).getParquetSchema();
+  }
+
+  @Test
+  public void testParquetInt32TimeMillisToArrow() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(INT32).as(TIME_MILLIS).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Time(TimeUnit.MILLISECOND, 32))
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test
+  public void testParquetInt64TimeMicrosToArrow() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(INT64).as(TIME_MICROS).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64))
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testParquetInt64TimeMillisToArrow() {
+    converter.fromParquet(Types.buildMessage()
+      .addField(Types.optional(INT64).as(TIME_MILLIS).named("a")).named("root"));
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testParquetInt32TimeMicrosToArrow() {
+    converter.fromParquet(Types.buildMessage()
+      .addField(Types.optional(INT32).as(TIME_MICROS).named("a")).named("root"));
   }
 }
