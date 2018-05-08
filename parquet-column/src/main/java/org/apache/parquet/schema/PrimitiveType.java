@@ -593,17 +593,9 @@ public final class PrimitiveType extends Type {
       sb.append("(" + length + ")");
     }
     sb.append(" ").append(getName());
-    if (getOriginalType() != null) {
-      sb.append(" (").append(getOriginalType());
-      DecimalMetadata meta = getDecimalMetadata();
-      if (meta != null) {
-        sb.append("(")
-            .append(meta.getPrecision())
-            .append(",")
-            .append(meta.getScale())
-            .append(")");
-      }
-      sb.append(")");
+    if (getLogicalTypeAnnotation() != null) {
+      // TODO: should we print decimal metadata too?
+      sb.append(" (").append(getLogicalTypeAnnotation().toString()).append(")");
     }
     if (getId() != null) {
       sb.append(" = ").append(getId());

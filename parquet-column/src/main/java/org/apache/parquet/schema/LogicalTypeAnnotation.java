@@ -36,22 +36,118 @@ import org.apache.parquet.format.StringType;
 import org.apache.parquet.format.TimeType;
 import org.apache.parquet.format.TimestampType;
 
+import java.util.List;
 import java.util.Objects;
 
-public interface LogicalTypeAnnotation {
+public abstract class LogicalTypeAnnotation {
+  public enum LogicalTypes {
+    MAP {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return mapType();
+      }
+    },
+    LIST {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return listType();
+      }
+    },
+    UTF8 {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return stringType();
+      }
+    },
+    MAP_KEY_VALUE {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return MapKeyValueTypeAnnotation.getInstance();
+      }
+    },
+    ENUM {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return enumType();
+      }
+    },
+    DECIMAL {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() != 2) {
+          throw new RuntimeException("Expecting 2 parameters for decimal logical type, got " + params.size());
+        }
+        return decimalType(Integer.valueOf(params.get(1)), Integer.valueOf(params.get(0)));
+      }
+    },
+    DATE {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return dateType();
+      }
+    },
+    TIME {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() != 2) {
+          throw new RuntimeException("Expecting 2 parameters for time logical type, got " + params.size());
+        }
+        return timeType(Boolean.parseBoolean(params.get(1)), TimeUnit.valueOf(params.get(0)));
+      }
+    },
+    TIMESTAMP {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() != 2) {
+          throw new RuntimeException("Expecting 2 parameters for timestamp logical type, got " + params.size());
+        }
+        return timestampType(Boolean.parseBoolean(params.get(1)), TimeUnit.valueOf(params.get(0)));
+      }
+    },
+    INT {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() != 2) {
+          throw new RuntimeException("Expecting 2 parameters for integer logical type, got " + params.size());
+        }
+        return intType(Integer.valueOf(params.get(0)), Boolean.parseBoolean(params.get(1)));
+      }
+    },
+    JSON {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return jsonType();
+      }
+    },
+    BSON {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return bsonType();
+      }
+    },
+    INTERVAL {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return IntervalLogicalTypeAnnotation.getInstance();
+      }
+    };
+
+    protected abstract LogicalTypeAnnotation fromString(List<String> params);
+  }
+
   /**
    * Convert this parquet-mr logical type to parquet-format LogicalType.
    *
    * @return the parquet-format LogicalType representation of this logical type implementation
    */
-  LogicalType toLogicalType();
+  public abstract LogicalType toLogicalType();
 
   /**
    * Convert this parquet-mr logical type to parquet-format ConvertedType.
    *
    * @return the parquet-format ConvertedType representation of this logical type implementation
    */
-  ConvertedType toConvertedType();
+  public abstract ConvertedType toConvertedType();
 
   /**
    * Convert this logical type to old logical type representation in parquet-mr (if there's any).
@@ -59,19 +155,33 @@ public interface LogicalTypeAnnotation {
    *
    * @return the OriginalType representation of the new logical type, or null if there's none
    */
-  OriginalType toOriginalType();
+  public abstract OriginalType toOriginalType();
 
   /**
    * Visits this logical type with the given visitor
    *
    * @param logicalTypeAnnotationVisitor the visitor to visit this type
    */
-  void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor);
+  public abstract void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor);
+
+  public abstract LogicalTypes getType();
+
+  protected String typeParametersAsString() {
+    return "";
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(getType());
+    sb.append(typeParametersAsString());
+    return sb.toString();
+  }
 
   /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
    */
-  static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
+  public static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
     if (originalType == null) {
       return null;
     }
@@ -89,7 +199,7 @@ public interface LogicalTypeAnnotation {
       case DATE:
         return dateType();
       case INTERVAL:
-        return intervalType();
+        return IntervalLogicalTypeAnnotation.getInstance();
       case TIMESTAMP_MILLIS:
         return timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIMESTAMP_MICROS:
@@ -121,46 +231,46 @@ public interface LogicalTypeAnnotation {
       case BSON:
         return bsonType();
       case MAP_KEY_VALUE:
-        return mapKeyValueType();
+        return MapKeyValueTypeAnnotation.getInstance();
       default:
         throw new RuntimeException("Can't convert original type to logical type, unknown original type " + originalType);
     }
   }
 
 
-  static StringLogicalTypeAnnotation stringType() {
+  public static StringLogicalTypeAnnotation stringType() {
     return StringLogicalTypeAnnotation.INSTANCE;
   }
 
-  static MapLogicalTypeAnnotation mapType() {
+  public static MapLogicalTypeAnnotation mapType() {
     return MapLogicalTypeAnnotation.INSTANCE;
   }
 
-  static ListLogicalTypeAnnotation listType() {
+  public static ListLogicalTypeAnnotation listType() {
     return ListLogicalTypeAnnotation.INSTANCE;
   }
 
-  static EnumLogicalTypeAnnotation enumType() {
+  public static EnumLogicalTypeAnnotation enumType() {
     return EnumLogicalTypeAnnotation.INSTANCE;
   }
 
-  static DecimalLogicalTypeAnnotation decimalType(final int scale, final int precision) {
+  public static DecimalLogicalTypeAnnotation decimalType(final int scale, final int precision) {
     return new DecimalLogicalTypeAnnotation(scale, precision);
   }
 
-  static DateLogicalTypeAnnotation dateType() {
+  public static DateLogicalTypeAnnotation dateType() {
     return DateLogicalTypeAnnotation.INSTANCE;
   }
 
-  static TimeLogicalTypeAnnotation timeType(final boolean isAdjustedToUTC, final TimeUnit unit) {
+  public static TimeLogicalTypeAnnotation timeType(final boolean isAdjustedToUTC, final TimeUnit unit) {
     return new TimeLogicalTypeAnnotation(isAdjustedToUTC, unit);
   }
 
-  static TimestampLogicalTypeAnnotation timestampType(final boolean isAdjustedToUTC, final TimeUnit unit) {
+  public static TimestampLogicalTypeAnnotation timestampType(final boolean isAdjustedToUTC, final TimeUnit unit) {
     return new TimestampLogicalTypeAnnotation(isAdjustedToUTC, unit);
   }
 
-  static IntLogicalTypeAnnotation intType(final int bitWidth, final boolean isSigned) {
+  public static IntLogicalTypeAnnotation intType(final int bitWidth, final boolean isSigned) {
     Preconditions.checkArgument(
       bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
       "Invalid bit width for integer logical type, " + bitWidth + " is not allowed, " +
@@ -168,23 +278,15 @@ public interface LogicalTypeAnnotation {
     return new IntLogicalTypeAnnotation(bitWidth, isSigned);
   }
 
-  static JsonLogicalTypeAnnotation jsonType() {
+  public static JsonLogicalTypeAnnotation jsonType() {
     return JsonLogicalTypeAnnotation.INSTANCE;
   }
 
-  static BsonLogicalTypeAnnotation bsonType() {
+  public static BsonLogicalTypeAnnotation bsonType() {
     return BsonLogicalTypeAnnotation.INSTANCE;
   }
 
-  static IntervalLogicalTypeAnnotation intervalType() {
-    return IntervalLogicalTypeAnnotation.INSTANCE;
-  }
-
-  static MapKeyValueTypeAnnotation mapKeyValueType() {
-    return MapKeyValueTypeAnnotation.INSTANCE;
-  }
-
-  class StringLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final StringLogicalTypeAnnotation INSTANCE = new StringLogicalTypeAnnotation();
 
     private StringLogicalTypeAnnotation() {
@@ -211,6 +313,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.UTF8;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof StringLogicalTypeAnnotation;
     }
@@ -222,7 +329,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class MapLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class MapLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final MapLogicalTypeAnnotation INSTANCE = new MapLogicalTypeAnnotation();
 
     private MapLogicalTypeAnnotation() {
@@ -249,6 +356,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.MAP;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof MapLogicalTypeAnnotation;
     }
@@ -260,7 +372,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class ListLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class ListLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final ListLogicalTypeAnnotation INSTANCE = new ListLogicalTypeAnnotation();
 
     private ListLogicalTypeAnnotation() {
@@ -287,6 +399,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.LIST;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof ListLogicalTypeAnnotation;
     }
@@ -298,7 +415,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class EnumLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class EnumLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final EnumLogicalTypeAnnotation INSTANCE = new EnumLogicalTypeAnnotation();
 
     private EnumLogicalTypeAnnotation() {
@@ -325,6 +442,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.ENUM;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof EnumLogicalTypeAnnotation;
     }
@@ -336,7 +458,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class DecimalLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class DecimalLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final int scale;
     private final int precision;
 
@@ -374,6 +496,22 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.DECIMAL;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("(");
+      sb.append(precision);
+      sb.append(",");
+      sb.append(scale);
+      sb.append(")");
+      return sb.toString();
+    }
+
+    @Override
     public boolean equals(Object obj) {
       if (!(obj instanceof DecimalLogicalTypeAnnotation)) {
         return false;
@@ -388,7 +526,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class DateLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class DateLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final DateLogicalTypeAnnotation INSTANCE = new DateLogicalTypeAnnotation();
 
     private DateLogicalTypeAnnotation() {
@@ -415,6 +553,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.DATE;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof DateLogicalTypeAnnotation;
     }
@@ -426,7 +569,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  enum TimeUnit {
+  public enum TimeUnit {
     MILLIS,
     MICROS
   }
@@ -442,7 +585,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class TimeLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class TimeLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final boolean isAdjustedToUTC;
     private final TimeUnit unit;
 
@@ -485,6 +628,22 @@ public interface LogicalTypeAnnotation {
       logicalTypeAnnotationVisitor.visit(this);
     }
 
+    @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.TIME;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("(");
+      sb.append(unit);
+      sb.append(",");
+      sb.append(isAdjustedToUTC);
+      sb.append(")");
+      return sb.toString();
+    }
+
     public TimeUnit getUnit() {
       return unit;
     }
@@ -508,7 +667,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class TimestampLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class TimestampLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final boolean isAdjustedToUTC;
     private final TimeUnit unit;
 
@@ -551,6 +710,22 @@ public interface LogicalTypeAnnotation {
       logicalTypeAnnotationVisitor.visit(this);
     }
 
+    @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.TIMESTAMP;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("(");
+      sb.append(unit);
+      sb.append(",");
+      sb.append(isAdjustedToUTC);
+      sb.append(")");
+      return sb.toString();
+    }
+
     public TimeUnit getUnit() {
       return unit;
     }
@@ -574,7 +749,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class IntLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class IntLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final int bitWidth;
     private final boolean isSigned;
 
@@ -634,6 +809,22 @@ public interface LogicalTypeAnnotation {
       logicalTypeAnnotationVisitor.visit(this);
     }
 
+    @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.INT;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("(");
+      sb.append(bitWidth);
+      sb.append(",");
+      sb.append(isSigned);
+      sb.append(")");
+      return sb.toString();
+    }
+
     public int getBitWidth() {
       return bitWidth;
     }
@@ -657,7 +848,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class JsonLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class JsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final JsonLogicalTypeAnnotation INSTANCE = new JsonLogicalTypeAnnotation();
 
     private JsonLogicalTypeAnnotation() {
@@ -684,6 +875,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.JSON;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof JsonLogicalTypeAnnotation;
     }
@@ -695,7 +891,7 @@ public interface LogicalTypeAnnotation {
     }
   }
 
-  class BsonLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class BsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final BsonLogicalTypeAnnotation INSTANCE = new BsonLogicalTypeAnnotation();
 
     private BsonLogicalTypeAnnotation() {
@@ -722,6 +918,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.BSON;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof BsonLogicalTypeAnnotation;
     }
@@ -736,8 +937,12 @@ public interface LogicalTypeAnnotation {
   // This logical type annotation is implemented to support backward compatibility with ConvertedType.
   // The new logical type representation in parquet-format doesn't have any interval type,
   // thus this annotation is mapped to UNKNOWN.
-  class IntervalLogicalTypeAnnotation implements LogicalTypeAnnotation {
+  public static class IntervalLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static IntervalLogicalTypeAnnotation INSTANCE = new IntervalLogicalTypeAnnotation();
+
+    public static LogicalTypeAnnotation getInstance() {
+      return INSTANCE;
+    }
 
     private IntervalLogicalTypeAnnotation() {
     }
@@ -763,6 +968,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.INTERVAL;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof IntervalLogicalTypeAnnotation;
     }
@@ -777,8 +987,12 @@ public interface LogicalTypeAnnotation {
   // This logical type annotation is implemented to support backward compatibility with ConvertedType.
   // The new logical type representation in parquet-format doesn't have any key-value type,
   // thus this annotation is mapped to UNKNOWN. This type shouldn't be used.
-  class MapKeyValueTypeAnnotation implements LogicalTypeAnnotation {
+  public static class MapKeyValueTypeAnnotation extends LogicalTypeAnnotation {
     private static MapKeyValueTypeAnnotation INSTANCE = new MapKeyValueTypeAnnotation();
+
+    public static MapKeyValueTypeAnnotation getInstance() {
+      return INSTANCE;
+    }
 
     private MapKeyValueTypeAnnotation() {
     }
@@ -804,6 +1018,11 @@ public interface LogicalTypeAnnotation {
     }
 
     @Override
+    public LogicalTypes getType() {
+      return LogicalTypes.MAP_KEY_VALUE;
+    }
+
+    @Override
     public boolean equals(Object obj) {
       return obj instanceof MapKeyValueTypeAnnotation;
     }
@@ -818,10 +1037,10 @@ public interface LogicalTypeAnnotation {
   /**
    * Implement this interface to visit a logical type annotation in the schema.
    * The default implementation for each logical type specific visitor method is empty.
-   *
+   * <p>
    * Example usage: logicalTypeAnnotation.accept(new LogicalTypeAnnotationVisitor() { ... });
    */
-  interface LogicalTypeAnnotationVisitor {
+  public interface LogicalTypeAnnotationVisitor {
     default void visit(StringLogicalTypeAnnotation logicalTypeAnnotation) {
     }
 

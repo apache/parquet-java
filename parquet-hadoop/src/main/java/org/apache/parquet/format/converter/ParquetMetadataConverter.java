@@ -602,7 +602,7 @@ public class ParquetMetadataConverter {
       case MAP:
         return LogicalTypeAnnotation.mapType();
       case MAP_KEY_VALUE:
-        return LogicalTypeAnnotation.mapKeyValueType();
+        return LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance();
       case LIST:
         return LogicalTypeAnnotation.listType();
       case ENUM:
@@ -622,7 +622,7 @@ public class ParquetMetadataConverter {
       case TIMESTAMP_MICROS:
         return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case INTERVAL:
-        return LogicalTypeAnnotation.intervalType();
+        return LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance();
       case INT_8:
         return LogicalTypeAnnotation.intType(8, true);
       case INT_16:
