@@ -27,7 +27,7 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.crypto.KeyMetaData;
+import org.apache.parquet.crypto.EncryptionSetup;
 import org.apache.parquet.crypto.ParquetEncryptionFactory;
 import org.apache.parquet.crypto.ParquetFileEncryptor;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -326,14 +326,14 @@ public class ParquetWriter<T> implements Closeable {
     if (null == fileEncryptor) {
       // Check for encryption key in Hadoop parameters
       String encryptionKey[] = conf.getTrimmedStrings(ENCRYPTION_KEY_PARAMETER_NAME);
-      if (null != encryptionKey) {
+      if (null != encryptionKey && encryptionKey.length > 0) {
         byte[] keyBytes = Base64.getDecoder().decode(encryptionKey[0]);
         if (encryptionKey.length == 2) {
           byte[] keyMDBytes = Base64.getDecoder().decode(encryptionKey[1]);
-          KeyMetaData kmd = new KeyMetaData(keyMDBytes);
           //TODO column selector
           //TODO re-use encryptor? (keep in static table)
-          fileEncryptor = ParquetEncryptionFactory.createFileEncryptor(keyBytes, kmd, null); 
+          EncryptionSetup eSetup = new EncryptionSetup(keyBytes, keyMDBytes);
+          fileEncryptor = ParquetEncryptionFactory.createFileEncryptor(eSetup); 
         }
         else {
           fileEncryptor = ParquetEncryptionFactory.createFileEncryptor(keyBytes);
