@@ -64,7 +64,9 @@ class AesGcmDecryptor implements BlockCrypto.Decryptor{
       cipher.init(Cipher.DECRYPT_MODE, key, spec);
       if (null != AAD) cipher.updateAAD(AAD);
       int plen = cLen - GCM_TAG_LENGTH - GCM_NONCE_LENGTH;
-      if (plen < 1) throw new IOException("Wrong input length " + plen);
+      if (plen < 1) {
+        throw new IOException("Wrong input length " + plen);
+      }
       plaintext = new byte[plen];
       int left = cLen - GCM_NONCE_LENGTH;
       int input_offset = offset + GCM_NONCE_LENGTH;

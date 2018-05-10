@@ -43,7 +43,9 @@ class AesGcmEncryptor implements BlockCrypto.Encryptor{
 
   AesGcmEncryptor(byte[] keyBytes, byte[] aad) throws IOException {
     AAD = aad;
-    if (null == keyBytes) throw new IOException("Null key bytes");
+    if (null == keyBytes) {
+      throw new IOException("Null key bytes");
+    }
     key = new SecretKeySpec(keyBytes, "AES");
     random = new SecureRandom();
   }

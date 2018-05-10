@@ -20,8 +20,7 @@
 
 package org.apache.parquet.crypto;
 
-public interface KeyRetriever {
+public interface DecryptionKeyRetriever {
 
   public byte[] getKey(byte[] keyMetaData);
-  
 }

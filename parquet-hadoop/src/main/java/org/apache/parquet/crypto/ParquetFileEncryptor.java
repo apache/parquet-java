@@ -40,31 +40,49 @@ public class ParquetFileEncryptor {
   private int algorithmId;
   private byte[] keyBytes;
   private BlockCrypto.Encryptor blockEncryptor;
-  private ColumnEncryptionFilter columnFilter;
+  private EncryptionSetup encryptionSetup;
   private byte[] keyMetaDataBytes = null;
-  private boolean supportsAAD;
+  //Uniform encryption means footer and all columns are encrypted, with same key
   private boolean uniformEncryption;
   private List<ColumnCryptoMetaData> columnMDList;
   private boolean columnMDListSet;
-  private boolean initialized;
   private byte[] aadBytes;
 
-  ParquetFileEncryptor(byte[] keyBytes, KeyMetaData keyMD, ColumnEncryptionFilter filter) throws IOException {
-    // Default Encryption algorithm
+  ParquetFileEncryptor(EncryptionSetup eSetup) throws IOException {
+    // Default algorithm
     algorithmId = ParquetEncryptionFactory.PARQUET_AES_GCM_V1;
-    this.keyBytes = keyBytes;
-    columnFilter = filter;
-    supportsAAD = true;
-    uniformEncryption = (null == columnFilter);
-    if (null != keyMD) keyMetaDataBytes = keyMD.getBytes();
+    if (eSetup.getAlgorithmID() != algorithmId) {
+      throw new IOException("Algorithm " + eSetup.getAlgorithmID() + " is not supported");
+    }
+    // Footer and columns are encrypted with same key, for now
+    keyBytes = eSetup.getFooterKeyBytes();
+    if (null ==  keyBytes) {
+      throw new IOException("No key provided");
+    }
+    if (! (keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) {
+      throw new IOException("Wrong key length "+keyBytes.length);
+    }
+    uniformEncryption = eSetup.isUniformEncryption();
+    if (!eSetup.isSingleKeyEncryption()) {
+      throw new IOException("Multi-key encryption not supported");
+    }
+    keyMetaDataBytes = eSetup.getFooterKeyMetadata();
+    if (null != keyMetaDataBytes) {
+      if (keyMetaDataBytes.length > 256) { // TODO 
+        throw new IOException("Key MetaData is too long "+keyMetaDataBytes.length);
+      }
+    }
     columnMDListSet = false;
-    initialized = false;
-    if (null != columnFilter) columnMDList = new LinkedList<ColumnCryptoMetaData>();
+    if (!uniformEncryption) columnMDList = new LinkedList<ColumnCryptoMetaData>();
     try {
      LOG.info("AES-GCM cipher provider: {}", Cipher.getInstance("AES/GCM/NoPadding").getProvider());
     } catch (GeneralSecurityException e) {
       throw new IOException("Failed to get cipher", e);
     }
+    aadBytes = eSetup.getAAD();
+    encryptionSetup = eSetup;
+    LOG.info("File encryptor. Uniform encryption: {}. Key metadata set: {}", 
+        uniformEncryption, (null != keyMetaDataBytes));
   }
 
   // Find column in a list
@@ -90,16 +108,18 @@ public class ParquetFileEncryptor {
   }
 
   public synchronized BlockCrypto.Encryptor getColumnEncryptor(String[] columnPath) throws IOException {
-    initialized = true;
     if (null == blockEncryptor) blockEncryptor = new AesGcmEncryptor(keyBytes, aadBytes);
     if (uniformEncryption) return blockEncryptor;
-    boolean encryptCol = columnFilter.encryptColumn(columnPath);
+    // check if column has to be encrypted
+    ColumnCryptoMetaData ccmd = encryptionSetup.getColumnMetadata(columnPath);
+    if (null == ccmd) {
+      throw new IOException("No encryption metadata for column " + Arrays.toString(columnPath));
+    }
     if (null == findColumn(columnPath, columnMDList)) {
-      ColumnCryptoMetaData ccmd = new ColumnCryptoMetaData(Arrays.asList(columnPath), encryptCol);
       columnMDList.add(ccmd);
     }
-    if (encryptCol) {
-      // TODO if encrypt is always true, set uniformEncryption = true
+    if (ccmd.isEncrypted()) {
+      // TODO if encrypt is always true, set uniformEncryption = true for single key encryption
       return blockEncryptor;
     }
     else {
@@ -109,26 +129,20 @@ public class ParquetFileEncryptor {
   }
 
   public synchronized BlockCrypto.Encryptor getFooterEncryptor() throws IOException  {
-    initialized = true;
     if (null == blockEncryptor) blockEncryptor = new AesGcmEncryptor(keyBytes, aadBytes);
     return blockEncryptor;
-  }
-
-  public synchronized void setAAD(byte[] aad)  throws IOException {
-    if (!supportsAAD) throw new IOException("Algorithm "+ algorithmId +" doesnt support AAD");
-    if (initialized) throw new IOException("Cant set AAD at this stage");
-    aadBytes = aad;
   }
 
   public synchronized FileCryptoMetaData getFileCryptoMetaData(long footer_index) throws IOException {
     FileCryptoMetaData fcmd = new FileCryptoMetaData(algorithmId, footer_index, uniformEncryption);
     if (null != keyMetaDataBytes) fcmd.setKey_metadata(keyMetaDataBytes);
     if (!uniformEncryption) {
-      if (columnMDListSet) throw new IOException("Re-using file encryptor with non-uniform encryption");
+      if (columnMDListSet) {
+        throw new IOException("Re-using file encryptor with non-uniform encryption");
+      }
       fcmd.setColumn_crypto_meta_data(columnMDList);
       columnMDListSet = true;      
     }
     return fcmd;
   }
 }
-

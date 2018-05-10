@@ -25,23 +25,44 @@ public class ParquetEncryptionFactory {
   
   public static final int PARQUET_AES_GCM_V1 = 1;
   
+  /**
+   * File encryptor with a default setup: uniform encryption (all columns will be encrypted), no key metadata, no AAD.
+   * @param keyBytes
+   * @return
+   * @throws IOException
+   */
   public static ParquetFileEncryptor createFileEncryptor(byte[] keyBytes) throws IOException {
-    return createFileEncryptor(keyBytes, (KeyMetaData) null, (ColumnEncryptionFilter) null);
+    return createFileEncryptor(new EncryptionSetup(keyBytes, null));
   }
   
-  public static ParquetFileEncryptor createFileEncryptor(byte[] keyBytes, KeyMetaData keyMD, ColumnEncryptionFilter filter) throws IOException {
-    if (! (keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) 
-      throw new IOException("Wrong key length "+keyBytes.length);
-    return new ParquetFileEncryptor(keyBytes, keyMD, filter);
+  /**
+   * File encryptor with custom setup.
+   * @param eSetup
+   * @return
+   * @throws IOException
+   */
+  public static ParquetFileEncryptor createFileEncryptor(EncryptionSetup eSetup) throws IOException {
+    return new ParquetFileEncryptor(eSetup);
   }
   
+  /**
+   * File decryptor with a default setup (no AAD) and with an explicit key. If applied on a file that contains key metadata - 
+   *  the metadata will be ignored, the file will be decrypted with the provided key.
+   * @param keyBytes
+   * @return
+   * @throws IOException
+   */
   public static ParquetFileDecryptor createFileDecryptor(byte[] keyBytes) throws IOException {
-    if (! (keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) 
-      throw new IOException("Wrong key length "+keyBytes.length);
-    return new ParquetFileDecryptor(keyBytes);
+    return createFileDecryptor(new DecryptionSetup(keyBytes));
   }
   
-  public static ParquetFileDecryptor createFileDecryptor(KeyRetriever keyRetriever) throws IOException {
-    return new ParquetFileDecryptor(keyRetriever);
+  /**
+   * File decryptor with a custom setup.
+   * @param keyRetriever
+   * @return
+   * @throws IOException
+   */
+  public static ParquetFileDecryptor createFileDecryptor(DecryptionSetup dSetup) throws IOException {
+    return new ParquetFileDecryptor(dSetup);
   }
 }
