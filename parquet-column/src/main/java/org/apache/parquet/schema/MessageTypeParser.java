@@ -165,7 +165,7 @@ public class MessageTypeParser {
     if (t.equalsIgnoreCase("(")) {
       t = st.nextToken();
       if (isLogicalType(t)) {
-        LogicalTypeAnnotation.LogicalTypes logicalType = LogicalTypeAnnotation.LogicalTypes.valueOf(t);
+        LogicalTypeAnnotation.LogicalTypeToken logicalType = LogicalTypeAnnotation.LogicalTypeToken.valueOf(t);
         t = st.nextToken();
         List<String> tokens = new ArrayList<>();
         if ("(".equals(t)) {
@@ -217,7 +217,7 @@ public class MessageTypeParser {
   }
 
   private static boolean isLogicalType(String t) {
-    return Arrays.stream(LogicalTypeAnnotation.LogicalTypes.values()).anyMatch((type) -> type.name().equals(t));
+    return Arrays.stream(LogicalTypeAnnotation.LogicalTypeToken.values()).anyMatch((type) -> type.name().equals(t));
   }
 
   private static PrimitiveTypeName asPrimitive(String t, Tokenizer st) {

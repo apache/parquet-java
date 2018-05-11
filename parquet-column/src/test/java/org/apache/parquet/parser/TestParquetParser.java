@@ -18,6 +18,10 @@
  */
 package org.apache.parquet.parser;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.junit.Assert.assertEquals;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
@@ -30,7 +34,6 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.apache.parquet.schema.OriginalType.*;
 import static org.apache.parquet.schema.Types.buildMessage;
 
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.junit.Test;
 
 import org.apache.parquet.schema.GroupType;
@@ -259,8 +262,8 @@ public class TestParquetParser {
         .required(INT32).as(TIME_MILLIS).named("time")
         .required(INT64).as(TIMESTAMP_MILLIS).named("timestamp")
         .required(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("interval")
-        .required(INT32).as(LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS)).named("newTime")
-        .required(INT64).as(LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MILLIS)).named("newTimestamp")
+        .required(INT32).as(timeType(true, MILLIS)).named("newTime")
+        .required(INT64).as(timestampType(false, MILLIS)).named("newTimestamp")
       .named("TimeMessage");
 
     assertEquals(expected, parsed);
@@ -313,14 +316,14 @@ public class TestParquetParser {
 
     MessageType parsed = MessageTypeParser.parseMessageType(message);
     MessageType expected = Types.buildMessage()
-      .required(INT32).as(LogicalTypeAnnotation.intType(8, true)).named("i8")
-      .required(INT32).as(LogicalTypeAnnotation.intType(16, true)).named("i16")
-      .required(INT32).as(LogicalTypeAnnotation.intType(32, true)).named("i32")
-      .required(INT64).as(LogicalTypeAnnotation.intType(64, true)).named("i64")
-      .required(INT32).as(LogicalTypeAnnotation.intType(8, false)).named("u8")
-      .required(INT32).as(LogicalTypeAnnotation.intType(16, false)).named("u16")
-      .required(INT32).as(LogicalTypeAnnotation.intType(32, false)).named("u32")
-      .required(INT64).as(LogicalTypeAnnotation.intType(64, false)).named("u64")
+      .required(INT32).as(intType(8, true)).named("i8")
+      .required(INT32).as(intType(16, true)).named("i16")
+      .required(INT32).as(intType(32, true)).named("i32")
+      .required(INT64).as(intType(64, true)).named("i64")
+      .required(INT32).as(intType(8, false)).named("u8")
+      .required(INT32).as(intType(16, false)).named("u16")
+      .required(INT32).as(intType(32, false)).named("u32")
+      .required(INT64).as(intType(64, false)).named("u64")
       .named("IntMessage");
 
     assertEquals(expected, parsed);

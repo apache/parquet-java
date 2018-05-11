@@ -39,11 +39,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.format.BsonType;
 import org.apache.parquet.format.CompressionCodec;
+import org.apache.parquet.format.DateType;
 import org.apache.parquet.format.DecimalType;
+import org.apache.parquet.format.EnumType;
 import org.apache.parquet.format.IntType;
+import org.apache.parquet.format.JsonType;
+import org.apache.parquet.format.ListType;
 import org.apache.parquet.format.LogicalType;
+import org.apache.parquet.format.MapType;
+import org.apache.parquet.format.MicroSeconds;
+import org.apache.parquet.format.MilliSeconds;
+import org.apache.parquet.format.NullType;
 import org.apache.parquet.format.PageEncodingStats;
+import org.apache.parquet.format.StringType;
 import org.apache.parquet.format.TimeType;
 import org.apache.parquet.format.TimeUnit;
 import org.apache.parquet.format.TimestampType;
@@ -179,8 +189,8 @@ public class ParquetMetadataConverter {
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         if (primitiveType.getLogicalTypeAnnotation() != null) {
-          element.setConverted_type(primitiveType.getLogicalTypeAnnotation().toConvertedType());
-          element.setLogicalType(primitiveType.getLogicalTypeAnnotation().toLogicalType());
+          element.setConverted_type(convertToConvertedType(primitiveType.getLogicalTypeAnnotation()));
+          element.setLogicalType(convertToLogicalType(primitiveType.getLogicalTypeAnnotation()));
         }
         if (primitiveType.getDecimalMetadata() != null) {
           element.setPrecision(primitiveType.getDecimalMetadata().getPrecision());
@@ -209,8 +219,8 @@ public class ParquetMetadataConverter {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getLogicalTypeAnnotation() != null) {
-          element.setConverted_type(groupType.getLogicalTypeAnnotation().toConvertedType());
-          element.setLogicalType(groupType.getLogicalTypeAnnotation().toLogicalType());
+          element.setConverted_type(convertToConvertedType(groupType.getLogicalTypeAnnotation()));
+          element.setLogicalType(convertToLogicalType(groupType.getLogicalTypeAnnotation()));
         }
         if (groupType.getId() != null) {
           element.setField_id(groupType.getId().intValue());
@@ -227,6 +237,158 @@ public class ParquetMetadataConverter {
         }
       }
     });
+  }
+
+  LogicalType convertToLogicalType(LogicalTypeAnnotation logicalTypeAnnotation) {
+    LogicalTypeConverterVisitor logicalTypeConverterVisitor = new LogicalTypeConverterVisitor();
+    logicalTypeAnnotation.accept(logicalTypeConverterVisitor);
+    return logicalTypeConverterVisitor.logicalType;
+  }
+
+  ConvertedType convertToConvertedType(LogicalTypeAnnotation logicalTypeAnnotation) {
+    LogicalTypeConverterVisitor logicalTypeConverterVisitor = new LogicalTypeConverterVisitor();
+    logicalTypeAnnotation.accept(logicalTypeConverterVisitor);
+    return logicalTypeConverterVisitor.convertedType;
+  }
+
+
+  static org.apache.parquet.format.TimeUnit convertUnit(LogicalTypeAnnotation.TimeUnit unit) {
+    switch (unit) {
+      case MICROS:
+        return org.apache.parquet.format.TimeUnit.MICROS(new MicroSeconds());
+      case MILLIS:
+        return org.apache.parquet.format.TimeUnit.MILLIS(new MilliSeconds());
+      default:
+        throw new RuntimeException("Unknown time unit " + unit);
+    }
+  }
+
+  private static class LogicalTypeConverterVisitor implements LogicalTypeAnnotation.LogicalTypeAnnotationVisitor {
+    private LogicalType logicalType;
+    private ConvertedType convertedType;
+
+    @Override
+    public void visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.STRING(new StringType());
+      convertedType = ConvertedType.UTF8;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.MAP(new MapType());
+      convertedType = ConvertedType.MAP;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.LIST(new ListType());
+      convertedType = ConvertedType.LIST;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.ENUM(new EnumType());
+      convertedType = ConvertedType.ENUM;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.DECIMAL(new DecimalType(logicalTypeAnnotation.getScale(), logicalTypeAnnotation.getPrecision()));
+      convertedType = ConvertedType.DECIMAL;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.DATE(new DateType());
+      convertedType = ConvertedType.DATE;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.TIME(new TimeType(logicalTypeAnnotation.isAdjustedToUTC(), convertUnit(logicalTypeAnnotation.getUnit())));
+      switch (logicalTypeAnnotation.toOriginalType()) {
+        case TIME_MILLIS:
+          convertedType = ConvertedType.TIME_MILLIS;
+          break;
+        case TIME_MICROS:
+          convertedType = ConvertedType.TIME_MICROS;
+          break;
+        default:
+          throw new RuntimeException("Unknown converted type for " + logicalTypeAnnotation.toOriginalType());
+      }
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.TIMESTAMP(new TimestampType(logicalTypeAnnotation.isAdjustedToUTC(), convertUnit(logicalTypeAnnotation.getUnit())));
+      switch (logicalTypeAnnotation.toOriginalType()) {
+        case TIMESTAMP_MICROS:
+          convertedType = ConvertedType.TIMESTAMP_MICROS;
+          break;
+        case TIMESTAMP_MILLIS:
+          convertedType = ConvertedType.TIMESTAMP_MILLIS;
+          break;
+        default:
+          throw new RuntimeException("Unknown converted type for " + logicalTypeAnnotation.toOriginalType());
+      }
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.INTEGER(new IntType((byte) logicalTypeAnnotation.getBitWidth(), logicalTypeAnnotation.isSigned()));
+      switch (logicalTypeAnnotation.toOriginalType()) {
+        case INT_8:
+          convertedType = ConvertedType.INT_8;
+          break;
+        case INT_16:
+          convertedType = ConvertedType.INT_16;
+          break;
+        case INT_32:
+          convertedType = ConvertedType.INT_32;
+          break;
+        case INT_64:
+          convertedType = ConvertedType.INT_64;
+          break;
+        case UINT_8:
+          convertedType = ConvertedType.UINT_8;
+          break;
+        case UINT_16:
+          convertedType = ConvertedType.UINT_16;
+          break;
+        case UINT_32:
+          convertedType = ConvertedType.UINT_32;
+          break;
+        case UINT_64:
+          convertedType = ConvertedType.UINT_64;
+          break;
+        default:
+          throw new RuntimeException("Unknown original type " + logicalTypeAnnotation.toOriginalType());
+      }
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.JSON(new JsonType());
+      convertedType = ConvertedType.JSON;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.BSON(new BsonType());
+      convertedType = ConvertedType.BSON;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.UNKNOWN(new NullType());
+      convertedType = ConvertedType.INTERVAL;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.UNKNOWN(new NullType());
+      convertedType = ConvertedType.MAP_KEY_VALUE;
+    }
   }
 
   private void addRowGroup(ParquetMetadata parquetMetadata, List<RowGroup> rowGroups, BlockMetaData block) {

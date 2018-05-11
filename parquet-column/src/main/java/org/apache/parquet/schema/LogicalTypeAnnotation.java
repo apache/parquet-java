@@ -19,28 +19,13 @@
 package org.apache.parquet.schema;
 
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.format.BsonType;
-import org.apache.parquet.format.ConvertedType;
-import org.apache.parquet.format.DateType;
-import org.apache.parquet.format.DecimalType;
-import org.apache.parquet.format.EnumType;
-import org.apache.parquet.format.IntType;
-import org.apache.parquet.format.JsonType;
-import org.apache.parquet.format.ListType;
-import org.apache.parquet.format.LogicalType;
-import org.apache.parquet.format.MapType;
-import org.apache.parquet.format.MicroSeconds;
-import org.apache.parquet.format.MilliSeconds;
-import org.apache.parquet.format.NullType;
-import org.apache.parquet.format.StringType;
-import org.apache.parquet.format.TimeType;
-import org.apache.parquet.format.TimestampType;
 
 import java.util.List;
 import java.util.Objects;
 
 public abstract class LogicalTypeAnnotation {
-  public enum LogicalTypes {
+  // This is a private enum intended only for internal use for parsing the schema
+  public enum LogicalTypeToken {
     MAP {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
@@ -136,20 +121,6 @@ public abstract class LogicalTypeAnnotation {
   }
 
   /**
-   * Convert this parquet-mr logical type to parquet-format LogicalType.
-   *
-   * @return the parquet-format LogicalType representation of this logical type implementation
-   */
-  public abstract LogicalType toLogicalType();
-
-  /**
-   * Convert this parquet-mr logical type to parquet-format ConvertedType.
-   *
-   * @return the parquet-format ConvertedType representation of this logical type implementation
-   */
-  public abstract ConvertedType toConvertedType();
-
-  /**
    * Convert this logical type to old logical type representation in parquet-mr (if there's any).
    * Those logical type implementations, which don't have a corresponding mapping should return null.
    *
@@ -164,7 +135,7 @@ public abstract class LogicalTypeAnnotation {
    */
   public abstract void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor);
 
-  public abstract LogicalTypes getType();
+  protected abstract LogicalTypeToken getType();
 
   protected String typeParametersAsString() {
     return "";
@@ -237,7 +208,6 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
-
   public static StringLogicalTypeAnnotation stringType() {
     return StringLogicalTypeAnnotation.INSTANCE;
   }
@@ -293,16 +263,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.STRING(new StringType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.UTF8;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.UTF8;
     }
@@ -313,8 +273,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.UTF8;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.UTF8;
     }
 
     @Override
@@ -336,16 +296,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.MAP(new MapType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.MAP;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.MAP;
     }
@@ -356,8 +306,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.MAP;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.MAP;
     }
 
     @Override
@@ -379,16 +329,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.LIST(new ListType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.LIST;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.LIST;
     }
@@ -399,8 +339,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.LIST;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.LIST;
     }
 
     @Override
@@ -422,16 +362,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.ENUM(new EnumType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.ENUM;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.ENUM;
     }
@@ -442,8 +372,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.ENUM;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.ENUM;
     }
 
     @Override
@@ -476,16 +406,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.DECIMAL(new DecimalType(scale, precision));
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.DECIMAL;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.DECIMAL;
     }
@@ -496,8 +416,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.DECIMAL;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.DECIMAL;
     }
 
     @Override
@@ -533,16 +453,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.DATE(new DateType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.DATE;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.DATE;
     }
@@ -553,8 +463,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.DATE;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.DATE;
     }
 
     @Override
@@ -574,17 +484,6 @@ public abstract class LogicalTypeAnnotation {
     MICROS
   }
 
-  static org.apache.parquet.format.TimeUnit convertUnit(TimeUnit unit) {
-    switch (unit) {
-      case MICROS:
-        return org.apache.parquet.format.TimeUnit.MICROS(new MicroSeconds());
-      case MILLIS:
-        return org.apache.parquet.format.TimeUnit.MILLIS(new MilliSeconds());
-      default:
-        throw new RuntimeException("Unknown time unit " + unit);
-    }
-  }
-
   public static class TimeLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final boolean isAdjustedToUTC;
     private final TimeUnit unit;
@@ -592,23 +491,6 @@ public abstract class LogicalTypeAnnotation {
     private TimeLogicalTypeAnnotation(boolean isAdjustedToUTC, TimeUnit unit) {
       this.isAdjustedToUTC = isAdjustedToUTC;
       this.unit = unit;
-    }
-
-    @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.TIME(new TimeType(isAdjustedToUTC, convertUnit(unit)));
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      switch (toOriginalType()) {
-        case TIME_MILLIS:
-          return ConvertedType.TIME_MILLIS;
-        case TIME_MICROS:
-          return ConvertedType.TIME_MICROS;
-        default:
-          throw new RuntimeException("Unknown converted type for " + toOriginalType());
-      }
     }
 
     @Override
@@ -629,8 +511,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.TIME;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.TIME;
     }
 
     @Override
@@ -677,23 +559,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.TIMESTAMP(new TimestampType(isAdjustedToUTC, convertUnit(unit)));
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      switch (toOriginalType()) {
-        case TIMESTAMP_MICROS:
-          return ConvertedType.TIMESTAMP_MICROS;
-        case TIMESTAMP_MILLIS:
-          return ConvertedType.TIMESTAMP_MILLIS;
-        default:
-          throw new RuntimeException("Unknown converted type for " + unit);
-      }
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -711,8 +576,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.TIMESTAMP;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.TIMESTAMP;
     }
 
     @Override
@@ -760,35 +625,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.INTEGER(new IntType((byte) bitWidth, isSigned));
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      switch (toOriginalType()) {
-        case INT_8:
-          return ConvertedType.INT_8;
-        case INT_16:
-          return ConvertedType.INT_16;
-        case INT_32:
-          return ConvertedType.INT_32;
-        case INT_64:
-          return ConvertedType.INT_64;
-        case UINT_8:
-          return ConvertedType.UINT_8;
-        case UINT_16:
-          return ConvertedType.UINT_16;
-        case UINT_32:
-          return ConvertedType.UINT_32;
-        case UINT_64:
-          return ConvertedType.UINT_64;
-        default:
-          throw new RuntimeException("Unknown original type " + toOriginalType());
-      }
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       switch (bitWidth) {
         case 8:
@@ -810,8 +646,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.INT;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.INT;
     }
 
     @Override
@@ -855,16 +691,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.JSON(new JsonType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.JSON;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.JSON;
     }
@@ -875,8 +701,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.JSON;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.JSON;
     }
 
     @Override
@@ -898,16 +724,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.BSON(new BsonType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.BSON;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.BSON;
     }
@@ -918,8 +734,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.BSON;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.BSON;
     }
 
     @Override
@@ -948,16 +764,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.UNKNOWN(new NullType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.INTERVAL;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.INTERVAL;
     }
@@ -968,8 +774,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.INTERVAL;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.INTERVAL;
     }
 
     @Override
@@ -998,16 +804,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalType toLogicalType() {
-      return LogicalType.UNKNOWN(new NullType());
-    }
-
-    @Override
-    public ConvertedType toConvertedType() {
-      return ConvertedType.MAP_KEY_VALUE;
-    }
-
-    @Override
     public OriginalType toOriginalType() {
       return OriginalType.MAP_KEY_VALUE;
     }
@@ -1018,8 +814,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public LogicalTypes getType() {
-      return LogicalTypes.MAP_KEY_VALUE;
+    protected LogicalTypeToken getType() {
+      return LogicalTypeToken.MAP_KEY_VALUE;
     }
 
     @Override
