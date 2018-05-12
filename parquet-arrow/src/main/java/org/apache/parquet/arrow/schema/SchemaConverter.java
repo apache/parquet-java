@@ -27,6 +27,7 @@ import static org.apache.parquet.schema.OriginalType.INT_32;
 import static org.apache.parquet.schema.OriginalType.INT_64;
 import static org.apache.parquet.schema.OriginalType.INT_8;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
+import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MICROS;
 import static org.apache.parquet.schema.OriginalType.TIME_MILLIS;
 import static org.apache.parquet.schema.OriginalType.TIME_MICROS;
 import static org.apache.parquet.schema.OriginalType.UINT_16;
@@ -259,7 +260,13 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping visit(Timestamp type) {
-        return primitive(INT64, TIMESTAMP_MILLIS);
+        TimeUnit timeUnit = type.getUnit();
+        if (timeUnit == TimeUnit.MILLISECOND) {
+          return primitive(INT64, TIMESTAMP_MILLIS);
+        } else if (timeUnit == TimeUnit.MICROSECOND) {
+          return primitive(INT64, TIMESTAMP_MICROS);
+        }
+        throw new UnsupportedOperationException("Unsupported type " + type);
       }
 
       /**
@@ -415,14 +422,9 @@ public class SchemaConverter {
             return decimal(type.getDecimalMetadata());
           case DATE:
             return field(new ArrowType.Date(DateUnit.DAY));
-          case TIMESTAMP_MICROS:
-            return field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC"));
-          case TIMESTAMP_MILLIS:
-            return field(new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC"));
           case TIME_MILLIS:
             return field(new ArrowType.Time(TimeUnit.MILLISECOND, 32));
           default:
-          case TIME_MICROS:
           case INT_64:
           case UINT_64:
           case UTF8:
@@ -433,6 +435,9 @@ public class SchemaConverter {
           case LIST:
           case MAP:
           case MAP_KEY_VALUE:
+          case TIMESTAMP_MICROS:
+          case TIMESTAMP_MILLIS:
+          case TIME_MICROS:
             throw new IllegalArgumentException("illegal type " + type);
         }
       }

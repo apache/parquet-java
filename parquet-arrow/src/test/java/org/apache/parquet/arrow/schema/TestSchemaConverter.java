@@ -27,6 +27,7 @@ import static org.apache.parquet.schema.OriginalType.INT_32;
 import static org.apache.parquet.schema.OriginalType.INT_64;
 import static org.apache.parquet.schema.OriginalType.INT_8;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
+import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MICROS;
 import static org.apache.parquet.schema.OriginalType.TIME_MILLIS;
 import static org.apache.parquet.schema.OriginalType.TIME_MICROS;
 import static org.apache.parquet.schema.OriginalType.UINT_16;
@@ -412,5 +413,67 @@ public class TestSchemaConverter {
   public void testParquetInt32TimeMicrosToArrow() {
     converter.fromParquet(Types.buildMessage()
       .addField(Types.optional(INT32).as(TIME_MICROS).named("a")).named("root"));
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testArrowTimestampSecondToParquet() {
+    converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Timestamp(TimeUnit.SECOND, "UTC"))
+    ))).getParquetSchema();
+  }
+
+  @Test
+  public void testArrowTimestampMillisecondToParquet() {
+    MessageType expected = converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC"))
+    ))).getParquetSchema();
+    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("a")).named("root"));
+  }
+
+  @Test
+  public void testArrowTimestampMicrosecondToParquet() {
+    MessageType expected = converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC"))
+    ))).getParquetSchema();
+    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT64).as(TIMESTAMP_MICROS).named("a")).named("root"));
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testArrowTimestampNanosecondToParquet() {
+    converter.fromArrow(new Schema(asList(
+      field("a", new ArrowType.Timestamp(TimeUnit.NANOSECOND, "UTC"))
+    ))).getParquetSchema();
+  }
+
+  @Test
+  public void testParquetInt64TimestampMillisToArrow() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC"))
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test
+  public void testParquetInt64TimestampMicrosToArrow() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(INT64).as(TIMESTAMP_MICROS).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC"))
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testParquetInt32TimestampMillisToArrow() {
+    converter.fromParquet(Types.buildMessage()
+      .addField(Types.optional(INT32).as(TIMESTAMP_MILLIS).named("a")).named("root"));
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testParquetInt32TimestampMicrosToArrow() {
+    converter.fromParquet(Types.buildMessage()
+      .addField(Types.optional(INT32).as(TIMESTAMP_MICROS).named("a")).named("root"));
   }
 }
