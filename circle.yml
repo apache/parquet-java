@@ -7,7 +7,7 @@ machine:
   java:
     version: oraclejdk8
   post:
-  - git clone -b master git@github.com:RMS/rms-one-deployment.git ~/rms-one-deployment
+  - git clone -b develop git@github.com:RMS/rms-one-deployment.git ~/rms-one-deployment
   - /home/ubuntu/rms-one-deployment/scripts/ci-setup azure
 test:
   override:
