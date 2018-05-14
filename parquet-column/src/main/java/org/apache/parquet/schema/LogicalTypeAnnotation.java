@@ -25,7 +25,7 @@ import java.util.Objects;
 
 public abstract class LogicalTypeAnnotation {
   // This is a private enum intended only for internal use for parsing the schema
-  public enum LogicalTypeToken {
+  enum LogicalTypeToken {
     MAP {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
@@ -135,7 +135,7 @@ public abstract class LogicalTypeAnnotation {
    */
   public abstract void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor);
 
-  protected abstract LogicalTypeToken getType();
+  abstract LogicalTypeToken getType();
 
   protected String typeParametersAsString() {
     return "";
@@ -273,7 +273,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.UTF8;
     }
 
@@ -306,7 +306,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.MAP;
     }
 
@@ -339,7 +339,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.LIST;
     }
 
@@ -372,7 +372,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.ENUM;
     }
 
@@ -416,7 +416,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.DECIMAL;
     }
 
@@ -463,7 +463,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.DATE;
     }
 
@@ -511,7 +511,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.TIME;
     }
 
@@ -576,7 +576,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.TIMESTAMP;
     }
 
@@ -646,7 +646,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.INT;
     }
 
@@ -701,7 +701,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.JSON;
     }
 
@@ -734,7 +734,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.BSON;
     }
 
@@ -774,7 +774,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.INTERVAL;
     }
 
@@ -814,7 +814,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    protected LogicalTypeToken getType() {
+    LogicalTypeToken getType() {
       return LogicalTypeToken.MAP_KEY_VALUE;
     }
 
