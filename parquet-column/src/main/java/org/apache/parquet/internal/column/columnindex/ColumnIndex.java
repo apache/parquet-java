@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.columnindex;
+package org.apache.parquet.internal.column.columnindex;
 
 import java.nio.ByteBuffer;
 import java.util.List;

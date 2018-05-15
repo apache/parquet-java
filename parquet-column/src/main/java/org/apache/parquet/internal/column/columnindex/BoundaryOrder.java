@@ -16,26 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.hadoop.metadata;
+package org.apache.parquet.internal.column.columnindex;
 
 /**
- * Reference to an index (OffsetIndex and ColumnIndex) for a row-group containing the offset and length values so the
- * reader can read the referenced data.
+ * Enum for {@link org.apache.parquet.format.BoundaryOrder}.
  */
-public class IndexReference {
-  private final long offset;
-  private final int length;
-
-  public IndexReference(long offset, int length) {
-    this.offset = offset;
-    this.length = length;
-  }
-
-  public long getOffset() {
-    return offset;
-  }
-
-  public int getLength() {
-    return length;
-  }
+public enum BoundaryOrder {
+  UNORDERED, ASCENDING, DESCENDING;
 }

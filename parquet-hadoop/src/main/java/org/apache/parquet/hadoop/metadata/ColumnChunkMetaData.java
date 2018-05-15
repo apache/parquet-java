@@ -24,9 +24,11 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
+import org.apache.yetus.audience.InterfaceAudience.Private;
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
@@ -243,6 +245,7 @@ abstract public class ColumnChunkMetaData {
   /**
    * @return the reference to the column index
    */
+  @Private
   public IndexReference getColumnIndexReference() {
     return columnIndexReference;
   }
@@ -251,6 +254,7 @@ abstract public class ColumnChunkMetaData {
    * @param indexReference
    *          the reference to the column index
    */
+  @Private
   public void setColumnIndexReference(IndexReference indexReference) {
     this.columnIndexReference = indexReference;
   }
@@ -258,6 +262,7 @@ abstract public class ColumnChunkMetaData {
   /**
    * @return the reference to the offset index
    */
+  @Private
   public IndexReference getOffsetIndexReference() {
     return offsetIndexReference;
   }
@@ -266,6 +271,7 @@ abstract public class ColumnChunkMetaData {
    * @param offsetIndexReference
    *          the reference to the offset index
    */
+  @Private
   public void setOffsetIndexReference(IndexReference offsetIndexReference) {
     this.offsetIndexReference = offsetIndexReference;
   }

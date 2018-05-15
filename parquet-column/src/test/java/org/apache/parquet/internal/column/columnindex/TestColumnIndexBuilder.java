@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.columnindex;
+package org.apache.parquet.internal.column.columnindex;
 
 import static java.util.Arrays.asList;
 import static org.apache.parquet.schema.OriginalType.DECIMAL;
@@ -43,6 +43,15 @@ import java.util.List;
 
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.internal.column.columnindex.BinaryColumnIndexBuilder;
+import org.apache.parquet.internal.column.columnindex.BooleanColumnIndexBuilder;
+import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
+import org.apache.parquet.internal.column.columnindex.ColumnIndex;
+import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
+import org.apache.parquet.internal.column.columnindex.DoubleColumnIndexBuilder;
+import org.apache.parquet.internal.column.columnindex.FloatColumnIndexBuilder;
+import org.apache.parquet.internal.column.columnindex.IntColumnIndexBuilder;
+import org.apache.parquet.internal.column.columnindex.LongColumnIndexBuilder;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;

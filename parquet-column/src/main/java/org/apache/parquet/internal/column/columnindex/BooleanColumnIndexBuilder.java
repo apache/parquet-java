@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.columnindex;
-
-import static java.nio.ByteOrder.LITTLE_ENDIAN;
+package org.apache.parquet.internal.column.columnindex;
 
 import java.nio.ByteBuffer;
 
@@ -26,15 +24,15 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
 
-import it.unimi.dsi.fastutil.floats.FloatArrayList;
-import it.unimi.dsi.fastutil.floats.FloatList;
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.booleans.BooleanList;
 
-class FloatColumnIndexBuilder extends ColumnIndexBuilder {
-  private static class FloatColumnIndex extends ColumnIndexBase {
-    private float[] minValues;
-    private float[] maxValues;
+class BooleanColumnIndexBuilder extends ColumnIndexBuilder {
+  private static class BooleanColumnIndex extends ColumnIndexBase {
+    private boolean[] minValues;
+    private boolean[] maxValues;
 
-    private FloatColumnIndex(PrimitiveType type) {
+    private BooleanColumnIndex(PrimitiveType type) {
       super(type);
     }
 
@@ -59,34 +57,34 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
     }
   }
 
-  private final FloatList minValues = new FloatArrayList();
-  private final FloatList maxValues = new FloatArrayList();
+  private final BooleanList minValues = new BooleanArrayList();
+  private final BooleanList maxValues = new BooleanArrayList();
 
-  private static float convert(ByteBuffer buffer) {
-    return buffer.order(LITTLE_ENDIAN).getFloat(0);
+  private static boolean convert(ByteBuffer buffer) {
+    return buffer.get(0) != 0;
   }
 
-  private static ByteBuffer convert(float value) {
-    return ByteBuffer.allocate(Float.SIZE / 8).order(LITTLE_ENDIAN).putFloat(0, value);
+  private static ByteBuffer convert(boolean value) {
+    return ByteBuffer.allocate(1).put(0, value ? (byte) 1 : 0);
   }
 
   @Override
   void addMinMaxFromBytes(ByteBuffer min, ByteBuffer max) {
-    minValues.add(min == null ? 0 : convert(min));
-    maxValues.add(max == null ? 0 : convert(max));
+    minValues.add(min == null ? false : convert(min));
+    maxValues.add(max == null ? false : convert(max));
   }
 
   @Override
   void addMinMax(Object min, Object max) {
-    minValues.add(min == null ? 0 : (float) min);
-    maxValues.add(max == null ? 0 : (float) max);
+    minValues.add(min == null ? false : (boolean) min);
+    maxValues.add(max == null ? false : (boolean) max);
   }
 
   @Override
   ColumnIndexBase createColumnIndex(PrimitiveType type) {
-    FloatColumnIndex columnIndex = new FloatColumnIndex(type);
-    columnIndex.minValues = minValues.toFloatArray();
-    columnIndex.maxValues = maxValues.toFloatArray();
+    BooleanColumnIndex columnIndex = new BooleanColumnIndex(type);
+    columnIndex.minValues = minValues.toBooleanArray();
+    columnIndex.maxValues = maxValues.toBooleanArray();
     return columnIndex;
   }
 

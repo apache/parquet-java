@@ -16,22 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.columnindex;
+package org.apache.parquet.internal.column.columnindex;
+
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
 
-class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
-  private static class BinaryColumnIndex extends ColumnIndexBase {
-    private Binary[] minValues;
-    private Binary[] maxValues;
+import it.unimi.dsi.fastutil.floats.FloatArrayList;
+import it.unimi.dsi.fastutil.floats.FloatList;
 
-    private BinaryColumnIndex(PrimitiveType type) {
+class FloatColumnIndexBuilder extends ColumnIndexBuilder {
+  private static class FloatColumnIndex extends ColumnIndexBase {
+    private float[] minValues;
+    private float[] maxValues;
+
+    private FloatColumnIndex(PrimitiveType type) {
       super(type);
     }
 
@@ -56,34 +59,34 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
     }
   }
 
-  private final List<Binary> minValues = new ArrayList<>();
-  private final List<Binary> maxValues = new ArrayList<>();
+  private final FloatList minValues = new FloatArrayList();
+  private final FloatList maxValues = new FloatArrayList();
 
-  private static Binary convert(ByteBuffer buffer) {
-    return Binary.fromReusedByteBuffer(buffer);
+  private static float convert(ByteBuffer buffer) {
+    return buffer.order(LITTLE_ENDIAN).getFloat(0);
   }
 
-  private static ByteBuffer convert(Binary value) {
-    return value.toByteBuffer();
+  private static ByteBuffer convert(float value) {
+    return ByteBuffer.allocate(Float.SIZE / 8).order(LITTLE_ENDIAN).putFloat(0, value);
   }
 
   @Override
   void addMinMaxFromBytes(ByteBuffer min, ByteBuffer max) {
-    minValues.add(min == null ? null : convert(min));
-    maxValues.add(max == null ? null : convert(max));
+    minValues.add(min == null ? 0 : convert(min));
+    maxValues.add(max == null ? 0 : convert(max));
   }
 
   @Override
   void addMinMax(Object min, Object max) {
-    minValues.add((Binary) min);
-    maxValues.add((Binary) max);
+    minValues.add(min == null ? 0 : (float) min);
+    maxValues.add(max == null ? 0 : (float) max);
   }
 
   @Override
   ColumnIndexBase createColumnIndex(PrimitiveType type) {
-    BinaryColumnIndex columnIndex = new BinaryColumnIndex(type);
-    columnIndex.minValues = minValues.toArray(new Binary[minValues.size()]);
-    columnIndex.maxValues = maxValues.toArray(new Binary[maxValues.size()]);
+    FloatColumnIndex columnIndex = new FloatColumnIndex(type);
+    columnIndex.minValues = minValues.toFloatArray();
+    columnIndex.maxValues = maxValues.toFloatArray();
     return columnIndex;
   }
 

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.columnindex;
+package org.apache.parquet.internal.column.columnindex;
 
 /**
  * Offset index containing the offset and size of the page and the index of the first row in the page.

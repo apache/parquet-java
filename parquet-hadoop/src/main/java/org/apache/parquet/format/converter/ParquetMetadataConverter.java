@@ -67,11 +67,11 @@ import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.hadoop.metadata.IndexReference;
 import org.apache.parquet.column.EncodingStats;
-import org.apache.parquet.column.columnindex.ColumnIndexBuilder;
-import org.apache.parquet.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
+import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
+import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.GroupType;
@@ -1160,7 +1160,7 @@ public class ParquetMetadataConverter {
   }
 
   private static BoundaryOrder toParquetBoundaryOrder(
-      org.apache.parquet.column.columnindex.BoundaryOrder boundaryOrder) {
+      org.apache.parquet.internal.column.columnindex.BoundaryOrder boundaryOrder) {
     switch (boundaryOrder) {
       case ASCENDING:
         return BoundaryOrder.ASCENDING;
@@ -1173,22 +1173,22 @@ public class ParquetMetadataConverter {
     }
   }
 
-  private static org.apache.parquet.column.columnindex.BoundaryOrder fromParquetBoundaryOrder(
+  private static org.apache.parquet.internal.column.columnindex.BoundaryOrder fromParquetBoundaryOrder(
       BoundaryOrder boundaryOrder) {
     switch (boundaryOrder) {
       case ASCENDING:
-        return org.apache.parquet.column.columnindex.BoundaryOrder.ASCENDING;
+        return org.apache.parquet.internal.column.columnindex.BoundaryOrder.ASCENDING;
       case DESCENDING:
-        return org.apache.parquet.column.columnindex.BoundaryOrder.DESCENDING;
+        return org.apache.parquet.internal.column.columnindex.BoundaryOrder.DESCENDING;
       case UNORDERED:
-        return org.apache.parquet.column.columnindex.BoundaryOrder.UNORDERED;
+        return org.apache.parquet.internal.column.columnindex.BoundaryOrder.UNORDERED;
       default:
         throw new IllegalArgumentException("Unsupported boundary order: " + boundaryOrder);
     }
   }
 
   public static ColumnIndex toParquetColumnIndex(PrimitiveType type,
-      org.apache.parquet.column.columnindex.ColumnIndex columnIndex) {
+      org.apache.parquet.internal.column.columnindex.ColumnIndex columnIndex) {
     if (!isMinMaxStatsSupported(type) || columnIndex == null) {
       return null;
     }
@@ -1201,7 +1201,7 @@ public class ParquetMetadataConverter {
     return parquetColumnIndex;
   }
 
-  public static org.apache.parquet.column.columnindex.ColumnIndex fromParquetColumnIndex(PrimitiveType type,
+  public static org.apache.parquet.internal.column.columnindex.ColumnIndex fromParquetColumnIndex(PrimitiveType type,
       ColumnIndex parquetColumnIndex) {
     if (!isMinMaxStatsSupported(type)) {
       return null;
@@ -1214,7 +1214,7 @@ public class ParquetMetadataConverter {
         parquetColumnIndex.getMax_values());
   }
 
-  public static OffsetIndex toParquetOffsetIndex(org.apache.parquet.column.columnindex.OffsetIndex offsetIndex) {
+  public static OffsetIndex toParquetOffsetIndex(org.apache.parquet.internal.column.columnindex.OffsetIndex offsetIndex) {
     List<PageLocation> pageLocations = new ArrayList<>(offsetIndex.getPageCount());
     for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
       pageLocations.add(new PageLocation(
@@ -1225,7 +1225,7 @@ public class ParquetMetadataConverter {
     return new OffsetIndex(pageLocations);
   }
 
-  public static org.apache.parquet.column.columnindex.OffsetIndex fromParquetOffsetIndex(
+  public static org.apache.parquet.internal.column.columnindex.OffsetIndex fromParquetOffsetIndex(
       OffsetIndex parquetOffsetIndex) {
     OffsetIndexBuilder builder = OffsetIndexBuilder.getBuilder();
     for (PageLocation pageLocation : parquetOffsetIndex.getPage_locations()) {
