@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Objects;
 
 public abstract class LogicalTypeAnnotation {
-  // This is a private enum intended only for internal use for parsing the schema
   enum LogicalTypeToken {
     MAP {
       @Override
@@ -137,7 +136,7 @@ public abstract class LogicalTypeAnnotation {
 
   abstract LogicalTypeToken getType();
 
-  protected String typeParametersAsString() {
+  String typeParametersAsString() {
     return "";
   }
 
