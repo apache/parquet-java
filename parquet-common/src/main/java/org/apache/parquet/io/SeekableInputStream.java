@@ -105,4 +105,6 @@ public abstract class SeekableInputStream extends InputStream {
    */
   public abstract void readFully(ByteBuffer buf) throws IOException;
 
+  public abstract ByteBuffer readFully(int maxLength, boolean verifyChecksums) throws IOException;
+
 }
