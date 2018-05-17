@@ -97,7 +97,7 @@ public abstract class DelegatingSeekableInputStream extends SeekableInputStream 
   public ByteBuffer readFully(int maxLength, boolean verifyChecksums) throws IOException {
     ByteBuffer buf = ByteBuffer.allocateDirect(maxLength);
     readFullyDirectBuffer(stream, buf, temp);
-    return buf;
+    return (ByteBuffer) buf.flip();
   }
 
   // Visible for testing
