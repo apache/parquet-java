@@ -48,11 +48,12 @@ public class HadoopReadOptions extends ParquetReadOptions {
                             CompressionCodecFactory codecFactory,
                             ByteBufferAllocator allocator,
                             int maxAllocationSize,
+                            boolean useZeroCopy,
                             Map<String, String> properties,
                             Configuration conf) {
     super(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter, recordFilter,
-        metadataFilter, codecFactory, allocator, maxAllocationSize, properties
+        metadataFilter, codecFactory, allocator, maxAllocationSize, useZeroCopy, properties
     );
     this.conf = conf;
   }
@@ -96,7 +97,7 @@ public class HadoopReadOptions extends ParquetReadOptions {
     public ParquetReadOptions build() {
       return new HadoopReadOptions(
           useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-          recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, properties,
+          recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, useZeroCopy, properties,
           conf);
     }
   }
