@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,22 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.impl;
+package org.apache.parquet.internal.hadoop.metadata;
 
-import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.page.PageWriteStore;
-import org.apache.parquet.column.page.PageWriter;
-import org.apache.parquet.schema.MessageType;
+/**
+ * Reference to an index (OffsetIndex and ColumnIndex) for a row-group containing the offset and length values so the
+ * reader can read the referenced data.
+ */
+public class IndexReference {
+  private final long offset;
+  private final int length;
 
-public class ColumnWriteStoreV2 extends ColumnWriteStoreBase {
-
-  public ColumnWriteStoreV2(MessageType schema, PageWriteStore pageWriteStore, ParquetProperties props) {
-    super(schema, pageWriteStore, props);
+  public IndexReference(long offset, int length) {
+    this.offset = offset;
+    this.length = length;
   }
 
-  @Override
-  ColumnWriterBase createColumnWriter(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
-    return new ColumnWriterV2(path, pageWriter, props);
+  public long getOffset() {
+    return offset;
+  }
+
+  public int getLength() {
+    return length;
   }
 }
