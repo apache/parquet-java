@@ -220,20 +220,22 @@ public abstract class ColumnIndexBuilder {
   /**
    * @param type
    *          the type this builder is to be created for
+   * @param truncateLength
+   *          the length to be used for truncating binary values if possible
    * @return a {@link ColumnIndexBuilder} instance to be used for creating {@link ColumnIndex} objects
    */
-  public static ColumnIndexBuilder getBuilder(PrimitiveType type) {
-    ColumnIndexBuilder builder = createNewBuilder(type.getPrimitiveTypeName());
+  public static ColumnIndexBuilder getBuilder(PrimitiveType type, int truncateLength) {
+    ColumnIndexBuilder builder = createNewBuilder(type, truncateLength);
     builder.type = type;
     return builder;
   }
 
-  private static ColumnIndexBuilder createNewBuilder(PrimitiveTypeName type) {
-    switch (type) {
+  private static ColumnIndexBuilder createNewBuilder(PrimitiveType type, int truncateLength) {
+    switch (type.getPrimitiveTypeName()) {
       case BINARY:
       case FIXED_LEN_BYTE_ARRAY:
       case INT96:
-        return new BinaryColumnIndexBuilder();
+        return new BinaryColumnIndexBuilder(type, truncateLength);
       case BOOLEAN:
         return new BooleanColumnIndexBuilder();
       case DOUBLE:
@@ -276,7 +278,7 @@ public abstract class ColumnIndexBuilder {
     PrimitiveTypeName typeName = type.getPrimitiveTypeName();
     ColumnIndexBuilder builder = BUILDERS.get(typeName);
     if (builder == null) {
-      builder = createNewBuilder(typeName);
+      builder = createNewBuilder(type, Integer.MAX_VALUE);
       BUILDERS.put(typeName, builder);
     }
 

@@ -65,7 +65,7 @@ public class TestColumnIndexBuilder {
   @Test
   public void testBuildBinaryDecimal() {
     PrimitiveType type = Types.required(BINARY).as(DECIMAL).precision(12).scale(2).named("test_binary_decimal");
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(BinaryColumnIndexBuilder.class));
     assertNull(builder.build());
 
@@ -103,7 +103,7 @@ public class TestColumnIndexBuilder {
         null,
         decimalBinary("87656273"));
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null, null, null));
     builder.add(sb.stats(type, decimalBinary("-9999293.23"), decimalBinary("-234.23")));
@@ -138,7 +138,7 @@ public class TestColumnIndexBuilder {
         decimalBinary("1234567890.12"),
         null);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null, null));
     builder.add(sb.stats(type, null, null));
@@ -177,7 +177,7 @@ public class TestColumnIndexBuilder {
   @Test
   public void testBuildBinaryUtf8() {
     PrimitiveType type = Types.required(BINARY).as(UTF8).named("test_binary_utf8");
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(BinaryColumnIndexBuilder.class));
     assertNull(builder.build());
 
@@ -215,7 +215,7 @@ public class TestColumnIndexBuilder {
         stringBinary("Beeblebrox"),
         null);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, stringBinary("Beeblebrox"), stringBinary("Dent"), null, null));
     builder.add(sb.stats(type, null, null));
@@ -250,7 +250,7 @@ public class TestColumnIndexBuilder {
         stringBinary("Slartibartfast"),
         null);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
     builder.add(sb.stats(type, stringBinary("Slartibartfast")));
@@ -337,7 +337,7 @@ public class TestColumnIndexBuilder {
   @Test
   public void testBuildBoolean() {
     PrimitiveType type = Types.required(BOOLEAN).named("test_boolean");
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(BooleanColumnIndexBuilder.class));
     assertNull(builder.build());
 
@@ -357,7 +357,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), true, true, true, null, false);
     assertCorrectValues(columnIndex.getMinValues(), false, false, true, null, false);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
     builder.add(sb.stats(type, false, false));
@@ -375,7 +375,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), null, false, null, null, true, true, null);
     assertCorrectValues(columnIndex.getMinValues(), null, false, null, null, false, false, null);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
     builder.add(sb.stats(type, true, true));
@@ -413,7 +413,7 @@ public class TestColumnIndexBuilder {
   @Test
   public void testBuildDouble() {
     PrimitiveType type = Types.required(DOUBLE).named("test_double");
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(DoubleColumnIndexBuilder.class));
     assertNull(builder.build());
 
@@ -433,7 +433,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), -4.1, 7.0, 2.2, null, 2.32, 8.1);
     assertCorrectValues(columnIndex.getMinValues(), -4.2, -11.7, 2.2, null, 1.9, -21.0);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
     builder.add(sb.stats(type, -532.3, -345.2, null, null));
@@ -453,7 +453,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), null, -345.2, -234.6, null, null, 2.99999, null, 42.83, null);
     assertCorrectValues(columnIndex.getMinValues(), null, -532.3, -234.7, null, null, -234.6, null, 3.0, null);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null, null, null, null));
     builder.add(sb.stats(type, 532.3, 345.2));
@@ -493,7 +493,7 @@ public class TestColumnIndexBuilder {
   @Test
   public void testBuildFloat() {
     PrimitiveType type = Types.required(FLOAT).named("test_float");
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(FloatColumnIndexBuilder.class));
     assertNull(builder.build());
 
@@ -513,7 +513,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), -4.1f, 7.0f, 2.2f, null, 2.32f, 8.1f);
     assertCorrectValues(columnIndex.getMinValues(), -4.2f, -11.7f, 2.2f, null, 1.9f, -21.0f);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
     builder.add(sb.stats(type, -532.3f, -345.2f, null, null));
@@ -533,7 +533,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), null, -345.2f, -234.7f, null, null, 2.99999f, null, 42.83f, null);
     assertCorrectValues(columnIndex.getMinValues(), null, -532.3f, -300.6f, null, null, -234.6f, null, 3.0f, null);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null, null, null, null));
     builder.add(sb.stats(type, 532.3f, 345.2f));
@@ -573,7 +573,7 @@ public class TestColumnIndexBuilder {
   @Test
   public void testBuildInt32() {
     PrimitiveType type = Types.required(INT32).named("test_int32");
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(IntColumnIndexBuilder.class));
     assertNull(builder.build());
 
@@ -593,7 +593,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), 10, 7, 2, null, 2, 8);
     assertCorrectValues(columnIndex.getMinValues(), -4, -11, 2, null, 1, -21);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
     builder.add(sb.stats(type, -532, -345, null, null));
@@ -613,7 +613,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), null, -345, -42, null, null, 2, null, 42, null);
     assertCorrectValues(columnIndex.getMinValues(), null, -532, -500, null, null, -42, null, 3, null);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null, null, null, null));
     builder.add(sb.stats(type, 532, 345));
@@ -653,7 +653,7 @@ public class TestColumnIndexBuilder {
   @Test
   public void testBuildUInt8() {
     PrimitiveType type = Types.required(INT32).as(UINT_8).named("test_uint8");
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(IntColumnIndexBuilder.class));
     assertNull(builder.build());
 
@@ -673,7 +673,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), 10, 17, 2, null, 0xFF, 0xFA);
     assertCorrectValues(columnIndex.getMinValues(), 4, 11, 2, null, 1, 0xEF);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
     builder.add(sb.stats(type, 0, 0, null, null));
@@ -693,7 +693,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), null, 0, 42, null, null, 0xEE, null, 0xFF, null);
     assertCorrectValues(columnIndex.getMinValues(), null, 0, 0, null, null, 42, null, 0xEF, null);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null, null, null, null));
     builder.add(sb.stats(type, 0xFF, 0xFF));
@@ -717,7 +717,7 @@ public class TestColumnIndexBuilder {
   @Test
   public void testBuildInt64() {
     PrimitiveType type = Types.required(INT64).named("test_int64");
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(LongColumnIndexBuilder.class));
     assertNull(builder.build());
 
@@ -737,7 +737,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), 10l, 7l, 2l, null, 2l, 8l);
     assertCorrectValues(columnIndex.getMinValues(), -4l, -11l, 2l, null, 1l, -21l);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
     builder.add(sb.stats(type, -532l, -345l, null, null));
@@ -757,7 +757,7 @@ public class TestColumnIndexBuilder {
     assertCorrectValues(columnIndex.getMaxValues(), null, -345l, -42l, null, null, 2l, null, 42l, null);
     assertCorrectValues(columnIndex.getMinValues(), null, -532l, -234l, null, null, -42l, null, -3l, null);
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null, null, null, null));
     builder.add(sb.stats(type, 532l, 345l));

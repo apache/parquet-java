@@ -918,7 +918,7 @@ public class TestParquetMetadataConverter {
   @Test
   public void testColumnIndexConversion() {
     PrimitiveType type = Types.required(PrimitiveTypeName.INT64).named("test_int64");
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     Statistics<?> stats = Statistics.createStats(type);
     stats.incrementNumNulls(16);
     stats.updateStats(-100l);
