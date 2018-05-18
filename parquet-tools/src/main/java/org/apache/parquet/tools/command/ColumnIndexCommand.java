@@ -19,10 +19,13 @@
 package org.apache.parquet.tools.command;
 
 import java.io.PrintWriter;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -112,14 +115,14 @@ public class ColumnIndexCommand extends ArgsOnlyCommand {
     }
 
     try (ParquetFileReader reader = ParquetFileReader.open(in)) {
-      List<BlockMetaData> blocks = getBlocks(reader.getFooter(), indexes);
-      for (int i = 0, n = blocks.size(); i < n; ++i) {
-        if (i != 0) {
+      boolean firstBlock = true;
+      for (Entry<Integer, BlockMetaData> entry : getBlocks(reader.getFooter(), indexes)) {
+        if (!firstBlock) {
           out.println();
         }
-        BlockMetaData block = blocks.get(i);
-        out.format("row group %s:%n", indexes == null ? Integer.toString(i) : indexes[i]);
-        for (ColumnChunkMetaData column : getColumns(block, options)) {
+        firstBlock = false;
+        out.format("row group %d:%n", entry.getKey());
+        for (ColumnChunkMetaData column : getColumns(entry.getValue(), options)) {
           String path = column.getPath().toDotString();
           if (showColumnIndex) {
             out.format("column index for column %s:%n", path);
@@ -144,16 +147,22 @@ public class ColumnIndexCommand extends ArgsOnlyCommand {
     }
   }
 
-  private static List<BlockMetaData> getBlocks(ParquetMetadata meta, String[] indexes) {
+  // Returns the index-block pairs based on the arguments of --block
+  private static List<Entry<Integer, BlockMetaData>> getBlocks(ParquetMetadata meta, String[] indexes) {
     List<BlockMetaData> blocks = meta.getBlocks();
+    List<Entry<Integer, BlockMetaData>> pairs = new ArrayList<>();
     if (indexes == null) {
-      return blocks;
+      int index = 0;
+      for (BlockMetaData block : blocks) {
+        pairs.add(new AbstractMap.SimpleImmutableEntry<>(index++, block));
+      }
+    } else {
+      for (String indexStr : indexes) {
+        int index = Integer.parseInt(indexStr);
+        pairs.add(new AbstractMap.SimpleImmutableEntry<>(index, blocks.get(index)));
+      }
     }
-    List<BlockMetaData> filtered = new ArrayList<>();
-    for (String index : indexes) {
-      filtered.add(blocks.get(Integer.parseInt(index)));
-    }
-    return filtered;
+    return pairs;
   }
 
   private static List<ColumnChunkMetaData> getColumns(BlockMetaData block, CommandLine options) {

@@ -19,20 +19,23 @@
 package org.apache.parquet.cli.commands;
 
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
-import org.apache.parquet.internal.column.columnindex.ColumnIndex;
-import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.internal.column.columnindex.ColumnIndex;
+import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.InputFile;
 import org.slf4j.Logger;
 
@@ -89,14 +92,14 @@ public class ShowColumnIndexCommand extends BaseCommand {
     }
 
     try (ParquetFileReader reader = ParquetFileReader.open(in)) {
-      List<BlockMetaData> blocks = getBlocks(reader.getFooter());
-      for (int i = 0, n = blocks.size(); i < n; ++i) {
-        if (i != 0) {
+      boolean firstBlock = true;
+      for (Entry<Integer, BlockMetaData> entry : getBlocks(reader.getFooter())) {
+        if (!firstBlock) {
           console.info("");
         }
-        BlockMetaData block = blocks.get(i);
-        console.info("row group {}:", getBlockIndex(i));
-        for (ColumnChunkMetaData column : getColumns(block)) {
+        firstBlock = false;
+        console.info("row group {}:", entry.getKey());
+        for (ColumnChunkMetaData column : getColumns(entry.getValue())) {
           String path = column.getPath().toDotString();
           if (showColumnIndex) {
             console.info("column index for column {}:", path);
@@ -122,26 +125,22 @@ public class ShowColumnIndexCommand extends BaseCommand {
     return 0;
   }
 
-  // Returns the string representation of the block index based on --block; i is returned if --block is not specified
-  private String getBlockIndex(int i) {
-    if (blockIndexes == null || blockIndexes.isEmpty()) {
-      return Integer.toString(i);
-    } else {
-      return blockIndexes.get(i);
-    }
-  }
-
-  // Returns the blocks for the indexes specified by --block; all blocks are listed if --block is not specified
-  private List<BlockMetaData> getBlocks(ParquetMetadata meta) {
+  // Returns the index-block pairs based on the arguments of --block
+  private List<Entry<Integer, BlockMetaData>> getBlocks(ParquetMetadata meta) {
     List<BlockMetaData> blocks = meta.getBlocks();
+    List<Entry<Integer, BlockMetaData>> pairs = new ArrayList<>();
     if (blockIndexes == null || blockIndexes.isEmpty()) {
-      return blocks;
+      int index = 0;
+      for (BlockMetaData block : blocks) {
+        pairs.add(new AbstractMap.SimpleImmutableEntry<>(index++, block));
+      }
+    } else {
+      for (String indexStr : blockIndexes) {
+        int index = Integer.parseInt(indexStr);
+        pairs.add(new AbstractMap.SimpleImmutableEntry<>(index, blocks.get(index)));
+      }
     }
-    List<BlockMetaData> filtered = new ArrayList<>();
-    for (String index : blockIndexes) {
-      filtered.add(blocks.get(Integer.parseInt(index)));
-    }
-    return filtered;
+    return pairs;
   }
 
   private List<ColumnChunkMetaData> getColumns(BlockMetaData block) {
