@@ -62,11 +62,11 @@ public class ShowColumnIndexCommand extends BaseCommand {
   List<String> blockIndexes;
 
   @Parameter(names = { "-i", "--column-index" }, description = "Shows the column indexes; "
-      + "the default behavior is if both -i and -o would be set")
+      + "active by default unless -o is used")
   boolean showColumnIndex;
 
   @Parameter(names = { "-o", "--offset-index" }, description = "Shows the offset indexes; "
-      + "the default behavior is if both -i and -o would be set")
+      + "active by default unless -i is used")
   boolean showOffsetIndex;
 
   @Override
@@ -122,6 +122,7 @@ public class ShowColumnIndexCommand extends BaseCommand {
     return 0;
   }
 
+  // Returns the string representation of the block index based on --block; i is returned if --block is not specified
   private String getBlockIndex(int i) {
     if (blockIndexes == null || blockIndexes.isEmpty()) {
       return Integer.toString(i);
@@ -130,6 +131,7 @@ public class ShowColumnIndexCommand extends BaseCommand {
     }
   }
 
+  // Returns the blocks for the indexes specified by --block; all blocks are listed if --block is not specified
   private List<BlockMetaData> getBlocks(ParquetMetadata meta) {
     List<BlockMetaData> blocks = meta.getBlocks();
     if (blockIndexes == null || blockIndexes.isEmpty()) {

@@ -66,13 +66,13 @@ public class ColumnIndexCommand extends ArgsOnlyCommand {
     OPTIONS.addOption(Option.builder("i")
         .longOpt("column-index")
         .desc("Shows the column indexes; "
-            + "the default behavior is if both -i and -o would be set")
+            + "active by default unless -o is used")
         .hasArg(false)
         .build());
     OPTIONS.addOption(Option.builder("o")
         .longOpt("offset-index")
         .desc("Shows the offset indexes; "
-            + "the default behavior is if both -i and -o would be set")
+            + "active by default unless -i is used")
         .hasArg(false)
         .build());
   }
