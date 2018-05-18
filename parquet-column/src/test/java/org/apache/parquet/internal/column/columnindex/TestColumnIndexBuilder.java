@@ -341,7 +341,7 @@ public class TestColumnIndexBuilder {
     assertThat(builder, instanceOf(BooleanColumnIndexBuilder.class));
     assertNull(builder.build());
 
-    builder = ColumnIndexBuilder.getBuilder(type);
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, false, true));
     builder.add(sb.stats(type, true, false, null));

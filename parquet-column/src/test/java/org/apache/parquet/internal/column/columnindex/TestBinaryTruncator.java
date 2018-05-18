@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.columnindex;
+package org.apache.parquet.internal.column.columnindex;
 
 import static org.apache.parquet.schema.OriginalType.BSON;
 import static org.apache.parquet.schema.OriginalType.DECIMAL;
@@ -38,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Random;
 
+import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
