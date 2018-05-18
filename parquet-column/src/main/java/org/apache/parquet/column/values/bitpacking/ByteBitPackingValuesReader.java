@@ -80,6 +80,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
     length = Math.min(length, stream.available());
     this.in = stream.sliceStream(length);
     this.decodedPosition = VALUES_AT_A_TIME - 1;
+    updateNextOffset(length);
   }
 
   @Override
