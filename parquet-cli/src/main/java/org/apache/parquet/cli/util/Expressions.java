@@ -19,7 +19,7 @@
 
 package org.apache.parquet.cli.util;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.avro.Schema;
@@ -385,7 +385,7 @@ public class Expressions {
 
     @Override
     public String toString() {
-      return Objects.toStringHelper(this)
+      return MoreObjects.toStringHelper(this)
           .add("type", type)
           .add("value", value)
           .add("children", children)
