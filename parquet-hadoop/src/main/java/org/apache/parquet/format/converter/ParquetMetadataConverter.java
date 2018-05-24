@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -39,8 +39,24 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.format.BsonType;
 import org.apache.parquet.format.CompressionCodec;
+import org.apache.parquet.format.DateType;
+import org.apache.parquet.format.DecimalType;
+import org.apache.parquet.format.EnumType;
+import org.apache.parquet.format.IntType;
+import org.apache.parquet.format.JsonType;
+import org.apache.parquet.format.ListType;
+import org.apache.parquet.format.LogicalType;
+import org.apache.parquet.format.MapType;
+import org.apache.parquet.format.MicroSeconds;
+import org.apache.parquet.format.MilliSeconds;
+import org.apache.parquet.format.NullType;
 import org.apache.parquet.format.PageEncodingStats;
+import org.apache.parquet.format.StringType;
+import org.apache.parquet.format.TimeType;
+import org.apache.parquet.format.TimeUnit;
+import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
@@ -75,6 +91,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.TypeVisitor;
 import org.apache.parquet.schema.Types;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,8 +189,9 @@ public class ParquetMetadataConverter {
         SchemaElement element = new SchemaElement(primitiveType.getName());
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
-        if (primitiveType.getOriginalType() != null) {
-          element.setConverted_type(getConvertedType(primitiveType.getOriginalType()));
+        if (primitiveType.getLogicalTypeAnnotation() != null) {
+          element.setConverted_type(convertToConvertedType(primitiveType.getLogicalTypeAnnotation()));
+          element.setLogicalType(convertToLogicalType(primitiveType.getLogicalTypeAnnotation()));
         }
         if (primitiveType.getDecimalMetadata() != null) {
           element.setPrecision(primitiveType.getDecimalMetadata().getPrecision());
@@ -201,8 +219,9 @@ public class ParquetMetadataConverter {
       public void visit(GroupType groupType) {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
-        if (groupType.getOriginalType() != null) {
-          element.setConverted_type(getConvertedType(groupType.getOriginalType()));
+        if (groupType.getLogicalTypeAnnotation() != null) {
+          element.setConverted_type(convertToConvertedType(groupType.getLogicalTypeAnnotation()));
+          element.setLogicalType(convertToLogicalType(groupType.getLogicalTypeAnnotation()));
         }
         if (groupType.getId() != null) {
           element.setField_id(groupType.getId().intValue());
@@ -219,6 +238,158 @@ public class ParquetMetadataConverter {
         }
       }
     });
+  }
+
+  LogicalType convertToLogicalType(LogicalTypeAnnotation logicalTypeAnnotation) {
+    LogicalTypeConverterVisitor logicalTypeConverterVisitor = new LogicalTypeConverterVisitor();
+    logicalTypeAnnotation.accept(logicalTypeConverterVisitor);
+    return logicalTypeConverterVisitor.logicalType;
+  }
+
+  ConvertedType convertToConvertedType(LogicalTypeAnnotation logicalTypeAnnotation) {
+    LogicalTypeConverterVisitor logicalTypeConverterVisitor = new LogicalTypeConverterVisitor();
+    logicalTypeAnnotation.accept(logicalTypeConverterVisitor);
+    return logicalTypeConverterVisitor.convertedType;
+  }
+
+
+  static org.apache.parquet.format.TimeUnit convertUnit(LogicalTypeAnnotation.TimeUnit unit) {
+    switch (unit) {
+      case MICROS:
+        return org.apache.parquet.format.TimeUnit.MICROS(new MicroSeconds());
+      case MILLIS:
+        return org.apache.parquet.format.TimeUnit.MILLIS(new MilliSeconds());
+      default:
+        throw new RuntimeException("Unknown time unit " + unit);
+    }
+  }
+
+  private static class LogicalTypeConverterVisitor implements LogicalTypeAnnotation.LogicalTypeAnnotationVisitor {
+    private LogicalType logicalType;
+    private ConvertedType convertedType;
+
+    @Override
+    public void visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.STRING(new StringType());
+      convertedType = ConvertedType.UTF8;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.MAP(new MapType());
+      convertedType = ConvertedType.MAP;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.LIST(new ListType());
+      convertedType = ConvertedType.LIST;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.ENUM(new EnumType());
+      convertedType = ConvertedType.ENUM;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.DECIMAL(new DecimalType(logicalTypeAnnotation.getScale(), logicalTypeAnnotation.getPrecision()));
+      convertedType = ConvertedType.DECIMAL;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.DATE(new DateType());
+      convertedType = ConvertedType.DATE;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.TIME(new TimeType(logicalTypeAnnotation.isAdjustedToUTC(), convertUnit(logicalTypeAnnotation.getUnit())));
+      switch (logicalTypeAnnotation.toOriginalType()) {
+        case TIME_MILLIS:
+          convertedType = ConvertedType.TIME_MILLIS;
+          break;
+        case TIME_MICROS:
+          convertedType = ConvertedType.TIME_MICROS;
+          break;
+        default:
+          throw new RuntimeException("Unknown converted type for " + logicalTypeAnnotation.toOriginalType());
+      }
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.TIMESTAMP(new TimestampType(logicalTypeAnnotation.isAdjustedToUTC(), convertUnit(logicalTypeAnnotation.getUnit())));
+      switch (logicalTypeAnnotation.toOriginalType()) {
+        case TIMESTAMP_MICROS:
+          convertedType = ConvertedType.TIMESTAMP_MICROS;
+          break;
+        case TIMESTAMP_MILLIS:
+          convertedType = ConvertedType.TIMESTAMP_MILLIS;
+          break;
+        default:
+          throw new RuntimeException("Unknown converted type for " + logicalTypeAnnotation.toOriginalType());
+      }
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.INTEGER(new IntType((byte) logicalTypeAnnotation.getBitWidth(), logicalTypeAnnotation.isSigned()));
+      switch (logicalTypeAnnotation.toOriginalType()) {
+        case INT_8:
+          convertedType = ConvertedType.INT_8;
+          break;
+        case INT_16:
+          convertedType = ConvertedType.INT_16;
+          break;
+        case INT_32:
+          convertedType = ConvertedType.INT_32;
+          break;
+        case INT_64:
+          convertedType = ConvertedType.INT_64;
+          break;
+        case UINT_8:
+          convertedType = ConvertedType.UINT_8;
+          break;
+        case UINT_16:
+          convertedType = ConvertedType.UINT_16;
+          break;
+        case UINT_32:
+          convertedType = ConvertedType.UINT_32;
+          break;
+        case UINT_64:
+          convertedType = ConvertedType.UINT_64;
+          break;
+        default:
+          throw new RuntimeException("Unknown original type " + logicalTypeAnnotation.toOriginalType());
+      }
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.JSON(new JsonType());
+      convertedType = ConvertedType.JSON;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.BSON(new BsonType());
+      convertedType = ConvertedType.BSON;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.UNKNOWN(new NullType());
+      convertedType = ConvertedType.INTERVAL;
+    }
+
+    @Override
+    public void visit(LogicalTypeAnnotation.MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+      logicalType = LogicalType.UNKNOWN(new NullType());
+      convertedType = ConvertedType.MAP_KEY_VALUE;
+    }
   }
 
   private void addRowGroup(ParquetMetadata parquetMetadata, List<RowGroup> rowGroups, BlockMetaData block) {
@@ -600,108 +771,104 @@ public class ParquetMetadataConverter {
   }
 
   // Visible for testing
-  OriginalType getOriginalType(ConvertedType type) {
+  LogicalTypeAnnotation getOriginalType(ConvertedType type, SchemaElement schemaElement) {
     switch (type) {
       case UTF8:
-        return OriginalType.UTF8;
+        return LogicalTypeAnnotation.stringType();
       case MAP:
-        return OriginalType.MAP;
+        return LogicalTypeAnnotation.mapType();
       case MAP_KEY_VALUE:
-        return OriginalType.MAP_KEY_VALUE;
+        return LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance();
       case LIST:
-        return OriginalType.LIST;
+        return LogicalTypeAnnotation.listType();
       case ENUM:
-        return OriginalType.ENUM;
+        return LogicalTypeAnnotation.enumType();
       case DECIMAL:
-        return OriginalType.DECIMAL;
+        int scale = (schemaElement == null ? 0 : schemaElement.scale);
+        int precision = (schemaElement == null ? 0 : schemaElement.precision);
+        return LogicalTypeAnnotation.decimalType(scale, precision);
       case DATE:
-        return OriginalType.DATE;
+        return LogicalTypeAnnotation.dateType();
       case TIME_MILLIS:
-        return OriginalType.TIME_MILLIS;
+        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIME_MICROS:
-        return OriginalType.TIME_MICROS;
+        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case TIMESTAMP_MILLIS:
-        return OriginalType.TIMESTAMP_MILLIS;
+        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIMESTAMP_MICROS:
-        return OriginalType.TIMESTAMP_MICROS;
+        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
       case INTERVAL:
-        return OriginalType.INTERVAL;
+        return LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance();
       case INT_8:
-        return OriginalType.INT_8;
+        return LogicalTypeAnnotation.intType(8, true);
       case INT_16:
-        return OriginalType.INT_16;
+        return LogicalTypeAnnotation.intType(16, true);
       case INT_32:
-        return OriginalType.INT_32;
+        return LogicalTypeAnnotation.intType(32, true);
       case INT_64:
-        return OriginalType.INT_64;
+        return LogicalTypeAnnotation.intType(64, true);
       case UINT_8:
-        return OriginalType.UINT_8;
+        return LogicalTypeAnnotation.intType(8, false);
       case UINT_16:
-        return OriginalType.UINT_16;
+        return LogicalTypeAnnotation.intType(16, false);
       case UINT_32:
-        return OriginalType.UINT_32;
+        return LogicalTypeAnnotation.intType(32, false);
       case UINT_64:
-        return OriginalType.UINT_64;
+        return LogicalTypeAnnotation.intType(64, false);
       case JSON:
-        return OriginalType.JSON;
+        return LogicalTypeAnnotation.jsonType();
       case BSON:
-        return OriginalType.BSON;
+        return LogicalTypeAnnotation.bsonType();
       default:
-        throw new RuntimeException("Unknown converted type " + type);
+        throw new RuntimeException("Can't convert converted type to logical type, unknown converted type " + type);
     }
   }
 
-  // Visible for testing
-  ConvertedType getConvertedType(OriginalType type) {
-    switch (type) {
-      case UTF8:
-        return ConvertedType.UTF8;
+  LogicalTypeAnnotation getOriginalType(LogicalType type) {
+    switch (type.getSetField()) {
       case MAP:
-        return ConvertedType.MAP;
-      case MAP_KEY_VALUE:
-        return ConvertedType.MAP_KEY_VALUE;
-      case LIST:
-        return ConvertedType.LIST;
-      case ENUM:
-        return ConvertedType.ENUM;
-      case DECIMAL:
-        return ConvertedType.DECIMAL;
-      case DATE:
-        return ConvertedType.DATE;
-      case TIME_MILLIS:
-        return ConvertedType.TIME_MILLIS;
-      case TIME_MICROS:
-        return ConvertedType.TIME_MICROS;
-      case TIMESTAMP_MILLIS:
-        return ConvertedType.TIMESTAMP_MILLIS;
-      case TIMESTAMP_MICROS:
-        return ConvertedType.TIMESTAMP_MICROS;
-      case INTERVAL:
-        return ConvertedType.INTERVAL;
-      case INT_8:
-        return ConvertedType.INT_8;
-      case INT_16:
-        return ConvertedType.INT_16;
-      case INT_32:
-        return ConvertedType.INT_32;
-      case INT_64:
-        return ConvertedType.INT_64;
-      case UINT_8:
-        return ConvertedType.UINT_8;
-      case UINT_16:
-        return ConvertedType.UINT_16;
-      case UINT_32:
-        return ConvertedType.UINT_32;
-      case UINT_64:
-        return ConvertedType.UINT_64;
-      case JSON:
-        return ConvertedType.JSON;
+        return LogicalTypeAnnotation.mapType();
       case BSON:
-        return ConvertedType.BSON;
+        return LogicalTypeAnnotation.bsonType();
+      case DATE:
+        return LogicalTypeAnnotation.dateType();
+      case ENUM:
+        return LogicalTypeAnnotation.enumType();
+      case JSON:
+        return LogicalTypeAnnotation.jsonType();
+      case LIST:
+        return LogicalTypeAnnotation.listType();
+      case TIME:
+        TimeType time = type.getTIME();
+        return LogicalTypeAnnotation.timeType(time.isAdjustedToUTC, convertTimeUnit(time.unit));
+      case STRING:
+        return LogicalTypeAnnotation.stringType();
+      case DECIMAL:
+        DecimalType decimal = type.getDECIMAL();
+        return LogicalTypeAnnotation.decimalType(decimal.scale, decimal.precision);
+      case INTEGER:
+        IntType integer = type.getINTEGER();
+        return LogicalTypeAnnotation.intType(integer.bitWidth, integer.isSigned);
+      case UNKNOWN:
+        return null;
+      case TIMESTAMP:
+        TimestampType timestamp = type.getTIMESTAMP();
+        return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
       default:
-        throw new RuntimeException("Unknown original type " + type);
-     }
-   }
+        throw new RuntimeException("Unknown logical type " + type);
+    }
+  }
+
+  private LogicalTypeAnnotation.TimeUnit convertTimeUnit(TimeUnit unit) {
+    switch (unit.getSetField()) {
+      case MICROS:
+        return LogicalTypeAnnotation.TimeUnit.MICROS;
+      case MILLIS:
+        return LogicalTypeAnnotation.TimeUnit.MILLIS;
+      default:
+        throw new RuntimeException("Unknown time unit " + unit);
+    }
+  }
 
   private static void addKeyValue(FileMetaData fileMetaData, String key, String value) {
     KeyValue keyValue = new KeyValue(key);
@@ -998,8 +1165,15 @@ public class ParquetMetadataConverter {
         buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children, columnOrders, columnCount);
       }
 
+      if (schemaElement.isSetLogicalType()) {
+        childBuilder.as(getOriginalType(schemaElement.logicalType));
+      }
       if (schemaElement.isSetConverted_type()) {
-        childBuilder.as(getOriginalType(schemaElement.converted_type));
+        LogicalTypeAnnotation originalType = getOriginalType(schemaElement.converted_type, schemaElement);
+        LogicalTypeAnnotation newLogicalType = getOriginalType(schemaElement.logicalType);
+        if (!originalType.equals(newLogicalType)) {
+          childBuilder.as(getOriginalType(schemaElement.converted_type, schemaElement));
+        }
       }
       if (schemaElement.isSetField_id()) {
         childBuilder.id(schemaElement.field_id);

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -44,7 +44,7 @@ public class GroupType extends Type {
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, List<Type> fields) {
-    this(repetition, name, null, fields, null);
+    this(repetition, name, (LogicalTypeAnnotation) null, fields, null);
   }
 
   /**
@@ -87,6 +87,15 @@ public class GroupType extends Type {
    */
   GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, ID id) {
     super(name, repetition, originalType, id);
+    this.fields = fields;
+    this.indexByName = new HashMap<String, Integer>();
+    for (int i = 0; i < fields.size(); i++) {
+      indexByName.put(fields.get(i).getName(), i);
+    }
+  }
+
+  GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, List<Type> fields, ID id) {
+    super(name, repetition, logicalTypeAnnotation, id);
     this.fields = fields;
     this.indexByName = new HashMap<String, Integer>();
     for (int i = 0; i < fields.size(); i++) {

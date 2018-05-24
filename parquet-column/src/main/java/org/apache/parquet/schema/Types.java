@@ -199,7 +199,7 @@ public class Types {
     protected final Class<? extends P> returnClass;
 
     protected Type.Repetition repetition = null;
-    protected OriginalType originalType = null;
+    protected LogicalTypeAnnotation logicalTypeAnnotation = null;
     protected Type.ID id = null;
     private boolean repetitionAlreadySet = false;
 
@@ -251,9 +251,32 @@ public class Types {
      *
      * @param type an {@code OriginalType}
      * @return this builder for method chaining
+     *
+     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding logical type instead
      */
+    @Deprecated
     public THIS as(OriginalType type) {
-      this.originalType = type;
+      this.logicalTypeAnnotation = LogicalTypeAnnotation.fromOriginalType(type, null);
+      return self();
+    }
+
+    protected boolean newLogicalTypeSet;
+
+    /**
+     * Adds a type annotation ({@link LogicalTypeAnnotation}) to the type being built.
+     * <p>
+     * Type annotations are used to extend the types that parquet can store, by
+     * specifying how the primitive types should be interpreted. This keeps the
+     * set of primitive types to a minimum and reuses parquet's efficient
+     * encodings. For example, strings are stored as byte arrays (binary) with
+     * a UTF8 annotation.
+     *
+     * @param type an {@code {@link LogicalTypeAnnotation}}
+     * @return this builder for method chaining
+     */
+    public THIS as(LogicalTypeAnnotation type) {
+      this.logicalTypeAnnotation = type;
+      this.newLogicalTypeSet = true;
       return self();
     }
 
@@ -304,6 +327,9 @@ public class Types {
       }
     }
 
+    protected OriginalType getOriginalType () {
+      return logicalTypeAnnotation == null ? null : logicalTypeAnnotation.toOriginalType();
+    }
   }
 
   public abstract static class
@@ -344,6 +370,9 @@ public class Types {
       return self();
     }
 
+    private boolean precisionAlreadySet;
+    private boolean scaleAlreadySet;
+
     /**
      * Adds the precision for a DECIMAL.
      * <p>
@@ -353,9 +382,13 @@ public class Types {
      *
      * @param precision an int precision value for the DECIMAL
      * @return this builder for method chaining
+     *
+     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding decimal type instead
      */
+    @Deprecated
     public THIS precision(int precision) {
       this.precision = precision;
+      precisionAlreadySet = true;
       return self();
     }
 
@@ -371,9 +404,13 @@ public class Types {
      *
      * @param scale an int scale value for the DECIMAL
      * @return this builder for method chaining
+     *
+     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding decimal type instead
      */
+    @Deprecated
     public THIS scale(int scale) {
       this.scale = scale;
+      scaleAlreadySet = true;
       return self();
     }
 
@@ -403,7 +440,8 @@ public class Types {
       DecimalMetadata meta = decimalMetadata();
 
       // validate type annotations and required metadata
-      if (originalType != null) {
+      if (logicalTypeAnnotation != null) {
+        OriginalType originalType = logicalTypeAnnotation.toOriginalType();
         switch (originalType) {
           case UTF8:
           case JSON:
@@ -476,7 +514,7 @@ public class Types {
         }
       }
 
-      return new PrimitiveType(repetition, primitiveType, length, name, originalType, meta, id, columnOrder);
+      return new PrimitiveType(repetition, primitiveType, length, name, getOriginalType(), meta, id, columnOrder);
     }
 
     private static long maxPrecision(int numBytes) {
@@ -489,12 +527,25 @@ public class Types {
 
     protected DecimalMetadata decimalMetadata() {
       DecimalMetadata meta = null;
-      if (OriginalType.DECIMAL == originalType) {
+      if (OriginalType.DECIMAL == getOriginalType()) {
+        LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType = (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) logicalTypeAnnotation;
+        if (newLogicalTypeSet) {
+          if (scaleAlreadySet) {
+            Preconditions.checkArgument(this.scale == decimalType.getScale(),
+              "Decimal scale should match with the scale of the logical type");
+          }
+          if (precisionAlreadySet) {
+            Preconditions.checkArgument(this.precision == decimalType.getPrecision(),
+              "Decimal precision should match with the precision of the logical type");
+          }
+          scale = decimalType.getScale();
+          precision = decimalType.getPrecision();
+        }
         Preconditions.checkArgument(precision > 0,
             "Invalid DECIMAL precision: " + precision);
-        Preconditions.checkArgument(scale >= 0,
-            "Invalid DECIMAL scale: " + scale);
-        Preconditions.checkArgument(scale <= precision,
+        Preconditions.checkArgument(this.scale >= 0,
+            "Invalid DECIMAL scale: " + this.scale);
+        Preconditions.checkArgument(this.scale <= precision,
             "Invalid DECIMAL scale: cannot be greater than precision");
         meta = new DecimalMetadata(precision, scale);
       }
@@ -651,7 +702,7 @@ public class Types {
 
     @Override
     protected GroupType build(String name) {
-      return new GroupType(repetition, name, originalType, fields, id);
+      return new GroupType(repetition, name, getOriginalType(), fields, id);
     }
 
     public MapBuilder<THIS> map(
@@ -1046,7 +1097,7 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(originalType == null,
+      Preconditions.checkState(logicalTypeAnnotation == null,
           "MAP is already a logical type and can't be changed.");
       if (keyType == null) {
         keyType = STRING_KEY;
@@ -1194,7 +1245,7 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(originalType == null,
+      Preconditions.checkState(logicalTypeAnnotation == null,
           "LIST is already the logical type and can't be changed");
       Preconditions.checkNotNull(elementType, "List element type");
 
