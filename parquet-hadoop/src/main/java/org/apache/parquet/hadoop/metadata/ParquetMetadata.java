@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -27,8 +27,7 @@ import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.ObjectWriter;
-import org.codehaus.jackson.map.SerializationConfig.Feature;
+import org.codehaus.jackson.map.SerializationConfig;
 
 /**
  * Meta Data block stored in the footer of the file
@@ -37,6 +36,12 @@ import org.codehaus.jackson.map.SerializationConfig.Feature;
 public class ParquetMetadata {
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  // Enable FAIL_ON_EMPTY_BEANS on objectmapper. Without this feature parquet-casdacing tests fail,
+  // because LogicalTypeAnnotation implementations are classes without any property.
+  static {
+    objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+  }
 
   /**
    * @param parquetMetaData an instance of parquet metadata to convert
