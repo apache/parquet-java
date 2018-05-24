@@ -197,7 +197,7 @@ public abstract class ColumnIndexBuilder {
     }
 
     @Override
-    int sizeOf(Object minMax) {
+    int sizeOf(Object value) {
       return 0;
     }
   };
