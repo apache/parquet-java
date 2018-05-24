@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -41,6 +41,7 @@ public class SnappyCodec implements Configurable, CompressionCodec {
   private Configuration conf;
   // Hadoop config for how big to make intermediate buffers.
   private final String BUFFER_SIZE_CONFIG = "io.file.buffer.size";
+  private final String BUFFER_DIRECT_CONFIG = "decompress.direct.buffers";
 
   @Override
   public void setConf(Configuration conf) {
@@ -59,7 +60,7 @@ public class SnappyCodec implements Configurable, CompressionCodec {
 
   @Override
   public Decompressor createDecompressor() {
-    return new SnappyDecompressor();
+    return new SnappyDecompressor(conf.getBoolean(BUFFER_DIRECT_CONFIG, true));
   }
 
   @Override
@@ -84,7 +85,7 @@ public class SnappyCodec implements Configurable, CompressionCodec {
   @Override
   public CompressionOutputStream createOutputStream(OutputStream stream,
       Compressor compressor) throws IOException {
-    return new NonBlockedCompressorStream(stream, compressor, 
+    return new NonBlockedCompressorStream(stream, compressor,
         conf.getInt(BUFFER_SIZE_CONFIG, 4*1024));
   }
 
@@ -101,5 +102,5 @@ public class SnappyCodec implements Configurable, CompressionCodec {
   @Override
   public String getDefaultExtension() {
     return ".snappy";
-  }  
+  }
 }
