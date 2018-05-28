@@ -195,6 +195,11 @@ public abstract class ColumnIndexBuilder {
     int compareMaxValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
       return 0;
     }
+
+    @Override
+    int sizeOf(Object value) {
+      return 0;
+    }
   };
 
   private static final Map<PrimitiveTypeName, ColumnIndexBuilder> BUILDERS = new EnumMap<>(PrimitiveTypeName.class);
@@ -202,6 +207,7 @@ public abstract class ColumnIndexBuilder {
   private PrimitiveType type;
   private final BooleanList nullPages = new BooleanArrayList();
   private final LongList nullCounts = new LongArrayList();
+  private long minMaxSize;
 
   /**
    * @return a no-op builder that does not collect statistics objects and therefore returns {@code null} at
@@ -293,7 +299,11 @@ public abstract class ColumnIndexBuilder {
   public void add(Statistics<?> stats) {
     if (stats.hasNonNullValue()) {
       nullPages.add(false);
-      addMinMax(stats.genericGetMin(), stats.genericGetMax());
+      Object min = stats.genericGetMin();
+      Object max = stats.genericGetMax();
+      addMinMax(min, max);
+      minMaxSize += sizeOf(min);
+      minMaxSize += sizeOf(max);
     } else {
       nullPages.add(true);
       addMinMax(null, null);
@@ -316,7 +326,7 @@ public abstract class ColumnIndexBuilder {
               nullPages.size(), nullCounts == null ? "null" : nullCounts.size(), minValues.size(), maxValues.size()));
     }
     this.nullPages.addAll(nullPages);
-    // Null counts is optional in the format
+    // Nullcounts is optional in the format
     if (nullCounts != null) {
       this.nullCounts.addAll(nullCounts);
     }
@@ -325,7 +335,11 @@ public abstract class ColumnIndexBuilder {
       if (nullPages.get(i)) {
         addMinMaxFromBytes(null, null);
       } else {
-        addMinMaxFromBytes(minValues.get(i), maxValues.get(i));
+        ByteBuffer min = minValues.get(i);
+        ByteBuffer max = maxValues.get(i);
+        addMinMaxFromBytes(min, max);
+        minMaxSize += min.remaining();
+        minMaxSize += max.remaining();
       }
     }
   }
@@ -421,9 +435,26 @@ public abstract class ColumnIndexBuilder {
     nullPages.clear();
     nullCounts.clear();
     clearMinMax();
+    minMaxSize = 0;
   }
 
   abstract void clearMinMax();
 
   abstract ColumnIndexBase createColumnIndex(PrimitiveType type);
+
+  abstract int sizeOf(Object value);
+
+  /**
+   * @return the number of pages added so far to this builder
+   */
+  public int getPageCount() {
+    return nullPages.size();
+  }
+
+  /**
+   * @return the sum of size in bytes of the min/max values added so far to this builder
+   */
+  public long getMinMaxSize() {
+    return minMaxSize;
+  }
 }

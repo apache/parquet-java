@@ -67,7 +67,7 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
   }
 
   private static ByteBuffer convert(double value) {
-    return ByteBuffer.allocate(Double.SIZE / 8).order(LITTLE_ENDIAN).putDouble(0, value);
+    return ByteBuffer.allocate(Double.BYTES).order(LITTLE_ENDIAN).putDouble(0, value);
   }
 
   @Override
@@ -104,5 +104,10 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
   @Override
   int compareMaxValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
     return comparator.compare(maxValues.get(index1), maxValues.get(index2));
+  }
+
+  @Override
+  int sizeOf(Object value) {
+    return Double.BYTES;
   }
 }

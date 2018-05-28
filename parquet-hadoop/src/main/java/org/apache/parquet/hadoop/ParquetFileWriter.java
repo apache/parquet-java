@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.format.Util.writeFileMetaData;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.MAX_STATS_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
@@ -576,7 +577,11 @@ public class ParquetFileWriter {
   public void endColumn() throws IOException {
     state = state.endColumn();
     LOG.debug("{}: end column", out.getPos());
-    currentColumnIndexes.add(columnIndexBuilder.build());
+    if (columnIndexBuilder.getMinMaxSize() > columnIndexBuilder.getPageCount() * MAX_STATS_SIZE) {
+      currentColumnIndexes.add(null);
+    } else {
+      currentColumnIndexes.add(columnIndexBuilder.build());
+    }
     currentOffsetIndexes.add(offsetIndexBuilder.build(firstPageOffset));
     currentBlock.addColumn(ColumnChunkMetaData.get(
         currentChunkPath,

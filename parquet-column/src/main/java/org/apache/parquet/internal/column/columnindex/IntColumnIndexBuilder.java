@@ -67,7 +67,7 @@ class IntColumnIndexBuilder extends ColumnIndexBuilder {
   }
 
   private static ByteBuffer convert(int value) {
-    return ByteBuffer.allocate(Integer.SIZE / 8).order(LITTLE_ENDIAN).putInt(0, value);
+    return ByteBuffer.allocate(Integer.BYTES).order(LITTLE_ENDIAN).putInt(0, value);
   }
 
   @Override
@@ -104,5 +104,10 @@ class IntColumnIndexBuilder extends ColumnIndexBuilder {
   @Override
   int compareMaxValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
     return comparator.compare(maxValues.get(index1), maxValues.get(index2));
+  }
+
+  @Override
+  int sizeOf(Object value) {
+    return Integer.BYTES;
   }
 }
