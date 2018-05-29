@@ -24,15 +24,17 @@ import java.io.IOException;
 public class ParquetEncryptionFactory {
   
   public static final int PARQUET_AES_GCM_V1 = 1;
+  public static final int PARQUET_AES_GCM_CTR_V1 = 2;
   
   /**
-   * File encryptor with a default setup: uniform encryption (all columns will be encrypted), no key metadata, no AAD.
+   * File encryptor with a default setup: AES-GCM algorithm, uniform encryption (all columns will be encrypted), 
+   * no key metadata, no AAD.
    * @param keyBytes
    * @return
    * @throws IOException
    */
   public static ParquetFileEncryptor createFileEncryptor(byte[] keyBytes) throws IOException {
-    return createFileEncryptor(new EncryptionSetup(keyBytes, null));
+    return createFileEncryptor(new EncryptionSetup(PARQUET_AES_GCM_V1, keyBytes, null));
   }
   
   /**
@@ -46,8 +48,8 @@ public class ParquetEncryptionFactory {
   }
   
   /**
-   * File decryptor with a default setup (no AAD) and with an explicit key. If applied on a file that contains key metadata - 
-   *  the metadata will be ignored, the file will be decrypted with the provided key.
+   * File decryptor without AAD and with an explicit key. If applied on a file that contains key metadata - 
+   * the metadata will be ignored, the file will be decrypted with the provided key.
    * @param keyBytes
    * @return
    * @throws IOException

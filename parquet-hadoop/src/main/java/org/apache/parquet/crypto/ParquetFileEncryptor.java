@@ -38,51 +38,59 @@ public class ParquetFileEncryptor {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileEncryptor.class);
 
   private int algorithmId;
-  private byte[] keyBytes;
-  private BlockCrypto.Encryptor blockEncryptor;
+  private byte[] footerKeyBytes;
+  private BlockCrypto.Encryptor aesGcmBlockEncryptor;
+  private BlockCrypto.Encryptor aesCtrBlockEncryptor;
   private EncryptionSetup encryptionSetup;
-  private byte[] keyMetaDataBytes = null;
+  private byte[] footerKeyMetaDataBytes = null;
   //Uniform encryption means footer and all columns are encrypted, with same key
   private boolean uniformEncryption;
   private List<ColumnCryptoMetaData> columnMDList;
   private boolean columnMDListSet;
   private byte[] aadBytes;
+  
+  private boolean encryptFooter;
+  private boolean singleKeyEncryption;
 
   ParquetFileEncryptor(EncryptionSetup eSetup) throws IOException {
-    // Default algorithm
-    algorithmId = ParquetEncryptionFactory.PARQUET_AES_GCM_V1;
-    if (eSetup.getAlgorithmID() != algorithmId) {
+    algorithmId = eSetup.getAlgorithmID();
+    uniformEncryption = eSetup.isUniformEncryption();
+    singleKeyEncryption = eSetup.isSingleKeyEncryption();
+    if (ParquetEncryptionFactory.PARQUET_AES_GCM_V1 != algorithmId && 
+        ParquetEncryptionFactory.PARQUET_AES_GCM_CTR_V1 != algorithmId) {
       throw new IOException("Algorithm " + eSetup.getAlgorithmID() + " is not supported");
     }
-    // Footer and columns are encrypted with same key, for now
-    keyBytes = eSetup.getFooterKeyBytes();
-    if (null ==  keyBytes) {
-      throw new IOException("No key provided");
+    footerKeyBytes = eSetup.getFooterKeyBytes();
+    if (null ==  footerKeyBytes) {
+      if (uniformEncryption) throw new IOException("Null key in uniform encryption");
+      encryptFooter = false;
     }
-    if (! (keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) {
-      throw new IOException("Wrong key length "+keyBytes.length);
+    else {
+      encryptFooter = true;
     }
-    uniformEncryption = eSetup.isUniformEncryption();
-    if (!eSetup.isSingleKeyEncryption()) {
-      throw new IOException("Multi-key encryption not supported");
+    if (! (footerKeyBytes.length == 16 || footerKeyBytes.length == 24 || footerKeyBytes.length == 32)) {
+      throw new IOException("Wrong key length "+footerKeyBytes.length);
     }
-    keyMetaDataBytes = eSetup.getFooterKeyMetadata();
-    if (null != keyMetaDataBytes) {
-      if (keyMetaDataBytes.length > 256) { // TODO 
-        throw new IOException("Key MetaData is too long "+keyMetaDataBytes.length);
+    footerKeyMetaDataBytes = eSetup.getFooterKeyMetadata();
+    if (null != footerKeyMetaDataBytes) {
+      if (footerKeyMetaDataBytes.length > 256) { // TODO 
+        throw new IOException("Key MetaData is too long "+footerKeyMetaDataBytes.length);
       }
     }
     columnMDListSet = false;
     if (!uniformEncryption) columnMDList = new LinkedList<ColumnCryptoMetaData>();
     try {
      LOG.info("AES-GCM cipher provider: {}", Cipher.getInstance("AES/GCM/NoPadding").getProvider());
+     if (ParquetEncryptionFactory.PARQUET_AES_GCM_CTR_V1 == algorithmId) {
+       LOG.info("AES-CTR cipher provider: {}", Cipher.getInstance("AES/CTR/NoPadding").getProvider());
+     }
     } catch (GeneralSecurityException e) {
       throw new IOException("Failed to get cipher", e);
     }
     aadBytes = eSetup.getAAD();
     encryptionSetup = eSetup;
     LOG.info("File encryptor. Uniform encryption: {}. Key metadata set: {}", 
-        uniformEncryption, (null != keyMetaDataBytes));
+        uniformEncryption, (null != footerKeyMetaDataBytes));
   }
 
   // Find column in a list
@@ -107,35 +115,61 @@ public class ParquetFileEncryptor {
     return null;
   }
 
-  public synchronized BlockCrypto.Encryptor getColumnEncryptor(String[] columnPath) throws IOException {
-    if (null == blockEncryptor) blockEncryptor = new AesGcmEncryptor(keyBytes, aadBytes);
-    if (uniformEncryption) return blockEncryptor;
-    // check if column has to be encrypted
-    ColumnCryptoMetaData ccmd = encryptionSetup.getColumnMetadata(columnPath);
-    if (null == ccmd) {
+  // Returns two encryptors - for page headers, and for page contents (can be the same)
+  public synchronized BlockCrypto.Encryptor[] getColumnEncryptors(String[] columnPath) throws IOException {
+    BlockCrypto.Encryptor[] encryptors = new BlockCrypto.Encryptor[2];
+    if (uniformEncryption || singleKeyEncryption) {
+      if (null == aesGcmBlockEncryptor) aesGcmBlockEncryptor = new AesGcmEncryptor(footerKeyBytes, aadBytes);
+      encryptors[0] = aesGcmBlockEncryptor;
+      if (ParquetEncryptionFactory.PARQUET_AES_GCM_CTR_V1 == algorithmId) {
+        if (null == aesCtrBlockEncryptor) aesCtrBlockEncryptor = new AesCtrEncryptor(footerKeyBytes);
+        encryptors[1] = aesCtrBlockEncryptor;
+      }
+      else {
+        encryptors[1] = aesGcmBlockEncryptor;
+      }
+    }
+    if (uniformEncryption) return encryptors;
+    
+    ColumnMetadata cmd = encryptionSetup.getColumnMetadata(columnPath);
+    if (null == cmd) {
       throw new IOException("No encryption metadata for column " + Arrays.toString(columnPath));
     }
     if (null == findColumn(columnPath, columnMDList)) {
-      columnMDList.add(ccmd);
+      columnMDList.add(cmd.getColumnCryptoMetaData());
     }
-    if (ccmd.isEncrypted()) {
+    if (cmd.isEncrypted()) {
       // TODO if encrypt is always true, set uniformEncryption = true for single key encryption
-      return blockEncryptor;
+      if (singleKeyEncryption) return encryptors;
+      
+      byte[] key_bytes =  cmd.getKeyBytes();
+      if (null == key_bytes) key_bytes = footerKeyBytes;
+      if (null == key_bytes) throw new IOException("Null key in encrypted column");
+      encryptors[0] = new AesGcmEncryptor(key_bytes, aadBytes);
+      
+      if (ParquetEncryptionFactory.PARQUET_AES_GCM_CTR_V1 == algorithmId) {
+        encryptors[1] = new AesCtrEncryptor(key_bytes);
+      }
+      else {
+        encryptors[1] = encryptors[0];
+      }
+      return encryptors;
     }
     else {
       if (LOG.isDebugEnabled()) LOG.debug("Column {} is not encrypted", Arrays.toString(columnPath));
+      // TODO check is no column is encrypted, and footer is not encrypted
       return null;
     }
   }
 
   public synchronized BlockCrypto.Encryptor getFooterEncryptor() throws IOException  {
-    if (null == blockEncryptor) blockEncryptor = new AesGcmEncryptor(keyBytes, aadBytes);
-    return blockEncryptor;
+    if (null == aesGcmBlockEncryptor) aesGcmBlockEncryptor = new AesGcmEncryptor(footerKeyBytes, aadBytes);
+    return aesGcmBlockEncryptor;
   }
 
   public synchronized FileCryptoMetaData getFileCryptoMetaData(long footer_index) throws IOException {
-    FileCryptoMetaData fcmd = new FileCryptoMetaData(algorithmId, footer_index, uniformEncryption);
-    if (null != keyMetaDataBytes) fcmd.setKey_metadata(keyMetaDataBytes);
+    FileCryptoMetaData fcmd = new FileCryptoMetaData(algorithmId, encryptFooter, footer_index, uniformEncryption);
+    if (null != footerKeyMetaDataBytes) fcmd.setKey_metadata(footerKeyMetaDataBytes);
     if (!uniformEncryption) {
       if (columnMDListSet) {
         throw new IOException("Re-using file encryptor with non-uniform encryption");
@@ -144,5 +178,19 @@ public class ParquetFileEncryptor {
       columnMDListSet = true;      
     }
     return fcmd;
+  }
+
+  public boolean encryptStats(String[] columnPath) throws IOException {
+    //Uniform encryption means footer and all columns are encrypted, with same key
+    if (uniformEncryption)  return false;
+    
+    if (null == footerKeyBytes) return true;
+    
+    ColumnMetadata cmd = encryptionSetup.getColumnMetadata(columnPath);
+    if (null == cmd) {
+      throw new IOException("No encryption metadata for column " + Arrays.toString(columnPath));
+    }
+    
+    return !Arrays.equals(cmd.getKeyBytes(), footerKeyBytes);
   }
 }

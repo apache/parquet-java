@@ -20,22 +20,25 @@
 
 package org.apache.parquet.crypto;
 
+import java.util.ArrayList;
+import java.util.List;
 
 public class DecryptionSetup {
-  
+
   private byte[] keyBytes;
   private byte[] aadBytes;
   private DecryptionKeyRetriever keyRetriever;
+  private List<ColumnMetadata> columnKeyList;
 
   /**
-   * Configure a file decryptor with an explicit key. If applied on a file that contains key metadata - 
-   * the metadata will be ignored, the file will be decrypted with the provided explicit key.
+   * Configure a file decryptor with an explicit footer key. If applied on a file that contains footer key metadata - 
+   * the metadata will be ignored, the footer will be decrypted with the provided explicit key.
    * @param keyBytes
    */
   public DecryptionSetup(byte[] keyBytes) {
     this.keyBytes = keyBytes;
   }
-  
+
   /**
    * Configure a file decryptor with a key retriever callback. If applied on a file that doesn't contain key metadata - 
    * an exception will be thrown.
@@ -54,6 +57,22 @@ public class DecryptionSetup {
     aadBytes = aad;
   }
 
+  public void setColumnKey(String columnName, byte[] decryptionKey) {
+    setColumnKey(new String[] {columnName}, decryptionKey);
+  }
+
+  /**
+   * Configure a column decryptor with an explicit column key. If applied on a file that contains key metadata for this column - 
+   * the metadata will be ignored, the column will be decrypted with the provided explicit key.
+   * @param 
+   */
+  public void setColumnKey(String[] columnPath, byte[] decryptionKey) {
+    if (null == columnKeyList) columnKeyList = new ArrayList<ColumnMetadata>();
+    ColumnMetadata cmd = new ColumnMetadata(true, columnPath);
+    cmd.setEncryptionKey(decryptionKey, null);
+    columnKeyList.add(cmd);
+  }
+
   byte[] getKeyBytes() {
     return keyBytes;
   }
@@ -64,5 +83,27 @@ public class DecryptionSetup {
 
   byte[] getAAD() {
     return aadBytes;
+  }
+
+  byte[] getColumnKey(String[] path) {
+    if (null == columnKeyList)  return null;
+
+    for (ColumnMetadata col : columnKeyList) {
+      if (col.getPath().length != path.length) continue;
+      boolean equal = true;
+      for (int i =0; i < col.getPath().length; i++) {
+        if (!col.getPath()[i].equals(path[i])) {
+          equal = false;
+          break;
+        }
+      }
+      if (equal) {
+        return col.getKeyBytes();
+      }
+      else {
+        continue;
+      }
+    } 
+    return null;
   }
 }

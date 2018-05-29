@@ -22,7 +22,7 @@ package org.apache.parquet.crypto;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.apache.parquet.format.BlockCrypto;
@@ -30,20 +30,17 @@ import org.apache.parquet.format.BlockCrypto;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
-class AesGcmDecryptor implements BlockCrypto.Decryptor{
+class AesCtrDecryptor implements BlockCrypto.Decryptor{
 
   private final SecretKey key;
-  private final byte[] AAD;
 
-  private static final int GCM_NONCE_LENGTH = AesGcmEncryptor.GCM_NONCE_LENGTH;
-  private static final int GCM_TAG_LENGTH = AesGcmEncryptor.GCM_TAG_LENGTH;
-  private static final int chunkLen = AesGcmEncryptor.chunkLen;
+  private static final int CTR_NONCE_LENGTH = AesCtrEncryptor.CTR_NONCE_LENGTH;
+  private static final int chunkLen = AesCtrEncryptor.chunkLen;
 
 
-  AesGcmDecryptor(byte[] keyBytes, byte[] aad) throws IOException {
+  AesCtrDecryptor(byte[] keyBytes) throws IOException {
     if (null == keyBytes) throw new IOException("Null key bytes");
     key = new SecretKeySpec(keyBytes, "AES");
-    AAD = aad;
   }
 
   @Override
@@ -53,25 +50,23 @@ class AesGcmDecryptor implements BlockCrypto.Decryptor{
 
   @Override
   public byte[] decrypt(byte[] ciphertext, int offset, int cLen)  throws IOException {
-    byte[] nonce = new byte[GCM_NONCE_LENGTH];
+    byte[] nonce = new byte[CTR_NONCE_LENGTH];
     // Get the nonce
-    System.arraycopy(ciphertext, offset, nonce, 0, GCM_NONCE_LENGTH);
-    GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, nonce);
+    System.arraycopy(ciphertext, offset, nonce, 0, CTR_NONCE_LENGTH);
+    IvParameterSpec spec = new IvParameterSpec(nonce);
     byte[] plaintext;
     try {
       // Cipher is not thread safe (using 'synchronized decrypt' kills performance). Create new.
-      Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+      Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
       cipher.init(Cipher.DECRYPT_MODE, key, spec);
-      if (null != AAD) cipher.updateAAD(AAD);
-      int plen = cLen - GCM_TAG_LENGTH - GCM_NONCE_LENGTH;
+      int plen = cLen - CTR_NONCE_LENGTH;
       if (plen < 1) {
         throw new IOException("Wrong input length " + plen);
       }
       plaintext = new byte[plen];
-      int left = cLen - GCM_NONCE_LENGTH;
-      int input_offset = offset + GCM_NONCE_LENGTH;
+      int left = cLen - CTR_NONCE_LENGTH;
+      int input_offset = offset + CTR_NONCE_LENGTH;
       int output_offset = 0;
-      /* TODO Doesn't help in Java 9/10. Check again in Java 11.
       int written;
       // Breaking decryption into multiple updates, to trigger h/w acceleration
       while (left > chunkLen) {
@@ -79,7 +74,7 @@ class AesGcmDecryptor implements BlockCrypto.Decryptor{
         input_offset += chunkLen;
         output_offset += written;
         left -= chunkLen;
-      } */
+      }
       cipher.doFinal(ciphertext, input_offset, left, plaintext, output_offset);
     }
     catch (GeneralSecurityException e) {

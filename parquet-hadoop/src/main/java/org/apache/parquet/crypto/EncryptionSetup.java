@@ -24,17 +24,18 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.format.ColumnCryptoMetaData;
 
 public class EncryptionSetup {
   
+  private int algorithmID;
   private byte[] footerKeyBytes;
   private byte[] footerKeyMetadata;
   private byte[] aadBytes;
-  private List<String[]> columnList;
-  private boolean encryptColumnsInList;
+  private List<ColumnMetadata> columnList;
+  private boolean encryptTheRest;
   //Uniform encryption means footer and all columns are encrypted, with same key
   private boolean uniformEncryption;
+  private boolean singleKeyEncryption;
   
   /**
    * Constructor with a custom key metadata.
@@ -42,10 +43,12 @@ public class EncryptionSetup {
    * @param keyBytes Encryption key for file footer and some (or all) columns.
    * @param keyMetadata Key metadata, to be written in a file for key retrieval upon decryption. Can be null.
    */
-  public EncryptionSetup(byte[] keyBytes, byte[] keyMetadata) {
+  public EncryptionSetup(int algorithmID, byte[] keyBytes, byte[] keyMetadata) {
     footerKeyBytes = keyBytes;
     footerKeyMetadata = keyMetadata;
     uniformEncryption = true;
+    this.algorithmID = algorithmID;
+    singleKeyEncryption = (null != footerKeyBytes);
   }
   
   /**
@@ -54,30 +57,29 @@ public class EncryptionSetup {
    * @param keyBytes Encryption key for file footer and some (or all) columns.
    * @param keyId Key id - will be converted to a 4-byte metadata and written in a file for key retrieval upon decryption.
    */
-  public EncryptionSetup(byte[] keyBytes, int keyId) {
-    this(keyBytes, BytesUtils.intToBytes(keyId));
+  public EncryptionSetup(int algorithmID, byte[] keyBytes, int keyId) {
+    this(algorithmID, keyBytes, BytesUtils.intToBytes(keyId));
   }
   
   /**
-   * Set the list of columns to encrypt. Other columns will be left unencrypted.
-   * 
+   * Set column metadata (eg what columns should be encrypted). Each column in the list has a boolean 'encrypted' flag.
+   * The list doesn't have to include all columns in a file. If encryptTheRest is true, the rest of the columns (not in the list)
+   * will be encrypted with the file footer key. If encryptTheRest is false, the rest of the columns will be left unencrypted.
    * @param columnList
+   * @param encryptTheRest  
    */
-  public void setEncryptedColumns(String[][] columnList) {
-    encryptColumnsInList = true;
+  public void setColumnMetadata(List<ColumnMetadata> columnList, boolean encryptTheRest) {
     uniformEncryption = false;
-    this.columnList = Arrays.asList(columnList);
-  }
-  
-  /**
-   * Set the list of columns that will be left unencrypted. Other columns will be encrypted.
-   * 
-   * @param columnList
-   */
-  public void setUnencryptedColumns(String[][] columnList) {
-    encryptColumnsInList = false;
-    uniformEncryption = false;
-    this.columnList = Arrays.asList(columnList);
+    encryptTheRest = true;
+    this.columnList = columnList;
+    if (null != footerKeyBytes && singleKeyEncryption) {
+      for (ColumnMetadata cmd : columnList) {
+        if (!Arrays.equals(cmd.getKeyBytes(), footerKeyBytes))  {
+          singleKeyEncryption = false;
+          break;
+        }
+      }
+    }
   }
   
   /**
@@ -90,7 +92,7 @@ public class EncryptionSetup {
   }
   
   int getAlgorithmID() {
-    return ParquetEncryptionFactory.PARQUET_AES_GCM_V1;
+    return algorithmID;
   }
 
   byte[] getFooterKeyBytes() {
@@ -106,19 +108,39 @@ public class EncryptionSetup {
   }
 
   boolean isSingleKeyEncryption() {
-    return true;
+    return singleKeyEncryption;
   }
 
-  ColumnCryptoMetaData getColumnMetadata(String[] columnPath) {
-    boolean in_list = columnList.contains(columnPath); 
+  ColumnMetadata getColumnMetadata(String[] columnPath) {
+    boolean in_list = false;
+    ColumnMetadata cmd = null;
+    for (ColumnMetadata col : columnList) {
+      if (col.getPath().length != columnPath.length) continue;
+      boolean equal = true;
+      for (int i =0; i < col.getPath().length; i++) {
+        if (!col.getPath()[i].equals(columnPath[i])) {
+          equal = false;
+          break;
+        }
+      }
+      if (equal) {
+        in_list = true;
+        cmd = col;
+        break;
+      }
+      else {
+        continue;
+      }
+    }
+    
     boolean encrypt;
     if (in_list) {
-      encrypt = encryptColumnsInList;
+      return cmd;
     }
     else {
-      encrypt = !encryptColumnsInList;
+      encrypt = encryptTheRest;
+      return new ColumnMetadata(encrypt, columnPath);
     }
-    return new ColumnCryptoMetaData(Arrays.asList(columnPath), encrypt);
   }
 
   byte[] getAAD() {
