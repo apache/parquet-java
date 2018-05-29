@@ -332,7 +332,7 @@ public class ParquetWriter<T> implements Closeable {
           byte[] keyMDBytes = Base64.getDecoder().decode(encryptionKey[1]);
           //TODO column selector
           //TODO re-use encryptor? (keep in static table)
-          EncryptionSetup eSetup = new EncryptionSetup(keyBytes, keyMDBytes);
+          EncryptionSetup eSetup = new EncryptionSetup(ParquetEncryptionFactory.PARQUET_AES_GCM_CTR_V1, keyBytes, keyMDBytes);
           fileEncryptor = ParquetEncryptionFactory.createFileEncryptor(eSetup); 
         }
         else {

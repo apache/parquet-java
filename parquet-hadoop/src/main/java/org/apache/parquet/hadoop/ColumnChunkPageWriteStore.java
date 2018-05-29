@@ -72,23 +72,26 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private Statistics totalStatistics;
     private final ByteBufferAllocator allocator;
     
-    private final BlockCrypto.Encryptor blockEncryptor;
+    private final BlockCrypto.Encryptor headerBlockEncryptor;
+    private final BlockCrypto.Encryptor pageBlockEncryptor;
 
     //TODO needed?
     private ColumnChunkPageWriter(ColumnDescriptor path,
         BytesCompressor compressor,
         ByteBufferAllocator allocator) {
-      this(path, compressor, allocator, (BlockCrypto.Encryptor) null);
+      this(path, compressor, allocator, (BlockCrypto.Encryptor) null, (BlockCrypto.Encryptor) null);
     }
     
     private ColumnChunkPageWriter(ColumnDescriptor path,
                                   BytesCompressor compressor,
                                   ByteBufferAllocator allocator,
-                                  BlockCrypto.Encryptor blockEncryptor) {
+                                  BlockCrypto.Encryptor headerBlockEncryptor,
+                                  BlockCrypto.Encryptor pageBlockEncryptor) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
-      this.blockEncryptor = blockEncryptor;
+      this.headerBlockEncryptor = headerBlockEncryptor;
+      this.pageBlockEncryptor = pageBlockEncryptor;
       this.buf = new ConcatenatingByteArrayCollector();
     }
 
@@ -106,8 +109,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
                 uncompressedSize);
       }
       BytesInput compressedBytes = compressor.compress(bytes);
-      if (null != blockEncryptor) {
-        compressedBytes = BytesInput.from(blockEncryptor.encrypt(compressedBytes.toByteArray()));
+      if (null != pageBlockEncryptor) {
+        compressedBytes = BytesInput.from(pageBlockEncryptor.encrypt(compressedBytes.toByteArray()));
       }
       long compressedSize = compressedBytes.size();
       if (compressedSize > Integer.MAX_VALUE) {
@@ -125,7 +128,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           dlEncoding,
           valuesEncoding,
           tempOutputStream,
-          blockEncryptor);
+          headerBlockEncryptor);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
@@ -159,8 +162,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       );
       // TODO: decide if we compress
       BytesInput compressedData = compressor.compress(data);
-      if (null != blockEncryptor) {
-        compressedData = BytesInput.from(blockEncryptor.encrypt(compressedData.toByteArray()));
+      if (null != pageBlockEncryptor) {
+        compressedData = BytesInput.from(pageBlockEncryptor.encrypt(compressedData.toByteArray()));
       }
       int compressedSize = toIntWithCheck(
           compressedData.size() + repetitionLevels.size() + definitionLevels.size()
@@ -174,7 +177,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           rlByteLength,
           dlByteLength,
           tempOutputStream,
-          blockEncryptor);
+          headerBlockEncryptor);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
@@ -216,7 +219,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
       writer.startColumn(path, totalValueCount, compressor.getCodecName());
       if (dictionaryPage != null) {
-        writer.writeDictionaryPage(dictionaryPage, blockEncryptor);
+        writer.writeDictionaryPage(dictionaryPage, headerBlockEncryptor);
         // tracking the dictionary encoding is handled in writeDictionaryPage
       }
       writer.writeDataPages(buf, uncompressedLength, compressedLength, totalStatistics,
@@ -251,8 +254,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       BytesInput dictionaryBytes = dictionaryPage.getBytes();
       int uncompressedSize = (int)dictionaryBytes.size();
       BytesInput compressedBytes = compressor.compress(dictionaryBytes);
-      if (null != blockEncryptor) {
-        compressedBytes = BytesInput.from(blockEncryptor.encrypt(compressedBytes.toByteArray()));
+      if (null != pageBlockEncryptor) {
+        compressedBytes = BytesInput.from(pageBlockEncryptor.encrypt(compressedBytes.toByteArray()));
       }
       this.dictionaryPage = new DictionaryPage(BytesInput.copy(compressedBytes), uncompressedSize, dictionaryPage.getDictionarySize(), dictionaryPage.getEncoding());
     }
@@ -278,11 +281,16 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       ParquetFileEncryptor fileEncryptor) throws IOException {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      BlockCrypto.Encryptor block_encryptor = null;
+      BlockCrypto.Encryptor headerBlockEncryptor = null;
+      BlockCrypto.Encryptor pageBlockEncryptor = null;
       if (null != fileEncryptor) {
-        block_encryptor = fileEncryptor.getColumnEncryptor(path.getPath());
+        BlockCrypto.Encryptor[] blockEncryptors = fileEncryptor.getColumnEncryptors(path.getPath());
+        if (null != blockEncryptors) {
+          headerBlockEncryptor = blockEncryptors[0];
+          pageBlockEncryptor = blockEncryptors[1];
+        }
       }
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator, block_encryptor));
+      writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator, headerBlockEncryptor, pageBlockEncryptor));
     }
   }
 

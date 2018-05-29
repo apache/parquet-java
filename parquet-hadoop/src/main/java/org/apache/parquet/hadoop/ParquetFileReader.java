@@ -592,7 +592,7 @@ public class ParquetFileReader implements Closeable {
       fileDecryptor.setFileCryptoMetaData(fcmd);
       long footerIndex = fcmd.getFooter_offset();
       f.seek(footerIndex);
-      return converter.readParquetMetadata(f, options.getMetadataFilter(), fileDecryptor.getFooterDecryptor());
+      return converter.readParquetMetadata(f, options.getMetadataFilter(), fileDecryptor);
     }
   }
 
@@ -888,8 +888,13 @@ public class ParquetFileReader implements Closeable {
           currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
         }
         else {
-          BlockCrypto.Decryptor block_decryptor = fileDecryptor.getColumnDecryptor(chunk.descriptor.col.getPath());
-          currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages(block_decryptor));
+          BlockCrypto.Decryptor[] decryptors = fileDecryptor.getColumnDecryptors(chunk.descriptor.col.getPath());
+          if (null == decryptors) {
+            currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
+          }
+          else {
+            currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages(decryptors[0], decryptors[1]));
+          }
         }
       }
     }
@@ -1031,17 +1036,19 @@ public class ParquetFileReader implements Closeable {
      * @return the list of pages
      */
     public ColumnChunkPageReader readAllPages() throws IOException {
-      return readAllPages((BlockCrypto.Decryptor) null);
+      return readAllPages((BlockCrypto.Decryptor) null, (BlockCrypto.Decryptor) null);
     }
 
-    public ColumnChunkPageReader readAllPages(BlockCrypto.Decryptor blockDecryptor) throws IOException {
+    public ColumnChunkPageReader readAllPages(BlockCrypto.Decryptor headerBlockDecryptor, 
+        BlockCrypto.Decryptor pageBlockDecryptor) throws IOException {
+      //BlockCrypto.Decryptor statsBlockDecryptor = decryptStats ? headerBlockDecryptor: null;
       List<DataPage> pagesInChunk = new ArrayList<DataPage>();
       DictionaryPage dictionaryPage = null;
       PrimitiveType type = getFileMetaData().getSchema()
           .getType(descriptor.col.getPath()).asPrimitiveType();
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
-        PageHeader pageHeader = readPageHeader(blockDecryptor);
+        PageHeader pageHeader = readPageHeader(headerBlockDecryptor);
         int uncompressedPageSize = pageHeader.getUncompressed_page_size();
         int compressedPageSize = pageHeader.getCompressed_page_size();
         switch (pageHeader.type) {
@@ -1112,7 +1119,7 @@ public class ParquetFileReader implements Closeable {
             + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
-      return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, blockDecryptor);
+      return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, pageBlockDecryptor);
     }
 
     /**

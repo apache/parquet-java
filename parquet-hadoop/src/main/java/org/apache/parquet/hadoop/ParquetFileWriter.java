@@ -345,7 +345,7 @@ public class ParquetFileWriter {
     writeDictionaryPage(dictionaryPage, (BlockCrypto.Encryptor) null);
   }
   
-  public void writeDictionaryPage(DictionaryPage dictionaryPage, BlockCrypto.Encryptor blockEncryptor) throws IOException {
+  public void writeDictionaryPage(DictionaryPage dictionaryPage, BlockCrypto.Encryptor headerBlockEncryptor) throws IOException {
     state = state.write();
     LOG.debug("{}: write dictionary page: {} values", out.getPos(), dictionaryPage.getDictionarySize());
     currentChunkDictionaryPageOffset = out.getPos();
@@ -356,7 +356,7 @@ public class ParquetFileWriter {
         compressedPageSize,
         dictionaryPage.getDictionarySize(),
         dictionaryPage.getEncoding(),
-        out, blockEncryptor);
+        out, headerBlockEncryptor);
     long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
     this.uncompressedLength += uncompressedSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
@@ -705,14 +705,15 @@ public class ParquetFileWriter {
 
   private static void serializeFooter(ParquetMetadata footer, PositionOutputStream out, ParquetFileEncryptor fileEncryptor) throws IOException {
     long footerIndex = out.getPos();
-    org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
     if (null == fileEncryptor) {
+      org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
       writeFileMetaData(parquetMetadata, out);
       LOG.debug("{}: footer length = {}" , out.getPos(), (out.getPos() - footerIndex));
       BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
       out.write(MAGIC);
     }
     else {
+      org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer, fileEncryptor);
       writeFileMetaData(parquetMetadata, out, fileEncryptor.getFooterEncryptor());
       long cryptoMDIndex = out.getPos();
       writeFileCryptoMetaData(fileEncryptor.getFileCryptoMetaData(footerIndex), out);
