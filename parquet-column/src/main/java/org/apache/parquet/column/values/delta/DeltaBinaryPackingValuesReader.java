@@ -59,6 +59,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     this.in = stream;
+    long startPos = in.position();
     this.config = DeltaBinaryPackingConfig.readConfig(in);
     this.totalValueCount = BytesUtils.readUnsignedVarInt(in);
     allocateValuesBuffer();
@@ -70,6 +71,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     while (valuesBuffered < totalValueCount) { //values Buffered could be more than totalValueCount, since we flush on a mini block basis
       loadNewBlockToBuffer();
     }
+    updateNextOffset((int) (in.position() - startPos));
   }
 
   /**

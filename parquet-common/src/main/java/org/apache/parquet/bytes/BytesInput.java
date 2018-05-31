@@ -73,6 +73,22 @@ abstract public class BytesInput {
   }
 
   /**
+   * @param buffer
+   * @param length
+   *          number of bytes to read
+   * @return a BytesInput that will read the given bytes from the ByteBuffer
+   * @deprecated Will be removed in 2.0.0
+   */
+  @Deprecated
+  public static BytesInput from(ByteBuffer buffer, int offset, int length) {
+    ByteBuffer tmp = buffer.duplicate();
+    tmp.position(offset);
+    ByteBuffer slice = tmp.slice();
+    slice.limit(length);
+    return new ByteBufferBytesInput(slice);
+  }
+
+  /**
    * @param buffers an array of byte buffers
    * @return a BytesInput that will read the given bytes from the ByteBuffers
    */

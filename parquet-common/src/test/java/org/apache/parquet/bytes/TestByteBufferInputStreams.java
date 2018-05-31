@@ -21,6 +21,9 @@ package org.apache.parquet.bytes;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,6 +33,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 public abstract class TestByteBufferInputStreams {
+  static final int DATA_LENGTH = 35;
 
   protected abstract ByteBufferInputStream newStream();
   protected abstract void checkOriginalData();
@@ -571,6 +575,16 @@ public abstract class TestByteBufferInputStreams {
             return null;
           }
         });
+  }
+
+  @Test
+  public void testToByteBuffer() {
+    final ByteBufferInputStream stream = newStream();
+
+    ByteBuffer buffer = stream.toByteBuffer();
+    for (int i = 0; i < DATA_LENGTH; ++i) {
+      assertEquals(i, buffer.get());
+    }
   }
 
   /**

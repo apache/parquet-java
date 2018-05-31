@@ -480,6 +480,11 @@ public class TestDictionary {
     ByteBufferInputStream stream = ByteBufferInputStream.wrap(bytes);
     stream.skipFully(stream.available());
     reader.initFromPage(100, stream);
+
+    // Testing the deprecated behavior of using byte arrays directly
+    reader = initDicReader(cw, INT32);
+    int offset = bytes.remaining();
+    reader.initFromPage(100,  bytes, offset);
   }
 
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type)
