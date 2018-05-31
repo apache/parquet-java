@@ -19,8 +19,10 @@
 package org.apache.parquet.column.values;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 
 /**
@@ -33,6 +35,54 @@ import org.apache.parquet.io.api.Binary;
  * will only override one of the read*() methods.
  */
 public abstract class ValuesReader {
+
+  // To be used to maintain the deprecated behavior of getNextOffset(); -1 means undefined
+  private int actualOffset = -1;
+  private int nextOffset;
+
+  /**
+   * Called to initialize the column reader from a part of a page.
+   *
+   * The underlying implementation knows how much data to read, so a length
+   * is not provided.
+   *
+   * Each page may contain several sections:
+   * <ul>
+   *  <li> repetition levels column
+   *  <li> definition levels column
+   *  <li> data column
+   * </ul>
+   *
+   * This function is called with 'offset' pointing to the beginning of one of these sections,
+   * and should return the offset to the section following it.
+   *
+   * @param valueCount count of values in this page
+   * @param page the array to read from containing the page data (repetition levels, definition levels, data)
+   * @param offset where to start reading from in the page
+   *
+   * @throws IOException
+   * @deprecated Will be removed in 2.0.0
+   */
+  @Deprecated
+  public void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException {
+    actualOffset = offset;
+    ByteBuffer pageWithOffset = page.duplicate();
+    pageWithOffset.position(offset);
+    initFromPage(valueCount, ByteBufferInputStream.wrap(pageWithOffset));
+    actualOffset = -1;
+  }
+
+  /**
+   * Same functionality as method of the same name that takes a ByteBuffer instead of a byte[].
+   *
+   * This method is only provided for backward compatibility and will be removed in a future release.
+   * Please update any code using it as soon as possible.
+   * @see #initFromPage(int, ByteBuffer, int)
+   */
+  @Deprecated
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException {
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
+  }
 
   /**
    * Called to initialize the column reader from a part of a page.
@@ -54,6 +104,26 @@ public abstract class ValuesReader {
    * @throws IOException if there is an exception while reading from the input stream
    */
   public abstract void initFromPage(int valueCount, ByteBufferInputStream in) throws IOException;
+
+  /**
+   * Called to return offset of the next section
+   * @return offset of the next section
+   * @deprecated Will be removed in 2.0.0
+   */
+  @Deprecated
+  public int getNextOffset() {
+    if (nextOffset == -1) {
+      throw new ParquetDecodingException("Unsupported: cannot get offset of the next section.");
+    } else {
+      return nextOffset;
+    }
+  }
+
+  // To be used to maintain the deprecated behavior of getNextOffset();
+  // bytesRead is the number of bytes read in the last initFromPage call
+  protected void updateNextOffset(int bytesRead) {
+    nextOffset = actualOffset == -1 ? -1 : actualOffset + bytesRead;
+  }
 
   /**
    * usable when the encoding is dictionary based

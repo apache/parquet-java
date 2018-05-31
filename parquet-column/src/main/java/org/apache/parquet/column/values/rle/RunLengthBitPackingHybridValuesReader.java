@@ -42,6 +42,9 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
     int length = BytesUtils.readIntLittleEndian(stream);
     this.decoder = new RunLengthBitPackingHybridDecoder(
         bitWidth, stream.sliceStream(length));
+
+    // 4 is for the length which is stored as 4 bytes little endian
+    updateNextOffset(length + 4);
   }
 
   @Override
