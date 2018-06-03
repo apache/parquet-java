@@ -35,9 +35,9 @@ Parquet-MR uses Maven to build and depends on both the thrift and protoc compile
 To build and install the protobuf compiler, run:
 
 ```
-wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
-tar xzf protobuf-2.5.0.tar.gz
-cd  protobuf-2.5.0
+wget https://github.com/google/protobuf/archive/v3.5.1.tar.gz -O protobuf-3.5.1.tar.gz
+tar xzf protobuf-3.5.1.tar.gz
+cd protobuf-3.5.1
 ./configure
 make
 sudo make install
@@ -49,9 +49,9 @@ sudo ldconfig
 To build and install the thrift compiler, run:
 
 ```
-wget -nv http://archive.apache.org/dist/thrift/0.7.0/thrift-0.7.0.tar.gz
-tar xzf thrift-0.7.0.tar.gz
-cd thrift-0.7.0
+wget -nv http://archive.apache.org/dist/thrift/0.9.3/thrift-0.9.3.tar.gz
+tar zxf thrift-0.9.3.tar.gz
+cd thrift-0.9.3
 chmod +x ./configure
 ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
 sudo make install
