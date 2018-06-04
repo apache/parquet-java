@@ -1170,9 +1170,9 @@ public class ParquetMetadataConverter {
       }
       if (schemaElement.isSetConverted_type()) {
         LogicalTypeAnnotation originalType = getOriginalType(schemaElement.converted_type, schemaElement);
-        LogicalTypeAnnotation newLogicalType = getOriginalType(schemaElement.logicalType);
+        LogicalTypeAnnotation newLogicalType = schemaElement.isSetLogicalType() ? getOriginalType(schemaElement.logicalType) : null;
         if (!originalType.equals(newLogicalType)) {
-          childBuilder.as(getOriginalType(schemaElement.converted_type, schemaElement));
+          childBuilder.as(originalType);
         }
       }
       if (schemaElement.isSetField_id()) {
