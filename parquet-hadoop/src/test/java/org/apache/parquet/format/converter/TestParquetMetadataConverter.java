@@ -147,6 +147,22 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testLogicalTypesBackwardCompatibleWithConvertedTypes() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    MessageType expected = Types.buildMessage()
+      .required(PrimitiveTypeName.BINARY)
+      .as(OriginalType.DECIMAL).precision(9).scale(2)
+      .named("aBinaryDecimal")
+      .named("Message");
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    // Set logical type field to null to test backward compatibility with files written by older API,
+    // where converted_types are written to the metadata, but logicalType is missing
+    parquetSchema.get(1).setLogicalType(null);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertEquals(expected, schema);
+  }
+
+  @Test
   public void testEnumEquivalence() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     for (org.apache.parquet.column.Encoding encoding : org.apache.parquet.column.Encoding.values()) {
