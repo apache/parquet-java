@@ -35,6 +35,7 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.crypto.ColumnEncryptors;
 import org.apache.parquet.crypto.ParquetFileEncryptor;
 import org.apache.parquet.format.BlockCrypto;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -284,10 +285,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       BlockCrypto.Encryptor headerBlockEncryptor = null;
       BlockCrypto.Encryptor pageBlockEncryptor = null;
       if (null != fileEncryptor) {
-        BlockCrypto.Encryptor[] blockEncryptors = fileEncryptor.getColumnEncryptors(path.getPath());
+        ColumnEncryptors blockEncryptors = fileEncryptor.getColumnEncryptors(path.getPath());
         if (null != blockEncryptors) {
-          headerBlockEncryptor = blockEncryptors[0];
-          pageBlockEncryptor = blockEncryptors[1];
+          headerBlockEncryptor = blockEncryptors.getMetadataEncryptor();
+          pageBlockEncryptor = blockEncryptors.getDataEncryptor();
         }
       }
       writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator, headerBlockEncryptor, pageBlockEncryptor));

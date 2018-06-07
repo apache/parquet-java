@@ -60,6 +60,7 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
+import org.apache.parquet.crypto.ColumnDecryptors;
 import org.apache.parquet.crypto.ParquetEncryptionFactory;
 import org.apache.parquet.crypto.ParquetFileDecryptor;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -868,16 +869,28 @@ public class ParquetFileReader implements Closeable {
     ConsecutiveChunkList currentChunks = null;
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
-      BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
+      if (!mc.isHiddenColumn()) { //TODO right thing to do? 
+        BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
+      }
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
-        long startingPos = mc.getStartingPos();
-        // first chunk or not consecutive => new list
-        if (currentChunks == null || currentChunks.endPos() != startingPos) {
-          currentChunks = new ConsecutiveChunkList(startingPos);
-          allChunks.add(currentChunks);
+        if (!mc.isHiddenColumn()) { 
+          long startingPos = mc.getStartingPos();
+          // first chunk or not consecutive => new list
+          if (currentChunks == null || currentChunks.endPos() != startingPos) {
+            currentChunks = new ConsecutiveChunkList(startingPos);
+            allChunks.add(currentChunks);
+          }
+          currentChunks.addChunk(new ChunkDescriptor(columnDescriptor, mc, startingPos, (int)mc.getTotalSize()));
         }
-        currentChunks.addChunk(new ChunkDescriptor(columnDescriptor, mc, startingPos, (int)mc.getTotalSize()));
+        else {
+          // TODO Handle not consecutive chunks
+          if (currentChunks == null) {
+            currentChunks = new ConsecutiveChunkList(0); // TODO 0?
+            allChunks.add(currentChunks);
+          }
+          currentChunks.addChunk(new ChunkDescriptor(columnDescriptor, mc, -1, -1)); // TODO -1?
+        }
       }
     }
     // actually read all the chunks
@@ -888,12 +901,16 @@ public class ParquetFileReader implements Closeable {
           currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
         }
         else {
-          BlockCrypto.Decryptor[] decryptors = fileDecryptor.getColumnDecryptors(chunk.descriptor.col.getPath());
-          if (null == decryptors) {
+          // TODO first check if hidden column
+          ColumnDecryptors decryptors = fileDecryptor.getColumnDecryptors(chunk.descriptor.col.getPath());
+          if (decryptors.getStatus() == ColumnDecryptors.Status.PLAINTEXT) {
             currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
           }
-          else {
-            currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages(decryptors[0], decryptors[1]));
+          else if (decryptors.getStatus() == ColumnDecryptors.Status.KEY_AVAILABLE) {
+            currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages(decryptors.getMetadataDecryptor(), decryptors.getDataDecryptor()));
+          }
+          else { // Key unavailable
+            currentRowGroup.addColumn(chunk.descriptor.col, new ColumnChunkPageReader());
           }
         }
       }
@@ -1022,7 +1039,7 @@ public class ParquetFileReader implements Closeable {
       this.descriptor = descriptor;
       this.stream = ByteBufferInputStream.wrap(buffers);
     }
-    
+
     protected PageHeader readPageHeader() throws IOException {
       return readPageHeader((BlockCrypto.Decryptor) null);
     }

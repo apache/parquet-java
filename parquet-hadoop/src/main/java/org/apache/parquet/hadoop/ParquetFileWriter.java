@@ -704,8 +704,8 @@ public class ParquetFileWriter {
   }
 
   private static void serializeFooter(ParquetMetadata footer, PositionOutputStream out, ParquetFileEncryptor fileEncryptor) throws IOException {
-    long footerIndex = out.getPos();
     if (null == fileEncryptor) {
+      long footerIndex = out.getPos();
       org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
       writeFileMetaData(parquetMetadata, out);
       LOG.debug("{}: footer length = {}" , out.getPos(), (out.getPos() - footerIndex));
@@ -713,7 +713,8 @@ public class ParquetFileWriter {
       out.write(MAGIC);
     }
     else {
-      org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer, fileEncryptor);
+      org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer, out, fileEncryptor);
+      long footerIndex = out.getPos();
       writeFileMetaData(parquetMetadata, out, fileEncryptor.getFooterEncryptor());
       long cryptoMDIndex = out.getPos();
       writeFileCryptoMetaData(fileEncryptor.getFileCryptoMetaData(footerIndex), out);

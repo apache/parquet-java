@@ -65,6 +65,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final List<DataPage> compressedPages;
     private final DictionaryPage compressedDictionaryPage;
     private final BlockCrypto.Decryptor blockDecryptor;
+    private final boolean hiddenColumn;
 
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages, DictionaryPage compressedDictionaryPage,
         BlockCrypto.Decryptor blockDecryptor) {
@@ -77,15 +78,28 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         count += p.getValueCount();
       }
       this.valueCount = count;
+      this.hiddenColumn = false;
+    }
+
+    // Creates hidden column object
+    ColumnChunkPageReader() {
+      this.decompressor = null;
+      this.blockDecryptor = null;
+      this.compressedPages = null;
+      this.compressedDictionaryPage = null;
+      this.valueCount = -1;
+      this.hiddenColumn = true;
     }
 
     @Override
     public long getTotalValueCount() {
+      if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
       return valueCount;
     }
 
     @Override
     public DataPage readPage() {
+      if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
       if (compressedPages.isEmpty()) {
         return null;
       }
@@ -144,6 +158,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
     @Override
     public DictionaryPage readDictionaryPage() {
+      if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
       if (compressedDictionaryPage == null) {
         return null;
       }

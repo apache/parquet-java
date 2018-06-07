@@ -27,6 +27,7 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.crypto.EncryptionAlgorithmName;
 import org.apache.parquet.crypto.EncryptionSetup;
 import org.apache.parquet.crypto.ParquetEncryptionFactory;
 import org.apache.parquet.crypto.ParquetFileEncryptor;
@@ -332,7 +333,7 @@ public class ParquetWriter<T> implements Closeable {
           byte[] keyMDBytes = Base64.getDecoder().decode(encryptionKey[1]);
           //TODO column selector
           //TODO re-use encryptor? (keep in static table)
-          EncryptionSetup eSetup = new EncryptionSetup(ParquetEncryptionFactory.PARQUET_AES_GCM_CTR_V1, keyBytes, keyMDBytes);
+          EncryptionSetup eSetup = new EncryptionSetup(EncryptionAlgorithmName.AES_GCM_V1, keyBytes, keyMDBytes);
           fileEncryptor = ParquetEncryptionFactory.createFileEncryptor(eSetup); 
         }
         else {
