@@ -20,12 +20,13 @@
 
 package org.apache.parquet.crypto;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DecryptionSetup {
 
-  private byte[] keyBytes;
+  private byte[] footerKeyBytes;
   private byte[] aadBytes;
   private DecryptionKeyRetriever keyRetriever;
   private List<ColumnMetadata> columnKeyList;
@@ -34,9 +35,14 @@ public class DecryptionSetup {
    * Configure a file decryptor with an explicit footer key. If applied on a file that contains footer key metadata - 
    * the metadata will be ignored, the footer will be decrypted with the provided explicit key.
    * @param keyBytes
+   * @throws IOException 
    */
-  public DecryptionSetup(byte[] keyBytes) {
-    this.keyBytes = keyBytes;
+  public DecryptionSetup(byte[] footerKeyBytes) throws IOException {
+    if (null == footerKeyBytes) throw new IOException("Decryption: null footer key");
+    this.footerKeyBytes = footerKeyBytes;
+    if (! (footerKeyBytes.length == 16 || footerKeyBytes.length == 24 || footerKeyBytes.length == 32)) {
+      throw new IOException("Wrong key length " + footerKeyBytes.length);
+    }
   }
 
   /**
@@ -54,6 +60,7 @@ public class DecryptionSetup {
    * @param aad
    */
   public void setAAD(byte[] aad) {
+    // TODO if Setup is read, throw an exception
     aadBytes = aad;
   }
 
@@ -67,14 +74,21 @@ public class DecryptionSetup {
    * @param 
    */
   public void setColumnKey(String[] columnPath, byte[] decryptionKey) {
+    // TODO if Setup is read, throw an exception
+    // TODO if set for this column, throw an exception
+    // TODO check key: null, length
     if (null == columnKeyList) columnKeyList = new ArrayList<ColumnMetadata>();
     ColumnMetadata cmd = new ColumnMetadata(true, columnPath);
-    cmd.setEncryptionKey(decryptionKey, null);
+    try {
+      cmd.setEncryptionKey(decryptionKey, null);
+    } catch (IOException e) {
+      // Doesnt happen, since encr = true
+    }
     columnKeyList.add(cmd);
   }
 
-  byte[] getKeyBytes() {
-    return keyBytes;
+  byte[] getFooterKeyBytes() {
+    return footerKeyBytes;
   }
 
   DecryptionKeyRetriever getKeyRetriever() {

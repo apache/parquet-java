@@ -19,6 +19,7 @@
 
 package org.apache.parquet.crypto;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import org.apache.parquet.bytes.BytesUtils;
@@ -46,12 +47,16 @@ public class ColumnMetadata {
     columnPath = path;
   }
   
-  public void setEncryptionKey(byte[] keyBytes, byte[] keyMetaData) {
+  public void setEncryptionKey(byte[] keyBytes, byte[] keyMetaData) throws IOException {
+    // TODO if this object is read, throw an exception
+    if (!encrypt) throw new IOException("Setting key on unencrypted column");
     this.keyBytes = keyBytes;
     this.keyMetaData = keyMetaData;
   }
   
-  public void setEncryptionKey(byte[] keyBytes, int keyIdMetaData) {
+  public void setEncryptionKey(byte[] keyBytes, int keyIdMetaData) throws IOException {
+    // TODO if this object is read, throw an exception
+    if (!encrypt) throw new IOException("Setting key on unencrypted column");
     this.keyBytes = keyBytes;
     this.keyMetaData = BytesUtils.intToBytes(keyIdMetaData);
   }

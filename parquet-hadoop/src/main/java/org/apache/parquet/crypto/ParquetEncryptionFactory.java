@@ -21,11 +21,9 @@ package org.apache.parquet.crypto;
 
 import java.io.IOException;
 
+
 public class ParquetEncryptionFactory {
-  
-  public static final int PARQUET_AES_GCM_V1 = 1;
-  public static final int PARQUET_AES_GCM_CTR_V1 = 2;
-  
+    
   /**
    * File encryptor with a default setup: AES-GCM algorithm, uniform encryption (all columns will be encrypted), 
    * no key metadata, no AAD.
@@ -34,7 +32,7 @@ public class ParquetEncryptionFactory {
    * @throws IOException
    */
   public static ParquetFileEncryptor createFileEncryptor(byte[] keyBytes) throws IOException {
-    return createFileEncryptor(new EncryptionSetup(PARQUET_AES_GCM_V1, keyBytes, null));
+    return createFileEncryptor(new EncryptionSetup(EncryptionAlgorithmName.AES_GCM_V1, keyBytes, null));
   }
   
   /**

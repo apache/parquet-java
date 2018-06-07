@@ -20,14 +20,16 @@
 
 package org.apache.parquet.crypto;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.format.EncryptionAlgorithm;
 
 public class EncryptionSetup {
   
-  private int algorithmID;
+  private EncryptionAlgorithm algorithmID;
   private byte[] footerKeyBytes;
   private byte[] footerKeyMetadata;
   private byte[] aadBytes;
@@ -42,12 +44,18 @@ public class EncryptionSetup {
    * 
    * @param keyBytes Encryption key for file footer and some (or all) columns.
    * @param keyMetadata Key metadata, to be written in a file for key retrieval upon decryption. Can be null.
+   * @throws IOException 
    */
-  public EncryptionSetup(int algorithmID, byte[] keyBytes, byte[] keyMetadata) {
+  public EncryptionSetup(EncryptionAlgorithmName algorithm, byte[] keyBytes, byte[] keyMetadata) throws IOException {
     footerKeyBytes = keyBytes;
     footerKeyMetadata = keyMetadata;
     uniformEncryption = true;
-    this.algorithmID = algorithmID;
+    this.algorithmID = algorithm.getParquetEncryptionAlgorithmn();
+    if (null != footerKeyBytes) {
+      if (! (footerKeyBytes.length == 16 || footerKeyBytes.length == 24 || footerKeyBytes.length == 32)) {
+        throw new IOException("Wrong key length " + footerKeyBytes.length);
+      }
+    }
     singleKeyEncryption = (null != footerKeyBytes);
   }
   
@@ -56,9 +64,10 @@ public class EncryptionSetup {
    * 
    * @param keyBytes Encryption key for file footer and some (or all) columns.
    * @param keyId Key id - will be converted to a 4-byte metadata and written in a file for key retrieval upon decryption.
+   * @throws IOException 
    */
-  public EncryptionSetup(int algorithmID, byte[] keyBytes, int keyId) {
-    this(algorithmID, keyBytes, BytesUtils.intToBytes(keyId));
+  public EncryptionSetup(EncryptionAlgorithmName algorithm, byte[] keyBytes, int keyId) throws IOException {
+    this(algorithm, keyBytes, BytesUtils.intToBytes(keyId));
   }
   
   /**
@@ -67,16 +76,23 @@ public class EncryptionSetup {
    * will be encrypted with the file footer key. If encryptTheRest is false, the rest of the columns will be left unencrypted.
    * @param columnList
    * @param encryptTheRest  
+   * @throws IOException 
    */
-  public void setColumnMetadata(List<ColumnMetadata> columnList, boolean encryptTheRest) {
+  public void setColumnMetadata(List<ColumnMetadata> columnList, boolean encryptTheRest) throws IOException {
+    // TODO if Setup is read, throw an exception
+    if (null != this.columnList) throw new IOException("Already set");
     uniformEncryption = false;
-    encryptTheRest = true;
+    this.encryptTheRest = encryptTheRest;
     this.columnList = columnList;
-    if (null != footerKeyBytes && singleKeyEncryption) {
+    // Find if single or multiple keys are in use
+    if (null != footerKeyBytes) {
+      singleKeyEncryption = true;
       for (ColumnMetadata cmd : columnList) {
-        if (!Arrays.equals(cmd.getKeyBytes(), footerKeyBytes))  {
-          singleKeyEncryption = false;
-          break;
+        if (cmd.isEncrypted() && (null != cmd.getKeyBytes())) {
+          if (!Arrays.equals(cmd.getKeyBytes(), footerKeyBytes))  {
+            singleKeyEncryption = false;
+            break;
+          }
         }
       }
     }
@@ -86,12 +102,15 @@ public class EncryptionSetup {
    * Set the AES-GCM additional authenticated data (AAD).
    * 
    * @param aad
+   * @throws IOException 
    */
-  public void setAAD(byte[] aad) {
+  public void setAAD(byte[] aad) throws IOException {
+    // TODO if Setup is read, throw an exception
+    if (null != aadBytes) throw new IOException("Already set");
     aadBytes = aad;
   }
   
-  int getAlgorithmID() {
+  EncryptionAlgorithm getAlgorithmID() {
     return algorithmID;
   }
 
@@ -107,6 +126,8 @@ public class EncryptionSetup {
     return uniformEncryption;
   }
 
+  // Single key means: footer and columns are encrypted with the same key. Some columns can be plaintext, but footer must be encrypted.
+  // TODO: split into two: encr footer, and multiple keys
   boolean isSingleKeyEncryption() {
     return singleKeyEncryption;
   }
