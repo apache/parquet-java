@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -42,7 +43,7 @@ public class NonBlockedDecompressorStream extends DecompressorStream {
 	  // Send all the compressed input to the decompressor.
 	  while (true) {
 		int compressedBytes = getCompressedData();
-		if (compressedBytes == -1) break;
+		if (compressedBytes == 0) break;
 		decompressor.setInput(buffer, 0, compressedBytes);
 	  }
 	  inputHandled = true;
@@ -54,4 +55,24 @@ public class NonBlockedDecompressorStream extends DecompressorStream {
 	}
 	return decompressedBytes;
   }
+
+	@Override
+	protected int getCompressedData() throws IOException {
+		int len = this.in.available();
+
+		if (len > this.buffer.length) {
+			this.buffer = new byte[len];
+		}
+
+		int n = 0, off = 0;
+		while (n < len) {
+			int count = in.read(buffer, off + n, len - n);
+			if (count < 0) {
+				throw new EOFException("Unexpected end of block in input stream");
+			}
+			n += count;
+		}
+
+		return len;
+	}
 }
