@@ -23,6 +23,7 @@ import org.apache.parquet.Preconditions;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static java.util.Optional.empty;
 
@@ -837,6 +838,11 @@ public abstract class LogicalTypeAnnotation {
    * The default implementation for each logical type specific visitor method is empty.
    * <p>
    * Example usage: logicalTypeAnnotation.accept(new LogicalTypeAnnotationVisitor() { ... });
+   *
+   * Every visit method returns {@link Optional#empty()} by default.
+   * It means that for the given logical type no specific action is needed.
+   * Client code can use {@link Optional#orElse(Object)} to return a default value for unhandled types,
+   * or {@link Optional#orElseThrow(Supplier)} to throw exception if omitting a type is not allowed.
    */
   public interface LogicalTypeAnnotationVisitor<T> {
     default Optional<T> visit(StringLogicalTypeAnnotation logicalTypeAnnotation) {
