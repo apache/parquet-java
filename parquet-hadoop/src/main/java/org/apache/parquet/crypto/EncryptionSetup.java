@@ -38,6 +38,7 @@ public class EncryptionSetup {
   //Uniform encryption means footer and all columns are encrypted, with same key
   private boolean uniformEncryption;
   private boolean singleKeyEncryption;
+  private boolean setupProcessed;
   
   /**
    * Constructor with a custom key metadata.
@@ -46,7 +47,7 @@ public class EncryptionSetup {
    * @param keyMetadata Key metadata, to be written in a file for key retrieval upon decryption. Can be null.
    * @throws IOException 
    */
-  public EncryptionSetup(EncryptionAlgorithmName algorithm, byte[] keyBytes, byte[] keyMetadata) throws IOException {
+  public EncryptionSetup(Cipher algorithm, byte[] keyBytes, byte[] keyMetadata) throws IOException {
     footerKeyBytes = keyBytes;
     footerKeyMetadata = keyMetadata;
     uniformEncryption = true;
@@ -57,6 +58,7 @@ public class EncryptionSetup {
       }
     }
     singleKeyEncryption = (null != footerKeyBytes);
+    setupProcessed = false;
   }
   
   /**
@@ -66,7 +68,7 @@ public class EncryptionSetup {
    * @param keyId Key id - will be converted to a 4-byte metadata and written in a file for key retrieval upon decryption.
    * @throws IOException 
    */
-  public EncryptionSetup(EncryptionAlgorithmName algorithm, byte[] keyBytes, int keyId) throws IOException {
+  public EncryptionSetup(Cipher algorithm, byte[] keyBytes, int keyId) throws IOException {
     this(algorithm, keyBytes, BytesUtils.intToBytes(keyId));
   }
   
@@ -79,13 +81,13 @@ public class EncryptionSetup {
    * @throws IOException 
    */
   public void setColumnMetadata(List<ColumnMetadata> columnList, boolean encryptTheRest) throws IOException {
-    // TODO if Setup is read, throw an exception
-    if (null != this.columnList) throw new IOException("Already set");
+    if (setupProcessed) throw new IOException("Setup already processed");
+    // TODO if set, throw an exception? or allow to replace
     uniformEncryption = false;
     this.encryptTheRest = encryptTheRest;
     this.columnList = columnList;
-    // Find if single or multiple keys are in use
     if (null != footerKeyBytes) {
+      // Find if single or multiple keys are in use
       singleKeyEncryption = true;
       for (ColumnMetadata cmd : columnList) {
         if (cmd.isEncrypted() && (null != cmd.getKeyBytes())) {
@@ -96,6 +98,19 @@ public class EncryptionSetup {
         }
       }
     }
+    else {
+      if (encryptTheRest) throw new IOException("Encrypt the rest with null footer key");
+      boolean all_are_unencrypted = true;
+      for (ColumnMetadata cmd : columnList) {
+        if (cmd.isEncrypted()) {
+          if (null == cmd.getKeyBytes()) {
+            throw new IOException("Encrypt column with null footer key");
+          }
+          all_are_unencrypted = false;
+        }
+      }
+      if (all_are_unencrypted) throw new IOException("Footer and all columns unencrypted");
+    }
   }
   
   /**
@@ -105,34 +120,40 @@ public class EncryptionSetup {
    * @throws IOException 
    */
   public void setAAD(byte[] aad) throws IOException {
-    // TODO if Setup is read, throw an exception
-    if (null != aadBytes) throw new IOException("Already set");
+    if (setupProcessed) throw new IOException("Setup already processed");
+    // TODO if set, throw an exception? or allow to replace
     aadBytes = aad;
   }
   
   EncryptionAlgorithm getAlgorithmID() {
+    setupProcessed = true;
     return algorithmID;
   }
 
   byte[] getFooterKeyBytes() {
+    setupProcessed = true;
     return footerKeyBytes;
   }
 
   byte[] getFooterKeyMetadata() {
+    setupProcessed = true;
     return footerKeyMetadata;
   }
 
   boolean isUniformEncryption() {
+    setupProcessed = true;
     return uniformEncryption;
   }
 
   // Single key means: footer and columns are encrypted with the same key. Some columns can be plaintext, but footer must be encrypted.
   // TODO: split into two: encr footer, and multiple keys
   boolean isSingleKeyEncryption() {
+    setupProcessed = true;
     return singleKeyEncryption;
   }
 
   ColumnMetadata getColumnMetadata(String[] columnPath) {
+    setupProcessed = true;
     boolean in_list = false;
     ColumnMetadata cmd = null;
     for (ColumnMetadata col : columnList) {
@@ -153,18 +174,16 @@ public class EncryptionSetup {
         continue;
       }
     }
-    
-    boolean encrypt;
     if (in_list) {
       return cmd;
     }
     else {
-      encrypt = encryptTheRest;
-      return new ColumnMetadata(encrypt, columnPath);
+      return new ColumnMetadata(encryptTheRest, columnPath);
     }
   }
 
   byte[] getAAD() {
+    setupProcessed = true;
     return aadBytes;
   }
 }

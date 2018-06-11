@@ -25,11 +25,11 @@ import java.util.Locale;
 
 import org.apache.parquet.format.EncryptionAlgorithm;
 
-public enum EncryptionAlgorithmName {
+public enum Cipher {
   AES_GCM_V1(EncryptionAlgorithm.AES_GCM_V1),
   AES_GCM_CTR_V1(EncryptionAlgorithm.AES_GCM_CTR_V1);
   
-  public static EncryptionAlgorithmName fromConf(String name) {
+  public static Cipher fromConf(String name) {
     if (name == null) {
       return AES_GCM_V1;
     }
@@ -42,7 +42,7 @@ public enum EncryptionAlgorithmName {
   
   private EncryptionAlgorithm parquetEncryptionAlgorithmn;
   
-  private EncryptionAlgorithmName(EncryptionAlgorithm parquetEncryptionAlgorithmn) {
+  private Cipher(EncryptionAlgorithm parquetEncryptionAlgorithmn) {
     this.parquetEncryptionAlgorithmn = parquetEncryptionAlgorithmn;
   }
 }

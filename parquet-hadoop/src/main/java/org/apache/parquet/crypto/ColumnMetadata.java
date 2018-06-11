@@ -28,10 +28,12 @@ import org.apache.parquet.format.ColumnCryptoMetaData;
 public class ColumnMetadata {
   
   private boolean encrypt;
+  private boolean isEncryptedWithFooterKey;
   private String[] columnPath;
   private byte[] keyBytes;
   private byte[] keyMetaData;
   private ColumnCryptoMetaData ccmd;
+  private boolean processed ;
   
   /**
    * Convenience constructor for regular (not nested) columns.
@@ -44,41 +46,48 @@ public class ColumnMetadata {
   
   public ColumnMetadata(boolean encrypt, String[] path) {
     this.encrypt = encrypt;
-    columnPath = path;
+    this.columnPath = path;
+    isEncryptedWithFooterKey = encrypt;
+    processed = false;
   }
   
   public void setEncryptionKey(byte[] keyBytes, byte[] keyMetaData) throws IOException {
-    // TODO if this object is read, throw an exception
-    if (!encrypt) throw new IOException("Setting key on unencrypted column");
+    if (processed) throw new IOException("Metadata already processed");
+    if (!encrypt) throw new IOException("Setting key on unencrypted column: " + Arrays.toString(columnPath));
+    if (null == keyBytes) throw new IOException("Null key for " + Arrays.toString(columnPath));
+    //TODO compare to footer key?
+    isEncryptedWithFooterKey = false;
     this.keyBytes = keyBytes;
     this.keyMetaData = keyMetaData;
   }
   
   public void setEncryptionKey(byte[] keyBytes, int keyIdMetaData) throws IOException {
-    // TODO if this object is read, throw an exception
-    if (!encrypt) throw new IOException("Setting key on unencrypted column");
-    this.keyBytes = keyBytes;
-    this.keyMetaData = BytesUtils.intToBytes(keyIdMetaData);
+    byte[] metaData = BytesUtils.intToBytes(keyIdMetaData);
+    setEncryptionKey(keyBytes, metaData);
   }
 
   String[] getPath() {
+    processed = true;
     return columnPath;
   }
 
   boolean isEncrypted() {
+    processed = true;
     return encrypt;
   }
   
   ColumnCryptoMetaData getColumnCryptoMetaData() {
+    processed = true;
     if (null != ccmd) return ccmd;
-    ccmd = new ColumnCryptoMetaData(Arrays.asList(columnPath), encrypt);
+    ccmd = new ColumnCryptoMetaData(Arrays.asList(columnPath), encrypt, isEncryptedWithFooterKey);
     if (null != keyMetaData) {
-      ccmd.setKey_metadata(keyMetaData);
+      ccmd.setColumn_key_metadata(keyMetaData);
     }
     return ccmd;
   }
 
   byte[] getKeyBytes() {
+    processed = true;
     return keyBytes;
   }
 }

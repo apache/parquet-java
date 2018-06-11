@@ -30,6 +30,7 @@ public class DecryptionSetup {
   private byte[] aadBytes;
   private DecryptionKeyRetriever keyRetriever;
   private List<ColumnMetadata> columnKeyList;
+  private boolean setupProcessed;
 
   /**
    * Configure a file decryptor with an explicit footer key. If applied on a file that contains footer key metadata - 
@@ -43,6 +44,7 @@ public class DecryptionSetup {
     if (! (footerKeyBytes.length == 16 || footerKeyBytes.length == 24 || footerKeyBytes.length == 32)) {
       throw new IOException("Wrong key length " + footerKeyBytes.length);
     }
+    setupProcessed = false;
   }
 
   /**
@@ -58,13 +60,15 @@ public class DecryptionSetup {
    * Set the AES-GCM additional authenticated data (AAD).
    * 
    * @param aad
+   * @throws IOException 
    */
-  public void setAAD(byte[] aad) {
-    // TODO if Setup is read, throw an exception
+  public void setAAD(byte[] aad) throws IOException {
+    if (setupProcessed) throw new IOException("Setup already processed");
+    // TODO if set, throw an exception? or allow to replace
     aadBytes = aad;
   }
 
-  public void setColumnKey(String columnName, byte[] decryptionKey) {
+  public void setColumnKey(String columnName, byte[] decryptionKey) throws IOException {
     setColumnKey(new String[] {columnName}, decryptionKey);
   }
 
@@ -72,11 +76,15 @@ public class DecryptionSetup {
    * Configure a column decryptor with an explicit column key. If applied on a file that contains key metadata for this column - 
    * the metadata will be ignored, the column will be decrypted with the provided explicit key.
    * @param 
+   * @throws IOException 
    */
-  public void setColumnKey(String[] columnPath, byte[] decryptionKey) {
-    // TODO if Setup is read, throw an exception
-    // TODO if set for this column, throw an exception
-    // TODO check key: null, length
+  public void setColumnKey(String[] columnPath, byte[] decryptionKey) throws IOException {
+    if (setupProcessed) throw new IOException("Setup already processed");
+    if (null == decryptionKey) throw new IOException("Decryption: null column key");
+    if (! (decryptionKey.length == 16 || decryptionKey.length == 24 || decryptionKey.length == 32)) {
+      throw new IOException("Wrong key length " + decryptionKey.length);
+    }
+    // TODO if set for this column, throw an exception? or allow to replace
     if (null == columnKeyList) columnKeyList = new ArrayList<ColumnMetadata>();
     ColumnMetadata cmd = new ColumnMetadata(true, columnPath);
     try {
@@ -88,20 +96,23 @@ public class DecryptionSetup {
   }
 
   byte[] getFooterKeyBytes() {
+    setupProcessed = true;
     return footerKeyBytes;
   }
 
   DecryptionKeyRetriever getKeyRetriever() {
+    setupProcessed = true;
     return keyRetriever;
   }
 
   byte[] getAAD() {
+    setupProcessed = true;
     return aadBytes;
   }
 
   byte[] getColumnKey(String[] path) {
+    setupProcessed = true;
     if (null == columnKeyList)  return null;
-
     for (ColumnMetadata col : columnKeyList) {
       if (col.getPath().length != path.length) continue;
       boolean equal = true;
