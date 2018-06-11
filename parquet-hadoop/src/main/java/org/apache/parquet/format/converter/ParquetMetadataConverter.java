@@ -248,9 +248,8 @@ public class ParquetMetadataConverter {
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = null;
-      // TODO: replace uniform check with: (unencr footer || multi-key check)
+      // TODO: replace uniform check with: (unencr footer || multi-key check)?
       boolean encryptColumnMetadata = ((null != fileEncryptor) && !fileEncryptor.isUniformEncryption());
-      
       if (!encryptColumnMetadata) {
         columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
         columnChunk.file_path = block.getPath(); // they are in the same file for now
@@ -274,6 +273,7 @@ public class ParquetMetadataConverter {
         //      columnChunk.meta_data.key_value_metadata = ; // nothing yet        
       }
       else {
+        // Serialize ColumnMetadata separately, encrypt, and store offset 
         columnChunk = new ColumnChunk(out.getPos());  
         columnChunk.file_path = block.getPath(); // they are in the same file for now
         columnChunk.setPath_in_schema(Arrays.asList(columnMetaData.getPath().toArray()));
@@ -297,7 +297,7 @@ public class ParquetMetadataConverter {
         //      metaData.key_value_metadata = ; // nothing yet
         ColumnPath path = getPath(metaData);
         ColumnEncryptors encryptors = fileEncryptor.getColumnEncryptors(path.toArray());
-        if (null == encryptors) { // unencrypted column. TODO
+        if (null == encryptors) { // unencrypted column.
           writeColumnMetaData(metaData, out, null);
         }
         else {
@@ -986,15 +986,14 @@ public class ParquetMetadataConverter {
               || (filePath != null && !filePath.equals(columnChunk.getFile_path()))) {
             throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
           }
-          
-          // TODO replace with encr footer and same-key encr
+          // TODO replace with encr footer and same-key encr?
           boolean decryptColumnMetaData = (null != fileDecryptor && !fileDecryptor.isUniformEncryption());
-          
           ColumnMetaData metaData = null;
           if (!decryptColumnMetaData) {
             metaData = columnChunk.meta_data;
           }
           else {
+            // Decrypt and deserialize ColumnMetaData
             columnPath = columnChunk.getPath_in_schema().toArray(new String[columnChunk.getPath_in_schema().size()]);
             ColumnDecryptors decryptors = fileDecryptor.getColumnDecryptors(columnPath);
             if (decryptors.getStatus() != ColumnDecryptors.Status.KEY_UNAVAILABLE) {
