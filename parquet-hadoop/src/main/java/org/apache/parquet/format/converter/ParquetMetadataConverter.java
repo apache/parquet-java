@@ -106,6 +106,8 @@ public class ParquetMetadataConverter {
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
 
   private static final Logger LOG = LoggerFactory.getLogger(ParquetMetadataConverter.class);
+  private static final LogicalTypeConverterVisitor LOGICAL_TYPE_ANNOTATION_VISITOR = new LogicalTypeConverterVisitor();
+  private static final ConvertedTypeConverterVisitor CONVERTED_TYPE_CONVERTER_VISITOR = new ConvertedTypeConverterVisitor();
 
   private final boolean useSignedStringMinMax;
 
@@ -242,11 +244,11 @@ public class ParquetMetadataConverter {
   }
 
   LogicalType convertToLogicalType(LogicalTypeAnnotation logicalTypeAnnotation) {
-    return logicalTypeAnnotation.accept(new LogicalTypeConverterVisitor()).get();
+    return logicalTypeAnnotation.accept(LOGICAL_TYPE_ANNOTATION_VISITOR).get();
   }
 
   ConvertedType convertToConvertedType(LogicalTypeAnnotation logicalTypeAnnotation) {
-    return logicalTypeAnnotation.accept(new ConvertedTypeConverterVisitor()).get();
+    return logicalTypeAnnotation.accept(CONVERTED_TYPE_CONVERTER_VISITOR).get();
   }
 
   static org.apache.parquet.format.TimeUnit convertUnit(LogicalTypeAnnotation.TimeUnit unit) {
