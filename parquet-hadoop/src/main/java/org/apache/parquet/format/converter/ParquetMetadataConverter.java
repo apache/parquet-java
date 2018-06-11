@@ -702,6 +702,7 @@ public class ParquetMetadataConverter {
         case TIME_MILLIS:
         case TIMESTAMP_MICROS:
         case TIMESTAMP_MILLIS:
+        case DECIMAL:
           return SortOrder.SIGNED;
         case UINT_8:
         case UINT_16:
@@ -712,7 +713,6 @@ public class ParquetMetadataConverter {
         case BSON:
         case JSON:
           return SortOrder.UNSIGNED;
-        case DECIMAL:
         case LIST:
         case MAP:
         case MAP_KEY_VALUE:

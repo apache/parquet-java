@@ -758,14 +758,6 @@ public class TestParquetMetadataConverter {
     testV2OnlyStats(Types.optional(PrimitiveTypeName.INT64).as(OriginalType.UINT_64).named(""),
         0x7FFFFFFFFFFFFFFFL,
         0x8000000000000000L);
-    testV2OnlyStats(Types.optional(PrimitiveTypeName.BINARY).as(OriginalType.DECIMAL).precision(6).named(""),
-        new BigInteger("-765875"),
-        new BigInteger("876856"));
-    testV2OnlyStats(
-        Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(14).as(OriginalType.DECIMAL).precision(7)
-            .named(""),
-        new BigInteger("-6769643"),
-        new BigInteger("9864675"));
   }
 
   private void testV2OnlyStats(PrimitiveType type, Object min, Object max) {
@@ -773,6 +765,49 @@ public class TestParquetMetadataConverter {
     org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
     assertFalse(statistics.isSetMin());
     assertFalse(statistics.isSetMax());
+    assertEquals(ByteBuffer.wrap(stats.getMinBytes()), statistics.min_value);
+    assertEquals(ByteBuffer.wrap(stats.getMaxBytes()), statistics.max_value);
+  }
+
+  @Test
+  public void testDecimalStats() {
+    testDecimalStats(Types.optional(PrimitiveTypeName.INT32).as(OriginalType.DECIMAL).precision(9).named(""),
+        Integer.MIN_VALUE,
+        Integer.MAX_VALUE);
+    testDecimalStats(Types.optional(PrimitiveTypeName.INT32).as(OriginalType.DECIMAL).precision(9).named(""),
+        0,
+        255);
+    testDecimalStats(Types.optional(PrimitiveTypeName.INT32).as(OriginalType.DECIMAL).precision(9).named(""),
+        -765875,
+        876856);
+    testDecimalStats(Types.optional(PrimitiveTypeName.INT64).as(OriginalType.DECIMAL).precision(18).named(""),
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
+    testDecimalStats(Types.optional(PrimitiveTypeName.INT64).as(OriginalType.DECIMAL).precision(18).named(""),
+        0L,
+        255L);
+    testDecimalStats(Types.optional(PrimitiveTypeName.INT64).as(OriginalType.DECIMAL).precision(9).named(""),
+        -765875L,
+        876856L);
+    testDecimalStats(Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(18).as(OriginalType.DECIMAL).precision(7)
+            .named(""),
+        BigInteger.valueOf(Long.MIN_VALUE),
+        BigInteger.valueOf(Long.MAX_VALUE));
+    testDecimalStats(Types.optional(PrimitiveTypeName.BINARY).as(OriginalType.DECIMAL).precision(6).named(""),
+        new BigInteger("-765875"),
+        new BigInteger("876856"));
+    testDecimalStats(
+        Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(14).as(OriginalType.DECIMAL).precision(7)
+            .named(""),
+        new BigInteger("-6769643"),
+        new BigInteger("9864675"));
+  }
+
+  private void testDecimalStats(PrimitiveType type, Object min, Object max) {
+    Statistics<?> stats = createStats(type, min, max);
+    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
+    assertTrue(statistics.isSetMin());
+    assertTrue(statistics.isSetMax());
     assertEquals(ByteBuffer.wrap(stats.getMinBytes()), statistics.min_value);
     assertEquals(ByteBuffer.wrap(stats.getMaxBytes()), statistics.max_value);
   }
