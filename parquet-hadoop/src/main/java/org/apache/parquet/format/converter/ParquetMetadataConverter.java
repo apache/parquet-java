@@ -33,6 +33,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -105,6 +106,8 @@ public class ParquetMetadataConverter {
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
 
   private static final Logger LOG = LoggerFactory.getLogger(ParquetMetadataConverter.class);
+  private static final LogicalTypeConverterVisitor LOGICAL_TYPE_ANNOTATION_VISITOR = new LogicalTypeConverterVisitor();
+  private static final ConvertedTypeConverterVisitor CONVERTED_TYPE_CONVERTER_VISITOR = new ConvertedTypeConverterVisitor();
 
   private final boolean useSignedStringMinMax;
 
@@ -241,17 +244,12 @@ public class ParquetMetadataConverter {
   }
 
   LogicalType convertToLogicalType(LogicalTypeAnnotation logicalTypeAnnotation) {
-    LogicalTypeConverterVisitor logicalTypeConverterVisitor = new LogicalTypeConverterVisitor();
-    logicalTypeAnnotation.accept(logicalTypeConverterVisitor);
-    return logicalTypeConverterVisitor.logicalType;
+    return logicalTypeAnnotation.accept(LOGICAL_TYPE_ANNOTATION_VISITOR).get();
   }
 
   ConvertedType convertToConvertedType(LogicalTypeAnnotation logicalTypeAnnotation) {
-    LogicalTypeConverterVisitor logicalTypeConverterVisitor = new LogicalTypeConverterVisitor();
-    logicalTypeAnnotation.accept(logicalTypeConverterVisitor);
-    return logicalTypeConverterVisitor.convertedType;
+    return logicalTypeAnnotation.accept(CONVERTED_TYPE_CONVERTER_VISITOR).get();
   }
-
 
   static org.apache.parquet.format.TimeUnit convertUnit(LogicalTypeAnnotation.TimeUnit unit) {
     switch (unit) {
@@ -264,131 +262,163 @@ public class ParquetMetadataConverter {
     }
   }
 
-  private static class LogicalTypeConverterVisitor implements LogicalTypeAnnotation.LogicalTypeAnnotationVisitor {
-    private LogicalType logicalType;
-    private ConvertedType convertedType;
-
+  private static class ConvertedTypeConverterVisitor implements LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<ConvertedType> {
     @Override
-    public void visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.STRING(new StringType());
-      convertedType = ConvertedType.UTF8;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.UTF8);
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.MAP(new MapType());
-      convertedType = ConvertedType.MAP;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.MAP);
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.LIST(new ListType());
-      convertedType = ConvertedType.LIST;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.LIST);
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.ENUM(new EnumType());
-      convertedType = ConvertedType.ENUM;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.ENUM);
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.DECIMAL(new DecimalType(logicalTypeAnnotation.getScale(), logicalTypeAnnotation.getPrecision()));
-      convertedType = ConvertedType.DECIMAL;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.DECIMAL);
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.DATE(new DateType());
-      convertedType = ConvertedType.DATE;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.DATE);
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.TIME(new TimeType(logicalTypeAnnotation.isAdjustedToUTC(), convertUnit(logicalTypeAnnotation.getUnit())));
-      switch (logicalTypeAnnotation.toOriginalType()) {
-        case TIME_MILLIS:
-          convertedType = ConvertedType.TIME_MILLIS;
-          break;
-        case TIME_MICROS:
-          convertedType = ConvertedType.TIME_MICROS;
-          break;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+      switch (logicalTypeAnnotation.getUnit()) {
+        case MILLIS:
+          return Optional.of(ConvertedType.TIME_MILLIS);
+        case MICROS:
+          return Optional.of(ConvertedType.TIME_MICROS);
         default:
           throw new RuntimeException("Unknown converted type for " + logicalTypeAnnotation.toOriginalType());
       }
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.TIMESTAMP(new TimestampType(logicalTypeAnnotation.isAdjustedToUTC(), convertUnit(logicalTypeAnnotation.getUnit())));
-      switch (logicalTypeAnnotation.toOriginalType()) {
-        case TIMESTAMP_MICROS:
-          convertedType = ConvertedType.TIMESTAMP_MICROS;
-          break;
-        case TIMESTAMP_MILLIS:
-          convertedType = ConvertedType.TIMESTAMP_MILLIS;
-          break;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+      switch (logicalTypeAnnotation.getUnit()) {
+        case MICROS:
+          return Optional.of(ConvertedType.TIMESTAMP_MICROS);
+        case MILLIS:
+          return Optional.of(ConvertedType.TIMESTAMP_MILLIS);
         default:
           throw new RuntimeException("Unknown converted type for " + logicalTypeAnnotation.toOriginalType());
       }
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.INTEGER(new IntType((byte) logicalTypeAnnotation.getBitWidth(), logicalTypeAnnotation.isSigned()));
-      switch (logicalTypeAnnotation.toOriginalType()) {
-        case INT_8:
-          convertedType = ConvertedType.INT_8;
-          break;
-        case INT_16:
-          convertedType = ConvertedType.INT_16;
-          break;
-        case INT_32:
-          convertedType = ConvertedType.INT_32;
-          break;
-        case INT_64:
-          convertedType = ConvertedType.INT_64;
-          break;
-        case UINT_8:
-          convertedType = ConvertedType.UINT_8;
-          break;
-        case UINT_16:
-          convertedType = ConvertedType.UINT_16;
-          break;
-        case UINT_32:
-          convertedType = ConvertedType.UINT_32;
-          break;
-        case UINT_64:
-          convertedType = ConvertedType.UINT_64;
-          break;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
+      boolean signed = logicalTypeAnnotation.isSigned();
+      switch (logicalTypeAnnotation.getBitWidth()) {
+        case 8:
+          return Optional.of(signed ? ConvertedType.INT_8 : ConvertedType.UINT_8);
+        case 16:
+          return Optional.of(signed ? ConvertedType.INT_16 : ConvertedType.UINT_16);
+        case 32:
+          return Optional.of(signed ? ConvertedType.INT_32 : ConvertedType.UINT_32);
+        case 64:
+          return Optional.of(signed ? ConvertedType.INT_64 : ConvertedType.UINT_64);
         default:
           throw new RuntimeException("Unknown original type " + logicalTypeAnnotation.toOriginalType());
       }
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.JSON(new JsonType());
-      convertedType = ConvertedType.JSON;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.JSON);
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.BSON(new BsonType());
-      convertedType = ConvertedType.BSON;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.BSON);
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.UNKNOWN(new NullType());
-      convertedType = ConvertedType.INTERVAL;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.INTERVAL);
     }
 
     @Override
-    public void visit(LogicalTypeAnnotation.MapKeyValueTypeAnnotation logicalTypeAnnotation) {
-      logicalType = LogicalType.UNKNOWN(new NullType());
-      convertedType = ConvertedType.MAP_KEY_VALUE;
+    public Optional<ConvertedType> visit(LogicalTypeAnnotation.MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(ConvertedType.MAP_KEY_VALUE);
+    }
+  }
+
+  private static class LogicalTypeConverterVisitor implements LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<LogicalType> {
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.STRING(new StringType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.MAP(new MapType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.LIST(new ListType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.ENUM(new EnumType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.DECIMAL(new DecimalType(logicalTypeAnnotation.getScale(), logicalTypeAnnotation.getPrecision())));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.DATE(new DateType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.TIME(new TimeType(logicalTypeAnnotation.isAdjustedToUTC(), convertUnit(logicalTypeAnnotation.getUnit()))));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.TIMESTAMP(new TimestampType(logicalTypeAnnotation.isAdjustedToUTC(), convertUnit(logicalTypeAnnotation.getUnit()))));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.INTEGER(new IntType((byte) logicalTypeAnnotation.getBitWidth(), logicalTypeAnnotation.isSigned())));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.JSON(new JsonType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.BSON(new BsonType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.UNKNOWN(new NullType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+      return Optional.of(LogicalType.UNKNOWN(new NullType()));
     }
   }
 
