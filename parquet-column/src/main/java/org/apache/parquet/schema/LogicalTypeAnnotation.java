@@ -22,6 +22,10 @@ import org.apache.parquet.Preconditions;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Supplier;
+
+import static java.util.Optional.empty;
 
 public abstract class LogicalTypeAnnotation {
   enum LogicalTypeToken {
@@ -132,7 +136,7 @@ public abstract class LogicalTypeAnnotation {
    *
    * @param logicalTypeAnnotationVisitor the visitor to visit this type
    */
-  public abstract void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor);
+  public abstract <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor);
 
   abstract LogicalTypeToken getType();
 
@@ -267,8 +271,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -300,8 +304,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -333,8 +337,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -366,8 +370,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -410,8 +414,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -457,8 +461,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -505,8 +509,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -570,8 +574,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -640,8 +644,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -695,8 +699,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -728,8 +732,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -768,8 +772,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -808,8 +812,8 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public void accept(LogicalTypeAnnotationVisitor logicalTypeAnnotationVisitor) {
-      logicalTypeAnnotationVisitor.visit(this);
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
     }
 
     @Override
@@ -834,45 +838,63 @@ public abstract class LogicalTypeAnnotation {
    * The default implementation for each logical type specific visitor method is empty.
    * <p>
    * Example usage: logicalTypeAnnotation.accept(new LogicalTypeAnnotationVisitor() { ... });
+   *
+   * Every visit method returns {@link Optional#empty()} by default.
+   * It means that for the given logical type no specific action is needed.
+   * Client code can use {@link Optional#orElse(Object)} to return a default value for unhandled types,
+   * or {@link Optional#orElseThrow(Supplier)} to throw exception if omitting a type is not allowed.
    */
-  public interface LogicalTypeAnnotationVisitor {
-    default void visit(StringLogicalTypeAnnotation logicalTypeAnnotation) {
+  public interface LogicalTypeAnnotationVisitor<T> {
+    default Optional<T> visit(StringLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(MapLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(ListLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(ListLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(DateLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DateLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(IntLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
 
-    default void visit(MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+      return empty();
     }
   }
 }
