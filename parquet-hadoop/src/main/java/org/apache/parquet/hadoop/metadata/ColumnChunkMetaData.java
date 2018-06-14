@@ -213,6 +213,7 @@ abstract public class ColumnChunkMetaData {
    */
   @Deprecated
   public PrimitiveTypeName getType() {
+    if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
     return properties.getType();
   }
 

@@ -46,6 +46,7 @@ import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.BlockCrypto;
 import org.apache.parquet.format.ColumnChunk;
+import org.apache.parquet.format.ColumnCryptoMetaData;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.ColumnOrder;
 import org.apache.parquet.format.ConvertedType;
@@ -248,7 +249,6 @@ public class ParquetMetadataConverter {
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = null;
-      // TODO: replace uniform check with: (unencr footer || multi-key check)?
       boolean encryptColumnMetadata = ((null != fileEncryptor) && !fileEncryptor.isUniformEncryption());
       if (!encryptColumnMetadata) {
         columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
@@ -276,7 +276,7 @@ public class ParquetMetadataConverter {
         // Serialize ColumnMetadata separately, encrypt, and store offset 
         columnChunk = new ColumnChunk(out.getPos());  
         columnChunk.file_path = block.getPath(); // they are in the same file for now
-        columnChunk.setPath_in_schema(Arrays.asList(columnMetaData.getPath().toArray()));
+        columnChunk.setCrypto_meta_data(fileEncryptor.getColumnMetaData(columnMetaData.getPath().toArray()));
         ColumnMetaData metaData = new ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
@@ -969,7 +969,8 @@ public class ParquetMetadataConverter {
     return fromParquetMetadata(parquetMetadata, (InputStream) null, (ParquetFileDecryptor) null);
   }
   
-  public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata, InputStream from, ParquetFileDecryptor fileDecryptor) throws IOException {
+  public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata, 
+      InputStream from, ParquetFileDecryptor fileDecryptor) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
@@ -986,15 +987,17 @@ public class ParquetMetadataConverter {
               || (filePath != null && !filePath.equals(columnChunk.getFile_path()))) {
             throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
           }
-          // TODO replace with encr footer and same-key encr?
-          boolean decryptColumnMetaData = (null != fileDecryptor && !fileDecryptor.isUniformEncryption());
           ColumnMetaData metaData = null;
-          if (!decryptColumnMetaData) {
+          if (!columnChunk.isSetCrypto_meta_data()) {
             metaData = columnChunk.meta_data;
           }
           else {
+            if (null == fileDecryptor) throw new IOException("No decryptor available");
+            ColumnCryptoMetaData cryptoMetaData = columnChunk.getCrypto_meta_data();
+            fileDecryptor.setColumnCryptoMetadata(cryptoMetaData);
             // Decrypt and deserialize ColumnMetaData
-            columnPath = columnChunk.getPath_in_schema().toArray(new String[columnChunk.getPath_in_schema().size()]);
+            List<String> path_list = cryptoMetaData.getPath_in_schema();
+            columnPath = path_list.toArray(new String[path_list.size()]);
             ColumnDecryptors decryptors = fileDecryptor.getColumnDecryptors(columnPath);
             if (decryptors.getStatus() != ColumnDecryptors.Status.KEY_UNAVAILABLE) {
               SeekableInputStream sis = (SeekableInputStream) from; // TODO
