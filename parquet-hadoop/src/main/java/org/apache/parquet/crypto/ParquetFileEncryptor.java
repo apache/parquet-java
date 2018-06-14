@@ -47,7 +47,6 @@ public class ParquetFileEncryptor {
   //Uniform encryption means footer and all columns are encrypted, with same key
   private boolean uniformEncryption;
   private List<ColumnCryptoMetaData> columnMDList;
-  private boolean columnMDListSet;
   private byte[] aadBytes;
   
   private boolean encryptFooter;
@@ -70,12 +69,6 @@ public class ParquetFileEncryptor {
       encryptFooter = true;
     }
     footerKeyMetaDataBytes = eSetup.getFooterKeyMetadata();
-    if (null != footerKeyMetaDataBytes) {
-      if (footerKeyMetaDataBytes.length > 256) { // TODO 
-        throw new IOException("Footer key MetaData is too long " + footerKeyMetaDataBytes.length);
-      }
-    }
-    columnMDListSet = false;
     if (!uniformEncryption) columnMDList = new LinkedList<ColumnCryptoMetaData>();
     try {
      LOG.info("AES-GCM cipher provider: {}", Cipher.getInstance("AES/GCM/NoPadding").getProvider());
@@ -134,6 +127,7 @@ public class ParquetFileEncryptor {
       throw new IOException("No encryption metadata for column " + Arrays.toString(columnPath));
     }
     if (null == findColumn(columnPath, columnMDList)) {
+      //TODO if file re-use: throw exception? 
       columnMDList.add(cmd.getColumnCryptoMetaData());
     }
     if (!cmd.isEncrypted()) {
@@ -162,19 +156,18 @@ public class ParquetFileEncryptor {
   }
 
   public synchronized FileCryptoMetaData getFileCryptoMetaData(long footer_index) throws IOException {
-    FileCryptoMetaData fcmd = new FileCryptoMetaData(algorithmId, encryptFooter, footer_index, uniformEncryption);
+    FileCryptoMetaData fcmd = new FileCryptoMetaData(algorithmId, encryptFooter, footer_index);
     if (null != footerKeyMetaDataBytes) fcmd.setFooter_key_metadata(footerKeyMetaDataBytes);
-    if (!uniformEncryption) {
-      if (columnMDListSet) {
-        throw new IOException("Re-using file encryptor with non-uniform encryption");
-      }
-      fcmd.setColumn_crypto_meta_data(columnMDList);
-      columnMDListSet = true;      
-    }
     return fcmd;
   }
 
   public boolean isUniformEncryption() {
     return uniformEncryption;
+  }
+
+  public ColumnCryptoMetaData getColumnMetaData(String[] path) throws IOException {
+    ColumnCryptoMetaData ccmd = findColumn(path, columnMDList);
+    if (null == ccmd) throw new IOException("No encryption metadata for column " + Arrays.toString(path));
+    return ccmd;
   }
 }

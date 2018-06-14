@@ -50,13 +50,16 @@ public class EncryptionSetup {
   public EncryptionSetup(Cipher algorithm, byte[] keyBytes, byte[] keyMetadata) throws IOException {
     footerKeyBytes = keyBytes;
     footerKeyMetadata = keyMetadata;
-    uniformEncryption = true;
-    this.algorithmID = algorithm.getParquetEncryptionAlgorithmn();
     if (null != footerKeyBytes) {
       if (! (footerKeyBytes.length == 16 || footerKeyBytes.length == 24 || footerKeyBytes.length == 32)) {
         throw new IOException("Wrong key length " + footerKeyBytes.length);
       }
     }
+    if ((null != footerKeyMetadata) && (footerKeyMetadata.length > 256)) { // TODO 
+      throw new IOException("Footer key meta data is too long: " + footerKeyMetadata.length);
+    }
+    uniformEncryption = true;
+    this.algorithmID = algorithm.getParquetEncryptionAlgorithmn();
     singleKeyEncryption = (null != footerKeyBytes);
     setupProcessed = false;
   }
