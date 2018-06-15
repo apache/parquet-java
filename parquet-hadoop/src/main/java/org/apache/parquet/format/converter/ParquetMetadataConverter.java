@@ -1,5 +1,4 @@
-/* 
- * Licensed to the Apache Software Foundation (ASF) under one
+censed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -885,7 +884,7 @@ public class ParquetMetadataConverter {
   public ParquetMetadata readParquetMetadata(InputStream from) throws IOException {
     return readParquetMetadata(from, NO_FILTER);
   }
-
+  
   // Visible for testing
   static FileMetaData filterFileMetaDataByMidpoint(FileMetaData metaData, RangeMetadataFilter filter) {
     List<RowGroup> rowGroups = metaData.getRow_groups();
@@ -895,6 +894,7 @@ public class ParquetMetadataConverter {
       long startIndex = getOffset(rowGroup.getColumns().get(0));
       for (ColumnChunk col : rowGroup.getColumns()) {
         totalSize += col.getMeta_data().getTotal_compressed_size();
+        // TODO if null.. handle hidden columns
       }
       long midPoint = startIndex + totalSize / 2;
       if (filter.contains(midPoint)) {
@@ -910,6 +910,7 @@ public class ParquetMetadataConverter {
     List<RowGroup> rowGroups = metaData.getRow_groups();
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
     for (RowGroup rowGroup : rowGroups) {
+      // TODO if null .. handle hidden first column
       long startIndex = getOffset(rowGroup.getColumns().get(0));
       if (filter.contains(startIndex)) {
         newRowGroups.add(rowGroup);
@@ -918,19 +919,59 @@ public class ParquetMetadataConverter {
     metaData.setRow_groups(newRowGroups);
     return metaData;
   }
-
+  
+  // Visible for testing
   static long getOffset(RowGroup rowGroup) {
     return getOffset(rowGroup.getColumns().get(0));
   }
+  
   // Visible for testing
-  static long getOffset(ColumnChunk columnChunk) {
+  static long getOffset(ColumnChunk columnChunk)  {
     ColumnMetaData md = columnChunk.getMeta_data();
+    // TODO if null.. handle hidden column
     long offset = md.getData_page_offset();
     if (md.isSetDictionary_page_offset() && offset > md.getDictionary_page_offset()) {
       offset = md.getDictionary_page_offset();
     }
     return offset;
   }
+  
+  private static void decryptColumnMetaData(FileMetaData parquetMetadata, InputStream from, 
+      ParquetFileDecryptor fileDecryptor) throws IOException {
+    if (null == fileDecryptor) return; // Regular (unencrypted) file
+    List<RowGroup> row_groups = parquetMetadata.getRow_groups();
+    //if (null == row_groups) TODO
+    for (RowGroup rowGroup : row_groups) {
+      List<ColumnChunk> columns = rowGroup.getColumns();
+      for (ColumnChunk columnChunk : columns) {
+        if (columnChunk.isSetMeta_data()) continue;
+        if (!columnChunk.isSetCrypto_meta_data()) throw new IOException("Column crypto metadata unavailable");
+        ColumnCryptoMetaData cryptoMetaData = columnChunk.getCrypto_meta_data();
+        fileDecryptor.setColumnCryptoMetadata(cryptoMetaData);
+        List<String> path_list = cryptoMetaData.getPath_in_schema();
+        String[] columnPath = path_list.toArray(new String[path_list.size()]);
+        ColumnDecryptors decryptors = fileDecryptor.getColumnDecryptors(columnPath);
+        if (decryptors.getStatus() != ColumnDecryptors.Status.KEY_UNAVAILABLE) {
+          SeekableInputStream sis = (SeekableInputStream) from; // TODO
+          long currentOffset = sis.getPos();
+          sis.seek(columnChunk.getFile_offset());
+          ColumnMetaData metaData = null;
+          if (decryptors.getStatus() == ColumnDecryptors.Status.PLAINTEXT) {
+            metaData = readColumnMetaData(sis, null);
+          }
+          else {
+            metaData = readColumnMetaData(sis, decryptors.getMetadataDecryptor());
+          }
+          columnChunk.setMeta_data(metaData);
+          sis.seek(currentOffset); //TODO needed?
+        }
+        else {
+          //TODO hidden column
+        }
+      }
+    }
+  }
+  
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter) throws IOException {
     return readParquetMetadata(from, filter, (ParquetFileDecryptor) null);
   }
@@ -941,22 +982,29 @@ public class ParquetMetadataConverter {
     FileMetaData fileMetaData = filter.accept(new MetadataFilterVisitor<FileMetaData, IOException>() {
       @Override
       public FileMetaData visit(NoFilter filter) throws IOException {
-        return readFileMetaData(from, footerDecryptor);
+        FileMetaData fmd = readFileMetaData(from, footerDecryptor);
+        decryptColumnMetaData(fmd, from, fileDecryptor);
+        return fmd;
       }
 
       @Override
       public FileMetaData visit(SkipMetadataFilter filter) throws IOException {
+        // skipped metadata, hence no decryption of column metadata
         return readFileMetaData(from, true, footerDecryptor);
       }
 
       @Override
       public FileMetaData visit(OffsetMetadataFilter filter) throws IOException {
-        return filterFileMetaDataByStart(readFileMetaData(from, footerDecryptor), filter);
+        FileMetaData fmd = readFileMetaData(from, footerDecryptor);
+        decryptColumnMetaData(fmd, from, fileDecryptor);
+        return filterFileMetaDataByStart(fmd, filter);
       }
 
       @Override
       public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
-        return filterFileMetaDataByMidpoint(readFileMetaData(from, footerDecryptor), filter);
+        FileMetaData fmd = readFileMetaData(from, footerDecryptor);
+        decryptColumnMetaData(fmd, from, fileDecryptor);
+        return filterFileMetaDataByMidpoint(fmd, filter);
       }
     });
     LOG.debug("{}", fileMetaData);
@@ -981,37 +1029,12 @@ public class ParquetMetadataConverter {
         blockMetaData.setTotalByteSize(rowGroup.getTotal_byte_size());
         List<ColumnChunk> columns = rowGroup.getColumns();
         String filePath = columns.get(0).getFile_path();
-        String[] columnPath = null;
         for (ColumnChunk columnChunk : columns) {
           if ((filePath == null && columnChunk.getFile_path() != null)
               || (filePath != null && !filePath.equals(columnChunk.getFile_path()))) {
             throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
           }
-          ColumnMetaData metaData = null;
-          if (!columnChunk.isSetCrypto_meta_data()) {
-            metaData = columnChunk.meta_data;
-          }
-          else {
-            if (null == fileDecryptor) throw new IOException("No decryptor available");
-            ColumnCryptoMetaData cryptoMetaData = columnChunk.getCrypto_meta_data();
-            fileDecryptor.setColumnCryptoMetadata(cryptoMetaData);
-            // Decrypt and deserialize ColumnMetaData
-            List<String> path_list = cryptoMetaData.getPath_in_schema();
-            columnPath = path_list.toArray(new String[path_list.size()]);
-            ColumnDecryptors decryptors = fileDecryptor.getColumnDecryptors(columnPath);
-            if (decryptors.getStatus() != ColumnDecryptors.Status.KEY_UNAVAILABLE) {
-              SeekableInputStream sis = (SeekableInputStream) from; // TODO
-              long currentOffset = sis.getPos();
-              sis.seek(columnChunk.getFile_offset());
-              if (decryptors.getStatus() == ColumnDecryptors.Status.PLAINTEXT) {
-                metaData = readColumnMetaData(sis, null);
-              }
-              else {
-                metaData = readColumnMetaData(sis, decryptors.getMetadataDecryptor());
-              }
-              sis.seek(currentOffset); //TODO needed?
-            }
-          }
+          ColumnMetaData metaData = columnChunk.meta_data;
           ColumnChunkMetaData column = null;
           if (null != metaData) { // unencrypted, or successfully decrypted
             ColumnPath path = getPath(metaData);
@@ -1036,6 +1059,8 @@ public class ParquetMetadataConverter {
             
           }
           else { // encrypted column, no key available
+            List<String> path_list = columnChunk.getCrypto_meta_data().getPath_in_schema();
+            String[] columnPath = path_list.toArray(new String[path_list.size()]);
             ColumnPath path = ColumnPath.get(columnPath);
             column = ColumnChunkMetaData.getHiddenColumn(path);
           }
@@ -1275,3 +1300,4 @@ public class ParquetMetadataConverter {
   }
 
 }
+
