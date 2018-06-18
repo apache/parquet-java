@@ -1,4 +1,5 @@
-censed to the Apache Software Foundation (ASF) under one
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -127,7 +128,7 @@ public class ParquetMetadataConverter {
   // an unsynchronized collection in Collections.unmodifiable*(), and making sure to not
   // keep any references to the original collection.
   private static final ConcurrentHashMap<Set<org.apache.parquet.column.Encoding>, Set<org.apache.parquet.column.Encoding>>
-  cachedEncodingSets = new ConcurrentHashMap<Set<org.apache.parquet.column.Encoding>, Set<org.apache.parquet.column.Encoding>>();
+      cachedEncodingSets = new ConcurrentHashMap<Set<org.apache.parquet.column.Encoding>, Set<org.apache.parquet.column.Encoding>>();
 
   public FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
     try {
@@ -246,9 +247,9 @@ public class ParquetMetadataConverter {
     //rowGroup.total_byte_size = ;
     List<ColumnChunkMetaData> columns = block.getColumns();
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
+    boolean encryptColumnMetadata = ((null != fileEncryptor) && !fileEncryptor.isUniformEncryption());
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = null;
-      boolean encryptColumnMetadata = ((null != fileEncryptor) && !fileEncryptor.isUniformEncryption());
       if (!encryptColumnMetadata) {
         columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
         columnChunk.file_path = block.getPath(); // they are in the same file for now
@@ -366,17 +367,17 @@ public class ParquetMetadataConverter {
     EncodingStats.Builder builder = new EncodingStats.Builder();
     for (PageEncodingStats stat : stats) {
       switch (stat.getPage_type()) {
-      case DATA_PAGE_V2:
-        builder.withV2Pages();
-        // falls through
-      case DATA_PAGE:
-        builder.addDataEncoding(
-            getEncoding(stat.getEncoding()), stat.getCount());
-        break;
-      case DICTIONARY_PAGE:
-        builder.addDictEncoding(
-            getEncoding(stat.getEncoding()), stat.getCount());
-        break;
+        case DATA_PAGE_V2:
+          builder.withV2Pages();
+          // falls through
+        case DATA_PAGE:
+          builder.addDataEncoding(
+              getEncoding(stat.getEncoding()), stat.getCount());
+          break;
+        case DICTIONARY_PAGE:
+          builder.addDictEncoding(
+              getEncoding(stat.getEncoding()), stat.getCount());
+          break;
       }
     }
     return builder.build();
@@ -402,11 +403,9 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
-
   public static Statistics toParquetStatistics(
       org.apache.parquet.column.statistics.Statistics stats) {
     Statistics formatStats = new Statistics();
-
     // Don't write stats larger than the max size rather than truncating. The
     // rationale is that some engines may use the minimum value in the page as
     // the true minimum for aggregations and there is no way to mark that a
@@ -417,20 +416,15 @@ public class ParquetMetadataConverter {
         byte[] min = stats.getMinBytes();
         byte[] max = stats.getMaxBytes();
 
-        boolean set_stats = false;
-
         // Fill the former min-max statistics only if the comparison logic is
         // signed so the logic of V1 and V2 stats are the same (which is
         // trivially true for equal min-max values)
         if (sortOrder(stats.type()) == SortOrder.SIGNED || Arrays.equals(min, max)) {
-          set_stats = true;
+          formatStats.setMin(min);
+          formatStats.setMax(max);
         }
 
         if (isMinMaxStatsSupported(stats.type()) || Arrays.equals(min, max)) {
-          set_stats = true;
-        }
-
-        if (set_stats) {
           formatStats.setMin_value(min);
           formatStats.setMax_value(max);
         }
@@ -463,32 +457,29 @@ public class ParquetMetadataConverter {
    */
   @Deprecated
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics
-  (String createdBy, Statistics statistics, PrimitiveTypeName type) {
+      (String createdBy, Statistics statistics, PrimitiveTypeName type) {
     return fromParquetStatisticsInternal(createdBy, statistics,
         new PrimitiveType(Repetition.OPTIONAL, type, "fake_type"), defaultSortOrder(type));
   }
 
   // Visible for testing
   static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal
-  (String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
+      (String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
     // create stats object based on the column type
     org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
         org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
-
+    
     if (formatStats != null) {
       // Use the new V2 min-max statistics over the former one if it is filled
       if (formatStats.isSetMin_value() && formatStats.isSetMax_value()) {
         byte[] min = formatStats.min_value.array();
         byte[] max = formatStats.max_value.array();
-        boolean set_stats = true;
-        if (set_stats) {
-          if (isMinMaxStatsSupported(type) || Arrays.equals(min, max)) {
-            statsBuilder.withMin(min);
-            statsBuilder.withMax(max);
-          }
-          if (formatStats.isSetNull_count()) {
-            statsBuilder.withNumNulls(formatStats.null_count);
-          }
+        if (isMinMaxStatsSupported(type) || Arrays.equals(min, max)) {
+          statsBuilder.withMin(min);
+          statsBuilder.withMax(max);
+        }
+        if (formatStats.isSetNull_count()) {
+          statsBuilder.withNumNulls(formatStats.null_count);
         }
       } else {
         boolean isSet = formatStats.isSetMax() && formatStats.isSetMin();
@@ -502,13 +493,8 @@ public class ParquetMetadataConverter {
         if (!CorruptStatistics.shouldIgnoreStatistics(createdBy, type.getPrimitiveTypeName()) &&
             (sortOrdersMatch || maxEqualsMin)) {
           if (isSet) {
-            byte[] min = formatStats.min.array();
-            byte[] max = formatStats.max.array();
-            boolean set_stats = true;
-            if (set_stats) {
-              statsBuilder.withMin(min);
-              statsBuilder.withMax(max);
-            }
+            statsBuilder.withMin(formatStats.min.array());
+            statsBuilder.withMax(formatStats.max.array());
           }
           if (formatStats.isSetNull_count()) {
             statsBuilder.withNumNulls(formatStats.null_count);
@@ -518,6 +504,7 @@ public class ParquetMetadataConverter {
     }
     return statsBuilder.build();
   }
+
 
   public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       String createdBy, Statistics statistics, PrimitiveType type) {
@@ -545,7 +532,7 @@ public class ParquetMetadataConverter {
   private static final Set<OriginalType> STRING_TYPES = Collections
       .unmodifiableSet(new HashSet<>(Arrays.asList(
           OriginalType.UTF8, OriginalType.ENUM, OriginalType.JSON
-          )));
+      )));
 
   /**
    * Returns whether to use signed order min and max with a type. It is safe to
@@ -573,15 +560,15 @@ public class ParquetMetadataConverter {
    */
   private static SortOrder defaultSortOrder(PrimitiveTypeName primitive) {
     switch (primitive) {
-    case BOOLEAN:
-    case INT32:
-    case INT64:
-    case FLOAT:
-    case DOUBLE:
-      return SortOrder.SIGNED;
-    case BINARY:
-    case FIXED_LEN_BYTE_ARRAY:
-      return SortOrder.UNSIGNED;
+      case BOOLEAN:
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        return SortOrder.SIGNED;
+      case BINARY:
+      case FIXED_LEN_BYTE_ARRAY:
+        return SortOrder.UNSIGNED;
     }
     return SortOrder.UNKNOWN;
   }
@@ -594,31 +581,31 @@ public class ParquetMetadataConverter {
     OriginalType annotation = primitive.getOriginalType();
     if (annotation != null) {
       switch (annotation) {
-      case INT_8:
-      case INT_16:
-      case INT_32:
-      case INT_64:
-      case DATE:
-      case TIME_MICROS:
-      case TIME_MILLIS:
-      case TIMESTAMP_MICROS:
-      case TIMESTAMP_MILLIS:
-        return SortOrder.SIGNED;
-      case UINT_8:
-      case UINT_16:
-      case UINT_32:
-      case UINT_64:
-      case ENUM:
-      case UTF8:
-      case BSON:
-      case JSON:
-        return SortOrder.UNSIGNED;
-      case DECIMAL:
-      case LIST:
-      case MAP:
-      case MAP_KEY_VALUE:
-      case INTERVAL:
-        return SortOrder.UNKNOWN;
+        case INT_8:
+        case INT_16:
+        case INT_32:
+        case INT_64:
+        case DATE:
+        case TIME_MICROS:
+        case TIME_MILLIS:
+        case TIMESTAMP_MICROS:
+        case TIMESTAMP_MILLIS:
+          return SortOrder.SIGNED;
+        case UINT_8:
+        case UINT_16:
+        case UINT_32:
+        case UINT_64:
+        case ENUM:
+        case UTF8:
+        case BSON:
+        case JSON:
+          return SortOrder.UNSIGNED;
+        case DECIMAL:
+        case LIST:
+        case MAP:
+        case MAP_KEY_VALUE:
+        case INTERVAL:
+          return SortOrder.UNKNOWN;
       }
     }
     return defaultSortOrder(primitive.getPrimitiveTypeName());
@@ -626,152 +613,152 @@ public class ParquetMetadataConverter {
 
   public PrimitiveTypeName getPrimitive(Type type) {
     switch (type) {
-    case BYTE_ARRAY: // TODO: rename BINARY and remove this switch
-      return PrimitiveTypeName.BINARY;
-    case INT64:
-      return PrimitiveTypeName.INT64;
-    case INT32:
-      return PrimitiveTypeName.INT32;
-    case BOOLEAN:
-      return PrimitiveTypeName.BOOLEAN;
-    case FLOAT:
-      return PrimitiveTypeName.FLOAT;
-    case DOUBLE:
-      return PrimitiveTypeName.DOUBLE;
-    case INT96:
-      return PrimitiveTypeName.INT96;
-    case FIXED_LEN_BYTE_ARRAY:
-      return PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-    default:
-      throw new RuntimeException("Unknown type " + type);
+      case BYTE_ARRAY: // TODO: rename BINARY and remove this switch
+        return PrimitiveTypeName.BINARY;
+      case INT64:
+        return PrimitiveTypeName.INT64;
+      case INT32:
+        return PrimitiveTypeName.INT32;
+      case BOOLEAN:
+        return PrimitiveTypeName.BOOLEAN;
+      case FLOAT:
+        return PrimitiveTypeName.FLOAT;
+      case DOUBLE:
+        return PrimitiveTypeName.DOUBLE;
+      case INT96:
+        return PrimitiveTypeName.INT96;
+      case FIXED_LEN_BYTE_ARRAY:
+        return PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+      default:
+        throw new RuntimeException("Unknown type " + type);
     }
   }
 
   // Visible for testing
   Type getType(PrimitiveTypeName type) {
     switch (type) {
-    case INT64:
-      return Type.INT64;
-    case INT32:
-      return Type.INT32;
-    case BOOLEAN:
-      return Type.BOOLEAN;
-    case BINARY:
-      return Type.BYTE_ARRAY;
-    case FLOAT:
-      return Type.FLOAT;
-    case DOUBLE:
-      return Type.DOUBLE;
-    case INT96:
-      return Type.INT96;
-    case FIXED_LEN_BYTE_ARRAY:
-      return Type.FIXED_LEN_BYTE_ARRAY;
-    default:
-      throw new RuntimeException("Unknown primitive type " + type);
+      case INT64:
+        return Type.INT64;
+      case INT32:
+        return Type.INT32;
+      case BOOLEAN:
+        return Type.BOOLEAN;
+      case BINARY:
+        return Type.BYTE_ARRAY;
+      case FLOAT:
+        return Type.FLOAT;
+      case DOUBLE:
+        return Type.DOUBLE;
+      case INT96:
+        return Type.INT96;
+      case FIXED_LEN_BYTE_ARRAY:
+        return Type.FIXED_LEN_BYTE_ARRAY;
+      default:
+        throw new RuntimeException("Unknown primitive type " + type);
     }
   }
 
   // Visible for testing
   OriginalType getOriginalType(ConvertedType type) {
     switch (type) {
-    case UTF8:
-      return OriginalType.UTF8;
-    case MAP:
-      return OriginalType.MAP;
-    case MAP_KEY_VALUE:
-      return OriginalType.MAP_KEY_VALUE;
-    case LIST:
-      return OriginalType.LIST;
-    case ENUM:
-      return OriginalType.ENUM;
-    case DECIMAL:
-      return OriginalType.DECIMAL;
-    case DATE:
-      return OriginalType.DATE;
-    case TIME_MILLIS:
-      return OriginalType.TIME_MILLIS;
-    case TIME_MICROS:
-      return OriginalType.TIME_MICROS;
-    case TIMESTAMP_MILLIS:
-      return OriginalType.TIMESTAMP_MILLIS;
-    case TIMESTAMP_MICROS:
-      return OriginalType.TIMESTAMP_MICROS;
-    case INTERVAL:
-      return OriginalType.INTERVAL;
-    case INT_8:
-      return OriginalType.INT_8;
-    case INT_16:
-      return OriginalType.INT_16;
-    case INT_32:
-      return OriginalType.INT_32;
-    case INT_64:
-      return OriginalType.INT_64;
-    case UINT_8:
-      return OriginalType.UINT_8;
-    case UINT_16:
-      return OriginalType.UINT_16;
-    case UINT_32:
-      return OriginalType.UINT_32;
-    case UINT_64:
-      return OriginalType.UINT_64;
-    case JSON:
-      return OriginalType.JSON;
-    case BSON:
-      return OriginalType.BSON;
-    default:
-      throw new RuntimeException("Unknown converted type " + type);
+      case UTF8:
+        return OriginalType.UTF8;
+      case MAP:
+        return OriginalType.MAP;
+      case MAP_KEY_VALUE:
+        return OriginalType.MAP_KEY_VALUE;
+      case LIST:
+        return OriginalType.LIST;
+      case ENUM:
+        return OriginalType.ENUM;
+      case DECIMAL:
+        return OriginalType.DECIMAL;
+      case DATE:
+        return OriginalType.DATE;
+      case TIME_MILLIS:
+        return OriginalType.TIME_MILLIS;
+      case TIME_MICROS:
+        return OriginalType.TIME_MICROS;
+      case TIMESTAMP_MILLIS:
+        return OriginalType.TIMESTAMP_MILLIS;
+      case TIMESTAMP_MICROS:
+        return OriginalType.TIMESTAMP_MICROS;
+      case INTERVAL:
+        return OriginalType.INTERVAL;
+      case INT_8:
+        return OriginalType.INT_8;
+      case INT_16:
+        return OriginalType.INT_16;
+      case INT_32:
+        return OriginalType.INT_32;
+      case INT_64:
+        return OriginalType.INT_64;
+      case UINT_8:
+        return OriginalType.UINT_8;
+      case UINT_16:
+        return OriginalType.UINT_16;
+      case UINT_32:
+        return OriginalType.UINT_32;
+      case UINT_64:
+        return OriginalType.UINT_64;
+      case JSON:
+        return OriginalType.JSON;
+      case BSON:
+        return OriginalType.BSON;
+      default:
+        throw new RuntimeException("Unknown converted type " + type);
     }
   }
 
   // Visible for testing
   ConvertedType getConvertedType(OriginalType type) {
     switch (type) {
-    case UTF8:
-      return ConvertedType.UTF8;
-    case MAP:
-      return ConvertedType.MAP;
-    case MAP_KEY_VALUE:
-      return ConvertedType.MAP_KEY_VALUE;
-    case LIST:
-      return ConvertedType.LIST;
-    case ENUM:
-      return ConvertedType.ENUM;
-    case DECIMAL:
-      return ConvertedType.DECIMAL;
-    case DATE:
-      return ConvertedType.DATE;
-    case TIME_MILLIS:
-      return ConvertedType.TIME_MILLIS;
-    case TIME_MICROS:
-      return ConvertedType.TIME_MICROS;
-    case TIMESTAMP_MILLIS:
-      return ConvertedType.TIMESTAMP_MILLIS;
-    case TIMESTAMP_MICROS:
-      return ConvertedType.TIMESTAMP_MICROS;
-    case INTERVAL:
-      return ConvertedType.INTERVAL;
-    case INT_8:
-      return ConvertedType.INT_8;
-    case INT_16:
-      return ConvertedType.INT_16;
-    case INT_32:
-      return ConvertedType.INT_32;
-    case INT_64:
-      return ConvertedType.INT_64;
-    case UINT_8:
-      return ConvertedType.UINT_8;
-    case UINT_16:
-      return ConvertedType.UINT_16;
-    case UINT_32:
-      return ConvertedType.UINT_32;
-    case UINT_64:
-      return ConvertedType.UINT_64;
-    case JSON:
-      return ConvertedType.JSON;
-    case BSON:
-      return ConvertedType.BSON;
-    default:
-      throw new RuntimeException("Unknown original type " + type);
+      case UTF8:
+        return ConvertedType.UTF8;
+      case MAP:
+        return ConvertedType.MAP;
+      case MAP_KEY_VALUE:
+        return ConvertedType.MAP_KEY_VALUE;
+      case LIST:
+        return ConvertedType.LIST;
+      case ENUM:
+        return ConvertedType.ENUM;
+      case DECIMAL:
+        return ConvertedType.DECIMAL;
+      case DATE:
+        return ConvertedType.DATE;
+      case TIME_MILLIS:
+        return ConvertedType.TIME_MILLIS;
+      case TIME_MICROS:
+        return ConvertedType.TIME_MICROS;
+      case TIMESTAMP_MILLIS:
+        return ConvertedType.TIMESTAMP_MILLIS;
+      case TIMESTAMP_MICROS:
+        return ConvertedType.TIMESTAMP_MICROS;
+      case INTERVAL:
+        return ConvertedType.INTERVAL;
+      case INT_8:
+        return ConvertedType.INT_8;
+      case INT_16:
+        return ConvertedType.INT_16;
+      case INT_32:
+        return ConvertedType.INT_32;
+      case INT_64:
+        return ConvertedType.INT_64;
+      case UINT_8:
+        return ConvertedType.UINT_8;
+      case UINT_16:
+        return ConvertedType.UINT_16;
+      case UINT_32:
+        return ConvertedType.UINT_32;
+      case UINT_64:
+        return ConvertedType.UINT_64;
+      case JSON:
+        return ConvertedType.JSON;
+      case BSON:
+        return ConvertedType.BSON;
+      default:
+        throw new RuntimeException("Unknown original type " + type);
     }
   }
 
@@ -884,7 +871,7 @@ public class ParquetMetadataConverter {
   public ParquetMetadata readParquetMetadata(InputStream from) throws IOException {
     return readParquetMetadata(from, NO_FILTER);
   }
-  
+
   // Visible for testing
   static FileMetaData filterFileMetaDataByMidpoint(FileMetaData metaData, RangeMetadataFilter filter) {
     List<RowGroup> rowGroups = metaData.getRow_groups();
@@ -919,14 +906,14 @@ public class ParquetMetadataConverter {
     metaData.setRow_groups(newRowGroups);
     return metaData;
   }
-  
+
   // Visible for testing
   static long getOffset(RowGroup rowGroup) {
     return getOffset(rowGroup.getColumns().get(0));
   }
-  
+
   // Visible for testing
-  static long getOffset(ColumnChunk columnChunk)  {
+  static long getOffset(ColumnChunk columnChunk) {
     ColumnMetaData md = columnChunk.getMeta_data();
     // TODO if null.. handle hidden column
     long offset = md.getData_page_offset();
@@ -938,7 +925,6 @@ public class ParquetMetadataConverter {
   
   private static void decryptColumnMetaData(FileMetaData parquetMetadata, InputStream from, 
       ParquetFileDecryptor fileDecryptor) throws IOException {
-    if (null == fileDecryptor) return; // Regular (unencrypted) file
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
     //if (null == row_groups) TODO
     for (RowGroup rowGroup : row_groups) {
@@ -983,7 +969,9 @@ public class ParquetMetadataConverter {
       @Override
       public FileMetaData visit(NoFilter filter) throws IOException {
         FileMetaData fmd = readFileMetaData(from, footerDecryptor);
-        decryptColumnMetaData(fmd, from, fileDecryptor);
+        if (null != fileDecryptor) {
+          decryptColumnMetaData(fmd, from, fileDecryptor);
+        }
         return fmd;
       }
 
@@ -996,14 +984,18 @@ public class ParquetMetadataConverter {
       @Override
       public FileMetaData visit(OffsetMetadataFilter filter) throws IOException {
         FileMetaData fmd = readFileMetaData(from, footerDecryptor);
-        decryptColumnMetaData(fmd, from, fileDecryptor);
+        if (null != fileDecryptor) {
+          decryptColumnMetaData(fmd, from, fileDecryptor);
+        }
         return filterFileMetaDataByStart(fmd, filter);
       }
 
       @Override
       public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
         FileMetaData fmd = readFileMetaData(from, footerDecryptor);
-        decryptColumnMetaData(fmd, from, fileDecryptor);
+        if (null != fileDecryptor) {
+          decryptColumnMetaData(fmd, from, fileDecryptor);
+        }
         return filterFileMetaDataByMidpoint(fmd, filter);
       }
     });
@@ -1056,7 +1048,6 @@ public class ParquetMetadataConverter {
             // TODO
             // index_page_offset
             // key_value_metadata
-            
           }
           else { // encrypted column, no key available
             List<String> path_list = columnChunk.getCrypto_meta_data().getPath_in_schema();
@@ -1100,10 +1091,10 @@ public class ParquetMetadataConverter {
   }
 
   private void buildChildren(Types.GroupBuilder builder,
-      Iterator<SchemaElement> schema,
-      int childrenCount,
-      List<ColumnOrder> columnOrders,
-      int columnCount) {
+                             Iterator<SchemaElement> schema,
+                             int childrenCount,
+                             List<ColumnOrder> columnOrders,
+                             int columnCount) {
     for (int i = 0; i < childrenCount; i++) {
       SchemaElement schemaElement = schema.next();
 
@@ -1179,12 +1170,12 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
     writePageHeader(newDataPageHeader(uncompressedSize,
-        compressedSize,
-        valueCount,
-        new org.apache.parquet.column.statistics.BooleanStatistics(),
-        rlEncoding,
-        dlEncoding,
-        valuesEncoding), to);
+                                      compressedSize,
+                                      valueCount,
+                                      new org.apache.parquet.column.statistics.BooleanStatistics(),
+                                      rlEncoding,
+                                      dlEncoding,
+                                      valuesEncoding), to);
   }
 
   public void writeDataPageHeader(
@@ -1300,4 +1291,3 @@ public class ParquetMetadataConverter {
   }
 
 }
-
