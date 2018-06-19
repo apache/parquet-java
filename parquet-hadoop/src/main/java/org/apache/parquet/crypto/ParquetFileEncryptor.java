@@ -170,4 +170,10 @@ public class ParquetFileEncryptor {
     if (null == ccmd) throw new IOException("No encryption metadata for column " + Arrays.toString(path));
     return ccmd;
   }
+
+  public boolean protectColumnMetaData(ColumnCryptoMetaData ccmd) {
+    if (!ccmd.isEncrypted()) return false;
+    if (!encryptFooter) return true;
+    return !ccmd.isEncrypted_with_footer_key();
+  }
 }

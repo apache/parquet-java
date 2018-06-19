@@ -73,7 +73,8 @@ public class DecryptionSetup {
   }
 
   /**
-   * Configure a column decryptor with an explicit column key. If applied on a file that contains key metadata for this column - 
+   * Configure a column decryptor with an explicit column key. If applied on a file that 
+   * contains key metadata for this column - 
    * the metadata will be ignored, the column will be decrypted with the provided explicit key.
    * @param 
    * @throws IOException 
@@ -84,14 +85,11 @@ public class DecryptionSetup {
     if (! (decryptionKey.length == 16 || decryptionKey.length == 24 || decryptionKey.length == 32)) {
       throw new IOException("Wrong key length " + decryptionKey.length);
     }
+    // TODO compare to footer key?
     // TODO if set for this column, throw an exception? or allow to replace
     if (null == columnKeyList) columnKeyList = new ArrayList<ColumnMetadata>();
     ColumnMetadata cmd = new ColumnMetadata(true, columnPath);
-    try {
-      cmd.setEncryptionKey(decryptionKey, null);
-    } catch (IOException e) {
-      // Doesnt happen, since encr = true
-    }
+    cmd.setEncryptionKey(decryptionKey, null);
     columnKeyList.add(cmd);
   }
 

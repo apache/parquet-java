@@ -188,7 +188,8 @@ public class ParquetFileDecryptor {
     }
   }
 
-  public synchronized void setColumnCryptoMetadata(ColumnCryptoMetaData cryptoMetaData) {
+  public synchronized void setColumnCryptoMetadata(ColumnCryptoMetaData cryptoMetaData) throws IOException {
+    if (null ==cryptoMetaData) throw new IOException("null crypto metadata");
     uniformEncryption = false;
     if (null == columnMDList) columnMDList = new ArrayList<ColumnCryptoMetaData>();
     //TODO check re-use
