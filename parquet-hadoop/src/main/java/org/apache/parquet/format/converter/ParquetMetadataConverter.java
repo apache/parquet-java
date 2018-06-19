@@ -247,10 +247,17 @@ public class ParquetMetadataConverter {
     //rowGroup.total_byte_size = ;
     List<ColumnChunkMetaData> columns = block.getColumns();
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
-    boolean encryptColumnMetadata = ((null != fileEncryptor) && !fileEncryptor.isUniformEncryption());
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = null;
-      if (!encryptColumnMetadata) {
+      boolean writeCryptoMetadata = false;
+      ColumnCryptoMetaData ccmd = null;
+      boolean protectMetaData = false;
+      if ((null != fileEncryptor) && !fileEncryptor.isUniformEncryption()) {
+        writeCryptoMetadata = true;
+        ccmd = fileEncryptor.getColumnMetaData(columnMetaData.getPath().toArray());
+        protectMetaData = fileEncryptor.protectColumnMetaData(ccmd);
+      }
+      if (!protectMetaData) {
         columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
         columnChunk.file_path = block.getPath(); // they are in the same file for now
         columnChunk.meta_data = new ColumnMetaData(
@@ -273,10 +280,9 @@ public class ParquetMetadataConverter {
         //      columnChunk.meta_data.key_value_metadata = ; // nothing yet        
       }
       else {
-        // Serialize ColumnMetadata separately, encrypt, and store offset 
+        // Protect ColumnMetadata: serialize separately, encrypt, write, and store the offset 
         columnChunk = new ColumnChunk(out.getPos());  
         columnChunk.file_path = block.getPath(); // they are in the same file for now
-        columnChunk.setCrypto_meta_data(fileEncryptor.getColumnMetaData(columnMetaData.getPath().toArray()));
         ColumnMetaData metaData = new ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
@@ -297,12 +303,10 @@ public class ParquetMetadataConverter {
         //      metaData.key_value_metadata = ; // nothing yet
         ColumnPath path = getPath(metaData);
         ColumnEncryptors encryptors = fileEncryptor.getColumnEncryptors(path.toArray());
-        if (null == encryptors) { // unencrypted column.
-          writeColumnMetaData(metaData, out, null);
-        }
-        else {
-          writeColumnMetaData(metaData, out, encryptors.getMetadataEncryptor());
-        }
+        writeColumnMetaData(metaData, out, encryptors.getMetadataEncryptor());
+      }
+      if (writeCryptoMetadata) {
+        columnChunk.setCrypto_meta_data(ccmd);
       }
       
       parquetColumns.add(columnChunk);
@@ -923,36 +927,31 @@ public class ParquetMetadataConverter {
     return offset;
   }
   
-  private static void decryptColumnMetaData(FileMetaData parquetMetadata, InputStream from, 
+  private static void processCryptoMetaData(FileMetaData parquetMetadata, InputStream from, 
       ParquetFileDecryptor fileDecryptor) throws IOException {
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
     //if (null == row_groups) TODO
     for (RowGroup rowGroup : row_groups) {
       List<ColumnChunk> columns = rowGroup.getColumns();
+      // Column crypto metadata is set only with non-uniform encryption
+      boolean uniformEncryption = !columns.get(0).isSetCrypto_meta_data();
+      if (uniformEncryption) continue; // Or return
+      // Parse crypto metadata, and decrypt metadata
       for (ColumnChunk columnChunk : columns) {
-        if (columnChunk.isSetMeta_data()) continue;
-        if (!columnChunk.isSetCrypto_meta_data()) throw new IOException("Column crypto metadata unavailable");
         ColumnCryptoMetaData cryptoMetaData = columnChunk.getCrypto_meta_data();
         fileDecryptor.setColumnCryptoMetadata(cryptoMetaData);
-        List<String> path_list = cryptoMetaData.getPath_in_schema();
-        String[] columnPath = path_list.toArray(new String[path_list.size()]);
+        if (columnChunk.isSetMeta_data()) continue; // Metadata not encrypted
+        List<String> pathList = cryptoMetaData.getPath_in_schema();
+        String[] columnPath = pathList.toArray(new String[pathList.size()]);
         ColumnDecryptors decryptors = fileDecryptor.getColumnDecryptors(columnPath);
-        if (decryptors.getStatus() != ColumnDecryptors.Status.KEY_UNAVAILABLE) {
+        if (decryptors.getStatus() == ColumnDecryptors.Status.KEY_AVAILABLE) {
           SeekableInputStream sis = (SeekableInputStream) from; // TODO
           long currentOffset = sis.getPos();
           sis.seek(columnChunk.getFile_offset());
           ColumnMetaData metaData = null;
-          if (decryptors.getStatus() == ColumnDecryptors.Status.PLAINTEXT) {
-            metaData = readColumnMetaData(sis, null);
-          }
-          else {
-            metaData = readColumnMetaData(sis, decryptors.getMetadataDecryptor());
-          }
+          metaData = readColumnMetaData(sis, decryptors.getMetadataDecryptor());
           columnChunk.setMeta_data(metaData);
           sis.seek(currentOffset); //TODO needed?
-        }
-        else {
-          //TODO hidden column
         }
       }
     }
@@ -970,7 +969,7 @@ public class ParquetMetadataConverter {
       public FileMetaData visit(NoFilter filter) throws IOException {
         FileMetaData fmd = readFileMetaData(from, footerDecryptor);
         if (null != fileDecryptor) {
-          decryptColumnMetaData(fmd, from, fileDecryptor);
+          processCryptoMetaData(fmd, from, fileDecryptor);
         }
         return fmd;
       }
@@ -985,7 +984,7 @@ public class ParquetMetadataConverter {
       public FileMetaData visit(OffsetMetadataFilter filter) throws IOException {
         FileMetaData fmd = readFileMetaData(from, footerDecryptor);
         if (null != fileDecryptor) {
-          decryptColumnMetaData(fmd, from, fileDecryptor);
+          processCryptoMetaData(fmd, from, fileDecryptor);
         }
         return filterFileMetaDataByStart(fmd, filter);
       }
@@ -994,7 +993,7 @@ public class ParquetMetadataConverter {
       public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
         FileMetaData fmd = readFileMetaData(from, footerDecryptor);
         if (null != fileDecryptor) {
-          decryptColumnMetaData(fmd, from, fileDecryptor);
+          processCryptoMetaData(fmd, from, fileDecryptor);
         }
         return filterFileMetaDataByMidpoint(fmd, filter);
       }
