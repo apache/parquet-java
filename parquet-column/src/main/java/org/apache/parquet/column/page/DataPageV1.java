@@ -50,6 +50,26 @@ public class DataPageV1 extends DataPage {
   }
 
   /**
+   * @param bytes the bytes for this page
+   * @param valueCount count of values in this page
+   * @param uncompressedSize the uncompressed size of the page
+   * @param firstRowIndex the index of the first row in this page
+   * @param statistics of the page's values (max, min, num_null)
+   * @param rlEncoding the repetition level encoding for this page
+   * @param dlEncoding the definition level encoding for this page
+   * @param valuesEncoding the values encoding for this page
+   */
+  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, long firstRowIndex,
+      Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
+    super(Ints.checkedCast(bytes.size()), uncompressedSize, valueCount, firstRowIndex);
+    this.bytes = bytes;
+    this.statistics = statistics;
+    this.rlEncoding = rlEncoding;
+    this.dlEncoding = dlEncoding;
+    this.valuesEncoding = valuesEncoding;
+  }
+
+  /**
    * @return the bytes for the page
    */
   public BytesInput getBytes() {

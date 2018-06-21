@@ -23,6 +23,8 @@ import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTI
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
+import static org.apache.parquet.hadoop.ColumnIndexFilterUtils.calculateConsecutiveParts;
+import static org.apache.parquet.hadoop.ColumnIndexFilterUtils.filterOffsetIndex;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
@@ -51,23 +53,21 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-
+import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.page.DictionaryPageReadStore;
-import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
-import org.apache.parquet.filter2.compat.FilterCompat;
-import org.apache.parquet.filter2.compat.RowGroupFilter;
-
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReadStore;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
+import org.apache.parquet.filter2.compat.FilterCompat;
+import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
@@ -76,20 +76,24 @@ import org.apache.parquet.format.Util;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
+import org.apache.parquet.hadoop.ColumnIndexFilterUtils.ConsecutivePart;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
-import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
+import org.apache.parquet.internal.filter2.columnindex.ColumnIndexStore;
+import org.apache.parquet.internal.filter2.columnindex.RowRanges;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
-import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.yetus.audience.InterfaceAudience.Private;
@@ -788,8 +792,8 @@ public class ParquetFileReader implements Closeable {
     }
     this.currentRowGroup = new ColumnChunkPageReadStore(block.getRowCount());
     // prepare the list of consecutive chunks to read them in one scan
-    List<ConsecutiveChunkList> allChunks = new ArrayList<ConsecutiveChunkList>();
-    ConsecutiveChunkList currentChunks = null;
+    List<ConsecutivePartList> allChunks = new ArrayList<ConsecutivePartList>();
+    ConsecutivePartList currentChunks = null;
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
       BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
@@ -798,18 +802,94 @@ public class ParquetFileReader implements Closeable {
         long startingPos = mc.getStartingPos();
         // first chunk or not consecutive => new list
         if (currentChunks == null || currentChunks.endPos() != startingPos) {
-          currentChunks = new ConsecutiveChunkList(startingPos);
+          currentChunks = new ConsecutivePartList(startingPos);
           allChunks.add(currentChunks);
         }
         currentChunks.addChunk(new ChunkDescriptor(columnDescriptor, mc, startingPos, (int)mc.getTotalSize()));
       }
     }
     // actually read all the chunks
-    for (ConsecutiveChunkList consecutiveChunks : allChunks) {
-      final List<Chunk> chunks = consecutiveChunks.readAll(f);
-      for (Chunk chunk : chunks) {
-        currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
+    ChunkListBuilder builder = new ChunkListBuilder();
+    for (ConsecutivePartList consecutiveChunks : allChunks) {
+      consecutiveChunks.readAll(f, builder);
+    }
+    for (Chunk chunk : builder.build()) {
+      currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
+    }
+
+    // avoid re-reading bytes the dictionary reader is used after this call
+    if (nextDictionaryReader != null) {
+      nextDictionaryReader.setRowGroup(currentRowGroup);
+    }
+
+    advanceToNextBlock();
+
+    return currentRowGroup;
+  }
+
+  /**
+   * Reads all the columns requested from the row group at the current file position. It may skip specific pages based
+   * on the column indexes according to the actual filter. As the rows are not aligned among the pages of the different
+   * columns row synchronization might be required.
+   *
+   * @return the PageReadStore which can provide PageReaders for each column
+   * @throws IOException
+   *           if any I/O error occurs while reading
+   * @see {@link PageReadStore#isRowSynchronizationRequired()}
+   */
+  public PageReadStore readNextFilteredRowGroup() throws IOException {
+    if (!options.useColumnIndexFilter()) {
+      return readNextRowGroup();
+    }
+    BlockMetaData block = blocks.get(currentBlock);
+    if (block.getRowCount() == 0) {
+      throw new RuntimeException("Illegal row group of 0 rows");
+    }
+    ColumnIndexStore ciStore = new ColumnIndexStoreImpl(this, block, paths.keySet());
+    RowRanges rowRanges = ColumnIndexFilter.calculateRowRanges(options.getRecordFilter(), ciStore, paths.keySet(),
+        block.getRowCount());
+    // TODO[GS]: Handle 0 rows (all pages dropped) separately
+    // TODO[GS]: Handle max rows (no pages dropped) separately
+
+    this.currentRowGroup = new ColumnChunkPageReadStore(rowRanges);
+    // prepare the list of consecutive parts to read them in one scan
+    ChunkListBuilder builder = new ChunkListBuilder();
+    List<ConsecutivePartList> allParts = new ArrayList<ConsecutivePartList>();
+    ConsecutivePartList currentParts = null;
+    for (ColumnChunkMetaData mc : block.getColumns()) {
+      ColumnPath pathKey = mc.getPath();
+      ColumnDescriptor columnDescriptor = paths.get(pathKey);
+      if (columnDescriptor != null) {
+        OffsetIndex offsetIndex = ciStore.getOffsetIndex(mc.getPath());
+
+        // TODO[GS]: This check will not be required; filter shall return all rows and this case is handled before this
+        // point
+        if (offsetIndex == null)
+          return readNextRowGroup();
+
+        OffsetIndex filteredOffsetIndex = filterOffsetIndex(offsetIndex, rowRanges,
+            block.getRowCount());
+        for (ConsecutivePart part : calculateConsecutiveParts(filteredOffsetIndex, mc, offsetIndex.getOffset(0))) {
+          BenchmarkCounter.incrementTotalBytes(part.getLength());
+          long startingPos = part.getOffset();
+          // first part or not consecutive => new list
+          if (currentParts == null || currentParts.endPos() != startingPos) {
+            currentParts = new ConsecutivePartList(startingPos);
+            allParts.add(currentParts);
+          }
+          ChunkDescriptor chunkDescriptor = new ChunkDescriptor(columnDescriptor, mc, startingPos,
+              (int) part.getLength());
+          currentParts.addChunk(chunkDescriptor);
+          builder.setOffsetIndex(chunkDescriptor, filteredOffsetIndex);
+        }
       }
+    }
+    // actually read all the chunks
+    for (ConsecutivePartList consecutiveChunks : allParts) {
+      consecutiveChunks.readAll(f, builder);
+    }
+    for (Chunk chunk : builder.build()) {
+      currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
     }
 
     // avoid re-reading bytes the dictionary reader is used after this call
@@ -952,6 +1032,57 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
+  /*
+   * Builder to concatenate the buffers of the discontinuous parts for the same column. These parts are generated as a
+   * result of the column-index based filtering when some pages might be skipped at reading.
+   */
+  private class ChunkListBuilder {
+    private class ChunkData {
+      final List<ByteBuffer> buffers = new ArrayList<>();
+      OffsetIndex offsetIndex;
+    }
+
+    private final Map<ChunkDescriptor, ChunkData> map = new HashMap<>();
+    private ChunkDescriptor lastDescriptor;
+    private SeekableInputStream f;
+
+    void add(ChunkDescriptor descriptor, List<ByteBuffer> buffers, SeekableInputStream f) {
+      ChunkData data = map.get(descriptor);
+      if (data == null) {
+        data = new ChunkData();
+        map.put(descriptor, data);
+      }
+      data.buffers.addAll(buffers);
+
+      lastDescriptor = descriptor;
+      this.f = f;
+    }
+
+    void setOffsetIndex(ChunkDescriptor descriptor, OffsetIndex offsetIndex) {
+      ChunkData data = map.get(descriptor);
+      if (data == null) {
+        data = new ChunkData();
+        map.put(descriptor, data);
+      }
+      data.offsetIndex = offsetIndex;
+    }
+
+    List<Chunk> build() {
+      List<Chunk> chunks = new ArrayList<>();
+      for (Entry<ChunkDescriptor, ChunkData> entry : map.entrySet()) {
+        ChunkDescriptor descriptor = entry.getKey();
+        ChunkData data = entry.getValue();
+        if (descriptor.equals(lastDescriptor)) {
+          // because of a bug, the last chunk might be larger than descriptor.size
+          chunks.add(new WorkaroundChunk(lastDescriptor, data.buffers, f, data.offsetIndex));
+        } else {
+          chunks.add(new Chunk(descriptor, data.buffers, data.offsetIndex));
+        }
+      }
+      return chunks;
+    }
+  }
+
   /**
    * The data for a column chunk
    */
@@ -959,15 +1090,17 @@ public class ParquetFileReader implements Closeable {
 
     protected final ChunkDescriptor descriptor;
     protected final ByteBufferInputStream stream;
+    final OffsetIndex offsetIndex;
 
     /**
-     *
      * @param descriptor descriptor for the chunk
      * @param buffers ByteBuffers that contain the chunk
+     * @param offsetIndex the offset index for this column; might be null
      */
-    public Chunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers) {
+    public Chunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers, OffsetIndex offsetIndex) {
       this.descriptor = descriptor;
       this.stream = ByteBufferInputStream.wrap(buffers);
+      this.offsetIndex = offsetIndex;
     }
 
     protected PageHeader readPageHeader() throws IOException {
@@ -984,7 +1117,9 @@ public class ParquetFileReader implements Closeable {
       PrimitiveType type = getFileMetaData().getSchema()
           .getType(descriptor.col.getPath()).asPrimitiveType();
       long valuesCountReadSoFar = 0;
-      while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
+      int dataPageCountReadSoFar = 0;
+      while (valuesCountReadSoFar < descriptor.metadata.getValueCount()
+          || (offsetIndex != null && offsetIndex.getPageCount() < dataPageCountReadSoFar)) {
         PageHeader pageHeader = readPageHeader();
         int uncompressedPageSize = pageHeader.getUncompressed_page_size();
         int compressedPageSize = pageHeader.getCompressed_page_size();
@@ -994,8 +1129,8 @@ public class ParquetFileReader implements Closeable {
             if (dictionaryPage != null) {
               throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
             }
-          DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
-          dictionaryPage =
+            DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
+            dictionaryPage =
                 new DictionaryPage(
                     this.readAsBytesInput(compressedPageSize),
                     uncompressedPageSize,
@@ -1019,6 +1154,7 @@ public class ParquetFileReader implements Closeable {
                     converter.getEncoding(dataHeaderV1.getEncoding())
                     ));
             valuesCountReadSoFar += dataHeaderV1.getNum_values();
+            ++dataPageCountReadSoFar;
             break;
           case DATA_PAGE_V2:
             DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
@@ -1040,6 +1176,7 @@ public class ParquetFileReader implements Closeable {
                     dataHeaderV2.isIs_compressed()
                     ));
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
+            ++dataPageCountReadSoFar;
             break;
           default:
             LOG.debug("skipping page of type {} of size {}", pageHeader.getType(), compressedPageSize);
@@ -1047,7 +1184,7 @@ public class ParquetFileReader implements Closeable {
             break;
         }
       }
-      if (valuesCountReadSoFar != descriptor.metadata.getValueCount()) {
+      if (offsetIndex == null && valuesCountReadSoFar != descriptor.metadata.getValueCount()) {
         // Would be nice to have a CorruptParquetFileException or something as a subclass?
         throw new IOException(
             "Expected " + descriptor.metadata.getValueCount() + " values in column chunk at " +
@@ -1056,7 +1193,7 @@ public class ParquetFileReader implements Closeable {
             + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
-      return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage);
+      return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex);
     }
 
     /**
@@ -1081,8 +1218,8 @@ public class ParquetFileReader implements Closeable {
      * @param descriptor the descriptor of the chunk
      * @param f the file stream positioned at the end of this chunk
      */
-    private WorkaroundChunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers, SeekableInputStream f) {
-      super(descriptor, buffers);
+    private WorkaroundChunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers, SeekableInputStream f, OffsetIndex offsetIndex) {
+      super(descriptor, buffers, offsetIndex);
       this.f = f;
     }
 
@@ -1131,7 +1268,7 @@ public class ParquetFileReader implements Closeable {
 
 
   /**
-   * information needed to read a column chunk
+   * Information needed to read a column chunk or a part of it.
    */
   private static class ChunkDescriptor {
 
@@ -1157,12 +1294,29 @@ public class ParquetFileReader implements Closeable {
       this.fileOffset = fileOffset;
       this.size = size;
     }
+
+    @Override
+    public int hashCode() {
+      return col.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      } else if (obj instanceof ChunkDescriptor) {
+        return col.equals(((ChunkDescriptor) obj).col);
+      } else {
+        return false;
+      }
+    }
   }
 
   /**
-   * describes a list of consecutive column chunks to be read at once.
+   * Describes a list of consecutive parts to be read at once. A consecutive part may contain whole column chunks or
+   * only parts of them (some pages).
    */
-  private class ConsecutiveChunkList {
+  private class ConsecutivePartList {
 
     private final long offset;
     private int length;
@@ -1171,7 +1325,7 @@ public class ParquetFileReader implements Closeable {
     /**
      * @param offset where the first chunk starts
      */
-    ConsecutiveChunkList(long offset) {
+    ConsecutivePartList(long offset) {
       this.offset = offset;
     }
 
@@ -1187,11 +1341,10 @@ public class ParquetFileReader implements Closeable {
 
     /**
      * @param f file to read the chunks from
-     * @return the chunks
+     * @param builder used to build chunk list to read the pages for the different columns
      * @throws IOException if there is an error while reading from the stream
      */
-    public List<Chunk> readAll(SeekableInputStream f) throws IOException {
-      List<Chunk> result = new ArrayList<Chunk>(chunks.size());
+    public void readAll(SeekableInputStream f, ChunkListBuilder builder) throws IOException {
       f.seek(offset);
 
       int fullAllocations = length / options.getMaxAllocationSize();
@@ -1218,14 +1371,8 @@ public class ParquetFileReader implements Closeable {
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
       for (int i = 0; i < chunks.size(); i++) {
         ChunkDescriptor descriptor = chunks.get(i);
-        if (i < chunks.size() - 1) {
-          result.add(new Chunk(descriptor, stream.sliceBuffers(descriptor.size)));
-        } else {
-          // because of a bug, the last chunk might be larger than descriptor.size
-          result.add(new WorkaroundChunk(descriptor, stream.sliceBuffers(descriptor.size), f));
-        }
+        builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
       }
-      return result ;
     }
 
     /**

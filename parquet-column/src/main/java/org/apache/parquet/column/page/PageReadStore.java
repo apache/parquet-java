@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.page;
 
+import java.util.PrimitiveIterator;
 import org.apache.parquet.column.ColumnDescriptor;
 
 /**
@@ -40,4 +41,26 @@ public interface PageReadStore {
    */
   long getRowCount();
 
+  /**
+   * Returns the indexes of the rows to be read/built. All the rows which index is not returned shall be skipped.
+   *
+   * @return the incremental iterator of the row indexes
+   * @throws IllegalStateException
+   *           if no row synchronization is required
+   * @see #isRowSynchronizationRequired()
+   */
+  default PrimitiveIterator.OfLong getRowIndexes() {
+    throw new IllegalStateException("Row synchronization is not required; row indexes are not available");
+  }
+
+  /**
+   * If row synchronization is required then some values might have to be skipped to get the rows in synch between the
+   * pages.
+   *
+   * @return {@code true} if row synchronization is required; {@code false} otherwise
+   * @see DataPage#getFirstRowIndex()
+   */
+  default boolean isRowSynchronizationRequired() {
+    return false;
+  }
 }

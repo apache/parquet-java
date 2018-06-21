@@ -124,7 +124,7 @@ class InternalParquetRecordReader<T> {
 
       LOG.info("at row " + current + ". reading next block");
       long t0 = System.currentTimeMillis();
-      PageReadStore pages = reader.readNextRowGroup();
+      PageReadStore pages = reader.readNextFilteredRowGroup();
       if (pages == null) {
         throw new IOException("expecting more rows but reached last block. Read " + current + " out of " + total);
       }

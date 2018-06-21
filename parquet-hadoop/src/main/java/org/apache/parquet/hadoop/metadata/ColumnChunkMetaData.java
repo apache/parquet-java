@@ -189,9 +189,7 @@ abstract public class ColumnChunkMetaData {
   /**
    *
    * @return column identifier
-   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
-  @Deprecated
   public ColumnPath getPath() {
     return properties.getPath();
   }

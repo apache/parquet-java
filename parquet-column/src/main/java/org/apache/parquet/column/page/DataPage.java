@@ -18,16 +18,27 @@
  */
 package org.apache.parquet.column.page;
 
+import org.apache.parquet.Preconditions;
+
 /**
  * one data page in a chunk
  */
 abstract public class DataPage extends Page {
 
   private final int valueCount;
+  private final long firstRowIndex;
 
   DataPage(int compressedSize, int uncompressedSize, int valueCount) {
     super(compressedSize, uncompressedSize);
     this.valueCount = valueCount;
+    this.firstRowIndex = -1;
+  }
+
+  DataPage(int compressedSize, int uncompressedSize, int valueCount, long firstRowIndex) {
+    super(compressedSize, uncompressedSize);
+    Preconditions.checkArgument(firstRowIndex >= 0, "First row index {} should be non-negative", firstRowIndex);
+    this.valueCount = valueCount;
+    this.firstRowIndex = firstRowIndex;
   }
 
   /**
@@ -35,6 +46,20 @@ abstract public class DataPage extends Page {
    */
   public int getValueCount() {
     return valueCount;
+  }
+
+  /**
+   * @return the index of the first row in this page
+   * @throws IllegalStateException
+   *           if no row synchronization is required
+   * @see PageReadStore#isRowSynchronizationRequired()
+   */
+  public long getFirstRowIndex() {
+    if (firstRowIndex < 0) {
+      throw new IllegalStateException(
+          "No row synchronization is required; all pages shall be read.");
+    }
+    return firstRowIndex;
   }
 
   public abstract <T> T accept(Visitor<T> visitor);
