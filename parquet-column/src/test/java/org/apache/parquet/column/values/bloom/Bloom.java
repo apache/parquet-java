@@ -145,7 +145,7 @@ public class Bloom {
    */
   private Bloom(byte[] bitset, HashStrategy hashStrategy, Algorithm algorithm) {
     this.bitset = bitset;
-    this.intBuffer = ByteBuffer.wrap(bitset).asIntBuffer();
+    this.intBuffer = ByteBuffer.wrap(bitset).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
 
     switch (hashStrategy) {
       case MURMUR3_X64_128:
@@ -177,7 +177,7 @@ public class Bloom {
     }
 
     this.bitset = new byte[numBytes];
-    this.intBuffer = ByteBuffer.wrap(bitset).order(ByteOrder.BIG_ENDIAN).asIntBuffer();
+    this.intBuffer = ByteBuffer.wrap(bitset).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
   }
 
   /**
