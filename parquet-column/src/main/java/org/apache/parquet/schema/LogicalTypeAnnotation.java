@@ -37,7 +37,7 @@ public abstract class LogicalTypeAnnotation {
         return listType();
       }
     },
-    UTF8 {
+    STRING {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return stringType();
@@ -88,7 +88,7 @@ public abstract class LogicalTypeAnnotation {
         return timestampType(Boolean.parseBoolean(params.get(1)), TimeUnit.valueOf(params.get(0)));
       }
     },
-    INT {
+    INTEGER {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         if (params.size() != 2) {
@@ -273,7 +273,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     LogicalTypeToken getType() {
-      return LogicalTypeToken.UTF8;
+      return LogicalTypeToken.STRING;
     }
 
     @Override
@@ -646,7 +646,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     LogicalTypeToken getType() {
-      return LogicalTypeToken.INT;
+      return LogicalTypeToken.INTEGER;
     }
 
     @Override

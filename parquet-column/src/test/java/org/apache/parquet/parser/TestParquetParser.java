@@ -47,7 +47,7 @@ import org.apache.parquet.schema.Types.MessageTypeBuilder;
 
 public class TestParquetParser {
   @Test
-  public void testPaperExample() throws Exception {
+  public void testPaperExample() {
     String example =
         "message Document {\n" +
         "  required int64 DocId;\n" +
@@ -122,7 +122,7 @@ public class TestParquetParser {
   public void testUTF8Annotation() {
     String message =
         "message StringMessage {\n" +
-        "  required binary string (UTF8);\n" +
+        "  required binary string (STRING);\n" +
         "}\n";
 
     MessageType parsed = parseMessageType(message);
@@ -139,7 +139,7 @@ public class TestParquetParser {
   public void testIDs() {
     String message =
         "message Message {\n" +
-        "  required binary string (UTF8) = 6;\n" +
+        "  required binary string (STRING) = 6;\n" +
         "  required int32 i=1;\n" +
         "  required binary s2= 3;\n" +
         "  required binary s3 =4;\n" +
@@ -165,7 +165,7 @@ public class TestParquetParser {
         "message Message {\n" +
         "  optional group aMap (MAP) {\n" +
         "    repeated group map (MAP_KEY_VALUE) {\n" +
-        "      required binary key (UTF8);\n" +
+        "      required binary key (STRING);\n" +
         "      required int32 value;\n" +
         "    }\n" +
         "  }\n" +
@@ -192,7 +192,7 @@ public class TestParquetParser {
     String message =
         "message Message {\n" +
         "  required group aList (LIST) {\n" +
-        "    repeated binary string (UTF8);\n" +
+        "    repeated binary string (STRING);\n" +
         "  }\n" +
         "}\n";
 
@@ -304,14 +304,14 @@ public class TestParquetParser {
   @Test
   public void testIntegerAnnotations() {
     String message = "message IntMessage {" +
-      "  required int32 i8 (INT(8,true));" +
-      "  required int32 i16 (INT(16,true));" +
-      "  required int32 i32 (INT(32,true));" +
-      "  required int64 i64 (INT(64,true));" +
-      "  required int32 u8 (INT(8,false));" +
-      "  required int32 u16 (INT(16,false));" +
-      "  required int32 u32 (INT(32,false));" +
-      "  required int64 u64 (INT(64,false));" +
+      "  required int32 i8 (INTEGER(8,true));" +
+      "  required int32 i16 (INTEGER(16,true));" +
+      "  required int32 i32 (INTEGER(32,true));" +
+      "  required int64 i64 (INTEGER(64,true));" +
+      "  required int32 u8 (INTEGER(8,false));" +
+      "  required int32 u16 (INTEGER(16,false));" +
+      "  required int32 u32 (INTEGER(32,false));" +
+      "  required int64 u64 (INTEGER(64,false));" +
       "}\n";
 
     MessageType parsed = MessageTypeParser.parseMessageType(message);
