@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import org.apache.parquet.io.api.Binary;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 
@@ -178,7 +179,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   };
 
-  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> {
+  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> implements Serializable {
     @Override
     int compareNotNulls(Binary o1, Binary o2) {
       return compare(o1.toByteBuffer(), o2.toByteBuffer());
