@@ -28,8 +28,9 @@ import java.util.Comparator;
  * {@link Comparator} implementation that also supports the comparison of the related primitive type to avoid the
  * performance penalty of boxing/unboxing. The {@code compare} methods for the not supported primitive types throw
  * {@link UnsupportedOperationException}.
+ * {@link Serializable} implementation that may be a UserDefinedPredicate defined this Comparator is their member variable.
  */
-public abstract class PrimitiveComparator<T> implements Comparator<T> {
+public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializable {
 
   public int compare(boolean b1, boolean b2) {
     throw new UnsupportedOperationException(
@@ -179,7 +180,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
     }
   };
 
-  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> implements Serializable {
+  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> {
     @Override
     int compareNotNulls(Binary o1, Binary o2) {
       return compare(o1.toByteBuffer(), o2.toByteBuffer());
