@@ -31,6 +31,16 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static org.apache.parquet.schema.Type.Repetition.*;
 
 public class TestTypeBuilders {
+
+  @Test
+  public void testTypeEquals() {
+    PrimitiveType type1 = Types.required(INT32).named("type");
+    PrimitiveType type2 = Types.required(INT32).named("type");
+    PrimitiveType type3 = null;
+    Assert.assertTrue(type1.equals(type2));
+    Assert.assertFalse(type1.equals(type3));
+  }
+
   @Test
   public void testPaperExample() {
     MessageType expected =

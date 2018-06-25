@@ -283,7 +283,7 @@ abstract public class Type {
 
   @Override
   public boolean equals(Object other) {
-    if (!(other instanceof Type) || other == null) {
+    if (other == null || !(other instanceof Type)) {
       return false;
     }
     return equals((Type)other);

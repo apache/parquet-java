@@ -611,7 +611,7 @@ public final class PrimitiveType extends Type {
    */
   @Override
   protected boolean equals(Type other) {
-    if (!other.isPrimitive()) {
+    if (other == null || !other.isPrimitive()) {
       return false;
     }
     PrimitiveType otherPrimitive = other.asPrimitiveType();
