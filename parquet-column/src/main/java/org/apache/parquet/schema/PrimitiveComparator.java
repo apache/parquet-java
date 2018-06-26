@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import org.apache.parquet.io.api.Binary;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 
@@ -27,8 +28,9 @@ import java.util.Comparator;
  * {@link Comparator} implementation that also supports the comparison of the related primitive type to avoid the
  * performance penalty of boxing/unboxing. The {@code compare} methods for the not supported primitive types throw
  * {@link UnsupportedOperationException}.
+ * {@link Serializable} implementation that may be a UserDefinedPredicate defined this Comparator is their member variable.
  */
-public abstract class PrimitiveComparator<T> implements Comparator<T> {
+public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializable {
 
   public int compare(boolean b1, boolean b2) {
     throw new UnsupportedOperationException(
