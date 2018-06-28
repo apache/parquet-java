@@ -66,12 +66,14 @@ public class TestBloom {
 
   @Test
   public void testBinaryBloom() throws IOException {
+    int totalCount = 100000;
+    double fpp = 0.01;
     final long SEED = 104729;
-    Bloom binaryBloom = new Bloom(Bloom.optimalNumOfBits(100000, 0.01));
 
+    Bloom binaryBloom = new Bloom(Bloom.optimalNumOfBits(totalCount, fpp));
     List<String> strings = new ArrayList<>();
     RandomStr randomStr = new RandomStr(new Random(SEED));
-    for(int i = 0; i < 100000; i++) {
+    for(int i = 0; i < totalCount; i++) {
       String str = randomStr.get(10);
       strings.add(str);
       binaryBloom.insert(binaryBloom.hash(Binary.fromString(str)));
@@ -98,7 +100,7 @@ public class TestBloom {
 
     // exist can be true at probability 0.01.
     int exist = 0;
-    for (int i = 0; i < 100000; i++) {
+    for (int i = 0; i < totalCount; i++) {
       String str = randomStr.get(8);
       if (binaryBloom.find(binaryBloom.hash(Binary.fromString(str)))) {
         exist ++;
@@ -106,6 +108,6 @@ public class TestBloom {
     }
 
     // exist should be probably less than 1000 according default FPP 0.01.
-    assertTrue(exist < 1200);
+    assertTrue(exist < totalCount*fpp);
   }
 }

@@ -54,19 +54,13 @@ public class Bloom {
     BLOCK,
   }
 
-  /**
-   * Default false positive probability value use to calculate optimal number of bits
-   * used by bloom filter.
-   */
-  public final double DEFAULT_FPP = 0.01;
-
   // Bloom filter data header, including number of bytes, hash strategy and algorithm.
   public static final int HEADER_SIZE = 12;
 
   // Bytes in a tiny bloom filter block.
   public static final int BYTES_PER_FILTER_BLOCK = 32;
 
-  // Default seed for hash function
+  // Default seed for hash function, it comes from Murmur3 from Hive.
   public static final int DEFAULT_SEED = 104729;
 
   // Hash strategy used in this bloom filter.
@@ -222,7 +216,7 @@ public class Bloom {
    * the hash value of its plain encoding result.
    * @param hash the hash result of element.
    */
-  private void addElement(long hash) {
+  public void insert(long hash) {
     int bucketIndex = (int)(hash >> 32) & (bitset.length / BYTES_PER_FILTER_BLOCK - 1);
     int key = (int)hash;
 
@@ -241,7 +235,7 @@ public class Bloom {
    * @param hash the hash value of element plain encoding result.
    * @return false if element is must not in set, true if element probably in set.
    */
-  private boolean contains(long hash) {
+  public boolean find(long hash) {
     int bucketIndex = (int)(hash >> 32) & (bitset.length / BYTES_PER_FILTER_BLOCK - 1);
     int key = (int)hash;
 
@@ -348,22 +342,5 @@ public class Bloom {
    */
   public long hash(Binary value) {
       return hashFunction.hashBytes(value.toByteBuffer()).asLong();
-  }
-
-  /**
-   * Insert element to set represented by bloom bitset.
-   * @param hash the hash of value to insert into bloom filter..
-   */
-  public void insert(long hash) {
-      addElement(hash);
-  }
-
-  /**
-   * Determine whether an element exist in set or not.
-   * @param hash the element to contain.
-   * @return false if value is definitely not in set, and true means PROBABLY in set.
-   */
-  public boolean find(long hash) {
-    return contains(hash);
   }
 }
