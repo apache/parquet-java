@@ -7,8 +7,7 @@ machine:
   java:
     version: oraclejdk8
   post:
-  - git clone -b develop git@github.com:RMS/rms-one-deployment.git ~/rms-one-deployment
-  - /home/ubuntu/rms-one-deployment/scripts/ci-setup azure
+  - /home/ubuntu/rms-one-deployment/scripts/ci-unlock
 test:
   override:
   - echo "tests complete."
