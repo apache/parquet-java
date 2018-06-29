@@ -514,7 +514,11 @@ public class Types {
         }
       }
 
-      return new PrimitiveType(repetition, primitiveType, length, name, getOriginalType(), meta, id, columnOrder);
+      if (newLogicalTypeSet) {
+        return new PrimitiveType(repetition, primitiveType, length, name, logicalTypeAnnotation, id, columnOrder);
+      } else {
+        return new PrimitiveType(repetition, primitiveType, length, name, getOriginalType(), meta, id, columnOrder);
+      }
     }
 
     private static long maxPrecision(int numBytes) {
@@ -702,7 +706,11 @@ public class Types {
 
     @Override
     protected GroupType build(String name) {
-      return new GroupType(repetition, name, getOriginalType(), fields, id);
+      if (newLogicalTypeSet) {
+        return new GroupType(repetition, name, logicalTypeAnnotation, fields, id);
+      } else {
+        return new GroupType(repetition, name, getOriginalType(), fields, id);
+      }
     }
 
     public MapBuilder<THIS> map(

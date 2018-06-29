@@ -1423,6 +1423,32 @@ public class TestTypeBuilders {
     Assert.assertEquals(expected, actual);
   }
 
+  @Test
+  public void testTimestampLogicalTypeWithUTCParameter() {
+    PrimitiveType utcMillisExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
+      LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS));
+    PrimitiveType nonUtcMillisExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
+      LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MILLIS));
+    PrimitiveType utcMicrosExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
+      LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS));
+    PrimitiveType nonUtcMicrosExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
+      LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MICROS));
+
+    PrimitiveType utcMillisActual = Types.required(INT64)
+      .as(LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS)).named("aTimestamp");
+    PrimitiveType nonUtcMillisActual = Types.required(INT64)
+      .as(LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MILLIS)).named("aTimestamp");
+    PrimitiveType utcMicrosActual = Types.required(INT64)
+      .as(LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS)).named("aTimestamp");
+    PrimitiveType nonUtcMicrosActual = Types.required(INT64)
+      .as(LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MICROS)).named("aTimestamp");
+
+    Assert.assertEquals(utcMillisExpected, utcMillisActual);
+    Assert.assertEquals(nonUtcMillisExpected, nonUtcMillisActual);
+    Assert.assertEquals(utcMicrosExpected, utcMicrosActual);
+    Assert.assertEquals(nonUtcMicrosExpected, nonUtcMicrosActual);
+  }
+
   @Test(expected = IllegalArgumentException.class)
   public void testDecimalLogicalTypeWithDeprecatedScaleMismatch() {
     Types.required(BINARY)
