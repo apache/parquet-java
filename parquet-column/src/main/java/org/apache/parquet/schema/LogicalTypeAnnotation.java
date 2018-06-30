@@ -65,7 +65,7 @@ public abstract class LogicalTypeAnnotation {
         if (params.size() != 2) {
           throw new RuntimeException("Expecting 2 parameters for decimal logical type, got " + params.size());
         }
-        return decimalType(Integer.valueOf(params.get(1)), Integer.valueOf(params.get(0)));
+        return decimalType(Integer.parseInt(params.get(1)), Integer.parseInt(params.get(0)));
       }
     },
     DATE {
@@ -98,7 +98,7 @@ public abstract class LogicalTypeAnnotation {
         if (params.size() != 2) {
           throw new RuntimeException("Expecting 2 parameters for integer logical type, got " + params.size());
         }
-        return intType(Integer.valueOf(params.get(0)), Boolean.parseBoolean(params.get(1)));
+        return intType(Integer.parseInt(params.get(0)), Boolean.parseBoolean(params.get(1)));
       }
     },
     JSON {
