@@ -617,7 +617,9 @@ public class TestParquetMetadataConverter {
         StatsHelper.V1.toParquetStatistics(stats),
         binaryType);
 
-    Assert.assertTrue("Stats should be empty: " + convertedStats, convertedStats.isEmpty());
+    Assert.assertFalse("Stats should not include min/max: " + convertedStats, convertedStats.hasNonNullValue());
+    Assert.assertTrue("Stats should have null count: " + convertedStats, convertedStats.isNumNullsSet());
+    Assert.assertEquals("Stats should have 3 nulls: " + convertedStats, 3L, convertedStats.getNumNulls());
   }
 
   @Test
