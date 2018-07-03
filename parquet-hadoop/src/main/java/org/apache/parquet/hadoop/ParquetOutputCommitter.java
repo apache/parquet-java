@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -47,11 +47,31 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
   public void commitJob(JobContext jobContext) throws IOException {
     super.commitJob(jobContext);
     Configuration configuration = ContextUtil.getConfiguration(jobContext);
-    writeMetaDataFile(configuration,outputPath);
+    boolean propagateErrors = ParquetOutputFormat.getJobSummaryPropagateErrors(configuration);
+    if (propagateErrors) {
+      writeMetaDataFilePropagateErrors(configuration, outputPath);
+    } else {
+      writeMetaDataFile(configuration, outputPath);
+    }
   }
 
-  // TODO: This method should propagate errors, and we should clean up
-  // TODO: all the catching of Exceptions below -- see PARQUET-383
+  public static void writeMetaDataFilePropagateErrors(Configuration configuration, Path outputPath) throws IOException {
+    JobSummaryLevel level = ParquetOutputFormat.getJobSummaryLevel(configuration);
+    if (level == JobSummaryLevel.NONE) {
+      return;
+    }
+
+    List<Footer> footers = getFooters(configuration, outputPath, level);
+
+    // If there are no footers, _metadata file cannot be written since there is no way to determine schema!
+    // Onus of writing any summary files lies with the caller in this case.
+    if (footers.isEmpty()) {
+      return;
+    }
+
+    ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers, level);
+  }
+
   public static void writeMetaDataFile(Configuration configuration, Path outputPath) {
     JobSummaryLevel level = ParquetOutputFormat.getJobSummaryLevel(configuration);
     if (level == JobSummaryLevel.NONE) {
@@ -60,19 +80,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
 
     try {
       final FileSystem fileSystem = outputPath.getFileSystem(configuration);
-      FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
-      List<Footer> footers;
-
-      switch (level) {
-        case ALL:
-          footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, false); // don't skip row groups
-          break;
-        case COMMON_ONLY:
-          footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, true); // skip row groups
-          break;
-        default:
-          throw new IllegalArgumentException("Unrecognized job summary level: " + level);
-      }
+      List<Footer> footers = getFooters(configuration, outputPath, level);
 
       // If there are no footers, _metadata file cannot be written since there is no way to determine schema!
       // Onus of writing any summary files lies with the caller in this case.
@@ -108,5 +116,23 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
     } catch (Exception e) {
       LOG.warn("could not write summary file for " + outputPath, e);
     }
+  }
+
+  private static List<Footer> getFooters(Configuration configuration, Path outputPath, JobSummaryLevel level) throws IOException {
+    final FileSystem fileSystem = outputPath.getFileSystem(configuration);
+    FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
+    List<Footer> footers;
+
+    switch (level) {
+      case ALL:
+        footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, false); // don't skip row groups
+        break;
+      case COMMON_ONLY:
+        footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, true); // skip row groups
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized job summary level: " + level);
+    }
+    return footers;
   }
 }
