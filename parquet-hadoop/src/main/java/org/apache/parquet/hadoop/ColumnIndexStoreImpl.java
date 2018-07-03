@@ -37,18 +37,25 @@ import org.slf4j.LoggerFactory;
  */
 class ColumnIndexStoreImpl implements ColumnIndexStore {
 
-  private class IndexStore {
+  private interface IndexStore {
+    ColumnIndex getColumnIndex();
+
+    OffsetIndex getOffsetIndex();
+  }
+
+  private class IndexStoreImpl implements IndexStore {
     private final ColumnChunkMetaData meta;
     private ColumnIndex columnIndex;
     private boolean columnIndexRead;
     private OffsetIndex offsetIndex;
     private boolean offsetIndexRead;
 
-    IndexStore(ColumnChunkMetaData meta) {
+    IndexStoreImpl(ColumnChunkMetaData meta) {
       this.meta = meta;
     }
 
-    ColumnIndex getColumnIndex() {
+    @Override
+    public ColumnIndex getColumnIndex() {
       if (!columnIndexRead) {
         try {
           columnIndex = reader.readColumnIndex(meta);
@@ -62,7 +69,8 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
       return columnIndex;
     }
 
-    OffsetIndex getOffsetIndex() {
+    @Override
+    public OffsetIndex getOffsetIndex() {
       if (!offsetIndexRead) {
         try {
           offsetIndex = reader.readOffsetIndex(meta);
@@ -78,6 +86,18 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
   }
 
   private static final Logger logger = LoggerFactory.getLogger(ColumnIndexStoreImpl.class);
+  // Used for columns are not in this parquet file
+  private static final IndexStore MISSING_INDEX_STORE = new IndexStore() {
+    @Override
+    public ColumnIndex getColumnIndex() {
+      return null;
+    }
+
+    @Override
+    public OffsetIndex getOffsetIndex() {
+      return null;
+    }
+  };
 
   private final ParquetFileReader reader;
   private final Map<ColumnPath, IndexStore> store;
@@ -90,7 +110,7 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
     for (ColumnChunkMetaData column : block.getColumns()) {
       ColumnPath path = column.getPath();
       if (paths.contains(path)) {
-        store.put(path, new IndexStore(column));
+        store.put(path, new IndexStoreImpl(column));
       }
     }
     this.store = store;
@@ -98,12 +118,12 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
 
   @Override
   public ColumnIndex getColumnIndex(ColumnPath column) {
-    return store.get(column).getColumnIndex();
+    return store.getOrDefault(column, MISSING_INDEX_STORE).getColumnIndex();
   }
 
   @Override
   public OffsetIndex getOffsetIndex(ColumnPath column) {
-    return store.get(column).getOffsetIndex();
+    return store.getOrDefault(column, MISSING_INDEX_STORE).getOffsetIndex();
   }
 
 }

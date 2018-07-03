@@ -22,6 +22,7 @@ import static java.nio.ByteOrder.LITTLE_ENDIAN;
 
 import java.nio.ByteBuffer;
 
+import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
@@ -30,7 +31,7 @@ import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.floats.FloatList;
 
 class FloatColumnIndexBuilder extends ColumnIndexBuilder {
-  private static class FloatColumnIndex extends ColumnIndexBase {
+  private static class FloatColumnIndex extends ColumnIndexBase<Float> {
     private float[] minValues;
     private float[] maxValues;
 
@@ -57,6 +58,28 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
     String getMaxValueAsString(int pageIndex) {
       return stringifier.stringify(maxValues[pageIndex]);
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    <T extends Comparable<T>> Statistics<T> createStats(int arrayIndex) {
+      return (Statistics<T>) new Statistics<Float>(minValues[arrayIndex], maxValues[arrayIndex], comparator);
+    }
+
+    @Override
+    ValueComparator createValueComparator(Object value) {
+      final float v = (float) value;
+      return new ValueComparator() {
+        @Override
+        int compareValueToMin(int arrayIndex) {
+          return comparator.compare(v, minValues[arrayIndex]);
+        }
+
+        @Override
+        int compareValueToMax(int arrayIndex) {
+          return comparator.compare(v, maxValues[arrayIndex]);
+        }
+      };
+    }
   }
 
   private final FloatList minValues = new FloatArrayList();
@@ -72,18 +95,18 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
 
   @Override
   void addMinMaxFromBytes(ByteBuffer min, ByteBuffer max) {
-    minValues.add(min == null ? 0 : convert(min));
-    maxValues.add(max == null ? 0 : convert(max));
+    minValues.add(convert(min));
+    maxValues.add(convert(max));
   }
 
   @Override
   void addMinMax(Object min, Object max) {
-    minValues.add(min == null ? 0 : (float) min);
-    maxValues.add(max == null ? 0 : (float) max);
+    minValues.add((float) min);
+    maxValues.add((float) max);
   }
 
   @Override
-  ColumnIndexBase createColumnIndex(PrimitiveType type) {
+  ColumnIndexBase<Float> createColumnIndex(PrimitiveType type) {
     FloatColumnIndex columnIndex = new FloatColumnIndex(type);
     columnIndex.minValues = minValues.toFloatArray();
     columnIndex.maxValues = maxValues.toFloatArray();

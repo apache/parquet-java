@@ -21,11 +21,13 @@ package org.apache.parquet.internal.filter2.columnindex;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
+import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 
 /**
  * Class representing row ranges in a row-group. These row ranges are calculated as a result of the column index based
@@ -35,6 +37,28 @@ import org.apache.parquet.filter2.compat.FilterCompat.Filter;
  */
 public class RowRanges {
   private static class Range implements Comparable<Range> {
+    private static Range union(Range left, Range right) {
+      if (left.from <= right.from) {
+        if (left.to + 1 >= right.from) {
+          return new Range(left.from, Math.max(left.to, right.to));
+        }
+      } else if (right.to + 1 >= left.from) {
+        return new Range(right.from, Math.max(left.to, right.to));
+      }
+      return null;
+    }
+
+    private static Range intersection(Range left, Range right) {
+      if (left.from <= right.from) {
+        if (left.to >= right.from) {
+          return new Range(right.from, Math.min(left.to, right.to));
+        }
+      } else if (right.to >= left.from) {
+        return new Range(left.from, Math.min(left.to, right.to));
+      }
+      return null;
+    }
+
     final long from;
     final long to;
 
@@ -66,14 +90,95 @@ public class RowRanges {
     }
   }
 
+  static final RowRanges EMPTY = new RowRanges();
+  
   static RowRanges single(long rowCount) {
-    return new RowRanges(new Range(0, rowCount - 1));
+    RowRanges ranges = new RowRanges();
+    ranges.add(new Range(0, rowCount - 1));
+    return ranges;
+  }
+
+  static RowRanges build(long rowCount, PrimitiveIterator.OfInt pageIndexes, OffsetIndex offsetIndex) {
+    RowRanges ranges = new RowRanges();
+    int pageCount = offsetIndex.getPageCount();
+    while (pageIndexes.hasNext()) {
+      int pageIndex = pageIndexes.nextInt();
+      long nextRowIndex = pageIndex + 1 < pageCount ? offsetIndex.getFirstRowIndex(pageIndex + 1) : rowCount;
+      ranges.add(new Range(offsetIndex.getFirstRowIndex(pageIndex), nextRowIndex - 1));
+    }
+    return ranges;
+  }
+
+  static RowRanges union(RowRanges left, RowRanges right) {
+    RowRanges result = new RowRanges();
+    Iterator<Range> it1 = left.ranges.iterator();
+    Iterator<Range> it2 = right.ranges.iterator();
+    if (it2.hasNext()) {
+      Range range2 = it2.next();
+      while (it1.hasNext()) {
+        Range range1 = it1.next();
+        if (range1.compareTo(range2) <= 0) {
+          result.add(range1);
+        } else {
+          result.add(range2);
+          range2 = range1;
+          Iterator<Range> tmp = it1;
+          it1 = it2;
+          it2 = tmp;
+        }
+      }
+      result.add(range2);
+    } else {
+      it2 = it1;
+    }
+    while (it2.hasNext()) {
+      result.add(it2.next());
+    }
+
+    return result;
+  }
+
+  static RowRanges intersection(RowRanges left, RowRanges right) {
+    RowRanges result = new RowRanges();
+
+    int rightIndex = 0;
+    for (Range l : left.ranges) {
+      for (int i = rightIndex, n = right.ranges.size(); i < n; ++i) {
+        Range r = right.ranges.get(i);
+        int cmp = l.compareTo(r);
+        if (cmp < 0) {
+          rightIndex = i;
+          break;
+        } else if (cmp > 0) {
+          rightIndex = i + 1;
+          continue;
+        }
+        result.add(Range.intersection(l, r));
+      }
+    }
+
+    return result;
   }
 
   private final List<Range> ranges = new ArrayList<>();
 
-  private RowRanges(Range range) {
-    ranges.add(range);
+  private RowRanges() {
+  }
+
+  private void add(Range range) {
+    if (!ranges.isEmpty()) {
+      int lastIndex = ranges.size() - 1;
+      Range last = ranges.get(lastIndex);
+      assert last.compareTo(range) <= 0;
+      Range u = Range.union(last, range);
+      if (u != null) {
+        ranges.set(lastIndex, u);
+      } else {
+        ranges.add(range);
+      }
+    } else {
+      ranges.add(range);
+    }
   }
 
   /**
@@ -142,6 +247,4 @@ public class RowRanges {
   public String toString() {
     return ranges.toString();
   }
-
-  // TODO[GS]: implement set operations (union, intersection, complement)
 }

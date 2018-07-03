@@ -19,6 +19,20 @@
 package org.apache.parquet.internal.column.columnindex;
 
 import static java.util.Arrays.asList;
+import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.booleanColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.eq;
+import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.gt;
+import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.lt;
+import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
+import static org.apache.parquet.filter2.predicate.LogicalInverter.invert;
 import static org.apache.parquet.schema.OriginalType.DECIMAL;
 import static org.apache.parquet.schema.OriginalType.UINT_8;
 import static org.apache.parquet.schema.OriginalType.UTF8;
@@ -39,19 +53,19 @@ import static org.junit.Assert.fail;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.internal.column.columnindex.BinaryColumnIndexBuilder;
-import org.apache.parquet.internal.column.columnindex.BooleanColumnIndexBuilder;
-import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
-import org.apache.parquet.internal.column.columnindex.ColumnIndex;
-import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
-import org.apache.parquet.internal.column.columnindex.DoubleColumnIndexBuilder;
-import org.apache.parquet.internal.column.columnindex.FloatColumnIndexBuilder;
-import org.apache.parquet.internal.column.columnindex.IntColumnIndexBuilder;
-import org.apache.parquet.internal.column.columnindex.LongColumnIndexBuilder;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
+import org.apache.parquet.filter2.predicate.Operators.BooleanColumn;
+import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
+import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
+import org.apache.parquet.filter2.predicate.Operators.IntColumn;
+import org.apache.parquet.filter2.predicate.Operators.LongColumn;
+import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
@@ -62,12 +76,167 @@ import org.junit.Test;
  */
 public class TestColumnIndexBuilder {
 
+  public static class BinaryDecimalIsNullOrZeroUdp extends UserDefinedPredicate<Binary> {
+    private static final Binary ZERO = decimalBinary("0.0");
+
+    @Override
+    public boolean keep(Binary value) {
+      return value == null || value.equals(ZERO);
+    }
+
+    @Override
+    public boolean canDrop(org.apache.parquet.filter2.predicate.Statistics<Binary> statistics) {
+      Comparator<Binary> cmp = statistics.getComparator();
+      return cmp.compare(statistics.getMin(), ZERO) > 0 || cmp.compare(statistics.getMax(), ZERO) < 0;
+    }
+
+    @Override
+    public boolean inverseCanDrop(org.apache.parquet.filter2.predicate.Statistics<Binary> statistics) {
+      Comparator<Binary> cmp = statistics.getComparator();
+      return cmp.compare(statistics.getMin(), ZERO) == 0 && cmp.compare(statistics.getMax(), ZERO) == 0;
+    }
+  }
+
+  public static class BinaryUtf8StartsWithB extends UserDefinedPredicate<Binary> {
+    private static final Binary B = stringBinary("B");
+    private static final Binary C = stringBinary("C");
+
+    @Override
+    public boolean keep(Binary value) {
+      return value != null && value.length() > 0 && value.getBytesUnsafe()[0] == 'B';
+    }
+
+    @Override
+    public boolean canDrop(org.apache.parquet.filter2.predicate.Statistics<Binary> statistics) {
+      Comparator<Binary> cmp = statistics.getComparator();
+      return cmp.compare(statistics.getMin(), C) >= 0 || cmp.compare(statistics.getMax(), B) < 0;
+    }
+
+    @Override
+    public boolean inverseCanDrop(org.apache.parquet.filter2.predicate.Statistics<Binary> statistics) {
+      Comparator<Binary> cmp = statistics.getComparator();
+      return cmp.compare(statistics.getMin(), B) >= 0 && cmp.compare(statistics.getMax(), C) < 0;
+    }
+  }
+
+  public static class BooleanIsTrueOrNull extends UserDefinedPredicate<Boolean> {
+    @Override
+    public boolean keep(Boolean value) {
+      return value == null || value;
+    }
+
+    @Override
+    public boolean canDrop(org.apache.parquet.filter2.predicate.Statistics<Boolean> statistics) {
+      return statistics.getComparator().compare(statistics.getMax(), true) != 0;
+    }
+
+    @Override
+    public boolean inverseCanDrop(org.apache.parquet.filter2.predicate.Statistics<Boolean> statistics) {
+      return statistics.getComparator().compare(statistics.getMin(), true) == 0;
+    }
+  }
+
+  public static class DoubleIsInteger extends UserDefinedPredicate<Double> {
+    @Override
+    public boolean keep(Double value) {
+      return value != null && Math.floor(value) == value;
+    }
+
+    @Override
+    public boolean canDrop(org.apache.parquet.filter2.predicate.Statistics<Double> statistics) {
+      double min = statistics.getMin();
+      double max = statistics.getMax();
+      Comparator<Double> cmp = statistics.getComparator();
+      return cmp.compare(Math.floor(min), Math.floor(max)) == 0 && cmp.compare(Math.floor(min), min) != 0
+          && cmp.compare(Math.floor(max), max) != 0;
+    }
+
+    @Override
+    public boolean inverseCanDrop(org.apache.parquet.filter2.predicate.Statistics<Double> statistics) {
+      double min = statistics.getMin();
+      double max = statistics.getMax();
+      Comparator<Double> cmp = statistics.getComparator();
+      return cmp.compare(min, max) == 0 && cmp.compare(Math.floor(min), min) == 0;
+    }
+  }
+
+  public static class FloatIsInteger extends UserDefinedPredicate<Float> {
+    private static float floor(float value) {
+      return (float) Math.floor(value);
+    }
+
+    @Override
+    public boolean keep(Float value) {
+      return value != null && Math.floor(value) == value;
+    }
+
+    @Override
+    public boolean canDrop(org.apache.parquet.filter2.predicate.Statistics<Float> statistics) {
+      float min = statistics.getMin();
+      float max = statistics.getMax();
+      Comparator<Float> cmp = statistics.getComparator();
+      return cmp.compare(floor(min), floor(max)) == 0 && cmp.compare(floor(min), min) != 0
+          && cmp.compare(floor(max), max) != 0;
+    }
+
+    @Override
+    public boolean inverseCanDrop(org.apache.parquet.filter2.predicate.Statistics<Float> statistics) {
+      float min = statistics.getMin();
+      float max = statistics.getMax();
+      Comparator<Float> cmp = statistics.getComparator();
+      return cmp.compare(min, max) == 0 && cmp.compare(floor(min), min) == 0;
+    }
+  }
+
+  public static class IntegerIsDivisableWith3 extends UserDefinedPredicate<Integer> {
+    @Override
+    public boolean keep(Integer value) {
+      return value != null && value % 3 == 0;
+    }
+
+    @Override
+    public boolean canDrop(org.apache.parquet.filter2.predicate.Statistics<Integer> statistics) {
+      int min = statistics.getMin();
+      int max = statistics.getMax();
+      return min % 3 != 0 && max % 3 != 0 && max - min < 3;
+    }
+
+    @Override
+    public boolean inverseCanDrop(org.apache.parquet.filter2.predicate.Statistics<Integer> statistics) {
+      int min = statistics.getMin();
+      int max = statistics.getMax();
+      return min == max && min % 3 == 0;
+    }
+  }
+
+  public static class LongIsDivisableWith3 extends UserDefinedPredicate<Long> {
+    @Override
+    public boolean keep(Long value) {
+      return value != null && value % 3 == 0;
+    }
+
+    @Override
+    public boolean canDrop(org.apache.parquet.filter2.predicate.Statistics<Long> statistics) {
+      long min = statistics.getMin();
+      long max = statistics.getMax();
+      return min % 3 != 0 && max % 3 != 0 && max - min < 3;
+    }
+
+    @Override
+    public boolean inverseCanDrop(org.apache.parquet.filter2.predicate.Statistics<Long> statistics) {
+      long min = statistics.getMin();
+      long max = statistics.getMax();
+      return min == max && min % 3 == 0;
+    }
+  }
+
   @Test
   public void testBuildBinaryDecimal() {
     PrimitiveType type = Types.required(BINARY).as(DECIMAL).precision(12).scale(2).named("test_binary_decimal");
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(BinaryColumnIndexBuilder.class));
     assertNull(builder.build());
+    BinaryColumn col = binaryColumn("test_col");
 
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
@@ -102,6 +271,16 @@ public class TestColumnIndexBuilder {
         null,
         null,
         decimalBinary("87656273"));
+    assertCorrectFiltering(columnIndex, eq(col, decimalBinary("0.0")), 1, 4);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 5, 6);
+    assertCorrectFiltering(columnIndex, notEq(col, decimalBinary("87656273")), 0, 1, 2, 3, 4, 5, 6);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 2, 4, 7);
+    assertCorrectFiltering(columnIndex, gt(col, decimalBinary("2348978.45")), 1);
+    assertCorrectFiltering(columnIndex, gtEq(col, decimalBinary("2348978.45")), 1, 4);
+    assertCorrectFiltering(columnIndex, lt(col, decimalBinary("-234.23")), 4);
+    assertCorrectFiltering(columnIndex, ltEq(col, decimalBinary("-234.23")), 2, 4);
+    assertCorrectFiltering(columnIndex, userDefined(col, BinaryDecimalIsNullOrZeroUdp.class), 0, 1, 2, 3, 4, 5, 6);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryDecimalIsNullOrZeroUdp.class)), 1, 2, 4, 7);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -137,6 +316,16 @@ public class TestColumnIndexBuilder {
         null,
         decimalBinary("1234567890.12"),
         null);
+    assertCorrectFiltering(columnIndex, eq(col, decimalBinary("87656273")), 2, 4);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 3, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, decimalBinary("87656273")), 0, 1, 2, 3, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 2, 4, 6);
+    assertCorrectFiltering(columnIndex, gt(col, decimalBinary("87656273")), 6);
+    assertCorrectFiltering(columnIndex, gtEq(col, decimalBinary("87656273")), 2, 4, 6);
+    assertCorrectFiltering(columnIndex, lt(col, decimalBinary("-0.17")), 1);
+    assertCorrectFiltering(columnIndex, ltEq(col, decimalBinary("-0.17")), 1, 2);
+    assertCorrectFiltering(columnIndex, userDefined(col, BinaryDecimalIsNullOrZeroUdp.class), 0, 2, 3, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryDecimalIsNullOrZeroUdp.class)), 1, 2, 4, 6);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -172,6 +361,16 @@ public class TestColumnIndexBuilder {
         decimalBinary("-0.17"),
         null,
         decimalBinary("-9999293.23"));
+    assertCorrectFiltering(columnIndex, eq(col, decimalBinary("1234567890.12")), 2, 4);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 6);
+    assertCorrectFiltering(columnIndex, notEq(col, decimalBinary("0.0")), 0, 1, 2, 3, 4, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 2, 4, 5, 7);
+    assertCorrectFiltering(columnIndex, gt(col, decimalBinary("1234567890.12")));
+    assertCorrectFiltering(columnIndex, gtEq(col, decimalBinary("1234567890.12")), 2, 4);
+    assertCorrectFiltering(columnIndex, lt(col, decimalBinary("-0.17")), 7);
+    assertCorrectFiltering(columnIndex, ltEq(col, decimalBinary("-0.17")), 5, 7);
+    assertCorrectFiltering(columnIndex, userDefined(col, BinaryDecimalIsNullOrZeroUdp.class), 0, 1, 2, 3, 5, 6);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryDecimalIsNullOrZeroUdp.class)), 2, 4, 5, 7);
   }
 
   @Test
@@ -180,6 +379,7 @@ public class TestColumnIndexBuilder {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(BinaryColumnIndexBuilder.class));
     assertNull(builder.build());
+    BinaryColumn col = binaryColumn("test_col");
 
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, null, null));
@@ -214,6 +414,16 @@ public class TestColumnIndexBuilder {
         stringBinary("Dent"),
         stringBinary("Beeblebrox"),
         null);
+    assertCorrectFiltering(columnIndex, eq(col, stringBinary("Marvin")), 1, 4, 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 5, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, stringBinary("Beeblebrox")), 0, 1, 2, 3, 4, 5, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 4, 5, 6);
+    assertCorrectFiltering(columnIndex, gt(col, stringBinary("Prefect")), 1, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, stringBinary("Prefect")), 1, 4, 5);
+    assertCorrectFiltering(columnIndex, lt(col, stringBinary("Dent")), 4, 6);
+    assertCorrectFiltering(columnIndex, ltEq(col, stringBinary("Dent")), 4, 5, 6);
+    assertCorrectFiltering(columnIndex, userDefined(col, BinaryUtf8StartsWithB.class), 4, 6);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryUtf8StartsWithB.class)), 0, 1, 2, 3, 4, 5, 7);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -249,6 +459,16 @@ public class TestColumnIndexBuilder {
         null,
         stringBinary("Slartibartfast"),
         null);
+    assertCorrectFiltering(columnIndex, eq(col, stringBinary("Jeltz")), 3, 4);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 4, 5, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, stringBinary("Slartibartfast")), 0, 1, 2, 3, 4, 5, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 0, 3, 4, 6);
+    assertCorrectFiltering(columnIndex, gt(col, stringBinary("Marvin")), 4, 6);
+    assertCorrectFiltering(columnIndex, gtEq(col, stringBinary("Marvin")), 4, 6);
+    assertCorrectFiltering(columnIndex, lt(col, stringBinary("Dent")), 0);
+    assertCorrectFiltering(columnIndex, ltEq(col, stringBinary("Dent")), 0, 3, 4);
+    assertCorrectFiltering(columnIndex, userDefined(col, BinaryUtf8StartsWithB.class), 0);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryUtf8StartsWithB.class)), 0, 1, 2, 3, 4, 5, 6, 7);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -284,6 +504,16 @@ public class TestColumnIndexBuilder {
         null,
         null,
         stringBinary("Beeblebrox"));
+    assertCorrectFiltering(columnIndex, eq(col, stringBinary("Marvin")), 3);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, stringBinary("Dent")), 0, 1, 2, 3, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 3, 4, 7);
+    assertCorrectFiltering(columnIndex, gt(col, stringBinary("Prefect")), 1);
+    assertCorrectFiltering(columnIndex, gtEq(col, stringBinary("Prefect")), 1, 3);
+    assertCorrectFiltering(columnIndex, lt(col, stringBinary("Marvin")), 3, 4, 7);
+    assertCorrectFiltering(columnIndex, ltEq(col, stringBinary("Marvin")), 3, 4, 7);
+    assertCorrectFiltering(columnIndex, userDefined(col, BinaryUtf8StartsWithB.class), 7);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryUtf8StartsWithB.class)), 0, 1, 2, 3, 4, 5, 6, 7);
   }
 
   @Test
@@ -335,11 +565,68 @@ public class TestColumnIndexBuilder {
   }
 
   @Test
+  public void testFilterWithoutNullCounts() {
+    ColumnIndex columnIndex = ColumnIndexBuilder.build(
+        Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
+        BoundaryOrder.ASCENDING,
+        asList(true, true, false, false, true, false, true, false),
+        null,
+        toBBList(
+            null,
+            null,
+            stringBinary("Beeblebrox"),
+            stringBinary("Dent"),
+            null,
+            stringBinary("Jeltz"),
+            null,
+            stringBinary("Slartibartfast")),
+        toBBList(
+            null,
+            null,
+            stringBinary("Dent"),
+            stringBinary("Dent"),
+            null,
+            stringBinary("Prefect"),
+            null,
+            stringBinary("Slartibartfast")));
+    assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
+    assertNull(columnIndex.getNullCounts());
+    assertCorrectNullPages(columnIndex, true, true, false, false, true, false, true, false);
+    assertCorrectValues(columnIndex.getMaxValues(),
+        null,
+        null,
+        stringBinary("Dent"),
+        stringBinary("Dent"),
+        null,
+        stringBinary("Prefect"),
+        null,
+        stringBinary("Slartibartfast"));
+    assertCorrectValues(columnIndex.getMinValues(),
+        null,
+        null,
+        stringBinary("Beeblebrox"),
+        stringBinary("Dent"),
+        null,
+        stringBinary("Jeltz"),
+        null,
+        stringBinary("Slartibartfast"));
+
+    BinaryColumn col = binaryColumn("test_col");
+    assertCorrectFiltering(columnIndex, eq(col, stringBinary("Dent")), 2, 3);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 4, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, stringBinary("Dent")), 0, 1, 2, 3, 4, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 2, 3, 5, 7);
+    assertCorrectFiltering(columnIndex, userDefined(col, BinaryDecimalIsNullOrZeroUdp.class), 0, 1, 2, 3, 4, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryDecimalIsNullOrZeroUdp.class)), 2, 3, 5, 7);
+  }
+
+  @Test
   public void testBuildBoolean() {
     PrimitiveType type = Types.required(BOOLEAN).named("test_boolean");
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(BooleanColumnIndexBuilder.class));
     assertNull(builder.build());
+    BooleanColumn col = booleanColumn("test_col");
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     StatsBuilder sb = new StatsBuilder();
@@ -356,6 +643,12 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, false, false, false, true, false);
     assertCorrectValues(columnIndex.getMaxValues(), true, true, true, null, false);
     assertCorrectValues(columnIndex.getMinValues(), false, false, true, null, false);
+    assertCorrectFiltering(columnIndex, eq(col, true), 0, 1, 2);
+    assertCorrectFiltering(columnIndex, eq(col, null), 1, 2, 3);
+    assertCorrectFiltering(columnIndex, notEq(col, true), 0, 1, 2, 3, 4);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 0, 1, 2, 4);
+    assertCorrectFiltering(columnIndex, userDefined(col, BooleanIsTrueOrNull.class), 0, 1, 2, 3);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BooleanIsTrueOrNull.class)), 0, 1, 4);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -374,6 +667,12 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, true, true, false, false, true);
     assertCorrectValues(columnIndex.getMaxValues(), null, false, null, null, true, true, null);
     assertCorrectValues(columnIndex.getMinValues(), null, false, null, null, false, false, null);
+    assertCorrectFiltering(columnIndex, eq(col, true), 4, 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 4, 5, 6);
+    assertCorrectFiltering(columnIndex, notEq(col, true), 0, 1, 2, 3, 4, 5, 6);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 4, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, BooleanIsTrueOrNull.class), 0, 2, 3, 4, 5, 6);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BooleanIsTrueOrNull.class)), 1, 4, 5);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -392,6 +691,12 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, true, true, false, false, true);
     assertCorrectValues(columnIndex.getMaxValues(), null, true, null, null, true, false, null);
     assertCorrectValues(columnIndex.getMinValues(), null, true, null, null, false, false, null);
+    assertCorrectFiltering(columnIndex, eq(col, true), 1, 4);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 4, 5, 6);
+    assertCorrectFiltering(columnIndex, notEq(col, true), 0, 2, 3, 4, 5, 6);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 4, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, BooleanIsTrueOrNull.class), 0, 1, 2, 3, 4, 5, 6);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, BooleanIsTrueOrNull.class)), 4, 5);
   }
 
   @Test
@@ -416,6 +721,7 @@ public class TestColumnIndexBuilder {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(DoubleColumnIndexBuilder.class));
     assertNull(builder.build());
+    DoubleColumn col = doubleColumn("test_col");
 
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, -4.2, -4.1));
@@ -432,6 +738,16 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, false, false, false, true, false, false);
     assertCorrectValues(columnIndex.getMaxValues(), -4.1, 7.0, 2.2, null, 2.32, 8.1);
     assertCorrectValues(columnIndex.getMinValues(), -4.2, -11.7, 2.2, null, 1.9, -21.0);
+    assertCorrectFiltering(columnIndex, eq(col, 0.0), 1, 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 1, 2, 3);
+    assertCorrectFiltering(columnIndex, notEq(col, 2.2), 0, 1, 2, 3, 4, 5);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, gt(col, 2.2), 1, 4, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2.2), 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, lt(col, -4.2), 1, 5);
+    assertCorrectFiltering(columnIndex, ltEq(col, -4.2), 0, 1, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, DoubleIsInteger.class), 1, 4, 5);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, DoubleIsInteger.class)), 0, 1, 2, 3, 4, 5);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -452,6 +768,16 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, false, true, true, false, true, false, true);
     assertCorrectValues(columnIndex.getMaxValues(), null, -345.2, -234.6, null, null, 2.99999, null, 42.83, null);
     assertCorrectValues(columnIndex.getMinValues(), null, -532.3, -234.7, null, null, -234.6, null, 3.0, null);
+    assertCorrectFiltering(columnIndex, eq(col, 0.0), 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 4, 6, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, 0.0), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 2, 5, 7);
+    assertCorrectFiltering(columnIndex, gt(col, 2.99999), 7);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2.99999), 5, 7);
+    assertCorrectFiltering(columnIndex, lt(col, -234.6), 1, 2);
+    assertCorrectFiltering(columnIndex, ltEq(col, -234.6), 1, 2, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, DoubleIsInteger.class), 1, 5, 7);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, DoubleIsInteger.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -472,6 +798,16 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, true, false, true, false, true, true, false);
     assertCorrectValues(columnIndex.getMaxValues(), null, 532.3, null, 234.7, null, 234.69, null, null, -3.0);
     assertCorrectValues(columnIndex.getMinValues(), null, 345.2, null, 234.6, null, -2.99999, null, null, -42.83);
+    assertCorrectFiltering(columnIndex, eq(col, 234.6), 3, 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 4, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, 2.2), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 3, 5, 8);
+    assertCorrectFiltering(columnIndex, gt(col, 2.2), 1, 3, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, 234.69), 1, 3, 5);
+    assertCorrectFiltering(columnIndex, lt(col, -2.99999), 8);
+    assertCorrectFiltering(columnIndex, ltEq(col, -2.99999), 5, 8);
+    assertCorrectFiltering(columnIndex, userDefined(col, DoubleIsInteger.class), 1, 5, 8);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, DoubleIsInteger.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
   }
 
   @Test
@@ -496,6 +832,7 @@ public class TestColumnIndexBuilder {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(FloatColumnIndexBuilder.class));
     assertNull(builder.build());
+    FloatColumn col = floatColumn("test_col");
 
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, -4.2f, -4.1f));
@@ -512,6 +849,16 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, false, false, false, true, false, false);
     assertCorrectValues(columnIndex.getMaxValues(), -4.1f, 7.0f, 2.2f, null, 2.32f, 8.1f);
     assertCorrectValues(columnIndex.getMinValues(), -4.2f, -11.7f, 2.2f, null, 1.9f, -21.0f);
+    assertCorrectFiltering(columnIndex, eq(col, 0.0f), 1, 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 1, 2, 3);
+    assertCorrectFiltering(columnIndex, notEq(col, 2.2f), 0, 1, 2, 3, 4, 5);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, gt(col, 2.2f), 1, 4, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2.2f), 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, lt(col, 0.0f), 0, 1, 5);
+    assertCorrectFiltering(columnIndex, ltEq(col, 1.9f), 0, 1, 4, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, FloatIsInteger.class), 1, 4, 5);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, FloatIsInteger.class)), 0, 1, 2, 3, 4, 5);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -532,6 +879,16 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, false, true, true, false, true, false, true);
     assertCorrectValues(columnIndex.getMaxValues(), null, -345.2f, -234.7f, null, null, 2.99999f, null, 42.83f, null);
     assertCorrectValues(columnIndex.getMinValues(), null, -532.3f, -300.6f, null, null, -234.6f, null, 3.0f, null);
+    assertCorrectFiltering(columnIndex, eq(col, 0.0f), 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 4, 6, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, 2.2f), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 2, 5, 7);
+    assertCorrectFiltering(columnIndex, gt(col, 2.2f), 5, 7);
+    assertCorrectFiltering(columnIndex, gtEq(col, -234.7f), 2, 5, 7);
+    assertCorrectFiltering(columnIndex, lt(col, -234.6f), 1, 2);
+    assertCorrectFiltering(columnIndex, ltEq(col, -234.6f), 1, 2, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, FloatIsInteger.class), 1, 2, 5, 7);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, FloatIsInteger.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -552,6 +909,16 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, true, false, true, false, true, true, false);
     assertCorrectValues(columnIndex.getMaxValues(), null, 532.3f, null, 234.7f, null, 234.6f, null, null, -3.0f);
     assertCorrectValues(columnIndex.getMinValues(), null, 345.2f, null, 234.6f, null, -2.99999f, null, null, -42.83f);
+    assertCorrectFiltering(columnIndex, eq(col, 234.65f), 3);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 4, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, 2.2f), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 3, 5, 8);
+    assertCorrectFiltering(columnIndex, gt(col, 2.2f), 1, 3, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2.2f), 1, 3, 5);
+    assertCorrectFiltering(columnIndex, lt(col, 0.0f), 5, 8);
+    assertCorrectFiltering(columnIndex, ltEq(col, 0.0f), 5, 8);
+    assertCorrectFiltering(columnIndex, userDefined(col, FloatIsInteger.class), 1, 5, 8);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, FloatIsInteger.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
   }
 
   @Test
@@ -576,6 +943,7 @@ public class TestColumnIndexBuilder {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(IntColumnIndexBuilder.class));
     assertNull(builder.build());
+    IntColumn col = intColumn("test_col");
 
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, -4, 10));
@@ -592,6 +960,16 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, false, false, false, true, false, false);
     assertCorrectValues(columnIndex.getMaxValues(), 10, 7, 2, null, 2, 8);
     assertCorrectValues(columnIndex.getMinValues(), -4, -11, 2, null, 1, -21);
+    assertCorrectFiltering(columnIndex, eq(col, 2), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 1, 2, 3);
+    assertCorrectFiltering(columnIndex, notEq(col, 2), 0, 1, 2, 3, 4, 5);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, gt(col, 2), 0, 1, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, lt(col, 2), 0, 1, 4, 5);
+    assertCorrectFiltering(columnIndex, ltEq(col, 2), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 0, 1, 5);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -612,6 +990,17 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, false, true, true, false, true, false, true);
     assertCorrectValues(columnIndex.getMaxValues(), null, -345, -42, null, null, 2, null, 42, null);
     assertCorrectValues(columnIndex.getMinValues(), null, -532, -500, null, null, -42, null, 3, null);
+    assertCorrectFiltering(columnIndex, eq(col, 2), 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 4, 6, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, 2), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 2, 5, 7);
+    assertCorrectFiltering(columnIndex, gt(col, 2), 7);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2), 5, 7);
+    assertCorrectFiltering(columnIndex, lt(col, 2), 1, 2, 5);
+    assertCorrectFiltering(columnIndex, ltEq(col, 2), 1, 2, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 1, 2, 5, 7);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
+        8);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -632,6 +1021,17 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, true, false, true, false, true, true, false);
     assertCorrectValues(columnIndex.getMaxValues(), null, 532, null, 234, null, 42, null, null, -3);
     assertCorrectValues(columnIndex.getMinValues(), null, 345, null, 42, null, -2, null, null, -42);
+    assertCorrectFiltering(columnIndex, eq(col, 2), 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 4, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, 2), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 3, 5, 8);
+    assertCorrectFiltering(columnIndex, gt(col, 2), 1, 3, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2), 1, 3, 5);
+    assertCorrectFiltering(columnIndex, lt(col, 2), 5, 8);
+    assertCorrectFiltering(columnIndex, ltEq(col, 2), 5, 8);
+    assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 1, 3, 5, 8);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
+        8);
   }
 
   @Test
@@ -656,6 +1056,7 @@ public class TestColumnIndexBuilder {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(IntColumnIndexBuilder.class));
     assertNull(builder.build());
+    IntColumn col = intColumn("test_col");
 
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, 4, 10));
@@ -672,6 +1073,16 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, false, false, false, true, false, false);
     assertCorrectValues(columnIndex.getMaxValues(), 10, 17, 2, null, 0xFF, 0xFA);
     assertCorrectValues(columnIndex.getMinValues(), 4, 11, 2, null, 1, 0xEF);
+    assertCorrectFiltering(columnIndex, eq(col, 2), 2, 4);
+    assertCorrectFiltering(columnIndex, eq(col, null), 1, 2, 3);
+    assertCorrectFiltering(columnIndex, notEq(col, 2), 0, 1, 2, 3, 4, 5);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, gt(col, 2), 0, 1, 4, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, lt(col, 0xEF), 0, 1, 2, 4);
+    assertCorrectFiltering(columnIndex, ltEq(col, 0xEF), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 0, 1, 4, 5);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -692,6 +1103,17 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, false, true, true, false, true, false, true);
     assertCorrectValues(columnIndex.getMaxValues(), null, 0, 42, null, null, 0xEE, null, 0xFF, null);
     assertCorrectValues(columnIndex.getMinValues(), null, 0, 0, null, null, 42, null, 0xEF, null);
+    assertCorrectFiltering(columnIndex, eq(col, 2), 2);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 4, 6, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, 2), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 2, 5, 7);
+    assertCorrectFiltering(columnIndex, gt(col, 0xEE), 7);
+    assertCorrectFiltering(columnIndex, gtEq(col, 0xEE), 5, 7);
+    assertCorrectFiltering(columnIndex, lt(col, 42), 1, 2);
+    assertCorrectFiltering(columnIndex, ltEq(col, 42), 1, 2, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 1, 2, 5, 7);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
+        8);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -712,6 +1134,17 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, true, false, true, false, true, true, false);
     assertCorrectValues(columnIndex.getMaxValues(), null, 0xFF, null, 0xEF, null, 0xEE, null, null, 41);
     assertCorrectValues(columnIndex.getMinValues(), null, 0xFF, null, 0xEA, null, 42, null, null, 0);
+    assertCorrectFiltering(columnIndex, eq(col, 0xAB), 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 4, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, 0xFF), 0, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 3, 5, 8);
+    assertCorrectFiltering(columnIndex, gt(col, 0xFF));
+    assertCorrectFiltering(columnIndex, gtEq(col, 0xFF), 1);
+    assertCorrectFiltering(columnIndex, lt(col, 42), 8);
+    assertCorrectFiltering(columnIndex, ltEq(col, 42), 5, 8);
+    assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 1, 3, 5, 8);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 2, 3, 4, 5, 6, 7,
+        8);
   }
 
   @Test
@@ -720,6 +1153,7 @@ public class TestColumnIndexBuilder {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(LongColumnIndexBuilder.class));
     assertNull(builder.build());
+    LongColumn col = longColumn("test_col");
 
     StatsBuilder sb = new StatsBuilder();
     builder.add(sb.stats(type, -4l, 10l));
@@ -736,6 +1170,16 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, false, false, false, true, false, false);
     assertCorrectValues(columnIndex.getMaxValues(), 10l, 7l, 2l, null, 2l, 8l);
     assertCorrectValues(columnIndex.getMinValues(), -4l, -11l, 2l, null, 1l, -21l);
+    assertCorrectFiltering(columnIndex, eq(col, 0l), 0, 1, 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 1, 2, 3);
+    assertCorrectFiltering(columnIndex, notEq(col, 0l), 0, 1, 2, 3, 4, 5);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, gt(col, 2l), 0, 1, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2l), 0, 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, lt(col, -21l));
+    assertCorrectFiltering(columnIndex, ltEq(col, -21l), 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, LongIsDivisableWith3.class), 0, 1, 5);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, LongIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -756,6 +1200,17 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, false, true, true, false, true, false, true);
     assertCorrectValues(columnIndex.getMaxValues(), null, -345l, -42l, null, null, 2l, null, 42l, null);
     assertCorrectValues(columnIndex.getMinValues(), null, -532l, -234l, null, null, -42l, null, -3l, null);
+    assertCorrectFiltering(columnIndex, eq(col, -42l), 2, 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 4, 6, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, -42l), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 2, 5, 7);
+    assertCorrectFiltering(columnIndex, gt(col, 2l), 7);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2l), 5, 7);
+    assertCorrectFiltering(columnIndex, lt(col, -42l), 1, 2);
+    assertCorrectFiltering(columnIndex, ltEq(col, -42l), 1, 2, 5);
+    assertCorrectFiltering(columnIndex, userDefined(col, LongIsDivisableWith3.class), 1, 2, 5, 7);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, LongIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
+        8);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -776,6 +1231,17 @@ public class TestColumnIndexBuilder {
     assertCorrectNullPages(columnIndex, true, false, true, false, true, false, true, true, false);
     assertCorrectValues(columnIndex.getMaxValues(), null, 532l, null, 234l, null, 42l, null, null, -3l);
     assertCorrectValues(columnIndex.getMinValues(), null, 345l, null, 42l, null, -2l, null, null, -42l);
+    assertCorrectFiltering(columnIndex, eq(col, 0l), 5);
+    assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 4, 6, 7);
+    assertCorrectFiltering(columnIndex, notEq(col, 0l), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+    assertCorrectFiltering(columnIndex, notEq(col, null), 1, 3, 5, 8);
+    assertCorrectFiltering(columnIndex, gt(col, 2l), 1, 3, 5);
+    assertCorrectFiltering(columnIndex, gtEq(col, 2l), 1, 3, 5);
+    assertCorrectFiltering(columnIndex, lt(col, -42l));
+    assertCorrectFiltering(columnIndex, ltEq(col, -42l), 8);
+    assertCorrectFiltering(columnIndex, userDefined(col, LongIsDivisableWith3.class), 1, 3, 5, 8);
+    assertCorrectFiltering(columnIndex, invert(userDefined(col, LongIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
+        8);
   }
 
   @Test
@@ -1033,5 +1499,9 @@ public class TestColumnIndexBuilder {
     long getMinMaxSize() {
       return minMaxSize;
     }
+  }
+
+  private static void assertCorrectFiltering(ColumnIndex ci, FilterPredicate predicate, int... expectedIndexes) {
+    TestIndexIterator.assertEquals(predicate.accept(ci), expectedIndexes);
   }
 }

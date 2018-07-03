@@ -22,12 +22,13 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
 
 class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
-  private static class BinaryColumnIndex extends ColumnIndexBase {
+  private static class BinaryColumnIndex extends ColumnIndexBase<Binary> {
     private Binary[] minValues;
     private Binary[] maxValues;
 
@@ -54,6 +55,28 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
     String getMaxValueAsString(int pageIndex) {
       return stringifier.stringify(maxValues[pageIndex]);
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    <T extends Comparable<T>> Statistics<T> createStats(int arrayIndex) {
+      return (Statistics<T>) new Statistics<Binary>(minValues[arrayIndex], maxValues[arrayIndex], comparator);
+    }
+
+    @Override
+    ValueComparator createValueComparator(Object value) {
+      final Binary v = (Binary) value;
+      return new ValueComparator() {
+        @Override
+        int compareValueToMin(int arrayIndex) {
+          return comparator.compare(v, minValues[arrayIndex]);
+        }
+
+        @Override
+        int compareValueToMax(int arrayIndex) {
+          return comparator.compare(v, maxValues[arrayIndex]);
+        }
+      };
+    }
   }
 
   private final List<Binary> minValues = new ArrayList<>();
@@ -76,8 +99,8 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
 
   @Override
   void addMinMaxFromBytes(ByteBuffer min, ByteBuffer max) {
-    minValues.add(min == null ? null : convert(min));
-    maxValues.add(max == null ? null : convert(max));
+    minValues.add(convert(min));
+    maxValues.add(convert(max));
   }
 
   @Override
@@ -87,7 +110,7 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
   }
 
   @Override
-  ColumnIndexBase createColumnIndex(PrimitiveType type) {
+  ColumnIndexBase<Binary> createColumnIndex(PrimitiveType type) {
     BinaryColumnIndex columnIndex = new BinaryColumnIndex(type);
     columnIndex.minValues = minValues.toArray(new Binary[minValues.size()]);
     columnIndex.maxValues = maxValues.toArray(new Binary[maxValues.size()]);

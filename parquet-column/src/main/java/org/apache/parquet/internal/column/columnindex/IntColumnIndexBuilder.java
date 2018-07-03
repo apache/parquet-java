@@ -22,6 +22,7 @@ import static java.nio.ByteOrder.LITTLE_ENDIAN;
 
 import java.nio.ByteBuffer;
 
+import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
@@ -30,7 +31,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
 class IntColumnIndexBuilder extends ColumnIndexBuilder {
-  private static class IntColumnIndex extends ColumnIndexBase {
+  private static class IntColumnIndex extends ColumnIndexBase<Integer> {
     private int[] minValues;
     private int[] maxValues;
 
@@ -57,6 +58,28 @@ class IntColumnIndexBuilder extends ColumnIndexBuilder {
     String getMaxValueAsString(int pageIndex) {
       return stringifier.stringify(maxValues[pageIndex]);
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    <T extends Comparable<T>> Statistics<T> createStats(int arrayIndex) {
+      return (Statistics<T>) new Statistics<Integer>(minValues[arrayIndex], maxValues[arrayIndex], comparator);
+    }
+
+    @Override
+    ValueComparator createValueComparator(Object value) {
+      final int v = (int) value;
+      return new ValueComparator() {
+        @Override
+        int compareValueToMin(int arrayIndex) {
+          return comparator.compare(v, minValues[arrayIndex]);
+        }
+
+        @Override
+        int compareValueToMax(int arrayIndex) {
+          return comparator.compare(v, maxValues[arrayIndex]);
+        }
+      };
+    }
   }
 
   private final IntList minValues = new IntArrayList();
@@ -72,18 +95,18 @@ class IntColumnIndexBuilder extends ColumnIndexBuilder {
 
   @Override
   void addMinMaxFromBytes(ByteBuffer min, ByteBuffer max) {
-    minValues.add(min == null ? 0 : convert(min));
-    maxValues.add(max == null ? 0 : convert(max));
+    minValues.add(convert(min));
+    maxValues.add(convert(max));
   }
 
   @Override
   void addMinMax(Object min, Object max) {
-    minValues.add(min == null ? 0 : (int) min);
-    maxValues.add(max == null ? 0 : (int) max);
+    minValues.add((int) min);
+    maxValues.add((int) max);
   }
 
   @Override
-  ColumnIndexBase createColumnIndex(PrimitiveType type) {
+  ColumnIndexBase<Integer> createColumnIndex(PrimitiveType type) {
     IntColumnIndex columnIndex = new IntColumnIndex(type);
     columnIndex.minValues = minValues.toIntArray();
     columnIndex.maxValues = maxValues.toIntArray();
