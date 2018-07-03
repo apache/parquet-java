@@ -27,6 +27,7 @@ import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -38,7 +39,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Random;
 
-import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
@@ -63,13 +63,23 @@ public class TestBinaryTruncator {
   }
 
   // The maximum values in UTF-8 for the 1, 2, 3 and 4 bytes representations
-  private static final char UTF8_1BYTE_MAX_CHAR = '\u007F';
-  private static final char UTF8_2BYTES_MAX_CHAR = '\u07FF';
-  private static final char UTF8_3BYTES_MAX_CHAR = '\uFFFF';
+  private static final String UTF8_1BYTE_MAX_CHAR = "\u007F";
+  private static final String UTF8_2BYTES_MAX_CHAR = "\u07FF";
+  private static final String UTF8_3BYTES_MAX_CHAR = "\uFFFF";
   private static final String UTF8_4BYTES_MAX_CHAR = "\uDBFF\uDFFF";
 
   @Test
-  public void testNonStringTypes() {
+  public void testNonStringTruncate() {
+    BinaryTruncator truncator = BinaryTruncator
+        .getTruncator(Types.required(BINARY).as(DECIMAL).precision(10).scale(2).named("test_binary_decimal"));
+    assertEquals(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA),
+        truncator.truncateMin(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 2));
+    assertEquals(binary(0x01, 0x02, 0x03, 0x04, 0x05, 0x06),
+        truncator.truncateMax(binary(0x01, 0x02, 0x03, 0x04, 0x05, 0x06), 2));
+  }
+
+  @Test
+  public void testContractNonStringTypes() {
     testTruncator(
         Types.required(FIXED_LEN_BYTE_ARRAY).length(8).as(DECIMAL).precision(18).scale(4).named("test_fixed_decimal"),
         false);
@@ -79,7 +89,48 @@ public class TestBinaryTruncator {
   }
 
   @Test
-  public void testStringTypes() {
+  public void testStringTruncate() {
+    BinaryTruncator truncator = BinaryTruncator.getTruncator(Types.required(BINARY).as(UTF8).named("test_utf8"));
+
+    // Truncate 1 byte characters
+    assertEquals(Binary.fromString("abc"), truncator.truncateMin(Binary.fromString("abcdef"), 3));
+    assertEquals(Binary.fromString("abd"), truncator.truncateMax(Binary.fromString("abcdef"), 3));
+
+    // Truncate 1-2 bytes characters
+    assertEquals(Binary.fromString("árvízt"), truncator.truncateMin(Binary.fromString("árvíztűrő"), 8));
+    assertEquals(Binary.fromString("árvízu"), truncator.truncateMax(Binary.fromString("árvíztűrő"), 8));
+
+    // Truncate highest UTF-8 values -> unable to increment
+    assertEquals(
+        Binary.fromString(
+            UTF8_1BYTE_MAX_CHAR
+                + UTF8_2BYTES_MAX_CHAR),
+        truncator.truncateMin(Binary.fromString(
+            UTF8_1BYTE_MAX_CHAR
+                + UTF8_2BYTES_MAX_CHAR
+                + UTF8_3BYTES_MAX_CHAR
+                + UTF8_4BYTES_MAX_CHAR),
+            5));
+    assertEquals(
+        Binary.fromString(
+            UTF8_1BYTE_MAX_CHAR
+                + UTF8_2BYTES_MAX_CHAR
+                + UTF8_3BYTES_MAX_CHAR
+                + UTF8_4BYTES_MAX_CHAR),
+        truncator.truncateMax(Binary.fromString(
+            UTF8_1BYTE_MAX_CHAR
+                + UTF8_2BYTES_MAX_CHAR
+                + UTF8_3BYTES_MAX_CHAR
+                + UTF8_4BYTES_MAX_CHAR),
+            5));
+
+    // Truncate invalid UTF-8 values -> truncate without validity check
+    assertEquals(binary(0xFF, 0xFE, 0xFD), truncator.truncateMin(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3));
+    assertEquals(binary(0xFF, 0xFE, 0xFE), truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3));
+  }
+
+  @Test
+  public void testContractStringTypes() {
     testTruncator(Types.required(BINARY).named("test_binary"), true);
     testTruncator(Types.required(BINARY).as(UTF8).named("test_utf8"), true);
     testTruncator(Types.required(BINARY).as(ENUM).named("test_enum"), true);
@@ -120,8 +171,8 @@ public class TestBinaryTruncator {
         strict, false);
     // Edge case: non-UTF-8; max bytes -> unable to truncate for max
     checkContract(
-        truncator, comparator, Binary.fromConstantByteArray(new byte[] { (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
-            (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF }),
+        truncator, comparator,
+        binary(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF),
         strict, false);
   }
 
@@ -204,4 +255,15 @@ public class TestBinaryTruncator {
   private static int random(int min, int max) {
     return RANDOM.nextInt(max - min + 1) + min;
   }
+
+  private static Binary binary(int... unsignedBytes) {
+    byte[] byteArray = new byte[unsignedBytes.length];
+    for (int i = 0, n = byteArray.length; i < n; ++i) {
+      int b = unsignedBytes[i];
+      assert (0xFFFFFF00 & b) == 0;
+      byteArray[i] = (byte) b;
+    }
+    return Binary.fromConstantByteArray(byteArray);
+  }
+
 }
