@@ -26,6 +26,9 @@ import org.junit.Test;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.OriginalType.*;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static org.apache.parquet.schema.Type.Repetition.*;
@@ -1426,22 +1429,22 @@ public class TestTypeBuilders {
   @Test
   public void testTimestampLogicalTypeWithUTCParameter() {
     PrimitiveType utcMillisExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
-      LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS));
+      timestampType(true, MILLIS));
     PrimitiveType nonUtcMillisExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
-      LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MILLIS));
+      timestampType(false, MILLIS));
     PrimitiveType utcMicrosExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
-      LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS));
+      timestampType(true, MICROS));
     PrimitiveType nonUtcMicrosExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
-      LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MICROS));
+      timestampType(false, MICROS));
 
     PrimitiveType utcMillisActual = Types.required(INT64)
-      .as(LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS)).named("aTimestamp");
+      .as(timestampType(true, MILLIS)).named("aTimestamp");
     PrimitiveType nonUtcMillisActual = Types.required(INT64)
-      .as(LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MILLIS)).named("aTimestamp");
+      .as(timestampType(false, MILLIS)).named("aTimestamp");
     PrimitiveType utcMicrosActual = Types.required(INT64)
-      .as(LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS)).named("aTimestamp");
+      .as(timestampType(true, MICROS)).named("aTimestamp");
     PrimitiveType nonUtcMicrosActual = Types.required(INT64)
-      .as(LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MICROS)).named("aTimestamp");
+      .as(timestampType(false, MICROS)).named("aTimestamp");
 
     Assert.assertEquals(utcMillisExpected, utcMillisActual);
     Assert.assertEquals(nonUtcMillisExpected, nonUtcMillisActual);
