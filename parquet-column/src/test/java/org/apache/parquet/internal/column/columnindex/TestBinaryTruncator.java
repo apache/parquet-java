@@ -96,9 +96,9 @@ public class TestBinaryTruncator {
     assertEquals(Binary.fromString("abc"), truncator.truncateMin(Binary.fromString("abcdef"), 3));
     assertEquals(Binary.fromString("abd"), truncator.truncateMax(Binary.fromString("abcdef"), 3));
 
-    // Truncate 1-2 bytes characters
-    assertEquals(Binary.fromString("árvízt"), truncator.truncateMin(Binary.fromString("árvíztűrő"), 8));
-    assertEquals(Binary.fromString("árvízu"), truncator.truncateMax(Binary.fromString("árvíztűrő"), 8));
+    // Truncate 1-2 bytes characters; the target length is "inside" a UTF-8 character
+    assertEquals(Binary.fromString("árvízt"), truncator.truncateMin(Binary.fromString("árvíztűrő"), 9));
+    assertEquals(Binary.fromString("árvízu"), truncator.truncateMax(Binary.fromString("árvíztűrő"), 9));
 
     // Truncate highest UTF-8 values -> unable to increment
     assertEquals(
@@ -124,9 +124,33 @@ public class TestBinaryTruncator {
                 + UTF8_4BYTES_MAX_CHAR),
             5));
 
+    LOG.debug(HEXA_STRINGIFIER.stringify(truncator.truncateMax(Binary.fromString(
+        UTF8_1BYTE_MAX_CHAR
+            + UTF8_2BYTES_MAX_CHAR
+            + "a"
+            + UTF8_3BYTES_MAX_CHAR
+            + UTF8_4BYTES_MAX_CHAR),
+        9)));
+
+    // Truncate highest UTF-8 values at the end -> increment the first possible character
+    assertEquals(
+        Binary.fromString(
+            UTF8_1BYTE_MAX_CHAR
+                + UTF8_2BYTES_MAX_CHAR
+                + "b"
+                + UTF8_3BYTES_MAX_CHAR),
+        truncator.truncateMax(Binary.fromString(
+            UTF8_1BYTE_MAX_CHAR
+                + UTF8_2BYTES_MAX_CHAR
+                + "a"
+                + UTF8_3BYTES_MAX_CHAR
+                + UTF8_4BYTES_MAX_CHAR),
+            10));
+
     // Truncate invalid UTF-8 values -> truncate without validity check
     assertEquals(binary(0xFF, 0xFE, 0xFD), truncator.truncateMin(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3));
     assertEquals(binary(0xFF, 0xFE, 0xFE), truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3));
+    assertEquals(binary(0xFF, 0xFE, 0xFE, 0x00, 0x00), truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFF, 0xFF, 0xFF), 5));
   }
 
   @Test

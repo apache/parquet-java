@@ -157,8 +157,8 @@ abstract class BinaryTruncator {
       for (int i = array.length - 1; i >= 0; --i) {
         byte prev = array[i];
         byte inc = prev;
-        do {
-          array[i] = ++inc;
+        while (++inc != 0) { // Until overflow: 0xFF -> 0x00
+          array[i] = inc;
           switch (validator.checkValidity(buffer)) {
             case VALID:
               return array;
@@ -168,7 +168,7 @@ abstract class BinaryTruncator {
               break; // Stop incrementing the i byte; go to the i-1
           }
           break; // MALFORMED
-        } while (inc != 0); // Until overflow: 0xFF -> 0x00
+        }
         array[i] = prev;
       }
       return null; // All characters are the largest possible; unable to increment
