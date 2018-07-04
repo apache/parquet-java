@@ -124,14 +124,6 @@ public class TestBinaryTruncator {
                 + UTF8_4BYTES_MAX_CHAR),
             5));
 
-    LOG.debug(HEXA_STRINGIFIER.stringify(truncator.truncateMax(Binary.fromString(
-        UTF8_1BYTE_MAX_CHAR
-            + UTF8_2BYTES_MAX_CHAR
-            + "a"
-            + UTF8_3BYTES_MAX_CHAR
-            + UTF8_4BYTES_MAX_CHAR),
-        9)));
-
     // Truncate highest UTF-8 values at the end -> increment the first possible character
     assertEquals(
         Binary.fromString(
