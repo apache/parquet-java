@@ -31,7 +31,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static org.apache.parquet.schema.Type.Repetition.*;
 
 public class TestTypeBuilders {
-
   @Test
   public void testPaperExample() {
     MessageType expected =
