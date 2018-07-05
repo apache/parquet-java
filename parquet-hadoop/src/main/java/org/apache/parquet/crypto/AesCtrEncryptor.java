@@ -25,13 +25,13 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 
-class AesCtrEncryptor implements BlockCrypto.Encryptor{
+class AesCtrEncryptor implements BlockCipher.Encryptor{
   
   static final int CTR_NONCE_LENGTH = 16;
   static final int chunkLen = 4 * 1024;

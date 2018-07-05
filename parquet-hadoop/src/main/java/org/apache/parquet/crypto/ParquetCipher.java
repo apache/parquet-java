@@ -17,32 +17,42 @@
  * under the License.
  */
 
-
 package org.apache.parquet.crypto;
-
 
 import java.util.Locale;
 
+import org.apache.parquet.format.AesGcmV1;
+import org.apache.parquet.format.AesGcmCtrV1;
 import org.apache.parquet.format.EncryptionAlgorithm;
 
-public enum Cipher {
-  AES_GCM_V1(EncryptionAlgorithm.AES_GCM_V1),
-  AES_GCM_CTR_V1(EncryptionAlgorithm.AES_GCM_CTR_V1);
-  
-  public static Cipher fromConf(String name) {
+
+public enum ParquetCipher {
+
+  AES_GCM_V1(0),
+  AES_GCM_CTR_V1(1);
+
+  public static ParquetCipher fromConf(String name) {
     if (name == null) {
       return AES_GCM_V1;
     }
     return valueOf(name.toUpperCase(Locale.ENGLISH));
  }
-  
-  EncryptionAlgorithm getParquetEncryptionAlgorithmn() {
-    return parquetEncryptionAlgorithmn;
+
+  EncryptionAlgorithm getEncryptionAlgorithm() {
+    if (0 == algorithmID) {
+      return EncryptionAlgorithm.AES_GCM_V1(new AesGcmV1());
+    }
+    else if (1 == algorithmID) {
+      return EncryptionAlgorithm.AES_GCM_CTR_V1(new AesGcmCtrV1());
+    }
+    else {
+      return null;
+    }
   }
-  
-  private EncryptionAlgorithm parquetEncryptionAlgorithmn;
-  
-  private Cipher(EncryptionAlgorithm parquetEncryptionAlgorithmn) {
-    this.parquetEncryptionAlgorithmn = parquetEncryptionAlgorithmn;
+
+  private int algorithmID;
+
+  private ParquetCipher(int algorithmID) {
+    this.algorithmID = algorithmID;
   }
 }

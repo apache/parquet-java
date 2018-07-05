@@ -29,7 +29,7 @@ import org.apache.parquet.format.EncryptionAlgorithm;
 
 public class EncryptionSetup {
   
-  private EncryptionAlgorithm algorithmID;
+  private EncryptionAlgorithm algorithm;
   private byte[] footerKeyBytes;
   private byte[] footerKeyMetadata;
   private byte[] aadBytes;
@@ -37,7 +37,6 @@ public class EncryptionSetup {
   private boolean encryptTheRest;
   //Uniform encryption means footer and all columns are encrypted, with same key
   private boolean uniformEncryption;
-  private boolean singleKeyEncryption;
   private boolean setupProcessed;
   
   /**
@@ -47,7 +46,7 @@ public class EncryptionSetup {
    * @param keyMetadata Key metadata, to be written in a file for key retrieval upon decryption. Can be null.
    * @throws IOException 
    */
-  public EncryptionSetup(Cipher algorithm, byte[] keyBytes, byte[] keyMetadata) throws IOException {
+  public EncryptionSetup(ParquetCipher cipher, byte[] keyBytes, byte[] keyMetadata) throws IOException {
     footerKeyBytes = keyBytes;
     footerKeyMetadata = keyMetadata;
     if (null != footerKeyBytes) {
@@ -59,8 +58,7 @@ public class EncryptionSetup {
       throw new IOException("Footer key meta data is too long: " + footerKeyMetadata.length);
     }
     uniformEncryption = true;
-    this.algorithmID = algorithm.getParquetEncryptionAlgorithmn();
-    singleKeyEncryption = (null != footerKeyBytes);
+    algorithm = cipher.getEncryptionAlgorithm();
     setupProcessed = false;
   }
   
@@ -71,7 +69,7 @@ public class EncryptionSetup {
    * @param keyId Key id - will be converted to a 4-byte metadata and written in a file for key retrieval upon decryption.
    * @throws IOException 
    */
-  public EncryptionSetup(Cipher algorithm, byte[] keyBytes, int keyId) throws IOException {
+  public EncryptionSetup(ParquetCipher algorithm, byte[] keyBytes, int keyId) throws IOException {
     this(algorithm, keyBytes, BytesUtils.intToBytes(keyId));
   }
   
@@ -89,19 +87,7 @@ public class EncryptionSetup {
     uniformEncryption = false;
     this.encryptTheRest = encryptTheRest;
     this.columnList = columnList;
-    if (null != footerKeyBytes) {
-      // Find if single or multiple keys are in use
-      singleKeyEncryption = true;
-      for (ColumnMetadata cmd : columnList) {
-        if (cmd.isEncrypted() && (null != cmd.getKeyBytes())) {
-          if (!Arrays.equals(cmd.getKeyBytes(), footerKeyBytes))  {
-            singleKeyEncryption = false;
-            break;
-          }
-        }
-      }
-    }
-    else {
+    if (null == footerKeyBytes) {
       if (encryptTheRest) throw new IOException("Encrypt the rest with null footer key");
       boolean all_are_unencrypted = true;
       for (ColumnMetadata cmd : columnList) {
@@ -128,9 +114,9 @@ public class EncryptionSetup {
     aadBytes = aad;
   }
   
-  EncryptionAlgorithm getAlgorithmID() {
+  EncryptionAlgorithm getAlgorithm() {
     setupProcessed = true;
-    return algorithmID;
+    return algorithm;
   }
 
   byte[] getFooterKeyBytes() {
@@ -148,33 +134,15 @@ public class EncryptionSetup {
     return uniformEncryption;
   }
 
-  // Single key means: footer and columns are encrypted with the same key. Some columns can be plaintext, but footer must be encrypted.
-  // TODO: split into two: encr footer, and multiple keys
-  boolean isSingleKeyEncryption() {
-    setupProcessed = true;
-    return singleKeyEncryption;
-  }
-
   ColumnMetadata getColumnMetadata(String[] columnPath) {
     setupProcessed = true;
     boolean in_list = false;
     ColumnMetadata cmd = null;
     for (ColumnMetadata col : columnList) {
-      if (col.getPath().length != columnPath.length) continue;
-      boolean equal = true;
-      for (int i =0; i < col.getPath().length; i++) {
-        if (!col.getPath()[i].equals(columnPath[i])) {
-          equal = false;
-          break;
-        }
-      }
-      if (equal) {
+      if (Arrays.deepEquals(columnPath, col.getPath())) {
         in_list = true;
         cmd = col;
         break;
-      }
-      else {
-        continue;
       }
     }
     if (in_list) {

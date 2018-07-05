@@ -25,12 +25,12 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
-class AesCtrDecryptor implements BlockCrypto.Decryptor{
+class AesCtrDecryptor implements BlockCipher.Decryptor{
 
   private final SecretKey key;
 

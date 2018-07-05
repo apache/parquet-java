@@ -24,6 +24,8 @@ import java.util.Arrays;
 
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.format.ColumnCryptoMetaData;
+import org.apache.parquet.format.EncryptionWithColumnKey;
+import org.apache.parquet.format.EncryptionWithFooterKey;
 
 public class ColumnMetadata {
   
@@ -34,6 +36,7 @@ public class ColumnMetadata {
   private byte[] keyMetaData;
   private ColumnCryptoMetaData ccmd;
   private boolean processed ;
+  private ColumnEncryptors encryptors;
   
   /**
    * Convenience constructor for regular (not nested) columns.
@@ -71,7 +74,7 @@ public class ColumnMetadata {
     return columnPath;
   }
 
-  boolean isEncrypted() {
+  public boolean isEncrypted() {
     processed = true;
     return encrypt;
   }
@@ -79,9 +82,15 @@ public class ColumnMetadata {
   ColumnCryptoMetaData getColumnCryptoMetaData() {
     processed = true;
     if (null != ccmd) return ccmd;
-    ccmd = new ColumnCryptoMetaData(Arrays.asList(columnPath), encrypt, isEncryptedWithFooterKey);
-    if (null != keyMetaData) {
-      ccmd.setColumn_key_metadata(keyMetaData);
+    if (isEncryptedWithFooterKey) {
+      ccmd = ColumnCryptoMetaData.ENCRYPTION_WITH_FOOTER_KEY(new EncryptionWithFooterKey());
+    }
+    else {
+      EncryptionWithColumnKey eck = new EncryptionWithColumnKey(Arrays.asList(columnPath));
+      if (null != keyMetaData) {
+        eck.setColumn_key_metadata(keyMetaData);
+      }
+      ccmd =  ColumnCryptoMetaData.ENCRYPTION_WITH_COLUMN_KEY(eck);
     }
     return ccmd;
   }
@@ -89,5 +98,19 @@ public class ColumnMetadata {
   byte[] getKeyBytes() {
     processed = true;
     return keyBytes;
+  }
+
+  boolean isEncryptedWithFooterKey() {
+    processed = true;
+    if (!encrypt) return false;
+    return isEncryptedWithFooterKey;
+  }
+
+  void setEncryptors(ColumnEncryptors encryptors) {
+    this.encryptors = encryptors;
+  }
+
+  ColumnEncryptors getEncryptors() {
+    return encryptors;
   }
 }

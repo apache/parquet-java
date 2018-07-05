@@ -19,25 +19,25 @@
 
 package org.apache.parquet.crypto;
 
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 
 public class ColumnDecryptors {
   
   public enum Status {PLAINTEXT, KEY_AVAILABLE, KEY_UNAVAILABLE};
   
-  BlockCrypto.Decryptor metadataDecryptor;
-  BlockCrypto.Decryptor dataDecryptor;
+  BlockCipher.Decryptor metadataDecryptor;
+  BlockCipher.Decryptor dataDecryptor;
   Status status;
   
   public Status getStatus() {
     return status;
   }
   
-  public BlockCrypto.Decryptor getDataDecryptor() {
+  public BlockCipher.Decryptor getDataDecryptor() {
     return dataDecryptor;
   }
   
-  public BlockCrypto.Decryptor getMetadataDecryptor() {
+  public BlockCipher.Decryptor getMetadataDecryptor() {
     return metadataDecryptor;
   }
 }

@@ -19,18 +19,18 @@
 
 package org.apache.parquet.crypto;
 
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 
 public class ColumnEncryptors {
   
-  BlockCrypto.Encryptor metadataEncryptor;
-  BlockCrypto.Encryptor dataEncryptor;
+  BlockCipher.Encryptor metadataEncryptor;
+  BlockCipher.Encryptor dataEncryptor;
   
-  public BlockCrypto.Encryptor getDataEncryptor() {
+  public BlockCipher.Encryptor getDataEncryptor() {
     return dataEncryptor;
   }
   
-  public BlockCrypto.Encryptor getMetadataEncryptor() {
+  public BlockCipher.Encryptor getMetadataEncryptor() {
     return metadataEncryptor;
   }
 }

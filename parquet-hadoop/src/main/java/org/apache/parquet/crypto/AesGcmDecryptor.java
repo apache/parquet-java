@@ -25,12 +25,12 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
-class AesGcmDecryptor implements BlockCrypto.Decryptor{
+class AesGcmDecryptor implements BlockCipher.Decryptor{
 
   private final SecretKey key;
   private final byte[] AAD;

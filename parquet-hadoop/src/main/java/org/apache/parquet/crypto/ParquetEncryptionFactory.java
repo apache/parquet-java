@@ -32,7 +32,7 @@ public class ParquetEncryptionFactory {
    * @throws IOException
    */
   public static ParquetFileEncryptor createFileEncryptor(byte[] keyBytes) throws IOException {
-    return createFileEncryptor(new EncryptionSetup(Cipher.AES_GCM_V1, keyBytes, null));
+    return createFileEncryptor(new EncryptionSetup(ParquetCipher.AES_GCM_V1, keyBytes, null));
   }
   
   /**

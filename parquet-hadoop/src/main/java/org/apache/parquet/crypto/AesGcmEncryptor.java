@@ -25,13 +25,13 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 
-class AesGcmEncryptor implements BlockCrypto.Encryptor{
+class AesGcmEncryptor implements BlockCipher.Encryptor{
   
   static final int GCM_NONCE_LENGTH = 12;
   static final int GCM_TAG_LENGTH = 16;
