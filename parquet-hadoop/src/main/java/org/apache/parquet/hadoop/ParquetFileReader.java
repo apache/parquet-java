@@ -74,7 +74,7 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
@@ -907,7 +907,8 @@ public class ParquetFileReader implements Closeable {
             currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
           }
           else if (decryptors.getStatus() == ColumnDecryptors.Status.KEY_AVAILABLE) {
-            currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages(decryptors.getMetadataDecryptor(), decryptors.getDataDecryptor()));
+            currentRowGroup.addColumn(chunk.descriptor.col, 
+                chunk.readAllPages(decryptors.getMetadataDecryptor(), decryptors.getDataDecryptor()));
           }
           else { // Key unavailable
             currentRowGroup.addColumn(chunk.descriptor.col, new ColumnChunkPageReader());
@@ -1041,10 +1042,10 @@ public class ParquetFileReader implements Closeable {
     }
 
     protected PageHeader readPageHeader() throws IOException {
-      return readPageHeader((BlockCrypto.Decryptor) null);
+      return readPageHeader((BlockCipher.Decryptor) null);
     }
 
-    protected PageHeader readPageHeader(BlockCrypto.Decryptor blockDecryptor) throws IOException {
+    protected PageHeader readPageHeader(BlockCipher.Decryptor blockDecryptor) throws IOException {
       return Util.readPageHeader(stream, blockDecryptor);
     }
 
@@ -1053,12 +1054,12 @@ public class ParquetFileReader implements Closeable {
      * @return the list of pages
      */
     public ColumnChunkPageReader readAllPages() throws IOException {
-      return readAllPages((BlockCrypto.Decryptor) null, (BlockCrypto.Decryptor) null);
+      return readAllPages((BlockCipher.Decryptor) null, (BlockCipher.Decryptor) null);
     }
 
-    public ColumnChunkPageReader readAllPages(BlockCrypto.Decryptor headerBlockDecryptor, 
-        BlockCrypto.Decryptor pageBlockDecryptor) throws IOException {
-      //BlockCrypto.Decryptor statsBlockDecryptor = decryptStats ? headerBlockDecryptor: null;
+    public ColumnChunkPageReader readAllPages(BlockCipher.Decryptor headerBlockDecryptor, 
+        BlockCipher.Decryptor pageBlockDecryptor) throws IOException {
+      //BlockCipher.Decryptor statsBlockDecryptor = decryptStats ? headerBlockDecryptor: null;
       List<DataPage> pagesInChunk = new ArrayList<DataPage>();
       DictionaryPage dictionaryPage = null;
       PrimitiveType type = getFileMetaData().getSchema()

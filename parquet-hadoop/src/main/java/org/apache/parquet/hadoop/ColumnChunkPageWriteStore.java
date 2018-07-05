@@ -37,7 +37,7 @@ import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.crypto.ColumnEncryptors;
 import org.apache.parquet.crypto.ParquetFileEncryptor;
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -73,21 +73,21 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private Statistics totalStatistics;
     private final ByteBufferAllocator allocator;
     
-    private final BlockCrypto.Encryptor headerBlockEncryptor;
-    private final BlockCrypto.Encryptor pageBlockEncryptor;
+    private final BlockCipher.Encryptor headerBlockEncryptor;
+    private final BlockCipher.Encryptor pageBlockEncryptor;
 
     //TODO needed?
     private ColumnChunkPageWriter(ColumnDescriptor path,
         BytesCompressor compressor,
         ByteBufferAllocator allocator) {
-      this(path, compressor, allocator, (BlockCrypto.Encryptor) null, (BlockCrypto.Encryptor) null);
+      this(path, compressor, allocator, (BlockCipher.Encryptor) null, (BlockCipher.Encryptor) null);
     }
     
     private ColumnChunkPageWriter(ColumnDescriptor path,
                                   BytesCompressor compressor,
                                   ByteBufferAllocator allocator,
-                                  BlockCrypto.Encryptor headerBlockEncryptor,
-                                  BlockCrypto.Encryptor pageBlockEncryptor) {
+                                  BlockCipher.Encryptor headerBlockEncryptor,
+                                  BlockCipher.Encryptor pageBlockEncryptor) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
@@ -282,8 +282,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       ParquetFileEncryptor fileEncryptor) throws IOException {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      BlockCrypto.Encryptor headerBlockEncryptor = null;
-      BlockCrypto.Encryptor pageBlockEncryptor = null;
+      BlockCipher.Encryptor headerBlockEncryptor = null;
+      BlockCipher.Encryptor pageBlockEncryptor = null;
       if (null != fileEncryptor) {
         ColumnEncryptors blockEncryptors = fileEncryptor.getColumnEncryptors(path.getPath());
         if (null != blockEncryptors) {

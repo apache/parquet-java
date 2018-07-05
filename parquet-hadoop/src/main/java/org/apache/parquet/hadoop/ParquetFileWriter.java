@@ -52,7 +52,7 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.crypto.ParquetFileEncryptor;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -342,10 +342,10 @@ public class ParquetFileWriter {
    * @throws IOException if there is an error while writing
    */
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
-    writeDictionaryPage(dictionaryPage, (BlockCrypto.Encryptor) null);
+    writeDictionaryPage(dictionaryPage, (BlockCipher.Encryptor) null);
   }
   
-  public void writeDictionaryPage(DictionaryPage dictionaryPage, BlockCrypto.Encryptor headerBlockEncryptor) throws IOException {
+  public void writeDictionaryPage(DictionaryPage dictionaryPage, BlockCipher.Encryptor headerBlockEncryptor) throws IOException {
     state = state.write();
     LOG.debug("{}: write dictionary page: {} values", out.getPos(), dictionaryPage.getDictionarySize());
     currentChunkDictionaryPageOffset = out.getPos();

@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.crypto.ParquetFileEncryptor;
@@ -132,7 +133,8 @@ class InternalParquetRecordWriter<T> {
     try {
       initStore((ParquetFileEncryptor) null);
     } catch (IOException e) {
-      LOG.error("Should not be here", e);
+      // Doesn't happen. Exception can be thrown only with encryption.
+      throw new ShouldNeverHappenException();
     }
   }
 

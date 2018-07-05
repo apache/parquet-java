@@ -36,7 +36,7 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
-import org.apache.parquet.format.BlockCrypto;
+import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.hadoop.CodecFactory.BytesDecompressor;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
@@ -64,11 +64,11 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final long valueCount;
     private final List<DataPage> compressedPages;
     private final DictionaryPage compressedDictionaryPage;
-    private final BlockCrypto.Decryptor blockDecryptor;
+    private final BlockCipher.Decryptor blockDecryptor;
     private final boolean hiddenColumn;
 
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages, DictionaryPage compressedDictionaryPage,
-        BlockCrypto.Decryptor blockDecryptor) {
+        BlockCipher.Decryptor blockDecryptor) {
       this.decompressor = decompressor;
       this.blockDecryptor = blockDecryptor;
       this.compressedPages = new LinkedList<DataPage>(compressedPages);
