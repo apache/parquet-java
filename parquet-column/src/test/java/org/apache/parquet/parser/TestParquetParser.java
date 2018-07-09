@@ -20,6 +20,7 @@ package org.apache.parquet.parser;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.junit.Assert.assertEquals;
@@ -119,7 +120,7 @@ public class TestParquetParser {
   }
 
   @Test
-  public void testUTF8Annotation() {
+  public void testSTRINGAnnotation() {
     String message =
         "message StringMessage {\n" +
         "  required binary string (STRING);\n" +
@@ -127,8 +128,25 @@ public class TestParquetParser {
 
     MessageType parsed = parseMessageType(message);
     MessageType expected = buildMessage()
-        .required(BINARY).as(UTF8).named("string")
+        .required(BINARY).as(stringType()).named("string")
         .named("StringMessage");
+
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
+  }
+
+  @Test
+  public void testUTF8Annotation() {
+    String message =
+      "message StringMessage {\n" +
+        "  required binary string (UTF8);\n" +
+        "}\n";
+
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
+      .required(BINARY).as(UTF8).named("string")
+      .named("StringMessage");
 
     assertEquals(expected, parsed);
     MessageType reparsed = parseMessageType(parsed.toString());
@@ -139,7 +157,7 @@ public class TestParquetParser {
   public void testIDs() {
     String message =
         "message Message {\n" +
-        "  required binary string (STRING) = 6;\n" +
+        "  required binary string (UTF8) = 6;\n" +
         "  required int32 i=1;\n" +
         "  required binary s2= 3;\n" +
         "  required binary s3 =4;\n" +
@@ -165,7 +183,7 @@ public class TestParquetParser {
         "message Message {\n" +
         "  optional group aMap (MAP) {\n" +
         "    repeated group map (MAP_KEY_VALUE) {\n" +
-        "      required binary key (STRING);\n" +
+        "      required binary key (UTF8);\n" +
         "      required int32 value;\n" +
         "    }\n" +
         "  }\n" +
@@ -192,7 +210,7 @@ public class TestParquetParser {
     String message =
         "message Message {\n" +
         "  required group aList (LIST) {\n" +
-        "    repeated binary string (STRING);\n" +
+        "    repeated binary string (UTF8);\n" +
         "  }\n" +
         "}\n";
 
