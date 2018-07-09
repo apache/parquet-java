@@ -58,6 +58,8 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
 
   private final List<Binary> minValues = new ArrayList<>();
   private final List<Binary> maxValues = new ArrayList<>();
+  private final BinaryTruncator truncator;
+  private final int truncateLength;
 
   private static Binary convert(ByteBuffer buffer) {
     return Binary.fromReusedByteBuffer(buffer);
@@ -65,6 +67,11 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
 
   private static ByteBuffer convert(Binary value) {
     return value.toByteBuffer();
+  }
+
+  BinaryColumnIndexBuilder(PrimitiveType type, int truncateLength) {
+    truncator = BinaryTruncator.getTruncator(type);
+    this.truncateLength = truncateLength;
   }
 
   @Override
@@ -75,8 +82,8 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
 
   @Override
   void addMinMax(Object min, Object max) {
-    minValues.add((Binary) min);
-    maxValues.add((Binary) max);
+    minValues.add(min == null ? null : truncator.truncateMin((Binary) min, truncateLength));
+    maxValues.add(max == null ? null : truncator.truncateMax((Binary) max, truncateLength));
   }
 
   @Override

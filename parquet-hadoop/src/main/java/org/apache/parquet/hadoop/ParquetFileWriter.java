@@ -47,6 +47,7 @@ import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
@@ -100,6 +101,7 @@ public class ParquetFileWriter {
   private final MessageType schema;
   private final PositionOutputStream out;
   private final AlignmentStrategy alignment;
+  private final int columnIndexTruncateLength;
 
   // file data
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -244,9 +246,26 @@ public class ParquetFileWriter {
    * @param rowGroupSize the row group size
    * @param maxPaddingSize the maximum padding
    * @throws IOException if the file can not be created
+   * @deprecated will be removed in 2.0.0
    */
+  @Deprecated
   public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
                            long rowGroupSize, int maxPaddingSize)
+      throws IOException {
+    this(file, schema, mode, rowGroupSize, maxPaddingSize,
+        ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH);
+  }
+  /**
+   * @param file OutputFile to create or overwrite
+   * @param schema the schema of the data
+   * @param mode file creation mode
+   * @param rowGroupSize the row group size
+   * @param maxPaddingSize the maximum padding
+   * @param columnIndexTruncateLength the length which the min/max values in column indexes tried to be truncated to
+   * @throws IOException if the file can not be created
+   */
+  public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
+                           long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength)
       throws IOException {
     TypeUtil.checkValidWriteSchema(schema);
 
@@ -267,6 +286,7 @@ public class ParquetFileWriter {
     }
 
     this.encodingStatsBuilder = new EncodingStats.Builder();
+    this.columnIndexTruncateLength = columnIndexTruncateLength;
   }
 
   /**
@@ -289,6 +309,8 @@ public class ParquetFileWriter {
     this.out = HadoopStreams.wrap(
         fs.create(file, true, 8192, fs.getDefaultReplication(file), rowAndBlockSize));
     this.encodingStatsBuilder = new EncodingStats.Builder();
+    // no truncation is needed for testing
+    this.columnIndexTruncateLength = Integer.MAX_VALUE;
   }
   /**
    * start the file
@@ -342,7 +364,7 @@ public class ParquetFileWriter {
     // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed one
     currentStatistics = null;
 
-    columnIndexBuilder = ColumnIndexBuilder.getBuilder(currentChunkType);
+    columnIndexBuilder = ColumnIndexBuilder.getBuilder(currentChunkType, columnIndexTruncateLength);
     offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
     firstPageOffset = -1;
   }
