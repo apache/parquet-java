@@ -19,17 +19,18 @@
 
 package org.apache.parquet.crypto;
 
-public class ColumnDecryptMetadata {
+public class ColumnDecryptionSetup {
   
-  private boolean isEncrypted;
+  private final boolean isEncrypted;
+  private final String[] columnPath;
+  
   private boolean isEncryptedWithFooterKey;
-  private String[] columnPath;
   private byte[] keyMetaData;
   private byte[] keyBytes;
   private ColumnDecryptors decryptors;
 
   
-  ColumnDecryptMetadata(boolean encrypted, String[] path) {
+  ColumnDecryptionSetup(boolean encrypted, String[] path) {
     this.isEncrypted = encrypted;
     this.columnPath = path;
   }
@@ -42,7 +43,7 @@ public class ColumnDecryptMetadata {
     keyMetaData = columnKeyMetadata;
   }
 
-  void withFooterKey(boolean encrFooterKey) {
+  void setEncryptedWithFooterKey(boolean encrFooterKey) {
     isEncryptedWithFooterKey = encrFooterKey;
   }
 

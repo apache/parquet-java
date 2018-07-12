@@ -23,31 +23,27 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.format.ColumnCryptoMetaData;
-import org.apache.parquet.format.EncryptionWithColumnKey;
-import org.apache.parquet.format.EncryptionWithFooterKey;
 
-public class ColumnMetadata {
+public class ColumnCryptodata {
   
-  private boolean encrypt;
+  private final boolean encrypt;
+  private final String[] columnPath;
+  
   private boolean isEncryptedWithFooterKey;
-  private String[] columnPath;
   private byte[] keyBytes;
   private byte[] keyMetaData;
-  private ColumnCryptoMetaData ccmd;
   private boolean processed ;
-  private ColumnEncryptors encryptors;
   
   /**
    * Convenience constructor for regular (not nested) columns.
    * @param encrypt
    * @param name
    */
-  public ColumnMetadata(boolean encrypt, String name) {
+  public ColumnCryptodata(boolean encrypt, String name) {
     this(encrypt, new String[] {name});
   }
   
-  public ColumnMetadata(boolean encrypt, String[] path) {
+  public ColumnCryptodata(boolean encrypt, String[] path) {
     this.encrypt = encrypt;
     this.columnPath = path;
     isEncryptedWithFooterKey = encrypt;
@@ -74,25 +70,9 @@ public class ColumnMetadata {
     return columnPath;
   }
 
-  public boolean isEncrypted() {
+  boolean isEncrypted() {
     processed = true;
     return encrypt;
-  }
-  
-  ColumnCryptoMetaData getColumnCryptoMetaData() {
-    processed = true;
-    if (null != ccmd) return ccmd;
-    if (isEncryptedWithFooterKey) {
-      ccmd = ColumnCryptoMetaData.ENCRYPTION_WITH_FOOTER_KEY(new EncryptionWithFooterKey());
-    }
-    else {
-      EncryptionWithColumnKey eck = new EncryptionWithColumnKey(Arrays.asList(columnPath));
-      if (null != keyMetaData) {
-        eck.setColumn_key_metadata(keyMetaData);
-      }
-      ccmd =  ColumnCryptoMetaData.ENCRYPTION_WITH_COLUMN_KEY(eck);
-    }
-    return ccmd;
   }
 
   byte[] getKeyBytes() {
@@ -106,11 +86,7 @@ public class ColumnMetadata {
     return isEncryptedWithFooterKey;
   }
 
-  void setEncryptors(ColumnEncryptors encryptors) {
-    this.encryptors = encryptors;
-  }
-
-  ColumnEncryptors getEncryptors() {
-    return encryptors;
+  byte[] getKeyMetaData() {
+    return keyMetaData;
   }
 }

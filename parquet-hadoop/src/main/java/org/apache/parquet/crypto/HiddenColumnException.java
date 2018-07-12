@@ -19,27 +19,14 @@
 
 package org.apache.parquet.crypto;
 
-import java.util.Hashtable;
+import java.util.Arrays;
 
-import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.ParquetRuntimeException;
 
-// Simple key retriever, based on integer keyID
-public class IntegerKeyIdRetriever implements DecryptionKeyRetriever{
-
-  private final Hashtable<Integer,byte[]> keyMap;
+public class HiddenColumnException extends ParquetRuntimeException {
+  private static final long serialVersionUID = 1L;
   
-  public IntegerKeyIdRetriever() {
-    keyMap = new Hashtable<Integer,byte[]>();
-  }
-  
-  public void putKey(int keyId, byte[] keyBytes) {
-    keyMap.put(new Integer(keyId), keyBytes);
-  }
-  
-  @Override
-  public byte[] getKey(byte[] keyMetaData) {
-    if (keyMetaData.length != 4) return null;
-    int key_id = BytesUtils.bytesToInt(keyMetaData);
-    return keyMap.get(new Integer(key_id));
+  public HiddenColumnException(String[] columnPath) {
+    super(Arrays.toString(columnPath));
   }
 }

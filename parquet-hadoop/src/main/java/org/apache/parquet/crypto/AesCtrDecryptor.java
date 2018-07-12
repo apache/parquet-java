@@ -36,11 +36,16 @@ class AesCtrDecryptor implements BlockCipher.Decryptor{
 
   private static final int CTR_NONCE_LENGTH = AesCtrEncryptor.CTR_NONCE_LENGTH;
   private static final int chunkLen = AesCtrEncryptor.chunkLen;
+  private final byte[] ivPrefix;
 
 
-  AesCtrDecryptor(byte[] keyBytes) throws IOException {
+  AesCtrDecryptor(byte[] keyBytes, byte[] ivPrefix) throws IOException {
     if (null == keyBytes) throw new IOException("Null key bytes");
     key = new SecretKeySpec(keyBytes, "AES");
+    this.ivPrefix = ivPrefix;
+    if (null != ivPrefix) {
+      if (ivPrefix.length > CTR_NONCE_LENGTH) throw new IOException("IV prefix length: " + ivPrefix.length);
+    }
   }
 
   @Override
@@ -52,7 +57,14 @@ class AesCtrDecryptor implements BlockCipher.Decryptor{
   public byte[] decrypt(byte[] ciphertext, int offset, int cLen)  throws IOException {
     byte[] nonce = new byte[CTR_NONCE_LENGTH];
     // Get the nonce
-    System.arraycopy(ciphertext, offset, nonce, 0, CTR_NONCE_LENGTH);
+    int noff = 0;
+    int nlen = CTR_NONCE_LENGTH;
+    if (null != ivPrefix) {
+      System.arraycopy(ivPrefix, 0, nonce, 0, ivPrefix.length);
+      noff += ivPrefix.length;
+      nlen -= ivPrefix.length; 
+    }
+    if (nlen > 0) System.arraycopy(ciphertext, offset, nonce, noff, nlen);
     IvParameterSpec spec = new IvParameterSpec(nonce);
     byte[] plaintext;
     try {

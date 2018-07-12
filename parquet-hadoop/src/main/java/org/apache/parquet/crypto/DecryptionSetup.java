@@ -27,10 +27,12 @@ import java.util.List;
 
 public class DecryptionSetup {
 
-  private byte[] footerKeyBytes;
+  private final byte[] footerKeyBytes;
+  private final DecryptionKeyRetriever keyRetriever;
+  private AADRetriever aadRetriever;
+  
   private byte[] aadBytes;
-  private DecryptionKeyRetriever keyRetriever;
-  private List<ColumnDecryptMetadata> columnKeyList;
+  private List<ColumnDecryptionSetup> columnKeyList;
   private boolean setupProcessed;
 
   /**
@@ -45,6 +47,7 @@ public class DecryptionSetup {
     if (! (footerKeyBytes.length == 16 || footerKeyBytes.length == 24 || footerKeyBytes.length == 32)) {
       throw new IOException("Wrong key length " + footerKeyBytes.length);
     }
+    this.keyRetriever = null;
     setupProcessed = false;
   }
 
@@ -55,6 +58,7 @@ public class DecryptionSetup {
    */
   public DecryptionSetup(DecryptionKeyRetriever keyRetriever) {
     this.keyRetriever = keyRetriever;
+    this.footerKeyBytes = null;
   }
 
   /**
@@ -67,6 +71,10 @@ public class DecryptionSetup {
     if (setupProcessed) throw new IOException("Setup already processed");
     // TODO if set, throw an exception? or allow to replace
     aadBytes = aad;
+  }
+  
+  public void setAadRetriever(AADRetriever aadRetriever) {
+    this.aadRetriever = aadRetriever;
   }
 
   public void setColumnKey(String columnName, byte[] decryptionKey) throws IOException {
@@ -88,8 +96,8 @@ public class DecryptionSetup {
     }
     // TODO compare to footer key?
     // TODO if set for this column, throw an exception? or allow to replace
-    if (null == columnKeyList) columnKeyList = new ArrayList<ColumnDecryptMetadata>();
-    ColumnDecryptMetadata cmd = new ColumnDecryptMetadata(true, columnPath);
+    if (null == columnKeyList) columnKeyList = new ArrayList<ColumnDecryptionSetup>();
+    ColumnDecryptionSetup cmd = new ColumnDecryptionSetup(true, columnPath);
     cmd.setEncryptionKey(decryptionKey);
     columnKeyList.add(cmd);
   }
@@ -112,11 +120,15 @@ public class DecryptionSetup {
   byte[] getColumnKey(String[] path) {
     setupProcessed = true;
     if (null == columnKeyList)  return null;
-    for (ColumnDecryptMetadata col : columnKeyList) {
+    for (ColumnDecryptionSetup col : columnKeyList) {
       if (Arrays.deepEquals(path, col.getPath())) {
         return col.getKeyBytes();
       }
     } 
     return null;
+  }
+
+  AADRetriever getAadRetriever() {
+    return aadRetriever;
   }
 }

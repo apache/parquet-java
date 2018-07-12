@@ -29,11 +29,12 @@ import org.apache.parquet.format.EncryptionAlgorithm;
 
 public class EncryptionSetup {
   
-  private EncryptionAlgorithm algorithm;
-  private byte[] footerKeyBytes;
-  private byte[] footerKeyMetadata;
+  private final EncryptionAlgorithm algorithm;
+  private final byte[] footerKeyBytes;
+  private final byte[] footerKeyMetadata;
+  
   private byte[] aadBytes;
-  private List<ColumnMetadata> columnList;
+  private List<ColumnCryptodata> columnList;
   private boolean encryptTheRest;
   //Uniform encryption means footer and all columns are encrypted, with same key
   private boolean uniformEncryption;
@@ -74,14 +75,14 @@ public class EncryptionSetup {
   }
   
   /**
-   * Set column metadata (eg what columns should be encrypted). Each column in the list has a boolean 'encrypted' flag.
+   * Set column crypto metadata (eg what columns should be encrypted). Each column in the list has a boolean 'encrypted' flag.
    * The list doesn't have to include all columns in a file. If encryptTheRest is true, the rest of the columns (not in the list)
    * will be encrypted with the file footer key. If encryptTheRest is false, the rest of the columns will be left unencrypted.
    * @param columnList
    * @param encryptTheRest  
    * @throws IOException 
    */
-  public void setColumnMetadata(List<ColumnMetadata> columnList, boolean encryptTheRest) throws IOException {
+  public void setColumns(List<ColumnCryptodata> columnList, boolean encryptTheRest) throws IOException {
     if (setupProcessed) throw new IOException("Setup already processed");
     // TODO if set, throw an exception? or allow to replace
     uniformEncryption = false;
@@ -90,7 +91,7 @@ public class EncryptionSetup {
     if (null == footerKeyBytes) {
       if (encryptTheRest) throw new IOException("Encrypt the rest with null footer key");
       boolean all_are_unencrypted = true;
-      for (ColumnMetadata cmd : columnList) {
+      for (ColumnCryptodata cmd : columnList) {
         if (cmd.isEncrypted()) {
           if (null == cmd.getKeyBytes()) {
             throw new IOException("Encrypt column with null footer key");
@@ -108,10 +109,20 @@ public class EncryptionSetup {
    * @param aad
    * @throws IOException 
    */
-  public void setAAD(byte[] aad) throws IOException {
+  public void setAAD(byte[] aad, byte[] aadMetadata) throws IOException {
     if (setupProcessed) throw new IOException("Setup already processed");
+    if (null == aad) throw new IOException("Null AAD");
     // TODO if set, throw an exception? or allow to replace
     aadBytes = aad;
+    if (null != aadMetadata) {
+      if (aadMetadata.length > 256) throw new IOException("AAD metadata is too long: " + aadMetadata.length); //TODO
+      if (algorithm.isSetAES_GCM_V1()) {
+        algorithm.getAES_GCM_V1().setAad_metadata(aadMetadata);
+      }
+      else {
+        algorithm.getAES_GCM_CTR_V1().setAad_metadata(aadMetadata);
+      }
+    }
   }
   
   EncryptionAlgorithm getAlgorithm() {
@@ -134,11 +145,11 @@ public class EncryptionSetup {
     return uniformEncryption;
   }
 
-  ColumnMetadata getColumnMetadata(String[] columnPath) {
+  ColumnCryptodata getColumnMetadata(String[] columnPath) {
     setupProcessed = true;
     boolean in_list = false;
-    ColumnMetadata cmd = null;
-    for (ColumnMetadata col : columnList) {
+    ColumnCryptodata cmd = null;
+    for (ColumnCryptodata col : columnList) {
       if (Arrays.deepEquals(columnPath, col.getPath())) {
         in_list = true;
         cmd = col;
@@ -149,7 +160,7 @@ public class EncryptionSetup {
       return cmd;
     }
     else {
-      return new ColumnMetadata(encryptTheRest, columnPath);
+      return new ColumnCryptodata(encryptTheRest, columnPath);
     }
   }
 

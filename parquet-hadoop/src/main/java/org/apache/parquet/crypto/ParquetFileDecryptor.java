@@ -38,20 +38,23 @@ import javax.crypto.Cipher;
 
 public class ParquetFileDecryptor {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileDecryptor.class);
+  
+  private final DecryptionSetup dSetup;
+  private final DecryptionKeyRetriever keyRetriever;
+  private final AADRetriever aadRetriever;
 
   private BlockCipher.Decryptor aesGcmBlockDecryptor;
   private BlockCipher.Decryptor aesCtrBlockDecryptor;
   private byte[] footerKeyBytes;
   private boolean uniformEncryption;
-  private List<ColumnDecryptMetadata> columnMDList;
+  private List<ColumnDecryptionSetup> columnMDList;
   private EncryptionAlgorithm algorithm;
-  private DecryptionKeyRetriever keyRetriever;
   private byte[] aadBytes;
   private boolean footerEncrypted;
-  private DecryptionSetup dSetup;
   private boolean fileCryptoMDSet = false;
   private boolean columnCryptoMDRead = false;
   private ColumnDecryptors footerDecryptors;
+  private byte[] ivPrefix;
 
 
   ParquetFileDecryptor(DecryptionSetup dSetup) throws IOException {
@@ -62,6 +65,7 @@ public class ParquetFileDecryptor {
       throw new IOException("Can't set both explicit key and key retriever");
     }
     aadBytes = dSetup.getAAD();
+    aadRetriever = dSetup.getAadRetriever();
     uniformEncryption = true;
     try {
       LOG.info("AES-GCM cipher provider: {}", Cipher.getInstance("AES/GCM/NoPadding").getProvider());
@@ -83,7 +87,7 @@ public class ParquetFileDecryptor {
     if (null == columnMDList) {
       throw new IOException("Non-uniform encryption: column crypto metadata unavailable");
     }
-    ColumnDecryptMetadata cdmd = findColumn(path);
+    ColumnDecryptionSetup cdmd = findColumn(path);
     if (null == cdmd) {
       throw new IOException("Failed to find crypto metadata for column " + Arrays.toString(path));
     }
@@ -91,7 +95,7 @@ public class ParquetFileDecryptor {
     return getColumnDecryptors(cdmd);
   }
     
-  public synchronized ColumnDecryptors getColumnDecryptors(ColumnDecryptMetadata cdmd) throws IOException {
+  public synchronized ColumnDecryptors getColumnDecryptors(ColumnDecryptionSetup cdmd) throws IOException {
     if (!fileCryptoMDSet) {
       throw new IOException("Haven't parsed the footer yet");
     }
@@ -140,9 +144,9 @@ public class ParquetFileDecryptor {
     
     // Key is available
     decryptors.status = ColumnDecryptors.Status.KEY_AVAILABLE;
-    decryptors.metadataDecryptor = new AesGcmDecryptor(columnKeyBytes, aadBytes);
+    decryptors.metadataDecryptor = new AesGcmDecryptor(columnKeyBytes, aadBytes, ivPrefix);
     if (algorithm.isSetAES_GCM_CTR_V1()) {
-      decryptors.dataDecryptor = new AesCtrDecryptor(columnKeyBytes);
+      decryptors.dataDecryptor = new AesCtrDecryptor(columnKeyBytes, ivPrefix);
     }
     else {
       decryptors.dataDecryptor = decryptors.metadataDecryptor;
@@ -157,7 +161,7 @@ public class ParquetFileDecryptor {
     footerDecryptors.status = ColumnDecryptors.Status.KEY_AVAILABLE;
     footerDecryptors.metadataDecryptor = aesGcmBlockDecryptor;
     if (algorithm.isSetAES_GCM_CTR_V1()) {
-      if (null == aesCtrBlockDecryptor) aesCtrBlockDecryptor = new AesCtrDecryptor(footerKeyBytes);
+      if (null == aesCtrBlockDecryptor) aesCtrBlockDecryptor = new AesCtrDecryptor(footerKeyBytes, ivPrefix);
       footerDecryptors.dataDecryptor = aesCtrBlockDecryptor;
     }
     else {
@@ -177,7 +181,14 @@ public class ParquetFileDecryptor {
     // first use of the decryptor
     if (!fileCryptoMDSet) { 
       algorithm = fcmd.getEncryption_algorithm();
-      if (!algorithm.isSetAES_GCM_V1() && !algorithm.isSetAES_GCM_CTR_V1()) {
+      byte[] aadMetadata;
+      if (algorithm.isSetAES_GCM_V1()) {
+        aadMetadata = algorithm.getAES_GCM_V1().getAad_metadata();
+      }
+      else if (algorithm.isSetAES_GCM_CTR_V1()) {
+        aadMetadata = algorithm.getAES_GCM_CTR_V1().getAad_metadata();
+      }
+      else {
         throw new IOException("Unsupported algorithm: " + algorithm);
       }
       footerEncrypted = fcmd.isEncrypted_footer();
@@ -192,7 +203,11 @@ public class ParquetFileDecryptor {
       if (footerEncrypted && (null == footerKeyBytes)) {
         throw new IOException("Footer decryption key unavailable");
       }
-      if (footerEncrypted) aesGcmBlockDecryptor = new AesGcmDecryptor(footerKeyBytes, aadBytes);
+      if ((null == aadBytes) && (null != aadRetriever) && (null != aadMetadata)) {
+        aadBytes = aadRetriever.getAAD(aadMetadata);
+      }
+      ivPrefix = fcmd.getIv_prefix();
+      if (footerEncrypted) aesGcmBlockDecryptor = new AesGcmDecryptor(footerKeyBytes, aadBytes, ivPrefix);
       fileCryptoMDSet = true;
     }
     // re-use of the decryptor. compare the crypto metadata.
@@ -206,16 +221,17 @@ public class ParquetFileDecryptor {
       }
       // TODO compare key metadata
       // TODO compare iv prefix
+      // TODO compare aad metadata
     }
   }
 
-  public synchronized ColumnDecryptMetadata setColumnCryptoMetadata(String[] path, boolean encrypted, 
+  public synchronized ColumnDecryptionSetup setColumnCryptoMetadata(String[] path, boolean encrypted, 
       byte[] keyMetadata, ColumnCryptoMetaData cryptoMetaData) throws IOException {
 
-    if (null == columnMDList) columnMDList = new ArrayList<ColumnDecryptMetadata>();
+    if (null == columnMDList) columnMDList = new ArrayList<ColumnDecryptionSetup>();
 
     boolean reuse = false;
-    ColumnDecryptMetadata cdmd = findColumn(path);
+    ColumnDecryptionSetup cdmd = findColumn(path);
 
     if (null != cdmd) {
       reuse = true;
@@ -223,7 +239,7 @@ public class ParquetFileDecryptor {
       if (cdmd.isEncrypted() != encrypted) throw new IOException("Re-use with different encryption");
     }
     else {
-      cdmd = new ColumnDecryptMetadata(encrypted, path);
+      cdmd = new ColumnDecryptionSetup(encrypted, path);
     }
 
     if (!encrypted) {
@@ -237,7 +253,7 @@ public class ParquetFileDecryptor {
         if (cdmd.isEncryptedWithFooterKey()) throw new IOException("Re-use with footer-key encryption");
       }
       else {
-        cdmd.withFooterKey(false);
+        cdmd.setEncryptedWithFooterKey(false);
       }
       cdmd.setKeyMetadata(keyMetadata);
     }
@@ -246,7 +262,7 @@ public class ParquetFileDecryptor {
         if (!cdmd.isEncryptedWithFooterKey()) throw new IOException("Re-use with column-key encryption");
       }
       else {
-        cdmd.withFooterKey(true);
+        cdmd.setEncryptedWithFooterKey(true);
       }
     }
     if (!reuse) columnMDList.add(cdmd);
@@ -254,13 +270,17 @@ public class ParquetFileDecryptor {
   }
 
   // TODO replace with a Map lookup
-  private ColumnDecryptMetadata findColumn(String[] path) {
-    for (ColumnDecryptMetadata cmd: columnMDList) {
+  private ColumnDecryptionSetup findColumn(String[] path) {
+    for (ColumnDecryptionSetup cmd: columnMDList) {
       if (Arrays.deepEquals(path, cmd.getPath())) {
         return cmd;
       }
     }
     return null;
+  }
+
+  public synchronized void columnCryptoMetaDataProcessed() {
+    columnCryptoMDRead = true;
   }
 }
 

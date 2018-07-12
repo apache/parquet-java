@@ -17,29 +17,10 @@
  * under the License.
  */
 
+
 package org.apache.parquet.crypto;
 
-import java.util.Hashtable;
+public interface AADRetriever {
 
-import org.apache.parquet.bytes.BytesUtils;
-
-// Simple key retriever, based on integer keyID
-public class IntegerKeyIdRetriever implements DecryptionKeyRetriever{
-
-  private final Hashtable<Integer,byte[]> keyMap;
-  
-  public IntegerKeyIdRetriever() {
-    keyMap = new Hashtable<Integer,byte[]>();
-  }
-  
-  public void putKey(int keyId, byte[] keyBytes) {
-    keyMap.put(new Integer(keyId), keyBytes);
-  }
-  
-  @Override
-  public byte[] getKey(byte[] keyMetaData) {
-    if (keyMetaData.length != 4) return null;
-    int key_id = BytesUtils.bytesToInt(keyMetaData);
-    return keyMap.get(new Integer(key_id));
-  }
+  public byte[] getAAD(byte[] aadMetaData);
 }

@@ -38,18 +38,18 @@ import javax.crypto.Cipher;
 public class ParquetFileEncryptor {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileEncryptor.class);
 
-  private EncryptionAlgorithm algorithm;
-  private byte[] footerKeyBytes;
+  private final EncryptionAlgorithm algorithm;
+  private final byte[] footerKeyBytes;
+  private final EncryptionSetup encryptionSetup;
+  private final byte[] footerKeyMetaDataBytes;
+  private final boolean uniformEncryption;
+  private final List<ColumnEncryptionSetup> columnMDList; // TODO replace with Map
+  private final byte[] aadBytes;
+  private final boolean encryptFooter;
+  
   private BlockCipher.Encryptor aesGcmBlockEncryptor;
   private BlockCipher.Encryptor aesCtrBlockEncryptor;
   private ColumnEncryptors footerKeyEncryptors;
-  private EncryptionSetup encryptionSetup;
-  private byte[] footerKeyMetaDataBytes = null;
-  //Uniform encryption means footer and all columns are encrypted, with same key
-  private boolean uniformEncryption;
-  private List<ColumnMetadata> columnMDList; // TODO replace with Map
-  private byte[] aadBytes;
-  private boolean encryptFooter;
   private boolean fileCryptoMDSet;
 
   ParquetFileEncryptor(EncryptionSetup eSetup) throws IOException {
@@ -65,7 +65,7 @@ public class ParquetFileEncryptor {
       encryptFooter = true;
     }
     footerKeyMetaDataBytes = eSetup.getFooterKeyMetadata();
-    if (!uniformEncryption) columnMDList = new LinkedList<ColumnMetadata>();
+    columnMDList = new LinkedList<ColumnEncryptionSetup>();
     try {
      LOG.info("AES-GCM cipher provider: {}", Cipher.getInstance("AES/GCM/NoPadding").getProvider());
      if (algorithm.isSetAES_GCM_CTR_V1()) {
@@ -96,34 +96,41 @@ public class ParquetFileEncryptor {
     return footerKeyEncryptors;
   }
 
-  public ColumnEncryptors getColumnEncryptors(ColumnMetadata cmd) throws IOException {
-    if (cmd.getEncryptors() != null) return cmd.getEncryptors();
-    return getColumnEncryptors(cmd.getPath());
+  public ColumnEncryptors getColumnEncryptors(ColumnEncryptionSetup ces) throws IOException {
+    if (ces.getEncryptors() != null) return ces.getEncryptors();
+    return getColumnEncryptors(ces.getPath());
   }
     
   // Returns two encryptors - for page headers, and for page contents (can be the same)
   public synchronized ColumnEncryptors getColumnEncryptors(String[] columnPath) throws IOException {
-    if (uniformEncryption) return getFooterKeyEncryptors();
     
-    // Non-uniform encryption
-    ColumnMetadata cmd = findColumn(columnPath);
-    if (null != cmd) {
-      if (!cmd.isEncrypted()) return null;
-      return cmd.getEncryptors();
+    ColumnEncryptionSetup ces = findColumn(columnPath);
+    if (null != ces) {
+      if (!ces.isEncrypted()) return null;
+      return ces.getEncryptors();
     }
     if (fileCryptoMDSet) throw new IOException("Re-use: No encryption metadata for column " + Arrays.toString(columnPath));
-    cmd = encryptionSetup.getColumnMetadata(columnPath);
+    
+    if (uniformEncryption) {
+      ces = new ColumnEncryptionSetup(true, columnPath);
+      ces.setEncryptors(getFooterKeyEncryptors());
+      columnMDList.add(ces);
+      return getFooterKeyEncryptors();
+    }
+    
+    ColumnCryptodata cmd = encryptionSetup.getColumnMetadata(columnPath);
     if (null == cmd) {
       throw new IOException("No encryption metadata for column " + Arrays.toString(columnPath));
     }
-    columnMDList.add(cmd);
-    if (!cmd.isEncrypted()) return null;
-    if (cmd.isEncryptedWithFooterKey()) {
-      cmd.setEncryptors(getFooterKeyEncryptors());
+    ces = new ColumnEncryptionSetup(cmd);
+    columnMDList.add(ces);
+    if (!ces.isEncrypted()) return null;
+    if (ces.isEncryptedWithFooterKey()) {
+      ces.setEncryptors(getFooterKeyEncryptors());
     }
     else {
       ColumnEncryptors encryptors = new ColumnEncryptors();
-      byte[] column_key_bytes =  cmd.getKeyBytes();
+      byte[] column_key_bytes =  ces.getKeyBytes();
       if (null == column_key_bytes) throw new IOException("Null key in encrypted column " + Arrays.toString(columnPath));
       encryptors.metadataEncryptor = new AesGcmEncryptor(column_key_bytes, aadBytes);
       if (algorithm.isSetAES_GCM_CTR_V1()) {
@@ -132,9 +139,9 @@ public class ParquetFileEncryptor {
       else {
         encryptors.dataEncryptor = encryptors.metadataEncryptor;
       }
-      cmd.setEncryptors(encryptors);
+      ces.setEncryptors(encryptors);
     }
-    return cmd.getEncryptors();
+    return ces.getEncryptors();
   }
 
   public synchronized BlockCipher.Encryptor getFooterEncryptor() throws IOException  {
@@ -154,30 +161,30 @@ public class ParquetFileEncryptor {
     return uniformEncryption;
   }
 
-  public ColumnMetadata getColumnMetaData(String[] path) throws IOException {
-    ColumnMetadata cmd = findColumn(path);
-    if (null == cmd) throw new IOException("No encryption metadata for column " + Arrays.toString(path));
-    return cmd;
+  public ColumnEncryptionSetup getColumnSetup(String[] path) throws IOException {
+    ColumnEncryptionSetup ces = findColumn(path);
+    if (null == ces) throw new IOException("No encryption metadata for column " + Arrays.toString(path));
+    return ces;
   }
 
-  public boolean splitColumnMetaData(ColumnMetadata cmd) {
-    if (!cmd.isEncrypted()) return false;
+  public boolean splitColumnMetaData(ColumnEncryptionSetup ces) {
+    if (!ces.isEncrypted()) return false;
     if (!encryptFooter) return true;
-    return !cmd.isEncryptedWithFooterKey();
+    return !ces.isEncryptedWithFooterKey();
   }
   
   // Find column in a list
   // TODO replace with a Map lookup
-  private ColumnMetadata findColumn(String[] path) {
-    for (ColumnMetadata cmd: columnMDList) {
-      if (Arrays.deepEquals(path, cmd.getPath())) {
-        return cmd;
+  private ColumnEncryptionSetup findColumn(String[] path) {
+    for (ColumnEncryptionSetup ces: columnMDList) {
+      if (Arrays.deepEquals(path, ces.getPath())) {
+        return ces;
       }
     }
     return null;
   }
 
-  public ColumnCryptoMetaData getColumnCryptoMetaData(ColumnMetadata cmd) {
-    return cmd.getColumnCryptoMetaData();
+  public ColumnCryptoMetaData getColumnCryptoMetaData(ColumnEncryptionSetup ces) {
+    return ces.getColumnCryptoMetaData();
   }
 }

@@ -19,27 +19,25 @@
 
 package org.apache.parquet.crypto;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Hashtable;
 
-import org.apache.parquet.bytes.BytesUtils;
+// Simple key retriever, based on UTF8 String
+public class StringKeyIdRetriever implements DecryptionKeyRetriever{
 
-// Simple key retriever, based on integer keyID
-public class IntegerKeyIdRetriever implements DecryptionKeyRetriever{
-
-  private final Hashtable<Integer,byte[]> keyMap;
+  private final Hashtable<String,byte[]> keyMap;
   
-  public IntegerKeyIdRetriever() {
-    keyMap = new Hashtable<Integer,byte[]>();
+  public StringKeyIdRetriever() {
+    keyMap = new Hashtable<String,byte[]>();
   }
   
-  public void putKey(int keyId, byte[] keyBytes) {
-    keyMap.put(new Integer(keyId), keyBytes);
+  public void putKey(String keyId, byte[] keyBytes) {
+    keyMap.put(keyId, keyBytes);
   }
   
   @Override
   public byte[] getKey(byte[] keyMetaData) {
-    if (keyMetaData.length != 4) return null;
-    int key_id = BytesUtils.bytesToInt(keyMetaData);
-    return keyMap.get(new Integer(key_id));
+    String keyId = new String(keyMetaData, StandardCharsets.UTF_8);
+    return keyMap.get(keyId);
   }
 }

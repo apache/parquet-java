@@ -34,16 +34,21 @@ class AesGcmDecryptor implements BlockCipher.Decryptor{
 
   private final SecretKey key;
   private final byte[] AAD;
+  private final byte[] ivPrefix;
 
   private static final int GCM_NONCE_LENGTH = AesGcmEncryptor.GCM_NONCE_LENGTH;
   private static final int GCM_TAG_LENGTH = AesGcmEncryptor.GCM_TAG_LENGTH;
   private static final int chunkLen = AesGcmEncryptor.chunkLen;
 
 
-  AesGcmDecryptor(byte[] keyBytes, byte[] aad) throws IOException {
+  AesGcmDecryptor(byte[] keyBytes, byte[] aad, byte[] ivPrefix) throws IOException {
     if (null == keyBytes) throw new IOException("Null key bytes");
     key = new SecretKeySpec(keyBytes, "AES");
     AAD = aad;
+    this.ivPrefix = ivPrefix;
+    if (null != ivPrefix) {
+      if (ivPrefix.length > GCM_NONCE_LENGTH) throw new IOException("IV prefix length: " + ivPrefix.length);
+    }
   }
 
   @Override
@@ -55,7 +60,14 @@ class AesGcmDecryptor implements BlockCipher.Decryptor{
   public byte[] decrypt(byte[] ciphertext, int offset, int cLen)  throws IOException {
     byte[] nonce = new byte[GCM_NONCE_LENGTH];
     // Get the nonce
-    System.arraycopy(ciphertext, offset, nonce, 0, GCM_NONCE_LENGTH);
+    int noff = 0;
+    int nlen = GCM_NONCE_LENGTH;
+    if (null != ivPrefix) {
+      System.arraycopy(ivPrefix, 0, nonce, 0, ivPrefix.length);
+      noff += ivPrefix.length;
+      nlen -= ivPrefix.length; 
+    }
+    if (nlen > 0) System.arraycopy(ciphertext, offset, nonce, noff, nlen);
     GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, nonce);
     byte[] plaintext;
     try {
