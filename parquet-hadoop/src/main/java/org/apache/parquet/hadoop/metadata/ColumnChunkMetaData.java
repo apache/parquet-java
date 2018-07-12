@@ -18,13 +18,13 @@
  */
 package org.apache.parquet.hadoop.metadata;
 
-import java.io.IOException;
 import java.util.Set;
 
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.crypto.HiddenColumnException;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
@@ -152,8 +152,8 @@ abstract public class ColumnChunkMetaData {
   /**
    * @return the offset of the first byte in the chunk
    */
-  public long getStartingPos() { // TODO change method signature - add throws IOException
-    if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
+  public long getStartingPos() {
+    if (hiddenColumn) throw new HiddenColumnException(path.toArray()); 
     long dictionaryPageOffset = getDictionaryPageOffset();
     long firstDataPageOffset = getFirstDataPageOffset();
     if (dictionaryPageOffset > 0 && dictionaryPageOffset < firstDataPageOffset) {
@@ -191,8 +191,8 @@ abstract public class ColumnChunkMetaData {
     this.properties = columnChunkProperties;
   }
 
-  public CompressionCodecName getCodec() { // TODO change method signature - add throws IOException
-    if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
+  public CompressionCodecName getCodec() {
+    if (hiddenColumn) throw new HiddenColumnException(path.toArray()); 
     return properties.getCodec();
   }
 
@@ -213,58 +213,58 @@ abstract public class ColumnChunkMetaData {
    */
   @Deprecated
   public PrimitiveTypeName getType() {
-    if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
+    if (hiddenColumn) throw new HiddenColumnException(path.toArray()); 
     return properties.getType();
   }
 
   /**
    * @return the primitive type object of the column
    */
-  public PrimitiveType getPrimitiveType() { // TODO change method signature - add throws IOException
-    if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
+  public PrimitiveType getPrimitiveType() {
+    if (hiddenColumn) throw new HiddenColumnException(path.toArray()); 
     return properties.getPrimitiveType();
   }
 
   /**
    * @return start of the column data offset
    */
-  abstract public long getFirstDataPageOffset(); // TODO change method signature - add throws IOException
+  abstract public long getFirstDataPageOffset();
 
   /**
    * @return the location of the dictionary page if any
    */
-  abstract public long getDictionaryPageOffset(); // TODO change method signature - add throws IOException
+  abstract public long getDictionaryPageOffset();
 
   /**
    * @return count of values in this block of the column
    */
-  abstract public long getValueCount(); // TODO change method signature - add throws IOException
+  abstract public long getValueCount();
 
   /**
    * @return the totalUncompressedSize
    */
-  abstract public long getTotalUncompressedSize(); // TODO change method signature - add throws IOException
+  abstract public long getTotalUncompressedSize();
 
   /**
    * @return the totalSize
    */
-  abstract public long getTotalSize(); // TODO change method signature - add throws IOException
+  abstract public long getTotalSize();
 
   /**
    * @return the stats for this column
    */
-  abstract public Statistics getStatistics(); // TODO change method signature - add throws IOException
+  abstract public Statistics getStatistics();
 
   /**
    * @return all the encodings used in this column
    */
-  public Set<Encoding> getEncodings() { // TODO change method signature - add throws IOException
-    if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
+  public Set<Encoding> getEncodings() {
+    if (hiddenColumn) throw new HiddenColumnException(path.toArray()); 
     return properties.getEncodings();
   }
 
-  public EncodingStats getEncodingStats() { // TODO change method signature - add throws IOException
-    if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
+  public EncodingStats getEncodingStats() {
+    if (hiddenColumn) throw new HiddenColumnException(path.toArray()); 
     return encodingStats;
   }
 
@@ -477,32 +477,32 @@ class HiddenColumnChunkMetaData extends ColumnChunkMetaData {
 
   @Override
   public long getFirstDataPageOffset() {
-    throw new RuntimeException("Hidden column"); // TODO replace with throws IOException
+    throw new HiddenColumnException(path.toArray()); 
   }
 
   @Override
   public long getDictionaryPageOffset() {
-    throw new RuntimeException("Hidden column"); // TODO replace with IOException
+    throw new HiddenColumnException(path.toArray()); 
   }
 
   @Override
   public long getValueCount() {
-    throw new RuntimeException("Hidden column"); // TODO replace with IOException
+    throw new HiddenColumnException(path.toArray()); 
   }
 
   @Override
   public long getTotalUncompressedSize() {
-    throw new RuntimeException("Hidden column"); // TODO replace with IOException
+    throw new HiddenColumnException(path.toArray()); 
   }
 
   @Override
   public long getTotalSize() {
-    throw new RuntimeException("Hidden column"); // TODO replace with IOException
+    throw new HiddenColumnException(path.toArray()); 
   }
 
   @Override
   public Statistics getStatistics() {
-    throw new RuntimeException("Hidden column"); // TODO replace with IOException
+    throw new HiddenColumnException(path.toArray()); 
   }
 }
 

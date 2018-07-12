@@ -70,10 +70,11 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.column.EncodingStats;
-import org.apache.parquet.crypto.ColumnDecryptMetadata;
+import org.apache.parquet.crypto.ColumnDecryptionSetup;
 import org.apache.parquet.crypto.ColumnDecryptors;
+import org.apache.parquet.crypto.ColumnEncryptionSetup;
 import org.apache.parquet.crypto.ColumnEncryptors;
-import org.apache.parquet.crypto.ColumnMetadata;
+import org.apache.parquet.crypto.ColumnCryptodata;
 import org.apache.parquet.crypto.ParquetFileDecryptor;
 import org.apache.parquet.crypto.ParquetFileEncryptor;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -252,64 +253,46 @@ public class ParquetMetadataConverter {
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = null;
-      ColumnMetadata cmd = null;
+      ColumnEncryptionSetup ces = null;
       boolean writeCryptoMetadata = false;
       boolean splitMetaData = false;
-      if ((null != fileEncryptor) && !fileEncryptor.isUniformEncryption()) {
-        cmd = fileEncryptor.getColumnMetaData(columnMetaData.getPath().toArray());
-        writeCryptoMetadata = cmd.isEncrypted();
-        splitMetaData = fileEncryptor.splitColumnMetaData(cmd);
+      String[] path = columnMetaData.getPath().toArray();
+      if (null != fileEncryptor) {
+        ces = fileEncryptor.getColumnSetup(path);
+        writeCryptoMetadata = ces.isEncrypted();
+        splitMetaData = fileEncryptor.splitColumnMetaData(ces);
       }
-      if (!splitMetaData) {
-        columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
-        columnChunk.file_path = block.getPath(); // they are in the same file for now
-        columnChunk.meta_data = new ColumnMetaData(
+      ColumnMetaData metaData = new ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
-          Arrays.asList(columnMetaData.getPath().toArray()),
+          Arrays.asList(path),
           toFormatCodec(columnMetaData.getCodec()),
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
           columnMetaData.getTotalSize(),
           columnMetaData.getFirstDataPageOffset());
-        columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
-        if (!columnMetaData.getStatistics().isEmpty()) {
-          columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
-        }
-        if (columnMetaData.getEncodingStats() != null) {
-          columnChunk.meta_data.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
-        }
-        //      columnChunk.meta_data.index_page_offset = ;
-        //      columnChunk.meta_data.key_value_metadata = ; // nothing yet        
+      metaData.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
+      if (!columnMetaData.getStatistics().isEmpty()) {
+        metaData.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
+      }
+      if (columnMetaData.getEncodingStats() != null) {
+        metaData.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
+      }
+      //      metaData.index_page_offset = ;
+      //      metaData.key_value_metadata = ; // nothing yet
+      if (!splitMetaData) {
+        columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
+        columnChunk.setMeta_data(metaData);
       }
       else {
         // Split ColumnMetadata from footer (store offset only): serialize, encrypt and write separately 
-        columnChunk = new ColumnChunk(out.getPos());  
-        columnChunk.file_path = block.getPath(); // they are in the same file for now
-        ColumnMetaData metaData = new ColumnMetaData(
-          getType(columnMetaData.getType()),
-          toFormatEncodings(columnMetaData.getEncodings()),
-          Arrays.asList(columnMetaData.getPath().toArray()),
-          toFormatCodec(columnMetaData.getCodec()),
-          columnMetaData.getValueCount(),
-          columnMetaData.getTotalUncompressedSize(),
-          columnMetaData.getTotalSize(),
-          columnMetaData.getFirstDataPageOffset());
-        metaData.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
-        if (!columnMetaData.getStatistics().isEmpty()) {
-          metaData.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
-        }
-        if (columnMetaData.getEncodingStats() != null) {
-          metaData.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
-        }
-        //      metaData.index_page_offset = ;
-        //      metaData.key_value_metadata = ; // nothing yet
-        ColumnPath path = getPath(metaData);
-        ColumnEncryptors encryptors = fileEncryptor.getColumnEncryptors(cmd);
+        columnChunk = new ColumnChunk(out.getPos());
+        ColumnEncryptors encryptors = fileEncryptor.getColumnEncryptors(ces);
         writeColumnMetaData(metaData, out, encryptors.getMetadataEncryptor());
       }
+      columnChunk.file_path = block.getPath(); // they are in the same file for now
       if (writeCryptoMetadata) {
-        columnChunk.setCrypto_meta_data(fileEncryptor.getColumnCryptoMetaData(cmd));
+        columnChunk.setCrypto_meta_data(fileEncryptor.getColumnCryptoMetaData(ces));
       }
       
       parquetColumns.add(columnChunk);
@@ -475,7 +458,6 @@ public class ParquetMetadataConverter {
     // create stats object based on the column type
     org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
         org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
-    
     if (formatStats != null) {
       // Use the new V2 min-max statistics over the former one if it is filled
       if (formatStats.isSetMin_value() && formatStats.isSetMax_value()) {
@@ -958,7 +940,7 @@ public class ParquetMetadataConverter {
           throw new IOException("Both MetaData and CryptoMetaData are null");
         }
         String[] columnPath = pathList.toArray(new String[pathList.size()]);
-        ColumnDecryptMetadata cdmd = fileDecryptor.setColumnCryptoMetadata(columnPath, encryptedColumn, keyMetadata, cryptoMetaData);
+        ColumnDecryptionSetup cdmd = fileDecryptor.setColumnCryptoMetadata(columnPath, encryptedColumn, keyMetadata, cryptoMetaData);
         if (null != metaData) continue; // Metadata not encrypted
         ColumnDecryptors decryptors = fileDecryptor.getColumnDecryptors(cdmd);
         if (decryptors.getStatus() == ColumnDecryptors.Status.KEY_AVAILABLE) {
@@ -970,6 +952,7 @@ public class ParquetMetadataConverter {
           sis.seek(currentOffset); //TODO needed?
         }
       }
+      fileDecryptor.columnCryptoMetaDataProcessed();
     }
   }
   

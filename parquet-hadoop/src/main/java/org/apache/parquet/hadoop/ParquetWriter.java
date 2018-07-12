@@ -20,16 +20,12 @@ package org.apache.parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Base64;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.crypto.ParquetCipher;
-import org.apache.parquet.crypto.EncryptionSetup;
-import org.apache.parquet.crypto.ParquetEncryptionFactory;
 import org.apache.parquet.crypto.ParquetFileEncryptor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -55,7 +51,6 @@ public class ParquetWriter<T> implements Closeable {
       ParquetProperties.DEFAULT_WRITER_VERSION;
 
   public static final String OBJECT_MODEL_NAME_PROP = "writer.model.name";
-  public static final String ENCRYPTION_KEY_PARAMETER_NAME = "parquet.encryption.key";
 
   // max size (bytes) to write as padding and the min size of a row group
   public static final int MAX_PADDING_SIZE_DEFAULT = 8 * 1024 * 1024; // 8MB
@@ -323,24 +318,6 @@ public class ParquetWriter<T> implements Closeable {
       int maxPaddingSize,
       ParquetProperties encodingProps,
       ParquetFileEncryptor fileEncryptor) throws IOException {
-    
-    if (null == fileEncryptor) {
-      // Check for encryption key in Hadoop parameters
-      String encryptionKey[] = conf.getTrimmedStrings(ENCRYPTION_KEY_PARAMETER_NAME);
-      if (null != encryptionKey && encryptionKey.length > 0) {
-        byte[] keyBytes = Base64.getDecoder().decode(encryptionKey[0]);
-        if (encryptionKey.length == 2) {
-          byte[] keyMDBytes = Base64.getDecoder().decode(encryptionKey[1]);
-          //TODO column selector
-          //TODO re-use encryptor? (keep in static table)
-          EncryptionSetup eSetup = new EncryptionSetup(ParquetCipher.AES_GCM_V1, keyBytes, keyMDBytes);
-          fileEncryptor = ParquetEncryptionFactory.createFileEncryptor(eSetup); 
-        }
-        else {
-          fileEncryptor = ParquetEncryptionFactory.createFileEncryptor(keyBytes);
-        }
-      }
-    }
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();

@@ -36,6 +36,7 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
+import org.apache.parquet.crypto.HiddenColumnException;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.hadoop.CodecFactory.BytesDecompressor;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -66,9 +67,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final DictionaryPage compressedDictionaryPage;
     private final BlockCipher.Decryptor blockDecryptor;
     private final boolean hiddenColumn;
+    private final String[] columnPath;
 
-    ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages, DictionaryPage compressedDictionaryPage,
-        BlockCipher.Decryptor blockDecryptor) {
+    ColumnChunkPageReader(String[] columnPath, BytesInputDecompressor decompressor, List<DataPage> compressedPages, 
+        DictionaryPage compressedDictionaryPage, BlockCipher.Decryptor blockDecryptor) {
       this.decompressor = decompressor;
       this.blockDecryptor = blockDecryptor;
       this.compressedPages = new LinkedList<DataPage>(compressedPages);
@@ -79,27 +81,29 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       }
       this.valueCount = count;
       this.hiddenColumn = false;
+      this.columnPath = columnPath;
     }
 
     // Creates hidden column object
-    ColumnChunkPageReader() {
+    ColumnChunkPageReader(String[] columnPath) {
       this.decompressor = null;
       this.blockDecryptor = null;
       this.compressedPages = null;
       this.compressedDictionaryPage = null;
       this.valueCount = -1;
       this.hiddenColumn = true;
+      this.columnPath = columnPath;
     }
 
     @Override
     public long getTotalValueCount() {
-      if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
+      if (hiddenColumn) throw new HiddenColumnException(columnPath);
       return valueCount;
     }
 
     @Override
     public DataPage readPage() {
-      if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
+      if (hiddenColumn) throw new HiddenColumnException(columnPath);
       if (compressedPages.isEmpty()) {
         return null;
       }
@@ -158,7 +162,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
     @Override
     public DictionaryPage readDictionaryPage() {
-      if (hiddenColumn) throw new RuntimeException("Hidden column"); // TODO replace with IOException
+      if (hiddenColumn) throw new HiddenColumnException(columnPath);
       if (compressedDictionaryPage == null) {
         return null;
       }
@@ -206,6 +210,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     if (readers.put(path, reader) != null) {
       throw new RuntimeException(path+ " was added twice");
     }
+  }
+
+  void addHiddenColumn(ColumnDescriptor path) {
+    addColumn(path, new ColumnChunkPageReader(path.getPath()));
   }
 
 }
