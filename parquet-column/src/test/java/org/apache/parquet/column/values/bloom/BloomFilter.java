@@ -28,23 +28,22 @@ import com.google.common.hash.Hashing;
 import com.google.common.hash.HashFunction;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.*;
-import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.io.api.Binary;
 
 /**
- * Bloom Filter is a compact structure to indicate whether an item is not in set or probably
- * in set. Bloom class is underlying class of Bloom Filter which stores a bit set represents
- * elements set, hash strategy and bloom filter algorithm.
+ * A Bloom filter is a compact structure to indicate whether an item is not in a set or probably
+ * in a set. BloomFilter class stores a bit set represents a elements set, a hash strategy and a
+ * Bloom filter algorithm.
  *
- * Bloom Filter algorithm is implemented using block Bloom filters from Putze et al.'s "Cache-,
- * Hash- and Space-Efficient Bloom Filters". The basic idea is to hash the item to a tiny Bloom
- * Filter which size fit a single cache line or smaller. This implementation sets 8 bits in
- * each tiny Bloom Filter. Tiny bloom filter are 32 bytes to take advantage of 32-bytes SIMD
+ * This Bloom filter is implemented using block-based Bloom filter algorithm from Putze et al.'s
+ * "Cache-, Hash- and Space-Efficient Bloom filters". The basic idea is to hash the item to a tiny
+ * Bloom filter which size fit a single cache line or smaller. This implementation sets 8 bits in
+ * each tiny Bloom filter. Each tiny Bloom filter is 32 bytes to take advantage of 32-byte SIMD
  * instruction.
  */
 
-public class Bloom {
-  // Hash strategy available for bloom filter.
+public class BloomFilter {
+  // Bloom filter Hash strategy .
   public enum HashStrategy {
     MURMUR3_X64_128,
   }
@@ -54,57 +53,67 @@ public class Bloom {
     BLOCK,
   }
 
-  // Bloom filter data header, including number of bytes, hash strategy and algorithm.
+  // The Bloom filter header includes the number of bytes, hash strategy and algorithm.
   public static final int HEADER_SIZE = 12;
 
-  // Bytes in a tiny bloom filter block.
+  // Bytes in a tiny Bloom filter block.
   public static final int BYTES_PER_FILTER_BLOCK = 32;
 
   // Default seed for hash function, it comes from Murmur3 from Hive.
   public static final int DEFAULT_SEED = 104729;
 
-  // Hash strategy used in this bloom filter.
+  // Minimum Bloom filter size, it sets to x86_64 cache alignment.
+  public static final int MINIMUM_BLOOM_FILTER_BYTES = 64;
+
+  // The number of bits to set in a tiny Bloom filter
+  public static final int BITS_SET_PER_BLOCK = 8;
+
+  // Maximum Bloom filter size, it sets to default HDFS block size for upper boundary check
+  // This should be re-consider when implementing write side logic.
+  public static final int MAXIMUM_BLOOM_FILTER_BYTES = 128 * 1024 * 1024;
+
+  // Hash strategy used in this Bloom filter.
   public final HashStrategy hashStrategy;
 
-  // Algorithm applied of this bloom filter.
+  // Algorithm used in this Bloom filter.
   public final Algorithm algorithm;
 
-  // The underlying byte array for bloom filter bitset.
+  // The underlying byte array for Bloom filter bitset.
   private byte[] bitset;
 
-  // A integer array buffer of underlying bitset help setting bits.
+  // A integer array buffer of underlying bitset to help setting bits.
   private IntBuffer intBuffer;
 
   // Hash function use to compute hash for column value.
   private HashFunction hashFunction;
 
-  // The block based algorithm needs 8 odd SALT values to calculate eight index
+  // The block-based algorithm needs 8 odd SALT values to calculate eight index
   // of bit to set, one bit in 32-bit word.
   private static final int SALT[] = {0x47b6137b, 0x44974d91, 0x8824ad5b, 0xa2b7289d,
     0x705495c7, 0x2df1424b, 0x9efc4947, 0x5c6bfb31};
 
   /**
-   * Constructor of bloom filter, if numBytes is zero, bloom filter bitset
-   * will be created lazily and the number of bytes will be calculated through
-   * distinct values in cache. It use murmur3_x64_128 as its default hash function
-   * and block based algorithm as default algorithm.
-   * @param numBytes The number of bytes for bloom filter bitset, set to zero can
-   *                 let it calculate number automatically by using default DEFAULT_FPP.
+   * Constructor of Bloom filter.
+   *
+   * @param numBytes The number of bytes for Bloom filter bitset. The range of num_bytes should be within
+   *                 [MINIMUM_BLOOM_FILTER_BYTES, MAXIMUM_BLOOM_FILTER_BYTES], it will be rounded up/down
+   *                 to lower/upper bound if num_bytes is out of range and also will rounded up to a power
+   *                 of 2. It uses murmur3_x64_128 as its default hash function and block-based algorithm
+   *                 as default algorithm.
    */
-  public Bloom(int numBytes) {
+  public BloomFilter(int numBytes) {
     this(numBytes, HashStrategy.MURMUR3_X64_128, Algorithm.BLOCK);
   }
 
   /**
-   * Constructor of bloom filter, if numBytes is zero, bloom filter bitset
-   * will be created lazily and the number of bytes will be calculated through
-   * distinct values in cache.
-   * @param numBytes The number of bytes for bloom filter bitset, set to zero can
-   *                 let it calculate number automatically by using default DEFAULT_FPP.
-   * @param hashStrategy The hash strategy bloom filter apply.
-   * @param algorithm The algorithm of bloom filter.
+   * Constructor of Bloom filter. It uses murmur3_x64_128 as its default hash
+   * function and block-based algorithm as its default algorithm.
+   *
+   * @param numBytes The number of bytes for Bloom filter bitset
+   * @param hashStrategy The hash strategy of Bloom filter.
+   * @param algorithm The algorithm of Bloom filter.
    */
-  private Bloom(int numBytes, HashStrategy hashStrategy, Algorithm algorithm) {
+  private BloomFilter(int numBytes, HashStrategy hashStrategy, Algorithm algorithm) {
     initBitset(numBytes);
 
     switch (hashStrategy) {
@@ -121,23 +130,28 @@ public class Bloom {
 
 
   /**
-   * Construct the bloom filter with given bit set, it is used when reconstruct
-   * bloom filter from parquet file.It use murmur3_x64_128 as its default hash
-   * function and block based algorithm as default algorithm.
-   * @param bitset The given bitset to construct bloom filter.
+   * Construct the Bloom filter with given bitset, it is used when reconstructing
+   * Bloom filter from parquet file. It use murmur3_x64_128 as its default hash
+   * function and block-based algorithm as default algorithm.
+   *
+   * @param bitset The given bitset to construct Bloom filter.
    */
-  public Bloom(byte[] bitset) {
+  public BloomFilter(byte[] bitset) {
     this(bitset, HashStrategy.MURMUR3_X64_128, Algorithm.BLOCK);
   }
 
   /**
-   * Construct the bloom filter with given bit set, it is used
-   * when reconstruct bloom filter from parquet file.
-   * @param bitset The given bitset to construct bloom filter.
-   * @param hashStrategy The hash strategy bloom filter apply.
-   * @param algorithm The algorithm of bloom filter.
+   * Construct the Bloom filter with given bitset, it is used when reconstructing
+   * Bloom filter from parquet file.
+   *
+   * @param bitset The given bitset to construct Bloom filter.
+   * @param hashStrategy The hash strategy Bloom filter apply.
+   * @param algorithm The algorithm of Bloom filter.
    */
-  private Bloom(byte[] bitset, HashStrategy hashStrategy, Algorithm algorithm) {
+  private BloomFilter(byte[] bitset, HashStrategy hashStrategy, Algorithm algorithm) {
+    if (bitset == null) {
+      throw new RuntimeException("Given bitset is null");
+    }
     this.bitset = bitset;
     this.intBuffer = ByteBuffer.wrap(bitset).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
 
@@ -153,12 +167,17 @@ public class Bloom {
   }
 
   /**
-   * Create a new bitset for bloom filter, at least 256 bits will be create.
-   * @param numBytes number of bytes for bit set.
+   * Create a new bitset for Bloom filter.
+   *
+   * @param numBytes The number of bytes for Bloom filter bitset. The range of num_bytes should be within
+   *                 [MINIMUM_BLOOM_FILTER_BYTES, MAXIMUM_BLOOM_FILTER_BYTES], it will be rounded up/down
+   *                 to lower/upper bound if num_bytes is out of range and also will rounded up to a power
+   *                 of 2. It uses murmur3_x64_128 as its default hash function and block-based algorithm
+   *                 as default algorithm.
    */
   private void initBitset(int numBytes) {
-    if (numBytes < BYTES_PER_FILTER_BLOCK) {
-      numBytes = BYTES_PER_FILTER_BLOCK;
+    if (numBytes < MINIMUM_BLOOM_FILTER_BYTES) {
+      numBytes = MINIMUM_BLOOM_FILTER_BYTES;
     }
 
     // Get next power of 2 if it is not power of 2.
@@ -166,8 +185,8 @@ public class Bloom {
       numBytes = Integer.highestOneBit(numBytes) << 1;
     }
 
-    if (numBytes > ParquetProperties.DEFAULT_MAXIMUM_BLOOM_FILTER_BYTES || numBytes < 0) {
-      numBytes = ParquetProperties.DEFAULT_MAXIMUM_BLOOM_FILTER_BYTES;
+    if (numBytes > MAXIMUM_BLOOM_FILTER_BYTES || numBytes < 0) {
+      numBytes = MAXIMUM_BLOOM_FILTER_BYTES;
     }
 
     this.bitset = new byte[numBytes];
@@ -175,9 +194,10 @@ public class Bloom {
   }
 
   /**
-   * Write bloom filter to output stream. A bloom filter structure should include
-   * bitset length, hash strategy, algorithm, and bitset.
-   * @param out output stream to write
+   * Write the Bloom filter to an output stream. It writes the Bloom filter header includes the
+   * bitset's length in size of byte, the hash strategy, the algorithm, and the bitset.
+   *
+   * @param out the output stream to write
    */
   public void writeTo(OutputStream out) throws IOException {
     // Write number of bytes of bitset.
@@ -194,17 +214,17 @@ public class Bloom {
   }
 
   private int[] setMask(int key) {
-    int mask[] = new int[8];
+    int mask[] = new int[BITS_SET_PER_BLOCK];
 
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = key * SALT[i];
     }
 
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = mask[i] >>> 27;
     }
 
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = 0x1 << mask[i];
     }
 
@@ -212,8 +232,9 @@ public class Bloom {
   }
 
   /**
-   * Add an element to bloom filter, the element content is represented by
+   * Add an element to Bloom filter, the element content is represented by
    * the hash value of its plain encoding result.
+   *
    * @param hash the hash result of element.
    */
   public void insert(long hash) {
@@ -223,7 +244,7 @@ public class Bloom {
     // Calculate mask for bucket.
     int mask[] = setMask(key);
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < BITS_SET_PER_BLOCK; i++) {
       int value = intBuffer.get(bucketIndex * (BYTES_PER_FILTER_BLOCK / 4) + i);
       value |= mask[i];
       intBuffer.put(bucketIndex * (BYTES_PER_FILTER_BLOCK / 4) + i, value);
@@ -231,7 +252,8 @@ public class Bloom {
   }
 
   /**
-   * Determine where an element is in set or not.
+   * Determine whether an element is in set or not.
+   *
    * @param hash the hash value of element plain encoding result.
    * @return false if element is must not in set, true if element probably in set.
    */
@@ -239,10 +261,10 @@ public class Bloom {
     int bucketIndex = (int)(hash >> 32) & (bitset.length / BYTES_PER_FILTER_BLOCK - 1);
     int key = (int)hash;
 
-    // Calculate mask for bucket.
+    // Calculate mask for the tiny Bloom filter.
     int mask[] = setMask(key);
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < BITS_SET_PER_BLOCK; i++) {
       if (0 == (intBuffer.get(bucketIndex * (BYTES_PER_FILTER_BLOCK / 4) + i) & mask[i])) {
         return false;
       }
@@ -253,6 +275,7 @@ public class Bloom {
 
   /**
    * Calculate optimal size according to the number of distinct values and false positive probability.
+   *
    * @param n: The number of distinct values.
    * @param p: The false positive probability.
    * @return optimal number of bits of given n and p.
@@ -261,12 +284,12 @@ public class Bloom {
     Preconditions.checkArgument((p > 0.0 && p < 1.0),
       "FPP should be less than 1.0 and great than 0.0");
 
-    final double M = -8 * n / Math.log(1 - Math.pow(p, 1.0 / 8));
-    final double MAX = ParquetProperties.DEFAULT_MAXIMUM_BLOOM_FILTER_BYTES << 3;
-    int numBits = (int)M;
+    final double m = -8 * n / Math.log(1 - Math.pow(p, 1.0 / 8));
+    final double MAX = MAXIMUM_BLOOM_FILTER_BYTES << 3;
+    int numBits = (int)m;
 
     // Handle overflow.
-    if (M > MAX || M < 0) {
+    if (m > MAX || m < 0) {
       numBits = (int)MAX;
     }
 
@@ -275,24 +298,25 @@ public class Bloom {
       numBits = Integer.highestOneBit(numBits) << 1;
     }
 
-    // Minimum
-    if (numBits < (BYTES_PER_FILTER_BLOCK << 3)) {
-      numBits = BYTES_PER_FILTER_BLOCK << 3;
+    if (numBits < (MINIMUM_BLOOM_FILTER_BYTES << 3)) {
+      numBits = MINIMUM_BLOOM_FILTER_BYTES << 3;
     }
 
     return numBits;
   }
 
   /**
-   * used to decide if we want to work to the next page
-   * @return Bytes buffered of bloom filter.
+   * Get the number of bytes for bitset in this Bloom filter.
+   *
+   * @return The number of bytes for bitset in this Bloom filter.
    */
-  public long getBufferedSize() {
+  public long getBitsetSize() {
     return bitset.length;
   }
 
   /**
    * Compute hash for int value by using its plain encoding result.
+   *
    * @param value the value to hash
    * @return hash result
    */
@@ -304,6 +328,7 @@ public class Bloom {
 
   /**
    * Compute hash for long value by using its plain encoding result.
+   *
    * @param value the value to hash
    * @return hash result
    */
@@ -315,6 +340,7 @@ public class Bloom {
 
   /**
    * Compute hash for double value by using its plain encoding result.
+   *
    * @param value the value to hash
    * @return hash result
    */
@@ -326,6 +352,7 @@ public class Bloom {
 
   /**
    * Compute hash for float value by using its plain encoding result.
+   *
    * @param value the value to hash
    * @return hash result
    */
@@ -337,6 +364,7 @@ public class Bloom {
 
   /**
    * Compute hash for Binary value by using its plain encoding result.
+   *
    * @param value the value to hash
    * @return hash result
    */

@@ -34,80 +34,82 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 
-public class TestBloom {
-  @Test
-  public void testIntBloom () throws IOException {
-    Bloom bloom = new Bloom(279);
-    assertEquals("bloom filter size should be adjust to 512 bytes if input bytes is 279 bytes",
-      bloom.getBufferedSize(), 512);
+public class TestBloomFilter {
 
-    for(int i = 0; i<10; i++) {
-      bloom.insert(bloom.hash(i));
+  @Test
+  public void testConstructor () throws IOException {
+    BloomFilter bloomFilter1 = new BloomFilter(0);
+    assertEquals(bloomFilter1.getBitsetSize(), BloomFilter.MINIMUM_BLOOM_FILTER_BYTES);
+
+    BloomFilter bloomFilter2 = new BloomFilter(256 * 1024 * 1024);
+    assertEquals(bloomFilter2.getBitsetSize(), BloomFilter.MAXIMUM_BLOOM_FILTER_BYTES);
+
+    BloomFilter bloomFilter3 = new BloomFilter(1000);
+    assertEquals(bloomFilter3.getBitsetSize(), 1024);
+  }
+
+  /*
+   * This test is used to test basic operations including inserting, finding and
+   * serializing and de-serializing.
+   */
+  @Test
+  public void testBasic () throws IOException {
+    BloomFilter bloomFilter = new BloomFilter(512);
+
+    for(int i = 0; i < 10; i++) {
+      bloomFilter.insert(bloomFilter.hash(i));
     }
 
-    ByteArrayOutputStream baos = new ByteArrayOutputStream((int)bloom.getBufferedSize() + bloom.HEADER_SIZE);
-    bloom.writeTo(baos);
+    ByteArrayOutputStream baos = new ByteArrayOutputStream((int) bloomFilter.getBitsetSize() +
+      BloomFilter.HEADER_SIZE);
+    bloomFilter.writeTo(baos);
 
     ByteBuffer bloomBuffer = ByteBuffer.wrap(baos.toByteArray());
 
     int length = Integer.reverseBytes(bloomBuffer.getInt());
+    assertEquals(length, 512);
+
     int hash = Integer.reverseBytes(bloomBuffer.getInt());
+    assertEquals(hash, BloomFilter.HashStrategy.MURMUR3_X64_128.ordinal());
+
     int algorithm = Integer.reverseBytes(bloomBuffer.getInt());
+    assertEquals(algorithm, BloomFilter.Algorithm.BLOCK.ordinal());
 
     byte[] bitset = new byte[length];
     bloomBuffer.get(bitset);
 
-    bloom = new Bloom(bitset);
+    bloomFilter = new BloomFilter(bitset);
 
     for(int i = 0; i < 10; i++) {
-      assertTrue(bloom.find(bloom.hash(i)));
+      assertTrue(bloomFilter.find(bloomFilter.hash(i)));
     }
   }
 
   @Test
-  public void testBinaryBloom() throws IOException {
-    int totalCount = 100000;
-    double fpp = 0.01;
+  public void testFPP() throws IOException {
+    final int totalCount = 100000;
+    final double FPP = 0.01;
     final long SEED = 104729;
 
-    Bloom binaryBloom = new Bloom(Bloom.optimalNumOfBits(totalCount, fpp));
+    BloomFilter bloomFilter = new BloomFilter(BloomFilter.optimalNumOfBits(totalCount, FPP));
     List<String> strings = new ArrayList<>();
     RandomStr randomStr = new RandomStr(new Random(SEED));
     for(int i = 0; i < totalCount; i++) {
       String str = randomStr.get(10);
       strings.add(str);
-      binaryBloom.insert(binaryBloom.hash(Binary.fromString(str)));
+      bloomFilter.insert(bloomFilter.hash(Binary.fromString(str)));
     }
 
-    ByteArrayOutputStream baos = new ByteArrayOutputStream(
-      (int)binaryBloom.getBufferedSize() + binaryBloom.HEADER_SIZE);
-    binaryBloom.writeTo(baos);
-
-    ByteBuffer bloomBuffer = ByteBuffer.wrap(baos.toByteArray());
-
-    int length = Integer.reverseBytes(bloomBuffer.getInt());
-    int hash = Integer.reverseBytes(bloomBuffer.getInt());
-    int algorithm = Integer.reverseBytes(bloomBuffer.getInt());
-
-    byte[] bitset = new byte[length];
-    bloomBuffer.get(bitset);
-
-    binaryBloom = new Bloom(bitset);
-
-    for(int i = 0; i < strings.size(); i++) {
-      assertTrue(binaryBloom.find(binaryBloom.hash(Binary.fromString(strings.get(i)))));
-    }
-
-    // exist can be true at probability 0.01.
+    // The exist is a counter which is increased by one when find return true.
     int exist = 0;
     for (int i = 0; i < totalCount; i++) {
       String str = randomStr.get(8);
-      if (binaryBloom.find(binaryBloom.hash(Binary.fromString(str)))) {
+      if (bloomFilter.find(bloomFilter.hash(Binary.fromString(str)))) {
         exist ++;
       }
     }
 
-    // exist should be probably less than 1000 according default FPP 0.01.
-    assertTrue(exist < totalCount*fpp);
+    // The exist should be probably less than 1000 according FPP 0.01.
+    assertTrue(exist < totalCount * FPP);
   }
 }
