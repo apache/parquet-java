@@ -17,22 +17,26 @@
  * under the License.
  */
 
-package org.apache.parquet.column.values.bloom;
+package org.apache.parquet.column.values.bloomfilter;
 
-import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 import org.apache.parquet.column.values.RandomStr;
 import org.apache.parquet.io.api.Binary;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
 
 public class TestBloomFilter {
 
@@ -48,40 +52,48 @@ public class TestBloomFilter {
     assertEquals(bloomFilter3.getBitsetSize(), 1024);
   }
 
+  @Rule
+  public final TemporaryFolder temp = new TemporaryFolder();
   /*
    * This test is used to test basic operations including inserting, finding and
    * serializing and de-serializing.
    */
   @Test
   public void testBasic () throws IOException {
-    BloomFilter bloomFilter = new BloomFilter(512);
+    final String testStrings[] = {"hello", "parquet", "bloom", "filter"};
+    BloomFilter bloomFilter = new BloomFilter(1024);
 
-    for(int i = 0; i < 10; i++) {
-      bloomFilter.insert(bloomFilter.hash(i));
+    for(int i = 0; i < testStrings.length; i++) {
+      bloomFilter.insert(bloomFilter.hash(Binary.fromString(testStrings[i])));
     }
 
-    ByteArrayOutputStream baos = new ByteArrayOutputStream((int) bloomFilter.getBitsetSize() +
-      BloomFilter.HEADER_SIZE);
-    bloomFilter.writeTo(baos);
+    File testFile = temp.newFile();
+    FileOutputStream fileOutputStream = new FileOutputStream(testFile);
+    bloomFilter.writeTo(fileOutputStream);
+    fileOutputStream.close();
 
-    ByteBuffer bloomBuffer = ByteBuffer.wrap(baos.toByteArray());
+    FileInputStream fileInputStream = new FileInputStream(testFile);
 
-    int length = Integer.reverseBytes(bloomBuffer.getInt());
-    assertEquals(length, 512);
+    byte[] value = new byte[4];
 
-    int hash = Integer.reverseBytes(bloomBuffer.getInt());
+    fileInputStream.read(value);
+    int length = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    assertEquals(length, 1024);
+
+    fileInputStream.read(value);
+    int hash = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
     assertEquals(hash, BloomFilter.HashStrategy.MURMUR3_X64_128.ordinal());
 
-    int algorithm = Integer.reverseBytes(bloomBuffer.getInt());
+    fileInputStream.read(value);
+    int algorithm = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
     assertEquals(algorithm, BloomFilter.Algorithm.BLOCK.ordinal());
 
     byte[] bitset = new byte[length];
-    bloomBuffer.get(bitset);
-
+    fileInputStream.read(bitset);
     bloomFilter = new BloomFilter(bitset);
 
-    for(int i = 0; i < 10; i++) {
-      assertTrue(bloomFilter.find(bloomFilter.hash(i)));
+    for(int i = 0; i < testStrings.length; i++) {
+      assertTrue(bloomFilter.find(bloomFilter.hash(Binary.fromString(testStrings[i]))));
     }
   }
 
@@ -100,7 +112,7 @@ public class TestBloomFilter {
       bloomFilter.insert(bloomFilter.hash(Binary.fromString(str)));
     }
 
-    // The exist is a counter which is increased by one when find return true.
+    // The exist counts the number of times FindHash returns true.
     int exist = 0;
     for (int i = 0; i < totalCount; i++) {
       String str = randomStr.get(8);

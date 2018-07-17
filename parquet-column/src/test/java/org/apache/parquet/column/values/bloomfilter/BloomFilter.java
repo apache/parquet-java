@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.values.bloom;
+package org.apache.parquet.column.values.bloomfilter;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -24,10 +24,10 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
-import com.google.common.hash.Hashing;
 import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.bytes.*;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
 
 /**
@@ -53,24 +53,21 @@ public class BloomFilter {
     BLOCK,
   }
 
-  // The Bloom filter header includes the number of bytes, hash strategy and algorithm.
-  public static final int HEADER_SIZE = 12;
-
   // Bytes in a tiny Bloom filter block.
-  public static final int BYTES_PER_FILTER_BLOCK = 32;
+  private static final int BYTES_PER_FILTER_BLOCK = 32;
 
-  // Default seed for hash function, it comes from Murmur3 from Hive.
-  public static final int DEFAULT_SEED = 104729;
+  // Default seed for hash function, it comes from System.nanoTime().
+  private static final int DEFAULT_SEED = 1361930890;
 
-  // Minimum Bloom filter size, it sets to x86_64 cache alignment.
-  public static final int MINIMUM_BLOOM_FILTER_BYTES = 64;
-
-  // The number of bits to set in a tiny Bloom filter
-  public static final int BITS_SET_PER_BLOCK = 8;
+  // Minimum Bloom filter size, set to size of a tiny Bloom filter block
+  public static final int MINIMUM_BLOOM_FILTER_BYTES = 32;
 
   // Maximum Bloom filter size, it sets to default HDFS block size for upper boundary check
   // This should be re-consider when implementing write side logic.
   public static final int MAXIMUM_BLOOM_FILTER_BYTES = 128 * 1024 * 1024;
+
+  // The number of bits to set in a tiny Bloom filter
+  private static final int BITS_SET_PER_BLOCK = 8;
 
   // Hash strategy used in this Bloom filter.
   public final HashStrategy hashStrategy;
