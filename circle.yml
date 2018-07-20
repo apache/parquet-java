@@ -8,6 +8,7 @@ machine:
     version: oraclejdk8
   post:
   - /home/ubuntu/rms-one-deployment/scripts/ci-unlock
+  - (cd /home/ubuntu/rms-one-deployment && git pull --all)
 test:
   override:
   - echo "tests complete."
