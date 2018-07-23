@@ -97,13 +97,8 @@ final class ColumnWriterV1 implements ColumnWriter {
           + definitionLevelColumn.getBufferedSize()
           + dataColumn.getBufferedSize();
       if (memSize > props.getPageSizeThreshold()) {
-        // we will write the current page and check again the size at the predicted middle of next page
-        if (props.estimateNextSizeCheck()) {
-          valueCountForNextSizeCheck = valueCount / 2;
-        } else {
-          valueCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
-        }
-        writePage();
+        LOG.debug("mem size {} > {}: ending page after {} values.", memSize, props.getPageSizeThreshold(), valueCount);
+        writePage(); // Will set valueCountForNextSizeCheck as well
       } else if (props.estimateNextSizeCheck()) {
         // not reached the threshold, will check again midway
         valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * props.getPageSizeThreshold() / memSize)) / 2 + 1;
@@ -141,24 +136,34 @@ final class ColumnWriterV1 implements ColumnWriter {
    statistics.updateStats(value);
   }
 
-  private void writePage() {
+  /**
+   * writes the current data to a new page in the page store
+   */
+  public void writePage() {
     if (DEBUG) LOG.debug("write page");
-    try {
-      pageWriter.writePage(
-          concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
-          valueCount,
-          statistics,
-          repetitionLevelColumn.getEncoding(),
-          definitionLevelColumn.getEncoding(),
-          dataColumn.getEncoding());
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write page for " + path, e);
+    if (valueCount > 0) {
+      try {
+        pageWriter.writePage(
+            concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
+            valueCount,
+            statistics,
+            repetitionLevelColumn.getEncoding(),
+            definitionLevelColumn.getEncoding(),
+            dataColumn.getEncoding());
+      } catch (IOException e) {
+        throw new ParquetEncodingException("could not write page for " + path, e);
+      }
+      repetitionLevelColumn.reset();
+      definitionLevelColumn.reset();
+      dataColumn.reset();
+      if (props.estimateNextSizeCheck()) {
+        valueCountForNextSizeCheck = valueCount/2; // check size at the predicted middle of next page
+      } else {
+        valueCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+      }
+      valueCount = 0;
+      resetStatistics();
     }
-    repetitionLevelColumn.reset();
-    definitionLevelColumn.reset();
-    dataColumn.reset();
-    valueCount = 0;
-    resetStatistics();
   }
 
   @Override
@@ -231,9 +236,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   public void flush() {
-    if (valueCount > 0) {
-      writePage();
-    }
+    writePage();
     final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
     if (dictionaryPage != null) {
       if (DEBUG) LOG.debug("write dictionary");

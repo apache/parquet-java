@@ -210,6 +210,7 @@ public class ParquetProperties {
     }
 
     private Builder(ParquetProperties toCopy) {
+      this.pageSize = toCopy.pageSizeThreshold;
       this.enableDict = toCopy.enableDictionary;
       this.dictPageSize = toCopy.dictionaryPageSizeThreshold;
       this.writerVersion = toCopy.writerVersion;

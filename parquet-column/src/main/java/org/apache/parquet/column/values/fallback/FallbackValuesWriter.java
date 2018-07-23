@@ -23,9 +23,13 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.RequiresFallback;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
 import org.apache.parquet.io.api.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> extends ValuesWriter {
+  private static final Logger LOG = LoggerFactory.getLogger(FallbackValuesWriter.class);
 
   public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(I initialWriter, F fallBackWriter) {
     return new FallbackValuesWriter<I, F>(initialWriter, fallBackWriter);
@@ -61,10 +65,15 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   @Override
   public long getBufferedSize() {
-    // use raw data size to decide if we want to flush the page
-    // so the actual size of the page written could be much more smaller
-    // due to dictionary encoding. This prevents page being too big when fallback happens.
-    return rawDataByteSize;
+    if (fellBackAlready) {
+      return currentWriter.getBufferedSize();
+    }
+    final double utilization = initialWriter.getUtilization();
+    final long dictEncodedByteSize = initialWriter.getBufferedSize();
+    final long weightedSize = (long) (utilization * rawDataByteSize + (1 - utilization) * dictEncodedByteSize);
+    LOG.debug("utilization = {}, dictEncodedByteSize = {}, rawDataByteSize = {}, weightedSize = {}",
+      utilization, dictEncodedByteSize, rawDataByteSize, weightedSize);
+    return weightedSize;
   }
 
   @Override

@@ -34,6 +34,16 @@ public interface RequiresFallback {
   boolean shouldFallBack();
 
   /**
+   * In the case of a dictionary based encoding we will fallback if the
+   * dictionary becomes too big. This method allows querying how close we are to
+   * that happening.
+   *
+   * @return A value between 0 and 1, where 0 corresponds to an empty dictionary
+   * and 1 corresponds to a full one.
+   */
+  double getUtilization();
+
+  /**
    * Before writing the first page we will verify if the encoding is worth it.
    * and fall back if a simpler encoding would be better in that case
    * @param rawSize the size if encoded with plain

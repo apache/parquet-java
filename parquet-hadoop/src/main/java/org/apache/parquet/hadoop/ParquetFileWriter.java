@@ -950,7 +950,24 @@ public class ParquetFileWriter {
   }
 
   public long getNextRowGroupSize() throws IOException {
-    return alignment.nextRowGroupSize(out);
+    return getNextRowGroupSize(out.getPos());
+  }
+
+  public long getNextRowGroupSize(long outPos) {
+    return alignment.nextRowGroupSize(outPos);
+  }
+
+  public long getMinSizeForAlignment() throws IOException {
+    LOG.debug("pos = {}, targetsize = {}, minsize = {}", out.getPos(), getNextRowGroupSize(out.getPos()), getMinSizeForAlignment(out.getPos()));
+    return getMinSizeForAlignment(out.getPos());
+  }
+
+  public void setRowGroupSizeThreshold(long threshold) {
+    alignment.setRowGroupSizeThreshold(threshold);
+  }
+
+  public long getMinSizeForAlignment(long outPos) {
+    return alignment.minSizeForAlignment(outPos);
   }
 
   /**
@@ -1042,7 +1059,11 @@ public class ParquetFileWriter {
   private interface AlignmentStrategy {
     void alignForRowGroup(PositionOutputStream out) throws IOException;
 
-    long nextRowGroupSize(PositionOutputStream out) throws IOException;
+    long nextRowGroupSize(long outPos);
+
+    long minSizeForAlignment(long outPos);
+
+    void setRowGroupSizeThreshold(long threshold);
   }
 
   private static class NoAlignment implements AlignmentStrategy {
@@ -1050,7 +1071,7 @@ public class ParquetFileWriter {
       return new NoAlignment(rowGroupSize);
     }
 
-    private final long rowGroupSize;
+    private long rowGroupSize;
 
     private NoAlignment(long rowGroupSize) {
       this.rowGroupSize = rowGroupSize;
@@ -1061,13 +1082,25 @@ public class ParquetFileWriter {
     }
 
     @Override
-    public long nextRowGroupSize(PositionOutputStream out) {
+    public long nextRowGroupSize(long outPos) {
       return rowGroupSize;
+    }
+
+    @Override
+    public long minSizeForAlignment(long outPos) {
+      return 0;
+    }
+
+    @Override
+    public void setRowGroupSizeThreshold(long threshold) {
+      if (threshold < rowGroupSize) {
+        rowGroupSize = threshold;
+      }
     }
   }
 
   /**
-   * Alignment strategy that pads when less than half the row group size is
+   * Alignment strategy that pads when less than a specified amount of space is
    * left before the next DFS block.
    */
   private static class PaddingAlignment implements AlignmentStrategy {
@@ -1079,7 +1112,7 @@ public class ParquetFileWriter {
     }
 
     protected final long dfsBlockSize;
-    protected final long rowGroupSize;
+    protected long rowGroupSize;
     protected final int maxPaddingSize;
 
     private PaddingAlignment(long dfsBlockSize, long rowGroupSize,
@@ -1102,22 +1135,61 @@ public class ParquetFileWriter {
     }
 
     @Override
-    public long nextRowGroupSize(PositionOutputStream out) throws IOException {
+    public long nextRowGroupSize(long outPos) {
       if (maxPaddingSize <= 0) {
+        // Padding disabled in configuration settings.
         return rowGroupSize;
       }
 
-      long remaining = dfsBlockSize - (out.getPos() % dfsBlockSize);
+      long remaining = dfsBlockSize - (outPos % dfsBlockSize);
 
       if (isPaddingNeeded(remaining)) {
-        return rowGroupSize;
+        // A padding will be added to the end of the current row group,
+        // therefore the next row group will start at a block boundary.
+        remaining = dfsBlockSize;
       }
 
-      return Math.min(remaining, rowGroupSize);
+      if (rowGroupSize < remaining - maxPaddingSize) {
+        return rowGroupSize - maxPaddingSize/2;
+      } else {
+        // Target the middle of the padding area.
+        return remaining - maxPaddingSize/2;
+      }
+    }
+
+    @Override
+    public long minSizeForAlignment(long outPos) {
+      if (maxPaddingSize <= 0) {
+        // Padding disabled in configuration settings.
+        return 0;
+      }
+
+      long remaining = dfsBlockSize - (outPos % dfsBlockSize);
+
+      if (isPaddingNeeded(remaining)) {
+        // A padding will be added to the end of the current row group,
+        // therefore the next row group will start at a block boundary.
+        remaining = dfsBlockSize;
+      }
+
+      final long remainingUntilPaddingArea = Math.max(remaining - maxPaddingSize, 0);
+
+      if (remainingUntilPaddingArea > rowGroupSize) {
+        return rowGroupSize - maxPaddingSize/2;
+      } else {
+        return remainingUntilPaddingArea;
+      }
     }
 
     protected boolean isPaddingNeeded(long remaining) {
       return (remaining <= maxPaddingSize);
+    }
+
+    @Override
+    public void setRowGroupSizeThreshold(long threshold) {
+      if (threshold < rowGroupSize) {
+        rowGroupSize = threshold;
+      }
     }
   }
 }
