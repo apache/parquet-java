@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -49,6 +49,10 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   abstract public String toStringUsingUTF8();
 
   abstract public int length();
+
+  abstract public byte[] getValue();
+
+  abstract public int getOffset();
 
   abstract public void writeTo(OutputStream out) throws IOException;
 
@@ -143,6 +147,16 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public int length() {
       return length;
+    }
+
+    @Override
+    public byte[] getValue() {
+      return value;
+    }
+
+    @Override
+    public int getOffset() {
+      return offset;
     }
 
     @Override
@@ -293,6 +307,16 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
+    public byte[] getValue() {
+      return value;
+    }
+
+    @Override
+    public int getOffset() {
+      return 0;
+    }
+
+    @Override
     public void writeTo(OutputStream out) throws IOException {
       out.write(value);
     }
@@ -417,6 +441,16 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public int length() {
       return length;
+    }
+
+    @Override
+    public byte[] getValue() {
+      return value.array();
+    }
+
+    @Override
+    public int getOffset() {
+      return offset;
     }
 
     @Override

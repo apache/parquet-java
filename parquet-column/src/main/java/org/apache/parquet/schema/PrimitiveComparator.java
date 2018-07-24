@@ -180,14 +180,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     }
   };
 
-  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> {
-    @Override
-    int compareNotNulls(Binary o1, Binary o2) {
-      return compare(o1.toByteBuffer(), o2.toByteBuffer());
-    }
-
-    abstract int compare(ByteBuffer b1, ByteBuffer b2);
-
+  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> implements Serializable {
     final int toUnsigned(byte b) {
       return b & 0xFF;
     }
@@ -195,15 +188,15 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
 
   public static final PrimitiveComparator<Binary> UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR = new BinaryComparator() {
     @Override
-    int compare(ByteBuffer b1, ByteBuffer b2) {
-      int l1 = b1.remaining();
-      int l2 = b2.remaining();
-      int p1 = b1.position();
-      int p2 = b2.position();
+    int compareNotNulls(Binary b1, Binary b2) {
+      int l1 = b1.length();
+      int l2 = b2.length();
+      int p1 = b1.getOffset();
+      int p2 = b2.getOffset();
       int minL = Math.min(l1, l2);
 
       for (int i = 0; i < minL; ++i) {
-        int result = unsignedCompare(b1.get(p1 + i), b2.get(p2 + i));
+        int result = unsignedCompare(b1.getValue()[p1 + i], b2.getValue()[p2 + i]);
         if (result != 0) {
           return result;
         }
@@ -232,14 +225,14 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     private static final int POSITIVE_PADDING = 0;
 
     @Override
-    int compare(ByteBuffer b1, ByteBuffer b2) {
-      int l1 = b1.remaining();
-      int l2 = b2.remaining();
-      int p1 = b1.position();
-      int p2 = b2.position();
+    int compareNotNulls(Binary b1, Binary b2) {
+      int l1 = b1.length();
+      int l2 = b2.length();
+      int p1 = b1.getOffset();
+      int p2 = b2.getOffset();
 
-      boolean isNegative1 = l1 > 0 ? b1.get(p1) < 0 : false;
-      boolean isNegative2 = l2 > 0 ? b2.get(p2) < 0 : false;
+      boolean isNegative1 = l1 > 0 && b1.getValue()[p1] < 0;
+      boolean isNegative2 = l2 > 0 && b2.getValue()[p2] < 0;
       if (isNegative1 != isNegative2) {
         return isNegative1 ? -1 : 1;
       }
@@ -249,24 +242,24 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
       // Compare the beginning of the longer buffer with the proper padding
       if (l1 < l2) {
         int lengthDiff = l2 - l1;
-        result = -compareWithPadding(lengthDiff, b2, p2, isNegative1 ? NEGATIVE_PADDING : POSITIVE_PADDING);
+        result = -compareWithPadding(lengthDiff, b2.getValue(), p2, isNegative1 ? NEGATIVE_PADDING : POSITIVE_PADDING);
         p2 += lengthDiff;
       } else if (l1 > l2) {
         int lengthDiff = l1 - l2;
-        result = compareWithPadding(lengthDiff, b1, p1, isNegative2 ? NEGATIVE_PADDING : POSITIVE_PADDING);
+        result = compareWithPadding(lengthDiff, b1.getValue(), p1, isNegative2 ? NEGATIVE_PADDING : POSITIVE_PADDING);
         p1 += lengthDiff;
       }
 
       // The beginning of the longer buffer equals to the padding or the lengths are equal
       if (result == 0) {
-        result = compare(l1, b1, p1, b2, p2);
+        result = compare(l1, b1.getValue(), p1, b2.getValue(), p2);
       }
       return result;
     }
 
-    private int compareWithPadding(int length, ByteBuffer b, int p, int paddingByte) {
+    private int compareWithPadding(int length, byte[] b, int p, int paddingByte) {
       for (int i = p, n = p + length; i < n; ++i) {
-        int result = toUnsigned(b.get(i)) - paddingByte;
+        int result = toUnsigned(b[i]) - paddingByte;
         if (result != 0) {
           return result;
         }
@@ -274,9 +267,9 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
       return 0;
     }
 
-    private int compare(int length, ByteBuffer b1, int p1, ByteBuffer b2, int p2) {
+    private int compare(int length, byte[] b1, int p1, byte[] b2, int p2) {
       for (int i = 0; i < length; ++i) {
-        int result = toUnsigned(b1.get(p1 + i)) - toUnsigned(b2.get(p2 + i));
+        int result = toUnsigned(b1[p1 + i]) - toUnsigned(b2[p2 + i]);
         if (result != 0) {
           return result;
         }
