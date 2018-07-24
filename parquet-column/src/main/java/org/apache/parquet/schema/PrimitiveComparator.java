@@ -180,7 +180,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     }
   };
 
-  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> implements Serializable {
+  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> {
     final int toUnsigned(byte b) {
       return b & 0xFF;
     }
