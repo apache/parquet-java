@@ -189,7 +189,7 @@ public class TestStatistics {
     public void validate(T value) {
       if (hasNonNull) {
         assertTrue("min should be <= all values", comparator.compare(min, value) <= 0);
-        assertTrue("min should be >= all values", comparator.compare(max, value) >= 0);
+        assertTrue("max should be >= all values", comparator.compare(max, value) >= 0);
       }
     }
   }
