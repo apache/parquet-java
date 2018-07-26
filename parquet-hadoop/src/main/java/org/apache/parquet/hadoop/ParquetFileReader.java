@@ -48,6 +48,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -609,6 +611,8 @@ public class ParquetFileReader implements Closeable {
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<>();
   private final FileMetaData fileMetaData; // may be null
   private final List<BlockMetaData> blocks;
+  private final List<ColumnIndexStore> blockIndexStores;
+  private final List<RowRanges> blockRowRanges;
 
   // not final. in some cases, this may be lazily loaded for backward-compat.
   private ParquetMetadata footer;
@@ -650,6 +654,8 @@ public class ParquetFileReader implements Closeable {
     this.f = file.newStream();
     this.options = HadoopReadOptions.builder(configuration).build();
     this.blocks = filterRowGroups(blocks);
+    this.blockIndexStores = listWithNulls(this.blocks.size());
+    this.blockRowRanges = listWithNulls(this.blocks.size());
     for (ColumnDescriptor col : columns) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
@@ -684,6 +690,8 @@ public class ParquetFileReader implements Closeable {
     this.footer = footer;
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = filterRowGroups(footer.getBlocks());
+    this.blockIndexStores = listWithNulls(this.blocks.size());
+    this.blockRowRanges = listWithNulls(this.blocks.size());
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
@@ -697,9 +705,15 @@ public class ParquetFileReader implements Closeable {
     this.footer = readFooter(file, options, f, converter);
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = filterRowGroups(footer.getBlocks());
+    this.blockIndexStores = listWithNulls(this.blocks.size());
+    this.blockRowRanges = listWithNulls(this.blocks.size());
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
+  }
+
+  private static <T> List<T> listWithNulls(int size) {
+    return Stream.generate(() -> (T) null).limit(size).collect(Collectors.toCollection(ArrayList<T>::new));
   }
 
   public ParquetMetadata getFooter() {
@@ -725,6 +739,17 @@ public class ParquetFileReader implements Closeable {
     long total = 0;
     for (BlockMetaData block : blocks) {
       total += block.getRowCount();
+    }
+    return total;
+  }
+
+  long getFilteredRecordCount() {
+    if (!options.useColumnIndexFilter()) {
+      return getRecordCount();
+    }
+    long total = 0;
+    for (int i = 0, n = blocks.size(); i < n; ++i) {
+      total += getRowRanges(i).rowCount();
     }
     return total;
   }
@@ -838,6 +863,9 @@ public class ParquetFileReader implements Closeable {
    * @see {@link PageReadStore#isRowSynchronizationRequired()}
    */
   public PageReadStore readNextFilteredRowGroup() throws IOException {
+    if (currentBlock == blocks.size()) {
+      return null;
+    }
     if (!options.useColumnIndexFilter()) {
       return readNextRowGroup();
     }
@@ -845,11 +873,18 @@ public class ParquetFileReader implements Closeable {
     if (block.getRowCount() == 0) {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
-    ColumnIndexStore ciStore = new ColumnIndexStoreImpl(this, block, paths.keySet());
-    RowRanges rowRanges = ColumnIndexFilter.calculateRowRanges(options.getRecordFilter(), ciStore, paths.keySet(),
-        block.getRowCount());
-    // TODO[GS]: Handle 0 rows (all pages dropped) separately
-    // TODO[GS]: Handle max rows (no pages dropped) separately
+    ColumnIndexStore ciStore = getColumnIndexStore(currentBlock);
+    RowRanges rowRanges = getRowRanges(currentBlock);
+    long rowCount = rowRanges.rowCount();
+    if (rowCount == 0) {
+      // There are no matching rows -> skipping this row-group
+      advanceToNextBlock();
+      return readNextFilteredRowGroup();
+    }
+    if (rowCount == block.getRowCount()) {
+      // All rows are matching -> fall back to the non-filtering path
+      return readNextRowGroup();
+    }
 
     this.currentRowGroup = new ColumnChunkPageReadStore(rowRanges);
     // prepare the list of consecutive parts to read them in one scan
@@ -861,11 +896,6 @@ public class ParquetFileReader implements Closeable {
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
         OffsetIndex offsetIndex = ciStore.getOffsetIndex(mc.getPath());
-
-        // TODO[GS]: This check will not be required; filter shall return all rows and this case is handled before this
-        // point
-        if (offsetIndex == null)
-          return readNextRowGroup();
 
         OffsetIndex filteredOffsetIndex = filterOffsetIndex(offsetIndex, rowRanges,
             block.getRowCount());
@@ -900,6 +930,25 @@ public class ParquetFileReader implements Closeable {
     advanceToNextBlock();
 
     return currentRowGroup;
+  }
+
+  private ColumnIndexStore getColumnIndexStore(int blockIndex) {
+    ColumnIndexStore ciStore = blockIndexStores.get(blockIndex);
+    if (ciStore == null) {
+      ciStore = new ColumnIndexStoreImpl(this, blocks.get(blockIndex), paths.keySet());
+      blockIndexStores.set(blockIndex, ciStore);
+    }
+    return ciStore;
+  }
+
+  private RowRanges getRowRanges(int blockIndex) {
+    RowRanges rowRanges = blockRowRanges.get(blockIndex);
+    if (rowRanges == null) {
+      rowRanges = ColumnIndexFilter.calculateRowRanges(options.getRecordFilter(), getColumnIndexStore(blockIndex),
+          paths.keySet(), blocks.get(blockIndex).getRowCount());
+      blockRowRanges.set(blockIndex, rowRanges);
+    }
+    return rowRanges;
   }
 
   public boolean skipNextRowGroup() {
@@ -1118,8 +1167,7 @@ public class ParquetFileReader implements Closeable {
           .getType(descriptor.col.getPath()).asPrimitiveType();
       long valuesCountReadSoFar = 0;
       int dataPageCountReadSoFar = 0;
-      while (valuesCountReadSoFar < descriptor.metadata.getValueCount()
-          || (offsetIndex != null && offsetIndex.getPageCount() < dataPageCountReadSoFar)) {
+      while (hasMorePages(valuesCountReadSoFar, dataPageCountReadSoFar)) {
         PageHeader pageHeader = readPageHeader();
         int uncompressedPageSize = pageHeader.getUncompressed_page_size();
         int compressedPageSize = pageHeader.getCompressed_page_size();
@@ -1193,7 +1241,13 @@ public class ParquetFileReader implements Closeable {
             + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
-      return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex);
+      return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex,
+          blocks.get(currentBlock).getRowCount());
+    }
+
+    private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
+      return offsetIndex == null ? valuesCountReadSoFar < descriptor.metadata.getValueCount()
+          : dataPageCountReadSoFar < offsetIndex.getPageCount();
     }
 
     /**

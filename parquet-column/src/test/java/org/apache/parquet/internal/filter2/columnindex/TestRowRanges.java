@@ -18,11 +18,16 @@
  */
 package org.apache.parquet.internal.filter2.columnindex;
 
+import static org.apache.parquet.internal.filter2.columnindex.RowRanges.intersection;
+import static org.apache.parquet.internal.filter2.columnindex.RowRanges.union;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.PrimitiveIterator;
+
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.junit.Test;
 
@@ -62,12 +67,12 @@ public class TestRowRanges {
     return RowRanges.build(rowIndexes[rowIndexes.length - 1], pageIndexes, builder.build());
   }
 
-  private static void assertEquals(PrimitiveIterator.OfLong actualIt, long...expectedValues) {
+  private static void assertAllRowsEqual(PrimitiveIterator.OfLong actualIt, long... expectedValues) {
     LongList actualList = new LongArrayList();
     actualIt.forEachRemaining((long value) -> actualList.add(value));
-    assertArrayEquals(expectedValues, actualList.toLongArray());
+    assertArrayEquals(Arrays.toString(expectedValues) + "!= " + actualList, expectedValues, actualList.toLongArray());
   }
-  
+
   @Test
   public void testCreate() {
     RowRanges ranges = buildRanges(
@@ -76,23 +81,26 @@ public class TestRowRanges {
         6, 7,
         7, 10,
         15, 17);
-    assertEquals(ranges.allRows(), 1, 2, 3, 4, 6, 7, 8, 9, 10, 15, 16, 17);
+    assertAllRowsEqual(ranges.allRows(), 1, 2, 3, 4, 6, 7, 8, 9, 10, 15, 16, 17);
+    assertEquals(12, ranges.rowCount());
     assertTrue(ranges.isConnected(4, 5));
     assertFalse(ranges.isConnected(5, 5));
     assertTrue(ranges.isConnected(10, 14));
     assertFalse(ranges.isConnected(11, 14));
     assertFalse(ranges.isConnected(18, Long.MAX_VALUE));
-    
+
     ranges = RowRanges.single(5);
-    assertEquals(ranges.allRows(), 0, 1, 2, 3, 4);
+    assertAllRowsEqual(ranges.allRows(), 0, 1, 2, 3, 4);
+    assertEquals(5, ranges.rowCount());
     assertTrue(ranges.isConnected(0, 100));
     assertFalse(ranges.isConnected(5, Long.MAX_VALUE));
 
     ranges = RowRanges.EMPTY;
-    assertEquals(ranges.allRows());
+    assertAllRowsEqual(ranges.allRows());
+    assertEquals(0, ranges.rowCount());
     assertFalse(ranges.isConnected(0, Long.MAX_VALUE));
   }
-  
+
   @Test
   public void testUnion() {
     RowRanges ranges1 = buildRanges(
@@ -102,21 +110,22 @@ public class TestRowRanges {
         20, 24);
     RowRanges ranges2 = buildRanges(
         1, 2,
+        4, 5,
         11, 12,
         14, 15,
         21, 22);
     RowRanges empty = buildRanges();
-    assertEquals(RowRanges.union(ranges1, ranges2).allRows(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
-    assertEquals(RowRanges.union(ranges2, ranges1).allRows(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
-    assertEquals(RowRanges.union(ranges1, ranges1).allRows(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
-    assertEquals(RowRanges.union(ranges1, empty).allRows(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
-    assertEquals(RowRanges.union(empty, ranges1).allRows(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
-    assertEquals(RowRanges.union(ranges2, ranges2).allRows(), 1, 2, 11, 12, 14, 15, 21, 22);
-    assertEquals(RowRanges.union(ranges2, empty).allRows(), 1, 2, 11, 12, 14, 15, 21, 22);
-    assertEquals(RowRanges.union(empty, ranges2).allRows(), 1, 2, 11, 12, 14, 15, 21, 22);
-    assertEquals(RowRanges.union(empty, empty).allRows());
+    assertAllRowsEqual(union(ranges1, ranges2).allRows(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
+    assertAllRowsEqual(union(ranges2, ranges1).allRows(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
+    assertAllRowsEqual(union(ranges1, ranges1).allRows(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
+    assertAllRowsEqual(union(ranges1, empty).allRows(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
+    assertAllRowsEqual(union(empty, ranges1).allRows(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
+    assertAllRowsEqual(union(ranges2, ranges2).allRows(), 1, 2, 4, 5, 11, 12, 14, 15, 21, 22);
+    assertAllRowsEqual(union(ranges2, empty).allRows(), 1, 2, 4, 5, 11, 12, 14, 15, 21, 22);
+    assertAllRowsEqual(union(empty, ranges2).allRows(), 1, 2, 4, 5, 11, 12, 14, 15, 21, 22);
+    assertAllRowsEqual(union(empty, empty).allRows());
   }
-  
+
   @Test
   public void testIntersection() {
     RowRanges ranges1 = buildRanges(
@@ -126,19 +135,21 @@ public class TestRowRanges {
         20, 24);
     RowRanges ranges2 = buildRanges(
         1, 2,
+        6, 7,
+        9, 9,
         11, 12,
         14, 15,
         21, 22);
     RowRanges empty = buildRanges();
-    assertEquals(RowRanges.intersection(ranges1, ranges2).allRows(), 2, 14, 21, 22);
-    assertEquals(RowRanges.intersection(ranges2, ranges1).allRows(), 2, 14, 21, 22);
-    assertEquals(RowRanges.intersection(ranges1, ranges1).allRows(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
-    assertEquals(RowRanges.intersection(ranges1, empty).allRows());
-    assertEquals(RowRanges.intersection(empty, ranges1).allRows());
-    assertEquals(RowRanges.intersection(ranges2, ranges2).allRows(), 1, 2, 11, 12, 14, 15, 21, 22);
-    assertEquals(RowRanges.intersection(ranges2, empty).allRows());
-    assertEquals(RowRanges.intersection(empty, ranges2).allRows());
-    assertEquals(RowRanges.intersection(empty, empty).allRows());
+    assertAllRowsEqual(intersection(ranges1, ranges2).allRows(), 2, 7, 9, 14, 21, 22);
+    assertAllRowsEqual(intersection(ranges2, ranges1).allRows(), 2, 7, 9, 14, 21, 22);
+    assertAllRowsEqual(intersection(ranges1, ranges1).allRows(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
+    assertAllRowsEqual(intersection(ranges1, empty).allRows());
+    assertAllRowsEqual(intersection(empty, ranges1).allRows());
+    assertAllRowsEqual(intersection(ranges2, ranges2).allRows(), 1, 2, 6, 7, 9, 11, 12, 14, 15, 21, 22);
+    assertAllRowsEqual(intersection(ranges2, empty).allRows());
+    assertAllRowsEqual(intersection(empty, ranges2).allRows());
+    assertAllRowsEqual(intersection(empty, empty).allRows());
   }
-  
+
 }

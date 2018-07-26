@@ -91,7 +91,7 @@ public class RowRanges {
   }
 
   static final RowRanges EMPTY = new RowRanges();
-  
+
   static RowRanges single(long rowCount) {
     RowRanges ranges = new RowRanges();
     ranges.add(new Range(0, rowCount - 1));
@@ -100,11 +100,9 @@ public class RowRanges {
 
   static RowRanges build(long rowCount, PrimitiveIterator.OfInt pageIndexes, OffsetIndex offsetIndex) {
     RowRanges ranges = new RowRanges();
-    int pageCount = offsetIndex.getPageCount();
     while (pageIndexes.hasNext()) {
       int pageIndex = pageIndexes.nextInt();
-      long nextRowIndex = pageIndex + 1 < pageCount ? offsetIndex.getFirstRowIndex(pageIndex + 1) : rowCount;
-      ranges.add(new Range(offsetIndex.getFirstRowIndex(pageIndex), nextRowIndex - 1));
+      ranges.add(new Range(offsetIndex.getFirstRowIndex(pageIndex), offsetIndex.getLastRowIndex(pageIndex, rowCount)));
     }
     return ranges;
   }
@@ -147,7 +145,6 @@ public class RowRanges {
         Range r = right.ranges.get(i);
         int cmp = l.compareTo(r);
         if (cmp < 0) {
-          rightIndex = i;
           break;
         } else if (cmp > 0) {
           rightIndex = i + 1;
@@ -166,19 +163,18 @@ public class RowRanges {
   }
 
   private void add(Range range) {
-    if (!ranges.isEmpty()) {
-      int lastIndex = ranges.size() - 1;
-      Range last = ranges.get(lastIndex);
+    Range rangeToAdd = range;
+    for (int i = ranges.size() - 1; i >= 0; --i) {
+      Range last = ranges.get(i);
       assert last.compareTo(range) <= 0;
-      Range u = Range.union(last, range);
-      if (u != null) {
-        ranges.set(lastIndex, u);
-      } else {
-        ranges.add(range);
+      Range u = Range.union(last, rangeToAdd);
+      if (u == null) {
+        break;
       }
-    } else {
-      ranges.add(range);
+      rangeToAdd = u;
+      ranges.remove(i);
     }
+    ranges.add(rangeToAdd);
   }
 
   /**

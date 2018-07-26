@@ -97,62 +97,65 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
 
   @Override
   public <T extends Comparable<T>> RowRanges visit(Eq<T> eq) {
-    return applyPredicate(eq.getColumn(), ci -> ci.visit(eq));
+    return applyPredicate(eq.getColumn(), ci -> ci.visit(eq), eq.getValue() == null ? allRows() : RowRanges.EMPTY);
   }
 
   @Override
   public <T extends Comparable<T>> RowRanges visit(NotEq<T> notEq) {
-    return applyPredicate(notEq.getColumn(), ci -> ci.visit(notEq));
+    return applyPredicate(notEq.getColumn(), ci -> ci.visit(notEq),
+        notEq.getValue() == null ? RowRanges.EMPTY : allRows());
   }
 
   @Override
   public <T extends Comparable<T>> RowRanges visit(Lt<T> lt) {
-    return applyPredicate(lt.getColumn(), ci -> ci.visit(lt));
+    return applyPredicate(lt.getColumn(), ci -> ci.visit(lt), RowRanges.EMPTY);
   }
 
   @Override
   public <T extends Comparable<T>> RowRanges visit(LtEq<T> ltEq) {
-    return applyPredicate(ltEq.getColumn(), ci -> ci.visit(ltEq));
+    return applyPredicate(ltEq.getColumn(), ci -> ci.visit(ltEq), RowRanges.EMPTY);
   }
 
   @Override
   public <T extends Comparable<T>> RowRanges visit(Gt<T> gt) {
-    return applyPredicate(gt.getColumn(), ci -> ci.visit(gt));
+    return applyPredicate(gt.getColumn(), ci -> ci.visit(gt), RowRanges.EMPTY);
   }
 
   @Override
   public <T extends Comparable<T>> RowRanges visit(GtEq<T> gtEq) {
-    return applyPredicate(gtEq.getColumn(), ci -> ci.visit(gtEq));
+    return applyPredicate(gtEq.getColumn(), ci -> ci.visit(gtEq), RowRanges.EMPTY);
   }
 
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> RowRanges visit(UserDefined<T, U> udp) {
-    return applyPredicate(udp.getColumn(), ci -> ci.visit(udp));
+    return applyPredicate(udp.getColumn(), ci -> ci.visit(udp),
+        udp.getUserDefinedPredicate().keep(null) ? allRows() : RowRanges.EMPTY);
   }
 
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> RowRanges visit(
       LogicalNotUserDefined<T, U> udp) {
-    return applyPredicate(udp.getUserDefined().getColumn(), ci -> ci.visit(udp));
+    return applyPredicate(udp.getUserDefined().getColumn(), ci -> ci.visit(udp),
+        udp.getUserDefined().getUserDefinedPredicate().keep(null) ? RowRanges.EMPTY : allRows());
   }
 
-  private RowRanges applyPredicate(Column<?> column, Function<ColumnIndex, PrimitiveIterator.OfInt> func) {
+  private RowRanges applyPredicate(Column<?> column, Function<ColumnIndex, PrimitiveIterator.OfInt> func,
+      RowRanges rangesForMissingColumns) {
     ColumnPath columnPath = column.getColumnPath();
+    if (!columns.contains(columnPath)) {
+      return rangesForMissingColumns;
+    }
 
     OffsetIndex oi = columnIndexStore.getOffsetIndex(columnPath);
     if (oi == null) {
-      if (columns.contains(columnPath)) {
-        missingOffsetIndex = true;
-        logger.warn("No offset index for column {} is available; Unable to do filtering", columnPath);
-      }
+      missingOffsetIndex = true;
+      logger.warn("No offset index for column {} is available; Unable to do filtering", columnPath);
       return allRows();
     }
 
     ColumnIndex ci = columnIndexStore.getColumnIndex(columnPath);
     if (ci == null) {
-      if (columns.contains(columnPath)) {
-        logger.warn("No column index for column {} is available; Unable to filter on this column", columnPath);
-      }
+      logger.warn("No column index for column {} is available; Unable to filter on this column", columnPath);
       return allRows();
     }
 

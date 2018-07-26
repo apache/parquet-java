@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.column.page;
 
-import org.apache.parquet.Preconditions;
-
 /**
  * one data page in a chunk
  */
@@ -27,18 +25,17 @@ abstract public class DataPage extends Page {
 
   private final int valueCount;
   private final long firstRowIndex;
+  private final int rowCount;
 
   DataPage(int compressedSize, int uncompressedSize, int valueCount) {
-    super(compressedSize, uncompressedSize);
-    this.valueCount = valueCount;
-    this.firstRowIndex = -1;
+    this(compressedSize, uncompressedSize, valueCount, -1, -1);
   }
 
-  DataPage(int compressedSize, int uncompressedSize, int valueCount, long firstRowIndex) {
+  DataPage(int compressedSize, int uncompressedSize, int valueCount, long firstRowIndex, int rowCount) {
     super(compressedSize, uncompressedSize);
-    Preconditions.checkArgument(firstRowIndex >= 0, "First row index {} should be non-negative", firstRowIndex);
     this.valueCount = valueCount;
     this.firstRowIndex = firstRowIndex;
+    this.rowCount = rowCount;
   }
 
   /**
@@ -60,6 +57,20 @@ abstract public class DataPage extends Page {
           "No row synchronization is required; all pages shall be read.");
     }
     return firstRowIndex;
+  }
+
+  /**
+   * @return the number of rows in this page
+   * @throws IllegalStateException
+   *           if no row synchronization is required; thrown only in case of {@link DataPageV1}
+   * @see PageReadStore#isRowSynchronizationRequired()
+   */
+  public int getRowCount() {
+    if (rowCount < 0) {
+      throw new IllegalStateException(
+          "No row synchronization is required; all pages shall be read.");
+    }
+    return rowCount;
   }
 
   public abstract <T> T accept(Visitor<T> visitor);

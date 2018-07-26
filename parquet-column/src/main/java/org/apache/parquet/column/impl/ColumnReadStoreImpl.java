@@ -72,12 +72,13 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
 
   @Override
   public ColumnReader getColumnReader(ColumnDescriptor path) {
-    return newMemColumnReader(path, pageReadStore.getPageReader(path));
-  }
-
-  private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
     PrimitiveConverter converter = getPrimitiveConverter(path);
-    return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
+    PageReader pageReader = pageReadStore.getPageReader(path);
+    if (pageReadStore.isRowSynchronizationRequired()) {
+      return new SynchronizingColumnReader(path, pageReader, converter, writerVersion, pageReadStore.getRowIndexes());
+    } else {
+      return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
+    }
   }
 
   private PrimitiveConverter getPrimitiveConverter(ColumnDescriptor path) {

@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.Ints.checkedCast;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -65,10 +67,11 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final DictionaryPage compressedDictionaryPage;
     // null means no page synchronization is required; firstRowIndex will not be returned by the pages
     private final OffsetIndex offsetIndex;
+    private final long rowCount;
     private int pageIndex = 0;
 
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
-        DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex) {
+        DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount) {
       this.decompressor = decompressor;
       this.compressedPages = new LinkedList<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
@@ -78,6 +81,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       }
       this.valueCount = count;
       this.offsetIndex = offsetIndex;
+      this.rowCount = rowCount;
     }
 
     @Override
@@ -107,11 +111,13 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV1.getDlEncoding(),
                   dataPageV1.getValueEncoding());
             } else {
+              long firstRowIndex = offsetIndex.getFirstRowIndex(actualPageIndex);
               return new DataPageV1(
                   decompressed,
                   dataPageV1.getValueCount(),
                   dataPageV1.getUncompressedSize(),
-                  offsetIndex.getFirstRowIndex(actualPageIndex),
+                  firstRowIndex,
+                  checkedCast(offsetIndex.getLastRowIndex(actualPageIndex, rowCount) - firstRowIndex + 1),
                   dataPageV1.getStatistics(),
                   dataPageV1.getRlEncoding(),
                   dataPageV1.getDlEncoding(),
