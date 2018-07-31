@@ -27,14 +27,14 @@ import java.util.List;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.format.EncryptionAlgorithm;
 
-public class EncryptionSetup {
+public class FileEncryptionProperties {
   
   private final EncryptionAlgorithm algorithm;
   private final byte[] footerKeyBytes;
   private final byte[] footerKeyMetadata;
   
   private byte[] aadBytes;
-  private List<ColumnCryptodata> columnList;
+  private List<ColumnEncryptionProperties> columnList;
   private boolean encryptTheRest;
   //Uniform encryption means footer and all columns are encrypted, with same key
   private boolean uniformEncryption;
@@ -47,7 +47,7 @@ public class EncryptionSetup {
    * @param keyMetadata Key metadata, to be written in a file for key retrieval upon decryption. Can be null.
    * @throws IOException 
    */
-  public EncryptionSetup(ParquetCipher cipher, byte[] keyBytes, byte[] keyMetadata) throws IOException {
+  public FileEncryptionProperties(ParquetCipher cipher, byte[] keyBytes, byte[] keyMetadata) throws IOException {
     footerKeyBytes = keyBytes;
     footerKeyMetadata = keyMetadata;
     if (null != footerKeyBytes) {
@@ -70,7 +70,7 @@ public class EncryptionSetup {
    * @param keyId Key id - will be converted to a 4-byte metadata and written in a file for key retrieval upon decryption.
    * @throws IOException 
    */
-  public EncryptionSetup(ParquetCipher algorithm, byte[] keyBytes, int keyId) throws IOException {
+  public FileEncryptionProperties(ParquetCipher algorithm, byte[] keyBytes, int keyId) throws IOException {
     this(algorithm, keyBytes, BytesUtils.intToBytes(keyId));
   }
   
@@ -82,7 +82,7 @@ public class EncryptionSetup {
    * @param encryptTheRest  
    * @throws IOException 
    */
-  public void setColumns(List<ColumnCryptodata> columnList, boolean encryptTheRest) throws IOException {
+  public void setColumnProperties(List<ColumnEncryptionProperties> columnList, boolean encryptTheRest) throws IOException {
     if (setupProcessed) throw new IOException("Setup already processed");
     // TODO if set, throw an exception? or allow to replace
     uniformEncryption = false;
@@ -91,7 +91,7 @@ public class EncryptionSetup {
     if (null == footerKeyBytes) {
       if (encryptTheRest) throw new IOException("Encrypt the rest with null footer key");
       boolean all_are_unencrypted = true;
-      for (ColumnCryptodata cmd : columnList) {
+      for (ColumnEncryptionProperties cmd : columnList) {
         if (cmd.isEncrypted()) {
           if (null == cmd.getKeyBytes()) {
             throw new IOException("Encrypt column with null footer key");
@@ -145,11 +145,11 @@ public class EncryptionSetup {
     return uniformEncryption;
   }
 
-  ColumnCryptodata getColumnMetadata(String[] columnPath) {
+  ColumnEncryptionProperties getColumnMetadata(String[] columnPath) {
     setupProcessed = true;
     boolean in_list = false;
-    ColumnCryptodata cmd = null;
-    for (ColumnCryptodata col : columnList) {
+    ColumnEncryptionProperties cmd = null;
+    for (ColumnEncryptionProperties col : columnList) {
       if (Arrays.deepEquals(columnPath, col.getPath())) {
         in_list = true;
         cmd = col;
@@ -160,7 +160,7 @@ public class EncryptionSetup {
       return cmd;
     }
     else {
-      return new ColumnCryptodata(encryptTheRest, columnPath);
+      return new ColumnEncryptionProperties(encryptTheRest, columnPath);
     }
   }
 

@@ -20,7 +20,9 @@
 
 package org.apache.parquet.crypto;
 
+import java.io.IOException;
+
 public interface DecryptionKeyRetriever {
 
-  public byte[] getKey(byte[] keyMetaData);
+  public byte[] getKey(byte[] keyMetaData) throws IOException;
 }

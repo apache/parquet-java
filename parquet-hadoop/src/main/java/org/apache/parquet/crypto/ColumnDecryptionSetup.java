@@ -19,6 +19,8 @@
 
 package org.apache.parquet.crypto;
 
+import org.apache.parquet.crypto.ParquetFileDecryptor.ColumnDecryptors;
+
 public class ColumnDecryptionSetup {
   
   private final boolean isEncrypted;

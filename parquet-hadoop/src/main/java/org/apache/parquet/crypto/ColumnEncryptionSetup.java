@@ -22,22 +22,23 @@ package org.apache.parquet.crypto;
 
 import java.util.Arrays;
 
+import org.apache.parquet.crypto.ParquetFileEncryptor.ColumnEncryptors;
 import org.apache.parquet.format.ColumnCryptoMetaData;
 import org.apache.parquet.format.EncryptionWithColumnKey;
 import org.apache.parquet.format.EncryptionWithFooterKey;
 
 public class ColumnEncryptionSetup {
   
-  private final ColumnCryptodata cmd;
+  private final ColumnEncryptionProperties cmd;
   
   private ColumnCryptoMetaData ccmd;
   private ColumnEncryptors encryptors;
   
   ColumnEncryptionSetup(boolean encrypt, String[] path) {
-    this.cmd = new ColumnCryptodata(encrypt, path);
+    this.cmd = new ColumnEncryptionProperties(encrypt, path);
   }
   
-  ColumnEncryptionSetup(ColumnCryptodata cmd) {
+  ColumnEncryptionSetup(ColumnEncryptionProperties cmd) {
     this.cmd = cmd;
   }
 

@@ -36,11 +36,26 @@ import java.util.List;
 import javax.crypto.Cipher;
 
 public class ParquetFileEncryptor {
+  
+  public static class ColumnEncryptors {
+    
+    BlockCipher.Encryptor metadataEncryptor;
+    BlockCipher.Encryptor dataEncryptor;
+    
+    public BlockCipher.Encryptor getDataEncryptor() {
+      return dataEncryptor;
+    }
+    
+    public BlockCipher.Encryptor getMetadataEncryptor() {
+      return metadataEncryptor;
+    }
+  }
+  
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileEncryptor.class);
 
   private final EncryptionAlgorithm algorithm;
   private final byte[] footerKeyBytes;
-  private final EncryptionSetup encryptionSetup;
+  private final FileEncryptionProperties encryptionSetup;
   private final byte[] footerKeyMetaDataBytes;
   private final boolean uniformEncryption;
   private final List<ColumnEncryptionSetup> columnMDList; // TODO replace with Map
@@ -52,7 +67,7 @@ public class ParquetFileEncryptor {
   private ColumnEncryptors footerKeyEncryptors;
   private boolean fileCryptoMDSet;
 
-  ParquetFileEncryptor(EncryptionSetup eSetup) throws IOException {
+  ParquetFileEncryptor(FileEncryptionProperties eSetup) throws IOException {
     algorithm = eSetup.getAlgorithm();
     if (null == algorithm) throw new IOException("Null algorithm");
     uniformEncryption = eSetup.isUniformEncryption();
@@ -118,7 +133,7 @@ public class ParquetFileEncryptor {
       return getFooterKeyEncryptors();
     }
     
-    ColumnCryptodata cmd = encryptionSetup.getColumnMetadata(columnPath);
+    ColumnEncryptionProperties cmd = encryptionSetup.getColumnMetadata(columnPath);
     if (null == cmd) {
       throw new IOException("No encryption metadata for column " + Arrays.toString(columnPath));
     }

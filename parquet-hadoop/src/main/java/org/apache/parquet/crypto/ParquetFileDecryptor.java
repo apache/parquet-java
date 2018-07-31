@@ -37,9 +37,31 @@ import javax.crypto.Cipher;
 
 
 public class ParquetFileDecryptor {
+  
+  public static class ColumnDecryptors {
+    
+    public enum Status {PLAINTEXT, KEY_AVAILABLE, KEY_UNAVAILABLE};
+    
+    BlockCipher.Decryptor metadataDecryptor;
+    BlockCipher.Decryptor dataDecryptor;
+    Status status;
+    
+    public Status getStatus() {
+      return status;
+    }
+    
+    public BlockCipher.Decryptor getDataDecryptor() {
+      return dataDecryptor;
+    }
+    
+    public BlockCipher.Decryptor getMetadataDecryptor() {
+      return metadataDecryptor;
+    }
+  }
+  
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileDecryptor.class);
   
-  private final DecryptionSetup dSetup;
+  private final FileDecryptionProperties dSetup;
   private final DecryptionKeyRetriever keyRetriever;
   private final AADRetriever aadRetriever;
 
@@ -57,7 +79,7 @@ public class ParquetFileDecryptor {
   private byte[] ivPrefix;
 
 
-  ParquetFileDecryptor(DecryptionSetup dSetup) throws IOException {
+  ParquetFileDecryptor(FileDecryptionProperties dSetup) throws IOException {
     this.dSetup= dSetup;
     footerKeyBytes = dSetup.getFooterKeyBytes();
     keyRetriever = dSetup.getKeyRetriever();

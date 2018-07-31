@@ -24,7 +24,7 @@ import java.util.Arrays;
 
 import org.apache.parquet.bytes.BytesUtils;
 
-public class ColumnCryptodata {
+public class ColumnEncryptionProperties {
   
   private final boolean encrypt;
   private final String[] columnPath;
@@ -39,11 +39,11 @@ public class ColumnCryptodata {
    * @param encrypt
    * @param name
    */
-  public ColumnCryptodata(boolean encrypt, String name) {
+  public ColumnEncryptionProperties(boolean encrypt, String name) {
     this(encrypt, new String[] {name});
   }
   
-  public ColumnCryptodata(boolean encrypt, String[] path) {
+  public ColumnEncryptionProperties(boolean encrypt, String[] path) {
     this.encrypt = encrypt;
     this.columnPath = path;
     isEncryptedWithFooterKey = encrypt;

@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class DecryptionSetup {
+public class FileDecryptionProperties {
 
   private final byte[] footerKeyBytes;
   private final DecryptionKeyRetriever keyRetriever;
@@ -41,7 +41,7 @@ public class DecryptionSetup {
    * @param keyBytes
    * @throws IOException 
    */
-  public DecryptionSetup(byte[] footerKeyBytes) throws IOException {
+  public FileDecryptionProperties(byte[] footerKeyBytes) throws IOException {
     if (null == footerKeyBytes) throw new IOException("Decryption: null footer key");
     this.footerKeyBytes = footerKeyBytes;
     if (! (footerKeyBytes.length == 16 || footerKeyBytes.length == 24 || footerKeyBytes.length == 32)) {
@@ -56,7 +56,7 @@ public class DecryptionSetup {
    * an exception will be thrown.
    * @param keyRetriever
    */
-  public DecryptionSetup(DecryptionKeyRetriever keyRetriever) {
+  public FileDecryptionProperties(DecryptionKeyRetriever keyRetriever) {
     this.keyRetriever = keyRetriever;
     this.footerKeyBytes = null;
   }

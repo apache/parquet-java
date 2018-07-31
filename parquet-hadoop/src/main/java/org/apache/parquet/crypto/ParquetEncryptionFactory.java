@@ -32,7 +32,7 @@ public class ParquetEncryptionFactory {
    * @throws IOException
    */
   public static ParquetFileEncryptor createFileEncryptor(byte[] keyBytes) throws IOException {
-    return createFileEncryptor(new EncryptionSetup(ParquetCipher.AES_GCM_V1, keyBytes, null));
+    return createFileEncryptor(new FileEncryptionProperties(ParquetCipher.AES_GCM_V1, keyBytes, null));
   }
   
   /**
@@ -41,7 +41,7 @@ public class ParquetEncryptionFactory {
    * @return
    * @throws IOException
    */
-  public static ParquetFileEncryptor createFileEncryptor(EncryptionSetup eSetup) throws IOException {
+  public static ParquetFileEncryptor createFileEncryptor(FileEncryptionProperties eSetup) throws IOException {
     return new ParquetFileEncryptor(eSetup);
   }
   
@@ -53,7 +53,7 @@ public class ParquetEncryptionFactory {
    * @throws IOException
    */
   public static ParquetFileDecryptor createFileDecryptor(byte[] keyBytes) throws IOException {
-    return createFileDecryptor(new DecryptionSetup(keyBytes));
+    return createFileDecryptor(new FileDecryptionProperties(keyBytes));
   }
   
   /**
@@ -62,7 +62,7 @@ public class ParquetEncryptionFactory {
    * @return
    * @throws IOException
    */
-  public static ParquetFileDecryptor createFileDecryptor(DecryptionSetup dSetup) throws IOException {
+  public static ParquetFileDecryptor createFileDecryptor(FileDecryptionProperties dSetup) throws IOException {
     return new ParquetFileDecryptor(dSetup);
   }
 }
