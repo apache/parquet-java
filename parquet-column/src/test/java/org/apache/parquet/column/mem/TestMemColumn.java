@@ -138,13 +138,16 @@ public class TestMemColumn {
       int r = rs[i % rs.length];
       int d = ds[i % ds.length];
       LOG.debug("write i: {}", i);
+      if (i != 0 && r == 0) {
+        memColumnsStore.endRecord();
+      }
       if (d == 2) {
         columnWriter.write((long)i, r, d);
       } else {
         columnWriter.writeNull(r, d);
       }
-      memColumnsStore.endRecord();
     }
+    memColumnsStore.endRecord();
     memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
