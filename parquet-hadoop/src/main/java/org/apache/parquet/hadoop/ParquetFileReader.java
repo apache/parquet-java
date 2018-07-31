@@ -60,9 +60,9 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
-import org.apache.parquet.crypto.ColumnDecryptors;
 import org.apache.parquet.crypto.ParquetEncryptionFactory;
 import org.apache.parquet.crypto.ParquetFileDecryptor;
+import org.apache.parquet.crypto.ParquetFileDecryptor.ColumnDecryptors;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
 

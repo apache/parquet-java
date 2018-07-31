@@ -215,5 +215,4 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
   void addHiddenColumn(ColumnDescriptor path) {
     addColumn(path, new ColumnChunkPageReader(path.getPath()));
   }
-
 }

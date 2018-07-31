@@ -71,12 +71,11 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.crypto.ColumnDecryptionSetup;
-import org.apache.parquet.crypto.ColumnDecryptors;
 import org.apache.parquet.crypto.ColumnEncryptionSetup;
-import org.apache.parquet.crypto.ColumnEncryptors;
-import org.apache.parquet.crypto.ColumnCryptodata;
 import org.apache.parquet.crypto.ParquetFileDecryptor;
+import org.apache.parquet.crypto.ParquetFileDecryptor.ColumnDecryptors;
 import org.apache.parquet.crypto.ParquetFileEncryptor;
+import org.apache.parquet.crypto.ParquetFileEncryptor.ColumnEncryptors;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.PositionOutputStream;
@@ -912,6 +911,7 @@ public class ParquetMetadataConverter {
     return offset;
   }
   
+  // Process column cryptodata, and decrypt ColumnMetaData if necessary
   private static void processCryptoMetaData(FileMetaData parquetMetadata, InputStream from, 
       ParquetFileDecryptor fileDecryptor) throws IOException {
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
@@ -930,21 +930,22 @@ public class ParquetMetadataConverter {
         }
         else if (null != cryptoMetaData) {
           if (cryptoMetaData.isSetENCRYPTION_WITH_FOOTER_KEY()) {
-            throw new IOException("Metadata not set in Encryption with Footer key");
+            throw new IOException("ColumnMetaData not set in Encryption with Footer key mode");
           }
           EncryptionWithColumnKey eck = cryptoMetaData.getENCRYPTION_WITH_COLUMN_KEY();
           pathList = eck.getPath_in_schema();
           keyMetadata = eck.getColumn_key_metadata();
         }
         else {
-          throw new IOException("Both MetaData and CryptoMetaData are null");
+          throw new IOException("ColumnChunk: both MetaData and CryptoMetaData are null");
         }
         String[] columnPath = pathList.toArray(new String[pathList.size()]);
         ColumnDecryptionSetup cdmd = fileDecryptor.setColumnCryptoMetadata(columnPath, encryptedColumn, keyMetadata, cryptoMetaData);
         if (null != metaData) continue; // Metadata not encrypted
+        // Split ColumnMetaData: Decrypt and deserialize
         ColumnDecryptors decryptors = fileDecryptor.getColumnDecryptors(cdmd);
         if (decryptors.getStatus() == ColumnDecryptors.Status.KEY_AVAILABLE) {
-          SeekableInputStream sis = (SeekableInputStream) from; // TODO
+          SeekableInputStream sis = (SeekableInputStream) from;
           long currentOffset = sis.getPos();
           sis.seek(columnChunk.getFile_offset());
           metaData = readColumnMetaData(sis, decryptors.getMetadataDecryptor());
