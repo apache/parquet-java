@@ -84,7 +84,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   private void repetitionLevel(int repetitionLevel) {
     repetitionLevelColumn.writeInteger(repetitionLevel);
-    assert pageRowCount == 0 ? repetitionLevel == 0 : true;
+    assert pageRowCount == 0 ? repetitionLevel == 0 : true : "Every page shall start on record boundaries";
     if (repetitionLevel == 0) {
       ++pageRowCount;
     }
