@@ -20,7 +20,6 @@ package org.apache.parquet.column.impl;
 
 import java.io.IOException;
 
-import org.apache.parquet.Ints;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
@@ -52,6 +51,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   private Statistics<?> statistics;
   private long rowsWrittenSoFar = 0;
+  private int pageRowCount;
 
   ColumnWriterBase(
       ColumnDescriptor path,
@@ -84,6 +84,10 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   private void repetitionLevel(int repetitionLevel) {
     repetitionLevelColumn.writeInteger(repetitionLevel);
+    assert pageRowCount == 0 ? repetitionLevel == 0 : true : "Every page shall start on record boundaries";
+    if (repetitionLevel == 0) {
+      ++pageRowCount;
+    }
   }
 
   /**
@@ -299,13 +303,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   /**
    * Writes the current data to a new page in the page store
-   *
-   * @param rowCount
-   *          how many rows have been written so far
    */
-  void writePage(long rowCount) {
-    int pageRowCount = Ints.checkedCast(rowCount - rowsWrittenSoFar);
-    this.rowsWrittenSoFar = rowCount;
+  void writePage() {
+    this.rowsWrittenSoFar += pageRowCount;
     if (DEBUG)
       LOG.debug("write page");
     try {
@@ -318,6 +318,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     dataColumn.reset();
     valueCount = 0;
     resetStatistics();
+    pageRowCount = 0;
   }
 
   abstract void writePage(int rowCount, int valueCount, Statistics<?> statistics, ValuesWriter repetitionLevels,

@@ -149,7 +149,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     for (ColumnWriterBase memColumn : columns.values()) {
       long rows = rowCount - memColumn.getRowsWrittenSoFar();
       if (rows > 0) {
-        memColumn.writePage(rowCount);
+        memColumn.writePage();
       }
       memColumn.finalizeColumnChunk();
     }
@@ -195,7 +195,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       long rows = rowCount - writer.getRowsWrittenSoFar();
       long remainingMem = props.getPageSizeThreshold() - usedMem;
       if (remainingMem <= thresholdTolerance) {
-        writer.writePage(rowCount);
+        writer.writePage();
         remainingMem = props.getPageSizeThreshold();
       }
       long rowsToFillPage =
