@@ -20,6 +20,8 @@ package org.apache.parquet.format.converter;
 
 import static java.util.Collections.emptyList;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaDataByStart;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -163,6 +165,40 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testTimeLogicalTypes() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    MessageType expected = Types.buildMessage()
+      .required(PrimitiveTypeName.INT64)
+      .as(timestampType(false, LogicalTypeAnnotation.TimeUnit.MILLIS))
+      .named("aTimestampNonUtcMillis")
+      .required(PrimitiveTypeName.INT64)
+      .as(timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS))
+      .named("aTimestampUtcMillis")
+      .required(PrimitiveTypeName.INT64)
+      .as(timestampType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
+      .named("aTimestampNonUtcMicros")
+      .required(PrimitiveTypeName.INT64)
+      .as(timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS))
+      .named("aTimestampUtcMicros")
+      .required(PrimitiveTypeName.INT32)
+      .as(timeType(false, LogicalTypeAnnotation.TimeUnit.MILLIS))
+      .named("aTimeNonUtcMillis")
+      .required(PrimitiveTypeName.INT32)
+      .as(timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS))
+      .named("aTimeUtcMillis")
+      .required(PrimitiveTypeName.INT64)
+      .as(timeType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
+      .named("aTimeNonUtcMicros")
+      .required(PrimitiveTypeName.INT64)
+      .as(timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS))
+      .named("aTimeUtcMicros")
+      .named("Message");
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertEquals(expected, schema);
+  }
+
+  @Test
   public void testEnumEquivalence() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     for (org.apache.parquet.column.Encoding encoding : org.apache.parquet.column.Encoding.values()) {
@@ -184,11 +220,11 @@ public class TestParquetMetadataConverter {
       assertEquals(type, parquetMetadataConverter.getType(parquetMetadataConverter.getPrimitive(type)));
     }
     for (OriginalType original : OriginalType.values()) {
-      assertEquals(original, parquetMetadataConverter.getOriginalType(
+      assertEquals(original, parquetMetadataConverter.getLogicalTypeAnnotation(
         parquetMetadataConverter.convertToConvertedType(LogicalTypeAnnotation.fromOriginalType(original, null)), null).toOriginalType());
     }
     for (ConvertedType converted : ConvertedType.values()) {
-      assertEquals(converted, parquetMetadataConverter.convertToConvertedType(parquetMetadataConverter.getOriginalType(converted, null)));
+      assertEquals(converted, parquetMetadataConverter.convertToConvertedType(parquetMetadataConverter.getLogicalTypeAnnotation(converted, null)));
     }
   }
 
