@@ -165,6 +165,27 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testIncompatibleLogicalAndConvertedTypes() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    MessageType schema = Types.buildMessage()
+      .required(PrimitiveTypeName.BINARY)
+      .as(OriginalType.DECIMAL).precision(9).scale(2)
+      .named("aBinary")
+      .named("Message");
+    MessageType expected = Types.buildMessage()
+      .required(PrimitiveTypeName.BINARY)
+      .as(LogicalTypeAnnotation.jsonType())
+      .named("aBinary")
+      .named("Message");
+
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(schema);
+    // Set converted type field to a different type to verify that in case of mismatch, it overrides logical type
+    parquetSchema.get(1).setConverted_type(ConvertedType.JSON);
+    MessageType actual = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertEquals(expected, actual);
+  }
+
+  @Test
   public void testTimeLogicalTypes() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     MessageType expected = Types.buildMessage()
