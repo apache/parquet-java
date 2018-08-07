@@ -799,7 +799,7 @@ public class ParquetMetadataConverter {
   }
 
   // Visible for testing
-  LogicalTypeAnnotation getOriginalType(ConvertedType type, SchemaElement schemaElement) {
+  LogicalTypeAnnotation getLogicalTypeAnnotation(ConvertedType type, SchemaElement schemaElement) {
     switch (type) {
       case UTF8:
         return LogicalTypeAnnotation.stringType();
@@ -852,7 +852,7 @@ public class ParquetMetadataConverter {
     }
   }
 
-  LogicalTypeAnnotation getOriginalType(LogicalType type) {
+  LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) {
     switch (type.getSetField()) {
       case MAP:
         return LogicalTypeAnnotation.mapType();
@@ -1194,12 +1194,15 @@ public class ParquetMetadataConverter {
       }
 
       if (schemaElement.isSetLogicalType()) {
-        childBuilder.as(getOriginalType(schemaElement.logicalType));
+        childBuilder.as(getLogicalTypeAnnotation(schemaElement.logicalType));
       }
       if (schemaElement.isSetConverted_type()) {
-        LogicalTypeAnnotation originalType = getOriginalType(schemaElement.converted_type, schemaElement);
-        LogicalTypeAnnotation newLogicalType = schemaElement.isSetLogicalType() ? getOriginalType(schemaElement.logicalType) : null;
-        if (!originalType.equals(newLogicalType)) {
+        OriginalType originalType = getLogicalTypeAnnotation(schemaElement.converted_type, schemaElement).toOriginalType();
+        OriginalType newOriginalType = (schemaElement.isSetLogicalType() && getLogicalTypeAnnotation(schemaElement.logicalType) != null) ?
+           getLogicalTypeAnnotation(schemaElement.logicalType).toOriginalType() : null;
+        if (!originalType.equals(newOriginalType)) {
+          LOG.warn("Converted type and logical type metadata mismatch (convertedType: {}, logical type: {}). Using value in converted type.",
+            schemaElement.converted_type, schemaElement.logicalType);
           childBuilder.as(originalType);
         }
       }
