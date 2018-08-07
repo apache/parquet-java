@@ -686,7 +686,14 @@ public class ParquetFileReader implements Closeable {
     this.file = file;
     this.f = file.newStream();
     this.options = options;
-    this.footer = readFooter(file, options, f, converter);
+    try {
+      this.footer = readFooter(file, options, f, converter);
+    } catch (Exception e) {
+      // In case that reading footer throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      f.close();
+      throw e;
+    }
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = filterRowGroups(footer.getBlocks());
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
