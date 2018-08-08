@@ -58,7 +58,6 @@ import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
-import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
@@ -412,9 +411,8 @@ public class TestColumnIndexFiltering {
             userDefined(longColumn("id"), new IsDivisibleBy(234))));
     assertCorrectFiltering(
         record -> !(NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0),
-        LogicalInverseRewriter.rewrite(
             not(or(userDefined(binaryColumn("name"), NameStartsWithVowel.class),
-                userDefined(longColumn("id"), new IsDivisibleBy(234))))));
+                userDefined(longColumn("id"), new IsDivisibleBy(234)))));
   }
 
   @Test

@@ -36,7 +36,7 @@ import org.apache.parquet.io.api.PrimitiveConverter;
 class SynchronizingColumnReader extends ColumnReaderBase {
 
   private final PrimitiveIterator.OfLong rowIndexes;
-  private long actualRow;
+  private long currentRow;
   private long targetRow;
   private long lastRowInPage;
   private int valuesReadFromPage;
@@ -63,18 +63,18 @@ class SynchronizingColumnReader extends ColumnReaderBase {
   boolean skipLevels(int rl, int dl) {
     ++valuesReadFromPage;
     if (rl == 0) {
-      ++actualRow;
-      if (actualRow > targetRow) {
+      ++currentRow;
+      if (currentRow > targetRow) {
         targetRow = rowIndexes.hasNext() ? rowIndexes.nextLong() : Long.MAX_VALUE;
       }
     }
-    return actualRow < targetRow;
+    return currentRow < targetRow;
   }
 
   @Override
   protected void newPageInitialized(DataPage page) {
     long firstRowIndex = page.getFirstRowIndex();
-    actualRow = firstRowIndex - 1;
+    currentRow = firstRowIndex - 1;
     lastRowInPage = firstRowIndex + page.getRowCount() - 1;
     valuesReadFromPage = 0;
   }

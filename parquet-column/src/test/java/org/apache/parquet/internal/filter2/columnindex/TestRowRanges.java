@@ -83,22 +83,22 @@ public class TestRowRanges {
         15, 17);
     assertAllRowsEqual(ranges.allRows(), 1, 2, 3, 4, 6, 7, 8, 9, 10, 15, 16, 17);
     assertEquals(12, ranges.rowCount());
-    assertTrue(ranges.isConnected(4, 5));
-    assertFalse(ranges.isConnected(5, 5));
-    assertTrue(ranges.isConnected(10, 14));
-    assertFalse(ranges.isConnected(11, 14));
-    assertFalse(ranges.isConnected(18, Long.MAX_VALUE));
+    assertTrue(ranges.isOverlapping(4, 5));
+    assertFalse(ranges.isOverlapping(5, 5));
+    assertTrue(ranges.isOverlapping(10, 14));
+    assertFalse(ranges.isOverlapping(11, 14));
+    assertFalse(ranges.isOverlapping(18, Long.MAX_VALUE));
 
     ranges = RowRanges.single(5);
     assertAllRowsEqual(ranges.allRows(), 0, 1, 2, 3, 4);
     assertEquals(5, ranges.rowCount());
-    assertTrue(ranges.isConnected(0, 100));
-    assertFalse(ranges.isConnected(5, Long.MAX_VALUE));
+    assertTrue(ranges.isOverlapping(0, 100));
+    assertFalse(ranges.isOverlapping(5, Long.MAX_VALUE));
 
     ranges = RowRanges.EMPTY;
     assertAllRowsEqual(ranges.allRows());
     assertEquals(0, ranges.rowCount());
-    assertFalse(ranges.isConnected(0, Long.MAX_VALUE));
+    assertFalse(ranges.isOverlapping(0, Long.MAX_VALUE));
   }
 
   @Test

@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.hadoop;
 
+import static java.util.Collections.emptySet;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -47,11 +49,23 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
     private final ColumnChunkMetaData meta;
     private ColumnIndex columnIndex;
     private boolean columnIndexRead;
-    private OffsetIndex offsetIndex;
-    private boolean offsetIndexRead;
+    private final OffsetIndex offsetIndex;
 
     IndexStoreImpl(ColumnChunkMetaData meta) {
       this.meta = meta;
+      OffsetIndex oi;
+      try {
+        oi = reader.readOffsetIndex(meta);
+      } catch (IOException e) {
+        // If the I/O issue still stands it will fail the reading later;
+        // otherwise we fail the filtering only with a missing offset index.
+        LOGGER.warn("Unable to read offset index for column {}", meta.getPath(), e);
+        oi = null;
+      }
+      if (oi == null) {
+        throw new MissingOffsetIndexException(meta.getPath());
+      }
+      offsetIndex = oi;
     }
 
     @Override
@@ -62,7 +76,7 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
         } catch (IOException e) {
           // If the I/O issue still stands it will fail the reading later;
           // otherwise we fail the filtering only with a missing column index.
-          logger.error("Unable to read column index for column {}", meta.getPath(), e);
+          LOGGER.warn("Unable to read column index for column {}", meta.getPath(), e);
         }
         columnIndexRead = true;
       }
@@ -71,21 +85,11 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
 
     @Override
     public OffsetIndex getOffsetIndex() {
-      if (!offsetIndexRead) {
-        try {
-          offsetIndex = reader.readOffsetIndex(meta);
-        } catch (IOException e) {
-          // If the I/O issue still stands it will fail the reading later;
-          // otherwise we fail the filtering only with a missing offset index.
-          logger.error("Unable to read offset index for column {}", meta.getPath(), e);
-        }
-        offsetIndexRead = true;
-      }
       return offsetIndex;
     }
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(ColumnIndexStoreImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ColumnIndexStoreImpl.class);
   // Used for columns are not in this parquet file
   private static final IndexStore MISSING_INDEX_STORE = new IndexStore() {
     @Override
@@ -98,11 +102,34 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
       return null;
     }
   };
+  private static final ColumnIndexStoreImpl EMPTY = new ColumnIndexStoreImpl(null, new BlockMetaData(), emptySet()) {
+    @Override
+    public ColumnIndex getColumnIndex(ColumnPath column) {
+      return null;
+    }
+
+    @Override
+    public OffsetIndex getOffsetIndex(ColumnPath column) {
+      throw new MissingOffsetIndexException(column);
+    }
+  };
 
   private final ParquetFileReader reader;
   private final Map<ColumnPath, IndexStore> store;
 
-  ColumnIndexStoreImpl(ParquetFileReader reader, BlockMetaData block, Set<ColumnPath> paths) {
+  /*
+   * Creates a column index store which lazily reads column/offset indexes for the columns in paths. (paths are the set
+   * of columns used for the projection)
+   */
+  static ColumnIndexStore create(ParquetFileReader reader, BlockMetaData block, Set<ColumnPath> paths) {
+    try {
+      return new ColumnIndexStoreImpl(reader, block, paths);
+    } catch (MissingOffsetIndexException e) {
+      return EMPTY;
+    }
+  }
+
+  private ColumnIndexStoreImpl(ParquetFileReader reader, BlockMetaData block, Set<ColumnPath> paths) {
     // TODO[GS]: Offset index for every paths will be required; pre-read the consecutive ones at once?
     // TODO[GS]: Pre-read column index based on filter?
     this.reader = reader;
@@ -125,5 +152,4 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
   public OffsetIndex getOffsetIndex(ColumnPath column) {
     return store.getOrDefault(column, MISSING_INDEX_STORE).getOffsetIndex();
   }
-
 }

@@ -23,7 +23,7 @@ import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTI
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
-import static org.apache.parquet.hadoop.ColumnIndexFilterUtils.calculateConsecutiveParts;
+import static org.apache.parquet.hadoop.ColumnIndexFilterUtils.calculateOffsetRanges;
 import static org.apache.parquet.hadoop.ColumnIndexFilterUtils.filterOffsetIndex;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
@@ -78,7 +78,7 @@ import org.apache.parquet.format.Util;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import org.apache.parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
-import org.apache.parquet.hadoop.ColumnIndexFilterUtils.ConsecutivePart;
+import org.apache.parquet.hadoop.ColumnIndexFilterUtils.OffsetRange;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -816,26 +816,26 @@ public class ParquetFileReader implements Closeable {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
     this.currentRowGroup = new ColumnChunkPageReadStore(block.getRowCount());
-    // prepare the list of consecutive chunks to read them in one scan
-    List<ConsecutivePartList> allChunks = new ArrayList<ConsecutivePartList>();
-    ConsecutivePartList currentChunks = null;
+    // prepare the list of consecutive parts to read them in one scan
+    List<ConsecutivePartList> allParts = new ArrayList<ConsecutivePartList>();
+    ConsecutivePartList currentParts = null;
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
       BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
         long startingPos = mc.getStartingPos();
-        // first chunk or not consecutive => new list
-        if (currentChunks == null || currentChunks.endPos() != startingPos) {
-          currentChunks = new ConsecutivePartList(startingPos);
-          allChunks.add(currentChunks);
+        // first part or not consecutive => new list
+        if (currentParts == null || currentParts.endPos() != startingPos) {
+          currentParts = new ConsecutivePartList(startingPos);
+          allParts.add(currentParts);
         }
-        currentChunks.addChunk(new ChunkDescriptor(columnDescriptor, mc, startingPos, (int)mc.getTotalSize()));
+        currentParts.addChunk(new ChunkDescriptor(columnDescriptor, mc, startingPos, (int)mc.getTotalSize()));
       }
     }
     // actually read all the chunks
     ChunkListBuilder builder = new ChunkListBuilder();
-    for (ConsecutivePartList consecutiveChunks : allChunks) {
+    for (ConsecutivePartList consecutiveChunks : allParts) {
       consecutiveChunks.readAll(f, builder);
     }
     for (Chunk chunk : builder.build()) {
@@ -899,16 +899,16 @@ public class ParquetFileReader implements Closeable {
 
         OffsetIndex filteredOffsetIndex = filterOffsetIndex(offsetIndex, rowRanges,
             block.getRowCount());
-        for (ConsecutivePart part : calculateConsecutiveParts(filteredOffsetIndex, mc, offsetIndex.getOffset(0))) {
-          BenchmarkCounter.incrementTotalBytes(part.getLength());
-          long startingPos = part.getOffset();
+        for (OffsetRange range : calculateOffsetRanges(filteredOffsetIndex, mc, offsetIndex.getOffset(0))) {
+          BenchmarkCounter.incrementTotalBytes(range.getLength());
+          long startingPos = range.getOffset();
           // first part or not consecutive => new list
           if (currentParts == null || currentParts.endPos() != startingPos) {
             currentParts = new ConsecutivePartList(startingPos);
             allParts.add(currentParts);
           }
           ChunkDescriptor chunkDescriptor = new ChunkDescriptor(columnDescriptor, mc, startingPos,
-              (int) part.getLength());
+              (int) range.getLength());
           currentParts.addChunk(chunkDescriptor);
           builder.setOffsetIndex(chunkDescriptor, filteredOffsetIndex);
         }
@@ -935,7 +935,7 @@ public class ParquetFileReader implements Closeable {
   private ColumnIndexStore getColumnIndexStore(int blockIndex) {
     ColumnIndexStore ciStore = blockIndexStores.get(blockIndex);
     if (ciStore == null) {
-      ciStore = new ColumnIndexStoreImpl(this, blocks.get(blockIndex), paths.keySet());
+      ciStore = ColumnIndexStoreImpl.create(this, blocks.get(blockIndex), paths.keySet());
       blockIndexStores.set(blockIndex, ciStore);
     }
     return ciStore;

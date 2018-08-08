@@ -20,9 +20,7 @@ package org.apache.parquet.internal.filter2.columnindex;
 
 import java.util.PrimitiveIterator;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.FilterPredicateCompat;
@@ -45,29 +43,51 @@ import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.internal.filter2.columnindex.ColumnIndexStore.MissingOffsetIndexException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Filter implementation based on column indexes.
  * No filtering will be applied for columns where no column index is available.
- * No filtering will be applied at all if no offset index is available for any of the columns in the file.
+ * Offset index is required for all the columns in the projection, therefore a {@link MissingOffsetIndexException} will
+ * be thrown from any {@code visit} methods if any of the required offset indexes is missing.
  */
 public class ColumnIndexFilter implements Visitor<RowRanges> {
-  private static final Logger logger = LoggerFactory.getLogger(ColumnIndexFilter.class);
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ColumnIndexFilter.class);
   private final ColumnIndexStore columnIndexStore;
   private final Set<ColumnPath> columns;
   private final long rowCount;
-  private boolean missingOffsetIndex;
   private RowRanges allRows;
 
+  /**
+   * Calculates the row ranges containing the indexes of the rows might match the specified filter.
+   *
+   * @param filter
+   *          to be used for filtering the rows
+   * @param columnIndexStore
+   *          the store for providing column/offset indexes
+   * @param paths
+   *          the paths of the columns used in the actual projection; a column not being part of the projection will be
+   *          handled as containing {@code null} values only even if the column has values written in the file
+   * @param rowCount
+   *          the total number of rows in the row-group
+   * @return the ranges of the possible matching row indexes; the returned ranges will contain all the rows if any of
+   *         the required offset index is missing
+   */
   public static RowRanges calculateRowRanges(FilterCompat.Filter filter, ColumnIndexStore columnIndexStore,
       Set<ColumnPath> paths, long rowCount) {
     return filter.accept(new FilterCompat.Visitor<RowRanges>() {
       @Override
       public RowRanges visit(FilterPredicateCompat filterPredicateCompat) {
-        return filterPredicateCompat.getFilterPredicate()
-            .accept(new ColumnIndexFilter(columnIndexStore, paths, rowCount));
+        try {
+          return filterPredicateCompat.getFilterPredicate()
+              .accept(new ColumnIndexFilter(columnIndexStore, paths, rowCount));
+        } catch (MissingOffsetIndexException e) {
+          LOGGER.warn("Unable to do filtering", e);
+          return RowRanges.single(rowCount);
+        }
       }
 
       @Override
@@ -147,15 +167,9 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
     }
 
     OffsetIndex oi = columnIndexStore.getOffsetIndex(columnPath);
-    if (oi == null) {
-      missingOffsetIndex = true;
-      logger.warn("No offset index for column {} is available; Unable to do filtering", columnPath);
-      return allRows();
-    }
-
     ColumnIndex ci = columnIndexStore.getColumnIndex(columnPath);
     if (ci == null) {
-      logger.warn("No column index for column {} is available; Unable to filter on this column", columnPath);
+      LOGGER.warn("No column index for column {} is available; Unable to filter on this column", columnPath);
       return allRows();
     }
 
@@ -164,35 +178,17 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
 
   @Override
   public RowRanges visit(And and) {
-    return applyBinaryPredicate(() -> and.getLeft().accept(this), () -> and.getRight().accept(this),
-        RowRanges::intersection);
+    return RowRanges.intersection(and.getLeft().accept(this), and.getRight().accept(this));
   }
 
   @Override
   public RowRanges visit(Or or) {
-    return applyBinaryPredicate(() -> or.getLeft().accept(this), () -> or.getRight().accept(this),
-        RowRanges::union);
-  }
-
-  private RowRanges applyBinaryPredicate(Supplier<RowRanges> left, Supplier<RowRanges> right,
-      BiFunction<RowRanges, RowRanges, RowRanges> combiner) {
-    if (missingOffsetIndex) {
-      return allRows();
-    }
-    RowRanges leftResult = left.get();
-    if (missingOffsetIndex) {
-      return allRows();
-    }
-    RowRanges rightResult = right.get();
-    if (missingOffsetIndex) {
-      return allRows();
-    }
-    return combiner.apply(leftResult, rightResult);
+    return RowRanges.union(or.getLeft().accept(this), or.getRight().accept(this));
   }
 
   @Override
   public RowRanges visit(Not not) {
     throw new IllegalArgumentException(
-        "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
+        "Predicates containing a NOT must be run through LogicalInverseRewriter. " + not);
   }
 }

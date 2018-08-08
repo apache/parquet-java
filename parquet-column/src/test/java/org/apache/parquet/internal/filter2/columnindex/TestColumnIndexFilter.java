@@ -310,7 +310,7 @@ public class TestColumnIndexFilter {
         case "column4":
           return COLUMN4_OI;
         default:
-          return null;
+          throw new MissingOffsetIndexException(column);
       }
     }
   };

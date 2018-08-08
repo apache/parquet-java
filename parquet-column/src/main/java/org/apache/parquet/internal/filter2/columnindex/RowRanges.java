@@ -37,6 +37,8 @@ import org.apache.parquet.internal.column.columnindex.OffsetIndex;
  */
 public class RowRanges {
   private static class Range implements Comparable<Range> {
+
+    // Returns the union of the two ranges or null if they are not overlapped.
     private static Range union(Range left, Range right) {
       if (left.from <= right.from) {
         if (left.to + 1 >= right.from) {
@@ -48,6 +50,7 @@ public class RowRanges {
       return null;
     }
 
+    // Returns the intersection of the two ranges of null if they are not overlapped.
     private static Range intersection(Range left, Range right) {
       if (left.from <= right.from) {
         if (left.to >= right.from) {
@@ -79,7 +82,7 @@ public class RowRanges {
       } else if (from > other.to) {
         return 1;
       } else {
-        // Equality means the two ranges are connected
+        // Equality means the two ranges are overlapping
         return 0;
       }
     }
@@ -162,6 +165,11 @@ public class RowRanges {
   private RowRanges() {
   }
 
+  /*
+   * Adds range to the end of the list of ranges. It maintains the disjunct ascending order of the ranges by trying to
+   * union the specified range to the last ranges if they are overlapping. The specified range shall be larger than the
+   * last one or might be overlapped with some of the last ones.
+   */
   private void add(Range range) {
     Range rangeToAdd = range;
     for (int i = ranges.size() - 1; i >= 0; --i) {
@@ -193,15 +201,15 @@ public class RowRanges {
    */
   public PrimitiveIterator.OfLong allRows() {
     return new PrimitiveIterator.OfLong() {
-      private int actualRangeIndex = -1;
-      private Range actualRange;
+      private int currentRangeIndex = -1;
+      private Range currentRange;
       private long next = findNext();
 
       private long findNext() {
-        if (actualRange == null || next + 1 > actualRange.to) {
-          if (actualRangeIndex + 1 < ranges.size()) {
-            actualRange = ranges.get(++actualRangeIndex);
-            next = actualRange.from;
+        if (currentRange == null || next + 1 > currentRange.to) {
+          if (currentRangeIndex + 1 < ranges.size()) {
+            currentRange = ranges.get(++currentRangeIndex);
+            next = currentRange.from;
           } else {
             return -1;
           }
@@ -233,9 +241,9 @@ public class RowRanges {
    *          the first row of the range to be checked for connection
    * @param to
    *          the last row of the range to be checked for connection
-   * @return {@code true} if the specified range is connected (have common elements) to one of the ranges
+   * @return {@code true} if the specified range is overlapping (have common elements) with one of the ranges
    */
-  public boolean isConnected(long from, long to) {
+  public boolean isOverlapping(long from, long to) {
     return Collections.binarySearch(ranges, new Range(from, to)) >= 0;
   }
 

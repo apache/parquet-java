@@ -95,7 +95,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         return null;
       }
       DataPage compressedPage = compressedPages.remove(0);
-      final int actualPageIndex = pageIndex++;
+      final int currentPageIndex = pageIndex++;
       return compressedPage.accept(new DataPage.Visitor<DataPage>() {
         @Override
         public DataPage visit(DataPageV1 dataPageV1) {
@@ -111,13 +111,13 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV1.getDlEncoding(),
                   dataPageV1.getValueEncoding());
             } else {
-              long firstRowIndex = offsetIndex.getFirstRowIndex(actualPageIndex);
+              long firstRowIndex = offsetIndex.getFirstRowIndex(currentPageIndex);
               return new DataPageV1(
                   decompressed,
                   dataPageV1.getValueCount(),
                   dataPageV1.getUncompressedSize(),
                   firstRowIndex,
-                  checkedCast(offsetIndex.getLastRowIndex(actualPageIndex, rowCount) - firstRowIndex + 1),
+                  checkedCast(offsetIndex.getLastRowIndex(currentPageIndex, rowCount) - firstRowIndex + 1),
                   dataPageV1.getStatistics(),
                   dataPageV1.getRlEncoding(),
                   dataPageV1.getDlEncoding(),
@@ -138,7 +138,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV2.getRowCount(),
                   dataPageV2.getNullCount(),
                   dataPageV2.getValueCount(),
-                  offsetIndex.getFirstRowIndex(actualPageIndex),
+                  offsetIndex.getFirstRowIndex(currentPageIndex),
                   dataPageV2.getRepetitionLevels(),
                   dataPageV2.getDefinitionLevels(),
                   dataPageV2.getDataEncoding(),
@@ -167,7 +167,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV2.getRowCount(),
                   dataPageV2.getNullCount(),
                   dataPageV2.getValueCount(),
-                  offsetIndex.getFirstRowIndex(actualPageIndex),
+                  offsetIndex.getFirstRowIndex(currentPageIndex),
                   dataPageV2.getRepetitionLevels(),
                   dataPageV2.getDefinitionLevels(),
                   dataPageV2.getDataEncoding(),

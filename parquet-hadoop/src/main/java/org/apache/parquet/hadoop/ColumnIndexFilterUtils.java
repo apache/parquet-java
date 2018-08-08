@@ -34,11 +34,11 @@ import it.unimi.dsi.fastutil.ints.IntList;
  * Internal utility class to help at column index based filtering.
  */
 class ColumnIndexFilterUtils {
-  static class ConsecutivePart {
+  static class OffsetRange {
     private final long offset;
     private long length;
 
-    private ConsecutivePart(long offset, int length) {
+    private OffsetRange(long offset, int length) {
       this.offset = offset;
       this.length = length;
     }
@@ -51,7 +51,7 @@ class ColumnIndexFilterUtils {
       return length;
     }
 
-    private boolean increment(long offset, int length) {
+    private boolean extend(long offset, int length) {
       if (this.offset + this.length == offset) {
         this.length += length;
         return true;
@@ -115,40 +115,43 @@ class ColumnIndexFilterUtils {
     }
   }
 
+  /*
+   * Returns the filtered offset index containing only the pages which are overlapping with rowRanges.
+   */
   static OffsetIndex filterOffsetIndex(OffsetIndex offsetIndex, RowRanges rowRanges, long totalRowCount) {
     IntList indexMap = new IntArrayList();
     for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
       long from = offsetIndex.getFirstRowIndex(i);
-      if (rowRanges.isConnected(from, offsetIndex.getLastRowIndex(i, totalRowCount))) {
+      if (rowRanges.isOverlapping(from, offsetIndex.getLastRowIndex(i, totalRowCount))) {
         indexMap.add(i);
       }
     }
     return new FilteredOffsetIndex(offsetIndex, indexMap.toIntArray());
   }
 
-  static List<ConsecutivePart> calculateConsecutiveParts(OffsetIndex offsetIndex, ColumnChunkMetaData cm,
+  static List<OffsetRange> calculateOffsetRanges(OffsetIndex offsetIndex, ColumnChunkMetaData cm,
       long firstPageOffset) {
-    List<ConsecutivePart> parts = new ArrayList<>();
+    List<OffsetRange> ranges = new ArrayList<>();
     int n = offsetIndex.getPageCount();
     if (n > 0) {
-      ConsecutivePart lastPart = null;
+      OffsetRange currentRange = null;
 
-      // Add part for the dictionary page if required
+      // Add a range for the dictionary page if required
       long rowGroupOffset = cm.getStartingPos();
       if (rowGroupOffset < firstPageOffset) {
-        lastPart = new ConsecutivePart(rowGroupOffset, (int) (firstPageOffset - rowGroupOffset));
-        parts.add(lastPart);
+        currentRange = new OffsetRange(rowGroupOffset, (int) (firstPageOffset - rowGroupOffset));
+        ranges.add(currentRange);
       }
 
       for (int i = 0; i < n; ++i) {
         long offset = offsetIndex.getOffset(i);
         int length = offsetIndex.getCompressedPageSize(i);
-        if (lastPart == null || !lastPart.increment(offset, length)) {
-          lastPart = new ConsecutivePart(offset, length);
-          parts.add(lastPart);
+        if (currentRange == null || !currentRange.extend(offset, length)) {
+          currentRange = new OffsetRange(offset, length);
+          ranges.add(currentRange);
         }
       }
     }
-    return parts;
+    return ranges;
   }
 }
