@@ -25,12 +25,14 @@ import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
@@ -41,13 +43,22 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.Strings;
 import org.apache.parquet.Version;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
+import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.impl.ColumnReadStoreImpl;
+import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.example.DummyRecordConverter;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -57,6 +68,7 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.BlocksCombiner;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.HadoopStreams;
 import org.apache.parquet.io.InputFile;
@@ -517,6 +529,106 @@ public class ParquetFileWriter {
 
   public void appendFile(InputFile file) throws IOException {
     ParquetFileReader.open(file).appendTo(this);
+  }
+
+  public int merge(List<InputFile> inputFiles, CodecFactory.BytesCompressor compressor, String createdBy, long maxBlockSize) throws IOException {
+    List<ParquetFileReader> readers = getReaders(inputFiles);
+    ByteBufferAllocator allocator = new HeapByteBufferAllocator();
+    ColumnReadStoreImpl columnReadStore = new ColumnReadStoreImpl(null, new DummyRecordConverter(schema).getRootConverter(), schema, createdBy);
+    this.start();
+    List<BlocksCombiner.SmallBlocksUnion> largeBlocks = BlocksCombiner.combineLargeBlocks(readers, maxBlockSize);
+    for (BlocksCombiner.SmallBlocksUnion smallBlocks : largeBlocks) {
+      for (int columnIndex = 0; columnIndex < schema.getColumns().size(); columnIndex++) {
+        ColumnDescriptor path = schema.getColumns().get(columnIndex);
+        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor, schema, allocator);
+        ColumnWriteStoreV1 columnWriteStoreV1 = new ColumnWriteStoreV1(store, ParquetProperties.builder().build());
+        for (BlocksCombiner.SmallBlock smallBlock : smallBlocks.getBlocks()) {
+          ParquetFileReader parquetFileReader = smallBlock.getReader();
+          try {
+            Optional<PageReader> columnChunkPageReader = parquetFileReader.readColumnInBlock(smallBlock.getBlockIndex(), path);
+            ColumnWriter columnWriter = columnWriteStoreV1.getColumnWriter(path);
+            if (columnChunkPageReader.isPresent()) {
+              ColumnReader columnReader = columnReadStore.newMemColumnReader(path, columnChunkPageReader.get());
+              for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
+                consumeTriplet(columnWriter, columnReader);
+              }
+            } else {
+              MessageType inputFileSchema = parquetFileReader.getFileMetaData().getSchema();
+              String[] parentPath = getExisingParentPath(path, inputFileSchema);
+              int def = parquetFileReader.getFileMetaData().getSchema().getMaxDefinitionLevel(parentPath);
+              int rep = parquetFileReader.getFileMetaData().getSchema().getMaxRepetitionLevel(parentPath);
+              for (int i = 0; i < parquetFileReader.getBlockMetaData(smallBlock.getBlockIndex()).getRowCount(); i++) {
+                columnWriter.writeNull(rep, def);
+              }
+            }
+          } catch (Exception e) {
+            LOG.error("File {} is not readable", parquetFileReader.getFile(), e);
+          }
+        }
+        if (columnIndex == 0) {
+          this.startBlock(smallBlocks.getRowCount());
+        }
+        columnWriteStoreV1.flush();
+        store.flushToFileWriter(path, this);
+      }
+      this.endBlock();
+    }
+    this.end(new HashMap<>());
+
+    BlocksCombiner.closeReaders(readers);
+    return 0;
+  }
+
+  private String[] getExisingParentPath(ColumnDescriptor path, MessageType inputFileSchema) {
+    List<String> parentPath = Arrays.asList(path.getPath());
+    while (parentPath.size() > 0 && !inputFileSchema.containsPath(parentPath.toArray(new String[parentPath.size()]))) {
+      parentPath = parentPath.subList(0, parentPath.size() - 1);
+    }
+    return parentPath.toArray(new String[parentPath.size()]);
+  }
+
+  private List<ParquetFileReader> getReaders(List<InputFile> inputFiles) throws IOException {
+    List<ParquetFileReader> readers = new ArrayList<>(inputFiles.size());
+    for (InputFile inputFile : inputFiles) {
+      readers.add(ParquetFileReader.open(inputFile));
+    }
+    return readers;
+  }
+
+  private void consumeTriplet(ColumnWriter columnWriter, ColumnReader columnReader) {
+    int definitionLevel = columnReader.getCurrentDefinitionLevel();
+    int repetitionLevel = columnReader.getCurrentRepetitionLevel();
+    ColumnDescriptor column = columnReader.getDescriptor();
+    PrimitiveType type = column.getPrimitiveType();
+    if (definitionLevel < column.getMaxDefinitionLevel()) {
+      columnWriter.writeNull(repetitionLevel, definitionLevel);
+    } else {
+      switch (type.getPrimitiveTypeName()) {
+        case INT32:
+          columnWriter.write(columnReader.getInteger(), repetitionLevel, definitionLevel);
+          break;
+        case INT64:
+          columnWriter.write(columnReader.getLong(), repetitionLevel, definitionLevel);
+          break;
+        case BINARY:
+        case FIXED_LEN_BYTE_ARRAY:
+        case INT96:
+          columnWriter.write(columnReader.getBinary(), repetitionLevel, definitionLevel);
+          break;
+        case BOOLEAN:
+          columnWriter.write(columnReader.getBoolean(), repetitionLevel, definitionLevel);
+          break;
+        case FLOAT:
+          columnWriter.write(columnReader.getFloat(), repetitionLevel, definitionLevel);
+          break;
+        case DOUBLE:
+          columnWriter.write(columnReader.getDouble(), repetitionLevel, definitionLevel);
+          break;
+        default:
+          throw new IllegalArgumentException("Unknown primitive type " + type);
+      }
+    }
+    columnReader.consume();
   }
 
   /**
