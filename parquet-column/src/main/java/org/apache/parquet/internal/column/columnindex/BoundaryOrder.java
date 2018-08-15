@@ -71,70 +71,273 @@ public enum BoundaryOrder {
           comparator::translate);
     }
   },
-  // TODO[GS]: Implement better performing algorithms
   ASCENDING {
     @Override
     OfInt eq(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.eq(comparator);
+      Bounds bounds = findBounds(comparator);
+      if (bounds == null) {
+        return IndexIterator.EMPTY;
+      }
+      return IndexIterator.rangeTranslate(bounds.lower, bounds.upper, comparator::translate);
     }
 
     @Override
     OfInt gt(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.gt(comparator);
+      int length = comparator.arrayLength();
+      int left = 0;
+      int right = length;
+      do {
+        int i = floorMid(left, right);
+        if (comparator.compareValueToMax(i) >= 0) {
+          left = i + 1;
+        } else {
+          right = i;
+        }
+      } while (left < right);
+      return IndexIterator.rangeTranslate(right, length - 1, comparator::translate);
     }
 
     @Override
     OfInt gtEq(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.gtEq(comparator);
+      int length = comparator.arrayLength();
+      int left = 0;
+      int right = length;
+      do {
+        int i = floorMid(left, right);
+        if (comparator.compareValueToMax(i) > 0) {
+          left = i + 1;
+        } else {
+          right = i;
+        }
+      } while (left < right);
+      return IndexIterator.rangeTranslate(right, length - 1, comparator::translate);
     }
 
     @Override
     OfInt lt(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.lt(comparator);
+      int length = comparator.arrayLength();
+      int left = -1;
+      int right = length - 1;
+      do {
+        int i = ceilingMid(left, right);
+        if (comparator.compareValueToMin(i) <= 0) {
+          right = i - 1;
+        } else {
+          left = i;
+        }
+      } while (left < right);
+      return IndexIterator.rangeTranslate(0, left, comparator::translate);
     }
 
     @Override
     OfInt ltEq(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.ltEq(comparator);
+      int length = comparator.arrayLength();
+      int left = -1;
+      int right = length - 1;
+      do {
+        int i = ceilingMid(left, right);
+        if (comparator.compareValueToMin(i) < 0) {
+          right = i - 1;
+        } else {
+          left = i;
+        }
+      } while (left < right);
+      return IndexIterator.rangeTranslate(0, left, comparator::translate);
     }
 
     @Override
     OfInt notEq(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.notEq(comparator);
+      Bounds bounds = findBounds(comparator);
+      int length = comparator.arrayLength();
+      if (bounds == null) {
+        return IndexIterator.all(comparator);
+      }
+      return IndexIterator.filterTranslate(
+          length,
+          i -> i < bounds.lower || i > bounds.upper || comparator.compareValueToMin(i) != 0
+              || comparator.compareValueToMax(i) != 0,
+          comparator::translate);
+    }
+
+    private Bounds findBounds(ColumnIndexBase<?>.ValueComparator comparator) {
+      int length = comparator.arrayLength();
+      int lowerLeft = 0;
+      int upperLeft = 0;
+      int lowerRight = length - 1;
+      int upperRight = length - 1;
+      do {
+        if (lowerLeft > lowerRight) {
+          return null;
+        }
+        int i = floorMid(lowerLeft, lowerRight);
+        if (comparator.compareValueToMin(i) < 0) {
+          lowerRight = upperRight = i - 1;
+        } else if (comparator.compareValueToMax(i) > 0) {
+          lowerLeft = upperLeft = i + 1;
+        } else {
+          lowerRight = upperLeft = i;
+        }
+      } while (lowerLeft != lowerRight);
+      do {
+        if (upperLeft > upperRight) {
+          return null;
+        }
+        int i = ceilingMid(upperLeft, upperRight);
+        if (comparator.compareValueToMin(i) < 0) {
+          upperRight = i - 1;
+        } else if (comparator.compareValueToMax(i) > 0) {
+          upperLeft = i + 1;
+        } else {
+          upperLeft = i;
+        }
+      } while (upperLeft != upperRight);
+      return new Bounds(lowerLeft, upperRight);
     }
   },
-  // TODO[GS]: Implement better performing algorithms
   DESCENDING {
     @Override
     OfInt eq(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.eq(comparator);
+      Bounds bounds = findBounds(comparator);
+      if (bounds == null) {
+        return IndexIterator.EMPTY;
+      }
+      return IndexIterator.rangeTranslate(bounds.lower, bounds.upper, comparator::translate);
     }
 
     @Override
     OfInt gt(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.gt(comparator);
+      int length = comparator.arrayLength();
+      int left = -1;
+      int right = length - 1;
+      do {
+        int i = ceilingMid(left, right);
+        if (comparator.compareValueToMax(i) >= 0) {
+          right = i - 1;
+        } else {
+          left = i;
+        }
+      } while (left < right);
+      return IndexIterator.rangeTranslate(0, left, comparator::translate);
     }
 
     @Override
     OfInt gtEq(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.gtEq(comparator);
+      int length = comparator.arrayLength();
+      int left = -1;
+      int right = length - 1;
+      do {
+        int i = ceilingMid(left, right);
+        if (comparator.compareValueToMax(i) > 0) {
+          right = i - 1;
+        } else {
+          left = i;
+        }
+      } while (left < right);
+      return IndexIterator.rangeTranslate(0, left, comparator::translate);
     }
 
     @Override
     OfInt lt(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.lt(comparator);
+      int length = comparator.arrayLength();
+      int left = 0;
+      int right = length;
+      do {
+        int i = floorMid(left, right);
+        if (comparator.compareValueToMin(i) <= 0) {
+          left = i + 1;
+        } else {
+          right = i;
+        }
+      } while (left < right);
+      return IndexIterator.rangeTranslate(right, length - 1, comparator::translate);
     }
 
     @Override
     OfInt ltEq(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.ltEq(comparator);
+      int length = comparator.arrayLength();
+      int left = 0;
+      int right = length;
+      do {
+        int i = floorMid(left, right);
+        if (comparator.compareValueToMin(i) < 0) {
+          left = i + 1;
+        } else {
+          right = i;
+        }
+      } while (left < right);
+      return IndexIterator.rangeTranslate(right, length - 1, comparator::translate);
     }
 
     @Override
     OfInt notEq(ColumnIndexBase<?>.ValueComparator comparator) {
-      return UNORDERED.notEq(comparator);
+      Bounds bounds = findBounds(comparator);
+      int length = comparator.arrayLength();
+      if (bounds == null) {
+        return IndexIterator.all(comparator);
+      }
+      return IndexIterator.filterTranslate(
+          length,
+          i -> i < bounds.lower || i > bounds.upper || comparator.compareValueToMin(i) != 0
+              || comparator.compareValueToMax(i) != 0,
+          comparator::translate);
+    }
+
+    private Bounds findBounds(ColumnIndexBase<?>.ValueComparator comparator) {
+      int length = comparator.arrayLength();
+      int lowerLeft = 0;
+      int upperLeft = 0;
+      int lowerRight = length - 1;
+      int upperRight = length - 1;
+      do {
+        if (lowerLeft > lowerRight) {
+          return null;
+        }
+        int i = floorMid(lowerLeft, lowerRight);
+        if (comparator.compareValueToMax(i) > 0) {
+          lowerRight = upperRight = i - 1;
+        } else if (comparator.compareValueToMin(i) < 0) {
+          lowerLeft = upperLeft = i + 1;
+        } else {
+          lowerRight = upperLeft = i;
+        }
+      } while (lowerLeft != lowerRight);
+      do {
+        if (upperLeft > upperRight) {
+          return null;
+        }
+        int i = ceilingMid(upperLeft, upperRight);
+        if (comparator.compareValueToMax(i) > 0) {
+          upperRight = i - 1;
+        } else if (comparator.compareValueToMin(i) < 0) {
+          upperLeft = i + 1;
+        } else {
+          upperLeft = i;
+        }
+      } while (upperLeft != upperRight);
+      return new Bounds(lowerLeft, upperRight);
     }
   };
+
+  private static class Bounds {
+    final int lower, upper;
+
+    Bounds(int lower, int upper) {
+      assert lower <= upper;
+      this.lower = lower;
+      this.upper = upper;
+    }
+  }
+
+  private static int floorMid(int left, int right) {
+    // Avoid the possible overflow might happen in case of (left + right) / 2
+    return left + ((right - left) / 2);
+  }
+
+  private static int ceilingMid(int left, int right) {
+    // Avoid the possible overflow might happen in case of (left + right + 1) / 2
+    return left + ((right - left + 1) / 2);
+  }
+
   abstract PrimitiveIterator.OfInt eq(ColumnIndexBase<?>.ValueComparator comparator);
 
   abstract PrimitiveIterator.OfInt gt(ColumnIndexBase<?>.ValueComparator comparator);

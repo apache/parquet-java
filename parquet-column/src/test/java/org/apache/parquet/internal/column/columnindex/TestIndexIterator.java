@@ -47,6 +47,11 @@ public class TestIndexIterator {
     assertEquals(IndexIterator.filterTranslate(20, value -> value < 5, Math::negateExact), 0, -1, -2, -3, -4);
   }
 
+  @Test
+  public void testRangeTranslate() {
+    assertEquals(IndexIterator.rangeTranslate(11, 18, i -> i - 10), 1, 2, 3, 4, 5, 6, 7, 8);
+  }
+
   static void assertEquals(PrimitiveIterator.OfInt actualIt, int... expectedValues) {
     IntList actualList = new IntArrayList();
     actualIt.forEachRemaining((int value) -> actualList.add(value));

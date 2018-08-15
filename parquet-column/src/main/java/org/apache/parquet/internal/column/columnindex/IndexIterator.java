@@ -23,39 +23,57 @@ import java.util.PrimitiveIterator;
 import java.util.function.IntPredicate;
 import java.util.function.IntUnaryOperator;
 
+import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder.ColumnIndexBase;
+
 /**
  * Iterator implementation for page indexes.
  */
 class IndexIterator implements PrimitiveIterator.OfInt {
+  public static final PrimitiveIterator.OfInt EMPTY = new OfInt() {
+    @Override
+    public boolean hasNext() {
+      return false;
+    }
+
+    @Override
+    public int nextInt() {
+      throw new NoSuchElementException();
+    }
+  };
   private int index;
-  private final int length;
+  private final int endIndex;
   private final IntPredicate filter;
+  private final IntUnaryOperator translator;
 
   static PrimitiveIterator.OfInt all(int pageCount) {
-    return new IndexIterator(pageCount, i -> true);
+    return new IndexIterator(0, pageCount, i -> true, i -> i);
+  }
+
+  static PrimitiveIterator.OfInt all(ColumnIndexBase<?>.ValueComparator comparator) {
+    return new IndexIterator(0, comparator.arrayLength(), i -> true, comparator::translate);
   }
 
   static PrimitiveIterator.OfInt filter(int pageCount, IntPredicate filter) {
-    return new IndexIterator(pageCount, filter);
+    return new IndexIterator(0, pageCount, filter, i -> i);
   }
 
   static PrimitiveIterator.OfInt filterTranslate(int arrayLength, IntPredicate filter, IntUnaryOperator translator) {
-    return new IndexIterator(arrayLength, filter) {
-      @Override
-      public int nextInt() {
-        return translator.applyAsInt(super.nextInt());
-      }
-    };
+    return new IndexIterator(0, arrayLength, filter, translator);
   }
 
-  private IndexIterator(int pageCount, IntPredicate filter) {
-    this.length = pageCount;
+  static PrimitiveIterator.OfInt rangeTranslate(int from, int to, IntUnaryOperator translator) {
+    return new IndexIterator(from, to + 1, i -> true, translator);
+  }
+
+  private IndexIterator(int startIndex, int endIndex, IntPredicate filter, IntUnaryOperator translator) {
+    this.endIndex = endIndex;
     this.filter = filter;
-    index = nextPageIndex(0);
+    this.translator = translator;
+    index = nextPageIndex(startIndex);
   }
 
   private int nextPageIndex(int startIndex) {
-    for (int i = startIndex; i < length; ++i) {
+    for (int i = startIndex; i < endIndex; ++i) {
       if (filter.test(i)) {
         return i;
       }
@@ -73,7 +91,7 @@ class IndexIterator implements PrimitiveIterator.OfInt {
     if (hasNext()) {
       int ret = index;
       index = nextPageIndex(index + 1);
-      return ret;
+      return translator.applyAsInt(ret);
     }
     throw new NoSuchElementException();
   }
