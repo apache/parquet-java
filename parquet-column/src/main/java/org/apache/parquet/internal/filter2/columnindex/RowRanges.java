@@ -36,7 +36,7 @@ import org.apache.parquet.internal.column.columnindex.OffsetIndex;
  * @see ColumnIndexFilter#calculateRowRanges(Filter, ColumnIndexStore, Collection, long)
  */
 public class RowRanges {
-  private static class Range implements Comparable<Range> {
+  private static class Range {
 
     // Returns the union of the two ranges or null if they are not overlapped.
     private static Range union(Range left, Range right) {
@@ -65,6 +65,7 @@ public class RowRanges {
     final long from;
     final long to;
 
+    // Creates a range of [from, to] (from and to are inclusive; empty ranges are not valid)
     Range(long from, long to) {
       assert from <= to;
       this.from = from;
@@ -75,16 +76,12 @@ public class RowRanges {
       return to - from + 1;
     }
 
-    @Override
-    public int compareTo(Range other) {
-      if (to < other.from) {
-        return -1;
-      } else if (from > other.to) {
-        return 1;
-      } else {
-        // Equality means the two ranges are overlapping
-        return 0;
-      }
+    boolean isBeforeThan(Range other) {
+      return to < other.from;
+    }
+
+    boolean isAfterThan(Range other) {
+      return from > other.to;
     }
 
     @Override
@@ -118,14 +115,14 @@ public class RowRanges {
       Range range2 = it2.next();
       while (it1.hasNext()) {
         Range range1 = it1.next();
-        if (range1.compareTo(range2) <= 0) {
-          result.add(range1);
-        } else {
+        if (range1.isAfterThan(range2)) {
           result.add(range2);
           range2 = range1;
           Iterator<Range> tmp = it1;
           it1 = it2;
           it2 = tmp;
+        } else {
+          result.add(range1);
         }
       }
       result.add(range2);
@@ -146,10 +143,9 @@ public class RowRanges {
     for (Range l : left.ranges) {
       for (int i = rightIndex, n = right.ranges.size(); i < n; ++i) {
         Range r = right.ranges.get(i);
-        int cmp = l.compareTo(r);
-        if (cmp < 0) {
+        if (l.isBeforeThan(r)) {
           break;
-        } else if (cmp > 0) {
+        } else if (l.isAfterThan(r)) {
           rightIndex = i + 1;
           continue;
         }
@@ -174,7 +170,7 @@ public class RowRanges {
     Range rangeToAdd = range;
     for (int i = ranges.size() - 1; i >= 0; --i) {
       Range last = ranges.get(i);
-      assert last.compareTo(range) <= 0;
+      assert !last.isAfterThan(range);
       Range u = Range.union(last, rangeToAdd);
       if (u == null) {
         break;
@@ -244,7 +240,8 @@ public class RowRanges {
    * @return {@code true} if the specified range is overlapping (have common elements) with one of the ranges
    */
   public boolean isOverlapping(long from, long to) {
-    return Collections.binarySearch(ranges, new Range(from, to)) >= 0;
+    return Collections.binarySearch(ranges, new Range(from, to),
+        (r1, r2) -> r1.isBeforeThan(r2) ? -1 : r1.isAfterThan(r2) ? 1 : 0) >= 0;
   }
 
   @Override

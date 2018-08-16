@@ -25,7 +25,7 @@ import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.io.api.PrimitiveConverter;
 
 /**
- * ColumnReader implementation for the simple scenario (all values are read)
+ * ColumnReader implementation for the scenario when column indexes are not used (all values are read)
  */
 public class ColumnReaderImpl extends ColumnReaderBase {
 
