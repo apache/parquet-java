@@ -26,12 +26,23 @@ import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.io.api.PrimitiveConverter;
 
 /**
- * A {@link ColumnReader} implementation that synchronize the values for skipped pages.
+ * A {@link ColumnReader} implementation for utilizing indexes. When filtering using column indexes, some of the rows
+ * may be loaded only partially, because rows are not synchronized across columns, thus pages containing other fields of
+ * a row may have been filtered out. In this case we can't assemble the row, but there is no need to do so either, since
+ * getting filtered out in another column means that it can not match the filter condition.
+ * <p>
+ * A {@link RecordReader} assembles rows by reading from each {@link ColumnReader}. Without filtering, when
+ * {@link RecordReader} starts reading a row, {@link ColumnReader}s are always positioned at the same row in respect to
+ * each other. With filtering, however, due to the misalignment described above, some of the pages read by
+ * {@link ColumnReader}s may contain values that have no corresponding values in other rows. This
+ * {@link SynchronizingColumnReader} is a column reader implementation that skips such values so that the values
+ * returned to {@link RecordReader} for the different fields all correspond to a single row.
  * 
- * @see PageReadStore#isRowSynchronizationRequired()
+ * @see PageReadStore#isInPageFilteringMode()
  */
 class SynchronizingColumnReader extends ColumnReaderBase {
 

@@ -74,7 +74,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
   public ColumnReader getColumnReader(ColumnDescriptor path) {
     PrimitiveConverter converter = getPrimitiveConverter(path);
     PageReader pageReader = pageReadStore.getPageReader(path);
-    if (pageReadStore.isRowSynchronizationRequired()) {
+    if (pageReadStore.isInPageFilteringMode()) {
       return new SynchronizingColumnReader(path, pageReader, converter, writerVersion, pageReadStore.getRowIndexes());
     } else {
       return new ColumnReaderImpl(path, pageReader, converter, writerVersion);

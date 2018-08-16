@@ -47,28 +47,27 @@ abstract public class DataPage extends Page {
 
   /**
    * @return the index of the first row in this page
-   * @throws IllegalStateException
-   *           if no row synchronization is required
-   * @see PageReadStore#isRowSynchronizationRequired()
+   * @throws NotInPageFilteringMode
+   *           if page filtering mode is not active
+   * @see PageReadStore#isInPageFilteringMode()
    */
   public long getFirstRowIndex() {
     if (firstRowIndex < 0) {
-      throw new IllegalStateException(
-          "No row synchronization is required; all pages shall be read.");
+      throw new NotInPageFilteringMode("First row index is not available");
     }
     return firstRowIndex;
   }
 
   /**
    * @return the number of rows in this page
-   * @throws IllegalStateException
-   *           if no row synchronization is required; thrown only in case of {@link DataPageV1}
-   * @see PageReadStore#isRowSynchronizationRequired()
+   * @throws NotInPageFilteringMode
+   *           if page filtering mode is not active; thrown only in case of {@link DataPageV1}
+   * @see PageReadStore#isInPageFilteringMode()
    */
   public int getRowCount() {
     if (rowCount < 0) {
-      throw new IllegalStateException(
-          "No row synchronization is required; all pages shall be read.");
+      throw new NotInPageFilteringMode(
+          "Row count is not available");
     }
     return rowCount;
   }

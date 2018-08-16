@@ -76,11 +76,11 @@ public class RowRanges {
       return to - from + 1;
     }
 
-    boolean isBeforeThan(Range other) {
+    boolean isBefore(Range other) {
       return to < other.from;
     }
 
-    boolean isAfterThan(Range other) {
+    boolean isAfter(Range other) {
       return from > other.to;
     }
 
@@ -115,7 +115,7 @@ public class RowRanges {
       Range range2 = it2.next();
       while (it1.hasNext()) {
         Range range1 = it1.next();
-        if (range1.isAfterThan(range2)) {
+        if (range1.isAfter(range2)) {
           result.add(range2);
           range2 = range1;
           Iterator<Range> tmp = it1;
@@ -143,9 +143,9 @@ public class RowRanges {
     for (Range l : left.ranges) {
       for (int i = rightIndex, n = right.ranges.size(); i < n; ++i) {
         Range r = right.ranges.get(i);
-        if (l.isBeforeThan(r)) {
+        if (l.isBefore(r)) {
           break;
-        } else if (l.isAfterThan(r)) {
+        } else if (l.isAfter(r)) {
           rightIndex = i + 1;
           continue;
         }
@@ -170,7 +170,7 @@ public class RowRanges {
     Range rangeToAdd = range;
     for (int i = ranges.size() - 1; i >= 0; --i) {
       Range last = ranges.get(i);
-      assert !last.isAfterThan(range);
+      assert !last.isAfter(range);
       Range u = Range.union(last, rangeToAdd);
       if (u == null) {
         break;
@@ -241,7 +241,7 @@ public class RowRanges {
    */
   public boolean isOverlapping(long from, long to) {
     return Collections.binarySearch(ranges, new Range(from, to),
-        (r1, r2) -> r1.isBeforeThan(r2) ? -1 : r1.isAfterThan(r2) ? 1 : 0) >= 0;
+        (r1, r2) -> r1.isBefore(r2) ? -1 : r1.isAfter(r2) ? 1 : 0) >= 0;
   }
 
   @Override

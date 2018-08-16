@@ -860,7 +860,7 @@ public class ParquetFileReader implements Closeable {
    * @return the PageReadStore which can provide PageReaders for each column
    * @throws IOException
    *           if any I/O error occurs while reading
-   * @see {@link PageReadStore#isRowSynchronizationRequired()}
+   * @see {@link PageReadStore#isInPageFilteringMode()}
    */
   public PageReadStore readNextFilteredRowGroup() throws IOException {
     if (currentBlock == blocks.size()) {
