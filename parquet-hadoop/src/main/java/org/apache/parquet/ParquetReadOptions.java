@@ -38,12 +38,14 @@ public class ParquetReadOptions {
   private static final boolean RECORD_FILTERING_ENABLED_DEFAULT = true;
   private static final boolean STATS_FILTERING_ENABLED_DEFAULT = true;
   private static final boolean DICTIONARY_FILTERING_ENABLED_DEFAULT = true;
+  private static final boolean COLUMN_INDEX_FILTERING_ENABLED_DEFAULT = true;
   private static final int ALLOCATION_SIZE_DEFAULT = 8388608; // 8MB
 
   private final boolean useSignedStringMinMax;
   private final boolean useStatsFilter;
   private final boolean useDictionaryFilter;
   private final boolean useRecordFilter;
+  private final boolean useColumnIndexFilter;
   private final FilterCompat.Filter recordFilter;
   private final ParquetMetadataConverter.MetadataFilter metadataFilter;
   private final CompressionCodecFactory codecFactory;
@@ -55,6 +57,7 @@ public class ParquetReadOptions {
                      boolean useStatsFilter,
                      boolean useDictionaryFilter,
                      boolean useRecordFilter,
+                     boolean useColumnIndexFilter,
                      FilterCompat.Filter recordFilter,
                      ParquetMetadataConverter.MetadataFilter metadataFilter,
                      CompressionCodecFactory codecFactory,
@@ -65,6 +68,7 @@ public class ParquetReadOptions {
     this.useStatsFilter = useStatsFilter;
     this.useDictionaryFilter = useDictionaryFilter;
     this.useRecordFilter = useRecordFilter;
+    this.useColumnIndexFilter = useColumnIndexFilter;
     this.recordFilter = recordFilter;
     this.metadataFilter = metadataFilter;
     this.codecFactory = codecFactory;
@@ -87,6 +91,10 @@ public class ParquetReadOptions {
 
   public boolean useRecordFilter() {
     return useRecordFilter;
+  }
+
+  public boolean useColumnIndexFilter() {
+    return useColumnIndexFilter;
   }
 
   public FilterCompat.Filter getRecordFilter() {
@@ -134,6 +142,7 @@ public class ParquetReadOptions {
     protected boolean useStatsFilter = STATS_FILTERING_ENABLED_DEFAULT;
     protected boolean useDictionaryFilter = DICTIONARY_FILTERING_ENABLED_DEFAULT;
     protected boolean useRecordFilter = RECORD_FILTERING_ENABLED_DEFAULT;
+    protected boolean useColumnIndexFilter = COLUMN_INDEX_FILTERING_ENABLED_DEFAULT;
     protected FilterCompat.Filter recordFilter = null;
     protected ParquetMetadataConverter.MetadataFilter metadataFilter = NO_FILTER;
     // the page size parameter isn't used when only using the codec factory to get decompressors
@@ -180,6 +189,15 @@ public class ParquetReadOptions {
     public Builder useRecordFilter() {
       this.useRecordFilter = true;
       return this;
+    }
+
+    public Builder useColumnIndexFilter(boolean useColumnIndexFilter) {
+      this.useColumnIndexFilter = useColumnIndexFilter;
+      return this;
+    }
+
+    public Builder useColumnIndexFilter() {
+      return useColumnIndexFilter(true);
     }
 
     public Builder withRecordFilter(FilterCompat.Filter rowGroupFilter) {
@@ -239,7 +257,7 @@ public class ParquetReadOptions {
 
     public ParquetReadOptions build() {
       return new ParquetReadOptions(
-          useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
+          useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter, useColumnIndexFilter,
           recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, properties);
     }
   }

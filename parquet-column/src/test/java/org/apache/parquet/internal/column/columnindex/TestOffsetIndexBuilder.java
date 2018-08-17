@@ -106,6 +106,8 @@ public class TestOffsetIndexBuilder {
           offsetIndex.getCompressedPageSize(i));
       assertEquals("Invalid firstRowIndex at page " + i, offset_size_rowIndex_triplets[3 * i + 2],
           offsetIndex.getFirstRowIndex(i));
+      long expectedLastPageIndex = (i < pageCount - 1) ? (offset_size_rowIndex_triplets[3 * i + 5] - 1) : 999;
+      assertEquals("Invalid lastRowIndex at page " + i, expectedLastPageIndex, offsetIndex.getLastRowIndex(i, 1000));
     }
   }
 }

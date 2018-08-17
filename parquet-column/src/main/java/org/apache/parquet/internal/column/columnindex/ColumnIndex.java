@@ -20,13 +20,18 @@ package org.apache.parquet.internal.column.columnindex;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.PrimitiveIterator;
+
+import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
+import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
 
 /**
- * Column index containing min/max and null count values for the pages in a column chunk.
+ * Column index containing min/max and null count values for the pages in a column chunk. It also implements methods of
+ * {@link Visitor} to return the indexes of the matching pages. They are used by {@link ColumnIndexFilter}.
  *
  * @see org.apache.parquet.format.ColumnIndex
  */
-public interface ColumnIndex {
+public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
   /**
    * @return the boundary order of the min/max values; used for converting to the related thrift object
    */

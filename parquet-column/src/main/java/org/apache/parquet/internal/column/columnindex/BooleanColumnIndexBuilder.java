@@ -19,7 +19,7 @@
 package org.apache.parquet.internal.column.columnindex;
 
 import java.nio.ByteBuffer;
-
+import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
@@ -28,7 +28,7 @@ import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import it.unimi.dsi.fastutil.booleans.BooleanList;
 
 class BooleanColumnIndexBuilder extends ColumnIndexBuilder {
-  private static class BooleanColumnIndex extends ColumnIndexBase {
+  private static class BooleanColumnIndex extends ColumnIndexBase<Boolean> {
     private boolean[] minValues;
     private boolean[] maxValues;
 
@@ -55,6 +55,28 @@ class BooleanColumnIndexBuilder extends ColumnIndexBuilder {
     String getMaxValueAsString(int pageIndex) {
       return stringifier.stringify(maxValues[pageIndex]);
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    <T extends Comparable<T>> Statistics<T> createStats(int arrayIndex) {
+      return (Statistics<T>) new Statistics<Boolean>(minValues[arrayIndex], maxValues[arrayIndex], comparator);
+    }
+
+    @Override
+    ValueComparator createValueComparator(Object value) {
+      final boolean v = (boolean) value;
+      return new ValueComparator() {
+        @Override
+        int compareValueToMin(int arrayIndex) {
+          return comparator.compare(v, minValues[arrayIndex]);
+        }
+
+        @Override
+        int compareValueToMax(int arrayIndex) {
+          return comparator.compare(v, maxValues[arrayIndex]);
+        }
+      };
+    }
   }
 
   private final BooleanList minValues = new BooleanArrayList();
@@ -70,18 +92,18 @@ class BooleanColumnIndexBuilder extends ColumnIndexBuilder {
 
   @Override
   void addMinMaxFromBytes(ByteBuffer min, ByteBuffer max) {
-    minValues.add(min == null ? false : convert(min));
-    maxValues.add(max == null ? false : convert(max));
+    minValues.add(convert(min));
+    maxValues.add(convert(max));
   }
 
   @Override
   void addMinMax(Object min, Object max) {
-    minValues.add(min == null ? false : (boolean) min);
-    maxValues.add(max == null ? false : (boolean) max);
+    minValues.add((boolean) min);
+    maxValues.add((boolean) max);
   }
 
   @Override
-  ColumnIndexBase createColumnIndex(PrimitiveType type) {
+  ColumnIndexBase<Boolean> createColumnIndex(PrimitiveType type) {
     BooleanColumnIndex columnIndex = new BooleanColumnIndex(type);
     columnIndex.minValues = minValues.toBooleanArray();
     columnIndex.maxValues = maxValues.toBooleanArray();
