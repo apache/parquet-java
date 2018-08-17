@@ -46,12 +46,12 @@ public interface PageReadStore {
    * Returns the indexes of the rows to be read/built. All the rows which index is not returned shall be skipped.
    *
    * @return the incremental iterator of the row indexes
-   * @throws NotInPageFilteringMode
+   * @throws NotInPageFilteringModeException
    *           if page filtering mode is not active so the related information is not available
    * @see #isInPageFilteringMode()
    */
   default PrimitiveIterator.OfLong getRowIndexes() {
-    throw new NotInPageFilteringMode("Row indexes are not available");
+    throw new NotInPageFilteringModeException("Row indexes are not available");
   }
 
   /**

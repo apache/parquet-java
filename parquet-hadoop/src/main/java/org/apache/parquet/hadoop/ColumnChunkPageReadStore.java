@@ -34,7 +34,7 @@ import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
-import org.apache.parquet.column.page.NotInPageFilteringMode;
+import org.apache.parquet.column.page.NotInPageFilteringModeException;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
@@ -233,7 +233,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
   @Override
   public PrimitiveIterator.OfLong getRowIndexes() {
     if (rowRanges == null) {
-      throw new NotInPageFilteringMode("Row indexes are not available");
+      throw new NotInPageFilteringModeException("Row indexes are not available");
     }
     return rowRanges.allRows();
   }

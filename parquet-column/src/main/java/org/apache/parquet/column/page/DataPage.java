@@ -47,26 +47,26 @@ abstract public class DataPage extends Page {
 
   /**
    * @return the index of the first row in this page
-   * @throws NotInPageFilteringMode
+   * @throws NotInPageFilteringModeException
    *           if page filtering mode is not active
    * @see PageReadStore#isInPageFilteringMode()
    */
   public long getFirstRowIndex() {
     if (firstRowIndex < 0) {
-      throw new NotInPageFilteringMode("First row index is not available");
+      throw new NotInPageFilteringModeException("First row index is not available");
     }
     return firstRowIndex;
   }
 
   /**
    * @return the number of rows in this page
-   * @throws NotInPageFilteringMode
+   * @throws NotInPageFilteringModeException
    *           if page filtering mode is not active; thrown only in case of {@link DataPageV1}
    * @see PageReadStore#isInPageFilteringMode()
    */
   public int getRowCount() {
     if (rowCount < 0) {
-      throw new NotInPageFilteringMode(
+      throw new NotInPageFilteringModeException(
           "Row count is not available");
     }
     return rowCount;
