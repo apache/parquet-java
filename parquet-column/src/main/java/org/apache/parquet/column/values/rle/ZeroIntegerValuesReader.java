@@ -19,8 +19,6 @@
 package org.apache.parquet.column.values.rle;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 
@@ -41,6 +39,10 @@ public class ZeroIntegerValuesReader extends ValuesReader {
 
   @Override
   public void skip() {
+  }
+
+  @Override
+  public void skip(int n) {
   }
 
 }
