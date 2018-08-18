@@ -278,6 +278,11 @@ public class SchemaConverter {
         return primitiveFLBA(12, INTERVAL);
       }
 
+      @Override
+      public TypeMapping visit(ArrowType.FixedSizeBinary fixedSizeBinary) {
+        return primitive(BINARY);
+      }
+
       private TypeMapping mapping(PrimitiveType parquetType) {
         return new PrimitiveTypeMapping(field, parquetType);
       }
@@ -660,6 +665,11 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping visit(Interval type) {
+        return primitive();
+      }
+
+      @Override
+      public TypeMapping visit(ArrowType.FixedSizeBinary fixedSizeBinary) {
         return primitive();
       }
 
