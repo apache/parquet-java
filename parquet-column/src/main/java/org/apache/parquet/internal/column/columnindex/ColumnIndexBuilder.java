@@ -557,6 +557,10 @@ public abstract class ColumnIndexBuilder {
       return null;
     }
     ColumnIndexBase<?> columnIndex = createColumnIndex(type);
+    if (columnIndex == null) {
+      // Might happen if the specialized builder discovers invalid min/max values
+      return null;
+    }
     columnIndex.nullPages = nullPages.toBooleanArray();
     // Null counts is optional so keep it null if the builder has no values
     if (!nullCounts.isEmpty()) {
