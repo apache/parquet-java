@@ -1163,23 +1163,25 @@ public class ParquetFileReader implements Closeable {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
 
-      int fullAllocations = length / options.getMaxAllocationSize();
-      int lastAllocationSize = length % options.getMaxAllocationSize();
+      List<ByteBuffer> buffers = new ArrayList<>();
+      if (options.useZeroCopy()) {
+        buffers.add(f.readFully(length, false));
+      } else {
+        int fullAllocations = length / options.getMaxAllocationSize();
+        int lastAllocationSize = length % options.getMaxAllocationSize();
 
-      int numAllocations = fullAllocations + (lastAllocationSize > 0 ? 1 : 0);
-      List<ByteBuffer> buffers = new ArrayList<>(numAllocations);
+        for (int i = 0; i < fullAllocations; i += 1) {
+          buffers.add(options.getAllocator().allocate(options.getMaxAllocationSize()));
+        }
 
-      for (int i = 0; i < fullAllocations; i += 1) {
-        buffers.add(options.getAllocator().allocate(options.getMaxAllocationSize()));
-      }
+        if (lastAllocationSize > 0) {
+          buffers.add(options.getAllocator().allocate(lastAllocationSize));
+        }
 
-      if (lastAllocationSize > 0) {
-        buffers.add(options.getAllocator().allocate(lastAllocationSize));
-      }
-
-      for (ByteBuffer buffer : buffers) {
-        f.readFully(buffer);
-        buffer.flip();
+        for (ByteBuffer buffer : buffers) {
+          f.readFully(buffer);
+          buffer.flip();
+        }
       }
 
       // report in a counter the data we just scanned

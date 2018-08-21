@@ -20,10 +20,14 @@
 package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.ReadOption;
+import org.apache.hadoop.io.ByteBufferPool;
+import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.EnumSet;
 
 /**
  * SeekableInputStream implementation for FSDataInputStream that implements
@@ -38,11 +42,18 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
 
   private final FSDataInputStream stream;
   private final Reader reader;
+  private final ByteBufferPool pool;
+
+  private final static EnumSet<ReadOption> CHECK_SUM = EnumSet
+    .noneOf(ReadOption.class);
+  private final static EnumSet<ReadOption> NO_CHECK_SUM = EnumSet
+    .of(ReadOption.SKIP_CHECKSUMS);
 
   public H2SeekableInputStream(FSDataInputStream stream) {
     super(stream);
     this.stream = stream;
     this.reader = new H2Reader();
+    this.pool = new ElasticByteBufferPool();
   }
 
   @Override
@@ -73,6 +84,14 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
   @Override
   public void readFully(ByteBuffer buf) throws IOException {
     readFully(reader, buf);
+  }
+
+  public ByteBuffer readFully(int maxLength, boolean verifyChecksums) throws IOException {
+    EnumSet<ReadOption> options = NO_CHECK_SUM;
+    if (verifyChecksums) {
+      options = CHECK_SUM;
+    }
+    return stream.read(this.pool, maxLength, options);
   }
 
   private class H2Reader implements Reader {

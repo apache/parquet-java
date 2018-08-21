@@ -39,6 +39,7 @@ public class ParquetReadOptions {
   private static final boolean STATS_FILTERING_ENABLED_DEFAULT = true;
   private static final boolean DICTIONARY_FILTERING_ENABLED_DEFAULT = true;
   private static final int ALLOCATION_SIZE_DEFAULT = 8388608; // 8MB
+  private static final boolean USE_ZERO_COPY = true;
 
   private final boolean useSignedStringMinMax;
   private final boolean useStatsFilter;
@@ -50,6 +51,7 @@ public class ParquetReadOptions {
   private final ByteBufferAllocator allocator;
   private final int maxAllocationSize;
   private final Map<String, String> properties;
+  private final boolean useZeroCopy;
 
   ParquetReadOptions(boolean useSignedStringMinMax,
                      boolean useStatsFilter,
@@ -60,6 +62,7 @@ public class ParquetReadOptions {
                      CompressionCodecFactory codecFactory,
                      ByteBufferAllocator allocator,
                      int maxAllocationSize,
+                     boolean useZeroCopy,
                      Map<String, String> properties) {
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.useStatsFilter = useStatsFilter;
@@ -70,6 +73,7 @@ public class ParquetReadOptions {
     this.codecFactory = codecFactory;
     this.allocator = allocator;
     this.maxAllocationSize = maxAllocationSize;
+    this.useZeroCopy = useZeroCopy;
     this.properties = Collections.unmodifiableMap(properties);
   }
 
@@ -87,6 +91,10 @@ public class ParquetReadOptions {
 
   public boolean useRecordFilter() {
     return useRecordFilter;
+  }
+
+  public boolean useZeroCopy() {
+    return useZeroCopy;
   }
 
   public FilterCompat.Filter getRecordFilter() {
@@ -141,6 +149,7 @@ public class ParquetReadOptions {
     protected ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     protected int maxAllocationSize = ALLOCATION_SIZE_DEFAULT;
     protected Map<String, String> properties = new HashMap<>();
+    protected boolean useZeroCopy = USE_ZERO_COPY;
 
     public Builder useSignedStringMinMax(boolean useSignedStringMinMax) {
       this.useSignedStringMinMax = useSignedStringMinMax;
@@ -179,6 +188,16 @@ public class ParquetReadOptions {
 
     public Builder useRecordFilter() {
       this.useRecordFilter = true;
+      return this;
+    }
+
+    public Builder useZeroCopy(boolean useZeroCopy) {
+      this.useZeroCopy = useZeroCopy;
+      return this;
+    }
+
+    public Builder useZeroCopy() {
+      this.useZeroCopy = true;
       return this;
     }
 
@@ -231,6 +250,7 @@ public class ParquetReadOptions {
       withMetadataFilter(options.metadataFilter);
       withCodecFactory(options.codecFactory);
       withAllocator(options.allocator);
+      useZeroCopy(options.useZeroCopy);
       for (Map.Entry<String, String> keyValue : options.properties.entrySet()) {
         set(keyValue.getKey(), keyValue.getValue());
       }
@@ -240,7 +260,7 @@ public class ParquetReadOptions {
     public ParquetReadOptions build() {
       return new ParquetReadOptions(
           useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-          recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, properties);
+          recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, useZeroCopy, properties);
     }
   }
 }
