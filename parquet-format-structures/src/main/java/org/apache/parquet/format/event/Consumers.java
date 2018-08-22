@@ -34,21 +34,16 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolUtil;
 
 import org.apache.parquet.format.event.Consumers.Consumer;
-import org.apache.parquet.format.event.TypedConsumer.BoolConsumer;
 import org.apache.parquet.format.event.TypedConsumer.ListConsumer;
 import org.apache.parquet.format.event.TypedConsumer.StructConsumer;
 
 /**
  * Entry point for reading thrift in a streaming fashion
- *
- * @author Julien Le Dem
- *
  */
 public class Consumers {
 
   /**
    * To consume objects coming from a DelegatingFieldConsumer
-   * @author Julien Le Dem
    *
    * @param <T> the type of consumed objects
    */
@@ -59,10 +54,8 @@ public class Consumers {
   /**
    * Delegates reading the field to TypedConsumers.
    * There is one TypedConsumer per thrift type.
-   * use {@link DelegatingFieldConsumer#onField(TFieldIdEnum, BoolConsumer)} et al. to consume specific thrift fields.
+   * use {@link #onField(TFieldIdEnum, TypedConsumer)} et al. to consume specific thrift fields.
    * @see Consumers#fieldConsumer()
-   * @author Julien Le Dem
-   *
    */
   public static class DelegatingFieldConsumer implements FieldConsumer {
 
@@ -111,8 +104,9 @@ public class Consumers {
 
   /**
    * To consume a list of elements
-   * @param c the type of the list content
+   * @param c the class of the list content
    * @param consumer the consumer that will receive the list
+   * @param <T> the type of the list content
    * @return a ListConsumer that can be passed to the DelegatingFieldConsumer
    */
   public static <T extends TBase<T,? extends TFieldIdEnum>> ListConsumer listOf(Class<T> c, final Consumer<List<T>> consumer) {

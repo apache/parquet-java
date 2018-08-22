@@ -144,6 +144,17 @@
 
   </dependencies>
 
+  <dependencyManagement>
+    <dependencies>
+      <!-- com.twitter.elephantbird brings in an older version of libthrift so we force to use our own one -->
+      <dependency>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>libthrift</artifactId>
+        <version>${thrift.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <build>
     <plugins>
       <plugin>

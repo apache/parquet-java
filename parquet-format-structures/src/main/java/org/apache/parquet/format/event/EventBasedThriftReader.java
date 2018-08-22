@@ -32,9 +32,6 @@ import org.apache.parquet.format.event.TypedConsumer.SetConsumer;
 
 /**
  * Event based reader for Thrift
- *
- * @author Julien Le Dem
- *
  */
 public final class EventBasedThriftReader {
 
@@ -50,7 +47,7 @@ public final class EventBasedThriftReader {
   /**
    * reads a Struct from the underlying protocol and passes the field events to the FieldConsumer
    * @param c the field consumer
-   * @throws TException
+   * @throws TException if any thrift related error occurs during the reading
    */
   public void readStruct(FieldConsumer c) throws TException {
     protocol.readStructBegin();
@@ -61,7 +58,7 @@ public final class EventBasedThriftReader {
   /**
    * reads the content of a struct (fields) from the underlying protocol and passes the events to c
    * @param c the field consumer
-   * @throws TException
+   * @throws TException if any thrift related error occurs during the reading
    */
   public void readStructContent(FieldConsumer c) throws TException {
     TField field;
@@ -78,7 +75,7 @@ public final class EventBasedThriftReader {
    * reads the set content (elements) from the underlying protocol and passes the events to the set event consumer
    * @param eventConsumer the consumer
    * @param tSet the set descriptor
-   * @throws TException
+   * @throws TException if any thrift related error occurs during the reading
    */
   public void readSetContent(SetConsumer eventConsumer, TSet tSet)
       throws TException {
@@ -91,7 +88,7 @@ public final class EventBasedThriftReader {
    * reads the map content (key values) from the underlying protocol and passes the events to the map event consumer
    * @param eventConsumer the consumer
    * @param tMap the map descriptor
-   * @throws TException
+   * @throws TException if any thrift related error occurs during the reading
    */
   public void readMapContent(MapConsumer eventConsumer, TMap tMap)
       throws TException {
@@ -106,7 +103,7 @@ public final class EventBasedThriftReader {
    * @param keyConsumer the consumer for the key
    * @param valueType the type of the value
    * @param valueConsumer the consumer for the value
-   * @throws TException
+   * @throws TException if any thrift related error occurs during the reading
    */
   public void readMapEntry(byte keyType, TypedConsumer keyConsumer, byte valueType, TypedConsumer valueConsumer)
       throws TException {
@@ -118,7 +115,7 @@ public final class EventBasedThriftReader {
    * reads the list content (elements) from the underlying protocol and passes the events to the list event consumer
    * @param eventConsumer the consumer
    * @param tList the list descriptor
-   * @throws TException
+   * @throws TException if any thrift related error occurs during the reading
    */
   public void readListContent(ListConsumer eventConsumer, TList tList)
       throws TException {
