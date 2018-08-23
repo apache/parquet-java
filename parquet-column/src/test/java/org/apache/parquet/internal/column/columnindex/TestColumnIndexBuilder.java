@@ -48,6 +48,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
@@ -811,6 +812,25 @@ public class TestColumnIndexBuilder {
   }
 
   @Test
+  public void testBuildDoubleZeroNaN() {
+    PrimitiveType type = Types.required(DOUBLE).named("test_double");
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, -1.0, -0.0));
+    builder.add(sb.stats(type, 0.0, 1.0));
+    builder.add(sb.stats(type, 1.0, 100.0));
+    ColumnIndex columnIndex = builder.build();
+    assertCorrectValues(columnIndex.getMinValues(), -1.0, -0.0, 1.0);
+    assertCorrectValues(columnIndex.getMaxValues(), 0.0, 1.0, 100.0);
+
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
+    builder.add(sb.stats(type, -1.0, -0.0));
+    builder.add(sb.stats(type, 0.0, Double.NaN));
+    builder.add(sb.stats(type, 1.0, 100.0));
+    assertNull(builder.build());
+  }
+
+  @Test
   public void testStaticBuildDouble() {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(DOUBLE).named("test_double"),
@@ -919,6 +939,25 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, ltEq(col, 0.0f), 5, 8);
     assertCorrectFiltering(columnIndex, userDefined(col, FloatIsInteger.class), 1, 5, 8);
     assertCorrectFiltering(columnIndex, invert(userDefined(col, FloatIsInteger.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
+  }
+
+  @Test
+  public void testBuildFloatZeroNaN() {
+    PrimitiveType type = Types.required(FLOAT).named("test_float");
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, -1.0f, -0.0f));
+    builder.add(sb.stats(type, 0.0f, 1.0f));
+    builder.add(sb.stats(type, 1.0f, 100.0f));
+    ColumnIndex columnIndex = builder.build();
+    assertCorrectValues(columnIndex.getMinValues(), -1.0f, -0.0f, 1.0f);
+    assertCorrectValues(columnIndex.getMaxValues(), 0.0f, 1.0f, 100.0f);
+
+    builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
+    builder.add(sb.stats(type, -1.0f, -0.0f));
+    builder.add(sb.stats(type, 0.0f, Float.NaN));
+    builder.add(sb.stats(type, 1.0f, 100.0f));
+    assertNull(builder.build());
   }
 
   @Test
@@ -1391,7 +1430,7 @@ public class TestColumnIndexBuilder {
         assertFalse("The byte buffer should be empty for null pages", value.hasRemaining());
       } else {
         assertEquals("The byte buffer should be 8 bytes long for double", 8, value.remaining());
-        assertEquals("Invalid value for page " + i, expectedValue.doubleValue(), value.getDouble(0), 0.0);
+        assertTrue("Invalid value for page " + i, Double.compare(expectedValue.doubleValue(), value.getDouble(0)) == 0);
       }
     }
   }
@@ -1405,7 +1444,7 @@ public class TestColumnIndexBuilder {
         assertFalse("The byte buffer should be empty for null pages", value.hasRemaining());
       } else {
         assertEquals("The byte buffer should be 4 bytes long for double", 4, value.remaining());
-        assertEquals("Invalid value for page " + i, expectedValue.floatValue(), value.getFloat(0), 0.0f);
+        assertTrue("Invalid value for page " + i, Float.compare(expectedValue.floatValue(), value.getFloat(0)) == 0);
       }
     }
   }

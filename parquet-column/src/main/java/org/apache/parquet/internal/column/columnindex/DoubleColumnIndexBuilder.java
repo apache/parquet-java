@@ -84,6 +84,7 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
 
   private final DoubleList minValues = new DoubleArrayList();
   private final DoubleList maxValues = new DoubleArrayList();
+  private boolean invalid;
 
   private static double convert(ByteBuffer buffer) {
     return buffer.order(LITTLE_ENDIAN).getDouble(0);
@@ -101,12 +102,30 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
 
   @Override
   void addMinMax(Object min, Object max) {
-    minValues.add((double) min);
-    maxValues.add((double) max);
+    double dMin = (double) min;
+    double dMax = (double) max;
+    if (Double.isNaN(dMin) || Double.isNaN(dMax)) {
+      // Invalidate this column index in case of NaN as the sorting order of values is undefined for this case
+      invalid = true;
+    }
+
+    // Sorting order is undefined for -0.0 so let min = -0.0 and max = +0.0 to ensure that no 0.0 values are skipped
+    if (Double.compare(dMin, +0.0) == 0) {
+      dMin = -0.0;
+    }
+    if (Double.compare(dMax, -0.0) == 0) {
+      dMax = +0.0;
+    }
+
+    minValues.add(dMin);
+    maxValues.add(dMax);
   }
 
   @Override
   ColumnIndexBase<Double> createColumnIndex(PrimitiveType type) {
+    if (invalid) {
+      return null;
+    }
     DoubleColumnIndex columnIndex = new DoubleColumnIndex(type);
     columnIndex.minValues = minValues.toDoubleArray();
     columnIndex.maxValues = maxValues.toDoubleArray();
