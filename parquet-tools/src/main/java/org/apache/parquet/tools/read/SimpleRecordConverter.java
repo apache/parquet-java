@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,14 +20,17 @@ package org.apache.parquet.tools.read;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Optional;
 
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Type;
+
+import static java.util.Optional.of;
 
 public class SimpleRecordConverter extends GroupConverter {
   private final Converter converters[];
@@ -51,31 +54,38 @@ public class SimpleRecordConverter extends GroupConverter {
   }
 
   private Converter createConverter(Type field) {
-    OriginalType otype = field.getOriginalType();
+    LogicalTypeAnnotation otype = field.getLogicalTypeAnnotation();
 
     if (field.isPrimitive()) {
       if (otype != null) {
-        switch (otype) {
-          case MAP: break;
-          case LIST: break;
-          case UTF8: return new StringConverter(field.getName());
-          case MAP_KEY_VALUE: break;
-          case ENUM: break;
-          case DECIMAL:
-            int scale = field.asPrimitiveType().getDecimalMetadata().getScale();
-            return new DecimalConverter(field.getName(), scale);
-        }
-      }
+        return otype.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
+          @Override
+          public Optional<Converter> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
+            return of(new StringConverter(field.getName()));
+          }
 
-      return new SimplePrimitiveConverter(field.getName());
+          @Override
+          public Optional<Converter> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+            int scale = logicalTypeAnnotation.getScale();
+            return of(new DecimalConverter(field.getName(), scale));
+          }
+        }).orElse(new SimplePrimitiveConverter(field.getName()));
+      }
     }
 
     GroupType groupType = field.asGroupType();
     if (otype != null) {
-      switch (otype) {
-        case MAP: return new SimpleMapRecordConverter(groupType, field.getName(), this);
-        case LIST: return new SimpleListRecordConverter(groupType, field.getName(), this);
-      }
+      return otype.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
+        @Override
+        public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+          return of(new SimpleMapRecordConverter(groupType, field.getName(), SimpleRecordConverter.this));
+        }
+
+        @Override
+        public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+          return of(new SimpleListRecordConverter(groupType, field.getName(), SimpleRecordConverter.this));
+        }
+      }).orElse(new SimpleRecordConverter(groupType, field.getName(), this));
     }
     return new SimpleRecordConverter(groupType, field.getName(), this);
   }
