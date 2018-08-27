@@ -21,6 +21,7 @@ package org.apache.parquet.schema;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
@@ -441,16 +442,27 @@ public class Types {
 
       // validate type annotations and required metadata
       if (logicalTypeAnnotation != null) {
-        OriginalType originalType = logicalTypeAnnotation.toOriginalType();
-        switch (originalType) {
-          case UTF8:
-          case JSON:
-          case BSON:
-            Preconditions.checkState(
-                primitiveType == PrimitiveTypeName.BINARY,
-                originalType.toString() + " can only annotate binary fields");
-            break;
-          case DECIMAL:
+        logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Boolean>() {
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
+            checkBinaryPrimitiveType(logicalTypeAnnotation);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+            checkBinaryPrimitiveType(logicalTypeAnnotation);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+            checkBinaryPrimitiveType(logicalTypeAnnotation);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
             Preconditions.checkState(
                 (primitiveType == PrimitiveTypeName.INT32) ||
                 (primitiveType == PrimitiveTypeName.INT64) ||
@@ -478,40 +490,88 @@ public class Types {
                   "FIXED(" + length + ") cannot store " + meta.getPrecision() +
                   " digits (max " + maxPrecision(length) + ")");
             }
-            break;
-          case DATE:
-          case TIME_MILLIS:
-          case UINT_8:
-          case UINT_16:
-          case UINT_32:
-          case INT_8:
-          case INT_16:
-          case INT_32:
-            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
-                originalType.toString() + " can only annotate INT32");
-            break;
-          case TIME_MICROS:
-          case TIMESTAMP_MILLIS:
-          case TIMESTAMP_MICROS:
-          case UINT_64:
-          case INT_64:
-            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,
-                originalType.toString() + " can only annotate INT64");
-            break;
-          case INTERVAL:
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
+            checkInt32PrimitiveType(logicalTypeAnnotation);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+            LogicalTypeAnnotation.TimeUnit unit = logicalTypeAnnotation.getUnit();
+            switch (unit) {
+              case MILLIS:
+                checkInt32PrimitiveType(logicalTypeAnnotation);
+                break;
+              case MICROS:
+                checkInt64PrimitiveType(logicalTypeAnnotation);
+                break;
+              default:
+                throw new RuntimeException("Invalid time unit: " + unit);
+            }
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
+            int bitWidth = logicalTypeAnnotation.getBitWidth();
+            switch (bitWidth) {
+              case 8:
+              case 16:
+              case 32:
+                checkInt32PrimitiveType(logicalTypeAnnotation);
+                break;
+              case 64:
+                checkInt64PrimitiveType(logicalTypeAnnotation);
+                break;
+              default:
+                throw new RuntimeException("Invalid bit width: " + bitWidth);
+            }
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+            checkInt64PrimitiveType(logicalTypeAnnotation);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
             Preconditions.checkState(
                 (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
                 (length == 12),
                 "INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
-            break;
-          case ENUM:
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation logicalTypeAnnotation) {
             Preconditions.checkState(
                 primitiveType == PrimitiveTypeName.BINARY,
                 "ENUM can only annotate binary fields");
-            break;
-          default:
-            throw new IllegalStateException(originalType + " can not be applied to a primitive type");
-        }
+            return Optional.of(true);
+          }
+
+          private void checkBinaryPrimitiveType(LogicalTypeAnnotation logicalTypeAnnotation) {
+            Preconditions.checkState(
+                primitiveType == PrimitiveTypeName.BINARY,
+              logicalTypeAnnotation.toString() + " can only annotate binary fields");
+          }
+
+          private void checkInt32PrimitiveType(LogicalTypeAnnotation logicalTypeAnnotation) {
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
+              logicalTypeAnnotation.toString() + " can only annotate INT32");
+          }
+
+          private void checkInt64PrimitiveType(LogicalTypeAnnotation logicalTypeAnnotation) {
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,
+              logicalTypeAnnotation.toString() + " can only annotate INT64");
+          }
+        }).orElseThrow(() -> new IllegalStateException(logicalTypeAnnotation + " can not be applied to a primitive type"));
       }
 
       if (newLogicalTypeSet) {
@@ -531,7 +591,7 @@ public class Types {
 
     protected DecimalMetadata decimalMetadata() {
       DecimalMetadata meta = null;
-      if (OriginalType.DECIMAL == getOriginalType()) {
+      if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
         LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType = (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) logicalTypeAnnotation;
         if (newLogicalTypeSet) {
           if (scaleAlreadySet) {

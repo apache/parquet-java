@@ -64,9 +64,8 @@ import org.apache.parquet.arrow.schema.SchemaMapping.UnionTypeMapping;
 import org.apache.parquet.example.Paper;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
+import org.junit.Assert;
 import org.junit.Test;
-
-import junit.framework.Assert;
 
 /**
  * @see SchemaConverter

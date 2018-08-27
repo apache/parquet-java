@@ -80,7 +80,12 @@ public class Util {
     }
   }
 
+  @Deprecated
   public static String minMaxAsString(Statistics stats, OriginalType annotation) {
+    return minMaxAsString(stats);
+  }
+
+  public static String minMaxAsString(Statistics stats) {
     if (stats == null) {
       return "no stats";
     }
@@ -90,7 +95,12 @@ public class Util {
     return String.format("%s / %s", humanReadable(stats.minAsString(), 30), humanReadable(stats.maxAsString(), 30));
   }
 
+  @Deprecated
   public static String toString(Statistics stats, long count, OriginalType annotation) {
+    return toString(stats, count);
+  }
+
+  public static String toString(Statistics stats, long count) {
     if (stats == null) {
       return "no stats";
     }
