@@ -155,6 +155,17 @@
     </dependency>
   </dependencies>
 
+  <dependencyManagement>
+    <dependencies>
+      <!-- Force using the proper version of thrift from the transitive dependencies -->
+      <dependency>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>libthrift</artifactId>
+        <version>${thrift.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <reporting>
     <plugins>
       <plugin>
