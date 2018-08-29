@@ -100,7 +100,7 @@ public class BlockMetaData {
    * @return the starting pos of first column
    */
   public long getStartingPos() {
-    // TODO replace with RowGroup.getFile_offset();
+    // TODO replace with RowGroup.getFile_offset(); - in Reader only 
     return getColumns().get(0).getStartingPos();
   }
   @Override
@@ -112,7 +112,7 @@ public class BlockMetaData {
    * @return the compressed size of all columns
    */
   public long getCompressedSize() {
-    // TODO replace with RowGroup.getTotal_compressed_size();
+    // TODO replace with RowGroup.getTotal_compressed_size(); - in Reader only!! Writer uses it to set RowGroup.tot_compr_size
     long totalSize = 0;
     for (ColumnChunkMetaData col : getColumns()) {
       totalSize += col.getTotalSize();

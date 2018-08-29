@@ -35,11 +35,12 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.crypto.ParquetFileEncryptor;
-import org.apache.parquet.crypto.ParquetFileEncryptor.ColumnEncryptors;
+import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
+import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -272,6 +273,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   private final MessageType schema;
 
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator) {
+    // TODO change constructor signature to throw IOException
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
       writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator));
@@ -279,16 +281,16 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   }
   
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator, 
-      ParquetFileEncryptor fileEncryptor) throws IOException {
+      InternalFileEncryptor fileEncryptor) throws IOException {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
       BlockCipher.Encryptor headerBlockEncryptor = null;
       BlockCipher.Encryptor pageBlockEncryptor = null;
       if (null != fileEncryptor) {
-        ColumnEncryptors blockEncryptors = fileEncryptor.getColumnEncryptors(path.getPath());
-        if (null != blockEncryptors) {
-          headerBlockEncryptor = blockEncryptors.getMetadataEncryptor();
-          pageBlockEncryptor = blockEncryptors.getDataEncryptor();
+        InternalColumnEncryptionSetup columnSetup = fileEncryptor.getColumnSetup(ColumnPath.get(path.getPath()), true);
+        if (columnSetup.getColumnEncryptionProperties().isEncrypted()) {
+          headerBlockEncryptor = columnSetup.getMetaDataEncryptor();
+          pageBlockEncryptor = columnSetup.getDataEncryptor();
         }
       }
       writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator, headerBlockEncryptor, pageBlockEncryptor));
