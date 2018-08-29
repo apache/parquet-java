@@ -22,7 +22,7 @@ package org.apache.parquet.crypto;
 import java.nio.charset.StandardCharsets;
 import java.util.Hashtable;
 
-// Simple key retriever, based on UTF8 String
+// Simple key retriever, based on UTF8 strings
 public class StringKeyIdRetriever implements DecryptionKeyRetriever{
 
   private final Hashtable<String,byte[]> keyMap;

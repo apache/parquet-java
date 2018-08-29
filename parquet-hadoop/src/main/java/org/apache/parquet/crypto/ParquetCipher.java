@@ -38,7 +38,7 @@ public enum ParquetCipher {
     return valueOf(name.toUpperCase(Locale.ENGLISH));
  }
 
-  EncryptionAlgorithm getEncryptionAlgorithm() {
+  public EncryptionAlgorithm getEncryptionAlgorithm() {
     if (0 == algorithmID) {
       return EncryptionAlgorithm.AES_GCM_V1(new AesGcmV1());
     }

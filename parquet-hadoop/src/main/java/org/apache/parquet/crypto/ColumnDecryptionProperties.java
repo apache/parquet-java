@@ -1,0 +1,101 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.parquet.crypto;
+
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+
+/**
+ * This class is only required for setting explicit column decryption keys -
+ * to override key retriever (or to provide keys when key metadata and/or
+ * key retriever are not available)
+ */
+public class ColumnDecryptionProperties {
+  
+  private final ColumnPath columnPath;
+  private final byte[] keyBytes;
+  
+  private ColumnDecryptionProperties(ColumnPath columnPath, byte[] keyBytes) {
+    if (null == columnPath) {
+      throw new IllegalArgumentException("Null column path");
+    }
+    if ((null != keyBytes) && 
+        !(keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) {
+      throw new IllegalArgumentException("Wrong key length: " + keyBytes.length + 
+          " on column: " + columnPath);
+    }
+    
+    this.columnPath = columnPath;
+    this.keyBytes = keyBytes;
+  }
+  
+  /**
+   * Convenience builder for regular (not nested) columns.
+   * @param name
+   * @param encrypt
+   */
+  public static Builder builder(String name) {
+    return builder(ColumnPath.get(name));
+  }
+  
+  /**
+   * 
+   * @param path
+   */
+  public static Builder builder(ColumnPath path) {
+    return new Builder(path);
+  }
+  
+  public static class Builder {
+    private final ColumnPath columnPath;
+    private byte[] keyBytes;
+
+    private Builder(ColumnPath path) {
+      this.columnPath = path;
+    }
+    
+    /**
+     * Set an explicit column key. If applied on a file that contains key metadata for this column - 
+     * the metadata will be ignored, the column will be decrypted with this key.
+     * @param keyBytes Key length must be either 16, 24 or 32 bytes.
+     */
+    public Builder withKey(byte[] keyBytes) {
+      if (null == keyBytes) {
+        return this;
+      }
+      if (null != this.keyBytes) {
+        throw new IllegalArgumentException("Key already set on column: " + columnPath);
+      }
+      this.keyBytes = keyBytes;
+      return this;
+    }
+    
+    public ColumnDecryptionProperties build() {
+      return new ColumnDecryptionProperties(columnPath, keyBytes);
+    }
+  }
+
+  public ColumnPath getPath() {
+    return columnPath;
+  }
+
+  public byte[] getKeyBytes() {
+    return keyBytes;
+  }
+}

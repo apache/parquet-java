@@ -22,5 +22,10 @@ package org.apache.parquet.crypto;
 
 public interface AADRetriever {
 
+  /**
+   * 
+   * @param aadMetaData maximal length is 256 bytes.
+   * @return
+   */
   public byte[] getAAD(byte[] aadMetaData);
 }

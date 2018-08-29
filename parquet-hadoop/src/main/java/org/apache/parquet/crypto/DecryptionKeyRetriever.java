@@ -24,5 +24,11 @@ import java.io.IOException;
 
 public interface DecryptionKeyRetriever {
 
+  /**
+   * Key length must be either 16, 24 or 32 bytes.
+   * @param keyMetaData maximal length is 256 bytes.
+   * @return
+   * @throws IOException
+   */
   public byte[] getKey(byte[] keyMetaData) throws IOException;
 }

@@ -19,74 +19,153 @@
 
 package org.apache.parquet.crypto;
 
-import java.io.IOException;
-import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 
-import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+import static org.apache.parquet.crypto.FileEncryptionProperties.MAXIMAL_KEY_METADATA_LENGTH;
 
 public class ColumnEncryptionProperties {
   
-  private final boolean encrypt;
-  private final String[] columnPath;
+  private final boolean encrypted;
+  private final ColumnPath columnPath;
+  private final boolean encryptedWithFooterKey;
+  private final byte[] keyBytes;
+  private final byte[] keyMetaData;
   
-  private boolean isEncryptedWithFooterKey;
-  private byte[] keyBytes;
-  private byte[] keyMetaData;
-  private boolean processed ;
-  
-  /**
-   * Convenience constructor for regular (not nested) columns.
-   * @param encrypt
-   * @param name
-   */
-  public ColumnEncryptionProperties(boolean encrypt, String name) {
-    this(encrypt, new String[] {name});
-  }
-  
-  public ColumnEncryptionProperties(boolean encrypt, String[] path) {
-    this.encrypt = encrypt;
-    this.columnPath = path;
-    isEncryptedWithFooterKey = encrypt;
-    processed = false;
-  }
-  
-  public void setEncryptionKey(byte[] keyBytes, byte[] keyMetaData) throws IOException {
-    if (processed) throw new IOException("Metadata already processed");
-    if (!encrypt) throw new IOException("Setting key on unencrypted column: " + Arrays.toString(columnPath));
-    if (null == keyBytes) throw new IOException("Null key for " + Arrays.toString(columnPath));
-    //TODO compare to footer key?
-    isEncryptedWithFooterKey = false;
+  private ColumnEncryptionProperties(boolean encrypted, ColumnPath columnPath, 
+      byte[] keyBytes, byte[] keyMetaData) {
+    if (null == columnPath) {
+      throw new IllegalArgumentException("Null column path");
+    }
+    if (!encrypted) {
+      if (null != keyBytes) {
+        throw new IllegalArgumentException("Setting key on unencrypted column: " + columnPath);
+      }
+      if (null != keyMetaData) {
+        throw new IllegalArgumentException("Setting key metadata on unencrypted column: " + columnPath);
+      }
+    }
+    if ((null != keyBytes) && 
+        !(keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) {
+      throw new IllegalArgumentException("Wrong key length: " + keyBytes.length + 
+          ". Column: " + columnPath);
+    }
+    if ((null != keyMetaData) && (keyMetaData.length > MAXIMAL_KEY_METADATA_LENGTH)) {
+      throw new IllegalArgumentException("Key meta data is longer than " + 
+          MAXIMAL_KEY_METADATA_LENGTH +" bytes: " + keyMetaData.length +
+          " on column: " + columnPath);
+    }
+    encryptedWithFooterKey = (encrypted && (null == keyBytes));
+    if (encryptedWithFooterKey && (null != keyMetaData)) {
+      throw new IllegalArgumentException("Setting key metadata on column encrypted with footer key:  " +
+          columnPath);
+    }
+
+    this.encrypted = encrypted;
+    this.columnPath = columnPath;
     this.keyBytes = keyBytes;
     this.keyMetaData = keyMetaData;
   }
   
-  public void setEncryptionKey(byte[] keyBytes, int keyIdMetaData) throws IOException {
-    byte[] metaData = BytesUtils.intToBytes(keyIdMetaData);
-    setEncryptionKey(keyBytes, metaData);
+  /**
+   * Convenience builder for regular (not nested) columns.
+   * @param name
+   * @param encrypt
+   */
+  public static Builder builder(String name, boolean encrypt) {
+    return builder(ColumnPath.get(name), encrypt);
+  }
+  
+  /**
+   * 
+   * @param path
+   * @param encrypt
+   */
+  public static Builder builder(ColumnPath path, boolean encrypt) {
+    return new Builder(path, encrypt);
+  }
+  
+  public static class Builder {
+    private final boolean encrypted;
+    private final ColumnPath columnPath;
+    
+    private byte[] keyBytes;
+    private byte[] keyMetaData;
+
+    private Builder(ColumnPath path, boolean encrypted) {
+      this.encrypted = encrypted;
+      this.columnPath = path;
+    }
+    
+    /**
+     * Set a column-specific key.
+     * If key is not set on an encrypted column, the column will
+     * be encrypted with the footer key.
+     * @param keyBytes Key length must be either 16, 24 or 32 bytes.
+     */
+    public Builder withKey(byte[] keyBytes) {
+      if (null == keyBytes) {
+        return this;
+      }
+      if (null != this.keyBytes) {
+        throw new IllegalArgumentException("Key already set on column: " + columnPath);
+      }
+      this.keyBytes = keyBytes;
+      return this;
+    }
+    
+    /**
+     * Set a key retrieval metadata.
+     * use either withKeyMetaData or withKeyID, not both
+     * @param keyMetaData maximal length is 256 bytes.
+     */
+    public Builder withKeyMetaData(byte[] keyMetaData) {
+      if (null == keyMetaData) {
+        return this;
+      }
+      if (null != this.keyMetaData) {
+        throw new IllegalArgumentException("Key metadata already set on column: " + columnPath);
+      }
+      this.keyMetaData = keyMetaData;
+      return this;
+    }
+    
+    /**
+     * Set a key retrieval metadata (converted from String).
+     * use either withKeyMetaData or withKeyID, not both
+     * @param keyId will be converted to metadata (UTF-8 array).
+     */
+    public Builder withKeyID(String keyId) {
+      if (null == keyId) {
+        return this;
+      }
+      byte[] metaData = keyId.getBytes(StandardCharsets.UTF_8);
+      return withKeyMetaData(metaData);
+    }
+    
+    public ColumnEncryptionProperties build() {
+      return new ColumnEncryptionProperties(encrypted, columnPath, keyBytes, keyMetaData);
+    }
   }
 
-  String[] getPath() {
-    processed = true;
+  public ColumnPath getPath() {
     return columnPath;
   }
 
-  boolean isEncrypted() {
-    processed = true;
-    return encrypt;
+  public boolean isEncrypted() {
+    return encrypted;
   }
 
-  byte[] getKeyBytes() {
-    processed = true;
+  public byte[] getKeyBytes() {
     return keyBytes;
   }
 
-  boolean isEncryptedWithFooterKey() {
-    processed = true;
-    if (!encrypt) return false;
-    return isEncryptedWithFooterKey;
+  public boolean isEncryptedWithFooterKey() {
+    if (!encrypted) return false;
+    return encryptedWithFooterKey;
   }
 
-  byte[] getKeyMetaData() {
+  public byte[] getKeyMetaData() {
     return keyMetaData;
   }
 }

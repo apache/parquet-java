@@ -20,115 +20,158 @@
 
 package org.apache.parquet.crypto;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.Map;
+
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 public class FileDecryptionProperties {
 
+
   private final byte[] footerKeyBytes;
   private final DecryptionKeyRetriever keyRetriever;
-  private AADRetriever aadRetriever;
+  private final AADRetriever aadRetriever;
+  private final byte[] aadBytes;
+  private final Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap;
   
-  private byte[] aadBytes;
-  private List<ColumnDecryptionSetup> columnKeyList;
-  private boolean setupProcessed;
-
-  /**
-   * Configure a file decryptor with an explicit footer key. If applied on a file that contains footer key metadata - 
-   * the metadata will be ignored, the footer will be decrypted with the provided explicit key.
-   * @param keyBytes
-   * @throws IOException 
-   */
-  public FileDecryptionProperties(byte[] footerKeyBytes) throws IOException {
-    if (null == footerKeyBytes) throw new IOException("Decryption: null footer key");
+  private FileDecryptionProperties(byte[] footerKeyBytes, DecryptionKeyRetriever keyRetriever,
+      AADRetriever aadRetriever, byte[] aadBytes, Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap) {
+    
+    if ((null == footerKeyBytes) && (null == keyRetriever) && (null == columnPropertyMap)) {
+      throw new IllegalArgumentException("No crypto meta data specified");
+    }
+    if ((null != aadBytes) && (null != aadRetriever)) {
+      throw new IllegalArgumentException("Can't set both AAD and AAD retriever");
+    }
+    if ((null != footerKeyBytes) && 
+        !(footerKeyBytes.length == 16 || footerKeyBytes.length == 24 || footerKeyBytes.length == 32)) {
+      throw new IllegalArgumentException("Wrong key length " + footerKeyBytes.length);
+    }
+    
     this.footerKeyBytes = footerKeyBytes;
-    if (! (footerKeyBytes.length == 16 || footerKeyBytes.length == 24 || footerKeyBytes.length == 32)) {
-      throw new IOException("Wrong key length " + footerKeyBytes.length);
-    }
-    this.keyRetriever = null;
-    setupProcessed = false;
-  }
-
-  /**
-   * Configure a file decryptor with a key retriever callback. If applied on a file that doesn't contain key metadata - 
-   * an exception will be thrown.
-   * @param keyRetriever
-   */
-  public FileDecryptionProperties(DecryptionKeyRetriever keyRetriever) {
     this.keyRetriever = keyRetriever;
-    this.footerKeyBytes = null;
+    this.aadRetriever = aadRetriever;
+    this.aadBytes = aadBytes;
+    this.columnPropertyMap = columnPropertyMap;
   }
 
-  /**
-   * Set the AES-GCM additional authenticated data (AAD).
-   * 
-   * @param aad
-   * @throws IOException 
-   */
-  public void setAAD(byte[] aad) throws IOException {
-    if (setupProcessed) throw new IOException("Setup already processed");
-    // TODO if set, throw an exception? or allow to replace
-    aadBytes = aad;
+  public static Builder builder() {
+    return new Builder();
   }
   
-  public void setAadRetriever(AADRetriever aadRetriever) {
-    this.aadRetriever = aadRetriever;
-  }
+  public static class Builder {
+    private byte[] footerKeyBytes;
+    private DecryptionKeyRetriever keyRetriever;
+    private AADRetriever aadRetriever;
+    private byte[] aadBytes;
+    private Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap;
 
-  public void setColumnKey(String columnName, byte[] decryptionKey) throws IOException {
-    setColumnKey(new String[] {columnName}, decryptionKey);
-  }
-
-  /**
-   * Configure a column decryptor with an explicit column key. If applied on a file that 
-   * contains key metadata for this column - 
-   * the metadata will be ignored, the column will be decrypted with the provided explicit key.
-   * @param 
-   * @throws IOException 
-   */
-  public void setColumnKey(String[] columnPath, byte[] decryptionKey) throws IOException {
-    if (setupProcessed) throw new IOException("Setup already processed");
-    if (null == decryptionKey) throw new IOException("Decryption: null column key");
-    if (! (decryptionKey.length == 16 || decryptionKey.length == 24 || decryptionKey.length == 32)) {
-      throw new IOException("Wrong key length " + decryptionKey.length);
+    /**
+     * Set an explicit footer key. If applied on a file that contains footer key metadata - 
+     * the metadata will be ignored, the footer will be decrypted with this key.
+     * If explicit key is not set, decryption key will be fetched from key retriever.
+     * @param footerKey Key length must be either 16, 24 or 32 bytes. 
+     */
+    public Builder withFooterKey(byte[] footerKeyBytes) {
+      if (null == footerKeyBytes) {
+        return this;
+      }
+      if (null != this.footerKeyBytes) {
+        throw new IllegalArgumentException("Footer key already set");
+      }
+      this.footerKeyBytes = footerKeyBytes;
+      return this;
     }
-    // TODO compare to footer key?
-    // TODO if set for this column, throw an exception? or allow to replace
-    if (null == columnKeyList) columnKeyList = new ArrayList<ColumnDecryptionSetup>();
-    ColumnDecryptionSetup cmd = new ColumnDecryptionSetup(true, columnPath);
-    cmd.setEncryptionKey(decryptionKey);
-    columnKeyList.add(cmd);
-  }
 
-  byte[] getFooterKeyBytes() {
-    setupProcessed = true;
+    /**
+     * Set the column encryption properties.
+     * @param columnPropertyMap
+     * @return
+     */
+    public Builder withColumnProperties(Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap) {
+      if (null == columnPropertyMap) {
+        return this;
+      }
+      if (null != this.columnPropertyMap) {
+        throw new IllegalArgumentException("Column properties already set");
+      }
+      this.columnPropertyMap = columnPropertyMap;
+      return this;
+    }
+    
+    /**
+     * Set a key retriever callback. Its also possible to
+     * set explicit footer or column keys on this property object. Upon file decryption, 
+     * availability of explicit keys is checked before invocation of the retriever callback.
+     * If an explicit key is available for a footer or a column, its key metadata will
+     * be ignored. 
+     * @param keyRetriever
+     */
+    public Builder withKeyRetriever(DecryptionKeyRetriever keyRetriever) {
+      if (null == keyRetriever) {
+        return this;
+      }
+      if (null != this.keyRetriever) {
+        throw new IllegalArgumentException("Key retriever already set");
+      }
+      this.keyRetriever = keyRetriever;
+      return this;
+    }
+    
+    /**
+     * Set the AES-GCM additional authenticated data (AAD).
+     * @param aad
+     */
+    public Builder withAAD(byte[] aadBytes) {
+      if (null == aadBytes) {
+        return this;
+      }
+      if (null != this.aadBytes) {
+        throw new IllegalArgumentException("AAD already set");
+      }
+      this.aadBytes = aadBytes;
+      return this;
+    }
+    
+    /**
+     * Set an AAD retrieval callback.
+     * @param aadRetriever
+     */
+    public Builder withAADRetriever(AADRetriever aadRetriever) {
+      if (null == aadRetriever) {
+        return this;
+      }
+      if (null != this.aadRetriever) {
+        throw new IllegalArgumentException("AAD retriever already set");
+      }
+      this.aadRetriever = aadRetriever;
+      return this;
+    }
+    
+    public FileDecryptionProperties build() {
+      return new FileDecryptionProperties(footerKeyBytes, keyRetriever, aadRetriever, aadBytes, columnPropertyMap);
+    }
+  }
+  
+  public byte[] getFooterKey() {
     return footerKeyBytes;
   }
+  
+  public byte[] getColumnKey(ColumnPath path) {
+    if (null == columnPropertyMap) return null;
+    ColumnDecryptionProperties columnDecryptionProperties = columnPropertyMap.get(path);
+    if (null == columnDecryptionProperties) return null;
+    return columnDecryptionProperties.getKeyBytes();
+  }
 
-  DecryptionKeyRetriever getKeyRetriever() {
-    setupProcessed = true;
+  public DecryptionKeyRetriever getKeyRetriever() {
     return keyRetriever;
   }
 
-  byte[] getAAD() {
-    setupProcessed = true;
+  public byte[] getAAD() {
     return aadBytes;
   }
 
-  byte[] getColumnKey(String[] path) {
-    setupProcessed = true;
-    if (null == columnKeyList)  return null;
-    for (ColumnDecryptionSetup col : columnKeyList) {
-      if (Arrays.deepEquals(path, col.getPath())) {
-        return col.getKeyBytes();
-      }
-    } 
-    return null;
-  }
-
-  AADRetriever getAadRetriever() {
+  public AADRetriever getAADRetriever() {
     return aadRetriever;
   }
 }
