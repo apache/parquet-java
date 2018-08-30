@@ -38,9 +38,6 @@ import org.apache.thrift.protocol.TSet;
 
 /**
  * receive thrift events of a given type
- *
- * @author Julien Le Dem
- *
  */
 abstract public class TypedConsumer {
 
@@ -117,7 +114,7 @@ abstract public class TypedConsumer {
      * reader.readStruct(fieldConsumer);
      * @param protocol the underlying protocol
      * @param reader the reader to delegate to
-     * @throws TException
+     * @throws TException if any thrift related error occurs during the reading
      */
     abstract public void consumeStruct(TProtocol protocol, EventBasedThriftReader reader) throws TException;
   }
@@ -136,7 +133,8 @@ abstract public class TypedConsumer {
      * can either delegate to the reader or read the element from the protocol
      * @param protocol the underlying protocol
      * @param reader the reader to delegate to
-     * @throws TException
+     * @param elemType the type of the element
+     * @throws TException if any thrift related error occurs during the reading
      */
     abstract public void consumeElement(TProtocol protocol, EventBasedThriftReader reader, byte elemType) throws TException;
   }
@@ -155,7 +153,8 @@ abstract public class TypedConsumer {
      * can either delegate to the reader or read the set from the protocol
      * @param protocol the underlying protocol
      * @param reader the reader to delegate to
-     * @throws TException
+     * @param elemType the type of the element
+     * @throws TException if any thrift related error occurs during the reading
      */
     abstract public void consumeElement(
         TProtocol protocol, EventBasedThriftReader reader,
@@ -177,7 +176,9 @@ abstract public class TypedConsumer {
      * can either delegate to the reader or read the map entry from the protocol
      * @param protocol the underlying protocol
      * @param reader the reader to delegate to
-     * @throws TException
+     * @param keyType the type of the key
+     * @param valueType the type of the value
+     * @throws TException if any thrift related error occurs during the reading
      */
     abstract public void consumeEntry(
         TProtocol protocol, EventBasedThriftReader reader,

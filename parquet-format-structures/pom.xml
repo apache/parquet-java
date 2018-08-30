@@ -73,7 +73,7 @@
         <version>0.1.11</version>
         <configuration>
           <thriftSourceRoot>${parquet.thrift.path}</thriftSourceRoot>
-          <thriftExecutable>${thrift.executable}</thriftExecutable>
+          <thriftExecutable>${format.thrift.executable}</thriftExecutable>
         </configuration>
         <executions>
           <execution>
@@ -122,8 +122,30 @@
           </execution>
         </executions>
       </plugin>
+      <!-- Configure build/javadoc as well to support "mvn javadoc:javadoc" -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <!-- We have to turn off the javadoc check because thrift generates improper comments -->
+          <additionalparam>-Xdoclint:none</additionalparam>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
+
+  <reports>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <!-- We have to turn off the javadoc check because thrift generates improper comments -->
+          <additionalparam>-Xdoclint:none</additionalparam>
+        </configuration>
+      </plugin>
+    </plugins>
+  </reports>
 
   <dependencies>
     <dependency>
@@ -134,7 +156,7 @@
     <dependency>
       <groupId>org.apache.thrift</groupId>
       <artifactId>libthrift</artifactId>
-      <version>${thrift.version}</version>
+      <version>${format.thrift.version}</version>
     </dependency>
   </dependencies>
 

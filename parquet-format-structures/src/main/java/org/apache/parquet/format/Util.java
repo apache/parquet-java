@@ -51,9 +51,6 @@ import org.apache.parquet.format.event.TypedConsumer.StringConsumer;
 /**
  * Utility to read/write metadata
  * We use the TCompactProtocol to serialize metadata
- *
- * @author Julien Le Dem
- *
  */
 public class Util {
 
@@ -93,7 +90,7 @@ public class Util {
    * @param from the stream to read the metadata from
    * @param skipRowGroups whether row groups should be skipped
    * @return the resulting metadata
-   * @throws IOException
+   * @throws IOException if any I/O error occurs during the reading
    */
   public static FileMetaData readFileMetaData(InputStream from, boolean skipRowGroups) throws IOException {
     FileMetaData md = new FileMetaData();
@@ -108,8 +105,6 @@ public class Util {
   /**
    * To read metadata in a streaming fashion.
    *
-   * @author Julien Le Dem
-   *
    */
   public static abstract class FileMetaDataConsumer {
     abstract public void setVersion(int version);
@@ -122,8 +117,6 @@ public class Util {
 
   /**
    * Simple default consumer that sets the fields
-   *
-   * @author Julien Le Dem
    *
    */
   public static final class DefaultFileMetaDataConsumer extends FileMetaDataConsumer {

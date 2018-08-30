@@ -23,9 +23,6 @@ import org.apache.thrift.protocol.TProtocol;
 
 /**
  * To receive Thrift field events
- *
- * @author Julien Le Dem
- *
  */
 public interface FieldConsumer {
 
@@ -35,8 +32,7 @@ public interface FieldConsumer {
    * @param eventBasedThriftReader the reader to delegate to further calls.
    * @param id the id of the field
    * @param type the type of the field
-   * @return the typed consumer to pass the value to
-   * @throws TException
+   * @throws TException if any thrift related error occurs during the reading
    */
   public void consumeField(TProtocol protocol, EventBasedThriftReader eventBasedThriftReader, short id, byte type) throws TException;
 

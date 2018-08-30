@@ -33,9 +33,6 @@ import org.apache.thrift.transport.TTransport;
 
 /**
  * TProtocol that interns the strings.
- *
- * @author Julien Le Dem
- *
  */
 public class InterningProtocol extends TProtocol {
 
