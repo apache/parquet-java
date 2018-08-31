@@ -23,6 +23,7 @@ import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
@@ -247,6 +248,8 @@ public class SchemaConverter {
           return primitive(INT32, timeType(true, MILLIS));
         } else if (bitWidth == 64 && timeUnit == TimeUnit.MICROSECOND) {
           return primitive(INT64, timeType(true, MICROS));
+        } else if (bitWidth == 64 && timeUnit == TimeUnit.NANOSECOND) {
+          return primitive(INT64, timeType(true, NANOS));
         }
         throw new UnsupportedOperationException("Unsupported type " + type);
       }
@@ -259,6 +262,8 @@ public class SchemaConverter {
           return primitive(INT64, timestampType(true, MILLIS));
         } else if (timeUnit == TimeUnit.MICROSECOND) {
           return primitive(INT64, timestampType(true, MICROS));
+        } else if (timeUnit == TimeUnit.NANOSECOND) {
+          return primitive(INT64, timestampType(true, NANOS));
         }
         throw new UnsupportedOperationException("Unsupported type " + type);
       }
@@ -457,6 +462,8 @@ public class SchemaConverter {
           public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
             if (logicalTypeAnnotation.getUnit() == MICROS) {
               return of(field(new ArrowType.Time(TimeUnit.MICROSECOND, 64)));
+            } else if (logicalTypeAnnotation.getUnit() == NANOS) {
+              return of(field(new ArrowType.Time(TimeUnit.NANOSECOND, 64)));
             }
             return empty();
           }
@@ -469,6 +476,8 @@ public class SchemaConverter {
                 return of(field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC")));
               case MILLIS:
                 return of(field(new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC")));
+              case NANOS:
+                return of(field(new ArrowType.Timestamp(TimeUnit.NANOSECOND, "UTC")));
             }
             return empty();
           }

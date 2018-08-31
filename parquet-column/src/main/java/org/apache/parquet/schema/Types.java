@@ -507,6 +507,7 @@ public class Types {
                 checkInt32PrimitiveType(logicalTypeAnnotation);
                 break;
               case MICROS:
+              case NANOS:
                 checkInt64PrimitiveType(logicalTypeAnnotation);
                 break;
               default:

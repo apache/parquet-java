@@ -520,7 +520,8 @@ public abstract class LogicalTypeAnnotation {
 
   public enum TimeUnit {
     MILLIS,
-    MICROS
+    MICROS,
+    NANOS
   }
 
   public static class TimeLogicalTypeAnnotation extends LogicalTypeAnnotation {
