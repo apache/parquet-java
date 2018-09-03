@@ -73,7 +73,7 @@ public class GroupType extends Type {
    * @param logicalTypeAnnotation (optional) the logical type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
-  GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, Type... fields) {
+  public GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, Type... fields) {
     this(repetition, name, logicalTypeAnnotation, Arrays.asList(fields));
   }
 
