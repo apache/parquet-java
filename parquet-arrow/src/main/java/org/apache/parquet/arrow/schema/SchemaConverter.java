@@ -242,11 +242,10 @@ public class SchemaConverter {
       public TypeMapping visit(Time type) {
         int bitWidth = type.getBitWidth();
         TimeUnit timeUnit = type.getUnit();
-        // TODO: what is Arrow time semantic? UTC adjusted or not?
         if (bitWidth == 32 && timeUnit == TimeUnit.MILLISECOND) {
-          return primitive(INT32, timeType(true, MILLIS));
+          return primitive(INT32, timeType(false, MILLIS));
         } else if (bitWidth == 64 && timeUnit == TimeUnit.MICROSECOND) {
-          return primitive(INT64, timeType(true, MICROS));
+          return primitive(INT64, timeType(false, MICROS));
         }
         throw new UnsupportedOperationException("Unsupported type " + type);
       }

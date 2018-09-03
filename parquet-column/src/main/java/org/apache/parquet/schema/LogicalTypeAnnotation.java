@@ -150,7 +150,7 @@ public abstract class LogicalTypeAnnotation {
     return "";
   }
 
-  public boolean isValidColumnOrder(ColumnOrder columnOrder) {
+  boolean isValidColumnOrder(ColumnOrder columnOrder) {
     return columnOrder.getColumnOrderName() == UNDEFINED || columnOrder.getColumnOrderName() == TYPE_DEFINED_ORDER;
   }
 
@@ -162,7 +162,7 @@ public abstract class LogicalTypeAnnotation {
     return sb.toString();
   }
 
-  public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+  PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
     throw new UnsupportedOperationException("Stringifier is not supported for the logical type: " + this);
   }
 
@@ -306,7 +306,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.UTF8_STRINGIFIER;
     }
   }
@@ -410,7 +410,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.UTF8_STRINGIFIER;
     }
   }
@@ -475,7 +475,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return stringifier;
     }
   }
@@ -513,7 +513,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.DATE_STRINGIFIER;
     }
   }
@@ -588,7 +588,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.TIME_STRINGIFIER;
     }
   }
@@ -658,7 +658,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       switch (unit) {
         case MICROS:
           return PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
@@ -745,7 +745,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return isSigned ? PrimitiveStringifier.DEFAULT_STRINGIFIER : PrimitiveStringifier.UNSIGNED_STRINGIFIER;
     }
   }
@@ -783,7 +783,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.UTF8_STRINGIFIER;
     }
   }
@@ -821,7 +821,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.DEFAULT_STRINGIFIER;
     }
   }
@@ -866,12 +866,12 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.INTERVAL_STRINGIFIER;
     }
 
     @Override
-    public boolean isValidColumnOrder(ColumnOrder columnOrder) {
+    boolean isValidColumnOrder(ColumnOrder columnOrder) {
       return columnOrder.getColumnOrderName() == UNDEFINED;
     }
   }

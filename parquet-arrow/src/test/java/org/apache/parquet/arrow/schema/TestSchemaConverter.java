@@ -19,6 +19,9 @@
 package org.apache.parquet.arrow.schema;
 
 import static java.util.Arrays.asList;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.OriginalType.DATE;
 import static org.apache.parquet.schema.OriginalType.DECIMAL;
 import static org.apache.parquet.schema.OriginalType.INTERVAL;
@@ -168,7 +171,7 @@ public class TestSchemaConverter {
     .addField(Types.optional(INT64).as(DECIMAL).precision(15).scale(5).named("k1"))
     .addField(Types.optional(BINARY).as(DECIMAL).precision(25).scale(5).named("k2"))
     .addField(Types.optional(INT32).as(DATE).named("l"))
-    .addField(Types.optional(INT32).as(TIME_MILLIS).named("m"))
+    .addField(Types.optional(INT32).as(timeType(false, MILLIS)).named("m"))
     .addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("n"))
     .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("o"))
     .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("o1"))
@@ -364,7 +367,8 @@ public class TestSchemaConverter {
     MessageType expected = converter.fromArrow(new Schema(asList(
       field("a", new ArrowType.Time(TimeUnit.MILLISECOND, 32))
     ))).getParquetSchema();
-    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT32).as(TIME_MILLIS).named("a")).named("root"));
+    Assert.assertEquals(expected,
+      Types.buildMessage().addField(Types.optional(INT32).as(timeType(false, MILLIS)).named("a")).named("root"));
   }
 
   @Test
@@ -372,7 +376,8 @@ public class TestSchemaConverter {
     MessageType expected = converter.fromArrow(new Schema(asList(
       field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64))
     ))).getParquetSchema();
-    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT64).as(TIME_MICROS).named("a")).named("root"));
+    Assert.assertEquals(expected,
+      Types.buildMessage().addField(Types.optional(INT64).as(timeType(false, MICROS)).named("a")).named("root"));
   }
 
   @Test(expected = UnsupportedOperationException.class)

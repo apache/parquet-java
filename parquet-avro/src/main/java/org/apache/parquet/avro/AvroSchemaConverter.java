@@ -409,13 +409,13 @@ public class AvroSchemaConverter {
     } else if (logicalType instanceof LogicalTypes.Date) {
       return dateType();
     } else if (logicalType instanceof LogicalTypes.TimeMillis) {
-      return timeType(true, MILLIS);
+      return timeType(false, MILLIS);
     } else if (logicalType instanceof LogicalTypes.TimeMicros) {
-      return timeType(true, MICROS);
+      return timeType(false, MICROS);
     } else if (logicalType instanceof LogicalTypes.TimestampMillis) {
-      return timestampType(true, MILLIS);
+      return timestampType(false, MILLIS);
     } else if (logicalType instanceof LogicalTypes.TimestampMicros) {
-      return timestampType(true, MICROS);
+      return timestampType(false, MICROS);
     }
     return null;
   }
@@ -439,7 +439,6 @@ public class AvroSchemaConverter {
       public Optional<LogicalType> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
         LogicalTypeAnnotation.TimeUnit unit = logicalTypeAnnotation.getUnit();
         switch (unit) {
-          // TODO: should we handle UTC parameter? Looks like Avro spec says all timestamps are in UTC normalized form
           case MILLIS:
             return of(LogicalTypes.timeMillis());
           case MICROS:
@@ -452,7 +451,6 @@ public class AvroSchemaConverter {
       public Optional<LogicalType> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
         LogicalTypeAnnotation.TimeUnit unit = logicalTypeAnnotation.getUnit();
         switch (unit) {
-          // TODO: should we handle UTC parameter? Looks like Avro spec says all timestamps are in UTC normalized form
           case MILLIS:
             return of(LogicalTypes.timestampMillis());
           case MICROS:
