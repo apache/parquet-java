@@ -332,7 +332,7 @@ public class AvroSchemaConverter {
       if (logicalTypeAnnotation != null) {
         return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Schema>() {
           @Override
-          public Optional<Schema> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<Schema> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
             if (parquetGroupType.getFieldCount()!= 1) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
@@ -355,12 +355,12 @@ public class AvroSchemaConverter {
 
           @Override
           // for backward-compatibility
-          public Optional<Schema> visit(LogicalTypeAnnotation.MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+          public Optional<Schema> visit(LogicalTypeAnnotation.MapKeyValueTypeAnnotation mapKeyValueLogicalType) {
             return visitMapOrMapKeyValue();
           }
 
           @Override
-          public Optional<Schema> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<Schema> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
             return visitMapOrMapKeyValue();
           }
 
@@ -389,7 +389,7 @@ public class AvroSchemaConverter {
           }
 
           @Override
-          public Optional<Schema> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<Schema> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
             return of(Schema.create(Schema.Type.STRING));
           }
         }).orElseThrow(() -> new UnsupportedOperationException("Cannot convert Parquet type " + parquetType));
@@ -426,18 +426,18 @@ public class AvroSchemaConverter {
     }
     return annotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<LogicalType>() {
       @Override
-      public Optional<LogicalType> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
-        return of(LogicalTypes.decimal(logicalTypeAnnotation.getPrecision(), logicalTypeAnnotation.getScale()));
+      public Optional<LogicalType> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+        return of(LogicalTypes.decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
       }
 
       @Override
-      public Optional<LogicalType> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
+      public Optional<LogicalType> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
         return of(LogicalTypes.date());
       }
 
       @Override
-      public Optional<LogicalType> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
-        LogicalTypeAnnotation.TimeUnit unit = logicalTypeAnnotation.getUnit();
+      public Optional<LogicalType> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+        LogicalTypeAnnotation.TimeUnit unit = timeLogicalType.getUnit();
         switch (unit) {
           case MILLIS:
             return of(LogicalTypes.timeMillis());
@@ -448,8 +448,8 @@ public class AvroSchemaConverter {
       }
 
       @Override
-      public Optional<LogicalType> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
-        LogicalTypeAnnotation.TimeUnit unit = logicalTypeAnnotation.getUnit();
+      public Optional<LogicalType> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+        LogicalTypeAnnotation.TimeUnit unit = timestampLogicalType.getUnit();
         switch (unit) {
           case MILLIS:
             return of(LogicalTypes.timestampMillis());

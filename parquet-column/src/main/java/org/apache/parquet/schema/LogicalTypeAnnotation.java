@@ -928,55 +928,55 @@ public abstract class LogicalTypeAnnotation {
    * or {@link Optional#orElseThrow(Supplier)} to throw exception if omitting a type is not allowed.
    */
   public interface LogicalTypeAnnotationVisitor<T> {
-    default Optional<T> visit(StringLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(StringLogicalTypeAnnotation stringLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(MapLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapLogicalTypeAnnotation mapLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(ListLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(EnumLogicalTypeAnnotation enumLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DecimalLogicalTypeAnnotation decimalLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(DateLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DateLogicalTypeAnnotation dateLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimeLogicalTypeAnnotation timeLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimestampLogicalTypeAnnotation timestampLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(IntLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntLogicalTypeAnnotation intLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(JsonLogicalTypeAnnotation jsonLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(BsonLogicalTypeAnnotation bsonLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntervalLogicalTypeAnnotation intervalLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapKeyValueTypeAnnotation mapKeyValueLogicalType) {
       return empty();
     }
   }

@@ -98,30 +98,30 @@ public final class PrimitiveType extends Type {
         }
         return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<PrimitiveComparator>() {
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getBitWidth() != 64) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
+            if (intLogicalType.getBitWidth() != 64) {
               return empty();
             }
-            return logicalTypeAnnotation.isSigned() ?
+            return intLogicalType.isSigned() ?
               of(PrimitiveComparator.SIGNED_INT64_COMPARATOR) : of(PrimitiveComparator.UNSIGNED_INT64_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getUnit() == MICROS) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+            if (timeLogicalType.getUnit() == MICROS) {
               return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
             }
             return empty();
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getUnit() == MICROS || logicalTypeAnnotation.getUnit() == MILLIS) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+            if (timestampLogicalType.getUnit() == MICROS || timestampLogicalType.getUnit() == MILLIS) {
               return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
             }
             return empty();
@@ -159,27 +159,27 @@ public final class PrimitiveType extends Type {
         }
         return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<PrimitiveComparator>() {
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getBitWidth() == 64) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
+            if (intLogicalType.getBitWidth() == 64) {
               return empty();
             }
-            return logicalTypeAnnotation.isSigned() ?
+            return intLogicalType.isSigned() ?
               of(PrimitiveComparator.SIGNED_INT32_COMPARATOR) : of(PrimitiveComparator.UNSIGNED_INT32_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             return of(PrimitiveComparator.SIGNED_INT32_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
             return of(PrimitiveComparator.SIGNED_INT32_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getUnit() == MILLIS) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+            if (timeLogicalType.getUnit() == MILLIS) {
               return of(PrimitiveComparator.SIGNED_INT32_COMPARATOR);
             }
             return empty();
@@ -246,27 +246,27 @@ public final class PrimitiveType extends Type {
         }
         return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<PrimitiveComparator>() {
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             return of(PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
             return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
             return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
             return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
             return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
           }
         }).orElseThrow(() -> new ShouldNeverHappenException("No comparator logic implemented for BINARY logical type: " + logicalType));
@@ -385,12 +385,12 @@ public final class PrimitiveType extends Type {
 
         return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<PrimitiveComparator>() {
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             return of(PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
             return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
           }
         }).orElseThrow(() -> new ShouldNeverHappenException(

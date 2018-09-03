@@ -356,15 +356,15 @@ public class SchemaConverter {
    * @return the mapping
    */
   private TypeMapping fromParquetGroup(GroupType type, String name) {
-    LogicalTypeAnnotation ot = type.getLogicalTypeAnnotation();
-    if (ot == null) {
+    LogicalTypeAnnotation logicalType = type.getLogicalTypeAnnotation();
+    if (logicalType == null) {
       List<TypeMapping> typeMappings = fromParquet(type.getFields());
       Field arrowField = new Field(name, type.isRepetition(OPTIONAL), new Struct(), fields(typeMappings));
       return new StructTypeMapping(arrowField, type, typeMappings);
     } else {
-      return ot.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
+      return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
         @Override
-        public Optional<TypeMapping> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+        public Optional<TypeMapping> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
           List3Levels list3Levels = new List3Levels(type);
           TypeMapping child = fromParquet(list3Levels.getElement(), null, list3Levels.getElement().getRepetition());
           Field arrowField = new Field(name, type.isRepetition(OPTIONAL), new ArrowType.List(), asList(child.getArrowField()));
@@ -405,26 +405,26 @@ public class SchemaConverter {
         }
         return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
-            return of(decimal(logicalTypeAnnotation.getPrecision(), logicalTypeAnnotation.getScale()));
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            return of(decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
           }
 
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
             return of(field(new ArrowType.Date(DateUnit.DAY)));
           }
 
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
-            return logicalTypeAnnotation.getUnit() == MILLIS ? of(field(new ArrowType.Time(TimeUnit.MILLISECOND, 32))) : empty();
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+            return timeLogicalType.getUnit() == MILLIS ? of(field(new ArrowType.Time(TimeUnit.MILLISECOND, 32))) : empty();
           }
 
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getBitWidth() == 64) {
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
+            if (intLogicalType.getBitWidth() == 64) {
               return empty();
             }
-            return of(integer(logicalTypeAnnotation.getBitWidth(), logicalTypeAnnotation.isSigned()));
+            return of(integer(intLogicalType.getBitWidth(), intLogicalType.isSigned()));
           }
         }).orElseThrow(() -> new IllegalArgumentException("illegal type " + type));
       }
@@ -438,31 +438,31 @@ public class SchemaConverter {
 
         return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
             return of(field(new ArrowType.Date(DateUnit.DAY)));
           }
 
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
-            return of(decimal(logicalTypeAnnotation.getPrecision(), logicalTypeAnnotation.getScale()));
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            return of(decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
           }
 
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
-            return of(integer(logicalTypeAnnotation.getBitWidth(), logicalTypeAnnotation.isSigned()));
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
+            return of(integer(intLogicalType.getBitWidth(), intLogicalType.isSigned()));
           }
 
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getUnit() == MICROS) {
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+            if (timeLogicalType.getUnit() == MICROS) {
               return of(field(new ArrowType.Time(TimeUnit.MICROSECOND, 64)));
             }
             return empty();
           }
 
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
-            switch (logicalTypeAnnotation.getUnit()) {
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+            switch (timestampLogicalType.getUnit()) {
               // TODO: timezone parameter?
               case MICROS:
                 return of(field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC")));
@@ -498,13 +498,13 @@ public class SchemaConverter {
         }
         return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
             return of(field(new ArrowType.Utf8()));
           }
 
           @Override
-          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
-            return of(decimal(logicalTypeAnnotation.getPrecision(), logicalTypeAnnotation.getScale()));
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            return of(decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
           }
         }).orElseThrow(() -> new IllegalArgumentException("illegal type " + type));
       }

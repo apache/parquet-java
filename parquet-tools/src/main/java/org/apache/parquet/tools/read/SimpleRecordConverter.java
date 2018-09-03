@@ -60,13 +60,13 @@ public class SimpleRecordConverter extends GroupConverter {
       if (otype != null) {
         return otype.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
           @Override
-          public Optional<Converter> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<Converter> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
             return of(new StringConverter(field.getName()));
           }
 
           @Override
-          public Optional<Converter> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
-            int scale = logicalTypeAnnotation.getScale();
+          public Optional<Converter> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            int scale = decimalLogicalType.getScale();
             return of(new DecimalConverter(field.getName(), scale));
           }
         }).orElse(new SimplePrimitiveConverter(field.getName()));
@@ -77,12 +77,12 @@ public class SimpleRecordConverter extends GroupConverter {
     if (otype != null) {
       return otype.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
         @Override
-        public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+        public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
           return of(new SimpleMapRecordConverter(groupType, field.getName(), SimpleRecordConverter.this));
         }
 
         @Override
-        public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+        public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
           return of(new SimpleListRecordConverter(groupType, field.getName(), SimpleRecordConverter.this));
         }
       }).orElse(new SimpleRecordConverter(groupType, field.getName(), this));

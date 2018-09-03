@@ -225,12 +225,12 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       }
       return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<GroupType>() {
         @Override
-        public Optional<GroupType> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+        public Optional<GroupType> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
           return ofNullable(type.asGroupType().getType("list").asGroupType().getType("element").asGroupType());
         }
 
         @Override
-        public Optional<GroupType> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+        public Optional<GroupType> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
           return ofNullable(type.asGroupType().getType("key_value").asGroupType().getType("value").asGroupType());
         }
       }).orElse(type.asGroupType());
