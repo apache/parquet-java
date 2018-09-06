@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -129,6 +129,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    * Must be one of the values in {@link JobSummaryLevel} (case insensitive)
    */
   public static final String JOB_SUMMARY_LEVEL = "parquet.summary.metadata.level";
+  public static final String JOB_SUMMARY_PROPAGATE_ERRORS = "parquet.summary.metadata.propagate-errors";
   public static final String BLOCK_SIZE           = "parquet.block.size";
   public static final String PAGE_SIZE            = "parquet.page.size";
   public static final String COMPRESSION          = "parquet.compression";
@@ -165,6 +166,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
 
     return JobSummaryLevel.ALL;
+  }
+
+  public static boolean getJobSummaryPropagateErrors(Configuration conf) {
+    return conf.getBoolean(JOB_SUMMARY_PROPAGATE_ERRORS,
+      ParquetProperties.DEFAULT_JOB_SUMMARY_PROPAGATE_ERRORS);
   }
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
