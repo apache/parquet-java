@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.Types;
 import org.apache.pig.LoadPushDown.RequiredField;
 import org.apache.pig.LoadPushDown.RequiredFieldList;
 import org.apache.pig.data.DataType;
@@ -416,11 +417,11 @@ public class PigSchemaConverter {
   }
 
   private Type primitive(String name, PrimitiveTypeName primitive, LogicalTypeAnnotation logicalTypeAnnotation) {
-    return new PrimitiveType(Repetition.OPTIONAL, primitive, name, logicalTypeAnnotation);
+    return Types.primitive(primitive, Repetition.OPTIONAL).as(logicalTypeAnnotation).named(name);
   }
 
   private PrimitiveType primitive(String name, PrimitiveTypeName primitive) {
-    return new PrimitiveType(Repetition.OPTIONAL, primitive, name, (LogicalTypeAnnotation) null);
+    return Types.primitive(primitive, Repetition.OPTIONAL).named(name);
   }
 
   /**
