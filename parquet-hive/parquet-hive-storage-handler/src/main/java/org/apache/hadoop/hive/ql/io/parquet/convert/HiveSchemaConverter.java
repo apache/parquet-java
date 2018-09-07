@@ -36,6 +36,7 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
+import org.apache.parquet.schema.Types;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.listType;
 
@@ -131,6 +132,6 @@ public class HiveSchemaConverter {
 
   private static GroupType listWrapper(final String name, final LogicalTypeAnnotation logicalTypeAnnotation,
       final GroupType groupType) {
-    return new GroupType(Repetition.OPTIONAL, name, logicalTypeAnnotation, groupType);
+    return Types.optionalGroup().addField(groupType).as(logicalTypeAnnotation).named(name);
   }
 }
