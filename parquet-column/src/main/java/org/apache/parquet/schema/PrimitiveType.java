@@ -514,7 +514,7 @@ public final class PrimitiveType extends Type {
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }
 
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        String name, LogicalTypeAnnotation logicalTypeAnnotation) {
     this(repetition, primitive, 0, name, logicalTypeAnnotation, null, null);
   }
