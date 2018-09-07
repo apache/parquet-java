@@ -99,9 +99,6 @@ public final class PrimitiveType extends Type {
         return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<PrimitiveComparator>() {
           @Override
           public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getBitWidth() != 64) {
-              return empty();
-            }
             return logicalTypeAnnotation.isSigned() ?
               of(PrimitiveComparator.SIGNED_INT64_COMPARATOR) : of(PrimitiveComparator.UNSIGNED_INT64_COMPARATOR);
           }
@@ -113,18 +110,12 @@ public final class PrimitiveType extends Type {
 
           @Override
           public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getUnit() == MICROS) {
-              return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
-            }
-            return empty();
+            return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
           }
 
           @Override
           public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
-            if (logicalTypeAnnotation.getUnit() == MICROS || logicalTypeAnnotation.getUnit() == MILLIS) {
-              return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
-            }
-            return empty();
+            return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
           }
         }).orElseThrow(() -> new ShouldNeverHappenException("No comparator logic implemented for INT64 logical type: " + logicalType));
       }

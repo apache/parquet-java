@@ -263,7 +263,7 @@ public class PigSchemaConverter {
       @Override
       public FieldSchema convertBINARY(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
-        if (logicalTypeAnnotation != null && logicalTypeAnnotation instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
+        if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
           return new FieldSchema(fieldName, null, DataType.CHARARRAY);
         } else {
           return new FieldSchema(fieldName, null, DataType.BYTEARRAY);

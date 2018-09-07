@@ -54,11 +54,11 @@ public class SimpleRecordConverter extends GroupConverter {
   }
 
   private Converter createConverter(Type field) {
-    LogicalTypeAnnotation otype = field.getLogicalTypeAnnotation();
+    LogicalTypeAnnotation ltype = field.getLogicalTypeAnnotation();
 
     if (field.isPrimitive()) {
-      if (otype != null) {
-        return otype.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
+      if (ltype != null) {
+        return ltype.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
           @Override
           public Optional<Converter> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
             return of(new StringConverter(field.getName()));
@@ -74,8 +74,8 @@ public class SimpleRecordConverter extends GroupConverter {
     }
 
     GroupType groupType = field.asGroupType();
-    if (otype != null) {
-      return otype.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
+    if (ltype != null) {
+      return ltype.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
         @Override
         public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
           return of(new SimpleMapRecordConverter(groupType, field.getName(), SimpleRecordConverter.this));
