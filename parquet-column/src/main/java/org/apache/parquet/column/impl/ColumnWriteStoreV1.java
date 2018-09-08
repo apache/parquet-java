@@ -25,25 +25,33 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 
 public class ColumnWriteStoreV1 implements ColumnWriteStore {
 
   private final Map<ColumnDescriptor, ColumnWriterV1> columns = new TreeMap<ColumnDescriptor, ColumnWriterV1>();
   private final PageWriteStore pageWriteStore;
   private final ParquetProperties props;
+  private BloomFilterWriteStore bloomFilterWriteStore;
 
   public ColumnWriteStoreV1(PageWriteStore pageWriteStore,
                             ParquetProperties props) {
     this.pageWriteStore = pageWriteStore;
     this.props = props;
+  }
+
+  public ColumnWriteStoreV1(PageWriteStore pageWriteStore,
+                            BloomFilterWriteStore bloomFilterWriteStore,
+                            ParquetProperties props) {
+    this (pageWriteStore, props);
+    this.bloomFilterWriteStore = bloomFilterWriteStore;
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -61,7 +69,13 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
 
   private ColumnWriterV1 newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterV1(path, pageWriter, props);
+
+    if (props.isBloomFilterEnabled() && props.getBloomFilterInfo() != null) {
+      BloomFilterWriter bloomFilterWriter = bloomFilterWriteStore.getBloomFilterWriter(path);
+      return new ColumnWriterV1(path, pageWriter, bloomFilterWriter, props);
+    } else {
+      return new ColumnWriterV1(path, pageWriter, props);
+    }
   }
 
   @Override

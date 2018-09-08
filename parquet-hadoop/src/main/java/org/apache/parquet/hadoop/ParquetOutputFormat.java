@@ -143,6 +143,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
+  public static final String BLOOM_FILTER_COLUMN_NAMES = "parquet.bloom.filter.column.names";
+  public static final String BLOOM_FILTER_SIZES = "parquet.bloom.filter.size";
+  public static final String ENABLE_BLOOM_FILTER = "parquet.enable.bloom.filter";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -208,6 +211,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return getEnableDictionary(getConfiguration(jobContext));
   }
 
+  public static void setBloomFilterColumnNames(Job job, String names) {
+    getConfiguration(job).set(BLOOM_FILTER_COLUMN_NAMES, names);
+  }
+
+  public static String getBloomFilterColumnNames(JobContext jobContext) {
+    return getBloomFilterColumnNames(getConfiguration(jobContext));
+  }
+
   public static int getBlockSize(JobContext jobContext) {
     return getBlockSize(getConfiguration(jobContext));
   }
@@ -239,6 +250,19 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static boolean getEnableDictionary(Configuration configuration) {
     return configuration.getBoolean(
         ENABLE_DICTIONARY, ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED);
+  }
+
+  public static String getBloomFilterColumnNames(Configuration conf) {
+    return conf.get(BLOOM_FILTER_COLUMN_NAMES);
+  }
+
+  public static boolean getEnableBloomFilter(Configuration configuration) {
+    return configuration.getBoolean(ENABLE_BLOOM_FILTER,
+        ParquetProperties.DEFAULT_BLOOM_FILTER_ENABLED);
+  }
+
+  public static String getBloomFilterSizes(Configuration configuration) {
+    return configuration.get(BLOOM_FILTER_SIZES);
   }
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
@@ -361,6 +385,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     ParquetProperties props = ParquetProperties.builder()
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
+        .withBloomFilterEnabled(getEnableBloomFilter(conf))
+        .withBloomFilterInfo(getBloomFilterColumnNames(conf), getBloomFilterSizes(conf))
         .withDictionaryEncoding(getEnableDictionary(conf))
         .withWriterVersion(getWriterVersion(conf))
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
@@ -383,6 +409,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Page size checking is: {}", (props.estimateNextSizeCheck() ? "estimated" : "constant"));
       LOG.info("Min row count for page size check is: {}", props.getMinRowCountForPageSizeCheck());
       LOG.info("Max row count for page size check is: {}", props.getMaxRowCountForPageSizeCheck());
+      LOG.info("Parquet Bloom Filter is {}", props.isBloomFilterEnabled()? "on": "off");
+      LOG.info("Parquet Bloom filter column names are: {}", props.getBloomFilterInfo().keySet());
+      LOG.info("Parquet Bloom filter column sizes are: {}", props.getBloomFilterInfo().values());
     }
 
     WriteContext init = writeSupport.init(conf);

@@ -48,6 +48,7 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -117,6 +118,7 @@ public class ParquetFileWriter {
   private long currentChunkValueCount;            // set in startColumn
   private long currentChunkFirstDataPage;         // set in startColumn (out.pos())
   private long currentChunkDictionaryPageOffset;  // set in writeDictionaryPage
+  private long currentChunkBloomFilterDataOffset; // set in writeBloomData
 
   // set when end is called
   private ParquetMetadata footer = null;
@@ -348,6 +350,16 @@ public class ParquetFileWriter {
     currentEncodings.add(dictionaryPage.getEncoding());
   }
 
+  /**
+   * Write a Bloom filter
+   * @param bloomFilter the bloom filter of column values
+   * @throws IOException if there is an error while writing
+   */
+  public void writeBloomFilter(BloomFilter bloomFilter) throws IOException {
+    state = state.write();
+    currentChunkBloomFilterDataOffset = out.getPos();
+    bloomFilter.writeTo(out);
+  }
 
   /**
    * writes a single page
@@ -484,6 +496,7 @@ public class ParquetFileWriter {
         currentStatistics,
         currentChunkFirstDataPage,
         currentChunkDictionaryPageOffset,
+        currentChunkBloomFilterDataOffset,
         currentChunkValueCount,
         compressedLength,
         uncompressedLength));
@@ -622,6 +635,7 @@ public class ParquetFileWriter {
           chunk.getStatistics(),
           newChunkStart,
           newChunkStart,
+          chunk.getBloomFilterOffset(),
           chunk.getValueCount(),
           chunk.getTotalSize(),
           chunk.getTotalUncompressedSize()));

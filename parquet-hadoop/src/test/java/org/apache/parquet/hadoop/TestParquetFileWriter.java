@@ -39,6 +39,7 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
+import org.apache.parquet.column.values.bloomfilter.*;
 import org.apache.parquet.format.Statistics;
 import org.apache.parquet.hadoop.metadata.*;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
@@ -130,6 +131,44 @@ public class TestParquetFileWriter {
     }
     assertTrue(!exceptionThrown);
     testFile.delete();
+  }
+
+  @Test
+  public void testBloomWriteRead() throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
+    File testFile = temp.newFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+    configuration.set("parquet.bloomFilter.filter.column.names", "foo");
+    String colPath[] = {"foo"};
+    ColumnDescriptor col = schema.getColumnDescription(colPath);
+
+    BinaryStatistics stats1 = new BinaryStatistics();
+
+    ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
+    w.start();
+    w.startBlock(3);
+    w.startColumn(col, 5, CODEC);
+    w.writeDataPage(2, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
+    BloomFilter bloomData = new BloomFilter(0);
+    bloomData.insert(bloomData.hash(Binary.fromString("hello")));
+    bloomData.insert(bloomData.hash(Binary.fromString("world")));
+    long blStarts = w.getPos();
+    w.writeBloomFilter(bloomData);
+    w.endColumn();
+    w.endBlock();
+    w.end(new HashMap<String, String>());
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    assertEquals("bloomFilter offset", blStarts, readFooter.getBlocks().get(0).getColumns().get(0).getBloomFilterOffset());
+    ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+      Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(colPath)));
+    BloomFilterReader bloomFilterReader =  r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
+    BloomFilter bloomDataRead = bloomFilterReader.readBloomFilter(col);
+    assertTrue(bloomDataRead.find(bloomData.hash(Binary.fromString("hello"))));
+    assertTrue(bloomDataRead.find(bloomData.hash(Binary.fromString("world"))));
   }
 
   @Test

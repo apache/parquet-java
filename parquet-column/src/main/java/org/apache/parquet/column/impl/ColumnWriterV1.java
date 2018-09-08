@@ -21,6 +21,7 @@ package org.apache.parquet.column.impl;
 import static org.apache.parquet.bytes.BytesInput.concat;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
@@ -29,6 +30,8 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 import org.slf4j.Logger;
@@ -55,6 +58,23 @@ final class ColumnWriterV1 implements ColumnWriter {
   private int valueCountForNextSizeCheck;
 
   private Statistics statistics;
+  private BloomFilterWriter bloomFilterWriter;
+  private BloomFilter bloomFilter;
+
+  public ColumnWriterV1(ColumnDescriptor path, PageWriter pageWriter,
+                        BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
+    this(path, pageWriter, props);
+
+    // Current not support nested column.
+    if (path.getPath().length == 1) {
+      this.bloomFilterWriter = bloomFilterWriter;
+      HashMap<String, Long> bloomFilterInfo = props.getBloomFilterInfo();
+      String column = path.getPath()[0];
+      if (bloomFilterInfo.keySet().contains(column)) {
+        this.bloomFilter = new BloomFilter(bloomFilterInfo.get(column).intValue());
+      }
+    }
+  }
 
   public ColumnWriterV1(ColumnDescriptor path, PageWriter pageWriter,
                         ParquetProperties props) {
@@ -177,6 +197,9 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeDouble(value);
     updateStatistics(value);
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
     accountForValueWritten();
   }
 
@@ -187,6 +210,9 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeFloat(value);
     updateStatistics(value);
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
     accountForValueWritten();
   }
 
@@ -197,6 +223,9 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBytes(value);
     updateStatistics(value);
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
     accountForValueWritten();
   }
 
@@ -217,6 +246,9 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeInteger(value);
     updateStatistics(value);
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
     accountForValueWritten();
   }
 
@@ -227,6 +259,9 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeLong(value);
     updateStatistics(value);
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
     accountForValueWritten();
   }
 
@@ -244,6 +279,10 @@ final class ColumnWriterV1 implements ColumnWriter {
       }
       dataColumn.resetDictionary();
     }
+
+    if (bloomFilterWriter != null && bloomFilter != null) {
+      bloomFilterWriter.writeBloomFilter(bloomFilter);
+    }
   }
 
   @Override
@@ -257,17 +296,21 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public long getBufferedSizeInMemory() {
+    long bloomBufferSize = bloomFilter == null ? 0 : bloomFilter.getBufferedSize();
     return repetitionLevelColumn.getBufferedSize()
         + definitionLevelColumn.getBufferedSize()
         + dataColumn.getBufferedSize()
-        + pageWriter.getMemSize();
+        + pageWriter.getMemSize()
+        + bloomBufferSize;
   }
 
   public long allocatedSize() {
+    long bloomAllocatedSize = bloomFilter == null ? 0 : bloomFilter.getBufferedSize();
     return repetitionLevelColumn.getAllocatedSize()
-    + definitionLevelColumn.getAllocatedSize()
-    + dataColumn.getAllocatedSize()
-    + pageWriter.allocatedSize();
+        + definitionLevelColumn.getAllocatedSize()
+        + dataColumn.getAllocatedSize()
+        + pageWriter.allocatedSize()
+        + bloomAllocatedSize;
   }
 
   public String memUsageString(String indent) {

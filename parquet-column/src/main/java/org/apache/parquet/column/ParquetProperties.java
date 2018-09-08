@@ -18,21 +18,23 @@
  */
 package org.apache.parquet.column;
 
+import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
+
+import java.util.HashMap;
+
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
-
-import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -47,6 +49,7 @@ public class ParquetProperties {
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
+  public static final boolean DEFAULT_BLOOM_FILTER_ENABLED = false;
 
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
@@ -83,10 +86,12 @@ public class ParquetProperties {
   private final boolean estimateNextSizeCheck;
   private final ByteBufferAllocator allocator;
   private final ValuesWriterFactory valuesWriterFactory;
+  private final boolean enableBloomFilter;
+  private final HashMap<String, Long> bloomFilterInfo;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
-                            ValuesWriterFactory writerFactory) {
+                            ValuesWriterFactory writerFactory, boolean enableBloomFilter, HashMap<String, Long> bloomFilterInfo) {
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
@@ -97,7 +102,8 @@ public class ParquetProperties {
     this.maxRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
     this.allocator = allocator;
-
+    this.enableBloomFilter = enableBloomFilter;
+    this.bloomFilterInfo = bloomFilterInfo;
     this.valuesWriterFactory = writerFactory;
   }
 
@@ -159,6 +165,14 @@ public class ParquetProperties {
     return allocator;
   }
 
+  public boolean isBloomFilterEnabled() {
+    return enableBloomFilter;
+  }
+
+  public HashMap<String, Long> getBloomFilterInfo() {
+    return bloomFilterInfo;
+  }
+
   public ColumnWriteStore newColumnWriteStore(MessageType schema,
                                               PageWriteStore pageStore) {
     switch (writerVersion) {
@@ -199,6 +213,8 @@ public class ParquetProperties {
     private int pageSize = DEFAULT_PAGE_SIZE;
     private int dictPageSize = DEFAULT_DICTIONARY_PAGE_SIZE;
     private boolean enableDict = DEFAULT_IS_DICTIONARY_ENABLED;
+    private boolean enableBloomFilter = DEFAULT_BLOOM_FILTER_ENABLED;
+    private HashMap<String, Long> bloomFilterInfo = new HashMap<>();
     private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
     private int minRowCountForPageSizeCheck = DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK;
     private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
@@ -217,6 +233,8 @@ public class ParquetProperties {
       this.maxRowCountForPageSizeCheck = toCopy.maxRowCountForPageSizeCheck;
       this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
       this.allocator = toCopy.allocator;
+      this.enableBloomFilter = toCopy.enableBloomFilter;
+      this.bloomFilterInfo = toCopy.bloomFilterInfo;
     }
 
     /**
@@ -253,6 +271,38 @@ public class ParquetProperties {
       Preconditions.checkArgument(dictionaryPageSize > 0,
           "Invalid dictionary page size (negative): %s", dictionaryPageSize);
       this.dictPageSize = dictionaryPageSize;
+      return this;
+    }
+
+    /**
+     * Set to enable Bloom filter.
+     *
+     * @param enableBloomFilter a boolean to indicate whether to enable Bloom filter.
+     * @return this builder for method chaining.
+     */
+    public Builder withBloomFilterEnabled(boolean enableBloomFilter) {
+      this.enableBloomFilter = enableBloomFilter;
+      return this;
+    }
+
+    /**
+     * Set Bloom filter info for columns.
+     *
+     * @param names the columns to be enable for Bloom filter
+     * @param sizes the sizes corresponding to columns
+     * @return this builder for method chaining
+     */
+    public Builder withBloomFilterInfo(String names, String sizes) {
+      String[] bloomFilterColumns = names.split(",");
+      String[] bloomFilterSizes = sizes.split(",");
+
+      Preconditions.checkArgument(bloomFilterColumns.length == bloomFilterSizes.length,
+          "Column names are not matched to sizes");
+
+      for (int i = 0; i < bloomFilterColumns.length; i++) {
+        bloomFilterInfo.put(bloomFilterColumns[i], Long.getLong(bloomFilterSizes[i]));
+      }
+
       return this;
     }
 
@@ -303,7 +353,8 @@ public class ParquetProperties {
       ParquetProperties properties =
         new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, valuesWriterFactory);
+          estimateNextSizeCheck, allocator, valuesWriterFactory,
+          enableBloomFilter, bloomFilterInfo);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently
       // creation of ValuesWriters is invoked from within ParquetProperties. In the future
       // we'd like to decouple that and won't need to pass an object to properties and then pass the

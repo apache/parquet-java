@@ -35,6 +35,8 @@ import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.schema.MessageType;
 
 public class ColumnWriteStoreV2 implements ColumnWriteStore {
@@ -59,6 +61,30 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
       mcolumns.put(path, new ColumnWriterV2(path, pageWriter, props));
+    }
+    this.columns = unmodifiableMap(mcolumns);
+    this.writers = this.columns.values();
+
+    this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+  }
+
+  public ColumnWriteStoreV2(
+    MessageType schema,
+    PageWriteStore pageWriteStore,
+    BloomFilterWriteStore bloomFilterWriteStore,
+    ParquetProperties props) {
+    this.props = props;
+    this.thresholdTolerance = (long)(props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
+    Map<ColumnDescriptor, ColumnWriterV2> mcolumns = new TreeMap<ColumnDescriptor, ColumnWriterV2>();
+
+    for (ColumnDescriptor path : schema.getColumns()) {
+      PageWriter pageWriter = pageWriteStore.getPageWriter(path);
+      if (props.isBloomFilterEnabled() && props.getBloomFilterInfo() != null) {
+        BloomFilterWriter bloomFilterWriter = bloomFilterWriteStore.getBloomFilterWriter(path);
+        mcolumns.put(path, new ColumnWriterV2(path, pageWriter, bloomFilterWriter, props));
+      } else {
+        mcolumns.put(path, new ColumnWriterV2(path, pageWriter, props));
+      }
     }
     this.columns = unmodifiableMap(mcolumns);
     this.writers = this.columns.values();
