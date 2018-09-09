@@ -20,6 +20,8 @@ package org.apache.parquet.hadoop.util;
 
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,6 +30,8 @@ import java.util.List;
 import static java.util.Collections.unmodifiableList;
 
 public class BlocksCombiner {
+
+  private static final Logger LOG = LoggerFactory.getLogger(BlocksCombiner.class);
 
   public static List<SmallBlocksUnion> combineLargeBlocks(List<ParquetFileReader> readers, long maxBlockSize) {
     List<SmallBlocksUnion> blocks = new ArrayList<>();
@@ -59,7 +63,7 @@ public class BlocksCombiner {
       try {
         r.close();
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        LOG.error("Error closing reader {}", r.getFile(), e);
       }
     });
   }

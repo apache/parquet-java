@@ -1194,7 +1194,7 @@ public class ParquetFileReader implements Closeable {
    * @return the ByteBuffer blocks
    * @throws IOException if there is an error while reading from the stream
    */
-  public List<ByteBuffer> readBlocks(SeekableInputStream f, long offset, int length) throws IOException {
+  List<ByteBuffer> readBlocks(SeekableInputStream f, long offset, int length) throws IOException {
     f.seek(offset);
 
     int fullAllocations = length / options.getMaxAllocationSize();
@@ -1218,7 +1218,7 @@ public class ParquetFileReader implements Closeable {
     return buffers;
   }
 
-  public Optional<PageReader> readColumnInBlock(int blockIndex, ColumnDescriptor columnDescriptor) throws IOException {
+  Optional<PageReader> readColumnInBlock(int blockIndex, ColumnDescriptor columnDescriptor) {
     BlockMetaData block = blocks.get(blockIndex);
     if (block.getRowCount() == 0) {
       throw new RuntimeException("Illegal row group of 0 rows");

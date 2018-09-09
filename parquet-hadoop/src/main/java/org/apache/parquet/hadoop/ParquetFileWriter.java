@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -533,49 +534,51 @@ public class ParquetFileWriter {
 
   public int merge(List<InputFile> inputFiles, CodecFactory.BytesCompressor compressor, String createdBy, long maxBlockSize) throws IOException {
     List<ParquetFileReader> readers = getReaders(inputFiles);
-    ByteBufferAllocator allocator = new HeapByteBufferAllocator();
-    ColumnReadStoreImpl columnReadStore = new ColumnReadStoreImpl(null, new DummyRecordConverter(schema).getRootConverter(), schema, createdBy);
-    this.start();
-    List<BlocksCombiner.SmallBlocksUnion> largeBlocks = BlocksCombiner.combineLargeBlocks(readers, maxBlockSize);
-    for (BlocksCombiner.SmallBlocksUnion smallBlocks : largeBlocks) {
-      for (int columnIndex = 0; columnIndex < schema.getColumns().size(); columnIndex++) {
-        ColumnDescriptor path = schema.getColumns().get(columnIndex);
-        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor, schema, allocator);
-        ColumnWriteStoreV1 columnWriteStoreV1 = new ColumnWriteStoreV1(store, ParquetProperties.builder().build());
-        for (BlocksCombiner.SmallBlock smallBlock : smallBlocks.getBlocks()) {
-          ParquetFileReader parquetFileReader = smallBlock.getReader();
-          try {
-            Optional<PageReader> columnChunkPageReader = parquetFileReader.readColumnInBlock(smallBlock.getBlockIndex(), path);
-            ColumnWriter columnWriter = columnWriteStoreV1.getColumnWriter(path);
-            if (columnChunkPageReader.isPresent()) {
-              ColumnReader columnReader = columnReadStore.newMemColumnReader(path, columnChunkPageReader.get());
-              for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
-                consumeTriplet(columnWriter, columnReader);
+    try {
+      ByteBufferAllocator allocator = new HeapByteBufferAllocator();
+      ColumnReadStoreImpl columnReadStore = new ColumnReadStoreImpl(null, new DummyRecordConverter(schema).getRootConverter(), schema, createdBy);
+      this.start();
+      List<BlocksCombiner.SmallBlocksUnion> largeBlocks = BlocksCombiner.combineLargeBlocks(readers, maxBlockSize);
+      for (BlocksCombiner.SmallBlocksUnion smallBlocks : largeBlocks) {
+        for (int columnIndex = 0; columnIndex < schema.getColumns().size(); columnIndex++) {
+          ColumnDescriptor path = schema.getColumns().get(columnIndex);
+          ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor, schema, allocator);
+          ColumnWriteStoreV1 columnWriteStoreV1 = new ColumnWriteStoreV1(store, ParquetProperties.builder().build());
+          for (BlocksCombiner.SmallBlock smallBlock : smallBlocks.getBlocks()) {
+            ParquetFileReader parquetFileReader = smallBlock.getReader();
+            try {
+              Optional<PageReader> columnChunkPageReader = parquetFileReader.readColumnInBlock(smallBlock.getBlockIndex(), path);
+              ColumnWriter columnWriter = columnWriteStoreV1.getColumnWriter(path);
+              if (columnChunkPageReader.isPresent()) {
+                ColumnReader columnReader = columnReadStore.newMemColumnReader(path, columnChunkPageReader.get());
+                for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
+                  consumeTriplet(columnWriter, columnReader);
+                }
+              } else {
+                MessageType inputFileSchema = parquetFileReader.getFileMetaData().getSchema();
+                String[] parentPath = getExisingParentPath(path, inputFileSchema);
+                int def = parquetFileReader.getFileMetaData().getSchema().getMaxDefinitionLevel(parentPath);
+                int rep = parquetFileReader.getFileMetaData().getSchema().getMaxRepetitionLevel(parentPath);
+                for (int i = 0; i < parquetFileReader.getBlockMetaData(smallBlock.getBlockIndex()).getRowCount(); i++) {
+                  columnWriter.writeNull(rep, def);
+                }
               }
-            } else {
-              MessageType inputFileSchema = parquetFileReader.getFileMetaData().getSchema();
-              String[] parentPath = getExisingParentPath(path, inputFileSchema);
-              int def = parquetFileReader.getFileMetaData().getSchema().getMaxDefinitionLevel(parentPath);
-              int rep = parquetFileReader.getFileMetaData().getSchema().getMaxRepetitionLevel(parentPath);
-              for (int i = 0; i < parquetFileReader.getBlockMetaData(smallBlock.getBlockIndex()).getRowCount(); i++) {
-                columnWriter.writeNull(rep, def);
-              }
+            } catch (Exception e) {
+              LOG.error("File {} is not readable", parquetFileReader.getFile(), e);
             }
-          } catch (Exception e) {
-            LOG.error("File {} is not readable", parquetFileReader.getFile(), e);
           }
+          if (columnIndex == 0) {
+            this.startBlock(smallBlocks.getRowCount());
+          }
+          columnWriteStoreV1.flush();
+          store.flushToFileWriter(path, this);
         }
-        if (columnIndex == 0) {
-          this.startBlock(smallBlocks.getRowCount());
-        }
-        columnWriteStoreV1.flush();
-        store.flushToFileWriter(path, this);
+        this.endBlock();
       }
-      this.endBlock();
+      this.end(Collections.emptyMap());
+    }finally {
+      BlocksCombiner.closeReaders(readers);
     }
-    this.end(new HashMap<>());
-
-    BlocksCombiner.closeReaders(readers);
     return 0;
   }
 
