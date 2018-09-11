@@ -253,13 +253,17 @@ public class SchemaConverter {
       @Override
       public TypeMapping visit(Timestamp type) {
         TimeUnit timeUnit = type.getUnit();
-        // TODO: Should we take type.getTimeZone() into account?
         if (timeUnit == TimeUnit.MILLISECOND) {
-          return primitive(INT64, timestampType(true, MILLIS));
+          return primitive(INT64, timestampType(isUtcNormalized(type), MILLIS));
         } else if (timeUnit == TimeUnit.MICROSECOND) {
-          return primitive(INT64, timestampType(true, MICROS));
+          return primitive(INT64, timestampType(isUtcNormalized(type), MICROS));
         }
         throw new UnsupportedOperationException("Unsupported type " + type);
+      }
+
+      private boolean isUtcNormalized(Timestamp timestamp) {
+        String timeZone = timestamp.getTimezone();
+        return timeZone != null && !timeZone.isEmpty();
       }
 
       /**
@@ -463,13 +467,16 @@ public class SchemaConverter {
           @Override
           public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
             switch (timestampLogicalType.getUnit()) {
-              // TODO: timezone parameter?
               case MICROS:
-                return of(field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC")));
+                return of(field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, getTimeZone(timestampLogicalType))));
               case MILLIS:
-                return of(field(new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC")));
+                return of(field(new ArrowType.Timestamp(TimeUnit.MILLISECOND, getTimeZone(timestampLogicalType))));
             }
             return empty();
+          }
+
+          private String getTimeZone(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+            return timestampLogicalType.isAdjustedToUTC() ? "UTC" : null;
           }
         }).orElseThrow(() -> new IllegalArgumentException("illegal type " + type));
       }

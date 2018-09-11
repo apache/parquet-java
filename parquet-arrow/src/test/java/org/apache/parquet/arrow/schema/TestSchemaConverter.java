@@ -22,6 +22,7 @@ import static java.util.Arrays.asList;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.OriginalType.DATE;
 import static org.apache.parquet.schema.OriginalType.DECIMAL;
 import static org.apache.parquet.schema.OriginalType.INTERVAL;
@@ -92,7 +93,10 @@ public class TestSchemaConverter {
     field("f", new ArrowType.FixedSizeList(1), field(null, new ArrowType.Date(DateUnit.DAY))),
     field("g", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
     field("h", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC")),
-    field("i", new ArrowType.Interval(IntervalUnit.DAY_TIME))
+    field("j", new ArrowType.Timestamp(TimeUnit.MILLISECOND, null)),
+    field("k", new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC")),
+    field("l", new ArrowType.Timestamp(TimeUnit.MICROSECOND, null)),
+    field("m", new ArrowType.Interval(IntervalUnit.DAY_TIME))
   ));
   private final MessageType complexParquetSchema = Types.buildMessage()
     .addField(Types.optional(INT32).as(INT_8).named("a"))
@@ -107,8 +111,11 @@ public class TestSchemaConverter {
       setElementType(Types.optional(INT32).as(DATE).named("element"))
       .named("f"))
     .addField(Types.optional(FLOAT).named("g"))
-    .addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("h"))
-    .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("i"))
+    .addField(Types.optional(INT64).as(timestampType(true, MILLIS)).named("h"))
+    .addField(Types.optional(INT64).as(timestampType(false, MILLIS)).named("j"))
+    .addField(Types.optional(INT64).as(timestampType(true, MICROS)).named("k"))
+    .addField(Types.optional(INT64).as(timestampType(false, MICROS)).named("l"))
+    .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("m"))
     .named("root");
 
   private final Schema allTypesArrowSchema = new Schema(asList(
