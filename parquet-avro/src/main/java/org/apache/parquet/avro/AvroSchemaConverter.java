@@ -409,13 +409,13 @@ public class AvroSchemaConverter {
     } else if (logicalType instanceof LogicalTypes.Date) {
       return dateType();
     } else if (logicalType instanceof LogicalTypes.TimeMillis) {
-      return timeType(false, MILLIS);
+      return timeType(true, MILLIS);
     } else if (logicalType instanceof LogicalTypes.TimeMicros) {
-      return timeType(false, MICROS);
+      return timeType(true, MICROS);
     } else if (logicalType instanceof LogicalTypes.TimestampMillis) {
-      return timestampType(false, MILLIS);
+      return timestampType(true, MILLIS);
     } else if (logicalType instanceof LogicalTypes.TimestampMicros) {
-      return timestampType(false, MICROS);
+      return timestampType(true, MICROS);
     }
     return null;
   }

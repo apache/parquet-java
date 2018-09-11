@@ -616,7 +616,7 @@ public class TestAvroSchemaConverter {
 
     testRoundTripConversion(expected,
         "message myrecord {\n" +
-            "  required int32 time (TIME(MILLIS,false));\n" +
+            "  required int32 time (TIME(MILLIS,true));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
@@ -646,7 +646,7 @@ public class TestAvroSchemaConverter {
 
     testRoundTripConversion(expected,
         "message myrecord {\n" +
-            "  required int64 time (TIME(MICROS,false));\n" +
+            "  required int64 time (TIME(MICROS,true));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
@@ -676,7 +676,7 @@ public class TestAvroSchemaConverter {
 
     testRoundTripConversion(expected,
         "message myrecord {\n" +
-            "  required int64 timestamp (TIMESTAMP(MILLIS,false));\n" +
+            "  required int64 timestamp (TIMESTAMP(MILLIS,true));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
@@ -706,7 +706,7 @@ public class TestAvroSchemaConverter {
 
     testRoundTripConversion(expected,
         "message myrecord {\n" +
-            "  required int64 timestamp (TIMESTAMP(MICROS,false));\n" +
+            "  required int64 timestamp (TIMESTAMP(MICROS,true));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
