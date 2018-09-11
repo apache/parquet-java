@@ -109,5 +109,17 @@ public abstract class ValuesReader {
    * Skips the next value in the page
    */
   abstract public void skip();
+
+  /**
+   * Skips the next n value in the page
+   *
+   * @param n
+   *          the number of values to be skipped
+   */
+  public void skip(int n) {
+    for (int i = 0; i < n; ++i) {
+      skip();
+    }
+  }
 }
 

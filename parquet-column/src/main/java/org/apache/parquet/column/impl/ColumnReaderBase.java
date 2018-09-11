@@ -73,6 +73,14 @@ abstract class ColumnReaderBase implements ColumnReader {
     abstract void skip();
 
     /**
+     * Skips n values from the underlying page
+     *
+     * @param n
+     *          the number of values to be skipped
+     */
+    abstract void skip(int n);
+
+    /**
      * write current value to converter
      */
     abstract void writeValue();
@@ -163,6 +171,10 @@ abstract class ColumnReaderBase implements ColumnReader {
           public void skip() {
             dataColumn.skip();
           }
+          @Override
+          void skip(int n) {
+            dataColumn.skip(n);
+          }
           public int getDictionaryId() {
             return dictionaryId;
           }
@@ -203,6 +215,11 @@ abstract class ColumnReaderBase implements ColumnReader {
             current = 0;
             dataColumn.skip();
           }
+          @Override
+          void skip(int n) {
+            current = 0;
+            dataColumn.skip(n);
+          }
           public float getFloat() {
             return current;
           }
@@ -221,6 +238,11 @@ abstract class ColumnReaderBase implements ColumnReader {
           public void skip() {
             current = 0;
             dataColumn.skip();
+          }
+          @Override
+          void skip(int n) {
+            current = 0;
+            dataColumn.skip(n);
           }
           public double getDouble() {
             return current;
@@ -242,6 +264,11 @@ abstract class ColumnReaderBase implements ColumnReader {
             dataColumn.skip();
           }
           @Override
+          void skip(int n) {
+            current = 0;
+            dataColumn.skip(n);
+          }
+          @Override
           public int getInteger() {
             return current;
           }
@@ -260,6 +287,11 @@ abstract class ColumnReaderBase implements ColumnReader {
           public void skip() {
             current = 0;
             dataColumn.skip();
+          }
+          @Override
+          void skip(int n) {
+            current = 0;
+            dataColumn.skip(n);
           }
           @Override
           public long getLong() {
@@ -291,6 +323,11 @@ abstract class ColumnReaderBase implements ColumnReader {
             dataColumn.skip();
           }
           @Override
+          void skip(int n) {
+            current = false;
+            dataColumn.skip(n);
+          }
+          @Override
           public boolean getBoolean() {
             return current;
           }
@@ -309,6 +346,11 @@ abstract class ColumnReaderBase implements ColumnReader {
           public void skip() {
             current = null;
             dataColumn.skip();
+          }
+          @Override
+          void skip(int n) {
+            current = null;
+            dataColumn.skip(n);
           }
           @Override
           public Binary getBinary() {
@@ -511,6 +553,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   private void checkRead() {
     int rl, dl;
+    int skipValues = 0;
     for (;;) {
       if (isPageFullyConsumed()) {
         if (isFullyConsumed()) {
@@ -519,6 +562,7 @@ abstract class ColumnReaderBase implements ColumnReader {
           return;
         }
         readPage();
+        skipValues = 0;
       }
       rl = repetitionLevelColumn.nextInt();
       dl = definitionLevelColumn.nextInt();
@@ -527,9 +571,10 @@ abstract class ColumnReaderBase implements ColumnReader {
         break;
       }
       if (dl == maxDefinitionLevel) {
-        binding.skip();
+        ++skipValues;
       }
     }
+    binding.skip(skipValues);
     repetitionLevel = rl;
     definitionLevel = dl;
   }
