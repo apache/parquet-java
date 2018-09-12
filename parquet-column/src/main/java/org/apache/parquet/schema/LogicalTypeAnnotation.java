@@ -20,12 +20,18 @@ package org.apache.parquet.schema;
 
 import org.apache.parquet.Preconditions;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 
+import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
+import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER;
+import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.UNDEFINED;
 
 public abstract class LogicalTypeAnnotation {
   enum LogicalTypeToken {
@@ -144,12 +150,20 @@ public abstract class LogicalTypeAnnotation {
     return "";
   }
 
+  boolean isValidColumnOrder(ColumnOrder columnOrder) {
+    return columnOrder.getColumnOrderName() == UNDEFINED || columnOrder.getColumnOrderName() == TYPE_DEFINED_ORDER;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append(getType());
     sb.append(typeParametersAsString());
     return sb.toString();
+  }
+
+  PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    throw new UnsupportedOperationException("Stringifier is not supported for the logical type: " + this);
   }
 
   /**
@@ -290,6 +304,11 @@ public abstract class LogicalTypeAnnotation {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.UTF8_STRINGIFIER;
+    }
   }
 
   public static class MapLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -389,15 +408,22 @@ public abstract class LogicalTypeAnnotation {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.UTF8_STRINGIFIER;
+    }
   }
 
   public static class DecimalLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final PrimitiveStringifier stringifier;
     private final int scale;
     private final int precision;
 
     private DecimalLogicalTypeAnnotation(int scale, int precision) {
       this.scale = scale;
       this.precision = precision;
+      stringifier = PrimitiveStringifier.createDecimalStringifier(scale);
     }
 
     public int getPrecision() {
@@ -447,6 +473,11 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       return Objects.hash(scale, precision);
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return stringifier;
+    }
   }
 
   public static class DateLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -479,6 +510,11 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.DATE_STRINGIFIER;
     }
   }
 
@@ -550,6 +586,11 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       return Objects.hash(isAdjustedToUTC, unit);
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.TIME_STRINGIFIER;
+    }
   }
 
   public static class TimestampLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -615,14 +656,31 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       return Objects.hash(isAdjustedToUTC, unit);
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      switch (unit) {
+        case MICROS:
+          return PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
+        case MILLIS:
+          return PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+        default:
+          return super.valueStringifier(primitiveType);
+      }
+    }
   }
 
   public static class IntLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final Set<Integer> VALID_BIT_WIDTH = Collections.unmodifiableSet(
+      new HashSet<>(asList(8, 16, 32, 64)));
+
     private final int bitWidth;
     private final boolean isSigned;
 
-
     private IntLogicalTypeAnnotation(int bitWidth, boolean isSigned) {
+      if (!VALID_BIT_WIDTH.contains(bitWidth)) {
+        throw new IllegalArgumentException("Invalid integer bit width: " + bitWidth);
+      }
       this.bitWidth = bitWidth;
       this.isSigned = isSigned;
     }
@@ -685,6 +743,11 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       return Objects.hash(bitWidth, isSigned);
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return isSigned ? PrimitiveStringifier.DEFAULT_STRINGIFIER : PrimitiveStringifier.UNSIGNED_STRINGIFIER;
+    }
   }
 
   public static class JsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -718,6 +781,11 @@ public abstract class LogicalTypeAnnotation {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.UTF8_STRINGIFIER;
+    }
   }
 
   public static class BsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -750,6 +818,11 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.DEFAULT_STRINGIFIER;
     }
   }
 
@@ -790,6 +863,16 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.INTERVAL_STRINGIFIER;
+    }
+
+    @Override
+    boolean isValidColumnOrder(ColumnOrder columnOrder) {
+      return columnOrder.getColumnOrderName() == UNDEFINED;
     }
   }
 
@@ -845,55 +928,55 @@ public abstract class LogicalTypeAnnotation {
    * or {@link Optional#orElseThrow(Supplier)} to throw exception if omitting a type is not allowed.
    */
   public interface LogicalTypeAnnotationVisitor<T> {
-    default Optional<T> visit(StringLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(StringLogicalTypeAnnotation stringLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(MapLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapLogicalTypeAnnotation mapLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(ListLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(EnumLogicalTypeAnnotation enumLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DecimalLogicalTypeAnnotation decimalLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(DateLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DateLogicalTypeAnnotation dateLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimeLogicalTypeAnnotation timeLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimestampLogicalTypeAnnotation timestampLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(IntLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntLogicalTypeAnnotation intLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(JsonLogicalTypeAnnotation jsonLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(BsonLogicalTypeAnnotation bsonLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntervalLogicalTypeAnnotation intervalLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapKeyValueTypeAnnotation mapKeyValueLogicalType) {
       return empty();
     }
   }

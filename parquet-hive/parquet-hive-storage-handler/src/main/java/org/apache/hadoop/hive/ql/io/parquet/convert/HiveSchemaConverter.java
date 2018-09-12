@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -30,12 +30,15 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 
 import org.apache.parquet.schema.ConversionPatterns;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
+import org.apache.parquet.schema.Types;
+
+import static org.apache.parquet.schema.LogicalTypeAnnotation.listType;
 
 public class HiveSchemaConverter {
 
@@ -105,7 +108,7 @@ public class HiveSchemaConverter {
   // 1 anonymous element "array_element"
   private static GroupType convertArrayType(final String name, final ListTypeInfo typeInfo) {
     final TypeInfo subType = typeInfo.getListElementTypeInfo();
-    return listWrapper(name, OriginalType.LIST, new GroupType(Repetition.REPEATED,
+    return listWrapper(name, listType(), new GroupType(Repetition.REPEATED,
         ParquetHiveSerDe.ARRAY.toString(), convertType("array_element", subType)));
   }
 
@@ -127,8 +130,8 @@ public class HiveSchemaConverter {
     return ConversionPatterns.mapType(Repetition.OPTIONAL, name, keyType, valueType);
   }
 
-  private static GroupType listWrapper(final String name, final OriginalType originalType,
+  private static GroupType listWrapper(final String name, final LogicalTypeAnnotation logicalTypeAnnotation,
       final GroupType groupType) {
-    return new GroupType(Repetition.OPTIONAL, name, originalType, groupType);
+    return Types.optionalGroup().addField(groupType).as(logicalTypeAnnotation).named(name);
   }
 }

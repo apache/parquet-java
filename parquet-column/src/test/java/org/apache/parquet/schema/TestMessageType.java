@@ -148,7 +148,7 @@ public class TestMessageType {
       t9.union(t10);
       fail("moving from BINARY (UTF8) to BINARY");
     } catch (IncompatibleSchemaModificationException e) {
-      assertEquals("cannot merge original type null into UTF8", e.getMessage());
+      assertEquals("cannot merge logical type null into STRING", e.getMessage());
     }
 
     MessageType t11 = Types.buildMessage()
