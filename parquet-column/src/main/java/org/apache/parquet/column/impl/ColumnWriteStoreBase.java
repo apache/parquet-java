@@ -56,6 +56,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   private final long thresholdTolerance;
   private long rowCount;
   private long rowCountForNextSizeCheck;
+  private long rowcountForNextRowCountCheck;
 
   // To be used by the deprecated constructor of ColumnWriteStoreV1
   @Deprecated
@@ -68,6 +69,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     this.columns = new TreeMap<>();
 
     this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+    this.rowcountForNextRowCountCheck = props.getPageRowCountLimit();
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
@@ -96,6 +98,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     this.columns = unmodifiableMap(mcolumns);
 
     this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+    this.rowcountForNextRowCountCheck = props.getPageRowCountLimit();
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
@@ -183,6 +186,9 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   @Override
   public void endRecord() {
     ++rowCount;
+    if (rowCount >= rowcountForNextRowCountCheck) {
+      rowCountCheck();
+    }
     if (rowCount >= rowCountForNextSizeCheck) {
       sizeCheck();
     }
@@ -219,5 +225,19 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     } else {
       rowCountForNextSizeCheck = rowCount + props.getMinRowCountForPageSizeCheck();
     }
+  }
+
+  private void rowCountCheck() {
+    long maxUnwrittenRows = Long.MIN_VALUE;
+    int pageRowCountLimit = props.getPageRowCountLimit();
+    for (ColumnWriterBase writer : columns.values()) {
+      long actualPageRowCount = rowCount - writer.getRowsWrittenSoFar();
+      if (actualPageRowCount >= pageRowCountLimit) {
+        writer.writePage();
+      } else if (actualPageRowCount > maxUnwrittenRows) {
+        maxUnwrittenRows = actualPageRowCount;
+      }
+    }
+    rowcountForNextRowCountCheck = rowCount + pageRowCountLimit - maxUnwrittenRows;
   }
 }

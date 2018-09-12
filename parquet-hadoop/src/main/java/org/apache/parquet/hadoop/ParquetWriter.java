@@ -426,6 +426,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets the Parquet format page row count limit used by the constructed writer.
+     *
+     * @param rowCount limit for the number of rows stored in a page
+     * @return this builder for method chaining
+     */
+    public SELF withPageRowCountLimit(int rowCount) {
+      encodingPropsBuilder.withPageRowCountLimit(rowCount);
+      return self();
+    }
+
+    /**
      * Set the Parquet format dictionary page size used by the constructed
      * writer.
      *
