@@ -73,7 +73,7 @@ public class GroupType extends Type {
    * @param logicalTypeAnnotation (optional) the logical type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
-  public GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, Type... fields) {
+  GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, Type... fields) {
     this(repetition, name, logicalTypeAnnotation, Arrays.asList(fields));
   }
 
@@ -404,7 +404,7 @@ public class GroupType extends Type {
           throw new IncompatibleSchemaModificationException("repetition constraint is more restrictive: can not merge type " + fieldToMerge + " into " + type);
         }
         if (type.getLogicalTypeAnnotation() != null && !type.getLogicalTypeAnnotation().equals(fieldToMerge.getLogicalTypeAnnotation())) {
-          throw new IncompatibleSchemaModificationException("cannot merge original type " + fieldToMerge.getLogicalTypeAnnotation() + " into " + type.getLogicalTypeAnnotation());
+          throw new IncompatibleSchemaModificationException("cannot merge logical type " + fieldToMerge.getLogicalTypeAnnotation() + " into " + type.getLogicalTypeAnnotation());
         }
         merged = type.union(fieldToMerge, strict);
       } else {

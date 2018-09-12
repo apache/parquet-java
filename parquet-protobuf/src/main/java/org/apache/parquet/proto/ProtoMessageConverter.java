@@ -137,12 +137,12 @@ class ProtoMessageConverter extends GroupConverter {
 
     return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
       @Override
-      public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+      public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
         return of(new ListConverter(parentBuilder, fieldDescriptor, parquetType));
       }
 
       @Override
-      public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+      public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
         return of(new MapConverter(parentBuilder, fieldDescriptor, parquetType));
       }
     }).orElse(newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType));

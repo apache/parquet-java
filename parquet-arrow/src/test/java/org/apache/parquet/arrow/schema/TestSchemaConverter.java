@@ -19,6 +19,8 @@
 package org.apache.parquet.arrow.schema;
 
 import static java.util.Arrays.asList;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
@@ -93,8 +95,11 @@ public class TestSchemaConverter {
     field("f", new ArrowType.FixedSizeList(1), field(null, new ArrowType.Date(DateUnit.DAY))),
     field("g", new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE)),
     field("h", new ArrowType.Timestamp(TimeUnit.MILLISECOND, "UTC")),
-    field("i", new ArrowType.Interval(IntervalUnit.DAY_TIME)),
-    field("j", new ArrowType.Timestamp(TimeUnit.NANOSECOND, "UTC"))
+    field("i", new ArrowType.Timestamp(TimeUnit.NANOSECOND, "UTC")),
+    field("j", new ArrowType.Timestamp(TimeUnit.MILLISECOND, null)),
+    field("k", new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC")),
+    field("l", new ArrowType.Timestamp(TimeUnit.MICROSECOND, null)),
+    field("m", new ArrowType.Interval(IntervalUnit.DAY_TIME))
   ));
   private final MessageType complexParquetSchema = Types.buildMessage()
     .addField(Types.optional(INT32).as(INT_8).named("a"))
@@ -109,9 +114,12 @@ public class TestSchemaConverter {
       setElementType(Types.optional(INT32).as(DATE).named("element"))
       .named("f"))
     .addField(Types.optional(FLOAT).named("g"))
-    .addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("h"))
-    .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("i"))
-    .addField(Types.optional(INT64).as(timestampType(true, NANOS)).named("j"))
+    .addField(Types.optional(INT64).as(timestampType(true, MILLIS)).named("h"))
+    .addField(Types.optional(INT64).as(timestampType(true, NANOS)).named("i"))
+    .addField(Types.optional(INT64).as(timestampType(false, MILLIS)).named("j"))
+    .addField(Types.optional(INT64).as(timestampType(true, MICROS)).named("k"))
+    .addField(Types.optional(INT64).as(timestampType(false, MICROS)).named("l"))
+    .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("m"))
     .named("root");
 
   private final Schema allTypesArrowSchema = new Schema(asList(
@@ -176,11 +184,11 @@ public class TestSchemaConverter {
     .addField(Types.optional(INT64).as(DECIMAL).precision(15).scale(5).named("k1"))
     .addField(Types.optional(BINARY).as(DECIMAL).precision(25).scale(5).named("k2"))
     .addField(Types.optional(INT32).as(DATE).named("l"))
-    .addField(Types.optional(INT32).as(TIME_MILLIS).named("m"))
+    .addField(Types.optional(INT32).as(timeType(false, MILLIS)).named("m"))
     .addField(Types.optional(INT64).as(TIMESTAMP_MILLIS).named("n"))
     .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("o"))
     .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("o1"))
-    .addField(Types.optional(INT64).as(timeType(true, NANOS)).named("p"))
+    .addField(Types.optional(INT64).as(timeType(false, NANOS)).named("p"))
     .addField(Types.optional(INT64).as(timestampType(true, NANOS)).named("q"))
     .named("root");
 
@@ -378,7 +386,8 @@ public class TestSchemaConverter {
     MessageType expected = converter.fromArrow(new Schema(asList(
       field("a", new ArrowType.Time(TimeUnit.MILLISECOND, 32))
     ))).getParquetSchema();
-    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT32).as(TIME_MILLIS).named("a")).named("root"));
+    Assert.assertEquals(expected,
+      Types.buildMessage().addField(Types.optional(INT32).as(timeType(false, MILLIS)).named("a")).named("root"));
   }
 
   @Test
@@ -386,7 +395,8 @@ public class TestSchemaConverter {
     MessageType expected = converter.fromArrow(new Schema(asList(
       field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64))
     ))).getParquetSchema();
-    Assert.assertEquals(expected, Types.buildMessage().addField(Types.optional(INT64).as(TIME_MICROS).named("a")).named("root"));
+    Assert.assertEquals(expected,
+      Types.buildMessage().addField(Types.optional(INT64).as(timeType(false, MICROS)).named("a")).named("root"));
   }
 
   @Test

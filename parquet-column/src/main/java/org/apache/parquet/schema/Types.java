@@ -444,25 +444,25 @@ public class Types {
       if (logicalTypeAnnotation != null) {
         logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Boolean>() {
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation logicalTypeAnnotation) {
-            checkBinaryPrimitiveType(logicalTypeAnnotation);
+          public Optional<Boolean> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
+            checkBinaryPrimitiveType(stringLogicalType);
             return Optional.of(true);
           }
 
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation logicalTypeAnnotation) {
-            checkBinaryPrimitiveType(logicalTypeAnnotation);
+          public Optional<Boolean> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
+            checkBinaryPrimitiveType(jsonLogicalType);
             return Optional.of(true);
           }
 
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation logicalTypeAnnotation) {
-            checkBinaryPrimitiveType(logicalTypeAnnotation);
+          public Optional<Boolean> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
+            checkBinaryPrimitiveType(bsonLogicalType);
             return Optional.of(true);
           }
 
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<Boolean> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             Preconditions.checkState(
                 (primitiveType == PrimitiveTypeName.INT32) ||
                 (primitiveType == PrimitiveTypeName.INT64) ||
@@ -494,21 +494,21 @@ public class Types {
           }
 
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation logicalTypeAnnotation) {
-            checkInt32PrimitiveType(logicalTypeAnnotation);
+          public Optional<Boolean> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
+            checkInt32PrimitiveType(dateLogicalType);
             return Optional.of(true);
           }
 
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
-            LogicalTypeAnnotation.TimeUnit unit = logicalTypeAnnotation.getUnit();
+          public Optional<Boolean> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+            LogicalTypeAnnotation.TimeUnit unit = timeLogicalType.getUnit();
             switch (unit) {
               case MILLIS:
-                checkInt32PrimitiveType(logicalTypeAnnotation);
+                checkInt32PrimitiveType(timeLogicalType);
                 break;
               case MICROS:
               case NANOS:
-                checkInt64PrimitiveType(logicalTypeAnnotation);
+                checkInt64PrimitiveType(timeLogicalType);
                 break;
               default:
                 throw new RuntimeException("Invalid time unit: " + unit);
@@ -517,16 +517,16 @@ public class Types {
           }
 
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation logicalTypeAnnotation) {
-            int bitWidth = logicalTypeAnnotation.getBitWidth();
+          public Optional<Boolean> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
+            int bitWidth = intLogicalType.getBitWidth();
             switch (bitWidth) {
               case 8:
               case 16:
               case 32:
-                checkInt32PrimitiveType(logicalTypeAnnotation);
+                checkInt32PrimitiveType(intLogicalType);
                 break;
               case 64:
-                checkInt64PrimitiveType(logicalTypeAnnotation);
+                checkInt64PrimitiveType(intLogicalType);
                 break;
               default:
                 throw new RuntimeException("Invalid bit width: " + bitWidth);
@@ -535,13 +535,13 @@ public class Types {
           }
 
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
-            checkInt64PrimitiveType(logicalTypeAnnotation);
+          public Optional<Boolean> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+            checkInt64PrimitiveType(timestampLogicalType);
             return Optional.of(true);
           }
 
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<Boolean> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
             Preconditions.checkState(
                 (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
                 (length == 12),
@@ -550,7 +550,7 @@ public class Types {
           }
 
           @Override
-          public Optional<Boolean> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<Boolean> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
             Preconditions.checkState(
                 primitiveType == PrimitiveTypeName.BINARY,
                 "ENUM can only annotate binary fields");

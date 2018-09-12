@@ -273,9 +273,9 @@ public class PigSchemaConverter {
   }
 
   /*
-  * RuntimeException class to workaround throwing checked FrontendException in logical type visitors.
-  * Wrap the FrontendException inside the visitor in an inner catch block, and rethrow it outside of the visitor
-  */
+   * RuntimeException class to workaround throwing checked FrontendException in logical type visitors.
+   * Wrap the FrontendException inside the visitor in an inner catch block, and rethrow it outside of the visitor
+   */
   private static final class FrontendExceptionWrapper extends RuntimeException {
     final FrontendException frontendException;
 
@@ -288,11 +288,11 @@ public class PigSchemaConverter {
       throws FrontendException {
     GroupType parquetGroupType = parquetType.asGroupType();
     LogicalTypeAnnotation logicalTypeAnnotation = parquetGroupType.getLogicalTypeAnnotation();
-    if (logicalTypeAnnotation != null) {
+    if (logicalTypeAnnotation !=  null) {
       try {
         return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<FieldSchema>() {
           @Override
-          public Optional<FieldSchema> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<FieldSchema> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
             try {
               // verify that its a map
               if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
@@ -315,7 +315,7 @@ public class PigSchemaConverter {
           }
 
           @Override
-          public Optional<FieldSchema> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation logicalTypeAnnotation) {
+          public Optional<FieldSchema> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
             try {
               Type type = parquetGroupType.getType(0);
               if (parquetGroupType.getFieldCount() != 1 || type.isPrimitive()) {

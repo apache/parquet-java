@@ -150,7 +150,7 @@ public abstract class LogicalTypeAnnotation {
     return "";
   }
 
-  public boolean isValidColumnOrder(ColumnOrder columnOrder) {
+  boolean isValidColumnOrder(ColumnOrder columnOrder) {
     return columnOrder.getColumnOrderName() == UNDEFINED || columnOrder.getColumnOrderName() == TYPE_DEFINED_ORDER;
   }
 
@@ -162,7 +162,7 @@ public abstract class LogicalTypeAnnotation {
     return sb.toString();
   }
 
-  public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+  PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
     throw new UnsupportedOperationException("Stringifier is not supported for the logical type: " + this);
   }
 
@@ -306,7 +306,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.UTF8_STRINGIFIER;
     }
   }
@@ -410,7 +410,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.UTF8_STRINGIFIER;
     }
   }
@@ -475,7 +475,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return stringifier;
     }
   }
@@ -513,7 +513,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.DATE_STRINGIFIER;
     }
   }
@@ -589,7 +589,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.TIME_STRINGIFIER;
     }
   }
@@ -659,7 +659,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       switch (unit) {
         case MICROS:
           return PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
@@ -746,7 +746,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return isSigned ? PrimitiveStringifier.DEFAULT_STRINGIFIER : PrimitiveStringifier.UNSIGNED_STRINGIFIER;
     }
   }
@@ -784,7 +784,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.UTF8_STRINGIFIER;
     }
   }
@@ -822,7 +822,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.DEFAULT_STRINGIFIER;
     }
   }
@@ -867,12 +867,12 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
-    public PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.INTERVAL_STRINGIFIER;
     }
 
     @Override
-    public boolean isValidColumnOrder(ColumnOrder columnOrder) {
+    boolean isValidColumnOrder(ColumnOrder columnOrder) {
       return columnOrder.getColumnOrderName() == UNDEFINED;
     }
   }
@@ -929,55 +929,55 @@ public abstract class LogicalTypeAnnotation {
    * or {@link Optional#orElseThrow(Supplier)} to throw exception if omitting a type is not allowed.
    */
   public interface LogicalTypeAnnotationVisitor<T> {
-    default Optional<T> visit(StringLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(StringLogicalTypeAnnotation stringLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(MapLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapLogicalTypeAnnotation mapLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(ListLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(EnumLogicalTypeAnnotation enumLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DecimalLogicalTypeAnnotation decimalLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(DateLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DateLogicalTypeAnnotation dateLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimeLogicalTypeAnnotation timeLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimestampLogicalTypeAnnotation timestampLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(IntLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntLogicalTypeAnnotation intLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(JsonLogicalTypeAnnotation jsonLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(BsonLogicalTypeAnnotation bsonLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntervalLogicalTypeAnnotation intervalLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapKeyValueTypeAnnotation mapKeyValueLogicalType) {
       return empty();
     }
   }

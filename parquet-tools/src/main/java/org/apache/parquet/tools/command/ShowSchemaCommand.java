@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -32,7 +32,6 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.tools.Main;
-import org.apache.parquet.tools.util.MetadataUtils;
 import org.apache.parquet.tools.util.PrettyPrintWriter;
 
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
@@ -49,7 +48,11 @@ public class ShowSchemaCommand extends ArgsOnlyCommand {
     Option help = OptionBuilder.withLongOpt("detailed")
                                .withDescription("Show detailed information about the schema.")
                                .create('d');
+    Option originalType = OptionBuilder.withLongOpt("originalType")
+      .withDescription("Print logical types in OriginalType representation.")
+      .create('o');
     OPTIONS.addOption(help);
+    OPTIONS.addOption(originalType);
   }
 
   public ShowSchemaCommand() {
@@ -98,8 +101,9 @@ public class ShowSchemaCommand extends ArgsOnlyCommand {
 
     Main.out.println(schema);
     if (options.hasOption('d')) {
+      boolean showOriginalTypes = options.hasOption('o');
       PrettyPrintWriter out = PrettyPrintWriter.stdoutPrettyPrinter().build();
-      MetadataUtils.showDetails(out, metaData);
+      MetadataUtils.showDetails(out, metaData, showOriginalTypes);
     }
   }
 }
