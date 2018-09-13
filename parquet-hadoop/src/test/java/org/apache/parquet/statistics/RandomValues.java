@@ -292,7 +292,7 @@ public class RandomValues {
         buffer[index] = (byte) randomInt();
       }
 
-      return Binary.fromConstantByteArray(buffer, 0, length);
+      return Binary.fromReusedByteArray(buffer, 0, length);
     }
 
     @Override
