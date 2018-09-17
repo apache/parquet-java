@@ -70,6 +70,9 @@ public abstract class JsonRecordFormatter<T> {
     }
 
     private Object add(SimpleRecord record) {
+      if (record == null) {
+          return null;
+      }
       return formatEntries(collateEntries(record));
     }
 

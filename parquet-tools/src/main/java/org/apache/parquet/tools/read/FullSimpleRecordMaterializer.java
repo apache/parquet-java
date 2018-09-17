@@ -18,39 +18,24 @@
  */
 package org.apache.parquet.tools.read;
 
-import java.util.Map;
-
-import org.apache.hadoop.conf.Configuration;
-
-import org.apache.parquet.hadoop.api.InitContext;
-import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
-public class SimpleReadSupport extends ReadSupport<SimpleRecord> {
-  private final boolean showEmpty;
+public class FullSimpleRecordMaterializer extends RecordMaterializer<SimpleRecord> {
+  public final FullSimpleRecordConverter root;
 
-  public SimpleReadSupport() {
-      super();
-      this.showEmpty = false;
-  }
-
-  public SimpleReadSupport(boolean showEmpty) {
-      super();
-      this.showEmpty = showEmpty;
+  public FullSimpleRecordMaterializer(MessageType schema) {
+    this.root = new FullSimpleRecordConverter(schema);
   }
 
   @Override
-  public RecordMaterializer<SimpleRecord> prepareForRead(Configuration conf, Map<String,String> metaData, MessageType schema, ReadContext context) {
-    if(showEmpty) {
-        return new FullSimpleRecordMaterializer(schema);
-    }
-    return new SimpleRecordMaterializer(schema);
+  public SimpleRecord getCurrentRecord() {
+    return root.getCurrentRecord();
   }
 
   @Override
-  public ReadContext init(InitContext context) {
-    return new ReadContext(context.getFileSchema());
+  public GroupConverter getRootConverter() {
+    return root;
   }
 }
-
