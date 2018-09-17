@@ -1023,17 +1023,13 @@ public class ParquetMetadataConverter {
       }
     });
     LOG.debug("{}", fileMetaData);
-    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData, from, fileDecryptor);
+    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
     if (LOG.isDebugEnabled()) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
     return parquetMetadata;
   }
 
-  public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
-    return fromParquetMetadata(parquetMetadata, (InputStream) null, (InternalFileDecryptor) null);
-  }
   
-  public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata, 
-      InputStream from, InternalFileDecryptor fileDecryptor) throws IOException {
+  public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
