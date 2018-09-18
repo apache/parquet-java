@@ -179,7 +179,7 @@ public class BlockAlignmentIT {
     LOG.info("  rowGroupSize = {}, dfsBlockSize = {}, maxPaddingSize = {}", rowGroupSize, dfsBlockSize, maxPaddingSize);
   }
 
-  //@Test
+  @Test
   public void testFileEncodingsWithoutDictionary() throws Exception {
     printParameters();
     final boolean DISABLE_DICTIONARY = false;

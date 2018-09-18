@@ -145,7 +145,6 @@ class InternalParquetRecordWriter<T> {
 
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
-      boolean startNewRowGroup = false;
       long memSize = columnStore.getBufferedSize();
       long recordSize = memSize / recordCount;
       // Write the last pages once we reach the target row group size. This will
@@ -160,28 +159,25 @@ class InternalParquetRecordWriter<T> {
         recordSize = memSize / recordCount;
         // Start a new group if we are inside the padding area.
         if (memSize > minSizeForAlignment) {
-          startNewRowGroup = true;
           LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, minSizeForAlignment, recordCount);
+          flushRowGroupToStore();
+          initStore();
+          recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
+          this.lastRowGroupEndPos = parquetFileWriter.getPos();
+          return;
         }
       }
-      if (startNewRowGroup) {
-        flushRowGroupToStore();
-        initStore();
-        recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
-        this.lastRowGroupEndPos = parquetFileWriter.getPos();
-      } else {
-        long estimatedRecordCountInRowGroup = nextRowGroupSize / recordSize;
-        LOG.debug("Estimated record count is {}", estimatedRecordCountInRowGroup);
-        recordCountForNextMemCheck = recordCount/2 + estimatedRecordCountInRowGroup/2;
-        if (recordCountForNextMemCheck < MINIMUM_RECORD_COUNT_FOR_CHECK) {
-          recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
-        }
-        // will not look more than max records ahead
-        if (recordCountForNextMemCheck > recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK) {
-          recordCountForNextMemCheck = recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK;
-        }
-        LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
+      long estimatedRecordCountInRowGroup = nextRowGroupSize / recordSize;
+      LOG.debug("Estimated record count is {}", estimatedRecordCountInRowGroup);
+      recordCountForNextMemCheck = recordCount/2 + estimatedRecordCountInRowGroup/2;
+      if (recordCountForNextMemCheck < MINIMUM_RECORD_COUNT_FOR_CHECK) {
+        recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
       }
+      // will not look more than max records ahead
+      if (recordCountForNextMemCheck > recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK) {
+        recordCountForNextMemCheck = recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK;
+      }
+      LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
     }
   }
 

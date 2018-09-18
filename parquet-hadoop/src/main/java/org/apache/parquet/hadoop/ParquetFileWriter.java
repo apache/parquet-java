@@ -949,7 +949,7 @@ public class ParquetFileWriter {
     return out.getPos();
   }
 
-  public long getNextRowGroupSize() throws IOException {
+  long getNextRowGroupSize() throws IOException {
     return getNextRowGroupSize(out.getPos());
   }
 
@@ -957,16 +957,16 @@ public class ParquetFileWriter {
     return alignment.nextRowGroupSize(outPos);
   }
 
-  public long getMinSizeForAlignment() throws IOException {
+  long getMinSizeForAlignment() throws IOException {
     LOG.debug("pos = {}, targetsize = {}, minsize = {}", out.getPos(), getNextRowGroupSize(out.getPos()), getMinSizeForAlignment(out.getPos()));
     return getMinSizeForAlignment(out.getPos());
   }
 
-  public void setRowGroupSizeThreshold(long threshold) {
+  void setRowGroupSizeThreshold(long threshold) {
     alignment.setRowGroupSizeThreshold(threshold);
   }
 
-  public long getMinSizeForAlignment(long outPos) {
+  long getMinSizeForAlignment(long outPos) {
     return alignment.minSizeForAlignment(outPos);
   }
 
@@ -1150,7 +1150,7 @@ public class ParquetFileWriter {
       }
 
       if (rowGroupSize < remaining - maxPaddingSize) {
-        return rowGroupSize - maxPaddingSize/2;
+        return rowGroupSize;
       } else {
         // Target the middle of the padding area.
         return remaining - maxPaddingSize/2;
