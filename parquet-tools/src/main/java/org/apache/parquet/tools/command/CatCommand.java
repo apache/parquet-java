@@ -48,9 +48,9 @@ public class CatCommand extends ArgsOnlyCommand {
                                .withDescription("Show records in JSON format.")
                                .create('j');
 
-    Option showEmpty = OptionBuilder.withLongOpt("show-empty")
+    Option showEmpty = OptionBuilder.withLongOpt("show-nulls")
                         .withDescription("Show fields with null values.")
-                        .create('a');
+                        .create('n');
 
     OPTIONS.addOption(help);
     OPTIONS.addOption(showEmpty);
@@ -85,7 +85,7 @@ public class CatCommand extends ArgsOnlyCommand {
     ParquetReader<SimpleRecord> reader = null;
     try {
       PrintWriter writer = new PrintWriter(Main.out, true);
-      reader = ParquetReader.builder(new SimpleReadSupport(options.hasOption('a')), new Path(input)).build();
+      reader = ParquetReader.builder(new SimpleReadSupport(options.hasOption('n')), new Path(input)).build();
       ParquetMetadata metadata = ParquetFileReader.readFooter(new Configuration(), new Path(input));
       JsonRecordFormatter.JsonGroupFormatter formatter = JsonRecordFormatter.fromSchema(metadata.getFileMetaData().getSchema());
 

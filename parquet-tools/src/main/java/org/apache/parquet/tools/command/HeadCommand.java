@@ -46,9 +46,9 @@ public class HeadCommand extends ArgsOnlyCommand {
                                .withDescription("The number of records to show (default: " + DEFAULT + ")")
                                .hasOptionalArg()
                                .create('n');
-    Option showEmpty = OptionBuilder.withLongOpt("show-empty")
+    Option showEmpty = OptionBuilder.withLongOpt("show-nulls")
                         .withDescription("Show fields with null values.")
-                        .create('a');
+                        .create('n');
 
     OPTIONS.addOption(help);
     OPTIONS.addOption(showEmpty);
@@ -88,7 +88,7 @@ public class HeadCommand extends ArgsOnlyCommand {
     ParquetReader<SimpleRecord> reader = null;
     try {
       PrintWriter writer = new PrintWriter(Main.out, true);
-      reader = ParquetReader.builder(new SimpleReadSupport(options.hasOption('a')), new Path(input)).build();
+      reader = ParquetReader.builder(new SimpleReadSupport(options.hasOption('n')), new Path(input)).build();
       for (SimpleRecord value = reader.read(); value != null && num-- > 0; value = reader.read()) {
         value.prettyPrint(writer);
         writer.println();

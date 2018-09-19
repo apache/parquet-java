@@ -31,12 +31,10 @@ public class SimpleReadSupport extends ReadSupport<SimpleRecord> {
   private final boolean showEmpty;
 
   public SimpleReadSupport() {
-      super();
       this.showEmpty = false;
   }
 
   public SimpleReadSupport(boolean showEmpty) {
-      super();
       this.showEmpty = showEmpty;
   }
 
