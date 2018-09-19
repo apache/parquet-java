@@ -70,12 +70,32 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
+   * @param logicalTypeAnnotation (optional) the logical type to help with cross schema conversion (LIST, MAP, ...)
+   * @param fields the contained fields
+   */
+  GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, Type... fields) {
+    this(repetition, name, logicalTypeAnnotation, Arrays.asList(fields));
+  }
+
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
   @Deprecated
   public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
     this(repetition, name, originalType, fields, null);
+  }
+
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
+   * @param logicalTypeAnnotation (optional) the logical type to help with cross schema conversion (LIST, MAP, ...)
+   * @param fields the contained fields
+   */
+  GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, List<Type> fields) {
+    this(repetition, name, logicalTypeAnnotation, fields, null);
   }
 
   /**
@@ -109,7 +129,7 @@ public class GroupType extends Type {
    */
   @Override
   public GroupType withId(int id) {
-    return new GroupType(getRepetition(), getName(), getOriginalType(), fields, new ID(id));
+    return new GroupType(getRepetition(), getName(), getLogicalTypeAnnotation(), fields, new ID(id));
   }
 
   /**
@@ -117,7 +137,7 @@ public class GroupType extends Type {
    * @return a group with the same attributes and new fields.
    */
   public GroupType withNewFields(List<Type> newFields) {
-    return new GroupType(getRepetition(), getName(), getOriginalType(), newFields, getId());
+    return new GroupType(getRepetition(), getName(), getLogicalTypeAnnotation(), newFields, getId());
   }
 
   /**
@@ -219,7 +239,7 @@ public class GroupType extends Type {
         .append(getRepetition().name().toLowerCase(Locale.ENGLISH))
         .append(" group ")
         .append(getName())
-        .append(getOriginalType() == null ? "" : " (" + getOriginalType() +")")
+        .append(getLogicalTypeAnnotation() == null ? "" : " (" + getLogicalTypeAnnotation().toString() +")")
         .append(getId() == null ? "" : " = " + getId())
         .append(" {\n");
     membersDisplayString(sb, indent + "  ");
@@ -250,7 +270,7 @@ public class GroupType extends Type {
    */
   @Override
   public int hashCode() {
-    return Objects.hash(getOriginalType(), getFields());
+    return Objects.hash(getLogicalTypeAnnotation(), getFields());
   }
 
   /**
@@ -261,7 +281,7 @@ public class GroupType extends Type {
     return
         !otherType.isPrimitive()
         && super.equals(otherType)
-        && getOriginalType() == otherType.getOriginalType()
+        && Objects.equals(getLogicalTypeAnnotation(),otherType.getLogicalTypeAnnotation())
         && getFields().equals(otherType.asGroupType().getFields());
   }
 
@@ -355,7 +375,7 @@ public class GroupType extends Type {
     if (toMerge.isPrimitive()) {
       throw new IncompatibleSchemaModificationException("can not merge primitive type " + toMerge + " into group type " + this);
     }
-    return new GroupType(toMerge.getRepetition(), getName(), toMerge.getOriginalType(), mergeFields(toMerge.asGroupType()), getId());
+    return new GroupType(toMerge.getRepetition(), getName(), toMerge.getLogicalTypeAnnotation(), mergeFields(toMerge.asGroupType()), getId());
   }
 
   /**
@@ -383,8 +403,8 @@ public class GroupType extends Type {
         if (fieldToMerge.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
           throw new IncompatibleSchemaModificationException("repetition constraint is more restrictive: can not merge type " + fieldToMerge + " into " + type);
         }
-        if (type.getOriginalType() != null && fieldToMerge.getOriginalType() != type.getOriginalType()) {
-          throw new IncompatibleSchemaModificationException("cannot merge original type " + fieldToMerge.getOriginalType() + " into " + type.getOriginalType());
+        if (type.getLogicalTypeAnnotation() != null && !type.getLogicalTypeAnnotation().equals(fieldToMerge.getLogicalTypeAnnotation())) {
+          throw new IncompatibleSchemaModificationException("cannot merge logical type " + fieldToMerge.getLogicalTypeAnnotation() + " into " + type.getLogicalTypeAnnotation());
         }
         merged = type.union(fieldToMerge, strict);
       } else {

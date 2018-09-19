@@ -16,16 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.tools.util;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+package org.apache.parquet.tools.command;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -33,20 +27,23 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
+import org.apache.parquet.tools.util.PrettyPrintWriter;
 
-@Deprecated
-public class MetadataUtils {
-  public static final double BAD_COMPRESSION_RATIO_CUTOFF = 0.97;
-  public static final double GOOD_COMPRESSION_RATIO_CUTOFF = 1.2;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-  public static void showDetails(PrettyPrintWriter out, ParquetMetadata meta) {
-    showDetails(out, meta.getFileMetaData());
+class MetadataUtils {
+  static void showDetails(PrettyPrintWriter out, ParquetMetadata meta, boolean showOriginalTypes) {
+    showDetails(out, meta.getFileMetaData(), showOriginalTypes);
 
     long i = 1;
     for (BlockMetaData bmeta : meta.getBlocks()) {
@@ -55,7 +52,7 @@ public class MetadataUtils {
     }
   }
 
-  public static void showDetails(PrettyPrintWriter out, FileMetaData meta) {
+  static void showDetails(PrettyPrintWriter out, FileMetaData meta, boolean showOriginalTypes) {
     out.format("creator: %s%n", meta.getCreatedBy());
 
     Map<String,String> extra = meta.getKeyValueMetaData();
@@ -71,11 +68,7 @@ public class MetadataUtils {
     out.println();
     out.format("file schema: %s%n", meta.getSchema().getName());
     out.rule('-');
-    showDetails(out, meta.getSchema());
-  }
-
-  public static void showDetails(PrettyPrintWriter out, BlockMetaData meta) {
-    showDetails(out, meta, null);
+    showDetails(out, meta.getSchema(), showOriginalTypes);
   }
 
   private static void showDetails(PrettyPrintWriter out, BlockMetaData meta, Long num) {
@@ -88,7 +81,7 @@ public class MetadataUtils {
     showDetails(out, meta.getColumns());
   }
 
-  public static void showDetails(PrettyPrintWriter out, List<ColumnChunkMetaData> ccmeta) {
+  static void showDetails(PrettyPrintWriter out, List<ColumnChunkMetaData> ccmeta) {
     Map<String,Object> chunks = new LinkedHashMap<String,Object>();
     for (ColumnChunkMetaData cmeta : ccmeta) {
       String[] path = cmeta.getPath().toArray();
@@ -124,10 +117,6 @@ public class MetadataUtils {
     }
   }
 
-  public static void showDetails(PrettyPrintWriter out, ColumnChunkMetaData meta) {
-    showDetails(out, meta, true);
-  }
-
   private static void showDetails(PrettyPrintWriter out, ColumnChunkMetaData meta, boolean name) {
     long doff = meta.getDictionaryPageOffset();
     long foff = meta.getFirstDataPageOffset();
@@ -158,35 +147,14 @@ public class MetadataUtils {
     out.println();
   }
 
-  public static void showDetails(PrettyPrintWriter out, ColumnDescriptor desc) {
-    String path = Joiner.on(".").skipNulls().join(desc.getPath());
-    PrimitiveTypeName type = desc.getType();
-    int defl = desc.getMaxDefinitionLevel();
-    int repl = desc.getMaxRepetitionLevel();
-
-    out.format("column desc: %s T:%s R:%d D:%d%n", path, type, repl, defl);
-  }
-
-  public static void showDetails(PrettyPrintWriter out, MessageType type) {
+  static void showDetails(PrettyPrintWriter out, MessageType type, boolean showOriginalTypes) {
     List<String> cpath = new ArrayList<String>();
     for (Type ftype : type.getFields()) {
-      showDetails(out, ftype, 0, type, cpath);
+      showDetails(out, ftype, 0, type, cpath, showOriginalTypes);
     }
   }
 
-  public static void showDetails(PrettyPrintWriter out, GroupType type) {
-    showDetails(out, type, 0, null, null);
-  }
-
-  public static void showDetails(PrettyPrintWriter out, PrimitiveType type) {
-    showDetails(out, type, 0, null, null);
-  }
-
-  public static void showDetails(PrettyPrintWriter out, Type type) {
-    showDetails(out, type, 0, null, null);
-  }
-
-  private static void showDetails(PrettyPrintWriter out, GroupType type, int depth, MessageType container, List<String> cpath) {
+  private static void showDetails(PrettyPrintWriter out, GroupType type, int depth, MessageType container, List<String> cpath, boolean showOriginalTypes) {
     String name = Strings.repeat(".", depth) + type.getName();
     Repetition rep = type.getRepetition();
     int fcount = type.getFieldCount();
@@ -194,19 +162,29 @@ public class MetadataUtils {
 
     cpath.add(type.getName());
     for (Type ftype : type.getFields()) {
-      showDetails(out, ftype, depth + 1, container, cpath);
+      showDetails(out, ftype, depth + 1, container, cpath, showOriginalTypes);
     }
     cpath.remove(cpath.size() - 1);
   }
 
-  private static void showDetails(PrettyPrintWriter out, PrimitiveType type, int depth, MessageType container, List<String> cpath) {
+  private static void showDetails(PrettyPrintWriter out, PrimitiveType type, int depth, MessageType container, List<String> cpath, boolean showOriginalTypes) {
     String name = Strings.repeat(".", depth) + type.getName();
-    OriginalType otype = type.getOriginalType();
     Repetition rep = type.getRepetition();
     PrimitiveTypeName ptype = type.getPrimitiveTypeName();
 
     out.format("%s: %s %s", name, rep, ptype);
-    if (otype != null) out.format(" O:%s", otype);
+    if (showOriginalTypes) {
+      OriginalType otype;
+      try {
+        otype = type.getOriginalType();
+      } catch (Exception e) {
+        otype = null;
+      }
+      if (otype != null) out.format(" O:%s", otype);
+    } else {
+      LogicalTypeAnnotation ltype = type.getLogicalTypeAnnotation();
+      if (ltype != null) out.format(" L:%s", ltype);
+    }
 
     if (container != null) {
       cpath.add(type.getName());
@@ -222,12 +200,12 @@ public class MetadataUtils {
     out.println();
   }
 
-  private static void showDetails(PrettyPrintWriter out, Type type, int depth, MessageType container, List<String> cpath) {
+  private static void showDetails(PrettyPrintWriter out, Type type, int depth, MessageType container, List<String> cpath, boolean showOriginalTypes) {
     if (type instanceof GroupType) {
-      showDetails(out, type.asGroupType(), depth, container, cpath);
+      showDetails(out, type.asGroupType(), depth, container, cpath, showOriginalTypes);
       return;
     } else if (type instanceof PrimitiveType) {
-      showDetails(out, type.asPrimitiveType(), depth, container, cpath);
+      showDetails(out, type.asPrimitiveType(), depth, container, cpath, showOriginalTypes);
       return;
     }
   }
