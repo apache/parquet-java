@@ -50,8 +50,9 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   /* size of raw data, even if dictionary is used, it will not have effect on raw data size, it is used to decide
    * if fall back to plain encoding is better by comparing rawDataByteSize with Encoded data size
    * It's also used in getBufferedSize, so the page will be written based on raw data size
+   * Package-private visibility for testing only.
    */
-  private long rawDataByteSize = 0;
+  long rawDataByteSize = 0;
 
   /** indicates if this is the first page being processed */
   private boolean firstPage = true;
@@ -63,14 +64,45 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     this.currentWriter = initialWriter;
   }
 
+  final private double UTILIZATION_THRESHOLD = 0.9;
+
+  // When using a dictionary writer with a fallback, it can happen that the
+  // dictionary gets full and we have to fall back to the other writer. Since
+  // the dictionary-encoded data is typically smaller than the raw data, a
+  // fallback could significantly increase the size of the data.
+  //
+  // There is a logic aiming to ensure that pages and row groups have specific
+  // sizes. This size-targeting logic can not cope with the sudden jump in the
+  // reported data size that happens at a fallback. Adding one more record to
+  // data that is much smaller than the limit could make it suddenly jump above
+  // the limit.
+  //
+  // For this reason, we can not return the dictionary-encoded size here.
+  // However, returning the raw size would not be optimal either, since that
+  // would feed larger-than-actual sizes into the size-targeting logic, leading
+  // to smaller-than-desired pages and row groups.
+  //
+  // The solution employed here is to return the dictionary-encoded size as long
+  // as there is no risk of the dictionary becoming full, but as we reach a
+  // threshold in the dictionary utilization, gradually change to returning an
+  // estimation closer and closer to the raw data size. This smoothes the
+  // transition from the "much smaller than the limit" to the "much larger than
+  // the limit", thereby allowing the size-targeting logic to close the current
+  // page or row group before it would exceed the limit.
   @Override
   public long getBufferedSize() {
     if (fellBackAlready) {
       return currentWriter.getBufferedSize();
     }
-    final double utilization = initialWriter.getUtilization();
     final long dictEncodedByteSize = initialWriter.getBufferedSize();
-    final long weightedSize = (long) (utilization * rawDataByteSize + (1 - utilization) * dictEncodedByteSize);
+    final double utilization = initialWriter.getUtilization();
+    long weightedSize;
+    if (utilization < UTILIZATION_THRESHOLD) {
+      weightedSize = dictEncodedByteSize;
+    } else {
+      final double weight_for_raw_size = (utilization - UTILIZATION_THRESHOLD) / (1 - UTILIZATION_THRESHOLD);
+      weightedSize = (long) (weight_for_raw_size * rawDataByteSize + (1 - weight_for_raw_size) * dictEncodedByteSize);
+    }
     LOG.debug("utilization = {}, dictEncodedByteSize = {}, rawDataByteSize = {}, weightedSize = {}",
       utilization, dictEncodedByteSize, rawDataByteSize, weightedSize);
     return weightedSize;

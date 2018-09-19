@@ -146,7 +146,6 @@ class InternalParquetRecordWriter<T> {
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
       long memSize = columnStore.getBufferedSize();
-      long recordSize = memSize / recordCount;
       // Write the last pages once we reach the target row group size. This will
       // encode and compress the pages, which allows us to measure their size
       // more precisely.
@@ -156,18 +155,17 @@ class InternalParquetRecordWriter<T> {
         LOG.debug("mem size {} > {}: closing pages. Mem size after closing pages: {}. Min size for starting new row group: {}",
           memSize, nextRowGroupSize, newMemSize, minSizeForAlignment);
         memSize = newMemSize;
-        recordSize = memSize / recordCount;
         // Start a new group if we are inside the padding area.
         if (memSize > minSizeForAlignment) {
           LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, minSizeForAlignment, recordCount);
           flushRowGroupToStore();
           initStore();
-          recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
+          recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount/2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
           this.lastRowGroupEndPos = parquetFileWriter.getPos();
           return;
         }
       }
-      long estimatedRecordCountInRowGroup = nextRowGroupSize / recordSize;
+      final long estimatedRecordCountInRowGroup = nextRowGroupSize / memSize * recordCount;
       LOG.debug("Estimated record count is {}", estimatedRecordCountInRowGroup);
       recordCountForNextMemCheck = recordCount/2 + estimatedRecordCountInRowGroup/2;
       if (recordCountForNextMemCheck < MINIMUM_RECORD_COUNT_FOR_CHECK) {
