@@ -70,6 +70,8 @@ public class SimpleRecordConverter extends GroupConverter {
             return of(new DecimalConverter(field.getName(), scale));
           }
         }).orElse(new SimplePrimitiveConverter(field.getName()));
+      } else {
+          return new SimplePrimitiveConverter(field.getName());
       }
     }
 
