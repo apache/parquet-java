@@ -23,9 +23,13 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.RequiresFallback;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
 import org.apache.parquet.io.api.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> extends ValuesWriter {
+  private static final Logger LOG = LoggerFactory.getLogger(FallbackValuesWriter.class);
 
   public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(I initialWriter, F fallBackWriter) {
     return new FallbackValuesWriter<I, F>(initialWriter, fallBackWriter);
@@ -46,8 +50,9 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   /* size of raw data, even if dictionary is used, it will not have effect on raw data size, it is used to decide
    * if fall back to plain encoding is better by comparing rawDataByteSize with Encoded data size
    * It's also used in getBufferedSize, so the page will be written based on raw data size
+   * Package-private visibility for testing only.
    */
-  private long rawDataByteSize = 0;
+  long rawDataByteSize = 0;
 
   /** indicates if this is the first page being processed */
   private boolean firstPage = true;
@@ -59,12 +64,48 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     this.currentWriter = initialWriter;
   }
 
+  final private double UTILIZATION_THRESHOLD = 0.6;
+
+  // When using a dictionary writer with a fallback, it can happen that the
+  // dictionary gets full and we have to fall back to the other writer. Since
+  // the dictionary-encoded data is typically smaller than the raw data, a
+  // fallback could significantly increase the size of the data.
+  //
+  // There is a logic aiming to ensure that pages and row groups have specific
+  // sizes. This size-targeting logic can not cope with the sudden jump in the
+  // reported data size that happens at a fallback. Adding one more record to
+  // data that is much smaller than the limit could make it suddenly jump above
+  // the limit.
+  //
+  // For this reason, we can not return the dictionary-encoded size here.
+  // However, returning the raw size would not be optimal either, since that
+  // would feed larger-than-actual sizes into the size-targeting logic, leading
+  // to smaller-than-desired pages and row groups.
+  //
+  // The solution employed here is to return the dictionary-encoded size as long
+  // as there is no risk of the dictionary becoming full, but as we reach a
+  // threshold in the dictionary utilization, gradually change to returning an
+  // estimation closer and closer to the raw data size. This smoothes the
+  // transition from the "much smaller than the limit" to the "much larger than
+  // the limit", thereby allowing the size-targeting logic to close the current
+  // page or row group before it would exceed the limit.
   @Override
   public long getBufferedSize() {
-    // use raw data size to decide if we want to flush the page
-    // so the actual size of the page written could be much more smaller
-    // due to dictionary encoding. This prevents page being too big when fallback happens.
-    return rawDataByteSize;
+    if (fellBackAlready) {
+      return currentWriter.getBufferedSize();
+    }
+    final long dictEncodedByteSize = initialWriter.getBufferedSize();
+    final double utilization = initialWriter.getUtilization();
+    long weightedSize;
+    if (utilization < UTILIZATION_THRESHOLD) {
+      weightedSize = dictEncodedByteSize;
+    } else {
+      final double weightForRawSize = (utilization - UTILIZATION_THRESHOLD) / (1 - UTILIZATION_THRESHOLD);
+      weightedSize = (long) (weightForRawSize * rawDataByteSize + (1 - weightForRawSize) * dictEncodedByteSize);
+    }
+    LOG.debug("utilization = {}, dictEncodedByteSize = {}, rawDataByteSize = {}, weightedSize = {}",
+      utilization, dictEncodedByteSize, rawDataByteSize, weightedSize);
+    return weightedSize;
   }
 
   @Override
@@ -149,6 +190,7 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   }
 
   private void fallBack() {
+    LOG.debug("Falling back");
     fellBackAlready = true;
     initialWriter.fallBackAllValuesTo(fallBackWriter);
     currentWriter = fallBackWriter;

@@ -98,18 +98,25 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
   public long getBufferedSize() {
     long total = 0;
     for (ColumnWriterV2 memColumn : columns.values()) {
-      total += memColumn.getTotalBufferedSize();
+      total += memColumn.getBufferedSizeInMemory();
     }
     return total;
   }
 
   @Override
-  public void flush() {
+  public void writePages() {
     for (ColumnWriterV2 memColumn : columns.values()) {
       long rows = rowCount - memColumn.getRowsWrittenSoFar();
       if (rows > 0) {
         memColumn.writePage(rowCount);
       }
+    }
+  }
+
+  @Override
+  public void flush() {
+    writePages();
+    for (ColumnWriterV2 memColumn : columns.values()) {
       memColumn.finalizeColumnChunk();
     }
   }

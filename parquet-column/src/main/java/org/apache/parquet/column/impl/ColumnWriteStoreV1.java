@@ -116,6 +116,13 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
   }
 
   @Override
+  public void writePages() {
+    for (ColumnWriterV1 cw : columns.values()) {
+      cw.writePage();
+    }
+  }
+
+  @Override
   public void flush() {
     Collection<ColumnWriterV1> values = columns.values();
     for (ColumnWriterV1 memColumn : values) {

@@ -240,7 +240,6 @@ final class ColumnWriterV2 implements ColumnWriter {
   }
 
   /**
-   * used to decide when to write a page or row group
    * @return the number of bytes of memory used to buffer the current data and the previously written pages
    */
   public long getTotalBufferedSize() {

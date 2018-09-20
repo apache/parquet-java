@@ -45,13 +45,10 @@ public class HadoopOutputFile implements OutputFile {
     return BLOCK_FS_SCHEMES;
   }
 
-  private static boolean supportsBlockSize(FileSystem fs) {
-    return BLOCK_FS_SCHEMES.contains(fs.getUri().getScheme());
-  }
-
   private final FileSystem fs;
   private final Path path;
   private final Configuration conf;
+  private long dfsBlockSize;
 
   public static HadoopOutputFile fromPath(Path path, Configuration conf)
       throws IOException {
@@ -63,6 +60,10 @@ public class HadoopOutputFile implements OutputFile {
     this.fs = fs;
     this.path = path;
     this.conf = conf;
+    dfsBlockSize = conf.getInt("parquet.force-dfs-block-size", 0);
+    if (dfsBlockSize == 0 && BLOCK_FS_SCHEMES.contains(fs.getUri().getScheme())) {
+      dfsBlockSize = fs.getDefaultBlockSize(path);
+    }
   }
 
   public Configuration getConfiguration() {
@@ -85,12 +86,12 @@ public class HadoopOutputFile implements OutputFile {
 
   @Override
   public boolean supportsBlockSize() {
-    return supportsBlockSize(fs);
+    return dfsBlockSize > 0;
   }
 
   @Override
   public long defaultBlockSize() {
-    return fs.getDefaultBlockSize(path);
+    return dfsBlockSize;
   }
 
   @Override

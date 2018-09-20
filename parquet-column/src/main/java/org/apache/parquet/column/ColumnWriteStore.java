@@ -62,4 +62,9 @@ public interface ColumnWriteStore {
    */
   abstract public void close();
 
+  /**
+   * Closes the current pages of all columns, even if they have not reached the
+   * configured page size yet.
+   */
+  public default void writePages() {}
 }

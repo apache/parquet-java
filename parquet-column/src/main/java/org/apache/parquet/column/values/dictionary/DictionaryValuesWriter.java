@@ -121,6 +121,12 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   }
 
   @Override
+  public double getUtilization() {
+    return Math.max(1.0 * dictionaryByteSize/maxDictionaryByteSize,
+        1.0 * getDictionarySize()/MAX_DICTIONARY_ENTRIES);
+  }
+
+  @Override
   public boolean isCompressionSatisfying(long rawSize, long encodedSize) {
     return (encodedSize + dictionaryByteSize) < rawSize;
   }

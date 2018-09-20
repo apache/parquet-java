@@ -51,8 +51,10 @@ class InternalParquetRecordWriter<T> {
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
   private final long rowGroupSize;
+  // A potential limitation to the group size due to memory constraints
   private long rowGroupSizeThreshold;
   private long nextRowGroupSize;
+  private long minSizeForAlignment;
   private final BytesCompressor compressor;
   private final boolean validating;
   private final ParquetProperties props;
@@ -90,7 +92,10 @@ class InternalParquetRecordWriter<T> {
     this.extraMetaData = extraMetaData;
     this.rowGroupSize = rowGroupSize;
     this.rowGroupSizeThreshold = rowGroupSize;
-    this.nextRowGroupSize = rowGroupSizeThreshold;
+    // In the freshly created file we are at position 4 after the magic string "PAR1".
+    final long pos = 4;
+    this.nextRowGroupSize = parquetFileWriter.getNextRowGroupSize(pos);
+    this.minSizeForAlignment = parquetFileWriter.getMinSizeForAlignment(pos);
     this.compressor = compressor;
     this.validating = validating;
     this.props = props;
@@ -111,6 +116,7 @@ class InternalParquetRecordWriter<T> {
 
   public void close() throws IOException, InterruptedException {
     if (!closed) {
+      LOG.debug("closing row group: writing {} records to disk.", recordCount);
       flushRowGroupToStore();
       FinalizedWriteContext finalWriteContext = writeSupport.finalizeWrite();
       Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
@@ -140,29 +146,44 @@ class InternalParquetRecordWriter<T> {
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
       long memSize = columnStore.getBufferedSize();
-      long recordSize = memSize / recordCount;
-      // flush the row group if it is within ~2 records of the limit
-      // it is much better to be slightly under size than to be over at all
-      if (memSize > (nextRowGroupSize - 2 * recordSize)) {
-        LOG.info("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
-        flushRowGroupToStore();
-        initStore();
-        recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
-        this.lastRowGroupEndPos = parquetFileWriter.getPos();
-      } else {
-        recordCountForNextMemCheck = min(
-            max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(nextRowGroupSize / ((float)recordSize))) / 2), // will check halfway
-            recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK // will not look more than max records ahead
-            );
-        LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
+      // Write the last pages once we reach the target row group size. This will
+      // encode and compress the pages, which allows us to measure their size
+      // more precisely.
+      if (memSize > nextRowGroupSize) {
+        columnStore.writePages();
+        final long newMemSize = columnStore.getBufferedSize();
+        LOG.debug("mem size {} > {}: closing pages. Mem size after closing pages: {}. Min size for starting new row group: {}",
+          memSize, nextRowGroupSize, newMemSize, minSizeForAlignment);
+        memSize = newMemSize;
+        // Start a new group if we are inside the padding area.
+        if (memSize > minSizeForAlignment) {
+          LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, minSizeForAlignment, recordCount);
+          flushRowGroupToStore();
+          initStore();
+          recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount/5), MAXIMUM_RECORD_COUNT_FOR_CHECK);
+          this.lastRowGroupEndPos = parquetFileWriter.getPos();
+          return;
+        }
       }
+      final long estimatedRecordCountInRowGroup = nextRowGroupSize / memSize * recordCount;
+      LOG.debug("Estimated record count is {}", estimatedRecordCountInRowGroup);
+      // Estimate how many records will fit and check again 20% of the way.
+      recordCountForNextMemCheck = recordCount/5*4 + estimatedRecordCountInRowGroup/5;
+      if (recordCountForNextMemCheck < MINIMUM_RECORD_COUNT_FOR_CHECK) {
+        recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
+      }
+      // will not look more than max records ahead
+      if (recordCountForNextMemCheck > recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK) {
+        recordCountForNextMemCheck = recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK;
+      }
+      LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
     }
   }
 
   private void flushRowGroupToStore()
       throws IOException {
     recordConsumer.flush();
-    LOG.info("Flushing mem columnStore to file. allocated memory: {}", columnStore.getAllocatedSize());
+    LOG.debug("Flushing mem columnStore to file. allocated memory: {}", columnStore.getAllocatedSize());
     if (columnStore.getAllocatedSize() > (3 * rowGroupSizeThreshold)) {
       LOG.warn("Too much memory used: {}", columnStore.memUsageString());
     }
@@ -173,9 +194,8 @@ class InternalParquetRecordWriter<T> {
       pageStore.flushToFileWriter(parquetFileWriter);
       recordCount = 0;
       parquetFileWriter.endBlock();
-      this.nextRowGroupSize = Math.min(
-          parquetFileWriter.getNextRowGroupSize(),
-          rowGroupSizeThreshold);
+      nextRowGroupSize = parquetFileWriter.getNextRowGroupSize();
+      minSizeForAlignment = parquetFileWriter.getMinSizeForAlignment();
     }
 
     columnStore = null;
@@ -188,6 +208,7 @@ class InternalParquetRecordWriter<T> {
 
   void setRowGroupSizeThreshold(long rowGroupSizeThreshold) {
     this.rowGroupSizeThreshold = rowGroupSizeThreshold;
+    parquetFileWriter.setRowGroupSizeThreshold(rowGroupSizeThreshold);
   }
 
   MessageType getSchema() {
