@@ -160,14 +160,15 @@ class InternalParquetRecordWriter<T> {
           LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, minSizeForAlignment, recordCount);
           flushRowGroupToStore();
           initStore();
-          recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount/2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
+          recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount/5), MAXIMUM_RECORD_COUNT_FOR_CHECK);
           this.lastRowGroupEndPos = parquetFileWriter.getPos();
           return;
         }
       }
       final long estimatedRecordCountInRowGroup = nextRowGroupSize / memSize * recordCount;
       LOG.debug("Estimated record count is {}", estimatedRecordCountInRowGroup);
-      recordCountForNextMemCheck = recordCount/2 + estimatedRecordCountInRowGroup/2;
+      // Estimate how many records will fit and check again 20% of the way.
+      recordCountForNextMemCheck = recordCount/5*4 + estimatedRecordCountInRowGroup/5;
       if (recordCountForNextMemCheck < MINIMUM_RECORD_COUNT_FOR_CHECK) {
         recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
       }

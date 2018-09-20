@@ -35,21 +35,20 @@ public class FallbackValuesWriterTest {
         FallbackValuesWriter.of(dictionaryValuesWriterMock, plainValuesWriterMock);
     fallbackValuesWriter.rawDataByteSize = 100_050L;
     Mockito.when(dictionaryValuesWriterMock.getBufferedSize()).thenReturn(50L);
-    Mockito.when(dictionaryValuesWriterMock.getUtilization()).thenReturn(0.0, 0.3, 0.6, 0.9, 0.92, 0.94, 0.96, 0.98, 1.0);
+    Mockito.when(dictionaryValuesWriterMock.getUtilization()).thenReturn(0.0, 0.2, 0.4, 0.6, 0.7, 0.8, 0.9, 1.0);
     // Use an epsilon of 1 for comparisons, since the calculations use double
     // arithmetics and are not 100% accurate, but that's acceptable.
 
-    // Utilization below the threshold of 0.9, buffered size should return the dictionary-encoded size.
+    // Utilization below the threshold of 0.6, buffered size should return the dictionary-encoded size.
     assertEquals(50L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.0
-    assertEquals(50L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.3
+    assertEquals(50L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.2
+    assertEquals(50L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.4
     assertEquals(50L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.6
-    assertEquals(50L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.9
 
-    // Utilization goes above the threshold of 0.9, buffered size should gradually increase up to the raw data size. 
-    assertEquals(20_050L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.92
-    assertEquals(40_050L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.94
-    assertEquals(60_050L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.96
-    assertEquals(80_050L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.98
+    // Utilization goes above the threshold of 0.6, buffered size should gradually increase up to the raw data size. 
+    assertEquals(25_050L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.7
+    assertEquals(50_050L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.8
+    assertEquals(75_050L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 0.9
     
     // Utilization reaches 100%, buffered size should return the raw data size. 
     assertEquals(100_050L, fallbackValuesWriter.getBufferedSize(), 1); // Utilization = 1.0

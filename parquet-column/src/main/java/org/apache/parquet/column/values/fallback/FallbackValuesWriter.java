@@ -64,7 +64,7 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     this.currentWriter = initialWriter;
   }
 
-  final private double UTILIZATION_THRESHOLD = 0.9;
+  final private double UTILIZATION_THRESHOLD = 0.6;
 
   // When using a dictionary writer with a fallback, it can happen that the
   // dictionary gets full and we have to fall back to the other writer. Since
@@ -100,8 +100,8 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     if (utilization < UTILIZATION_THRESHOLD) {
       weightedSize = dictEncodedByteSize;
     } else {
-      final double weight_for_raw_size = (utilization - UTILIZATION_THRESHOLD) / (1 - UTILIZATION_THRESHOLD);
-      weightedSize = (long) (weight_for_raw_size * rawDataByteSize + (1 - weight_for_raw_size) * dictEncodedByteSize);
+      final double weightForRawSize = (utilization - UTILIZATION_THRESHOLD) / (1 - UTILIZATION_THRESHOLD);
+      weightedSize = (long) (weightForRawSize * rawDataByteSize + (1 - weightForRawSize) * dictEncodedByteSize);
     }
     LOG.debug("utilization = {}, dictEncodedByteSize = {}, rawDataByteSize = {}, weightedSize = {}",
       utilization, dictEncodedByteSize, rawDataByteSize, weightedSize);
@@ -190,6 +190,7 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   }
 
   private void fallBack() {
+    LOG.debug("Falling back");
     fellBackAlready = true;
     initialWriter.fallBackAllValuesTo(fallBackWriter);
     currentWriter = fallBackWriter;

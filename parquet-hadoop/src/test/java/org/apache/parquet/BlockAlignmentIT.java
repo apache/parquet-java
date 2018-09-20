@@ -94,10 +94,11 @@ public class BlockAlignmentIT {
   private int rowGroupSize;
   private int dfsBlockSize;
   private int maxPaddingSize;
+  private int dictPageSize;
 
   @Parameterized.Parameters(
       // Full set of params
-      // name = "{0}; {1}; {2}; recordCount = {3}; columnCount = {4}; pageSize = {5}; rowGroupSize = {6}; dfsBlockSize = {7}; maxPaddingSize = {8}")
+      // name = "{0}; {1}; {2}; recordCount = {3}; columnCount = {4}; pageSize = {5}; rowGroupSize = {6}; dfsBlockSize = {7}; maxPaddingSize = {8}; dictPageSize = {9}")
       // Relevant params
       name = "{0}; {1}; {2}; rowGroupSize = {6}")
   public static Collection<Object[]> getParameters() {
@@ -132,6 +133,7 @@ public class BlockAlignmentIT {
               10_000_000, // rowGroupSize
               10_000_000, // dfsBlockSize
               1_000_000, // maxPaddingSize
+              100_000, // dictPageSize
           });
           parameters.add(new Object[] {
               writerVersion,
@@ -142,7 +144,8 @@ public class BlockAlignmentIT {
               100_000, // pageSize
               5_000_000, // rowGroupSize
               10_000_000, // dfsBlockSize
-              1_000_000 // maxPaddingSize
+              1_000_000, // maxPaddingSize
+              100_000, // dictPageSize
           });
         }
       }
@@ -154,7 +157,7 @@ public class BlockAlignmentIT {
   public BlockAlignmentIT(
       WriterVersion writerVersion, PrimitiveTypeName typeName, CompressionCodecName compression,
       int recordCount, int columnCount, int pageSize,
-      int rowGroupSize, int dfsBlockSize, int maxPaddingSize) {
+      int rowGroupSize, int dfsBlockSize, int maxPaddingSize, int dictPageSize) {
     this.writerVersion = writerVersion;
     this.paramTypeName = typeName;
     this.compression = compression;
@@ -164,6 +167,7 @@ public class BlockAlignmentIT {
     this.rowGroupSize = rowGroupSize;
     this.dfsBlockSize = dfsBlockSize;
     this.maxPaddingSize = maxPaddingSize;
+    this.dictPageSize = dictPageSize;
   }
 
   @BeforeClass
@@ -186,7 +190,7 @@ public class BlockAlignmentIT {
     List<?> randomValues = generateRandomValues(this.paramTypeName, DISTINCT_VALUE_COUNT);
 
     Path parquetFile = createTempFile();
-    writeValuesToFile(parquetFile, this.paramTypeName, randomValues, rowGroupSize, pageSize, DISABLE_DICTIONARY, writerVersion);
+    writeValuesToFile(parquetFile, this.paramTypeName, randomValues, DISABLE_DICTIONARY);
     validateAlignment(parquetFile);
   }
 
@@ -197,7 +201,7 @@ public class BlockAlignmentIT {
     List<?> dictionaryValues = generateDictionaryValues(this.paramTypeName, DISTINCT_VALUE_COUNT);
 
     Path parquetFile = createTempFile();
-    writeValuesToFile(parquetFile, this.paramTypeName, dictionaryValues, rowGroupSize, pageSize, ENABLE_DICTIONARY, writerVersion);
+    writeValuesToFile(parquetFile, this.paramTypeName, dictionaryValues, ENABLE_DICTIONARY);
     validateAlignment(parquetFile);
   }
 
@@ -218,7 +222,7 @@ public class BlockAlignmentIT {
    * Writes a set of values to a parquet file.
    * The ParquetWriter will write the values with dictionary encoding disabled so that we test specific encodings for
    */
-  private void writeValuesToFile(Path file, PrimitiveTypeName type, List<?> values, int rowGroupSize, int pageSize, boolean enableDictionary, WriterVersion version) throws IOException {
+  private void writeValuesToFile(Path file, PrimitiveTypeName type, List<?> values, boolean enableDictionary) throws IOException {
     Configuration config = new Configuration();
     config.setInt("parquet.force-dfs-block-size", dfsBlockSize);
 
@@ -239,9 +243,9 @@ public class BlockAlignmentIT {
         .withCompressionCodec(compression)
         .withRowGroupSize(rowGroupSize)
         .withPageSize(pageSize)
-        .withDictionaryPageSize(pageSize)
+        .withDictionaryPageSize(dictPageSize)
         .withDictionaryEncoding(enableDictionary)
-        .withWriterVersion(version)
+        .withWriterVersion(writerVersion)
         .withConf(config)
         .withMaxPaddingSize(maxPaddingSize)
         .build();
