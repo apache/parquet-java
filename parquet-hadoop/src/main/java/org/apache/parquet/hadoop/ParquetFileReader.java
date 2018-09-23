@@ -24,7 +24,7 @@ import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATI
 import static org.apache.parquet.format.Util.readFileCryptoMetaData;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
-import static org.apache.parquet.hadoop.ParquetFileWriter.EMAGIC;
+import static org.apache.parquet.hadoop.ParquetFileWriter.EFMAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
@@ -540,29 +540,27 @@ public class ParquetFileReader implements Closeable {
     
     int FOOTER_LENGTH_SIZE = 4;
     if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
-      throw new RuntimeException(filePath + " is not a Parquet file (too small length: " + fileLen + ")");
+      throw new RuntimeException(filePath + " is not a Parquet file (length is too low: " + fileLen + ")");
     }
     
     // Read magic string
     byte[] magic = new byte[MAGIC.length];
     long magicIndex = fileLen - MAGIC.length;
-    
     f.seek(magicIndex);
-    
     f.readFully(magic);
-    boolean encrypted;
+    boolean encryptedFooterMode;
     if (Arrays.equals(MAGIC, magic)) {
-      encrypted = false;
+      encryptedFooterMode = false;
     }
-    else if (Arrays.equals(EMAGIC, magic)) {
-      encrypted = true;
+    else if (Arrays.equals(EFMAGIC, magic)) {
+      encryptedFooterMode = true;
     }
     else {
       throw new RuntimeException(filePath + " is not a Parquet file. Expected magic number at tail, but found " + Arrays.toString(magic));
     }
     
-    
-    if (!encrypted) {
+    // Regular files, or encrypted files with plaintext footer
+    if (!encryptedFooterMode) {
       long footerLengthIndex = magicIndex - FOOTER_LENGTH_SIZE;
       LOG.debug("reading footer index at {}", footerLengthIndex);
 
@@ -574,11 +572,15 @@ public class ParquetFileReader implements Closeable {
         throw new RuntimeException("corrupted file: the footer index is not within the file: " + footerIndex);
       }
       f.seek(footerIndex);
-      return converter.readParquetMetadata(f, options.getMetadataFilter());
+      return converter.readParquetMetadata(f, options.getMetadataFilter(), fileDecryptor, false);
     }
+    // Encrypted files with encrypted footer
     else {
       if (null == fileDecryptor && null != fileDecryptionProperties) {
         fileDecryptor = new InternalFileDecryptor(fileDecryptionProperties);
+      }
+      if (null == fileDecryptor) {
+        throw new RuntimeException("Trying to read file with encrypted footer. No keys available");
       }
       int CRYPTO_MD_LENGTH_SIZE = 4;
       long cryptoMDLengthIndex = magicIndex - CRYPTO_MD_LENGTH_SIZE;
@@ -587,23 +589,15 @@ public class ParquetFileReader implements Closeable {
       int cryptoMDLength = readIntLittleEndian(f);
       long cryptoMDIndex = cryptoMDLengthIndex - cryptoMDLength;
       LOG.debug("read crypto metadata length: {}, crypto metadata index: {}", cryptoMDLength, cryptoMDIndex);
-      if (cryptoMDIndex < EMAGIC.length || cryptoMDIndex >= cryptoMDLengthIndex) {
+      if (cryptoMDIndex < EFMAGIC.length || cryptoMDIndex >= cryptoMDLengthIndex) {
         throw new RuntimeException("corrupted file: the crypto metadata index is not within the file: " + cryptoMDLengthIndex);
       }
       f.seek(cryptoMDIndex);
       FileCryptoMetaData fcmd = readFileCryptoMetaData(f);
-      if (null == fileDecryptor) {
-        // No keys available. Can read only unencrypted footer and columns.
-        if (fcmd.isEncrypted_footer()) {
-          throw new RuntimeException("Trying to read file with encrypted footer. No keys available");
-        }
-      }
-      else {
-        fileDecryptor.setFileCryptoMetaData(fcmd);
-      }
+      fileDecryptor.setFileCryptoMetaData(fcmd.getEncryption_algorithm(), true, fcmd.getFooter_key_metadata());
       long footerIndex = fcmd.getFooter_offset();
       f.seek(footerIndex);
-      return converter.readParquetMetadata(f, options.getMetadataFilter(), fileDecryptor);
+      return converter.readParquetMetadata(f, options.getMetadataFilter(), fileDecryptor, true);
     }
   }
 

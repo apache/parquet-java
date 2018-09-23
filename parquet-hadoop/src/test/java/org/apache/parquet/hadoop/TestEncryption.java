@@ -18,23 +18,12 @@
  */
 package org.apache.parquet.hadoop;
 
-import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
-import static org.apache.parquet.column.Encoding.PLAIN;
-import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
-import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
-import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
 import org.apache.hadoop.conf.Configuration;
@@ -42,8 +31,6 @@ import org.apache.hadoop.fs.Path;
 import org.junit.Rule;
 import org.junit.Test;
 
-import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
@@ -55,10 +42,7 @@ import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
-import org.apache.parquet.hadoop.metadata.BlockMetaData;
-import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.junit.rules.TemporaryFolder;
@@ -75,7 +59,7 @@ public class TestEncryption {
     int numberOfEncryptionModes = 5;
     FileEncryptionProperties[] encryptionPropertiesList = new FileEncryptionProperties[numberOfEncryptionModes];
     FileDecryptionProperties[] decryptionPropertiesList = new FileDecryptionProperties[numberOfEncryptionModes];
-    
+
     // #0 Unencrypted - make sure null encryption properties don't break regular Parquet
     encryptionPropertiesList[0] = null;
     decryptionPropertiesList[0] = null;
@@ -108,7 +92,7 @@ public class TestEncryption {
     columnPropertiesMap.put(columnProperties1.getPath(), columnProperties1);
     byte[] AAD = root.getName().getBytes("UTF-8");
     encryptionProperties = FileEncryptionProperties.builder(footerKey)
-        .withKeyID("fk")
+        .withFooterKeyID("fk")
         .withAAD(AAD)
         .withColumnProperties(columnPropertiesMap, false)
         .build();
@@ -126,7 +110,7 @@ public class TestEncryption {
     // #3 GCM_CTR algorithm, non-uniform encryption, key metadata, key retriever, AAD
     encryptionProperties = FileEncryptionProperties.builder(footerKey)
         .withAlgorithm(ParquetCipher.AES_GCM_CTR_V1)
-        .withKeyID("fk")
+        .withFooterKeyID("fk")
         .withAAD(AAD)
         .withColumnProperties(columnPropertiesMap, false)
         .build();
@@ -155,69 +139,47 @@ public class TestEncryption {
             + "} ");
     GroupWriteSupport.setSchema(schema, conf);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
-    Map<String, Encoding> expected = new HashMap<String, Encoding>();
-    expected.put("10-" + PARQUET_1_0, PLAIN_DICTIONARY);
-    expected.put("1000-" + PARQUET_1_0, PLAIN);
-    expected.put("10-" + PARQUET_2_0, RLE_DICTIONARY);
-    expected.put("1000-" + PARQUET_2_0, DELTA_BYTE_ARRAY);
-    for (int modulo : asList(10, 1000)) {
-      for (WriterVersion version : WriterVersion.values()) {
-        for (int encryptionMode = 0; encryptionMode < numberOfEncryptionModes; encryptionMode++) {
-          Path file = new Path(root, version.name() + "_" + modulo + "_" + encryptionMode);
-          ParquetWriter<Group> writer = new ParquetWriter<Group>(
-              file,
-              new GroupWriteSupport(),
-              UNCOMPRESSED, 1024, 1024, 512, true, false, version, conf, 
-              encryptionPropertiesList[encryptionMode]);
-          for (int i = 0; i < 1000; i++) {
-            writer.write(
-                f.newGroup()
-                .append("binary_field", "test" + (i % modulo))
-                .append("int32_field", 32)
-                .append("int64_field", 64l)
-                .append("boolean_field", true)
-                .append("float_field", 1.0f)
-                .append("double_field", 2.0d)
-                .append("flba_field", "foo")
-                .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
-          }
-          writer.close();
-          
-          FileDecryptionProperties fileDecryptionProperties = decryptionPropertiesList[encryptionMode];
-          ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withDecryption(fileDecryptionProperties).withConf(conf).build();
-          for (int i = 0; i < 1000; i++) {
-            Group group = reader.read();
-            assertEquals("test" + (i % modulo), group.getBinary("binary_field", 0).toStringUsingUTF8());
-            assertEquals(32, group.getInteger("int32_field", 0));
-            assertEquals(64l, group.getLong("int64_field", 0));
-            assertEquals(true, group.getBoolean("boolean_field", 0));
-            assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
-            assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
-            assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
-            assertEquals(Binary.fromConstantByteArray(new byte[12]),
-                group.getInt96("int96_field",0));
-          }
-          reader.close();
-          ParquetMetadata footer = readFooter(conf, file, NO_FILTER, fileDecryptionProperties);
-          for (BlockMetaData blockMetaData : footer.getBlocks()) {
-            for (ColumnChunkMetaData column : blockMetaData.getColumns()) {
-              if (column.getPath().toDotString().equals("binary_field")) {
-                String key = modulo + "-" + version;
-                Encoding expectedEncoding = expected.get(key);
-                assertTrue(
-                    key + ":" + column.getEncodings() + " should contain " + expectedEncoding,
-                    column.getEncodings().contains(expectedEncoding));
-              }
-            }
-          }
-          assertEquals("Object model property should be example",
-              "example", footer.getFileMetaData().getKeyValueMetaData()
-              .get(ParquetWriter.OBJECT_MODEL_NAME_PROP));
-        }
-        enforceEmptyDir(conf, root);
+
+    for (int encryptionMode = 0; encryptionMode < numberOfEncryptionModes; encryptionMode++) {
+      Path file = new Path(root, "m_" + encryptionMode + ".parquet.ecnrypted");
+      ParquetWriter<Group> writer = new ParquetWriter<Group>(
+          file,
+          new GroupWriteSupport(),
+          UNCOMPRESSED, 1024, 1024, 512, true, false, ParquetWriter.DEFAULT_WRITER_VERSION, conf, 
+          encryptionPropertiesList[encryptionMode]);
+      for (int i = 0; i < 1000; i++) {
+        writer.write(
+            f.newGroup()
+            .append("binary_field", "test" + i)
+            .append("int32_field", 32)
+            .append("int64_field", 64l)
+            .append("boolean_field", true)
+            .append("float_field", 1.0f)
+            .append("double_field", 2.0d)
+            .append("flba_field", "foo")
+            .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
       }
+      writer.close();
+
+      FileDecryptionProperties fileDecryptionProperties = decryptionPropertiesList[encryptionMode];
+      ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withDecryption(fileDecryptionProperties).withConf(conf).build();
+      for (int i = 0; i < 1000; i++) {
+        Group group = reader.read();
+        assertEquals("test" + i, group.getBinary("binary_field", 0).toStringUsingUTF8());
+        assertEquals(32, group.getInteger("int32_field", 0));
+        assertEquals(64l, group.getLong("int64_field", 0));
+        assertEquals(true, group.getBoolean("boolean_field", 0));
+        assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
+        assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
+        assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
+        assertEquals(Binary.fromConstantByteArray(new byte[12]),
+            group.getInt96("int96_field",0));
+      }
+      reader.close();
     }
+    enforceEmptyDir(conf, root);
   }
+
 
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
