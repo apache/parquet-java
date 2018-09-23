@@ -119,7 +119,8 @@ public class InternalFileEncryptor {
   }
 
   public FileCryptoMetaData getFileCryptoMetaData(long footerIndex) throws IOException {
-    FileCryptoMetaData fileCryptoMetaData = new FileCryptoMetaData(algorithm, encryptFooter, footerIndex);
+    if (!encryptFooter) throw new IOException("Requesting FileCryptoMetaData in file with unencrypted footer");
+    FileCryptoMetaData fileCryptoMetaData = new FileCryptoMetaData(algorithm, footerIndex);
     if (null != footerKeyMetaDataBytes) fileCryptoMetaData.setFooter_key_metadata(footerKeyMetaDataBytes);
     fileCryptoMetaDataCreated = true;
     return fileCryptoMetaData;
@@ -129,5 +130,15 @@ public class InternalFileEncryptor {
     if (!columnSetup.getColumnEncryptionProperties().isEncrypted()) return false;
     if (!encryptFooter) return true;
     return !columnSetup.getColumnEncryptionProperties().isEncryptedWithFooterKey();
+  }
+
+
+  public boolean isFooterEncrypted() {
+    return encryptFooter;
+  }
+
+
+  public EncryptionAlgorithm getEncryptionAlgorithm() {
+    return algorithm;
   }
 }

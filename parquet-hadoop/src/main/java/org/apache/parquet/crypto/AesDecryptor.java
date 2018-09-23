@@ -63,7 +63,7 @@ class AesDecryptor implements BlockCipher.Decryptor{
       try {
         aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
       } catch (GeneralSecurityException e) {
-        throw new IOException("Failed to create decryptor", e);
+        throw new IOException("Failed to create GCM cipher", e);
       }
     }
     else {
@@ -72,10 +72,9 @@ class AesDecryptor implements BlockCipher.Decryptor{
       try {
         aesCipher = Cipher.getInstance("AES/CTR/NoPadding");
       } catch (GeneralSecurityException e) {
-        throw new IOException("Failed to create decryptor", e);
+        throw new IOException("Failed to create CTR cipher", e);
       }
     }
-    
     if (null != ivPrefix && ivPrefix.length > nonceLength) {
       throw new IllegalArgumentException("IV prefix length (" + ivPrefix.length + 
           ") should be shorter than nonce length (" + nonceLength + ")");

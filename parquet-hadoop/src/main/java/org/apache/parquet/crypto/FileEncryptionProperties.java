@@ -28,8 +28,8 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 public class FileEncryptionProperties {
   
-  static final int MAXIMAL_KEY_METADATA_LENGTH = 256;
-  static final int MAXIMAL_AAD_METADATA_LENGTH = 256;
+  static final int MAXIMAL_KEY_METADATA_LENGTH = 512;
+  static final int MAXIMAL_AAD_METADATA_LENGTH = 512;
   
   private static final ParquetCipher ALGORITHM_DEFAULT = ParquetCipher.AES_GCM_V1;
   private static final boolean ENCRYPT_THE_REST_DEFAULT = true;
@@ -141,7 +141,7 @@ public class FileEncryptionProperties {
     * use either withKeyMetaData or withKeyID, not both
     * @param footerKeyMetaData maximal length is 256 bytes.
     */
-    public Builder withKeyMetaData(byte[] footerKeyMetaData) {
+    public Builder withFooterKeyMetaData(byte[] footerKeyMetaData) {
       if (null == footerKeyMetaData) {
         return this;
       }
@@ -157,12 +157,12 @@ public class FileEncryptionProperties {
      * use either withKeyMetaData or withKeyID, not both
      * @param keyId will be converted to metadata (UTF-8 array).
      */
-    public Builder withKeyID(String keyId) {
+    public Builder withFooterKeyID(String keyId) {
       if (null == keyId) {
         return this;
       }
       byte[] metadata = keyId.getBytes(StandardCharsets.UTF_8);
-      return withKeyMetaData(metadata);
+      return withFooterKeyMetaData(metadata);
     }
     
     /**

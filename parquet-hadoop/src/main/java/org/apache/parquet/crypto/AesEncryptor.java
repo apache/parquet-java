@@ -67,7 +67,7 @@ class AesEncryptor implements BlockCipher.Encryptor{
       try {
         aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
       } catch (GeneralSecurityException e) {
-        throw new IOException("Failed to create encryptor", e);
+        throw new IOException("Failed to create GCM cipher", e);
       }
     }
     else {
@@ -76,7 +76,7 @@ class AesEncryptor implements BlockCipher.Encryptor{
       try {
         aesCipher = Cipher.getInstance("AES/CTR/NoPadding");
       } catch (GeneralSecurityException e) {
-        throw new IOException("Failed to create encryptor", e);
+        throw new IOException("Failed to create CTR cipher", e);
       }
     }
   }
