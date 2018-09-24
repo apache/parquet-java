@@ -51,6 +51,7 @@ import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
@@ -687,7 +688,7 @@ public class ParquetFileWriter {
               if (columnChunkPageReader.isPresent()) {
                 ColumnReader columnReader = columnReadStore.newMemColumnReader(path, columnChunkPageReader.get());
                 for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
-                  consumeTriplet(columnWriter, columnReader);
+                  consumeTriplet(columnWriteStoreV1, columnWriter, columnReader);
                 }
               } else {
                 MessageType inputFileSchema = parquetFileReader.getFileMetaData().getSchema();
@@ -696,6 +697,10 @@ public class ParquetFileWriter {
                 int rep = parquetFileReader.getFileMetaData().getSchema().getMaxRepetitionLevel(parentPath);
                 for (int i = 0; i < parquetFileReader.getBlockMetaData(smallBlock.getBlockIndex()).getRowCount(); i++) {
                   columnWriter.writeNull(rep, def);
+                  if (def == 0) {
+                    // V1 pages also respect record boundaries so we have to mark them
+                    columnWriteStoreV1.endRecord();
+                  }
                 }
               }
             } catch (Exception e) {
@@ -733,7 +738,7 @@ public class ParquetFileWriter {
     return readers;
   }
 
-  private void consumeTriplet(ColumnWriter columnWriter, ColumnReader columnReader) {
+  private void consumeTriplet(ColumnWriteStore columnWriteStore, ColumnWriter columnWriter, ColumnReader columnReader) {
     int definitionLevel = columnReader.getCurrentDefinitionLevel();
     int repetitionLevel = columnReader.getCurrentRepetitionLevel();
     ColumnDescriptor column = columnReader.getDescriptor();
@@ -767,6 +772,10 @@ public class ParquetFileWriter {
       }
     }
     columnReader.consume();
+    if (repetitionLevel == 0) {
+      // V1 pages also respect record boundaries so we have to mark them
+      columnWriteStore.endRecord();
+    }
   }
 
   /**
