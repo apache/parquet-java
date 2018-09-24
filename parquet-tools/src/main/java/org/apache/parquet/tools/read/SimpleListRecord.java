@@ -21,10 +21,15 @@ package org.apache.parquet.tools.read;
 public class SimpleListRecord extends SimpleRecord {
   @Override
   protected Object toJsonObject() {
-    Object[] result = new Object[values.size()];
-    for (int i = 0; i < values.size(); i++) {
-      result[i] = toJsonValue(values.get(i).getValue());
-    }
-    return result;
+     if (values.size() == 1 && values.get(0).getValue() == null) {
+         return null;
+     }
+
+     Object[] result = new Object[values.size()];
+     for (int i = 0; i < values.size(); i++) {
+       result[i] = toJsonValue(values.get(i).getValue());
+     }
+
+     return result;
   }
 }

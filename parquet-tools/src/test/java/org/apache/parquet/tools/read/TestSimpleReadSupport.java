@@ -31,50 +31,163 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.schema.MessageType;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.DirectWriterTest;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.io.api.Binary;
 
-public class TestSimpleReadSupport {
+public class TestSimpleReadSupport extends DirectWriterTest{
+    private final String SCHEMA = "message RepeatedPrimitiveInList {"
+         +   "required group my_list (LIST) {"
+         +     "repeated group list {"
+         +       "optional int32 element;"
+         +     "}"
+         +   "}"
+         +   "required group A {"
+         +     "optional int32 B;"
+         +   "}"
+         +   "optional binary bar (UTF8); "
+         +   "optional binary foo (UTF8); "
+         + "}";
+
+    @Test
+    public void testSimpleRead() throws java.io.IOException {
+        // write a simple parquet file
+        Path path = writeDirect(
+        SCHEMA,
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+                rc.startField("my_list", 0);
+                    rc.startGroup();
+                        rc.startField("list", 0);
+                            rc.startField("element", 0);
+                                rc.addInteger(34);
+                                rc.addInteger(35);
+                            rc.endField("element", 0);
+                        rc.endField("list", 0);
+                    rc.endGroup();
+                rc.endField("my_list", 0);
+
+                rc.startField("A", 1);
+                    rc.startGroup();
+                        rc.startField("B", 0);
+                        rc.addInteger(21);
+                        rc.endField("B", 0);
+                    rc.endGroup();
+                rc.endField("A", 1);
+
+                rc.startField("bar", 2);
+                rc.addBinary(Binary.fromCharSequence("one"));
+                rc.endField("bar", 2);
+
+                rc.startField("foo", 3);
+                rc.addBinary(Binary.fromCharSequence("two"));
+                rc.endField("foo", 3);
+
+            rc.endMessage();
+
+          }
+        });
+
+        ParquetReader reader = ParquetReader.builder(new SimpleReadSupport(false), path).build();
+        SimpleRecord r = (SimpleRecord) reader.read();
+
+        // test the regular output
+        StringWriter sw = new StringWriter();
+        PrintWriter printer = new PrintWriter(sw);
+        r.prettyPrint(printer,0);
+        String output = sw.toString();
+
+        Assert.assertTrue(output.contains(".B = 21"));
+        Assert.assertTrue(output.contains("..element = 34"));
+        Assert.assertTrue(output.contains("..element = 35"));
+        Assert.assertTrue(output.contains("bar = one"));
+        Assert.assertTrue(output.contains("foo = two"));
+
+        // test the json output
+        sw = new StringWriter();
+        printer = new PrintWriter(sw);
+        r.prettyPrintJson(printer);
+        String jsonOutput = sw.toString();
+        System.out.println(jsonOutput);
+
+        Assert.assertTrue(jsonOutput.contains("B\":21"));
+        Assert.assertTrue(jsonOutput.contains("element\":34"));
+        Assert.assertTrue(jsonOutput.contains("element\":35"));
+        Assert.assertTrue(jsonOutput.contains("bar\":\"one"));
+        Assert.assertTrue(jsonOutput.contains("foo\":\"two"));
+    }
+
     @Test
     public void testNullValues() throws java.io.IOException {
-        Path path = new Path("target/tests/TestSimpleRecordConverter/");
-        Configuration conf = new Configuration();
-        try {
-            // write a simple parquet file
-            MessageType schema = parseMessageType(
-            "message test { "
-            + "optional fixed_len_byte_array(3) bar; "
-            + "optional fixed_len_byte_array(3) foo; "
-            + "} ");
-            GroupWriteSupport.setSchema(schema, conf);
-            SimpleGroupFactory f = new SimpleGroupFactory(schema);
+        // write a simple parquet file
+        Path path = writeDirect(
+        SCHEMA,
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+            rc.endMessage();
+          }
+        });
 
-            ParquetWriter<Group> writer = new ParquetWriter<Group>(path, conf, new GroupWriteSupport());
+        ParquetReader reader = ParquetReader.builder(new SimpleReadSupport(true), path).build();
+        SimpleRecord r = (SimpleRecord) reader.read();
 
-            writer.write(f.newGroup().append("bar", "bak"));
-            writer.close();
+        // test the regular output
+        StringWriter sw = new StringWriter();
+        PrintWriter printer = new PrintWriter(sw);
+        r.prettyPrint(printer,0);
 
-            ParquetReader reader = ParquetReader.builder(new SimpleReadSupport(true), path).build();
-            SimpleRecord r = (SimpleRecord) reader.read();
+        Assert.assertTrue(sw.toString().contains("foo = <null>"));
+        Assert.assertTrue(sw.toString().contains("B = <null>"));
+        Assert.assertTrue(sw.toString().contains("list = <null>"));
 
-            // test the regular output
-            StringWriter sw = new StringWriter();
-            PrintWriter printer = new PrintWriter(sw);
-            r.prettyPrint(printer, 0);
-            Assert.assertTrue(sw.toString().contains("foo = <null>"));
+        // test the json output
+        sw = new StringWriter();
+        printer = new PrintWriter(sw);
+        r.prettyPrintJson(printer);
+        Assert.assertTrue(sw.toString().contains("foo\":null"));
+        Assert.assertTrue(sw.toString().contains("B\":null"));
+        Assert.assertTrue(sw.toString().contains("list\":null"));
+    }
 
-            // test the json output
-            sw = new StringWriter();
-            printer = new PrintWriter(sw);
-            r.prettyPrintJson(printer);
-            Assert.assertTrue(sw.toString().contains("foo\":null"));
-        } finally {
-            path.getFileSystem(conf).delete(path, false);
-        }
+    @Test
+    public void testNoNullValues() throws java.io.IOException {
+        // write a simple parquet file
+        Path path = writeDirect(
+        SCHEMA,
+        new DirectWriter() {
+          @Override
+          public void write(RecordConsumer rc) {
+            rc.startMessage();
+            rc.endMessage();
+          }
+        });
 
+        ParquetReader reader = ParquetReader.builder(new SimpleReadSupport(false), path).build();
+        SimpleRecord r = (SimpleRecord) reader.read();
+
+        StringWriter sw = new StringWriter();
+        PrintWriter printer = new PrintWriter(sw);
+        r.prettyPrint(printer,0);
+
+        Assert.assertTrue(!sw.toString().contains("foo = <null>"));
+        Assert.assertTrue(!sw.toString().contains("B = <null>"));
+        Assert.assertTrue(!sw.toString().contains("list = <null>"));
+
+        // test the json output
+        sw = new StringWriter();
+        printer = new PrintWriter(sw);
+        r.prettyPrintJson(printer);
+        Assert.assertTrue(!sw.toString().contains("foo\":null"));
+        Assert.assertTrue(!sw.toString().contains("B\":null"));
+        Assert.assertTrue(!sw.toString().contains("list\":null"));
     }
 }

@@ -29,6 +29,10 @@ public class SimpleRecordMaterializer extends RecordMaterializer<SimpleRecord> {
     this.root = new SimpleRecordConverter(schema);
   }
 
+  public SimpleRecordMaterializer(MessageType schema, boolean showEmptyFields) {
+    this.root = new SimpleRecordConverter(schema, showEmptyFields);
+  }
+
   @Override
   public SimpleRecord getCurrentRecord() {
     return root.getCurrentRecord();

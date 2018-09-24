@@ -124,7 +124,7 @@ public class SimpleRecord {
 
   protected static Object toJsonValue(Object val) {
     if (val == null) {
-        return NullNode.instance;
+        return null;
     } else if (SimpleRecord.class.isAssignableFrom(val.getClass())) {
       return ((SimpleRecord) val).toJsonObject();
     } else if (byte[].class == val.getClass()) {

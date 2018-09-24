@@ -22,9 +22,10 @@ import org.apache.parquet.schema.GroupType;
 
 public class SimpleMapRecordConverter extends SimpleRecordConverter {
 
-  public SimpleMapRecordConverter(GroupType schema, String name, SimpleRecordConverter parent) {
-    super(schema, name, parent);
+  public SimpleMapRecordConverter(GroupType schema, String name, SimpleRecordConverter parent, boolean showEmptyFields) {
+    super(schema, name, parent, showEmptyFields);
   }
+
 
   @Override
   public void start() {

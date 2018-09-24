@@ -28,22 +28,19 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
 public class SimpleReadSupport extends ReadSupport<SimpleRecord> {
-  private final boolean showEmpty;
+  private final boolean showEmptyFields;
 
   public SimpleReadSupport() {
-      this.showEmpty = false;
+      this.showEmptyFields = false;
   }
 
-  public SimpleReadSupport(boolean showEmpty) {
-      this.showEmpty = showEmpty;
+  public SimpleReadSupport(boolean showEmptyFields) {
+      this.showEmptyFields = showEmptyFields;
   }
 
   @Override
   public RecordMaterializer<SimpleRecord> prepareForRead(Configuration conf, Map<String,String> metaData, MessageType schema, ReadContext context) {
-    if(showEmpty) {
-        return new FullSimpleRecordMaterializer(schema);
-    }
-    return new SimpleRecordMaterializer(schema);
+    return new SimpleRecordMaterializer(schema, showEmptyFields);
   }
 
   @Override
