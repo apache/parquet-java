@@ -115,7 +115,6 @@ public class TestSimpleReadSupport extends DirectWriterTest{
         printer = new PrintWriter(sw);
         r.prettyPrintJson(printer);
         String jsonOutput = sw.toString();
-        System.out.println(jsonOutput);
 
         Assert.assertTrue(jsonOutput.contains("B\":21"));
         Assert.assertTrue(jsonOutput.contains("element\":34"));
