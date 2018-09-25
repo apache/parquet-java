@@ -84,18 +84,19 @@ public class RandomValues {
 
   static abstract class RandomBinaryBase<T extends Comparable<T>> extends RandomValueGenerator<T> {
     protected final int bufferLength;
+    protected final byte[] buffer;
 
     public RandomBinaryBase(long seed, int bufferLength) {
       super(seed);
 
       this.bufferLength = bufferLength;
+      this.buffer = new byte[bufferLength];
     }
 
     public abstract Binary nextBinaryValue();
 
     public Binary asReusedBinary(byte[] data) {
       int length = Math.min(data.length, bufferLength);
-      byte[] buffer = new byte[length];
       System.arraycopy(data, 0, buffer, 0, length);
       return Binary.fromReusedByteArray(data, 0, length);
     }
@@ -286,8 +287,7 @@ public class RandomValues {
     @Override
     public Binary nextValue() {
       // use a random length, but ensure it is at least a few bytes
-      int length = 5 + randomPositiveInt(bufferLength - 5);
-      byte[] buffer = new byte[length];
+      int length = 5 + randomPositiveInt(buffer.length - 5);
       for (int index = 0; index < length; index++) {
         buffer[index] = (byte) randomInt();
       }
@@ -308,7 +308,6 @@ public class RandomValues {
 
     @Override
     public Binary nextValue() {
-      byte[] buffer = new byte[bufferLength];
       for (int index = 0; index < buffer.length; index++) {
         buffer[index] = (byte) randomInt();
       }
