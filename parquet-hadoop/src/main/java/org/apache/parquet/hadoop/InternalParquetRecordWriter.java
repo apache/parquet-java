@@ -43,14 +43,11 @@ import org.slf4j.LoggerFactory;
 class InternalParquetRecordWriter<T> {
   private static final Logger LOG = LoggerFactory.getLogger(InternalParquetRecordWriter.class);
 
-  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
-  private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
-
   private final ParquetFileWriter parquetFileWriter;
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
-  private final long rowGroupSize;
+  private final boolean estimateSizeCheckRows;
   private long rowGroupSizeThreshold;
   private long nextRowGroupSize;
   private final BytesCompressor compressor;
@@ -60,12 +57,14 @@ class InternalParquetRecordWriter<T> {
   private boolean closed;
 
   private long recordCount = 0;
-  private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
+  private long recordCountForNextMemCheck;
   private long lastRowGroupEndPos = 0;
 
   private ColumnWriteStore columnStore;
   private ColumnChunkPageWriteStore pageStore;
   private RecordConsumer recordConsumer;
+  private int sizeCheckMinRows;
+  private int sizeCheckMaxRows;
 
   /**
    * @param parquetFileWriter the file to write to
@@ -88,12 +87,14 @@ class InternalParquetRecordWriter<T> {
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
     this.extraMetaData = extraMetaData;
-    this.rowGroupSize = rowGroupSize;
     this.rowGroupSizeThreshold = rowGroupSize;
     this.nextRowGroupSize = rowGroupSizeThreshold;
     this.compressor = compressor;
     this.validating = validating;
     this.props = props;
+    this.sizeCheckMinRows = props.getMinRowCountForRowGroupSizeCheck();
+    this.sizeCheckMaxRows = props.getMaxRowCountForRowGroupSizeCheck();
+    this.estimateSizeCheckRows = props.estimateNextRowGroupSizeCheck();
     initStore();
   }
 
@@ -147,13 +148,22 @@ class InternalParquetRecordWriter<T> {
         LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
         flushRowGroupToStore();
         initStore();
-        recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
+        if (estimateSizeCheckRows) {
+          recordCountForNextMemCheck = min(max(sizeCheckMinRows, recordCount / 2), sizeCheckMaxRows);
+        } else {
+          recordCountForNextMemCheck = sizeCheckMinRows;
+        }
         this.lastRowGroupEndPos = parquetFileWriter.getPos();
       } else {
-        recordCountForNextMemCheck = min(
-            max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(nextRowGroupSize / ((float)recordSize))) / 2), // will check halfway
-            recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK // will not look more than max records ahead
-            );
+        if (estimateSizeCheckRows) {
+          recordCountForNextMemCheck = min(
+            max(sizeCheckMinRows, (recordCount + (long) (nextRowGroupSize / ((float) recordSize))) / 2),
+            // will check halfway
+            recordCount + sizeCheckMaxRows // will not look more than max records ahead
+          );
+        } else {
+          recordCountForNextMemCheck += sizeCheckMinRows;
+        }
         LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
       }
     }

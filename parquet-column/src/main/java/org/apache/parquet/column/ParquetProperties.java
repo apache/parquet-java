@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -45,8 +45,11 @@ public class ParquetProperties {
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
-  public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
-  public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
+  public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_ROW_GROUP_SIZE_CHECK = true;
+  public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_PAGE_SIZE_CHECK = 100;
+  public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_PAGE_SIZE_CHECK = 10000;
+  public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_ROW_GROUP_SIZE_CHECK = 100;
+  public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_ROW_GROUP_SIZE_CHECK = 10000;
 
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
@@ -80,12 +83,15 @@ public class ParquetProperties {
   private final boolean enableDictionary;
   private final int minRowCountForPageSizeCheck;
   private final int maxRowCountForPageSizeCheck;
-  private final boolean estimateNextSizeCheck;
+  private final int minRowCountForRowGroupSizeCheck;
+  private final int maxRowCountForRowGroupSizeCheck;
+  private final boolean estimateNextPageSizeCheck;
+  private final boolean estimateNextRowGroupSizeCheck;
   private final ByteBufferAllocator allocator;
   private final ValuesWriterFactory valuesWriterFactory;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
-                            int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
+                            int maxRowCountForPageSizeCheck, int minRowCountForRowGroupSizeCheck, int maxRowCountForRowGroupSizeCheck, boolean estimateNextPageSizeCheck, boolean estimateNextRowGroupSizeCheck, ByteBufferAllocator allocator,
                             ValuesWriterFactory writerFactory) {
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
@@ -95,7 +101,10 @@ public class ParquetProperties {
     this.enableDictionary = enableDict;
     this.minRowCountForPageSizeCheck = minRowCountForPageSizeCheck;
     this.maxRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
-    this.estimateNextSizeCheck = estimateNextSizeCheck;
+    this.minRowCountForRowGroupSizeCheck = minRowCountForRowGroupSizeCheck;
+    this.maxRowCountForRowGroupSizeCheck = maxRowCountForRowGroupSizeCheck;
+    this.estimateNextPageSizeCheck = estimateNextPageSizeCheck;
+    this.estimateNextRowGroupSizeCheck = estimateNextRowGroupSizeCheck;
     this.allocator = allocator;
 
     this.valuesWriterFactory = writerFactory;
@@ -179,12 +188,24 @@ public class ParquetProperties {
     return maxRowCountForPageSizeCheck;
   }
 
+  public int getMinRowCountForRowGroupSizeCheck() {
+    return minRowCountForRowGroupSizeCheck;
+  }
+
+  public int getMaxRowCountForRowGroupSizeCheck() {
+    return maxRowCountForRowGroupSizeCheck;
+  }
+
   public ValuesWriterFactory getValuesWriterFactory() {
     return valuesWriterFactory;
   }
 
-  public boolean estimateNextSizeCheck() {
-    return estimateNextSizeCheck;
+  public boolean estimateNextPageSizeCheck() {
+    return estimateNextPageSizeCheck;
+  }
+
+  public boolean estimateNextRowGroupSizeCheck() {
+    return estimateNextRowGroupSizeCheck;
   }
 
   public static Builder builder() {
@@ -200,9 +221,12 @@ public class ParquetProperties {
     private int dictPageSize = DEFAULT_DICTIONARY_PAGE_SIZE;
     private boolean enableDict = DEFAULT_IS_DICTIONARY_ENABLED;
     private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
-    private int minRowCountForPageSizeCheck = DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK;
-    private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
-    private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
+    private int minRowCountForPageSizeCheck = DEFAULT_MINIMUM_RECORD_COUNT_FOR_PAGE_SIZE_CHECK;
+    private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_PAGE_SIZE_CHECK;
+    private boolean estimateNextPageSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
+    private int minRowCountForRowGroupSizeCheck = DEFAULT_MINIMUM_RECORD_COUNT_FOR_ROW_GROUP_SIZE_CHECK;
+    private int maxRowCountForRowGroupSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_ROW_GROUP_SIZE_CHECK;
+    private boolean estimateNextRowGroupSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_ROW_GROUP_SIZE_CHECK;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
 
@@ -215,7 +239,10 @@ public class ParquetProperties {
       this.writerVersion = toCopy.writerVersion;
       this.minRowCountForPageSizeCheck = toCopy.minRowCountForPageSizeCheck;
       this.maxRowCountForPageSizeCheck = toCopy.maxRowCountForPageSizeCheck;
-      this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
+      this.estimateNextPageSizeCheck = toCopy.estimateNextPageSizeCheck;
+      this.minRowCountForRowGroupSizeCheck = toCopy.minRowCountForRowGroupSizeCheck;
+      this.maxRowCountForRowGroupSizeCheck = toCopy.maxRowCountForRowGroupSizeCheck;
+      this.estimateNextRowGroupSizeCheck = toCopy.estimateNextRowGroupSizeCheck;
       this.allocator = toCopy.allocator;
     }
 
@@ -281,9 +308,28 @@ public class ParquetProperties {
       return this;
     }
 
+    public Builder withMinRowCountForRowGroupSizeCheck(int min) {
+      Preconditions.checkArgument(min > 0,
+          "Invalid row count for block size check (negative): %s", min);
+      this.minRowCountForRowGroupSizeCheck = min;
+      return this;
+    }
+
+    public Builder withMaxRowCountForRowGroupSizeCheck(int max) {
+      Preconditions.checkArgument(max > 0,
+          "Invalid row count for block size check (negative): %s", max);
+      this.maxRowCountForRowGroupSizeCheck = max;
+      return this;
+    }
+
     // Do not attempt to predict next size check.  Prevents issues with rows that vary significantly in size.
     public Builder estimateRowCountForPageSizeCheck(boolean estimateNextSizeCheck) {
-      this.estimateNextSizeCheck = estimateNextSizeCheck;
+      this.estimateNextPageSizeCheck = estimateNextSizeCheck;
+      return this;
+    }
+
+    public Builder estimateRowCountForRowGroupSizeCheck(boolean estimateRowGroupSizeCheck) {
+      this.estimateNextRowGroupSizeCheck = estimateRowGroupSizeCheck;
       return this;
     }
 
@@ -303,7 +349,9 @@ public class ParquetProperties {
       ParquetProperties properties =
         new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, valuesWriterFactory);
+            minRowCountForRowGroupSizeCheck, maxRowCountForRowGroupSizeCheck,
+          estimateNextPageSizeCheck, estimateNextRowGroupSizeCheck,
+          allocator, valuesWriterFactory);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently
       // creation of ValuesWriters is invoked from within ParquetProperties. In the future
       // we'd like to decouple that and won't need to pass an object to properties and then pass the
