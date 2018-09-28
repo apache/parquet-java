@@ -541,7 +541,7 @@ public abstract class LogicalTypeAnnotation {
         case MICROS:
           return OriginalType.TIME_MICROS;
         default:
-          throw new RuntimeException("Unknown original type for " + unit);
+          return null;
       }
     }
 
@@ -611,7 +611,7 @@ public abstract class LogicalTypeAnnotation {
         case MICROS:
           return OriginalType.TIMESTAMP_MICROS;
         default:
-          throw new RuntimeException("Unknown original type for " + unit);
+          return null;
       }
     }
 
@@ -700,7 +700,7 @@ public abstract class LogicalTypeAnnotation {
         case 64:
           return isSigned ? OriginalType.INT_64 : OriginalType.UINT_64;
         default:
-          throw new RuntimeException("Unknown original type " + toOriginalType());
+          return null;
       }
     }
 
