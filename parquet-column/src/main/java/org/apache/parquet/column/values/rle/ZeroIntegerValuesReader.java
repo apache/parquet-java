@@ -35,6 +35,7 @@ public class ZeroIntegerValuesReader extends ValuesReader {
 
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
+    updateNextOffset(0);
   }
 
   @Override

@@ -169,6 +169,14 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
     for (long i : data) {
       assertEquals(i, reader.readLong());
     }
+
+    // Testing the deprecated behavior of using byte arrays directly
+    reader = new DeltaBinaryPackingValuesReader();
+    reader.initFromPage(100, pageContent, contentOffsetInPage);
+    assertEquals(valueContent.length + contentOffsetInPage, reader.getNextOffset());
+    for (long i : data) {
+      assertEquals(i, reader.readLong());
+    }
   }
 
   @Test

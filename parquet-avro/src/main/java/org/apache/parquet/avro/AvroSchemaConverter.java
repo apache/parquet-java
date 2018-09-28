@@ -24,10 +24,9 @@ import org.apache.avro.Schema;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.schema.ConversionPatterns;
-import org.apache.parquet.schema.DecimalMetadata;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
@@ -36,11 +35,21 @@ import org.apache.parquet.schema.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
 import static org.apache.avro.JsonProperties.NULL_VALUE;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT;
-import static org.apache.parquet.schema.OriginalType.*;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
@@ -147,11 +156,11 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.BYTES)) {
       builder = Types.primitive(BINARY, repetition);
     } else if (type.equals(Schema.Type.STRING)) {
-      builder = Types.primitive(BINARY, repetition).as(UTF8);
+      builder = Types.primitive(BINARY, repetition).as(stringType());
     } else if (type.equals(Schema.Type.RECORD)) {
       return new GroupType(repetition, fieldName, convertFields(schema.getFields()));
     } else if (type.equals(Schema.Type.ENUM)) {
-      builder = Types.primitive(BINARY, repetition).as(ENUM);
+      builder = Types.primitive(BINARY, repetition).as(enumType());
     } else if (type.equals(Schema.Type.ARRAY)) {
       if (writeOldListStructure) {
         return ConversionPatterns.listType(repetition, fieldName,
@@ -178,12 +187,10 @@ public class AvroSchemaConverter {
     LogicalType logicalType = schema.getLogicalType();
     if (logicalType != null) {
       if (logicalType instanceof LogicalTypes.Decimal) {
-        builder = builder.as(DECIMAL)
-            .precision(((LogicalTypes.Decimal) logicalType).getPrecision())
-            .scale(((LogicalTypes.Decimal) logicalType).getScale());
-
+        LogicalTypes.Decimal decimal = (LogicalTypes.Decimal) logicalType;
+        builder = builder.as(decimalType(decimal.getScale(), decimal.getPrecision()));
       } else {
-        OriginalType annotation = convertLogicalType(logicalType);
+        LogicalTypeAnnotation annotation = convertLogicalType(logicalType);
         if (annotation != null) {
           builder.as(annotation);
         }
@@ -195,8 +202,11 @@ public class AvroSchemaConverter {
 
   private Type convertUnion(String fieldName, Schema schema, Type.Repetition repetition) {
     List<Schema> nonNullSchemas = new ArrayList<Schema>(schema.getTypes().size());
+    // Found any schemas in the union? Required for the edge case, where the union contains only a single type.
+    boolean foundNullSchema = false;
     for (Schema childSchema : schema.getTypes()) {
       if (childSchema.getType().equals(Schema.Type.NULL)) {
+        foundNullSchema = true;
         if (Type.Repetition.REQUIRED == repetition) {
           repetition = Type.Repetition.OPTIONAL;
         }
@@ -211,16 +221,21 @@ public class AvroSchemaConverter {
         throw new UnsupportedOperationException("Cannot convert Avro union of only nulls");
 
       case 1:
-        return convertField(fieldName, nonNullSchemas.get(0), repetition);
+        return foundNullSchema ? convertField(fieldName, nonNullSchemas.get(0), repetition) :
+          convertUnionToGroupType(fieldName, repetition, nonNullSchemas);
 
       default: // complex union type
-        List<Type> unionTypes = new ArrayList<Type>(nonNullSchemas.size());
-        int index = 0;
-        for (Schema childSchema : nonNullSchemas) {
-          unionTypes.add( convertField("member" + index++, childSchema, Type.Repetition.OPTIONAL));
-        }
-        return new GroupType(repetition, fieldName, unionTypes);
+        return convertUnionToGroupType(fieldName, repetition, nonNullSchemas);
     }
+  }
+
+  private Type convertUnionToGroupType(String fieldName, Type.Repetition repetition, List<Schema> nonNullSchemas) {
+    List<Type> unionTypes = new ArrayList<Type>(nonNullSchemas.size());
+    int index = 0;
+    for (Schema childSchema : nonNullSchemas) {
+      unionTypes.add( convertField("member" + index++, childSchema, Type.Repetition.OPTIONAL));
+    }
+    return new GroupType(repetition, fieldName, unionTypes);
   }
 
   private Type convertField(Schema.Field field) {
@@ -259,7 +274,7 @@ public class AvroSchemaConverter {
       final PrimitiveType asPrimitive = parquetType.asPrimitiveType();
       final PrimitiveTypeName parquetPrimitiveTypeName =
           asPrimitive.getPrimitiveTypeName();
-      final OriginalType annotation = parquetType.getOriginalType();
+      final LogicalTypeAnnotation annotation = parquetType.getLogicalTypeAnnotation();
       Schema schema = parquetPrimitiveTypeName.convert(
           new PrimitiveType.PrimitiveTypeNameConverter<Schema, RuntimeException>() {
             @Override
@@ -293,7 +308,8 @@ public class AvroSchemaConverter {
             }
             @Override
             public Schema convertBINARY(PrimitiveTypeName primitiveTypeName) {
-              if (annotation == OriginalType.UTF8 || annotation == OriginalType.ENUM) {
+              if (annotation instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation ||
+                annotation instanceof  LogicalTypeAnnotation.EnumLogicalTypeAnnotation) {
                 return Schema.create(Schema.Type.STRING);
               } else {
                 return Schema.create(Schema.Type.BYTES);
@@ -301,9 +317,8 @@ public class AvroSchemaConverter {
             }
           });
 
-      LogicalType logicalType = convertOriginalType(
-          annotation, asPrimitive.getDecimalMetadata());
-      if (logicalType != null && (annotation != DECIMAL ||
+      LogicalType logicalType = convertLogicalType(annotation);
+      if (logicalType != null && (!(annotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) ||
           parquetPrimitiveTypeName == BINARY ||
           parquetPrimitiveTypeName == FIXED_LEN_BYTE_ARRAY)) {
         schema = logicalType.addToSchema(schema);
@@ -313,10 +328,11 @@ public class AvroSchemaConverter {
 
     } else {
       GroupType parquetGroupType = parquetType.asGroupType();
-      OriginalType originalType = parquetGroupType.getOriginalType();
-      if (originalType != null) {
-        switch(originalType) {
-          case LIST:
+      LogicalTypeAnnotation logicalTypeAnnotation = parquetGroupType.getLogicalTypeAnnotation();
+      if (logicalTypeAnnotation != null) {
+        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Schema>() {
+          @Override
+          public Optional<Schema> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
             if (parquetGroupType.getFieldCount()!= 1) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
@@ -326,17 +342,29 @@ public class AvroSchemaConverter {
             }
             if (isElementType(repeatedType, parquetGroupType.getName())) {
               // repeated element types are always required
-              return Schema.createArray(convertField(repeatedType));
+              return of(Schema.createArray(convertField(repeatedType)));
             } else {
               Type elementType = repeatedType.asGroupType().getType(0);
               if (elementType.isRepetition(Type.Repetition.OPTIONAL)) {
-                return Schema.createArray(optional(convertField(elementType)));
+                return of(Schema.createArray(optional(convertField(elementType))));
               } else {
-                return Schema.createArray(convertField(elementType));
+                return of(Schema.createArray(convertField(elementType)));
               }
             }
-          case MAP_KEY_VALUE: // for backward-compatibility
-          case MAP:
+          }
+
+          @Override
+          // for backward-compatibility
+          public Optional<Schema> visit(LogicalTypeAnnotation.MapKeyValueTypeAnnotation mapKeyValueLogicalType) {
+            return visitMapOrMapKeyValue();
+          }
+
+          @Override
+          public Optional<Schema> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
+            return visitMapOrMapKeyValue();
+          }
+
+          private Optional<Schema> visitMapOrMapKeyValue() {
             if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
               throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
             }
@@ -348,24 +376,23 @@ public class AvroSchemaConverter {
             Type keyType = mapKeyValType.getType(0);
             if (!keyType.isPrimitive() ||
                 !keyType.asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveTypeName.BINARY) ||
-                !keyType.getOriginalType().equals(OriginalType.UTF8)) {
+                !keyType.getLogicalTypeAnnotation().equals(stringType())) {
               throw new IllegalArgumentException("Map key type must be binary (UTF8): "
                   + keyType);
             }
             Type valueType = mapKeyValType.getType(1);
             if (valueType.isRepetition(Type.Repetition.OPTIONAL)) {
-              return Schema.createMap(optional(convertField(valueType)));
+              return of(Schema.createMap(optional(convertField(valueType))));
             } else {
-              return Schema.createMap(convertField(valueType));
+              return of(Schema.createMap(convertField(valueType)));
             }
-          case ENUM:
-            return Schema.create(Schema.Type.STRING);
-          case UTF8:
-          default:
-            throw new UnsupportedOperationException("Cannot convert Parquet type " +
-                parquetType);
+          }
 
-        }
+          @Override
+          public Optional<Schema> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
+            return of(Schema.create(Schema.Type.STRING));
+          }
+        }).orElseThrow(() -> new UnsupportedOperationException("Cannot convert Parquet type " + parquetType));
       } else {
         // if no original type then it's a record
         return convertFields(parquetGroupType.getName(), parquetGroupType.getFields());
@@ -373,44 +400,65 @@ public class AvroSchemaConverter {
     }
   }
 
-  private OriginalType convertLogicalType(LogicalType logicalType) {
+  private LogicalTypeAnnotation convertLogicalType(LogicalType logicalType) {
     if (logicalType == null) {
       return null;
     } else if (logicalType instanceof LogicalTypes.Decimal) {
-      return OriginalType.DECIMAL;
+      LogicalTypes.Decimal decimal = (LogicalTypes.Decimal) logicalType;
+      return decimalType(decimal.getScale(), decimal.getPrecision());
     } else if (logicalType instanceof LogicalTypes.Date) {
-      return OriginalType.DATE;
+      return dateType();
     } else if (logicalType instanceof LogicalTypes.TimeMillis) {
-      return OriginalType.TIME_MILLIS;
+      return timeType(true, MILLIS);
     } else if (logicalType instanceof LogicalTypes.TimeMicros) {
-      return OriginalType.TIME_MICROS;
+      return timeType(true, MICROS);
     } else if (logicalType instanceof LogicalTypes.TimestampMillis) {
-      return OriginalType.TIMESTAMP_MILLIS;
+      return timestampType(true, MILLIS);
     } else if (logicalType instanceof LogicalTypes.TimestampMicros) {
-      return OriginalType.TIMESTAMP_MICROS;
+      return timestampType(true, MICROS);
     }
     return null;
   }
 
-  private LogicalType convertOriginalType(OriginalType annotation, DecimalMetadata meta) {
+  private LogicalType convertLogicalType(LogicalTypeAnnotation annotation) {
     if (annotation == null) {
       return null;
     }
-    switch (annotation) {
-      case DECIMAL:
-        return LogicalTypes.decimal(meta.getPrecision(), meta.getScale());
-      case DATE:
-        return LogicalTypes.date();
-      case TIME_MILLIS:
-        return LogicalTypes.timeMillis();
-      case TIME_MICROS:
-        return LogicalTypes.timeMicros();
-      case TIMESTAMP_MILLIS:
-        return LogicalTypes.timestampMillis();
-      case TIMESTAMP_MICROS:
-        return LogicalTypes.timestampMicros();
-    }
-    return null;
+    return annotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<LogicalType>() {
+      @Override
+      public Optional<LogicalType> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+        return of(LogicalTypes.decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
+      }
+
+      @Override
+      public Optional<LogicalType> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
+        return of(LogicalTypes.date());
+      }
+
+      @Override
+      public Optional<LogicalType> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+        LogicalTypeAnnotation.TimeUnit unit = timeLogicalType.getUnit();
+        switch (unit) {
+          case MILLIS:
+            return of(LogicalTypes.timeMillis());
+          case MICROS:
+            return of(LogicalTypes.timeMicros());
+        }
+        return empty();
+      }
+
+      @Override
+      public Optional<LogicalType> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+        LogicalTypeAnnotation.TimeUnit unit = timestampLogicalType.getUnit();
+        switch (unit) {
+          case MILLIS:
+            return of(LogicalTypes.timestampMillis());
+          case MICROS:
+            return of(LogicalTypes.timestampMicros());
+        }
+        return empty();
+      }
+    }).orElse(null);
   }
 
   /**

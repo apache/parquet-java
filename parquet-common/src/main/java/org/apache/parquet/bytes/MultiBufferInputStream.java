@@ -64,7 +64,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
-  public long skip(long n) throws IOException {
+  public long skip(long n) {
     if (n <= 0) {
       return 0;
     }

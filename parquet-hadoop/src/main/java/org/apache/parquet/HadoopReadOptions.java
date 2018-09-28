@@ -82,8 +82,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
     public Builder(Configuration conf) {
       this.conf = conf;
       useSignedStringMinMax(conf.getBoolean("parquet.strings.signed-min-max.enabled", false));
-      useDictionaryFilter(conf.getBoolean(STATS_FILTERING_ENABLED, true));
-      useStatsFilter(conf.getBoolean(DICTIONARY_FILTERING_ENABLED, true));
+      useDictionaryFilter(conf.getBoolean(DICTIONARY_FILTERING_ENABLED, true));
+      useStatsFilter(conf.getBoolean(STATS_FILTERING_ENABLED, true));
       useRecordFilter(conf.getBoolean(RECORD_FILTERING_ENABLED, true));
       useColumnIndexFilter(conf.getBoolean(COLUMN_INDEX_FILTERING_ENABLED, true));
       withCodecFactory(HadoopCodecs.newFactory(conf, 0));

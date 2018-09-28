@@ -38,8 +38,8 @@
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
-      <artifactId>parquet-format</artifactId>
-      <version>${parquet.format.version}</version>
+      <artifactId>parquet-format-structures</artifactId>
+      <version>${project.version}</version>
     </dependency>
 
     <dependency>

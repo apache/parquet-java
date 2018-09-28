@@ -64,4 +64,10 @@ public class BooleanPlainValuesReader extends ValuesReader {
     LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
     this.in.initFromPage(valueCount, stream);
   }
+
+  @Deprecated
+  @Override
+  public int getNextOffset() {
+    return in.getNextOffset();
+  }
 }

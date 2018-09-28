@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import org.apache.parquet.io.api.Binary;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 
@@ -27,8 +28,9 @@ import java.util.Comparator;
  * {@link Comparator} implementation that also supports the comparison of the related primitive type to avoid the
  * performance penalty of boxing/unboxing. The {@code compare} methods for the not supported primitive types throw
  * {@link UnsupportedOperationException}.
+ * {@link Serializable} implementation that may be a UserDefinedPredicate defined this Comparator is their member variable.
  */
-public abstract class PrimitiveComparator<T> implements Comparator<T> {
+public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializable {
 
   public int compare(boolean b1, boolean b2) {
     throw new UnsupportedOperationException(
@@ -236,8 +238,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
       int p1 = b1.position();
       int p2 = b2.position();
 
-      boolean isNegative1 = l1 > 0 ? b1.get(p1) < 0 : false;
-      boolean isNegative2 = l2 > 0 ? b2.get(p2) < 0 : false;
+      boolean isNegative1 = l1 > 0 && b1.get(p1) < 0;
+      boolean isNegative2 = l2 > 0 && b2.get(p2) < 0;
       if (isNegative1 != isNegative2) {
         return isNegative1 ? -1 : 1;
       }
@@ -257,7 +259,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T> {
 
       // The beginning of the longer buffer equals to the padding or the lengths are equal
       if (result == 0) {
-        result = compare(l1, b1, p1, b2, p2);
+        result = compare(Math.min(l1, l2), b1, p1, b2, p2);
       }
       return result;
     }

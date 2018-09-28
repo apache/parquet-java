@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,6 +26,9 @@ import org.junit.Test;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.OriginalType.*;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static org.apache.parquet.schema.Type.Repetition.*;
@@ -1394,6 +1397,73 @@ public class TestTypeBuilders {
             .columnOrder(ColumnOrder.typeDefined()).named("interval_unsupported");
       }
     });
+  }
+
+  @Test
+  public void testDecimalLogicalType() {
+    PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "aDecimal",
+      LogicalTypeAnnotation.decimalType(3, 4));
+    PrimitiveType actual = Types.required(BINARY)
+      .as(LogicalTypeAnnotation.decimalType(3, 4)).named("aDecimal");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testDecimalLogicalTypeWithDeprecatedScale() {
+    PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "aDecimal",
+      LogicalTypeAnnotation.decimalType(3, 4));
+    PrimitiveType actual = Types.required(BINARY)
+      .as(LogicalTypeAnnotation.decimalType(3, 4)).scale(3).named("aDecimal");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testDecimalLogicalTypeWithDeprecatedPrecision() {
+    PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "aDecimal",
+      LogicalTypeAnnotation.decimalType(3, 4));
+    PrimitiveType actual = Types.required(BINARY)
+      .as(LogicalTypeAnnotation.decimalType(3, 4)).precision(4).named("aDecimal");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testTimestampLogicalTypeWithUTCParameter() {
+    PrimitiveType utcMillisExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
+      timestampType(true, MILLIS));
+    PrimitiveType nonUtcMillisExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
+      timestampType(false, MILLIS));
+    PrimitiveType utcMicrosExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
+      timestampType(true, MICROS));
+    PrimitiveType nonUtcMicrosExpected = new PrimitiveType(REQUIRED, INT64, "aTimestamp",
+      timestampType(false, MICROS));
+
+    PrimitiveType utcMillisActual = Types.required(INT64)
+      .as(timestampType(true, MILLIS)).named("aTimestamp");
+    PrimitiveType nonUtcMillisActual = Types.required(INT64)
+      .as(timestampType(false, MILLIS)).named("aTimestamp");
+    PrimitiveType utcMicrosActual = Types.required(INT64)
+      .as(timestampType(true, MICROS)).named("aTimestamp");
+    PrimitiveType nonUtcMicrosActual = Types.required(INT64)
+      .as(timestampType(false, MICROS)).named("aTimestamp");
+
+    Assert.assertEquals(utcMillisExpected, utcMillisActual);
+    Assert.assertEquals(nonUtcMillisExpected, nonUtcMillisActual);
+    Assert.assertEquals(utcMicrosExpected, utcMicrosActual);
+    Assert.assertEquals(nonUtcMicrosExpected, nonUtcMicrosActual);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testDecimalLogicalTypeWithDeprecatedScaleMismatch() {
+    Types.required(BINARY)
+      .as(LogicalTypeAnnotation.decimalType(3, 4))
+      .scale(4).named("aDecimal");
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testDecimalLogicalTypeWithDeprecatedPrecisionMismatch() {
+    Types.required(BINARY)
+      .as(LogicalTypeAnnotation.decimalType(3, 4))
+      .precision(5).named("aDecimal");
   }
 
   /**

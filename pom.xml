@@ -84,6 +84,7 @@
     <parquet.format.version>2.5.0</parquet.format.version>
     <previous.version>1.7.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
+    <format.thrift.executable>thrift</format.thrift.executable>
     <scala.version>2.10.6</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.10</scala.binary.version>
@@ -92,6 +93,7 @@
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
     <thrift.version>0.9.3</thrift.version>
+    <format.thrift.version>0.9.3</format.thrift.version>
     <fastutil.version>7.0.13</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
@@ -117,6 +119,7 @@
     <module>parquet-column</module>
     <module>parquet-common</module>
     <module>parquet-encoding</module>
+    <module>parquet-format-structures</module>
     <module>parquet-generator</module>
     <module>parquet-hadoop</module>
     <module>parquet-jackson</module>
@@ -175,6 +178,11 @@
             </reports>
           </reportSet>
         </reportSets>
+        <configuration>
+          <sourceFileExcludes>
+            <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
+          </sourceFileExcludes>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>

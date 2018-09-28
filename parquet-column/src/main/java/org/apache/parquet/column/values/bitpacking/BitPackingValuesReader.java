@@ -73,6 +73,7 @@ public class BitPackingValuesReader extends ValuesReader {
 
     this.in = stream.sliceStream(length);
     this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);
+    updateNextOffset(length);
   }
 
   @Override

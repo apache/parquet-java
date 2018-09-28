@@ -81,6 +81,11 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     }
   }
 
+  public ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+    PrimitiveConverter converter = getPrimitiveConverter(path);
+    return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
+  }
+
   private PrimitiveConverter getPrimitiveConverter(ColumnDescriptor path) {
     Type currentType = schema;
     Converter currentConverter = recordConverter;

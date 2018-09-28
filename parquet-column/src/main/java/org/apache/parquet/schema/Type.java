@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -115,7 +115,7 @@ abstract public class Type {
 
   private final String name;
   private final Repetition repetition;
-  private final OriginalType originalType;
+  private final LogicalTypeAnnotation logicalTypeAnnotation;
   private final ID id;
 
   /**
@@ -124,7 +124,7 @@ abstract public class Type {
    */
   @Deprecated
   public Type(String name, Repetition repetition) {
-    this(name, repetition, null, null);
+    this(name, repetition, (LogicalTypeAnnotation) null, null);
   }
 
   /**
@@ -144,10 +144,26 @@ abstract public class Type {
    * @param id (optional) the id of the fields.
    */
   Type(String name, Repetition repetition, OriginalType originalType, ID id) {
+    this(name, repetition, originalType, null, id);
+  }
+
+  Type(String name, Repetition repetition, OriginalType originalType, DecimalMetadata decimalMetadata, ID id) {
     super();
     this.name = checkNotNull(name, "name");
     this.repetition = checkNotNull(repetition, "repetition");
-    this.originalType = originalType;
+    this.logicalTypeAnnotation = originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType, decimalMetadata);
+    this.id = id;
+  }
+
+  Type(String name, Repetition repetition, LogicalTypeAnnotation logicalTypeAnnotation) {
+    this(name, repetition, logicalTypeAnnotation, null);
+  }
+
+  Type(String name, Repetition repetition, LogicalTypeAnnotation logicalTypeAnnotation, ID id) {
+    super();
+    this.name = checkNotNull(name, "name");
+    this.repetition = checkNotNull(repetition, "repetition");
+    this.logicalTypeAnnotation = logicalTypeAnnotation;
     this.id = id;
   }
 
@@ -186,11 +202,15 @@ abstract public class Type {
     return id;
   }
 
+  public LogicalTypeAnnotation getLogicalTypeAnnotation() {
+    return logicalTypeAnnotation;
+  }
+
   /**
    * @return the original type (LIST, MAP, ...)
    */
   public OriginalType getOriginalType() {
-    return originalType;
+    return logicalTypeAnnotation == null ? null : logicalTypeAnnotation.toOriginalType();
   }
 
   /**
@@ -243,8 +263,8 @@ abstract public class Type {
   public int hashCode() {
     int c = repetition.hashCode();
     c = 31 * c + name.hashCode();
-    if (originalType != null) {
-      c = 31 * c +  originalType.hashCode();
+    if (logicalTypeAnnotation != null) {
+      c = 31 * c +  logicalTypeAnnotation.hashCode();
     }
     if (id != null) {
       c = 31 * c + id.hashCode();
@@ -258,7 +278,7 @@ abstract public class Type {
         && repetition == other.repetition
         && eqOrBothNull(repetition, other.repetition)
         && eqOrBothNull(id, other.id)
-        && eqOrBothNull(originalType, other.originalType);
+        && eqOrBothNull(logicalTypeAnnotation, other.logicalTypeAnnotation);
   };
 
   @Override
