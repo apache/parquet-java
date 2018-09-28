@@ -665,6 +665,8 @@ public abstract class LogicalTypeAnnotation {
           return PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
         case MILLIS:
           return PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+        case NANOS:
+          return PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
         default:
           return super.valueStringifier(primitiveType);
       }

@@ -201,6 +201,28 @@ public class TestPrimitiveStringifier {
   }
 
   @Test
+  public void testTimestampNanosStringifier() {
+    PrimitiveStringifier stringifier = PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
+
+    assertEquals("1970-01-01T00:00:00.000000000", stringifier.stringify(0l));
+
+    Calendar cal = Calendar.getInstance(UTC);
+    cal.clear();
+    cal.set(2053, Calendar.JULY, 10, 22, 13, 24);
+    cal.set(Calendar.MILLISECOND, 84);
+    long micros = cal.getTimeInMillis() * 1000_000 + 1900;
+    assertEquals("2053-07-10T22:13:24.084001900", stringifier.stringify(micros));
+
+    cal.clear();
+    cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
+    cal.set(Calendar.MILLISECOND, 765);
+    micros = cal.getTimeInMillis() * 1000_000 - 1;
+    assertEquals("1848-03-15T09:23:59.765000001", stringifier.stringify(micros));
+
+    checkThrowingUnsupportedException(stringifier, Long.TYPE);
+  }
+
+  @Test
   public void testTimeStringifier() {
     PrimitiveStringifier stringifier = TIME_STRINGIFIER;
 

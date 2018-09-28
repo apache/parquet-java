@@ -243,7 +243,6 @@ public class SchemaConverter {
       public TypeMapping visit(Time type) {
         int bitWidth = type.getBitWidth();
         TimeUnit timeUnit = type.getUnit();
-        // TODO: what is Arrow time semantic? UTC adjusted or not?
         if (bitWidth == 32 && timeUnit == TimeUnit.MILLISECOND) {
           return primitive(INT32, timeType(false, MILLIS));
         } else if (bitWidth == 64 && timeUnit == TimeUnit.MICROSECOND) {
@@ -257,7 +256,6 @@ public class SchemaConverter {
       @Override
       public TypeMapping visit(Timestamp type) {
         TimeUnit timeUnit = type.getUnit();
-        // TODO: Should we take type.getTimeZone() into account?
         if (timeUnit == TimeUnit.MILLISECOND) {
           return primitive(INT64, timestampType(isUtcNormalized(type), MILLIS));
         } else if (timeUnit == TimeUnit.MICROSECOND) {

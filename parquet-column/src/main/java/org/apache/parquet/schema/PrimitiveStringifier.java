@@ -306,6 +306,19 @@ public abstract class PrimitiveStringifier {
     }
   };
 
+  static final PrimitiveStringifier TIMESTAMP_NANOS_STRINGIFIER = new DateStringifier(
+    "TIMESTAMP_NANOS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSS") {
+    @Override
+    public String stringify(long value) {
+      return super.stringify(value) + String.format("%06d", Math.abs(value % 1000_000));
+    }
+
+    @Override
+    long toMillis(long value) {
+      return value / 1000_000;
+    }
+  };
+
   static final PrimitiveStringifier TIME_STRINGIFIER = new PrimitiveStringifier("TIME_STRINGIFIER") {
     @Override
     public String stringify(int millis) {
