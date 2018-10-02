@@ -19,20 +19,17 @@
 package org.apache.parquet.cli.commands;
 
 import java.io.IOException;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
@@ -59,10 +56,10 @@ public class ShowColumnIndexCommand extends BaseCommand {
   @Parameter(names = { "-c", "--column" }, description = "Shows the column/offset indexes for the given column only")
   List<String> ColumnPaths;
 
-  @Parameter(names = { "-b",
-      "--block" }, description = "Shows the column/offset indexes for the given block (row-group) only; "
-          + "blocks are referenced by their indexes from 0")
-  List<String> blockIndexes;
+  @Parameter(names = { "-r",
+      "--row-group" }, description = "Shows the column/offset indexes for the given row-groups only; "
+          + "row-groups are referenced by their indexes from 0")
+  List<String> rowGroupIndexes;
 
   @Parameter(names = { "-i", "--column-index" }, description = "Shows the column indexes; "
       + "active by default unless -o is used")
@@ -86,20 +83,31 @@ public class ShowColumnIndexCommand extends BaseCommand {
     Preconditions.checkArgument(files.size() == 1,
         "Cannot process multiple Parquet files.");
 
-    InputFile in = HadoopInputFile.fromPath(new Path(files.get(0)), new Configuration());
+    InputFile in = HadoopInputFile.fromPath(qualifiedPath(files.get(0)), getConf());
     if (!showColumnIndex && !showOffsetIndex) {
-      showColumnIndex = showOffsetIndex = true;
+      showColumnIndex = true;
+      showOffsetIndex = true;
+    }
+
+    Set<String> rowGroupIndexSet = new HashSet<>();
+    if (rowGroupIndexes != null) {
+      rowGroupIndexSet.addAll(rowGroupIndexes);
     }
 
     try (ParquetFileReader reader = ParquetFileReader.open(in)) {
       boolean firstBlock = true;
-      for (Entry<Integer, BlockMetaData> entry : getBlocks(reader.getFooter())) {
+      int rowGroupIndex = 0;
+      for (BlockMetaData block : reader.getFooter().getBlocks()) {
+        if (!rowGroupIndexSet.isEmpty() && !rowGroupIndexSet.contains(Integer.toString(rowGroupIndex))) {
+          ++rowGroupIndex;
+          continue;
+        }
         if (!firstBlock) {
           console.info("");
         }
         firstBlock = false;
-        console.info("row group {}:", entry.getKey());
-        for (ColumnChunkMetaData column : getColumns(entry.getValue())) {
+        console.info("row-group {}:", rowGroupIndex);
+        for (ColumnChunkMetaData column : getColumns(block)) {
           String path = column.getPath().toDotString();
           if (showColumnIndex) {
             console.info("column index for column {}:", path);
@@ -120,27 +128,10 @@ public class ShowColumnIndexCommand extends BaseCommand {
             }
           }
         }
+        ++rowGroupIndex;
       }
     }
     return 0;
-  }
-
-  // Returns the index-block pairs based on the arguments of --block
-  private List<Entry<Integer, BlockMetaData>> getBlocks(ParquetMetadata meta) {
-    List<BlockMetaData> blocks = meta.getBlocks();
-    List<Entry<Integer, BlockMetaData>> pairs = new ArrayList<>();
-    if (blockIndexes == null || blockIndexes.isEmpty()) {
-      int index = 0;
-      for (BlockMetaData block : blocks) {
-        pairs.add(new AbstractMap.SimpleImmutableEntry<>(index++, block));
-      }
-    } else {
-      for (String indexStr : blockIndexes) {
-        int index = Integer.parseInt(indexStr);
-        pairs.add(new AbstractMap.SimpleImmutableEntry<>(index, blocks.get(index)));
-      }
-    }
-    return pairs;
   }
 
   private List<ColumnChunkMetaData> getColumns(BlockMetaData block) {

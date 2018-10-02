@@ -181,7 +181,7 @@ public abstract class ValuesReader {
   abstract public void skip();
 
   /**
-   * Skips the next n value in the page
+   * Skips the next n values in the page
    *
    * @param n
    *          the number of values to be skipped

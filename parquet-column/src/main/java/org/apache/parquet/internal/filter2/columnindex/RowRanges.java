@@ -19,26 +19,27 @@
 package org.apache.parquet.internal.filter2.columnindex;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
+import java.util.Set;
 
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 
 /**
  * Class representing row ranges in a row-group. These row ranges are calculated as a result of the column index based
- * filtering.
+ * filtering. To be used iterate over the matching row indexes to be read from a row-group, retrieve the count of the
+ * matching rows or check overlapping of a row index range.
  *
- * @see ColumnIndexFilter#calculateRowRanges(Filter, ColumnIndexStore, Collection, long)
+ * @see ColumnIndexFilter#calculateRowRanges(Filter, ColumnIndexStore, Set, long)
  */
 public class RowRanges {
   private static class Range {
 
-    // Returns the union of the two ranges or null if they are not overlapped.
+    // Returns the union of the two ranges or null if there are elements between them.
     private static Range union(Range left, Range right) {
       if (left.from <= right.from) {
         if (left.to + 1 >= right.from) {
@@ -92,13 +93,27 @@ public class RowRanges {
 
   static final RowRanges EMPTY = new RowRanges();
 
-  static RowRanges single(long rowCount) {
+  /*
+   * Creates a new RowRanges object with the single range [0, rowCount - 1].
+   */
+  static RowRanges createSingle(long rowCount) {
     RowRanges ranges = new RowRanges();
     ranges.add(new Range(0, rowCount - 1));
     return ranges;
   }
 
-  static RowRanges build(long rowCount, PrimitiveIterator.OfInt pageIndexes, OffsetIndex offsetIndex) {
+  /*
+   * Creates a new RowRanges object with the following ranges.
+   * [firstRowIndex[0], lastRowIndex[0]],
+   * [firstRowIndex[1], lastRowIndex[1]],
+   * ...,
+   * [firstRowIndex[n], lastRowIndex[n]]
+   * (See OffsetIndex.getFirstRowIndex and OffsetIndex.getLastRowIndex for details.)
+   *
+   * The union of the ranges are calculated so the result ranges always contain the disjunct ranges. See union for
+   * details.
+   */
+  static RowRanges create(long rowCount, PrimitiveIterator.OfInt pageIndexes, OffsetIndex offsetIndex) {
     RowRanges ranges = new RowRanges();
     while (pageIndexes.hasNext()) {
       int pageIndex = pageIndexes.nextInt();
@@ -107,6 +122,17 @@ public class RowRanges {
     return ranges;
   }
 
+  /*
+   * Calculates the union of the two specified RowRanges object. The union of two range is calculated if there are no
+   * elements between them. Otherwise, the two disjunct ranges are stored separately.
+   * For example:
+   * [113, 241] ∪ [221, 340] = [113, 330]
+   * [113, 230] ∪ [231, 340] = [113, 340]
+   * while
+   * [113, 230] ∪ [232, 340] = [113, 230], [232, 340]
+   *
+   * The result RowRanges object will contain all the row indexes that were contained in one of the specified objects.
+   */
   static RowRanges union(RowRanges left, RowRanges right) {
     RowRanges result = new RowRanges();
     Iterator<Range> it1 = left.ranges.iterator();
@@ -136,6 +162,16 @@ public class RowRanges {
     return result;
   }
 
+  /*
+   * Calculates the intersection of the two specified RowRanges object. Two ranges intersect if they have common
+   * elements otherwise the result is empty.
+   * For example:
+   * [113, 241] ∩ [221, 340] = [221, 241]
+   * while
+   * [113, 230] ∩ [231, 340] = <EMPTY>
+   *
+   * The result RowRanges object will contain all the row indexes there were contained in both of the specified objects
+   */
   static RowRanges intersection(RowRanges left, RowRanges right) {
     RowRanges result = new RowRanges();
 
@@ -162,9 +198,10 @@ public class RowRanges {
   }
 
   /*
-   * Adds range to the end of the list of ranges. It maintains the disjunct ascending order of the ranges by trying to
-   * union the specified range to the last ranges if they are overlapping. The specified range shall be larger than the
-   * last one or might be overlapped with some of the last ones.
+   * Adds a range to the end of the list of ranges. It maintains the disjunct ascending order(*) of the ranges by
+   * trying to union the specified range to the last ranges in the list. The specified range shall be larger(*) than
+   * the last one or might be overlapped with some of the last ones.
+   * (*) [a, b] < [c, d] if b < c
    */
   private void add(Range range) {
     Range rangeToAdd = range;
@@ -195,7 +232,7 @@ public class RowRanges {
   /**
    * @return the ascending iterator of the row indexes contained in the ranges
    */
-  public PrimitiveIterator.OfLong allRows() {
+  public PrimitiveIterator.OfLong iterator() {
     return new PrimitiveIterator.OfLong() {
       private int currentRangeIndex = -1;
       private Range currentRange;

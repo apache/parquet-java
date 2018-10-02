@@ -19,25 +19,25 @@
 package org.apache.parquet.tools.command;
 
 import java.io.PrintWriter;
-import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.internal.column.columnindex.ColumnIndex;
-import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.internal.column.columnindex.ColumnIndex;
+import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.tools.Main;
 
@@ -59,11 +59,11 @@ public class ColumnIndexCommand extends ArgsOnlyCommand {
             + "multiple columns shall be separated by commas")
         .hasArg()
         .build());
-    OPTIONS.addOption(Option.builder("b")
-        .longOpt("block")
-        .desc("Shows the column/offset indexes for the given block (row-group) only; "
-            + "multiple blocks shall be speparated by commas; "
-            + "blocks are referenced by their indexes from 0")
+    OPTIONS.addOption(Option.builder("r")
+        .longOpt("row-group")
+        .desc("Shows the column/offset indexes for the given row-groups only; "
+            + "multiple row-groups shall be speparated by commas; "
+            + "row-groups are referenced by their indexes from 0")
         .hasArg()
         .build());
     OPTIONS.addOption(Option.builder("i")
@@ -106,23 +106,32 @@ public class ColumnIndexCommand extends ArgsOnlyCommand {
     String[] args = options.getArgs();
     InputFile in = HadoopInputFile.fromPath(new Path(args[0]), new Configuration());
     PrintWriter out = new PrintWriter(Main.out, true);
-    String blockValue = options.getOptionValue("b");
-    String[] indexes = blockValue == null ? null : blockValue.split("\\s*,\\s*");
+    String rowGroupValue = options.getOptionValue("r");
+    Set<String> indexes = new HashSet<>();
+    if (rowGroupValue != null) {
+      indexes.addAll(Arrays.asList(rowGroupValue.split("\\s*,\\s*")));
+    }
     boolean showColumnIndex = options.hasOption("i");
     boolean showOffsetIndex = options.hasOption("o");
     if (!showColumnIndex && !showOffsetIndex) {
-      showColumnIndex = showOffsetIndex = true;
+      showColumnIndex = true;
+      showOffsetIndex = true;
     }
 
     try (ParquetFileReader reader = ParquetFileReader.open(in)) {
       boolean firstBlock = true;
-      for (Entry<Integer, BlockMetaData> entry : getBlocks(reader.getFooter(), indexes)) {
+      int rowGroupIndex = 0;
+      for (BlockMetaData block : reader.getFooter().getBlocks()) {
+        if (!indexes.isEmpty() && !indexes.contains(Integer.toString(rowGroupIndex))) {
+          ++rowGroupIndex;
+          continue;
+        }
         if (!firstBlock) {
           out.println();
+          firstBlock = false;
         }
-        firstBlock = false;
-        out.format("row group %d:%n", entry.getKey());
-        for (ColumnChunkMetaData column : getColumns(entry.getValue(), options)) {
+        out.format("row group %d:%n", rowGroupIndex);
+        for (ColumnChunkMetaData column : getColumns(block, options)) {
           String path = column.getPath().toDotString();
           if (showColumnIndex) {
             out.format("column index for column %s:%n", path);
@@ -143,26 +152,9 @@ public class ColumnIndexCommand extends ArgsOnlyCommand {
             }
           }
         }
+        ++rowGroupIndex;
       }
     }
-  }
-
-  // Returns the index-block pairs based on the arguments of --block
-  private static List<Entry<Integer, BlockMetaData>> getBlocks(ParquetMetadata meta, String[] indexes) {
-    List<BlockMetaData> blocks = meta.getBlocks();
-    List<Entry<Integer, BlockMetaData>> pairs = new ArrayList<>();
-    if (indexes == null) {
-      int index = 0;
-      for (BlockMetaData block : blocks) {
-        pairs.add(new AbstractMap.SimpleImmutableEntry<>(index++, block));
-      }
-    } else {
-      for (String indexStr : indexes) {
-        int index = Integer.parseInt(indexStr);
-        pairs.add(new AbstractMap.SimpleImmutableEntry<>(index, blocks.get(index)));
-      }
-    }
-    return pairs;
   }
 
   private static List<ColumnChunkMetaData> getColumns(BlockMetaData block, CommandLine options) {

@@ -48,7 +48,7 @@ public class ColumnReaderImpl extends ColumnReaderBase {
   }
 
   @Override
-  boolean skipLevels(int rl, int dl) {
+  boolean skipRL(int rl) {
     return false;
   }
 

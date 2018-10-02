@@ -59,6 +59,13 @@ public class TestDeltaByteArray {
   }
 
   @Test
+  public void testRandomStringsWithSkipN() throws Exception {
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
+    DeltaByteArrayReader reader = new DeltaByteArrayReader();
+    assertReadWriteWithSkipN(writer, reader, randvalues);
+  }
+
+  @Test
   public void testLengths() throws IOException {
     DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
@@ -96,6 +103,18 @@ public class TestDeltaByteArray {
     for (int i = 0; i < vals.length; i += 2) {
       Assert.assertEquals(Binary.fromString(vals[i]), reader.readBytes());
       reader.skip();
+    }
+  }
+
+  private void assertReadWriteWithSkipN(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
+    Utils.writeData(writer, vals);
+
+    reader.initFromPage(vals.length, writer.getBytes().toInputStream());
+    int skipCount;
+    for (int i = 0; i < vals.length; i += skipCount + 1) {
+      skipCount = (vals.length - i) / 2;
+      Assert.assertEquals(Binary.fromString(vals[i]), reader.readBytes());
+      reader.skip(skipCount);
     }
   }
 

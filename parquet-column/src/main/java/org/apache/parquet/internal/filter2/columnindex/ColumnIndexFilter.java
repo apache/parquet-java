@@ -86,18 +86,18 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
               .accept(new ColumnIndexFilter(columnIndexStore, paths, rowCount));
         } catch (MissingOffsetIndexException e) {
           LOGGER.warn("Unable to do filtering", e);
-          return RowRanges.single(rowCount);
+          return RowRanges.createSingle(rowCount);
         }
       }
 
       @Override
       public RowRanges visit(UnboundRecordFilterCompat unboundRecordFilterCompat) {
-        return RowRanges.single(rowCount);
+        return RowRanges.createSingle(rowCount);
       }
 
       @Override
       public RowRanges visit(NoOpFilter noOpFilter) {
-        return RowRanges.single(rowCount);
+        return RowRanges.createSingle(rowCount);
       }
     });
   }
@@ -110,7 +110,7 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
 
   private RowRanges allRows() {
     if (allRows == null) {
-      allRows = RowRanges.single(rowCount);
+      allRows = RowRanges.createSingle(rowCount);
     }
     return allRows;
   }
@@ -173,7 +173,7 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
       return allRows();
     }
 
-    return RowRanges.build(rowCount, func.apply(ci), oi);
+    return RowRanges.create(rowCount, func.apply(ci), oi);
   }
 
   @Override

@@ -567,7 +567,7 @@ abstract class ColumnReaderBase implements ColumnReader {
       rl = repetitionLevelColumn.nextInt();
       dl = definitionLevelColumn.nextInt();
       ++readValues;
-      if (!skipLevels(rl, dl)) {
+      if (!skipRL(rl)) {
         break;
       }
       if (dl == maxDefinitionLevel) {
@@ -579,7 +579,10 @@ abstract class ColumnReaderBase implements ColumnReader {
     definitionLevel = dl;
   }
 
-  abstract boolean skipLevels(int rl, int dl);
+  /*
+   * Returns if current levels / value shall be skipped based on the specified repetition level.
+   */
+  abstract boolean skipRL(int rl);
 
   private void readPage() {
     LOG.debug("loading page");

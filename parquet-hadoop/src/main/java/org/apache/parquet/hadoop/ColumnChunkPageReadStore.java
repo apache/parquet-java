@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.PrimitiveIterator;
 import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
@@ -231,16 +232,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
   }
 
   @Override
-  public PrimitiveIterator.OfLong getRowIndexes() {
-    if (rowRanges == null) {
-      throw new NotInPageFilteringModeException("Row indexes are not available");
-    }
-    return rowRanges.allRows();
-  }
-
-  @Override
-  public boolean isInPageFilteringMode() {
-    return rowRanges != null;
+  public Optional<PrimitiveIterator.OfLong> getRowIndexes() {
+    return rowRanges == null ? Optional.empty() : Optional.of(rowRanges.iterator());
   }
 
   void addColumn(ColumnDescriptor path, ColumnChunkPageReader reader) {

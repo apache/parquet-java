@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.column.impl;
 
+import java.util.Optional;
+import java.util.PrimitiveIterator;
+
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
@@ -74,8 +77,9 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
   public ColumnReader getColumnReader(ColumnDescriptor path) {
     PrimitiveConverter converter = getPrimitiveConverter(path);
     PageReader pageReader = pageReadStore.getPageReader(path);
-    if (pageReadStore.isInPageFilteringMode()) {
-      return new SynchronizingColumnReader(path, pageReader, converter, writerVersion, pageReadStore.getRowIndexes());
+    Optional<PrimitiveIterator.OfLong> rowIndexes = pageReadStore.getRowIndexes();
+    if (rowIndexes.isPresent()) {
+      return new SynchronizingColumnReader(path, pageReader, converter, writerVersion, rowIndexes.get());
     } else {
       return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
     }

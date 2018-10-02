@@ -325,7 +325,7 @@ public class TestColumnIndexFilter {
 
   private static void assertAllRows(RowRanges ranges, long rowCount) {
     LongList actualList = new LongArrayList();
-    ranges.allRows().forEachRemaining((long value) -> actualList.add(value));
+    ranges.iterator().forEachRemaining((long value) -> actualList.add(value));
     LongList expectedList = new LongArrayList();
     LongStream.range(0, rowCount).forEach(expectedList::add);
     assertArrayEquals(expectedList + " != " + actualList, expectedList.toLongArray(), actualList.toLongArray());
@@ -333,7 +333,7 @@ public class TestColumnIndexFilter {
 
   private static void assertRows(RowRanges ranges, long... expectedRows) {
     LongList actualList = new LongArrayList();
-    ranges.allRows().forEachRemaining((long value) -> actualList.add(value));
+    ranges.iterator().forEachRemaining((long value) -> actualList.add(value));
     assertArrayEquals(Arrays.toString(expectedRows) + " != " + actualList, expectedRows, actualList.toLongArray());
   }
 

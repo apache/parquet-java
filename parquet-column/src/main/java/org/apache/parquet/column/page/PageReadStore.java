@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.page;
 
+import java.util.Optional;
 import java.util.PrimitiveIterator;
 import org.apache.parquet.column.ColumnDescriptor;
 
@@ -43,24 +44,13 @@ public interface PageReadStore {
   long getRowCount();
 
   /**
-   * Returns the indexes of the rows to be read/built. All the rows which index is not returned shall be skipped.
+   * Returns the indexes of the rows to be read/built if the related data is available. All the rows which index is not
+   * returned shall be skipped.
    *
-   * @return the incremental iterator of the row indexes
-   * @throws NotInPageFilteringModeException
-   *           if page filtering mode is not active so the related information is not available
-   * @see #isInPageFilteringMode()
+   * @return the optional of the incremental iterator of the row indexes or an empty optional if the related data is not
+   *         available
    */
-  default PrimitiveIterator.OfLong getRowIndexes() {
-    throw new NotInPageFilteringModeException("Row indexes are not available");
-  }
-
-  /**
-   * If page filtering mode is active then some values might have to be skipped to get the rows in synch between the
-   * pages.
-   *
-   * @return {@code true} if page filtering mode is active; {@code false} otherwise
-   */
-  default boolean isInPageFilteringMode() {
-    return false;
+  default Optional<PrimitiveIterator.OfLong> getRowIndexes() {
+    return Optional.empty();
   }
 }

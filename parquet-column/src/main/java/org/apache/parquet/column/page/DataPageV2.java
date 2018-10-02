@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.page;
 
+import java.util.Optional;
+
 import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
@@ -103,6 +105,7 @@ public class DataPageV2 extends DataPage {
         true);
   }
 
+  private final int rowCount;
   private final int nullCount;
   private final BytesInput repetitionLevels;
   private final BytesInput definitionLevels;
@@ -118,7 +121,8 @@ public class DataPageV2 extends DataPage {
       int uncompressedSize,
       Statistics<?> statistics,
       boolean isCompressed) {
-    super(Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize, valueCount, -1, rowCount);
+    super(Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize, valueCount);
+    this.rowCount = rowCount;
     this.nullCount = nullCount;
     this.repetitionLevels = repetitionLevels;
     this.definitionLevels = definitionLevels;
@@ -136,7 +140,8 @@ public class DataPageV2 extends DataPage {
       Statistics<?> statistics,
       boolean isCompressed) {
     super(Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize,
-        valueCount, firstRowIndex, rowCount);
+        valueCount, firstRowIndex);
+    this.rowCount = rowCount;
     this.nullCount = nullCount;
     this.repetitionLevels = repetitionLevels;
     this.definitionLevels = definitionLevels;
@@ -144,6 +149,10 @@ public class DataPageV2 extends DataPage {
     this.data = data;
     this.statistics = statistics;
     this.isCompressed = isCompressed;
+  }
+
+  public int getRowCount() {
+    return rowCount;
   }
 
   public int getNullCount() {
@@ -172,6 +181,11 @@ public class DataPageV2 extends DataPage {
 
   public boolean isCompressed() {
     return isCompressed;
+  }
+
+  @Override
+  public Optional<Integer> getIndexRowCount() {
+    return Optional.of(rowCount);
   }
 
   @Override

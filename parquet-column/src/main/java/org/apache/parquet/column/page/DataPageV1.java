@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.page;
 
+import java.util.Optional;
+
 import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
@@ -30,6 +32,7 @@ public class DataPageV1 extends DataPage {
   private final Encoding rlEncoding;
   private final Encoding dlEncoding;
   private final Encoding valuesEncoding;
+  private final int indexRowCount;
 
   /**
    * @param bytes the bytes for this page
@@ -47,6 +50,7 @@ public class DataPageV1 extends DataPage {
     this.rlEncoding = rlEncoding;
     this.dlEncoding = dlEncoding;
     this.valuesEncoding = valuesEncoding;
+    this.indexRowCount = -1;
   }
 
   /**
@@ -62,12 +66,13 @@ public class DataPageV1 extends DataPage {
    */
   public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, long firstRowIndex, int rowCount,
       Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
-    super(Ints.checkedCast(bytes.size()), uncompressedSize, valueCount, firstRowIndex, rowCount);
+    super(Ints.checkedCast(bytes.size()), uncompressedSize, valueCount, firstRowIndex);
     this.bytes = bytes;
     this.statistics = statistics;
     this.rlEncoding = rlEncoding;
     this.dlEncoding = dlEncoding;
     this.valuesEncoding = valuesEncoding;
+    this.indexRowCount = rowCount;
   }
 
   /**
@@ -114,5 +119,10 @@ public class DataPageV1 extends DataPage {
   @Override
   public <T> T accept(Visitor<T> visitor) {
     return visitor.visit(this);
+  }
+
+  @Override
+  public Optional<Integer> getIndexRowCount() {
+    return indexRowCount < 0 ? Optional.empty() : Optional.of(indexRowCount);
   }
 }

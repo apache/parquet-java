@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.page;
 
+import java.util.Optional;
+
 /**
  * one data page in a chunk
  */
@@ -25,17 +27,15 @@ abstract public class DataPage extends Page {
 
   private final int valueCount;
   private final long firstRowIndex;
-  private final int rowCount;
 
   DataPage(int compressedSize, int uncompressedSize, int valueCount) {
-    this(compressedSize, uncompressedSize, valueCount, -1, -1);
+    this(compressedSize, uncompressedSize, valueCount, -1);
   }
 
-  DataPage(int compressedSize, int uncompressedSize, int valueCount, long firstRowIndex, int rowCount) {
+  DataPage(int compressedSize, int uncompressedSize, int valueCount, long firstRowIndex) {
     super(compressedSize, uncompressedSize);
     this.valueCount = valueCount;
     this.firstRowIndex = firstRowIndex;
-    this.rowCount = rowCount;
   }
 
   /**
@@ -46,31 +46,18 @@ abstract public class DataPage extends Page {
   }
 
   /**
-   * @return the index of the first row in this page
-   * @throws NotInPageFilteringModeException
-   *           if page filtering mode is not active
-   * @see PageReadStore#isInPageFilteringMode()
+   * @return the index of the first row in this page if the related data is available (the optional column-index
+   *         contains this value)
    */
-  public long getFirstRowIndex() {
-    if (firstRowIndex < 0) {
-      throw new NotInPageFilteringModeException("First row index is not available");
-    }
-    return firstRowIndex;
+  public Optional<Long> getFirstRowIndex() {
+    return firstRowIndex < 0 ? Optional.empty() : Optional.of(firstRowIndex);
   }
 
   /**
-   * @return the number of rows in this page
-   * @throws NotInPageFilteringModeException
-   *           if page filtering mode is not active; thrown only in case of {@link DataPageV1}
-   * @see PageReadStore#isInPageFilteringMode()
+   * @return the number of rows in this page if the related data is available (in case of pageV1 the optional
+   *         column-index contains this value)
    */
-  public int getRowCount() {
-    if (rowCount < 0) {
-      throw new NotInPageFilteringModeException(
-          "Row count is not available");
-    }
-    return rowCount;
-  }
+  public abstract Optional<Integer> getIndexRowCount();
 
   public abstract <T> T accept(Visitor<T> visitor);
 
