@@ -311,12 +311,12 @@ public abstract class PrimitiveStringifier {
     "TIMESTAMP_NANOS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSS") {
     @Override
     public String stringify(long value) {
-      return super.stringify(value) + String.format("%06d", Math.abs(value % 1000_000));
+      return super.stringify(value) + String.format("%06d", Math.abs(value % 1_000_000));
     }
 
     @Override
     long toMillis(long value) {
-      return value / 1000_000;
+      return value / 1_000_000;
     }
   };
 
