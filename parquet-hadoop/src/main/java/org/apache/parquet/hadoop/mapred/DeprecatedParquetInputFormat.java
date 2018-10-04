@@ -99,11 +99,10 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
               "Invalid split (not a FileSplit or ParquetInputSplitWrapper): " + oldSplit);
         }
 
-        // read once to gain access to key and value objects
+        //create value container only, but the value in the container will be populated lazily
         if (realReader.nextKeyValue()) {
           firstRecord = true;
           valueContainer = new Container<V>();
-          valueContainer.set(realReader.getCurrentValue());
 
         } else {
           eof = true;
@@ -149,13 +148,16 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
       if (eof) {
         return false;
       }
-
-      if (firstRecord) { // key & value are already read.
-        firstRecord = false;
-        return true;
-      }
-
       try {
+        if (firstRecord) { // Reading key & value lazily.
+          if (value != null) {
+              V firstValue = realReader.getCurrentValue();
+              value.set(firstValue);
+              valueContainer.set(firstValue);
+          }
+          firstRecord = false;
+          return true;
+        }
         if (realReader.nextKeyValue()) {
           if (value != null) value.set(realReader.getCurrentValue());
           return true;
