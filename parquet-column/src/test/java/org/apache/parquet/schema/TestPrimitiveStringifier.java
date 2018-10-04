@@ -153,9 +153,13 @@ public class TestPrimitiveStringifier {
     cal.set(2017, Calendar.DECEMBER, 14);
     assertEquals("2017-12-14", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
 
+    // TODO: problem with Calendars
+//    cal.clear();
+//    cal.set(1492, Calendar.AUGUST, 3);
+//    assertEquals("1492-08-03", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
     cal.clear();
-    cal.set(1492, Calendar.AUGUST, 3);
-    assertEquals("1492-08-03", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
+    cal.set(1583, Calendar.AUGUST, 3);
+    assertEquals("1583-08-03", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
 
     checkThrowingUnsupportedException(stringifier, Integer.TYPE);
   }
@@ -197,7 +201,7 @@ public class TestPrimitiveStringifier {
     cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
     cal.set(Calendar.MILLISECOND, 765);
     micros = cal.getTimeInMillis() * 1000 - 1;
-    assertEquals("1848-03-15T09:23:59.765001", stringifier.stringify(micros));
+    assertEquals("1848-03-15T09:23:59.764999", stringifier.stringify(micros));
 
     checkThrowingUnsupportedException(stringifier, Long.TYPE);
   }
@@ -219,7 +223,7 @@ public class TestPrimitiveStringifier {
     cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
     cal.set(Calendar.MILLISECOND, 765);
     nanos = cal.getTimeInMillis() * 1_000_000 - 1;
-    assertEquals("1848-03-15T09:23:59.765000001", stringifier.stringify(nanos));
+    assertEquals("1848-03-15T09:23:59.764999999", stringifier.stringify(nanos));
 
     checkThrowingUnsupportedException(stringifier, Long.TYPE);
   }

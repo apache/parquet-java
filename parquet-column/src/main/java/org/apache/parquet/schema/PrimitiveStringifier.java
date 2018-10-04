@@ -29,8 +29,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.text.SimpleDateFormat;
-import java.util.TimeZone;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
 
 import javax.naming.OperationNotSupportedException;
@@ -243,80 +244,68 @@ public abstract class PrimitiveStringifier {
   };
 
   private static class DateStringifier extends PrimitiveStringifier {
-    private final SimpleDateFormat formatter;
-    private static final TimeZone UTC = TimeZone.getTimeZone("utc");
+    private final DateTimeFormatter formatter;
 
     private DateStringifier(String name, String format) {
       super(name);
-      formatter = new SimpleDateFormat(format);
-      formatter.setTimeZone(UTC);
+      formatter = DateTimeFormatter.ofPattern(format).withZone(ZoneOffset.UTC);
     }
 
     @Override
     public String stringify(int value) {
-      return toFormattedString(toMillis(value));
+      return toFormattedString(getInstant(value));
     }
 
     @Override
     public String stringify(long value) {
-      return toFormattedString(toMillis(value));
+      return toFormattedString(getInstant(value));
     }
 
-    private String toFormattedString(long millis) {
-      return formatter.format(millis);
+    private String toFormattedString(Instant instant) {
+      return formatter.format(instant);
     }
 
-    long toMillis(int value) {
+    Instant getInstant(int value) {
       // throw the related unsupported exception
       super.stringify(value);
-      return 0;
+      return null;
     }
 
-    long toMillis(long value) {
+    Instant getInstant(long value) {
       // throw the related unsupported exception
       super.stringify(value);
-      return 0;
+      return null;
     }
   }
 
   static final PrimitiveStringifier DATE_STRINGIFIER = new DateStringifier("DATE_STRINGIFIER", "yyyy-MM-dd") {
     @Override
-    long toMillis(int value) {
-      return TimeUnit.DAYS.toMillis(value);
+    Instant getInstant(int value) {
+      return Instant.ofEpochMilli(TimeUnit.DAYS.toMillis(value));
     };
   };
 
   static final PrimitiveStringifier TIMESTAMP_MILLIS_STRINGIFIER = new DateStringifier(
       "TIMESTAMP_MILLIS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSS") {
     @Override
-    long toMillis(long value) {
-      return value;
+    Instant getInstant(long value) {
+      return Instant.ofEpochMilli(value);
     }
   };
 
   static final PrimitiveStringifier TIMESTAMP_MICROS_STRINGIFIER = new DateStringifier(
-      "TIMESTAMP_MICROS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSS") {
+      "TIMESTAMP_MICROS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSS") {
     @Override
-    public String stringify(long value) {
-      return super.stringify(value) + String.format("%03d", Math.abs(value % 1000));
-    }
-
-    @Override
-    long toMillis(long value) {
-      return value / 1000;
+    Instant getInstant(long value) {
+      return Instant.ofEpochSecond(MICROSECONDS.toSeconds(value), MICROSECONDS.toNanos(value % SECONDS.toMicros(1)));
     }
   };
 
   static final PrimitiveStringifier TIMESTAMP_NANOS_STRINGIFIER = new DateStringifier(
-    "TIMESTAMP_NANOS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSS") {
+    "TIMESTAMP_NANOS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS") {
     @Override
-    public String stringify(long value) {
-      return super.stringify(value) + String.format("%06d", Math.abs(value % 1_000_000));
-    }
-
-    @Override
-    long toMillis(long value) {
-      return value / 1_000_000;
+    Instant getInstant(long value) {
+      return Instant.ofEpochSecond(NANOSECONDS.toSeconds(value), NANOSECONDS.toNanos(value % SECONDS.toNanos(1)));
     }
   };
 
