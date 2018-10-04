@@ -520,7 +520,8 @@ public abstract class LogicalTypeAnnotation {
 
   public enum TimeUnit {
     MILLIS,
-    MICROS
+    MICROS,
+    NANOS
   }
 
   public static class TimeLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -540,7 +541,7 @@ public abstract class LogicalTypeAnnotation {
         case MICROS:
           return OriginalType.TIME_MICROS;
         default:
-          throw new RuntimeException("Unknown original type for " + unit);
+          return null;
       }
     }
 
@@ -610,7 +611,7 @@ public abstract class LogicalTypeAnnotation {
         case MICROS:
           return OriginalType.TIMESTAMP_MICROS;
         default:
-          throw new RuntimeException("Unknown original type for " + unit);
+          return null;
       }
     }
 
@@ -664,6 +665,8 @@ public abstract class LogicalTypeAnnotation {
           return PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
         case MILLIS:
           return PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+        case NANOS:
+          return PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
         default:
           return super.valueStringifier(primitiveType);
       }
@@ -697,7 +700,7 @@ public abstract class LogicalTypeAnnotation {
         case 64:
           return isSigned ? OriginalType.INT_64 : OriginalType.UINT_64;
         default:
-          throw new RuntimeException("Unknown original type " + toOriginalType());
+          return null;
       }
     }
 

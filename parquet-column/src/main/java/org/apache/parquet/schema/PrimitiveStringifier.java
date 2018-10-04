@@ -22,6 +22,7 @@ import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import java.math.BigDecimal;
@@ -306,6 +307,19 @@ public abstract class PrimitiveStringifier {
     }
   };
 
+  static final PrimitiveStringifier TIMESTAMP_NANOS_STRINGIFIER = new DateStringifier(
+    "TIMESTAMP_NANOS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSS") {
+    @Override
+    public String stringify(long value) {
+      return super.stringify(value) + String.format("%06d", Math.abs(value % 1_000_000));
+    }
+
+    @Override
+    long toMillis(long value) {
+      return value / 1_000_000;
+    }
+  };
+
   static final PrimitiveStringifier TIME_STRINGIFIER = new PrimitiveStringifier("TIME_STRINGIFIER") {
     @Override
     public String stringify(int millis) {
@@ -324,6 +338,26 @@ public abstract class PrimitiveStringifier {
           convert(duration, unit, MINUTES, HOURS),
           convert(duration, unit, SECONDS, MINUTES),
           convert(duration, unit, unit, SECONDS));
+    }
+
+    private long convert(long duration, TimeUnit from, TimeUnit to, TimeUnit higher) {
+      return Math.abs(to.convert(duration, from) % to.convert(1, higher));
+    }
+  };
+
+  static final PrimitiveStringifier TIME_NANOS_STRINGIFIER = new PrimitiveStringifier("TIME_NANOS_STRINGIFIER") {
+    @Override
+    public String stringify(long nanos) {
+      return toTimeString(nanos, NANOSECONDS);
+    }
+
+    private String toTimeString(long nanos, TimeUnit unit) {
+      String format = "%02d:%02d:%02d.%09d";
+      return String.format(format,
+        unit.toHours(nanos),
+        convert(nanos, unit, MINUTES, HOURS),
+        convert(nanos, unit, SECONDS, MINUTES),
+        convert(nanos, unit, unit, SECONDS));
     }
 
     private long convert(long duration, TimeUnit from, TimeUnit to, TimeUnit higher) {
