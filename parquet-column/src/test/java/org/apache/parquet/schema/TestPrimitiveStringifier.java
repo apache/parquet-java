@@ -153,10 +153,6 @@ public class TestPrimitiveStringifier {
     cal.set(2017, Calendar.DECEMBER, 14);
     assertEquals("2017-12-14", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
 
-    // TODO: problem with Calendars
-//    cal.clear();
-//    cal.set(1492, Calendar.AUGUST, 3);
-//    assertEquals("1492-08-03", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
     cal.clear();
     cal.set(1583, Calendar.AUGUST, 3);
     assertEquals("1583-08-03", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
