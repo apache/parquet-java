@@ -172,6 +172,16 @@ public class SimpleRecordConverter extends GroupConverter {
     public void addBinary(Binary value) {
       record.add(name, new BigDecimal(new BigInteger(value.getBytes()), scale));
     }
+
+    @Override
+    public void addInt(int value) {
+      record.add(name, BigDecimal.valueOf(value).movePointLeft(scale));
+    }
+
+    @Override
+    public void addLong(long value) {
+      record.add(name, BigDecimal.valueOf(value).movePointLeft(scale));
+    }
   }
 }
 
