@@ -207,6 +207,12 @@ public class TestParquetMetadataConverter {
       .required(PrimitiveTypeName.INT64)
       .as(timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS))
       .named("aTimestampUtcMicros")
+      .required(PrimitiveTypeName.INT64)
+      .as(timestampType(false, LogicalTypeAnnotation.TimeUnit.NANOS))
+      .named("aTimestampNonUtcNanos")
+      .required(PrimitiveTypeName.INT64)
+      .as(timestampType(true, LogicalTypeAnnotation.TimeUnit.NANOS))
+      .named("aTimestampUtcNanos")
       .required(PrimitiveTypeName.INT32)
       .as(timeType(false, LogicalTypeAnnotation.TimeUnit.MILLIS))
       .named("aTimeNonUtcMillis")
@@ -219,6 +225,12 @@ public class TestParquetMetadataConverter {
       .required(PrimitiveTypeName.INT64)
       .as(timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS))
       .named("aTimeUtcMicros")
+      .required(PrimitiveTypeName.INT64)
+      .as(timeType(false, LogicalTypeAnnotation.TimeUnit.NANOS))
+      .named("aTimeNonUtcNanos")
+      .required(PrimitiveTypeName.INT64)
+      .as(timeType(true, LogicalTypeAnnotation.TimeUnit.NANOS))
+      .named("aTimeUtcNanos")
       .named("Message");
     List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
     MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);

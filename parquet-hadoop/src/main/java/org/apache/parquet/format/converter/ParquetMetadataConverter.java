@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.format.converter;
 
+import static java.util.Optional.empty;
+
+import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
@@ -53,6 +56,7 @@ import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.MicroSeconds;
 import org.apache.parquet.format.MilliSeconds;
+import org.apache.parquet.format.NanoSeconds;
 import org.apache.parquet.format.NullType;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.format.StringType;
@@ -256,7 +260,7 @@ public class ParquetMetadataConverter {
   }
 
   ConvertedType convertToConvertedType(LogicalTypeAnnotation logicalTypeAnnotation) {
-    return logicalTypeAnnotation.accept(CONVERTED_TYPE_CONVERTER_VISITOR).get();
+    return logicalTypeAnnotation.accept(CONVERTED_TYPE_CONVERTER_VISITOR).orElse(null);
   }
 
   static org.apache.parquet.format.TimeUnit convertUnit(LogicalTypeAnnotation.TimeUnit unit) {
@@ -265,6 +269,8 @@ public class ParquetMetadataConverter {
         return org.apache.parquet.format.TimeUnit.MICROS(new MicroSeconds());
       case MILLIS:
         return org.apache.parquet.format.TimeUnit.MILLIS(new MilliSeconds());
+      case NANOS:
+        return TimeUnit.NANOS(new NanoSeconds());
       default:
         throw new RuntimeException("Unknown time unit " + unit);
     }
@@ -308,6 +314,8 @@ public class ParquetMetadataConverter {
           return of(ConvertedType.TIME_MILLIS);
         case MICROS:
           return of(ConvertedType.TIME_MICROS);
+        case NANOS:
+          return empty();
         default:
           throw new RuntimeException("Unknown converted type for " + timeLogicalType.toOriginalType());
       }
@@ -320,6 +328,8 @@ public class ParquetMetadataConverter {
           return of(ConvertedType.TIMESTAMP_MICROS);
         case MILLIS:
           return of(ConvertedType.TIMESTAMP_MILLIS);
+        case NANOS:
+          return empty();
         default:
           throw new RuntimeException("Unknown converted type for " + timestampLogicalType.toOriginalType());
       }
@@ -954,6 +964,8 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.TimeUnit.MICROS;
       case MILLIS:
         return LogicalTypeAnnotation.TimeUnit.MILLIS;
+      case NANOS:
+        return LogicalTypeAnnotation.TimeUnit.NANOS;
       default:
         throw new RuntimeException("Unknown time unit " + unit);
     }

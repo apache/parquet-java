@@ -23,10 +23,12 @@ import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.parquet.schema.PrimitiveStringifier.DATE_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.DEFAULT_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.INTERVAL_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.UNSIGNED_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.UTF8_STRINGIFIER;
@@ -152,8 +154,8 @@ public class TestPrimitiveStringifier {
     assertEquals("2017-12-14", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
 
     cal.clear();
-    cal.set(1492, Calendar.AUGUST, 3);
-    assertEquals("1492-08-03", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
+    cal.set(1583, Calendar.AUGUST, 3);
+    assertEquals("1583-08-03", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
 
     checkThrowingUnsupportedException(stringifier, Integer.TYPE);
   }
@@ -195,7 +197,29 @@ public class TestPrimitiveStringifier {
     cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
     cal.set(Calendar.MILLISECOND, 765);
     micros = cal.getTimeInMillis() * 1000 - 1;
-    assertEquals("1848-03-15T09:23:59.765001", stringifier.stringify(micros));
+    assertEquals("1848-03-15T09:23:59.764999", stringifier.stringify(micros));
+
+    checkThrowingUnsupportedException(stringifier, Long.TYPE);
+  }
+
+  @Test
+  public void testTimestampNanosStringifier() {
+    PrimitiveStringifier stringifier = PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
+
+    assertEquals("1970-01-01T00:00:00.000000000", stringifier.stringify(0l));
+
+    Calendar cal = Calendar.getInstance(UTC);
+    cal.clear();
+    cal.set(2053, Calendar.JULY, 10, 22, 13, 24);
+    cal.set(Calendar.MILLISECOND, 84);
+    long nanos = cal.getTimeInMillis() * 1_000_000 + 536;
+    assertEquals("2053-07-10T22:13:24.084000536", stringifier.stringify(nanos));
+
+    cal.clear();
+    cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
+    cal.set(Calendar.MILLISECOND, 765);
+    nanos = cal.getTimeInMillis() * 1_000_000 - 1;
+    assertEquals("1848-03-15T09:23:59.764999999", stringifier.stringify(nanos));
 
     checkThrowingUnsupportedException(stringifier, Long.TYPE);
   }
@@ -218,6 +242,20 @@ public class TestPrimitiveStringifier {
 
     assertEquals("-123:12:34.567", stringifier.stringify((int) convert(MILLISECONDS, -123, -12, -34, -567)));
     assertEquals("-12345:12:34.056789", stringifier.stringify(convert(MICROSECONDS, -12345, -12, -34, -56789)));
+
+    checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE);
+  }
+
+  @Test
+  public void testTimeNanoStringifier() {
+    PrimitiveStringifier stringifier = TIME_NANOS_STRINGIFIER;
+
+    assertEquals("00:00:00.000000000", stringifier.stringify(0l));
+
+    assertEquals("12:34:56.789012987", stringifier.stringify(convert(NANOSECONDS, 12, 34, 56, 789012987)));
+    assertEquals("-12:34:56.000789012", stringifier.stringify(convert(NANOSECONDS, -12, -34, -56, -789012)));
+    assertEquals("12345:12:34.000056789", stringifier.stringify(convert(NANOSECONDS, 12345, 12, 34, 56789)));
+    assertEquals("-12345:12:34.000056789", stringifier.stringify(convert(NANOSECONDS, -12345, -12, -34, -56789)));
 
     checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE);
   }
