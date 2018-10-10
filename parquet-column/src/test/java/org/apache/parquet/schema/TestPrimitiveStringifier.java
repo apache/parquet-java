@@ -165,6 +165,7 @@ public class TestPrimitiveStringifier {
     PrimitiveStringifier stringifier = PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
 
     assertEquals("1970-01-01T00:00:00.000", stringifier.stringify(0l));
+    assertEquals("1970-01-01T00:00:00.000+0000", PrimitiveStringifier.TIMESTAMP_MILLIS_UTC_STRINGIFIER.stringify(0l));
 
     Calendar cal = Calendar.getInstance(UTC);
     cal.clear();
@@ -185,6 +186,7 @@ public class TestPrimitiveStringifier {
     PrimitiveStringifier stringifier = PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
 
     assertEquals("1970-01-01T00:00:00.000000", stringifier.stringify(0l));
+    assertEquals("1970-01-01T00:00:00.000000+0000", PrimitiveStringifier.TIMESTAMP_MICROS_UTC_STRINGIFIER.stringify(0l));
 
     Calendar cal = Calendar.getInstance(UTC);
     cal.clear();
@@ -207,6 +209,7 @@ public class TestPrimitiveStringifier {
     PrimitiveStringifier stringifier = PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
 
     assertEquals("1970-01-01T00:00:00.000000000", stringifier.stringify(0l));
+    assertEquals("1970-01-01T00:00:00.000000000+0000", PrimitiveStringifier.TIMESTAMP_NANOS_UTC_STRINGIFIER.stringify(0l));
 
     Calendar cal = Calendar.getInstance(UTC);
     cal.clear();
