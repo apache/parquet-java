@@ -29,7 +29,9 @@ import static org.apache.parquet.schema.PrimitiveStringifier.DATE_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.DEFAULT_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.INTERVAL_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.UNSIGNED_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.UTF8_STRINGIFIER;
 import static org.junit.Assert.assertEquals;
@@ -232,7 +234,9 @@ public class TestPrimitiveStringifier {
     PrimitiveStringifier stringifier = TIME_STRINGIFIER;
 
     assertEquals("00:00:00.000", stringifier.stringify(0));
+    assertEquals("00:00:00.000+0000", TIME_UTC_STRINGIFIER.stringify(0));
     assertEquals("00:00:00.000000", stringifier.stringify(0l));
+    assertEquals("00:00:00.000000+0000", TIME_UTC_STRINGIFIER.stringify(0l));
 
     assertEquals("12:34:56.789", stringifier.stringify((int) convert(MILLISECONDS, 12, 34, 56, 789)));
     assertEquals("12:34:56.789012", stringifier.stringify(convert(MICROSECONDS, 12, 34, 56, 789012)));
@@ -254,6 +258,7 @@ public class TestPrimitiveStringifier {
     PrimitiveStringifier stringifier = TIME_NANOS_STRINGIFIER;
 
     assertEquals("00:00:00.000000000", stringifier.stringify(0l));
+    assertEquals("00:00:00.000000000+0000", TIME_NANOS_UTC_STRINGIFIER.stringify(0l));
 
     assertEquals("12:34:56.789012987", stringifier.stringify(convert(NANOSECONDS, 12, 34, 56, 789012987)));
     assertEquals("-12:34:56.000789012", stringifier.stringify(convert(NANOSECONDS, -12, -34, -56, -789012)));

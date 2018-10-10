@@ -310,7 +310,7 @@ public abstract class PrimitiveStringifier {
   };
 
   static final PrimitiveStringifier TIMESTAMP_MILLIS_UTC_STRINGIFIER = new DateStringifier(
-    "TIMESTAMP_MILLIS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSZ") {
+    "TIMESTAMP_MILLIS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSZ") {
     @Override
     Instant getInstant(long value) {
       return Instant.ofEpochMilli(value);
@@ -318,7 +318,7 @@ public abstract class PrimitiveStringifier {
   };
 
   static final PrimitiveStringifier TIMESTAMP_MICROS_UTC_STRINGIFIER = new DateStringifier(
-    "TIMESTAMP_MICROS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ") {
+    "TIMESTAMP_MICROS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ") {
     @Override
     Instant getInstant(long value) {
       return Instant.ofEpochSecond(MICROSECONDS.toSeconds(value), MICROSECONDS.toNanos(value % SECONDS.toMicros(1)));
@@ -326,14 +326,38 @@ public abstract class PrimitiveStringifier {
   };
 
   static final PrimitiveStringifier TIMESTAMP_NANOS_UTC_STRINGIFIER = new DateStringifier(
-    "TIMESTAMP_NANOS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSZ") {
+    "TIMESTAMP_NANOS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSZ") {
     @Override
     Instant getInstant(long value) {
       return Instant.ofEpochSecond(NANOSECONDS.toSeconds(value), NANOSECONDS.toNanos(value % SECONDS.toNanos(1)));
     }
   };
 
-  static final PrimitiveStringifier TIME_STRINGIFIER = new PrimitiveStringifier("TIME_STRINGIFIER") {
+  private abstract static class TimeStringifier extends PrimitiveStringifier {
+    private final boolean withZone;
+
+    TimeStringifier(String name, boolean withZone) {
+      super(name);
+      this.withZone = withZone;
+    }
+
+    protected String toTimeString(long duration, TimeUnit unit) {
+      String additionalFormat = (unit == MILLISECONDS ? "3d" : unit == MICROSECONDS ? "6d" : "9d");
+      String timeZone = withZone ? "+0000" : "";
+      String format = "%02d:%02d:%02d.%0" + additionalFormat + timeZone;
+      return String.format(format,
+        unit.toHours(duration),
+        convert(duration, unit, MINUTES, HOURS),
+        convert(duration, unit, SECONDS, MINUTES),
+        convert(duration, unit, unit, SECONDS));
+    }
+
+    protected long convert(long duration, TimeUnit from, TimeUnit to, TimeUnit higher) {
+      return Math.abs(to.convert(duration, from) % to.convert(1, higher));
+    }
+  }
+
+  static final PrimitiveStringifier TIME_STRINGIFIER = new TimeStringifier("TIME_STRINGIFIER", false) {
     @Override
     public String stringify(int millis) {
       return toTimeString(millis, MILLISECONDS);
@@ -343,38 +367,31 @@ public abstract class PrimitiveStringifier {
     public String stringify(long micros) {
       return toTimeString(micros, MICROSECONDS);
     }
-
-    private String toTimeString(long duration, TimeUnit unit) {
-      String format = "%02d:%02d:%02d.%0" + (unit == MILLISECONDS ? "3d" : "6d");
-      return String.format(format,
-          unit.toHours(duration),
-          convert(duration, unit, MINUTES, HOURS),
-          convert(duration, unit, SECONDS, MINUTES),
-          convert(duration, unit, unit, SECONDS));
-    }
-
-    private long convert(long duration, TimeUnit from, TimeUnit to, TimeUnit higher) {
-      return Math.abs(to.convert(duration, from) % to.convert(1, higher));
-    }
   };
 
-  static final PrimitiveStringifier TIME_NANOS_STRINGIFIER = new PrimitiveStringifier("TIME_NANOS_STRINGIFIER") {
+  static final PrimitiveStringifier TIME_NANOS_STRINGIFIER = new TimeStringifier("TIME_NANOS_STRINGIFIER", false) {
     @Override
     public String stringify(long nanos) {
       return toTimeString(nanos, NANOSECONDS);
     }
+  };
 
-    private String toTimeString(long nanos, TimeUnit unit) {
-      String format = "%02d:%02d:%02d.%09d";
-      return String.format(format,
-        unit.toHours(nanos),
-        convert(nanos, unit, MINUTES, HOURS),
-        convert(nanos, unit, SECONDS, MINUTES),
-        convert(nanos, unit, unit, SECONDS));
+  static final PrimitiveStringifier TIME_UTC_STRINGIFIER = new TimeStringifier("TIME_UTC_STRINGIFIER", true) {
+    @Override
+    public String stringify(int millis) {
+      return toTimeString(millis, MILLISECONDS);
     }
 
-    private long convert(long duration, TimeUnit from, TimeUnit to, TimeUnit higher) {
-      return Math.abs(to.convert(duration, from) % to.convert(1, higher));
+    @Override
+    public String stringify(long micros) {
+      return toTimeString(micros, MICROSECONDS);
+    }
+  };
+
+  static final PrimitiveStringifier TIME_NANOS_UTC_STRINGIFIER = new TimeStringifier("TIME_NANOS_UTC_STRINGIFIER", true) {
+    @Override
+    public String stringify(long nanos) {
+      return toTimeString(nanos, NANOSECONDS);
     }
   };
 
