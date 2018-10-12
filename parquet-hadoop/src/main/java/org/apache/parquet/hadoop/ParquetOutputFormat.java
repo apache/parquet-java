@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,6 +23,7 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -143,6 +144,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
+  public static final String OUTPUT_COMMITTER_CLASS = "parquet.output.committer.class";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -313,7 +315,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   private WriteSupport<T> writeSupport;
-  private ParquetOutputCommitter committer;
+  private OutputCommitter committer;
 
   /**
    * constructor used when this OutputFormat in wrapped in another one (In Pig for example)
@@ -435,11 +437,20 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   @Override
-  public OutputCommitter getOutputCommitter(TaskAttemptContext context)
-      throws IOException {
+  public OutputCommitter getOutputCommitter(final TaskAttemptContext context) throws IOException {
     if (committer == null) {
-      Path output = getOutputPath(context);
-      committer = new ParquetOutputCommitter(output, context);
+      final Path output = getOutputPath(context);
+      final String outputCommitterClassName = getConfiguration(context).get(
+        OUTPUT_COMMITTER_CLASS, ParquetOutputCommitter.class.getName());
+      try {
+        committer = (OutputCommitter) Class.forName(outputCommitterClassName)
+          .getDeclaredConstructor(Path.class, TaskAttemptContext.class)
+          .newInstance(output, context);
+      } catch (final ClassNotFoundException | NoSuchMethodException | InstantiationException |
+          IllegalAccessException | InvocationTargetException ex) {
+        throw new BadConfigurationException("could not instantiate output committer class: "
+          + outputCommitterClassName, ex);
+      }
     }
     return committer;
   }
