@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -140,9 +140,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MEMORY_POOL_RATIO    = "parquet.memory.pool.ratio";
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
   public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
-  public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
-  public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
-  public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
+  public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size_row_check_min";
+  public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size_row_check_max";
+  public static final String MIN_ROW_COUNT_FOR_BLOCK_SIZE_CHECK = "parquet.block.size_row_check_min";
+  public static final String MAX_ROW_COUNT_FOR_BLOCK_SIZE_CHECK = "parquet.block.size_row_check_max";
+  public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size_check_estimate";
+  public static final String ESTIMATE_BLOCK_SIZE_CHECK = "parquet.block.size_check_estimate";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -243,12 +246,27 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
     return configuration.getInt(MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+      ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_PAGE_SIZE_CHECK);
   }
 
   public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
     return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK);
+      ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_PAGE_SIZE_CHECK);
+  }
+
+  public static int getMinRowCountForBlockSizeCheck(Configuration configuration) {
+    return configuration.getInt(MIN_ROW_COUNT_FOR_BLOCK_SIZE_CHECK,
+        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_BLOCK_SIZE_CHECK);
+  }
+
+  public static int getMaxRowCountForBlockSizeCheck(Configuration configuration) {
+    return configuration.getInt(MAX_ROW_COUNT_FOR_BLOCK_SIZE_CHECK,
+        ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_BLOCK_SIZE_CHECK);
+  }
+
+  public static boolean getEstimateBlockSizeCheck(Configuration configuration) {
+    return configuration.getBoolean(ESTIMATE_BLOCK_SIZE_CHECK,
+      ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_BLOCK_SIZE_CHECK);
   }
 
   public static boolean getEstimatePageSizeCheck(Configuration configuration) {
@@ -364,8 +382,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withDictionaryEncoding(getEnableDictionary(conf))
         .withWriterVersion(getWriterVersion(conf))
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
+        .estimateRowCountForBlockSizeCheck(getEstimateBlockSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
+        .withMinRowCountForBlockSizeCheck(getMinRowCountForBlockSizeCheck(conf))
+        .withMaxRowCountForBlockSizeCheck(getMaxRowCountForBlockSizeCheck(conf))
         .build();
 
     long blockSize = getLongBlockSize(conf);
@@ -380,9 +401,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Validation is {}", (validating ? "on" : "off"));
       LOG.info("Writer version is: {}", props.getWriterVersion());
       LOG.info("Maximum row group padding size is {} bytes", maxPaddingSize);
-      LOG.info("Page size checking is: {}", (props.estimateNextSizeCheck() ? "estimated" : "constant"));
+      LOG.info("Page size checking is: {}", (props.estimateNextPageSizeCheck() ? "estimated" : "constant"));
       LOG.info("Min row count for page size check is: {}", props.getMinRowCountForPageSizeCheck());
       LOG.info("Max row count for page size check is: {}", props.getMaxRowCountForPageSizeCheck());
+      LOG.info("Min row count for block size check is: {}", props.getMinRowCountForBlockSizeCheck());
+      LOG.info("Max row count for block size check is: {}", props.getMaxRowCountForBlockSizeCheck());
     }
 
     WriteContext init = writeSupport.init(conf);
