@@ -32,6 +32,16 @@ import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.UNDEFINED;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MICROS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MILLIS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_NANOS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 
 public abstract class LogicalTypeAnnotation {
   enum LogicalTypeToken {
@@ -590,7 +600,15 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
-      return PrimitiveStringifier.TIME_STRINGIFIER;
+      switch (unit) {
+        case MICROS:
+        case MILLIS:
+          return isAdjustedToUTC ? TIME_UTC_STRINGIFIER : TIME_STRINGIFIER;
+        case NANOS:
+          return isAdjustedToUTC ? TIME_NANOS_UTC_STRINGIFIER : TIME_NANOS_STRINGIFIER;
+        default:
+          return super.valueStringifier(primitiveType);
+      }
     }
   }
 
@@ -662,11 +680,11 @@ public abstract class LogicalTypeAnnotation {
     PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       switch (unit) {
         case MICROS:
-          return PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
+          return isAdjustedToUTC ? TIMESTAMP_MICROS_UTC_STRINGIFIER : TIMESTAMP_MICROS_STRINGIFIER;
         case MILLIS:
-          return PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+          return isAdjustedToUTC ? TIMESTAMP_MILLIS_UTC_STRINGIFIER : TIMESTAMP_MILLIS_STRINGIFIER;
         case NANOS:
-          return PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
+          return isAdjustedToUTC ? TIMESTAMP_NANOS_UTC_STRINGIFIER : TIMESTAMP_NANOS_STRINGIFIER;
         default:
           return super.valueStringifier(primitiveType);
       }
