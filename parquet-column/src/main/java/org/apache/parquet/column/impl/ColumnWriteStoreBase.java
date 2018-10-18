@@ -56,7 +56,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   private final long thresholdTolerance;
   private long rowCount;
   private long rowCountForNextSizeCheck;
-  private long rowcountForNextRowCountCheck;
+  private long rowCountForNextRowCountCheck;
 
   // To be used by the deprecated constructor of ColumnWriteStoreV1
   @Deprecated
@@ -69,7 +69,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     this.columns = new TreeMap<>();
 
     this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
-    this.rowcountForNextRowCountCheck = props.getPageRowCountLimit();
+    this.rowCountForNextRowCountCheck = props.getPageRowCountLimit();
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
@@ -98,7 +98,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     this.columns = unmodifiableMap(mcolumns);
 
     this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
-    this.rowcountForNextRowCountCheck = props.getPageRowCountLimit();
+    this.rowCountForNextRowCountCheck = props.getPageRowCountLimit();
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
@@ -186,7 +186,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   @Override
   public void endRecord() {
     ++rowCount;
-    if (rowCount >= rowcountForNextRowCountCheck) {
+    if (rowCount >= rowCountForNextRowCountCheck) {
       rowCountCheck();
     }
     if (rowCount >= rowCountForNextSizeCheck) {
@@ -238,6 +238,6 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
         maxUnwrittenRows = actualPageRowCount;
       }
     }
-    rowcountForNextRowCountCheck = rowCount + pageRowCountLimit - maxUnwrittenRows;
+    rowCountForNextRowCountCheck = rowCount + pageRowCountLimit - maxUnwrittenRows;
   }
 }
