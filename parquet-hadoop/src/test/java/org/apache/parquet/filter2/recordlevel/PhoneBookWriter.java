@@ -31,6 +31,7 @@ import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.schema.MessageType;
@@ -91,6 +92,11 @@ public class PhoneBookWriter {
       result = 31 * result + (lat != null ? lat.hashCode() : 0);
       return result;
     }
+
+    @Override
+    public String toString() {
+      return "Location [lon=" + lon + ", lat=" + lat + "]";
+    }
   }
 
   public static class PhoneNumber {
@@ -128,6 +134,11 @@ public class PhoneBookWriter {
       int result = (int) (number ^ (number >>> 32));
       result = 31 * result + (kind != null ? kind.hashCode() : 0);
       return result;
+    }
+
+    @Override
+    public String toString() {
+      return "PhoneNumber [number=" + number + ", kind=" + kind + "]";
     }
   }
 
@@ -183,6 +194,11 @@ public class PhoneBookWriter {
       result = 31 * result + (location != null ? location.hashCode() : 0);
       return result;
     }
+
+    @Override
+    public String toString() {
+      return "User [id=" + id + ", name=" + name + ", phoneNumbers=" + phoneNumbers + ", location=" + location + "]";
+    }
   }
 
   public static SimpleGroup groupFromUser(User user) {
@@ -216,6 +232,56 @@ public class PhoneBookWriter {
     return root;
   }
 
+  private static User userFromGroup(Group root) {
+    return new User(getLong(root, "id"), getString(root, "name"), getPhoneNumbers(getGroup(root, "phoneNumbers")),
+        getLocation(getGroup(root, "location")));
+  }
+
+  private static List<PhoneNumber> getPhoneNumbers(Group phoneNumbers) {
+    if (phoneNumbers == null) {
+      return null;
+    }
+    List<PhoneNumber> list = new ArrayList<>();
+    for (int i = 0, n = phoneNumbers.getFieldRepetitionCount("phone"); i < n; ++i) {
+      Group phone = phoneNumbers.getGroup("phone", i);
+      list.add(new PhoneNumber(getLong(phone, "number"), getString(phone, "kind")));
+    }
+    return list;
+  }
+
+  private static Location getLocation(Group location) {
+    if (location == null) {
+      return null;
+    }
+    return new Location(getDouble(location, "lon"), getDouble(location, "lat"));
+  }
+
+  private static boolean isNull(Group group, String field) {
+    int repetition = group.getFieldRepetitionCount(field);
+    if (repetition == 0) {
+      return true;
+    } else if (repetition == 1) {
+      return false;
+    }
+    throw new AssertionError("Invalid repetitionCount " + repetition + " for field " + field + " in group " + group);
+  }
+
+  private static Long getLong(Group group, String field) {
+    return isNull(group, field) ? null : group.getLong(field, 0);
+  }
+
+  private static String getString(Group group, String field) {
+    return isNull(group, field) ? null : group.getString(field, 0);
+  }
+
+  private static Double getDouble(Group group, String field) {
+    return isNull(group, field) ? null : group.getDouble(field, 0);
+  }
+
+  private static Group getGroup(Group group, String field) {
+    return isNull(group, field) ? null : group.getGroup(field, 0);
+  }
+
   public static File writeToFile(List<User> users) throws IOException {
     File f = File.createTempFile("phonebook", ".parquet");
     f.deleteOnExit();
@@ -229,25 +295,30 @@ public class PhoneBookWriter {
   }
 
   public static void writeToFile(File f, List<User> users) throws IOException {
+    write(ExampleParquetWriter.builder(new Path(f.getAbsolutePath())), users);
+  }
+
+  public static void write(ParquetWriter.Builder<Group, ?> builder, List<User> users) throws IOException {
+    builder.config(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
+    try (ParquetWriter<Group> writer = builder.build()) {
+      for (User u : users) {
+        writer.write(groupFromUser(u));
+      }
+    }
+  }
+
+  private static ParquetReader<Group> createReader(Path file, Filter filter) throws IOException {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
-    ParquetWriter<Group> writer = new ParquetWriter<Group>(new Path(f.getAbsolutePath()), conf, new GroupWriteSupport());
-    for (User u : users) {
-      writer.write(groupFromUser(u));
-    }
-    writer.close();
+    return ParquetReader.builder(new GroupReadSupport(), file)
+        .withConf(conf)
+        .withFilter(filter)
+        .build();
   }
 
   public static List<Group> readFile(File f, Filter filter) throws IOException {
-    Configuration conf = new Configuration();
-    GroupWriteSupport.setSchema(schema, conf);
-
-    ParquetReader<Group> reader =
-        ParquetReader.builder(new GroupReadSupport(), new Path(f.getAbsolutePath()))
-                     .withConf(conf)
-                     .withFilter(filter)
-                     .build();
+    ParquetReader<Group> reader = createReader(new Path(f.getAbsolutePath()), filter);
 
     Group current;
     List<Group> users = new ArrayList<Group>();
@@ -258,6 +329,16 @@ public class PhoneBookWriter {
       current = reader.read();
     }
 
+    return users;
+  }
+
+  public static List<User> readUsers(ParquetReader.Builder<Group> builder) throws IOException {
+    ParquetReader<Group> reader = builder.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString()).build();
+
+    List<User> users = new ArrayList<>();
+    for (Group group = reader.read(); group != null; group = reader.read()) {
+      users.add(userFromGroup(group));
+    }
     return users;
   }
 

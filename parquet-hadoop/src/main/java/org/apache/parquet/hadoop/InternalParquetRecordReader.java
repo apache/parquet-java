@@ -124,7 +124,7 @@ class InternalParquetRecordReader<T> {
 
       LOG.info("at row " + current + ". reading next block");
       long t0 = System.currentTimeMillis();
-      PageReadStore pages = reader.readNextRowGroup();
+      PageReadStore pages = reader.readNextFilteredRowGroup();
       if (pages == null) {
         throw new IOException("expecting more rows but reached last block. Read " + current + " out of " + total);
       }
@@ -182,7 +182,7 @@ class InternalParquetRecordReader<T> {
     this.columnCount = requestedSchema.getPaths().size();
     this.recordConverter = readSupport.prepareForRead(conf, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = options.isEnabled(STRICT_TYPE_CHECKING, true);
-    this.total = reader.getRecordCount();
+    this.total = reader.getFilteredRecordCount();
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(options, total);
     this.filterRecords = options.useRecordFilter();
     reader.setRequestedSchema(requestedSchema);
@@ -204,7 +204,7 @@ class InternalParquetRecordReader<T> {
     this.recordConverter = readSupport.prepareForRead(
         configuration, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
-    this.total = reader.getRecordCount();
+    this.total = reader.getFilteredRecordCount();
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(configuration, total);
     this.filterRecords = configuration.getBoolean(RECORD_FILTERING_ENABLED, true);
     reader.setRequestedSchema(requestedSchema);

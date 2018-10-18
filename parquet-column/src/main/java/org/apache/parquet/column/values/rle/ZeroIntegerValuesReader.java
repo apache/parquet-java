@@ -42,4 +42,8 @@ public class ZeroIntegerValuesReader extends ValuesReader {
   public void skip() {
   }
 
+  @Override
+  public void skip(int n) {
+  }
+
 }

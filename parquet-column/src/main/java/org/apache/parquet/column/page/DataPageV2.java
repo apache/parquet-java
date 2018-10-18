@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.page;
 
+import java.util.Optional;
+
 import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
@@ -43,6 +45,32 @@ public class DataPageV2 extends DataPage {
       Statistics<?> statistics) {
     return new DataPageV2(
         rowCount, nullCount, valueCount,
+        repetitionLevels, definitionLevels,
+        dataEncoding, data,
+        Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()),
+        statistics,
+        false);
+  }
+
+  /**
+   * @param rowCount count of rows
+   * @param nullCount count of nulls
+   * @param valueCount count of values
+   * @param firstRowIndex the index of the first row in this page
+   * @param repetitionLevels RLE encoded repetition levels
+   * @param definitionLevels RLE encoded definition levels
+   * @param dataEncoding encoding for the data
+   * @param data data encoded with dataEncoding
+   * @param statistics optional statistics for this page
+   * @return an uncompressed page
+   */
+  public static DataPageV2 uncompressed(
+      int rowCount, int nullCount, int valueCount, long firstRowIndex,
+      BytesInput repetitionLevels, BytesInput definitionLevels,
+      Encoding dataEncoding, BytesInput data,
+      Statistics<?> statistics) {
+    return new DataPageV2(
+        rowCount, nullCount, valueCount, firstRowIndex,
         repetitionLevels, definitionLevels,
         dataEncoding, data,
         Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()),
@@ -104,6 +132,25 @@ public class DataPageV2 extends DataPage {
     this.isCompressed = isCompressed;
   }
 
+  private DataPageV2(
+      int rowCount, int nullCount, int valueCount, long firstRowIndex,
+      BytesInput repetitionLevels, BytesInput definitionLevels,
+      Encoding dataEncoding, BytesInput data,
+      int uncompressedSize,
+      Statistics<?> statistics,
+      boolean isCompressed) {
+    super(Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize,
+        valueCount, firstRowIndex);
+    this.rowCount = rowCount;
+    this.nullCount = nullCount;
+    this.repetitionLevels = repetitionLevels;
+    this.definitionLevels = definitionLevels;
+    this.dataEncoding = dataEncoding;
+    this.data = data;
+    this.statistics = statistics;
+    this.isCompressed = isCompressed;
+  }
+
   public int getRowCount() {
     return rowCount;
   }
@@ -134,6 +181,11 @@ public class DataPageV2 extends DataPage {
 
   public boolean isCompressed() {
     return isCompressed;
+  }
+
+  @Override
+  public Optional<Integer> getIndexRowCount() {
+    return Optional.of(rowCount);
   }
 
   @Override
