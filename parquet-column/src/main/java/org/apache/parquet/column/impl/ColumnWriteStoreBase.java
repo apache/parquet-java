@@ -56,7 +56,6 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   private final long thresholdTolerance;
   private long rowCount;
   private long rowCountForNextSizeCheck;
-  private long rowCountForNextRowCountCheck;
 
   // To be used by the deprecated constructor of ColumnWriteStoreV1
   @Deprecated
@@ -68,8 +67,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
     this.columns = new TreeMap<>();
 
-    this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
-    this.rowCountForNextRowCountCheck = props.getPageRowCountLimit();
+    this.rowCountForNextSizeCheck = min(props.getMinRowCountForPageSizeCheck(), props.getPageRowCountLimit());
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
@@ -97,8 +95,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     }
     this.columns = unmodifiableMap(mcolumns);
 
-    this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
-    this.rowCountForNextRowCountCheck = props.getPageRowCountLimit();
+    this.rowCountForNextSizeCheck = min(props.getMinRowCountForPageSizeCheck(), props.getPageRowCountLimit());
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
@@ -186,9 +183,6 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   @Override
   public void endRecord() {
     ++rowCount;
-    if (rowCount >= rowCountForNextRowCountCheck) {
-      rowCountCheck();
-    }
     if (rowCount >= rowCountForNextSizeCheck) {
       sizeCheck();
     }
@@ -196,13 +190,18 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
   private void sizeCheck() {
     long minRecordToWait = Long.MAX_VALUE;
+    long maxUnwrittenRows = 0;
+    int pageRowCountLimit = props.getPageRowCountLimit();
     for (ColumnWriterBase writer : columns.values()) {
       long usedMem = writer.getCurrentPageBufferedSize();
       long rows = rowCount - writer.getRowsWrittenSoFar();
       long remainingMem = props.getPageSizeThreshold() - usedMem;
-      if (remainingMem <= thresholdTolerance) {
+      long actualPageRowCount = rowCount - writer.getRowsWrittenSoFar();
+      if (remainingMem <= thresholdTolerance || actualPageRowCount >= pageRowCountLimit) {
         writer.writePage();
         remainingMem = props.getPageSizeThreshold();
+      } else if (actualPageRowCount > maxUnwrittenRows) {
+        maxUnwrittenRows = actualPageRowCount;
       }
       long rowsToFillPage =
           usedMem == 0 ?
@@ -225,19 +224,11 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     } else {
       rowCountForNextSizeCheck = rowCount + props.getMinRowCountForPageSizeCheck();
     }
-  }
 
-  private void rowCountCheck() {
-    long maxUnwrittenRows = Long.MIN_VALUE;
-    int pageRowCountLimit = props.getPageRowCountLimit();
-    for (ColumnWriterBase writer : columns.values()) {
-      long actualPageRowCount = rowCount - writer.getRowsWrittenSoFar();
-      if (actualPageRowCount >= pageRowCountLimit) {
-        writer.writePage();
-      } else if (actualPageRowCount > maxUnwrittenRows) {
-        maxUnwrittenRows = actualPageRowCount;
-      }
+    // Do the check earlier if required to keep the row count limit
+    long rowCountForNextRowCountCheck = rowCount + pageRowCountLimit - maxUnwrittenRows;
+    if (rowCountForNextRowCountCheck < rowCountForNextSizeCheck) {
+      rowCountForNextSizeCheck = rowCountForNextRowCountCheck;
     }
-    rowCountForNextRowCountCheck = rowCount + pageRowCountLimit - maxUnwrittenRows;
   }
 }
