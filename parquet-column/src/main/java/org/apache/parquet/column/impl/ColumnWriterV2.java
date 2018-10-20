@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -31,6 +31,7 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
@@ -82,15 +83,18 @@ final class ColumnWriterV2 implements ColumnWriter {
     ParquetProperties props) {
     this(path, pageWriter, props);
 
-    this.bloomFilterWriter = bloomFilterWriter;
-    HashMap<String, Long> bloomFilterInfo = props.getBloomFilterInfo();
-
     // Current not support nested column.
-    if (path.getPath().length == 1) {
-      String column = path.getPath()[0];
-      if (bloomFilterInfo.keySet().contains(column)) {
-        this.bloomFilter = new BloomFilter(bloomFilterInfo.get(column).intValue());
-      }
+    if (path.getPath().length != 1 || bloomFilterWriter == null) {
+      return;
+    }
+
+    this.bloomFilterWriter = bloomFilterWriter;
+    HashMap<String, Long> bloomFilterExpectValues = props.getBloomFilterExpectValues();
+    String column = path.getPath()[0];
+    if (bloomFilterExpectValues.keySet().contains(column)) {
+      int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(bloomFilterExpectValues.get(column).intValue(),
+        BlockSplitBloomFilter.DEFAULT_FPP);
+      this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits/8);
     }
   }
 
@@ -278,7 +282,7 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @return the number of bytes of memory used to buffer the current data
    */
   public long getCurrentPageBufferedSize() {
-    long bloomBufferSize = bloomFilter == null ? 0 : bloomFilter.getBufferedSize();
+    long bloomBufferSize = bloomFilter == null ? 0 : bloomFilter.getBitsetSize();
     return repetitionLevelColumn.getBufferedSize()
         + definitionLevelColumn.getBufferedSize()
         + dataColumn.getBufferedSize()
@@ -290,7 +294,7 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @return the number of bytes of memory used to buffer the current data and the previously written pages
    */
   public long getTotalBufferedSize() {
-    long bloomBufferSize = bloomFilter == null ? 0 : bloomFilter.getBufferedSize();
+    long bloomBufferSize = bloomFilter == null ? 0 : bloomFilter.getBitsetSize();
     return repetitionLevelColumn.getBufferedSize()
         + definitionLevelColumn.getBufferedSize()
         + dataColumn.getBufferedSize()
@@ -302,7 +306,7 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @return actual memory used
    */
   public long allocatedSize() {
-    long bloomFilterSize = bloomFilter == null ? 0 : bloomFilter.getBufferedSize();
+    long bloomFilterSize = bloomFilter == null ? 0 : bloomFilter.getBitsetSize();
     return repetitionLevelColumn.getAllocatedSize()
     + definitionLevelColumn.getAllocatedSize()
     + dataColumn.getAllocatedSize()

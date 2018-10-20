@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -30,6 +30,7 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -66,14 +67,19 @@ final class ColumnWriterV1 implements ColumnWriter {
     this(path, pageWriter, props);
 
     // Current not support nested column.
-    if (path.getPath().length == 1) {
-      this.bloomFilterWriter = bloomFilterWriter;
-      HashMap<String, Long> bloomFilterInfo = props.getBloomFilterInfo();
-      String column = path.getPath()[0];
-      if (bloomFilterInfo.keySet().contains(column)) {
-        this.bloomFilter = new BloomFilter(bloomFilterInfo.get(column).intValue());
-      }
+    if (path.getPath().length != 1 || bloomFilterWriter == null) {
+      return;
     }
+
+    this.bloomFilterWriter = bloomFilterWriter;
+    HashMap<String, Long> bloomFilterExpectValues = props.getBloomFilterExpectValues();
+    String column = path.getPath()[0];
+    if (bloomFilterExpectValues.keySet().contains(column)) {
+      int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(bloomFilterExpectValues.get(column).intValue(),
+        BlockSplitBloomFilter.DEFAULT_FPP);
+      this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits/8);
+    }
+
   }
 
   public ColumnWriterV1(ColumnDescriptor path, PageWriter pageWriter,
@@ -161,6 +167,36 @@ final class ColumnWriterV1 implements ColumnWriter {
    statistics.updateStats(value);
   }
 
+  private void updateBloomFilter(int value) {
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
+  }
+
+  private void updateBloomFilter(long value) {
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
+  }
+
+  private void updateBloomFilter(double value) {
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
+  }
+
+  private void updateBloomFilter(float value) {
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
+  }
+
+  private void updateBloomFilter(Binary value) {
+    if (bloomFilter != null) {
+      bloomFilter.insert(bloomFilter.hash(value));
+    }
+  }
+
   private void writePage() {
     if (DEBUG) LOG.debug("write page");
     try {
@@ -197,9 +233,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeDouble(value);
     updateStatistics(value);
-    if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
-    }
+    updateBloomFilter(value);
     accountForValueWritten();
   }
 
@@ -210,9 +244,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeFloat(value);
     updateStatistics(value);
-    if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
-    }
+    updateBloomFilter(value);
     accountForValueWritten();
   }
 
@@ -223,9 +255,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBytes(value);
     updateStatistics(value);
-    if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
-    }
+    updateBloomFilter(value);
     accountForValueWritten();
   }
 
@@ -246,9 +276,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeInteger(value);
     updateStatistics(value);
-    if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
-    }
+    updateBloomFilter(value);
     accountForValueWritten();
   }
 
@@ -259,9 +287,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeLong(value);
     updateStatistics(value);
-    if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
-    }
+    updateBloomFilter(value);
     accountForValueWritten();
   }
 
@@ -296,7 +322,7 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   @Override
   public long getBufferedSizeInMemory() {
-    long bloomBufferSize = bloomFilter == null ? 0 : bloomFilter.getBufferedSize();
+    long bloomBufferSize = bloomFilter == null ? 0 : bloomFilter.getBitsetSize();
     return repetitionLevelColumn.getBufferedSize()
         + definitionLevelColumn.getBufferedSize()
         + dataColumn.getBufferedSize()
@@ -305,7 +331,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   public long allocatedSize() {
-    long bloomAllocatedSize = bloomFilter == null ? 0 : bloomFilter.getBufferedSize();
+    long bloomAllocatedSize = bloomFilter == null ? 0 : bloomFilter.getBitsetSize();
     return repetitionLevelColumn.getAllocatedSize()
         + definitionLevelColumn.getAllocatedSize()
         + dataColumn.getAllocatedSize()

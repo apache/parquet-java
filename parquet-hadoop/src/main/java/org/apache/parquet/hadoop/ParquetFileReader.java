@@ -60,6 +60,7 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
+import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
@@ -930,7 +931,7 @@ public class ParquetFileReader implements Closeable {
     f.seek(bloomFilterOffset);
 
     // Read Bloom filter data header.
-    byte[] bytes = new byte[BloomFilter.HEADER_SIZE];
+    byte[] bytes = new byte[BlockSplitBloomFilter.HEADER_SIZE];
     f.read(bytes);
     ByteBuffer bloomHeader = ByteBuffer.wrap(bytes);
     IntBuffer headerBuffer = bloomHeader.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
@@ -942,7 +943,7 @@ public class ParquetFileReader implements Closeable {
     byte[] bitset = new byte[numBytes];
     f.readFully(bitset);
 
-    return new BloomFilter(bitset);
+    return new BlockSplitBloomFilter(bitset);
   }
 
   @Override
