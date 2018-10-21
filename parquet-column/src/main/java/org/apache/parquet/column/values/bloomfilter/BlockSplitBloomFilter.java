@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.values.bloomfilter;
 
+package org.apache.parquet.column.values.bloomfilter;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -79,7 +78,6 @@ public class BlockSplitBloomFilter extends BloomFilter {
   // of bit to set, one bit in 32-bit word.
   private static final int SALT[] = {0x47b6137b, 0x44974d91, 0x8824ad5b, 0xa2b7289d,
     0x705495c7, 0x2df1424b, 0x9efc4947, 0x5c6bfb31};
-
   /**
    * Constructor of Bloom filter.
    *
@@ -103,7 +101,6 @@ public class BlockSplitBloomFilter extends BloomFilter {
    */
   private BlockSplitBloomFilter(int numBytes, HashStrategy hashStrategy, Algorithm algorithm) {
     initBitset(numBytes);
-
     switch (hashStrategy) {
       case MURMUR3_X64_128:
         this.hashStrategy = hashStrategy;
@@ -112,10 +109,8 @@ public class BlockSplitBloomFilter extends BloomFilter {
       default:
         throw new RuntimeException("Not supported hash strategy");
     }
-
     this.algorithm = algorithm;
   }
-
 
   /**
    * Construct the Bloom filter with given bitset, it is used when reconstructing
@@ -140,9 +135,9 @@ public class BlockSplitBloomFilter extends BloomFilter {
     if (bitset == null) {
       throw new RuntimeException("Given bitset is null");
     }
+
     this.bitset = bitset;
     this.intBuffer = ByteBuffer.wrap(bitset).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
-
     switch (hashStrategy) {
       case MURMUR3_X64_128:
         this.hashStrategy = hashStrategy;
@@ -167,16 +162,13 @@ public class BlockSplitBloomFilter extends BloomFilter {
     if (numBytes < MINIMUM_BLOOM_FILTER_BYTES) {
       numBytes = MINIMUM_BLOOM_FILTER_BYTES;
     }
-
     // Get next power of 2 if it is not power of 2.
     if ((numBytes & (numBytes - 1)) != 0) {
       numBytes = Integer.highestOneBit(numBytes) << 1;
     }
-
     if (numBytes > MAXIMUM_BLOOM_FILTER_BYTES || numBytes < 0) {
       numBytes = MAXIMUM_BLOOM_FILTER_BYTES;
     }
-
     this.bitset = new byte[numBytes];
     this.intBuffer = ByteBuffer.wrap(bitset).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
   }
@@ -185,13 +177,10 @@ public class BlockSplitBloomFilter extends BloomFilter {
   public void writeTo(OutputStream out) throws IOException {
     // Write number of bytes of bitset.
     out.write(BytesUtils.intToBytes(bitset.length));
-
     // Write hash strategy
     out.write(BytesUtils.intToBytes(this.hashStrategy.ordinal()));
-
     // Write algorithm
     out.write(BytesUtils.intToBytes(this.algorithm.ordinal()));
-
     // Write bitset
     out.write(bitset);
   }
@@ -202,11 +191,9 @@ public class BlockSplitBloomFilter extends BloomFilter {
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = key * SALT[i];
     }
-
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = mask[i] >>> 27;
     }
-
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = 0x1 << mask[i];
     }
@@ -221,7 +208,6 @@ public class BlockSplitBloomFilter extends BloomFilter {
 
     // Calculate mask for bucket.
     int mask[] = setMask(key);
-
     for (int i = 0; i < BITS_SET_PER_BLOCK; i++) {
       int value = intBuffer.get(bucketIndex * (BYTES_PER_FILTER_BLOCK / 4) + i);
       value |= mask[i];
@@ -236,7 +222,6 @@ public class BlockSplitBloomFilter extends BloomFilter {
 
     // Calculate mask for the tiny Bloom filter.
     int mask[] = setMask(key);
-
     for (int i = 0; i < BITS_SET_PER_BLOCK; i++) {
       if (0 == (intBuffer.get(bucketIndex * (BYTES_PER_FILTER_BLOCK / 4) + i) & mask[i])) {
         return false;
@@ -256,7 +241,6 @@ public class BlockSplitBloomFilter extends BloomFilter {
   public static int optimalNumOfBits(long n, double p) {
     Preconditions.checkArgument((p > 0.0 && p < 1.0),
       "FPP should be less than 1.0 and great than 0.0");
-
     final double m = -8 * n / Math.log(1 - Math.pow(p, 1.0 / 8));
     final double MAX = MAXIMUM_BLOOM_FILTER_BYTES << 3;
     int numBits = (int)m;
@@ -265,12 +249,10 @@ public class BlockSplitBloomFilter extends BloomFilter {
     if (m > MAX || m < 0) {
       numBits = (int)MAX;
     }
-
     // Get next power of 2 if bits is not power of 2.
     if ((numBits & (numBits - 1)) != 0) {
       numBits = Integer.highestOneBit(numBits) << 1;
     }
-
     if (numBits < (MINIMUM_BLOOM_FILTER_BYTES << 3)) {
       numBits = MINIMUM_BLOOM_FILTER_BYTES << 3;
     }

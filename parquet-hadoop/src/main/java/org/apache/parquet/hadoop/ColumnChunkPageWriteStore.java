@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ConcatenatingByteArrayCollector;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -36,23 +35,22 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
-import org.apache.parquet.column.values.bloomfilter.BloomFilter;
-import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
-import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
+import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
+import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore {
+class ColumnChunkPageWriteStore implements PageWriteStore {
   private static final Logger LOG = LoggerFactory.getLogger(ColumnChunkPageWriteStore.class);
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
-  private static final class ColumnChunkPageWriter implements PageWriter, BloomFilterWriter {
+  private static final class ColumnChunkPageWriter implements PageWriter {
 
     private final ColumnDescriptor path;
     private final BytesCompressor compressor;
@@ -60,7 +58,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
     private final ByteArrayOutputStream tempOutputStream = new ByteArrayOutputStream();
     private final ConcatenatingByteArrayCollector buf;
     private DictionaryPage dictionaryPage;
-    private BloomFilter bloomFilter;
 
     private long uncompressedLength;
     private long compressedLength;
@@ -72,21 +69,38 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
     private Set<Encoding> dlEncodings = new HashSet<Encoding>();
     private List<Encoding> dataEncodings = new ArrayList<Encoding>();
 
+    private ColumnIndexBuilder columnIndexBuilder;
+    private OffsetIndexBuilder offsetIndexBuilder;
     private Statistics totalStatistics;
     private final ByteBufferAllocator allocator;
 
     private ColumnChunkPageWriter(ColumnDescriptor path,
                                   BytesCompressor compressor,
-                                  ByteBufferAllocator allocator) {
+                                  ByteBufferAllocator allocator,
+                                  int columnIndexTruncateLength) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
       this.buf = new ConcatenatingByteArrayCollector();
+      this.columnIndexBuilder = ColumnIndexBuilder.getBuilder(path.getPrimitiveType(), columnIndexTruncateLength);
+      this.offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
+    }
+
+    @Override
+    @Deprecated
+    public void writePage(BytesInput bytesInput, int valueCount, Statistics<?> statistics, Encoding rlEncoding,
+        Encoding dlEncoding, Encoding valuesEncoding) throws IOException {
+      // Setting the builders to the no-op ones so no column/offset indexes will be written for this column chunk
+      columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
+      offsetIndexBuilder = OffsetIndexBuilder.getNoOpBuilder();
+
+      writePage(bytesInput, valueCount, -1, statistics, rlEncoding, dlEncoding, valuesEncoding);
     }
 
     @Override
     public void writePage(BytesInput bytes,
                           int valueCount,
+                          int rowCount,
                           Statistics statistics,
                           Encoding rlEncoding,
                           Encoding dlEncoding,
@@ -125,6 +139,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
       } else {
         totalStatistics.mergeStatistics(statistics);
       }
+
+      columnIndexBuilder.add(statistics);
+      offsetIndexBuilder.add(toIntWithCheck(tempOutputStream.size() + compressedSize), rowCount);
 
       // by concatenating before collecting instead of collecting twice,
       // we only allocate one buffer to copy into instead of multiple.
@@ -171,6 +188,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
         totalStatistics.mergeStatistics(statistics);
       }
 
+      columnIndexBuilder.add(statistics);
+      offsetIndexBuilder.add(toIntWithCheck((long) tempOutputStream.size() + compressedSize), rowCount);
+
       // by concatenating before collecting instead of collecting twice,
       // we only allocate one buffer to copy into instead of multiple.
       buf.collect(
@@ -198,18 +218,20 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
     }
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
-      writer.startColumn(path, totalValueCount, compressor.getCodecName());
-      if (bloomFilter != null) {
-        writer.writeBloomFilter(bloomFilter);
-      }
-
-      if (dictionaryPage != null) {
-        writer.writeDictionaryPage(dictionaryPage);
-        // tracking the dictionary encoding is handled in writeDictionaryPage
-      }
-      writer.writeDataPages(buf, uncompressedLength, compressedLength, totalStatistics,
-          rlEncodings, dlEncodings, dataEncodings);
-      writer.endColumn();
+      writer.writeColumnChunk(
+          path,
+          totalValueCount,
+          compressor.getCodecName(),
+          dictionaryPage,
+          buf,
+          uncompressedLength,
+          compressedLength,
+          totalStatistics,
+          columnIndexBuilder,
+          offsetIndexBuilder,
+          rlEncodings,
+          dlEncodings,
+          dataEncodings);
       if (LOG.isDebugEnabled()) {
         LOG.debug(
             String.format(
@@ -247,20 +269,16 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
       return buf.memUsageString(prefix + " ColumnChunkPageWriter");
     }
 
-    @Override
-    public void writeBloomFilter(BloomFilter bloomFilter) {
-      this.bloomFilter = bloomFilter;
-    }
-
   }
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator) {
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
+      int columnIndexTruncateLength) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator));
+      writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength));
     }
   }
 
@@ -269,16 +287,16 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
     return writers.get(path);
   }
 
-  @Override
-  public BloomFilterWriter getBloomFilterWriter(ColumnDescriptor path) {
-    return writers.get(path);
-  }
-
   public void flushToFileWriter(ParquetFileWriter writer) throws IOException {
     for (ColumnDescriptor path : schema.getColumns()) {
       ColumnChunkPageWriter pageWriter = writers.get(path);
       pageWriter.writeToFileWriter(writer);
     }
+  }
+
+  void flushToFileWriter(ColumnDescriptor path, ParquetFileWriter writer) throws IOException {
+    ColumnChunkPageWriter pageWriter = writers.get(path);
+    pageWriter.writeToFileWriter(writer);
   }
 
 }

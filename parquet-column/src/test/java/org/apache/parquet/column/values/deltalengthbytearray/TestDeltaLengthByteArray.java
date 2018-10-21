@@ -65,6 +65,30 @@ public class TestDeltaLengthByteArray {
   }
 
   @Test
+  public void testSkipWithRandomStrings() throws IOException {
+    DeltaLengthByteArrayValuesWriter writer = getDeltaLengthByteArrayValuesWriter();
+    DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
+
+    String[] values = Utils.getRandomStringSamples(1000, 32);
+    Utils.writeData(writer, values);
+
+    reader.initFromPage(values.length, writer.getBytes().toInputStream());
+    for (int i = 0; i < values.length; i += 2) {
+      Assert.assertEquals(Binary.fromString(values[i]), reader.readBytes());
+      reader.skip();
+    }
+
+    reader = new DeltaLengthByteArrayValuesReader();
+    reader.initFromPage(values.length, writer.getBytes().toInputStream());
+    int skipCount;
+    for (int i = 0; i < values.length; i += skipCount + 1) {
+      skipCount = (values.length - i) / 2;
+      Assert.assertEquals(Binary.fromString(values[i]), reader.readBytes());
+      reader.skip(skipCount);
+    }
+  }
+
+  @Test
   public void testLengths() throws IOException {
     DeltaLengthByteArrayValuesWriter writer = getDeltaLengthByteArrayValuesWriter();
     ValuesReader reader = new DeltaBinaryPackingValuesReader();

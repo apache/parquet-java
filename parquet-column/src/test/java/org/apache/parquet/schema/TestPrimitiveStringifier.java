@@ -19,15 +19,26 @@
 package org.apache.parquet.schema;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.parquet.schema.PrimitiveStringifier.DATE_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.DEFAULT_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.INTERVAL_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MICROS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MILLIS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_NANOS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.UNSIGNED_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.UTF8_STRINGIFIER;
 import static org.junit.Assert.assertEquals;
@@ -35,7 +46,6 @@ import static org.junit.Assert.fail;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Set;
@@ -152,74 +162,124 @@ public class TestPrimitiveStringifier {
     assertEquals("2017-12-14", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
 
     cal.clear();
-    cal.set(1492, Calendar.AUGUST, 3);
-    assertEquals("1492-08-03", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
+    cal.set(1583, Calendar.AUGUST, 3);
+    assertEquals("1583-08-03", stringifier.stringify((int) MILLISECONDS.toDays(cal.getTimeInMillis())));
 
     checkThrowingUnsupportedException(stringifier, Integer.TYPE);
   }
 
   @Test
   public void testTimestampMillisStringifier() {
-    PrimitiveStringifier stringifier = PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+    for (PrimitiveStringifier stringifier : asList(TIMESTAMP_MILLIS_STRINGIFIER, TIMESTAMP_MILLIS_UTC_STRINGIFIER)) {
+      String timezoneAmendment = (stringifier == TIMESTAMP_MILLIS_STRINGIFIER ? "" : "+0000");
 
-    assertEquals("1970-01-01T00:00:00.000", stringifier.stringify(0l));
+      assertEquals(withZoneString("1970-01-01T00:00:00.000", timezoneAmendment), stringifier.stringify(0l));
 
-    Calendar cal = Calendar.getInstance(UTC);
-    cal.clear();
-    cal.set(2017, Calendar.DECEMBER, 15, 10, 9, 54);
-    cal.set(Calendar.MILLISECOND, 120);
-    assertEquals("2017-12-15T10:09:54.120", stringifier.stringify(cal.getTimeInMillis()));
+      Calendar cal = Calendar.getInstance(UTC);
+      cal.clear();
+      cal.set(2017, Calendar.DECEMBER, 15, 10, 9, 54);
+      cal.set(Calendar.MILLISECOND, 120);
+      assertEquals(withZoneString("2017-12-15T10:09:54.120", timezoneAmendment), stringifier.stringify(cal.getTimeInMillis()));
 
-    cal.clear();
-    cal.set(1948, Calendar.NOVEMBER, 23, 20, 19, 1);
-    cal.set(Calendar.MILLISECOND, 9);
-    assertEquals("1948-11-23T20:19:01.009", stringifier.stringify(cal.getTimeInMillis()));
+      cal.clear();
+      cal.set(1948, Calendar.NOVEMBER, 23, 20, 19, 1);
+      cal.set(Calendar.MILLISECOND, 9);
+      assertEquals(withZoneString("1948-11-23T20:19:01.009", timezoneAmendment), stringifier.stringify(cal.getTimeInMillis()));
 
-    checkThrowingUnsupportedException(stringifier, Long.TYPE);
+      checkThrowingUnsupportedException(stringifier, Long.TYPE);
+    }
   }
 
   @Test
   public void testTimestampMicrosStringifier() {
-    PrimitiveStringifier stringifier = PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
+    for (PrimitiveStringifier stringifier : asList(TIMESTAMP_MICROS_STRINGIFIER, TIMESTAMP_MICROS_UTC_STRINGIFIER)) {
+      String timezoneAmendment = (stringifier == TIMESTAMP_MICROS_STRINGIFIER ? "" : "+0000");
 
-    assertEquals("1970-01-01T00:00:00.000000", stringifier.stringify(0l));
+      assertEquals(withZoneString("1970-01-01T00:00:00.000000", timezoneAmendment), stringifier.stringify(0l));
 
-    Calendar cal = Calendar.getInstance(UTC);
-    cal.clear();
-    cal.set(2053, Calendar.JULY, 10, 22, 13, 24);
-    cal.set(Calendar.MILLISECOND, 84);
-    long micros = cal.getTimeInMillis() * 1000 + 900;
-    assertEquals("2053-07-10T22:13:24.084900", stringifier.stringify(micros));
+      Calendar cal = Calendar.getInstance(UTC);
+      cal.clear();
+      cal.set(2053, Calendar.JULY, 10, 22, 13, 24);
+      cal.set(Calendar.MILLISECOND, 84);
+      long micros = cal.getTimeInMillis() * 1000 + 900;
+      assertEquals(withZoneString("2053-07-10T22:13:24.084900", timezoneAmendment), stringifier.stringify(micros));
 
-    cal.clear();
-    cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
-    cal.set(Calendar.MILLISECOND, 765);
-    micros = cal.getTimeInMillis() * 1000 - 1;
-    assertEquals("1848-03-15T09:23:59.765001", stringifier.stringify(micros));
+      cal.clear();
+      cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
+      cal.set(Calendar.MILLISECOND, 765);
+      micros = cal.getTimeInMillis() * 1000 - 1;
+      assertEquals(withZoneString("1848-03-15T09:23:59.764999", timezoneAmendment), stringifier.stringify(micros));
 
-    checkThrowingUnsupportedException(stringifier, Long.TYPE);
+      checkThrowingUnsupportedException(stringifier, Long.TYPE);
+    }
+  }
+
+  @Test
+  public void testTimestampNanosStringifier() {
+    for (PrimitiveStringifier stringifier : asList(TIMESTAMP_NANOS_STRINGIFIER, TIMESTAMP_NANOS_UTC_STRINGIFIER)) {
+      String timezoneAmendment = (stringifier == TIMESTAMP_NANOS_STRINGIFIER ? "" : "+0000");
+
+      assertEquals(withZoneString("1970-01-01T00:00:00.000000000", timezoneAmendment), stringifier.stringify(0l));
+
+      Calendar cal = Calendar.getInstance(UTC);
+      cal.clear();
+      cal.set(2053, Calendar.JULY, 10, 22, 13, 24);
+      cal.set(Calendar.MILLISECOND, 84);
+      long nanos = cal.getTimeInMillis() * 1_000_000 + 536;
+      assertEquals(withZoneString("2053-07-10T22:13:24.084000536", timezoneAmendment), stringifier.stringify(nanos));
+
+      cal.clear();
+      cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
+      cal.set(Calendar.MILLISECOND, 765);
+      nanos = cal.getTimeInMillis() * 1_000_000 - 1;
+      assertEquals(withZoneString("1848-03-15T09:23:59.764999999", timezoneAmendment), stringifier.stringify(nanos));
+
+      checkThrowingUnsupportedException(stringifier, Long.TYPE);
+    }
   }
 
   @Test
   public void testTimeStringifier() {
-    PrimitiveStringifier stringifier = TIME_STRINGIFIER;
+    for (PrimitiveStringifier stringifier : asList(TIME_STRINGIFIER, TIME_UTC_STRINGIFIER)) {
+      String timezoneAmendment = (stringifier == TIME_STRINGIFIER ? "" : "+0000");
 
-    assertEquals("00:00:00.000", stringifier.stringify(0));
-    assertEquals("00:00:00.000000", stringifier.stringify(0l));
+      assertEquals(withZoneString("00:00:00.000", timezoneAmendment), stringifier.stringify(0));
+      assertEquals(withZoneString("00:00:00.000000", timezoneAmendment), stringifier.stringify(0l));
 
-    assertEquals("12:34:56.789", stringifier.stringify((int) convert(MILLISECONDS, 12, 34, 56, 789)));
-    assertEquals("12:34:56.789012", stringifier.stringify(convert(MICROSECONDS, 12, 34, 56, 789012)));
+      assertEquals(withZoneString("12:34:56.789", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, 12, 34, 56, 789)));
+      assertEquals(withZoneString("12:34:56.789012", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, 12, 34, 56, 789012)));
 
-    assertEquals("-12:34:56.789", stringifier.stringify((int) convert(MILLISECONDS, -12, -34, -56, -789)));
-    assertEquals("-12:34:56.789012", stringifier.stringify(convert(MICROSECONDS, -12, -34, -56, -789012)));
+      assertEquals(withZoneString("-12:34:56.789", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, -12, -34, -56, -789)));
+      assertEquals(withZoneString("-12:34:56.789012", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, -12, -34, -56, -789012)));
 
-    assertEquals("123:12:34.567", stringifier.stringify((int) convert(MILLISECONDS, 123, 12, 34, 567)));
-    assertEquals("12345:12:34.056789", stringifier.stringify(convert(MICROSECONDS, 12345, 12, 34, 56789)));
+      assertEquals(withZoneString("123:12:34.567", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, 123, 12, 34, 567)));
+      assertEquals(withZoneString("12345:12:34.056789", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, 12345, 12, 34, 56789)));
 
-    assertEquals("-123:12:34.567", stringifier.stringify((int) convert(MILLISECONDS, -123, -12, -34, -567)));
-    assertEquals("-12345:12:34.056789", stringifier.stringify(convert(MICROSECONDS, -12345, -12, -34, -56789)));
+      assertEquals(withZoneString("-123:12:34.567", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, -123, -12, -34, -567)));
+      assertEquals(withZoneString("-12345:12:34.056789", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, -12345, -12, -34, -56789)));
 
-    checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE);
+      checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE);
+    }
+  }
+
+  @Test
+  public void testTimeNanoStringifier() {
+    for (PrimitiveStringifier stringifier : asList(TIME_NANOS_STRINGIFIER, TIME_NANOS_UTC_STRINGIFIER)) {
+      String timezoneAmendment = (stringifier == TIME_NANOS_STRINGIFIER ? "" : "+0000");
+
+      assertEquals(withZoneString("00:00:00.000000000", timezoneAmendment), stringifier.stringify(0l));
+
+      assertEquals(withZoneString("12:34:56.789012987", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, 12, 34, 56, 789012987)));
+      assertEquals(withZoneString("-12:34:56.000789012", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, -12, -34, -56, -789012)));
+      assertEquals(withZoneString("12345:12:34.000056789", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, 12345, 12, 34, 56789)));
+      assertEquals(withZoneString("-12345:12:34.000056789", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, -12345, -12, -34, -56789)));
+
+      checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE);
+    }
+  }
+
+  private String withZoneString(String expected, String zoneString) {
+    return expected + zoneString;
   }
 
   private long convert(TimeUnit unit, long hours, long minutes, long seconds, long rest) {
@@ -250,7 +310,7 @@ public class TestPrimitiveStringifier {
   }
 
   private void checkThrowingUnsupportedException(PrimitiveStringifier stringifier, Class<?>... excludes) {
-    Set<Class<?>> set = new HashSet<>(Arrays.asList(excludes));
+    Set<Class<?>> set = new HashSet<>(asList(excludes));
     if (!set.contains(Integer.TYPE)) {
       try {
         stringifier.stringify(0);

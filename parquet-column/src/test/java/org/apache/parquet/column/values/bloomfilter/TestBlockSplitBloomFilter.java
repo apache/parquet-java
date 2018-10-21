@@ -16,46 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.parquet.column.values.bloomfilter;
 
-
-  import java.io.File;
-  import java.io.FileInputStream;
-  import java.io.FileOutputStream;
-  import java.io.IOException;
-  import java.nio.ByteBuffer;
-  import java.nio.ByteOrder;
-  import java.util.ArrayList;
-  import java.util.List;
-  import java.util.Random;
-
-  import jdk.nashorn.internal.ir.Block;
-  import org.apache.parquet.column.values.RandomStr;
-  import org.apache.parquet.io.api.Binary;
-  import org.junit.Rule;
-  import org.junit.Test;
-  import org.junit.rules.TemporaryFolder;
-
-  import static org.junit.Assert.assertEquals;
-  import static org.junit.Assert.assertTrue;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import org.apache.parquet.column.values.RandomStr;
+import org.apache.parquet.io.api.Binary;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TestBlockSplitBloomFilter {
-
   @Test
   public void testConstructor () throws IOException {
     BloomFilter bloomFilter1 = new BlockSplitBloomFilter(0);
     assertEquals(bloomFilter1.getBitsetSize(), BlockSplitBloomFilter.MINIMUM_BLOOM_FILTER_BYTES);
-
     BloomFilter bloomFilter2 = new BlockSplitBloomFilter(256 * 1024 * 1024);
     assertEquals(bloomFilter2.getBitsetSize(), BlockSplitBloomFilter.MAXIMUM_BLOOM_FILTER_BYTES);
-
     BloomFilter bloomFilter3 = new BlockSplitBloomFilter(1000);
     assertEquals(bloomFilter3.getBitsetSize(), 1024);
   }
 
   @Rule
   public final TemporaryFolder temp = new TemporaryFolder();
+
   /*
    * This test is used to test basic operations including inserting, finding and
    * serializing and de-serializing.
@@ -73,11 +66,9 @@ public class TestBlockSplitBloomFilter {
     FileOutputStream fileOutputStream = new FileOutputStream(testFile);
     bloomFilter.writeTo(fileOutputStream);
     fileOutputStream.close();
-
     FileInputStream fileInputStream = new FileInputStream(testFile);
 
     byte[] value = new byte[4];
-
     fileInputStream.read(value);
     int length = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
     assertEquals(length, 1024);
@@ -93,7 +84,6 @@ public class TestBlockSplitBloomFilter {
     byte[] bitset = new byte[length];
     fileInputStream.read(bitset);
     bloomFilter = new BlockSplitBloomFilter(bitset);
-
     for(int i = 0; i < testStrings.length; i++) {
       assertTrue(bloomFilter.find(bloomFilter.hash(Binary.fromString(testStrings[i]))));
     }
@@ -122,7 +112,7 @@ public class TestBlockSplitBloomFilter {
         exist ++;
       }
     }
-
+    
     // The exist should be probably less than 1000 according FPP 0.01.
     assertTrue(exist < totalCount * FPP);
   }

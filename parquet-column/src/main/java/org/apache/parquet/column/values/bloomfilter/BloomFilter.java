@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.bloomfilter;
 
 import org.apache.parquet.io.api.Binary;
-
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -94,6 +93,7 @@ public abstract class BloomFilter {
    * @return hash result
    */
   public abstract long hash(float value);
+
   /**
    * Compute hash for Binary value by using its plain encoding result.
    *

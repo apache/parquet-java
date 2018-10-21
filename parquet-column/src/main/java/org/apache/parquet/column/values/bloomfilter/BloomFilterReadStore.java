@@ -23,7 +23,6 @@ import org.apache.parquet.column.ColumnDescriptor;
 /**
  * contains all the bloom filter reader for all columns of a row group
  */
-
 public interface BloomFilterReadStore {
   /**
    * Get a Bloom filter reader of a column
@@ -33,5 +32,3 @@ public interface BloomFilterReadStore {
    */
   BloomFilterReader getBloomFilterReader(ColumnDescriptor path);
 }
-
-

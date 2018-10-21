@@ -20,12 +20,10 @@ package org.apache.parquet.column.mem;
 
 import static org.junit.Assert.assertEquals;
 
-import org.apache.parquet.column.ParquetProperties;
-import org.junit.Test;
-
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.ColumnWriter;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.mem.MemPageStore;
@@ -33,6 +31,7 @@ import org.apache.parquet.example.DummyRecordConverter;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +46,7 @@ public class TestMemColumn {
     ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     columnWriter.write(42l, 0, 0);
+    memColumnsStore.endRecord();
     memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, schema);
@@ -85,6 +85,7 @@ public class TestMemColumn {
 
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     columnWriter.write(Binary.fromString("42"), 0, 0);
+    memColumnsStore.endRecord();
     memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
@@ -108,6 +109,7 @@ public class TestMemColumn {
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     for (int i = 0; i < 2000; i++) {
       columnWriter.write(42l, 0, 0);
+      memColumnsStore.endRecord();
     }
     memColumnsStore.flush();
 
@@ -136,12 +138,16 @@ public class TestMemColumn {
       int r = rs[i % rs.length];
       int d = ds[i % ds.length];
       LOG.debug("write i: {}", i);
+      if (i != 0 && r == 0) {
+        memColumnsStore.endRecord();
+      }
       if (d == 2) {
         columnWriter.write((long)i, r, d);
       } else {
         columnWriter.writeNull(r, d);
       }
     }
+    memColumnsStore.endRecord();
     memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);

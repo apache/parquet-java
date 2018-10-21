@@ -1,3 +1,5 @@
+
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,14 +18,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.parquet.column.values.bloomfilter;
 
 public interface BloomFilterWriter {
   /**
-   * Write a bloom filter
+   * Write a Bloom filter
    *
-   * @param bloomFilter the bloom filter to write
+   * @param bloomFilter the Bloom filter to write
    *
    */
   void writeBloomFilter(BloomFilter bloomFilter);
 }
+

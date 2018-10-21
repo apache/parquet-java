@@ -238,8 +238,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
       int p1 = b1.position();
       int p2 = b2.position();
 
-      boolean isNegative1 = l1 > 0 ? b1.get(p1) < 0 : false;
-      boolean isNegative2 = l2 > 0 ? b2.get(p2) < 0 : false;
+      boolean isNegative1 = l1 > 0 && b1.get(p1) < 0;
+      boolean isNegative2 = l2 > 0 && b2.get(p2) < 0;
       if (isNegative1 != isNegative2) {
         return isNegative1 ? -1 : 1;
       }
@@ -259,7 +259,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
 
       // The beginning of the longer buffer equals to the padding or the lengths are equal
       if (result == 0) {
-        result = compare(l1, b1, p1, b2, p2);
+        result = compare(Math.min(l1, l2), b1, p1, b2, p2);
       }
       return result;
     }
