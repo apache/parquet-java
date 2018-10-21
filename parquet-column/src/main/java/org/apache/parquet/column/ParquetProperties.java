@@ -96,6 +96,7 @@ public class ParquetProperties {
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
                             ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, boolean enableBloomFilter,
                             HashMap<String, Long> bloomFilterExpectedDistinctNumber) {
+
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
@@ -362,7 +363,6 @@ public class ParquetProperties {
       }
       return this;
     }
-
 
     public ParquetProperties build() {
       ParquetProperties properties =

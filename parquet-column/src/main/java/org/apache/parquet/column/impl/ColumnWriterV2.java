@@ -55,7 +55,6 @@ final class ColumnWriterV2 extends ColumnWriterBase {
     }
   }
 
-  private static final ValuesWriter NULL_WRITER = new DevNullValuesWriter();
 
   ColumnWriterV2(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
     super(path, pageWriter, props);

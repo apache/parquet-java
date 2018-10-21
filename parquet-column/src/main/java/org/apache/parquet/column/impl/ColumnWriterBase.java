@@ -152,7 +152,6 @@ abstract class ColumnWriterBase implements ColumnWriter {
         + pageWriter.getMemSize();
   }
 
-
   private void updateBloomFilter(int value) {
     if (bloomFilter != null) {
       bloomFilter.insert(bloomFilter.hash(value));

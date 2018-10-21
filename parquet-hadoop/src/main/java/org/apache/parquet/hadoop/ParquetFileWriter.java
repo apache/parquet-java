@@ -502,6 +502,46 @@ public class ParquetFileWriter {
    * @param valuesEncoding encoding of values
    * @throws IOException if any I/O error occurs during writing the file
    */
+  @Deprecated
+  public void writeDataPage(
+      int valueCount, int uncompressedPageSize,
+      BytesInput bytes,
+      Statistics statistics,
+      long rowCount,
+      Encoding rlEncoding,
+      Encoding dlEncoding,
+      Encoding valuesEncoding) throws IOException {
+    long beforeHeader = out.getPos();
+    innerWriteDataPage(valueCount, uncompressedPageSize, bytes, statistics, rlEncoding, dlEncoding, valuesEncoding);
+
+    offsetIndexBuilder.add((int) (out.getPos() - beforeHeader), rowCount);
+  }
+
+  private void innerWriteDataPage(
+      int valueCount, int uncompressedPageSize,
+      BytesInput bytes,
+      Statistics statistics,
+      Encoding rlEncoding,
+      Encoding dlEncoding,
+      Encoding valuesEncoding) throws IOException {
+    // We are unable to build indexes without rowCount so skip them for this column
+    offsetIndexBuilder = OffsetIndexBuilder.getNoOpBuilder();
+    columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
+    innerWriteDataPage(valueCount, uncompressedPageSize, bytes, statistics, rlEncoding, dlEncoding, valuesEncoding);
+  }
+
+  /**
+   * Writes a single page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
+   * @param statistics the statistics of the page
+   * @param rowCount the number of rows in the page
+   * @param rlEncoding encoding of the repetition level
+   * @param dlEncoding encoding of the definition level
+   * @param valuesEncoding encoding of values
+   * @throws IOException if any I/O error occurs during writing the file
+   */
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
       BytesInput bytes,
