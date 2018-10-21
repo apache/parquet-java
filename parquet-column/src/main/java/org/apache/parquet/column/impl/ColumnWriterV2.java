@@ -60,6 +60,8 @@ final class ColumnWriterV2 extends ColumnWriterBase {
     super(path, pageWriter, props);
   }
 
+  private static final ValuesWriter NULL_WRITER = new DevNullValuesWriter();
+
   ColumnWriterV2(ColumnDescriptor path, PageWriter pageWriter, BloomFilterWriter bloomFilterWriter,
                  ParquetProperties props) {
     super(path, pageWriter, bloomFilterWriter, props);

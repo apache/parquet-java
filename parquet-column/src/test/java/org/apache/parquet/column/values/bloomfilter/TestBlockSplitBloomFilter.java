@@ -112,7 +112,7 @@ public class TestBlockSplitBloomFilter {
         exist ++;
       }
     }
-    
+
     // The exist should be probably less than 1000 according FPP 0.01.
     assertTrue(exist < totalCount * FPP);
   }
