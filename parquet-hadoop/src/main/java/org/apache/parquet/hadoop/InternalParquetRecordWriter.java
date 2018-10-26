@@ -43,7 +43,7 @@ class InternalParquetRecordWriter<T> {
   private static final Logger LOG = LoggerFactory.getLogger(InternalParquetRecordWriter.class);
 
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
-  private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
+  private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 100;
 
   private final ParquetFileWriter parquetFileWriter;
   private final WriteSupport<T> writeSupport;

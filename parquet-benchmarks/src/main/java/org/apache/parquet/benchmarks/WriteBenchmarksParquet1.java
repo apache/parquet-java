@@ -29,13 +29,13 @@ import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
 
 import java.io.IOException;
 
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
 @State(Thread)
-public class WriteBenchmarks {
+public class WriteBenchmarksParquet1 {
   private DataGenerator dataGenerator = new DataGenerator();
 
   @Setup(Level.Iteration)
@@ -50,7 +50,7 @@ public class WriteBenchmarks {
   {
     dataGenerator.generateData(file_1M,
                                configuration,
-                               PARQUET_2_0,
+                               PARQUET_1_0,
                                BLOCK_SIZE_DEFAULT,
                                PAGE_SIZE_DEFAULT,
                                FIXED_LEN_BYTEARRAY_SIZE,
@@ -64,7 +64,7 @@ public class WriteBenchmarks {
   {
     dataGenerator.generateData(file_1M_BS256M_PS4M,
                                configuration,
-                               PARQUET_2_0,
+                               PARQUET_1_0,
                                BLOCK_SIZE_256M,
                                PAGE_SIZE_4M,
                                FIXED_LEN_BYTEARRAY_SIZE,
@@ -78,7 +78,7 @@ public class WriteBenchmarks {
   {
     dataGenerator.generateData(file_1M_BS256M_PS8M,
                                configuration,
-                               PARQUET_2_0,
+                               PARQUET_1_0,
                                BLOCK_SIZE_256M,
                                PAGE_SIZE_8M,
                                FIXED_LEN_BYTEARRAY_SIZE,
@@ -92,7 +92,7 @@ public class WriteBenchmarks {
   {
     dataGenerator.generateData(file_1M_BS512M_PS4M,
                                configuration,
-                               PARQUET_2_0,
+                               PARQUET_1_0,
                                BLOCK_SIZE_512M,
                                PAGE_SIZE_4M,
                                FIXED_LEN_BYTEARRAY_SIZE,
@@ -106,7 +106,7 @@ public class WriteBenchmarks {
   {
     dataGenerator.generateData(file_1M_BS512M_PS8M,
                                configuration,
-                               PARQUET_2_0,
+                               PARQUET_1_0,
                                BLOCK_SIZE_512M,
                                PAGE_SIZE_8M,
                                FIXED_LEN_BYTEARRAY_SIZE,
@@ -121,7 +121,7 @@ public class WriteBenchmarks {
 //  {
 //    dataGenerator.generateData(parquetFile_1M_LZO,
 //            configuration,
-//            WriterVersion.PARQUET_2_0,
+//            WriterVersion.PARQUET_1_0,
 //            BLOCK_SIZE_DEFAULT,
 //            PAGE_SIZE_DEFAULT,
 //            FIXED_LEN_BYTEARRAY_SIZE,
@@ -135,7 +135,7 @@ public class WriteBenchmarks {
   {
     dataGenerator.generateData(file_1M_SNAPPY,
                                configuration,
-                               PARQUET_2_0,
+                               PARQUET_1_0,
                                BLOCK_SIZE_DEFAULT,
                                PAGE_SIZE_DEFAULT,
                                FIXED_LEN_BYTEARRAY_SIZE,
@@ -149,7 +149,7 @@ public class WriteBenchmarks {
   {
     dataGenerator.generateData(file_1M_GZIP,
                                configuration,
-                               PARQUET_2_0,
+                               PARQUET_1_0,
                                BLOCK_SIZE_DEFAULT,
                                PAGE_SIZE_DEFAULT,
                                FIXED_LEN_BYTEARRAY_SIZE,
