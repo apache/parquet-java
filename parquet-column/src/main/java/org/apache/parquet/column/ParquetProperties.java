@@ -90,6 +90,8 @@ public class ParquetProperties {
   private final ValuesWriterFactory valuesWriterFactory;
   private final int columnIndexTruncateLength;
   private final boolean enableBloomFilter;
+
+  // The key-value pair represents the column name and its expected distinct number of values in a row group.
   private final HashMap<String, Long> bloomFilterExpectedDistinctNumbers;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,

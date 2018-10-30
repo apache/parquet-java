@@ -107,6 +107,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     };
   }
 
+  // The Bloom filter is written to a specified bitset instead of pages. So it needs a separated write store abstract.
   ColumnWriteStoreBase(
     MessageType schema,
     PageWriteStore pageWriteStore,

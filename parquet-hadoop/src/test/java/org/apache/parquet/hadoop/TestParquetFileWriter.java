@@ -240,8 +240,8 @@ public class TestParquetFileWriter {
     w.writeDataPage(2, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.writeDataPage(3, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
     BloomFilter bloomData = new BlockSplitBloomFilter(0);
-    bloomData.insert(bloomData.hash(Binary.fromString("hello")));
-    bloomData.insert(bloomData.hash(Binary.fromString("world")));
+    bloomData.insertHash(bloomData.hash(Binary.fromString("hello")));
+    bloomData.insertHash(bloomData.hash(Binary.fromString("world")));
     long blStarts = w.getPos();
     w.writeBloomFilter(bloomData);
     w.endColumn();
@@ -254,8 +254,8 @@ public class TestParquetFileWriter {
       Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(colPath)));
     BloomFilterReader bloomFilterReader =  r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
     BloomFilter bloomDataRead = bloomFilterReader.readBloomFilter(col);
-    assertTrue(bloomDataRead.find(bloomData.hash(Binary.fromString("hello"))));
-    assertTrue(bloomDataRead.find(bloomData.hash(Binary.fromString("world"))));
+    assertTrue(bloomDataRead.findHash(bloomData.hash(Binary.fromString("hello"))));
+    assertTrue(bloomDataRead.findHash(bloomData.hash(Binary.fromString("world"))));
   }
 
   @Test

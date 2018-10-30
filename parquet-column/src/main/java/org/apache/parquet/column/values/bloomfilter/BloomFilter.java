@@ -27,24 +27,24 @@ import java.io.OutputStream;
  * in a set. The Bloom filter usually consists of a bit set that represents a elements set,
  * a hash strategy and a Bloom filter algorithm.
  */
-public abstract class BloomFilter {
+public interface BloomFilter {
   // Bloom filter Hash strategy.
-  public enum HashStrategy {
-    MURMUR3_X64_128,
+  enum HashStrategy {
+    MURMUR3_X64_128
   }
 
   // Bloom filter algorithm.
-  public enum Algorithm {
-    BLOCK,
+  enum Algorithm {
+    BLOCK
   }
 
   /**
-   * Write the Bloom filter to an output stream. It writes the Bloom filter header includes the
-   * bitset's length in size of byte, the hash strategy, the algorithm, and the bitset.
+   * Write the Bloom filter to an output stream. It writes the Bloom filter header including the
+   * bitset's length in bytes, the hash strategy, the algorithm, and the bitset.
    *
    * @param out the output stream to write
    */
-  public abstract void writeTo(OutputStream out) throws IOException;
+  void writeTo(OutputStream out) throws IOException;
 
   /**
    * Insert an element to the Bloom filter, the element content is represented by
@@ -52,7 +52,7 @@ public abstract class BloomFilter {
    *
    * @param hash the hash result of element.
    */
-  public abstract void insert(long hash);
+  void insertHash(long hash);
 
   /**
    * Determine whether an element is in set or not.
@@ -60,7 +60,7 @@ public abstract class BloomFilter {
    * @param hash the hash value of element plain encoding result.
    * @return false if element is must not in set, true if element probably in set.
    */
-  public abstract boolean find(long hash);
+  boolean findHash(long hash);
 
   /**
    * Compute hash for int value by using its plain encoding result.
@@ -68,7 +68,7 @@ public abstract class BloomFilter {
    * @param value the value to hash
    * @return hash result
    */
-  public abstract long hash(int value);
+  long hash(int value);
 
   /**
    * Compute hash for long value by using its plain encoding result.
@@ -76,7 +76,7 @@ public abstract class BloomFilter {
    * @param value the value to hash
    * @return hash result
    */
-  public abstract long hash(long value) ;
+  long hash(long value) ;
 
   /**
    * Compute hash for double value by using its plain encoding result.
@@ -84,7 +84,7 @@ public abstract class BloomFilter {
    * @param value the value to hash
    * @return hash result
    */
-  public abstract long hash(double value);
+  long hash(double value);
 
   /**
    * Compute hash for float value by using its plain encoding result.
@@ -92,7 +92,7 @@ public abstract class BloomFilter {
    * @param value the value to hash
    * @return hash result
    */
-  public abstract long hash(float value);
+  long hash(float value);
 
   /**
    * Compute hash for Binary value by using its plain encoding result.
@@ -100,12 +100,12 @@ public abstract class BloomFilter {
    * @param value the value to hash
    * @return hash result
    */
-  public abstract long hash(Binary value);
+  long hash(Binary value);
 
   /**
    * Get the number of bytes for bitset in this Bloom filter.
    *
    * @return The number of bytes for bitset in this Bloom filter.
    */
-  public abstract long getBitsetSize();
+  long getBitsetSize();
 }

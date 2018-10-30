@@ -39,9 +39,9 @@ public class TestBlockSplitBloomFilter {
   @Test
   public void testConstructor () throws IOException {
     BloomFilter bloomFilter1 = new BlockSplitBloomFilter(0);
-    assertEquals(bloomFilter1.getBitsetSize(), BlockSplitBloomFilter.MINIMUM_BLOOM_FILTER_BYTES);
-    BloomFilter bloomFilter2 = new BlockSplitBloomFilter(256 * 1024 * 1024);
-    assertEquals(bloomFilter2.getBitsetSize(), BlockSplitBloomFilter.MAXIMUM_BLOOM_FILTER_BYTES);
+    assertEquals(bloomFilter1.getBitsetSize(), BlockSplitBloomFilter.MINIMUM_BYTES);
+    BloomFilter bloomFilter2 = new BlockSplitBloomFilter(BlockSplitBloomFilter.MAXIMUM_BYTES + 1);
+    assertEquals(bloomFilter2.getBitsetSize(), BlockSplitBloomFilter.MAXIMUM_BYTES);
     BloomFilter bloomFilter3 = new BlockSplitBloomFilter(1000);
     assertEquals(bloomFilter3.getBitsetSize(), 1024);
   }
@@ -59,7 +59,7 @@ public class TestBlockSplitBloomFilter {
     BloomFilter bloomFilter = new BlockSplitBloomFilter(1024);
 
     for(int i = 0; i < testStrings.length; i++) {
-      bloomFilter.insert(bloomFilter.hash(Binary.fromString(testStrings[i])));
+      bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(testStrings[i])));
     }
 
     File testFile = temp.newFile();
@@ -85,7 +85,7 @@ public class TestBlockSplitBloomFilter {
     fileInputStream.read(bitset);
     bloomFilter = new BlockSplitBloomFilter(bitset);
     for(int i = 0; i < testStrings.length; i++) {
-      assertTrue(bloomFilter.find(bloomFilter.hash(Binary.fromString(testStrings[i]))));
+      assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(testStrings[i]))));
     }
   }
 
@@ -101,14 +101,14 @@ public class TestBlockSplitBloomFilter {
     for(int i = 0; i < totalCount; i++) {
       String str = randomStr.get(10);
       strings.add(str);
-      bloomFilter.insert(bloomFilter.hash(Binary.fromString(str)));
+      bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(str)));
     }
 
     // The exist counts the number of times FindHash returns true.
     int exist = 0;
     for (int i = 0; i < totalCount; i++) {
       String str = randomStr.get(8);
-      if (bloomFilter.find(bloomFilter.hash(Binary.fromString(str)))) {
+      if (bloomFilter.findHash(bloomFilter.hash(Binary.fromString(str)))) {
         exist ++;
       }
     }

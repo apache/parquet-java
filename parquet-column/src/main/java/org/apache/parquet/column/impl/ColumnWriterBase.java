@@ -81,7 +81,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   ) {
     this(path, pageWriter, props);
 
-    // Current not support nested column.
+    // Bloom filters don't support nested columns yet; see PARQUET-1453.
     if (path.getPath().length != 1 || bloomFilterWriter == null) {
       return;
     }
@@ -154,31 +154,31 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   private void updateBloomFilter(int value) {
     if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
+      bloomFilter.insertHash(bloomFilter.hash(value));
     }
   }
 
   private void updateBloomFilter(long value) {
     if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
+      bloomFilter.insertHash(bloomFilter.hash(value));
     }
   }
 
   private void updateBloomFilter(double value) {
     if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
+      bloomFilter.insertHash(bloomFilter.hash(value));
     }
   }
 
   private void updateBloomFilter(float value) {
     if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
+      bloomFilter.insertHash(bloomFilter.hash(value));
     }
   }
 
   private void updateBloomFilter(Binary value) {
     if (bloomFilter != null) {
-      bloomFilter.insert(bloomFilter.hash(value));
+      bloomFilter.insertHash(bloomFilter.hash(value));
     }
   }
 
