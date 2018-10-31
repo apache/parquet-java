@@ -87,10 +87,10 @@ abstract class ColumnWriterBase implements ColumnWriter {
     }
 
     this.bloomFilterWriter = bloomFilterWriter;
-    HashMap<String, Long> bloomFilterExpectValues = props.getBloomFilterExpectedDistinctNumbers();
+    HashMap<String, Long> bloomFilterColumnExpectedNDVs = props.getBloomFilterColumnExpectedNDVs();
     String column = path.getPath()[0];
-    if (bloomFilterExpectValues.keySet().contains(column)) {
-      int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(bloomFilterExpectValues.get(column).intValue(),
+    if (bloomFilterColumnExpectedNDVs.keySet().contains(column)) {
+      int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(bloomFilterColumnExpectedNDVs.get(column).intValue(),
         BlockSplitBloomFilter.DEFAULT_FPP);
       this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits/8);
     }

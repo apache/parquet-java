@@ -107,7 +107,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     };
   }
 
-  // The Bloom filter is written to a specified bitset instead of pages. So it needs a separated write store abstract.
+  // The Bloom filter is written to a specified bitset instead of pages, so it needs a separate write store abstract.
   ColumnWriteStoreBase(
     MessageType schema,
     PageWriteStore pageWriteStore,
@@ -118,7 +118,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      if (props.isBloomFilterEnabled() && props.getBloomFilterExpectedDistinctNumbers() != null) {
+      if (props.isBloomFilterEnabled() && props.getBloomFilterColumnExpectedNDVs() != null) {
         BloomFilterWriter bloomFilterWriter = bloomFilterWriteStore.getBloomFilterWriter(path);
         mcolumns.put(path, createColumnWriter(path, pageWriter, bloomFilterWriter, props));
       } else {

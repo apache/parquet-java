@@ -211,7 +211,7 @@ public class ParquetProperties {
     return enableBloomFilter;
   }
 
-  public HashMap<String, Long> getBloomFilterExpectedDistinctNumbers() {
+  public HashMap<String, Long> getBloomFilterColumnExpectedNDVs() {
     return bloomFilterExpectedDistinctNumbers;
   }
 
@@ -235,7 +235,7 @@ public class ParquetProperties {
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
     private int columnIndexTruncateLength = DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
     private boolean enableBloomFilter = DEFAULT_BLOOM_FILTER_ENABLED;
-    private HashMap<String, Long> bloomFilterExpectedDistinctNumbers = new HashMap<>();
+    private HashMap<String, Long> bloomFilterColumnExpectedNDVs = new HashMap<>();
 
     private Builder() {
     }
@@ -249,7 +249,7 @@ public class ParquetProperties {
       this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
       this.allocator = toCopy.allocator;
       this.enableBloomFilter = toCopy.enableBloomFilter;
-      this.bloomFilterExpectedDistinctNumbers = toCopy.bloomFilterExpectedDistinctNumbers;
+      this.bloomFilterColumnExpectedNDVs = toCopy.bloomFilterExpectedDistinctNumbers;
     }
 
     /**
@@ -351,18 +351,11 @@ public class ParquetProperties {
     /**
      * Set Bloom filter info for columns.
      *
-     * @param bloomFilterColumnNames the columns to be enabled for Bloom filter
-     * @param bloomFilterDistinctNumbers the expected distinct number of values corresponding to columns
+     * @param columnExpectedNDVs the columns expected number of distinct values in a row group
      * @return this builder for method chaining
      */
-    public Builder withBloomFilterInfo(String bloomFilterColumnNames, String bloomFilterDistinctNumbers) {
-      String[] columnNames = bloomFilterColumnNames.split(",");
-      String[] expectedDistinctNumber = bloomFilterDistinctNumbers.split(",");
-      Preconditions.checkArgument(columnNames.length == expectedDistinctNumber.length,
-        "Column names are not matched to sizes");
-      for (int i = 0; i < columnNames.length; i++) {
-        this.bloomFilterExpectedDistinctNumbers.put(columnNames[i], Long.getLong(expectedDistinctNumber[i]));
-      }
+    public Builder withBloomFilterInfo(HashMap<String, Long> columnExpectedNDVs) {
+      this.bloomFilterColumnExpectedNDVs = columnExpectedNDVs;
       return this;
     }
 
@@ -371,7 +364,7 @@ public class ParquetProperties {
         new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
           estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength,
-          enableBloomFilter, bloomFilterExpectedDistinctNumbers);
+          enableBloomFilter, bloomFilterColumnExpectedNDVs);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently
       // creation of ValuesWriters is invoked from within ParquetProperties. In the future
       // we'd like to decouple that and won't need to pass an object to properties and then pass the

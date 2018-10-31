@@ -30,12 +30,20 @@ import java.io.OutputStream;
 public interface BloomFilter {
   // Bloom filter Hash strategy.
   enum HashStrategy {
-    MURMUR3_X64_128
+    MURMUR3_X64_128(0);
+    HashStrategy(int value) {
+      this.value = value;
+    }
+    int value;
   }
 
   // Bloom filter algorithm.
   enum Algorithm {
-    BLOCK
+    BLOCK(0);
+    Algorithm(int value) {
+      this.value = value;
+    }
+    int value;
   }
 
   /**

@@ -86,18 +86,17 @@ public class BlockSplitBloomFilter implements BloomFilter {
    *                 of 2. It uses murmur3_x64_128 as its default hash function.
    */
   public BlockSplitBloomFilter(int numBytes) {
-    this(numBytes, HashStrategy.MURMUR3_X64_128, Algorithm.BLOCK);
+    this(numBytes, HashStrategy.MURMUR3_X64_128);
   }
 
   /**
-   * Constructor of Bloom filter. It uses murmur3_x64_128 as its default hash
-   * function and block-based algorithm as its default algorithm.
+   * Constructor of block-based Bloom filter. It uses murmur3_x64_128 as its default hash
+   * function.
    *
    * @param numBytes The number of bytes for Bloom filter bitset
    * @param hashStrategy The hash strategy of Bloom filter.
-   * @param algorithm The algorithm of Bloom filter.
    */
-  private BlockSplitBloomFilter(int numBytes, HashStrategy hashStrategy, Algorithm algorithm) {
+  private BlockSplitBloomFilter(int numBytes, HashStrategy hashStrategy) {
     initBitset(numBytes);
     switch (hashStrategy) {
       case MURMUR3_X64_128:
@@ -112,12 +111,12 @@ public class BlockSplitBloomFilter implements BloomFilter {
   /**
    * Construct the Bloom filter with given bitset, it is used when reconstructing
    * Bloom filter from parquet file. It use murmur3_x64_128 as its default hash
-   * function and block-based algorithm as default algorithm.
+   * function.
    *
    * @param bitset The given bitset to construct Bloom filter.
    */
   public BlockSplitBloomFilter(byte[] bitset) {
-    this(bitset, HashStrategy.MURMUR3_X64_128, Algorithm.BLOCK);
+    this(bitset, HashStrategy.MURMUR3_X64_128);
   }
 
   /**
@@ -126,9 +125,8 @@ public class BlockSplitBloomFilter implements BloomFilter {
    *
    * @param bitset The given bitset to construct Bloom filter.
    * @param hashStrategy The hash strategy Bloom filter apply.
-   * @param algorithm The algorithm of Bloom filter.
    */
-  private BlockSplitBloomFilter(byte[] bitset, HashStrategy hashStrategy, Algorithm algorithm) {
+  private BlockSplitBloomFilter(byte[] bitset, HashStrategy hashStrategy) {
     if (bitset == null) {
       throw new RuntimeException("Given bitset is null");
     }
@@ -174,9 +172,9 @@ public class BlockSplitBloomFilter implements BloomFilter {
     // Write number of bytes of bitset.
     out.write(BytesUtils.intToBytes(bitset.length));
     // Write hash strategy
-    out.write(BytesUtils.intToBytes(hashStrategy.ordinal()));
+    out.write(BytesUtils.intToBytes(hashStrategy.value));
     // Write algorithm
-    out.write(BytesUtils.intToBytes(Algorithm.BLOCK.ordinal()));
+    out.write(BytesUtils.intToBytes(Algorithm.BLOCK.value));
     // Write bitset
     out.write(bitset);
   }
