@@ -190,18 +190,17 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
   private void sizeCheck() {
     long minRecordToWait = Long.MAX_VALUE;
-    long maxUnwrittenRows = 0;
     int pageRowCountLimit = props.getPageRowCountLimit();
+    long rowCountForNextRowCountCheck = rowCount + pageRowCountLimit;
     for (ColumnWriterBase writer : columns.values()) {
       long usedMem = writer.getCurrentPageBufferedSize();
       long rows = rowCount - writer.getRowsWrittenSoFar();
       long remainingMem = props.getPageSizeThreshold() - usedMem;
-      long actualPageRowCount = rowCount - writer.getRowsWrittenSoFar();
-      if (remainingMem <= thresholdTolerance || actualPageRowCount >= pageRowCountLimit) {
+      if (remainingMem <= thresholdTolerance || rows >= pageRowCountLimit) {
         writer.writePage();
         remainingMem = props.getPageSizeThreshold();
-      } else if (actualPageRowCount > maxUnwrittenRows) {
-        maxUnwrittenRows = actualPageRowCount;
+      } else {
+        rowCountForNextRowCountCheck = min(rowCountForNextRowCountCheck, rowCount + (pageRowCountLimit - rows));
       }
       long rowsToFillPage =
           usedMem == 0 ?
@@ -226,7 +225,6 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     }
 
     // Do the check earlier if required to keep the row count limit
-    long rowCountForNextRowCountCheck = rowCount + pageRowCountLimit - maxUnwrittenRows;
     if (rowCountForNextRowCountCheck < rowCountForNextSizeCheck) {
       rowCountForNextSizeCheck = rowCountForNextRowCountCheck;
     }
