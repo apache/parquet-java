@@ -25,9 +25,10 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 
 /**
@@ -184,19 +185,31 @@ abstract class BinaryTruncator {
         return NO_OP_TRUNCATOR;
       case BINARY:
       case FIXED_LEN_BYTE_ARRAY:
-        OriginalType originalType = type.getOriginalType();
-        if (originalType == null) {
+        LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+        if (logicalTypeAnnotation == null) {
           return DEFAULT_UTF8_TRUNCATOR;
         }
-        switch (originalType) {
-          case UTF8:
-          case ENUM:
-          case JSON:
-          case BSON:
-            return DEFAULT_UTF8_TRUNCATOR;
-          default:
-            return NO_OP_TRUNCATOR;
-        }
+        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<BinaryTruncator>() {
+          @Override
+          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
+            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+          }
+
+          @Override
+          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
+            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+          }
+
+          @Override
+          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
+            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+          }
+
+          @Override
+          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
+            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+          }
+        }).orElse(NO_OP_TRUNCATOR);
       default:
         throw new IllegalArgumentException("No truncator is available for the type: " + type);
     }
