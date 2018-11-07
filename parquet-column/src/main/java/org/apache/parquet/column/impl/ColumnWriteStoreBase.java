@@ -67,7 +67,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
     this.columns = new TreeMap<>();
 
-    this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+    this.rowCountForNextSizeCheck = min(props.getMinRowCountForPageSizeCheck(), props.getPageRowCountLimit());
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
@@ -95,7 +95,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     }
     this.columns = unmodifiableMap(mcolumns);
 
-    this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+    this.rowCountForNextSizeCheck = min(props.getMinRowCountForPageSizeCheck(), props.getPageRowCountLimit());
 
     columnWriterProvider = new ColumnWriterProvider() {
       @Override
@@ -190,13 +190,17 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
   private void sizeCheck() {
     long minRecordToWait = Long.MAX_VALUE;
+    int pageRowCountLimit = props.getPageRowCountLimit();
+    long rowCountForNextRowCountCheck = rowCount + pageRowCountLimit;
     for (ColumnWriterBase writer : columns.values()) {
       long usedMem = writer.getCurrentPageBufferedSize();
       long rows = rowCount - writer.getRowsWrittenSoFar();
       long remainingMem = props.getPageSizeThreshold() - usedMem;
-      if (remainingMem <= thresholdTolerance) {
+      if (remainingMem <= thresholdTolerance || rows >= pageRowCountLimit) {
         writer.writePage();
         remainingMem = props.getPageSizeThreshold();
+      } else {
+        rowCountForNextRowCountCheck = min(rowCountForNextRowCountCheck, rowCount + (pageRowCountLimit - rows));
       }
       long rowsToFillPage =
           usedMem == 0 ?
@@ -218,6 +222,11 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
               props.getMaxRowCountForPageSizeCheck());
     } else {
       rowCountForNextSizeCheck = rowCount + props.getMinRowCountForPageSizeCheck();
+    }
+
+    // Do the check earlier if required to keep the row count limit
+    if (rowCountForNextRowCountCheck < rowCountForNextSizeCheck) {
+      rowCountForNextSizeCheck = rowCountForNextRowCountCheck;
     }
   }
 }
