@@ -575,6 +575,7 @@ public final class PrimitiveType extends Type {
   /**
    * @return the decimal type metadata
    */
+  @Deprecated
   public DecimalMetadata getDecimalMetadata() {
     return decimalMeta;
   }
