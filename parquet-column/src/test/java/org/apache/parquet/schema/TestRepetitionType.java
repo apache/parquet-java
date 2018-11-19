@@ -22,9 +22,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestType {
+public class TestRepetitionType {
   @Test
-  public void test() {
+  public void testLeastRestrictiveRepetition() {
     Type.Repetition REQUIRED = Type.Repetition.REQUIRED;
     Type.Repetition OPTIONAL = Type.Repetition.OPTIONAL;
     Type.Repetition REPEATED = Type.Repetition.REPEATED;
