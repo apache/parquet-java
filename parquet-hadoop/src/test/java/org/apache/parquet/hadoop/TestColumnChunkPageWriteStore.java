@@ -189,7 +189,6 @@ public class TestColumnChunkPageWriteStore {
       assertEquals(r, intValue(page.getRepetitionLevels()));
       assertEquals(dataEncoding, page.getDataEncoding());
       assertEquals(v, intValue(page.getData()));
-      assertEquals(statistics.toString(), page.getStatistics().toString());
 
       // Checking column/offset indexes for the one page
       ColumnChunkMetaData column = footer.getBlocks().get(0).getColumns().get(0);
