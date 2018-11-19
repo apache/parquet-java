@@ -22,15 +22,12 @@ import static java.util.Objects.requireNonNull;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.Formatter;
 import java.util.List;
-import java.util.Map;
 import java.util.PrimitiveIterator;
 import java.util.function.IntPredicate;
 
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
@@ -42,11 +39,11 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
+import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import it.unimi.dsi.fastutil.booleans.BooleanList;
@@ -394,8 +391,6 @@ public abstract class ColumnIndexBuilder {
     }
   };
 
-  private static final Map<PrimitiveTypeName, ColumnIndexBuilder> BUILDERS = new EnumMap<>(PrimitiveTypeName.class);
-
   private PrimitiveType type;
   private final BooleanList nullPages = new BooleanArrayList();
   private final LongList nullCounts = new LongArrayList();
@@ -469,12 +464,7 @@ public abstract class ColumnIndexBuilder {
       List<ByteBuffer> minValues,
       List<ByteBuffer> maxValues) {
 
-    PrimitiveTypeName typeName = type.getPrimitiveTypeName();
-    ColumnIndexBuilder builder = BUILDERS.get(typeName);
-    if (builder == null) {
-      builder = createNewBuilder(type, Integer.MAX_VALUE);
-      BUILDERS.put(typeName, builder);
-    }
+    ColumnIndexBuilder builder = createNewBuilder(type, Integer.MAX_VALUE);
 
     builder.fill(nullPages, nullCounts, minValues, maxValues);
     ColumnIndexBase<?> columnIndex = builder.build(type);
