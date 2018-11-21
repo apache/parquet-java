@@ -22,9 +22,7 @@
 SCRIPT_PATH=$( cd "$(dirname "$0")" ; pwd -P )
 
 echo "Starting WRITE benchmarks"
-java -XX:+PreserveFramePointer -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*Write* -wi 0 -i 1 -f 3 -tu s -bm ss -rf json
-exit 0
-
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*Write* "$@"
 echo "Generating test data"
 java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator generate
 echo "Data generated, starting READ benchmarks"

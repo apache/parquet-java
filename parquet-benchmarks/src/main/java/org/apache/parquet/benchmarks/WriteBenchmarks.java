@@ -55,7 +55,7 @@ public class WriteBenchmarks {
                                PAGE_SIZE_DEFAULT,
                                FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
-                               50 * ONE_MILLION);
+                               ONE_MILLION);
   }
 
   @Benchmark
@@ -69,7 +69,7 @@ public class WriteBenchmarks {
                                PAGE_SIZE_4M,
                                FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
-                               50 * ONE_MILLION);
+                               ONE_MILLION);
   }
 
   @Benchmark
@@ -83,7 +83,7 @@ public class WriteBenchmarks {
                                PAGE_SIZE_8M,
                                FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
-                               50 * ONE_MILLION);
+                               ONE_MILLION);
   }
 
   @Benchmark
@@ -97,7 +97,7 @@ public class WriteBenchmarks {
                                PAGE_SIZE_4M,
                                FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
-                               50 * ONE_MILLION);
+                               ONE_MILLION);
   }
 
   @Benchmark
@@ -111,7 +111,7 @@ public class WriteBenchmarks {
                                PAGE_SIZE_8M,
                                FIXED_LEN_BYTEARRAY_SIZE,
                                UNCOMPRESSED,
-                               50 * ONE_MILLION);
+                               ONE_MILLION);
   }
 
   //TODO how to handle lzo jar?
@@ -126,7 +126,7 @@ public class WriteBenchmarks {
 //            PAGE_SIZE_DEFAULT,
 //            FIXED_LEN_BYTEARRAY_SIZE,
 //            LZO,
-//            50 * ONE_MILLION);
+//            ONE_MILLION);
 //  }
 
   @Benchmark
@@ -140,7 +140,7 @@ public class WriteBenchmarks {
                                PAGE_SIZE_DEFAULT,
                                FIXED_LEN_BYTEARRAY_SIZE,
                                SNAPPY,
-                               50 * ONE_MILLION);
+                               ONE_MILLION);
   }
 
   @Benchmark
@@ -154,6 +154,6 @@ public class WriteBenchmarks {
                                PAGE_SIZE_DEFAULT,
                                FIXED_LEN_BYTEARRAY_SIZE,
                                GZIP,
-                               50 * ONE_MILLION);
+                               ONE_MILLION);
   }
 }
