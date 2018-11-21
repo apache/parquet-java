@@ -79,7 +79,7 @@ import it.unimi.dsi.fastutil.longs.LongList;
  * <a href="https://jmh.morethan.io">https://jmh.morethan.io</a>.
  *
  * <pre>
- * mvn clean package && java -jar target/parquet-benchmarks.jar org.apache.parquet.benchmarks.FilteringBenchmarks -rf json
+ * mvn clean package &amp;&amp; java -jar target/parquet-benchmarks.jar org.apache.parquet.benchmarks.FilteringBenchmarks -rf json
  * </pre>
  */
 @BenchmarkMode(SingleShotTime)

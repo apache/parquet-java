@@ -869,7 +869,7 @@ public class ParquetFileReader implements Closeable {
    * @return the PageReadStore which can provide PageReaders for each column
    * @throws IOException
    *           if any I/O error occurs while reading
-   * @see {@link PageReadStore#isInPageFilteringMode()}
+   * @see org.apache.parquet.column.impl.SynchronizingColumnReader
    */
   public PageReadStore readNextFilteredRowGroup() throws IOException {
     if (currentBlock == blocks.size()) {
