@@ -728,6 +728,55 @@ public class TestAvroSchemaConverter {
     }
   }
 
+  @Test
+  public void testConvertedSchemaToStringCantRedefineList() throws Exception {
+    String parquet = "message spark_schema {\n" +
+        "  optional group annotation {\n" +
+        "    optional group transcriptEffects (LIST) {\n" +
+        "      repeated group list {\n" +
+        "        optional group element {\n" +
+        "          optional group effects (LIST) {\n" +
+        "            repeated group list {\n" +
+        "              optional binary element (UTF8);\n" +
+        "            }\n" +
+        "          }\n" +
+        "        }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n";
+
+    Configuration conf = new Configuration(false);
+    AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter(conf);
+    Schema schema = avroSchemaConverter.convert(MessageTypeParser.parseMessageType(parquet));
+    schema.toString();
+  }
+
+  @Test
+  public void testConvertedSchemaToString() throws Exception {
+    String parquet = "message spark_schema {\n" +
+        "  optional group annotation {\n" +
+        "    optional group transcriptEffects (LIST) {\n" +
+        "      repeated group list {\n" +
+        "        optional group element {\n" +
+        "          optional group effects (LIST) {\n" +
+        "            repeated group list {\n" +
+        "              optional binary element (UTF8);\n" +
+        "            }\n" +
+        "          }\n" +
+        "        }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n";
+ 
+    Configuration conf = new Configuration(false);
+    conf.setBoolean("parquet.avro.add-list-element-records", false);
+    AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter(conf);
+    Schema schema = avroSchemaConverter.convert(MessageTypeParser.parseMessageType(parquet));
+    schema.toString();
+  }
+
   public static Schema optional(Schema original) {
     return Schema.createUnion(Lists.newArrayList(
         Schema.create(Schema.Type.NULL),
