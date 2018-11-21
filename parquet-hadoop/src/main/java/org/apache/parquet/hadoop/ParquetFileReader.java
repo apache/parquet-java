@@ -864,12 +864,12 @@ public class ParquetFileReader implements Closeable {
   /**
    * Reads all the columns requested from the row group at the current file position. It may skip specific pages based
    * on the column indexes according to the actual filter. As the rows are not aligned among the pages of the different
-   * columns row synchronization might be required.
+   * columns row synchronization might be required. See the documentation of the class SynchronizingColumnReader for
+   * details.
    *
    * @return the PageReadStore which can provide PageReaders for each column
    * @throws IOException
    *           if any I/O error occurs while reading
-   * @see {@link PageReadStore#isInPageFilteringMode()}
    */
   public PageReadStore readNextFilteredRowGroup() throws IOException {
     if (currentBlock == blocks.size()) {
