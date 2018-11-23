@@ -19,7 +19,7 @@
   <scm>
     <connection>scm:git:git@github.com:apache/parquet-mr.git</connection>
     <url>scm:git:git@github.com:apache/parquet-mr.git</url>
-    <developerConnection>scm:git:https://github.com/apache/parquet-mr.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:apache/parquet-mr.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 
