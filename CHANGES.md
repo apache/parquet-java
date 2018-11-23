@@ -48,6 +48,7 @@ Release Notes - Parquet - Version 1.11.0
 *   [PARQUET-1440](https://issues.apache.org/jira/browse/PARQUET-1440) - Parquet-tools: Decimal values stored in an int32 or int64 in the parquet file aren't displayed with their proper scale
 *   [PARQUET-1456](https://issues.apache.org/jira/browse/PARQUET-1456) - Use page index, ParquetFileReader throw ArrayIndexOutOfBoundsException
 *   [PARQUET-1460](https://issues.apache.org/jira/browse/PARQUET-1460) - Fix javadoc errors and include javadoc checking in Travis checks
+*   [PARQUET-1461](https://issues.apache.org/jira/browse/PARQUET-1461) - Third party code does not compile after parquet-mr minor version update
 
 #### New Feature
 
