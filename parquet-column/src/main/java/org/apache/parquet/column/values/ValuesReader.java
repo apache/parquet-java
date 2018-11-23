@@ -109,7 +109,7 @@ public abstract class ValuesReader {
   public void initFromPage(int valueCount, ByteBufferInputStream in) throws IOException {
     if (actualOffset != -1) {
       throw new UnsupportedOperationException(
-          "One of initFromPage(int, ByteBuffer, int) and initFromPage(int, ByteBufferInputStream) shall be implemented in "
+          "Either initFromPage(int, ByteBuffer, int) or initFromPage(int, ByteBufferInputStream) must be implemented in "
               + getClass().getName());
     }
     initFromPage(valueCount, in.slice(valueCount), 0);
