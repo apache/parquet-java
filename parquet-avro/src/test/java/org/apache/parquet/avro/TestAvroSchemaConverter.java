@@ -37,6 +37,10 @@ import java.util.Collections;
 
 import static org.apache.avro.Schema.Type.INT;
 import static org.apache.avro.Schema.Type.LONG;
+import static org.apache.parquet.avro.AvroTestUtil.field;
+import static org.apache.parquet.avro.AvroTestUtil.optionalField;
+import static org.apache.parquet.avro.AvroTestUtil.primitive;
+import static org.apache.parquet.avro.AvroTestUtil.record;
 import static org.apache.parquet.schema.OriginalType.DATE;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MICROS;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
@@ -726,6 +730,65 @@ public class TestAvroSchemaConverter {
             }
           });
     }
+  }
+
+  @Test
+  public void testReuseNameInNestedStructure() throws Exception {
+    Schema innerA1 = record("a1", "a12",
+      field("a4", primitive(Schema.Type.FLOAT)));
+
+    Schema outerA1 = record("a1",
+      field("a2", primitive(Schema.Type.FLOAT)),
+      optionalField("a1", innerA1));
+    Schema schema = record("Message",
+      optionalField("a1", outerA1));
+
+    String parquetSchema = "message Message {\n" +
+        "      optional group a1 {\n" +
+        "        required float a2;\n" +
+        "        optional group a1 {\n" +
+        "          required float a4;\n"+
+        "         }\n" +
+        "      }\n" +
+        "}\n";
+
+    testParquetToAvroConversion(schema, parquetSchema);
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema, parquetSchema);
+  }
+
+  @Test
+  public void testReuseNameInNestedStructureAtSameLevel() throws Exception {
+    Schema a2 = record("a2",
+      field("a4", primitive(Schema.Type.FLOAT)));
+    Schema a22 = record("a2", "a22",
+      field("a4", primitive(Schema.Type.FLOAT)),
+      field("a5", primitive(Schema.Type.FLOAT)));
+
+    Schema a1 = record("a1",
+      optionalField("a2", a2));
+    Schema a3 = record("a3",
+      optionalField("a2", a22));
+
+    Schema schema = record("Message",
+      optionalField("a1", a1),
+      optionalField("a3", a3));
+
+    String parquetSchema = "message Message {\n" +
+      "      optional group a1 {\n" +
+      "        optional group a2 {\n" +
+      "          required float a4;\n"+
+      "         }\n" +
+      "      }\n" +
+      "      optional group a3 {\n" +
+      "        optional group a2 {\n" +
+      "          required float a4;\n"+
+      "          required float a5;\n"+
+      "         }\n" +
+      "      }\n" +
+      "}\n";
+
+    testParquetToAvroConversion(schema, parquetSchema);
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema, parquetSchema);
   }
 
   public static Schema optional(Schema original) {

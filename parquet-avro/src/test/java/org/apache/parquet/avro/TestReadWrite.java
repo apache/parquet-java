@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -687,6 +687,40 @@ public class TestReadWrite {
         assertEquals(records[i++], new String(bytes));
       }
     }
+  }
+
+  @Test
+  public void testNestedLists() throws Exception {
+    Schema schema = new Schema.Parser().parse(
+      Resources.getResource("nested_array.avsc").openStream());
+    Path file = new Path(createTempFile().getPath());
+
+    // Parquet writer
+    ParquetWriter parquetWriter = AvroParquetWriter.builder(file).withSchema(schema)
+      .withConf(testConf)
+      .build();
+
+    Schema innerRecordSchema = schema.getField("l1").schema().getTypes()
+      .get(1).getElementType().getTypes().get(1);
+
+    GenericRecord record = new GenericRecordBuilder(schema)
+      .set("l1", Collections.singletonList(
+        new GenericRecordBuilder(innerRecordSchema).set("l2", Collections.singletonList("hello")).build()
+      ))
+      .build();
+
+    parquetWriter.write(record);
+    parquetWriter.close();
+
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader(testConf, file);
+    GenericRecord nextRecord = reader.read();
+
+    assertNotNull(nextRecord);
+    assertNotNull(nextRecord.get("l1"));
+    List l1List = (List) nextRecord.get("l1");
+    assertNotNull(l1List.get(0));
+    List l2List = (List) ((GenericRecord) l1List.get(0)).get("l2");
+    assertEquals(str("hello"), l2List.get(0));
   }
 
   private File createTempFile() throws IOException {

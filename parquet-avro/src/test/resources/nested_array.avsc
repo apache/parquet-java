@@ -1,0 +1,39 @@
+{
+  "type": "record",
+  "name": "Message",
+  "fields": [
+    {
+      "name": "l1",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": [
+            "null",
+            {
+              "type": "record",
+              "name": "element",
+              "fields": [
+                {
+                  "name": "l2",
+                  "type": [
+                    "null",
+                    {
+                      "type": "array",
+                      "items": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  ],
+                  "default": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "default": null
+    }
+  ]
+}
