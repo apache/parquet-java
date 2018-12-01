@@ -148,6 +148,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOOM_FILTER_COLUMN_NAMES = "parquet.bloom.filter.column.names";
   public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.expected.ndv";
   public static final String ENABLE_BLOOM_FILTER = "parquet.enable.bloom.filter";
+  public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -350,6 +351,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(COLUMN_INDEX_TRUNCATE_LENGTH, ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH);
   }
 
+  public static void setPageRowCountLimit(JobContext jobContext, int rowCount) {
+    setPageRowCountLimit(getConfiguration(jobContext), rowCount);
+  }
+
+  public static void setPageRowCountLimit(Configuration conf, int rowCount) {
+    conf.setInt(PAGE_ROW_COUNT_LIMIT, rowCount);
+  }
+
+  private static int getPageRowCountLimit(Configuration conf) {
+    return conf.getInt(PAGE_ROW_COUNT_LIMIT, ParquetProperties.DEFAULT_PAGE_ROW_COUNT_LIMIT);
+  }
+
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
 
@@ -407,6 +420,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
         .withColumnIndexTruncateLength(getColumnIndexTruncateLength(conf))
+        .withPageRowCountLimit(getPageRowCountLimit(conf))
         .build();
 
     long blockSize = getLongBlockSize(conf);
@@ -429,6 +443,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Bloom filter enabled column names are: {}", props.getBloomFilterColumnExpectedNDVs().keySet());
       LOG.info("Bloom filter enabled column expected number of distinct values are: {}",
         props.getBloomFilterColumnExpectedNDVs().values());
+      LOG.info("Page row count limit to {}", props.getPageRowCountLimit());
     }
 
     WriteContext init = writeSupport.init(conf);

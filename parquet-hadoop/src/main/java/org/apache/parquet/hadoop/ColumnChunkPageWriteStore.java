@@ -119,11 +119,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
                 + compressedSize);
       }
       tempOutputStream.reset();
-      parquetMetadataConverter.writeDataPageHeader(
+      parquetMetadataConverter.writeDataPageV1Header(
           (int)uncompressedSize,
           (int)compressedSize,
           valueCount,
-          statistics,
           rlEncoding,
           dlEncoding,
           valuesEncoding,
@@ -171,7 +170,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       parquetMetadataConverter.writeDataPageV2Header(
           uncompressedSize, compressedSize,
           valueCount, nullCount, rowCount,
-          statistics,
           dataEncoding,
           rlByteLength,
           dlByteLength,

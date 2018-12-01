@@ -52,6 +52,7 @@ public class ParquetProperties {
   public static final int DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH = 64;
   public static final boolean DEFAULT_BLOOM_FILTER_ENABLED = false;
 
+  public static final int DEFAULT_PAGE_ROW_COUNT_LIMIT = 20_000;
 
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
@@ -93,12 +94,14 @@ public class ParquetProperties {
 
   // The key-value pair represents the column name and its expected distinct number of values in a row group.
   private final HashMap<String, Long> bloomFilterExpectedDistinctNumbers;
+  private final int pageRowCountLimit;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
                             ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, boolean enableBloomFilter,
                             HashMap<String, Long> bloomFilterExpectedDistinctNumber) {
 
+                            ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, int pageRowCountLimit) {
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
@@ -115,6 +118,7 @@ public class ParquetProperties {
 
     this.enableBloomFilter = enableBloomFilter;
     this.bloomFilterExpectedDistinctNumbers = bloomFilterExpectedDistinctNumber;
+    this.pageRowCountLimit = pageRowCountLimit;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -207,6 +211,10 @@ public class ParquetProperties {
     return estimateNextSizeCheck;
   }
 
+  public int getPageRowCountLimit() {
+    return pageRowCountLimit;
+  }
+
   public boolean isBloomFilterEnabled() {
     return enableBloomFilter;
   }
@@ -236,18 +244,22 @@ public class ParquetProperties {
     private int columnIndexTruncateLength = DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
     private boolean enableBloomFilter = DEFAULT_BLOOM_FILTER_ENABLED;
     private HashMap<String, Long> bloomFilterColumnExpectedNDVs = new HashMap<>();
+    private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
 
     private Builder() {
     }
 
     private Builder(ParquetProperties toCopy) {
+      this.pageSize = toCopy.pageSizeThreshold;
       this.enableDict = toCopy.enableDictionary;
       this.dictPageSize = toCopy.dictionaryPageSizeThreshold;
       this.writerVersion = toCopy.writerVersion;
       this.minRowCountForPageSizeCheck = toCopy.minRowCountForPageSizeCheck;
       this.maxRowCountForPageSizeCheck = toCopy.maxRowCountForPageSizeCheck;
       this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
+      this.valuesWriterFactory = toCopy.valuesWriterFactory;
       this.allocator = toCopy.allocator;
+      this.pageRowCountLimit = toCopy.pageRowCountLimit;
       this.enableBloomFilter = toCopy.enableBloomFilter;
       this.bloomFilterColumnExpectedNDVs = toCopy.bloomFilterExpectedDistinctNumbers;
     }
@@ -359,10 +371,17 @@ public class ParquetProperties {
       return this;
     }
 
+    public Builder withPageRowCountLimit(int rowCount) {
+      Preconditions.checkArgument(rowCount > 0, "Invalid row count limit for pages: " + rowCount);
+      pageRowCountLimit = rowCount;
+      return this;
+    }
+
     public ParquetProperties build() {
       ParquetProperties properties =
         new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
+          estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength, pageRowCountLimit);
           estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength,
           enableBloomFilter, bloomFilterColumnExpectedNDVs);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently

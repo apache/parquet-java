@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.10.1-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -32,7 +32,7 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
-    <jmh.version>1.17.3</jmh.version>
+    <jmh.version>1.21</jmh.version>
     <uberjar.name>parquet-benchmarks</uberjar.name>
   </properties>
 
@@ -73,7 +73,11 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
       <version>${slf4j.version}</version>
-      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>it.unimi.dsi</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>${fastutil.version}</version>
     </dependency>
   </dependencies>
 
