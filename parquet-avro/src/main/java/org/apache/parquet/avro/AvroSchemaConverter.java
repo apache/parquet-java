@@ -254,7 +254,7 @@ public class AvroSchemaConverter {
 
   private Schema convertFields(String name, List<Type> parquetFields, Map<String, Integer> names) {
     List<Schema.Field> fields = new ArrayList<Schema.Field>();
-    Integer nameCount = names.merge(name, 1, (k, v) -> v + 1);
+    Integer nameCount = names.merge(name, 1, (oldValue, value) -> oldValue + 1);
     for (Type parquetType : parquetFields) {
       Schema fieldSchema = convertField(parquetType, names);
       if (parquetType.isRepetition(REPEATED)) {
