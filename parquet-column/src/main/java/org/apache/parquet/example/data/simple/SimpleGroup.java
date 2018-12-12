@@ -107,7 +107,7 @@ public class SimpleGroup extends Group {
     Type type = schema.getType(fieldIndex);
     List<Object> list = data[fieldIndex];
     if (!type.isRepetition(Type.Repetition.REPEATED)
-      && !list.isEmpty()) {
+        && !list.isEmpty()) {
       throw new IllegalStateException("field "+fieldIndex+" (" + type.getName() + ") can not have more than one value: " + list);
     }
   }
