@@ -1290,8 +1290,10 @@ public class ParquetMetadataConverter {
         OriginalType newOriginalType = (schemaElement.isSetLogicalType() && getLogicalTypeAnnotation(schemaElement.logicalType) != null) ?
            getLogicalTypeAnnotation(schemaElement.logicalType).toOriginalType() : null;
         if (!originalType.equals(newOriginalType)) {
-          LOG.warn("Converted type and logical type metadata mismatch (convertedType: {}, logical type: {}). Using value in converted type.",
-            schemaElement.converted_type, schemaElement.logicalType);
+          if (newOriginalType != null) {
+            LOG.warn("Converted type and logical type metadata mismatch (convertedType: {}, logical type: {}). Using value in converted type.",
+              schemaElement.converted_type, schemaElement.logicalType);
+          }
           childBuilder.as(originalType);
         }
       }
