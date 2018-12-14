@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -28,7 +28,6 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.parquet.proto.ProtoParquetInputFormat;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,11 +40,19 @@ public class ReadUsingMR {
 
   private static List<Message> outputMessages;
 
-  Configuration conf = new Configuration();
+  Configuration conf;
   private String projection;
 
   public void setRequestedProjection(String projection) {
     this.projection = projection;
+  }
+
+  public ReadUsingMR() {
+    this(new Configuration());
+  }
+
+  public ReadUsingMR(Configuration conf) {
+    this.conf = conf;
   }
 
   public Configuration getConfiguration() {
@@ -53,7 +60,7 @@ public class ReadUsingMR {
   }
 
   public static class ReadingMapper extends Mapper<Void, MessageOrBuilder, LongWritable, Message> {
-    protected void map(Void key, MessageOrBuilder value, Context context) throws IOException, InterruptedException {
+    protected void map(Void key, MessageOrBuilder value, Context context) {
       Message clone = ((Message.Builder) value).build();
       outputMessages.add(clone);
     }
