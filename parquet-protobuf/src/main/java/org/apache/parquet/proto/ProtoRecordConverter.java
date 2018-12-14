@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -45,15 +45,22 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
     }
   }
 
-
-  public ProtoRecordConverter(Class<? extends Message> protoclass, MessageType parquetSchema) {
-    super(new SkipParentValueContainer(), protoclass, parquetSchema);
+  public ProtoRecordConverter(Class<? extends Message> protoclass, MessageType parquetSchema, boolean specCompliant) {
+    super(new SkipParentValueContainer(), protoclass, parquetSchema, specCompliant);
     reusedBuilder = getBuilder();
   }
 
-  public ProtoRecordConverter(Message.Builder builder, MessageType parquetSchema) {
-    super(new SkipParentValueContainer(), builder, parquetSchema);
+  public ProtoRecordConverter(Message.Builder builder, MessageType parquetSchema, boolean specCompliant) {
+    super(new SkipParentValueContainer(), builder, parquetSchema, specCompliant);
     reusedBuilder = getBuilder();
+  }
+
+  public ProtoRecordConverter(Class<? extends Message> protoclass, MessageType parquetSchema) {
+    this(protoclass, parquetSchema, false);
+  }
+
+  public ProtoRecordConverter(Message.Builder builder, MessageType parquetSchema) {
+    this(builder, parquetSchema, false);
   }
 
   @Override

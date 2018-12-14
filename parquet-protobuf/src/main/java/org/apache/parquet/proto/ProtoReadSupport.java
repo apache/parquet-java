@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -30,6 +30,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
+import static org.apache.parquet.proto.ProtoWriteSupport.PB_SPECS_COMPLIANT_WRITE;
+
 
 public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
@@ -39,6 +41,8 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
   public static final String PB_CLASS = "parquet.proto.class";
   public static final String PB_DESCRIPTOR = "parquet.proto.descriptor";
+
+  private boolean readSpecsCompliant = false;
 
   public static void setRequestedProjection(Configuration configuration, String requestedProjection) {
     configuration.set(PB_REQUESTED_PROJECTION, requestedProjection);
@@ -76,6 +80,7 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
   public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
     String headerProtoClass = keyValueMetaData.get(PB_CLASS);
     String configuredProtoClass = configuration.get(PB_CLASS);
+    readSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, readSpecsCompliant);
 
     if (configuredProtoClass != null) {
       LOG.debug("Replacing class " + headerProtoClass + " by " + configuredProtoClass);
@@ -90,8 +95,16 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
     MessageType requestedSchema = readContext.getRequestedSchema();
     Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);
-    return new ProtoRecordMaterializer(requestedSchema, protobufClass);
+    return new ProtoRecordMaterializer(requestedSchema, protobufClass, readSpecsCompliant);
   }
 
-
+  /**
+   * Make parquet-protobuf use the LIST and MAP wrappers for collections. Set to false if you need backward
+   * compatibility with parquet before PARQUET-968 (1.9.0 and older).
+   * @param configuration           The hadoop configuration
+   * @param readSpecsCompliant     If set to true, the old schema style will be used (without wrappers).
+   */
+  public static void setReadSpecsCompliant(Configuration configuration, boolean readSpecsCompliant) {
+    configuration.setBoolean(PB_SPECS_COMPLIANT_WRITE, readSpecsCompliant);
+  }
 }
