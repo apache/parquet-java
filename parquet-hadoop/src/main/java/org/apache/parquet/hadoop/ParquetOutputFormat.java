@@ -216,8 +216,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static HashMap<String, Long> getBloomFilterColumnExpectedNDVs(Configuration conf) {
     HashMap<String, Long> kv = new HashMap<>();
-    String[] columnNames = conf.get(BLOOM_FILTER_COLUMN_NAMES).split(",");
-    String[] expectedNDVs = conf.get(BLOOM_FILTER_EXPECTED_NDV).split(",");
+    String columnNamesConf = conf.get(BLOOM_FILTER_COLUMN_NAMES);
+    String expectedNDVsConf = conf.get(BLOOM_FILTER_EXPECTED_NDV);
+
+    if (columnNamesConf == null || expectedNDVsConf == null) {
+      return kv;
+    }
+
+    String[] columnNames = columnNamesConf.split(",");
+    String[] expectedNDVs = expectedNDVsConf.split(",");
 
     if (columnNames.length == expectedNDVs.length) {
       for (int i = 0; i < columnNames.length; i++) {
