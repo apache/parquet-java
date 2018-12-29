@@ -54,13 +54,13 @@ class ProtoMessageConverter extends GroupConverter {
   private final Message.Builder myBuilder;
 
   // used in record converter
-  ProtoMessageConverter(ParentValueContainer pvc, Class<? extends Message> protoClass, GroupType parquetSchema, boolean specCompliant) {
-    this(pvc, Protobufs.getMessageBuilder(protoClass), parquetSchema, specCompliant);
+  ProtoMessageConverter(ParentValueContainer pvc, Class<? extends Message> protoClass, GroupType parquetSchema) {
+    this(pvc, Protobufs.getMessageBuilder(protoClass), parquetSchema);
   }
 
 
   // For usage in message arrays
-  ProtoMessageConverter(ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema, boolean specCompliant) {
+  ProtoMessageConverter(ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema) {
 
     int schemaSize = parquetSchema.getFieldCount();
     converters = new Converter[schemaSize];
@@ -80,18 +80,12 @@ class ProtoMessageConverter extends GroupConverter {
       Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
 
       if (protoField == null) {
-        // Skip extra list/key_value layer for spec-compliant, 3-level structures,
-        // when the proto schema doesn't have a field with this name.
-        if (specCompliant &&
-          ("key_value".equals(parquetField.getName()) || "list".equals(parquetField.getName()))) {
-          continue;
-        }
         String description = "Scheme mismatch \n\"" + parquetField + "\"" +
                 "\n proto descriptor:\n" + protoDescriptor.toProto();
         throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
       }
 
-      converters[parquetFieldIndex - 1] = newMessageConverter(myBuilder, protoField, parquetField, specCompliant);
+      converters[parquetFieldIndex - 1] = newMessageConverter(myBuilder, protoField, parquetField);
 
       parquetFieldIndex++;
     }
@@ -114,7 +108,7 @@ class ProtoMessageConverter extends GroupConverter {
     myBuilder.clear();
   }
 
-  private Converter newMessageConverter(final Message.Builder parentBuilder, final Descriptors.FieldDescriptor fieldDescriptor, Type parquetType, boolean specCompliant) {
+  private Converter newMessageConverter(final Message.Builder parentBuilder, final Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
 
     boolean isRepeated = fieldDescriptor.isRepeated();
 
@@ -138,24 +132,23 @@ class ProtoMessageConverter extends GroupConverter {
 
     LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation == null) {
-      return newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType, specCompliant);
+      return newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType);
     }
 
     return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
       @Override
       public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
-        return of(new ListConverter(parentBuilder, fieldDescriptor, parquetType, specCompliant));
+        return of(new ListConverter(parentBuilder, fieldDescriptor, parquetType));
       }
 
       @Override
       public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
-        return of(new MapConverter(parentBuilder, fieldDescriptor, parquetType, specCompliant));
+        return of(new MapConverter(parentBuilder, fieldDescriptor, parquetType));
       }
-    }).orElse(newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType, specCompliant));
+    }).orElse(newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType));
   }
 
-  private Converter newScalarConverter(ParentValueContainer pvc, Message.Builder parentBuilder,
-    Descriptors.FieldDescriptor fieldDescriptor, Type parquetType, boolean specCompliant) {
+  private Converter newScalarConverter(ParentValueContainer pvc, Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
 
     JavaType javaType = fieldDescriptor.getJavaType();
 
@@ -170,7 +163,7 @@ class ProtoMessageConverter extends GroupConverter {
       case LONG: return new ProtoLongConverter(pvc);
       case MESSAGE: {
         Message.Builder subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
-        return new ProtoMessageConverter(pvc, subBuilder, parquetType.asGroupType(), specCompliant);
+        return new ProtoMessageConverter(pvc, subBuilder, parquetType.asGroupType());
       }
     }
 
@@ -393,7 +386,7 @@ class ProtoMessageConverter extends GroupConverter {
   final class ListConverter extends GroupConverter {
     private final Converter converter;
 
-    public ListConverter(Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType, boolean specCompliant) {
+    public ListConverter(Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
       LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
       if (!(logicalTypeAnnotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) || parquetType.isPrimitive()) {
         throw new ParquetDecodingException("Expected LIST wrapper. Found: " + logicalTypeAnnotation + " instead.");
@@ -410,7 +403,7 @@ class ProtoMessageConverter extends GroupConverter {
       }
 
       Type elementType = listType.getType("element");
-      converter = newMessageConverter(parentBuilder, fieldDescriptor, elementType, specCompliant);
+      converter = newMessageConverter(parentBuilder, fieldDescriptor, elementType);
     }
 
     @Override
@@ -452,7 +445,7 @@ class ProtoMessageConverter extends GroupConverter {
   final class MapConverter extends GroupConverter {
     private final Converter converter;
 
-    public MapConverter(Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType, boolean specCompliant) {
+    public MapConverter(Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
       LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
       if (!(logicalTypeAnnotation instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation)) {
         throw new ParquetDecodingException("Expected MAP wrapper. Found: " + logicalTypeAnnotation + " instead.");
@@ -465,7 +458,7 @@ class ProtoMessageConverter extends GroupConverter {
         throw new ParquetDecodingException("Expected map but got: " + parquetType);
       }
 
-      converter = newMessageConverter(parentBuilder, fieldDescriptor, parquetSchema, specCompliant);
+      converter = newMessageConverter(parentBuilder, fieldDescriptor, parquetSchema);
     }
 
     @Override
