@@ -145,7 +145,7 @@ class ProtoMessageConverter extends GroupConverter {
       public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
         return of(new MapConverter(parentBuilder, fieldDescriptor, parquetType));
       }
-    }).orElse(newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType));
+    }).orElseGet(() -> newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType));
   }
 
   private Converter newScalarConverter(ParentValueContainer pvc, Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
