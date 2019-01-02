@@ -26,6 +26,7 @@ import org.apache.hadoop.io.compress.Compressor;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.Preconditions;
+import sun.nio.ch.DirectBuffer;
 
 /**
  * This class is a wrapper around the snappy compressor. It always consumes the
@@ -37,6 +38,8 @@ public class SnappyCompressor implements Compressor {
 
   // Buffer for uncompressed input. This buffer grows as necessary.
   private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
+
+  private int maxBufferSize = 64 * 1024 * 1024;
 
   private long bytesRead = 0L;
   private long bytesWritten = 0L;
@@ -66,7 +69,9 @@ public class SnappyCompressor implements Compressor {
       // There is uncompressed input, compress it now
       int maxOutputSize = Snappy.maxCompressedLength(inputBuffer.position());
       if (maxOutputSize > outputBuffer.capacity()) {
+        ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(maxOutputSize);
+        ((DirectBuffer)oldBuffer).cleaner().clean();
       }
       // Reset the previous outputBuffer
       outputBuffer.clear();
@@ -97,7 +102,9 @@ public class SnappyCompressor implements Compressor {
       ByteBuffer tmp = ByteBuffer.allocateDirect(inputBuffer.position() + len);
       inputBuffer.rewind();
       tmp.put(inputBuffer);
+      ByteBuffer oldBuffer = inputBuffer;
       inputBuffer = tmp;
+      ((DirectBuffer)(oldBuffer)).cleaner().clean();
     } else {
       inputBuffer.limit(inputBuffer.position() + len);
     }
@@ -146,6 +153,18 @@ public class SnappyCompressor implements Compressor {
 
   @Override
   public synchronized void reset() {
+    if (inputBuffer.capacity() > maxBufferSize) {
+      ByteBuffer oldBuffer = inputBuffer;
+      inputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
+      ((DirectBuffer)oldBuffer).cleaner().clean();
+    }
+
+    if (outputBuffer.capacity() > maxBufferSize) {
+      ByteBuffer oldBuffer = outputBuffer;
+      outputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
+      ((DirectBuffer)oldBuffer).cleaner().clean();
+    }
+
     finishCalled = false;
     bytesRead = bytesWritten = 0;
     inputBuffer.rewind();

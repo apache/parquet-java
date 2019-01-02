@@ -25,6 +25,7 @@ import org.apache.hadoop.io.compress.Decompressor;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.Preconditions;
+import sun.nio.ch.DirectBuffer;
 
 public class SnappyDecompressor implements Decompressor {
   // Buffer for uncompressed output. This buffer grows as necessary.
@@ -34,7 +35,9 @@ public class SnappyDecompressor implements Decompressor {
   private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
 
   private boolean finished;
-  
+
+  private int maxBufferSize = 64 * 1024 * 1024;
+
   /**
    * Fills specified buffer with uncompressed data. Returns actual number
    * of bytes of uncompressed data. A return value of 0 indicates that
@@ -61,7 +64,9 @@ public class SnappyDecompressor implements Decompressor {
       // There is compressed input, decompress it now.
       int decompressedSize = Snappy.uncompressedLength(inputBuffer);
       if (decompressedSize > outputBuffer.capacity()) {
+        ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(decompressedSize);
+        ((DirectBuffer)oldBuffer).cleaner().clean();
       }
 
       // Reset the previous outputBuffer (i.e. set position to 0)
@@ -102,7 +107,9 @@ public class SnappyDecompressor implements Decompressor {
       ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
       inputBuffer.rewind();
       newBuffer.put(inputBuffer);
-      inputBuffer = newBuffer;      
+      ByteBuffer oldBuffer = inputBuffer;
+      inputBuffer = newBuffer;
+      ((DirectBuffer)(oldBuffer)).cleaner().clean();
     } else {
       inputBuffer.limit(inputBuffer.position() + len);
     }
@@ -131,6 +138,18 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public synchronized void reset() {
+    if (inputBuffer.capacity() > maxBufferSize) {
+      ByteBuffer oldBuffer = inputBuffer;
+      inputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
+      ((DirectBuffer)oldBuffer).cleaner().clean();
+    }
+
+    if (outputBuffer.capacity() > maxBufferSize) {
+      ByteBuffer oldBuffer = outputBuffer;
+      outputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
+      ((DirectBuffer)oldBuffer).cleaner().clean();
+    }
+
     finished = false;
     inputBuffer.rewind();
     outputBuffer.rewind();
