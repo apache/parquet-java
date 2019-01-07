@@ -262,7 +262,7 @@ public class ProtoInputOutputFormatTest {
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
-    ReadUsingMR readUsingMR = new ReadUsingMR();
+    ReadUsingMR readUsingMR = new ReadUsingMR(conf);
     String customClass = TestProtobuf.MapIntMessage.class.getName();
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
@@ -303,7 +303,7 @@ public class ProtoInputOutputFormatTest {
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
-    ReadUsingMR readUsingMR = new ReadUsingMR();
+    ReadUsingMR readUsingMR = new ReadUsingMR(conf);
     String customClass = TestProtobuf.RepeatedInnerMessage.class.getName();
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
     List<Message> result = readUsingMR.read(outputPath);
