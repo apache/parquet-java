@@ -28,7 +28,10 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
-//TODO: Use java.nio.file.Files when Parquet is updated to Java 7
+/**
+ * Use java.nio.file.Files facilities as replacement. 
+ */
+@Deprecated
 public final class Files {
   private Files() { }
 

@@ -19,11 +19,11 @@
 package org.apache.parquet.thrift;
 
 import java.io.File;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.apache.parquet.Files;
 import org.apache.parquet.Strings;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
@@ -80,8 +80,8 @@ public class TestThriftRecordConverter {
   public void constructorDoesNotRequireStructOrUnionTypeMeta() throws Exception {
     String jsonWithNoStructOrUnionMeta = Strings.join(
         Files.readAllLines(
-            new File("src/test/resources/org/apache/parquet/thrift/StructWithUnionV1NoStructOrUnionMeta.json"),
-            Charset.forName("UTF-8")), "\n");
+            new File("src/test/resources/org/apache/parquet/thrift/StructWithUnionV1NoStructOrUnionMeta.json").toPath(),
+            StandardCharsets.UTF_8), "\n");
 
     StructType noStructOrUnionMeta  = (StructType) ThriftType.fromJSON(jsonWithNoStructOrUnionMeta);
 

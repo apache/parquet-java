@@ -27,7 +27,6 @@ import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.parquet.Files;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -36,7 +35,6 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
-import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
@@ -48,7 +46,8 @@ import org.junit.rules.TemporaryFolder;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.UUID;
 
 import static java.lang.Thread.sleep;
@@ -65,8 +64,6 @@ public class TestInputOutputFormatWithPadding {
       .required(BINARY).as(UTF8).named("uuid")
       .required(BINARY).as(UTF8).named("char")
       .named("FormatTestObject");
-
-  private static final Charset UTF_8 = Charset.forName("UTF-8");
 
   /**
    * ParquetInputFormat that will not split the input file (easier validation)
@@ -181,7 +178,7 @@ public class TestInputOutputFormatWithPadding {
     Assert.assertNotNull("Should find a data file", dataFile);
 
     StringBuilder contentBuilder = new StringBuilder();
-    for (String line : Files.readAllLines(dataFile, UTF_8)) {
+    for (String line : Files.readAllLines(dataFile.toPath(), StandardCharsets.UTF_8)) {
       contentBuilder.append(line);
     }
     String reconstructed = contentBuilder.toString();
