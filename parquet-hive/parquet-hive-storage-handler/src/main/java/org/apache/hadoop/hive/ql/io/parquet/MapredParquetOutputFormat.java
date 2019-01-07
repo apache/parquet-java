@@ -19,8 +19,8 @@
 package org.apache.hadoop.hive.ql.io.parquet;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -96,22 +96,18 @@ public class MapredParquetOutputFormat extends FileOutputFormat<Void, ArrayWrita
       final Properties tableProperties,
       final Progressable progress) throws IOException {
 
-    LOG.info("creating new record writer...{}", this);
+    LOG.info("creating new record writer: {}", this);
 
     final String columnNameProperty = tableProperties.getProperty(IOConstants.COLUMNS);
     final String columnTypeProperty = tableProperties.getProperty(IOConstants.COLUMNS_TYPES);
-    List<String> columnNames;
-    List<TypeInfo> columnTypes;
+    List<String> columnNames = Collections.emptyList();
+    List<TypeInfo> columnTypes = Collections.emptyList();
 
-    if (columnNameProperty.length() == 0) {
-      columnNames = new ArrayList<String>();
-    } else {
+    if (!columnNameProperty.isEmpty()) {
       columnNames = Arrays.asList(columnNameProperty.split(","));
     }
 
-    if (columnTypeProperty.length() == 0) {
-      columnTypes = new ArrayList<TypeInfo>();
-    } else {
+    if (!columnTypeProperty.isEmpty()) {
       columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnTypeProperty);
     }
 
