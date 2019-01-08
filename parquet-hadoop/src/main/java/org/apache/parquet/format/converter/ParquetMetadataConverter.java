@@ -309,6 +309,9 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<ConvertedType> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+      if (!timeLogicalType.isAdjustedToUTC()) {
+        return empty();
+      }
       switch (timeLogicalType.getUnit()) {
         case MILLIS:
           return of(ConvertedType.TIME_MILLIS);
@@ -323,6 +326,9 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<ConvertedType> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+      if (!timestampLogicalType.isAdjustedToUTC()) {
+        return empty();
+      }
       switch (timestampLogicalType.getUnit()) {
         case MICROS:
           return of(ConvertedType.TIMESTAMP_MICROS);
