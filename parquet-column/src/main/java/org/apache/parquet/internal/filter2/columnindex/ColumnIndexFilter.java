@@ -85,7 +85,7 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
           return filterPredicateCompat.getFilterPredicate()
               .accept(new ColumnIndexFilter(columnIndexStore, paths, rowCount));
         } catch (MissingOffsetIndexException e) {
-          LOGGER.warn("Unable to do filtering", e);
+          LOGGER.info(e.getMessage());
           return RowRanges.createSingle(rowCount);
         }
       }
@@ -169,7 +169,7 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
     OffsetIndex oi = columnIndexStore.getOffsetIndex(columnPath);
     ColumnIndex ci = columnIndexStore.getColumnIndex(columnPath);
     if (ci == null) {
-      LOGGER.warn("No column index for column {} is available; Unable to filter on this column", columnPath);
+      LOGGER.info("No column index for column {} is available; Unable to filter on this column", columnPath);
       return allRows();
     }
 

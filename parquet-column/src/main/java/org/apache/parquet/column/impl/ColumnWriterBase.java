@@ -19,7 +19,6 @@
 package org.apache.parquet.column.impl;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.parquet.column.ColumnDescriptor;
