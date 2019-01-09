@@ -50,6 +50,7 @@ Release Notes - Parquet - Version 1.11.0
 *   [PARQUET-1460](https://issues.apache.org/jira/browse/PARQUET-1460) - Fix javadoc errors and include javadoc checking in Travis checks
 *   [PARQUET-1461](https://issues.apache.org/jira/browse/PARQUET-1461) - Third party code does not compile after parquet-mr minor version update
 *   [PARQUET-1472](https://issues.apache.org/jira/browse/PARQUET-1472) - Dictionary filter fails on FIXED\_LEN\_BYTE\_ARRAY
+*   [PARQUET-1478](https://issues.apache.org/jira/browse/PARQUET-1478) - Can't read spec compliant, 3-level lists via parquet-proto
 
 #### New Feature
 
@@ -74,6 +75,9 @@ Release Notes - Parquet - Version 1.11.0
 *   [PARQUET-1462](https://issues.apache.org/jira/browse/PARQUET-1462) - Allow specifying new development version in prepare-release.sh
 *   [PARQUET-1474](https://issues.apache.org/jira/browse/PARQUET-1474) - Less verbose and lower level logging for missing column/offset indexes
 *   [PARQUET-1476](https://issues.apache.org/jira/browse/PARQUET-1476) - Don't emit a warning message for files without new logical type
+*   [PARQUET-1487](https://issues.apache.org/jira/browse/PARQUET-1487) - Do not write original type for timezone-agnostic timestamps
+*   [PARQUET-1489](https://issues.apache.org/jira/browse/PARQUET-1489) - Insufficient documentation for UserDefinedPredicate.keep(T)
+
 
 #### Task
 
