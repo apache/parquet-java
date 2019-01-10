@@ -126,7 +126,7 @@ abstract public class ColumnChunkMetaData {
           statistics,
           firstDataPage,
           dictionaryPageOffset,
-          Long.MAX_VALUE,
+          0,
           valueCount,
           totalSize,
           totalUncompressedSize);
@@ -137,7 +137,7 @@ abstract public class ColumnChunkMetaData {
           statistics,
           firstDataPage,
           dictionaryPageOffset,
-          Long.MAX_VALUE,
+          0,
           valueCount,
           totalSize,
           totalUncompressedSize);

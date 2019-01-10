@@ -1062,16 +1062,28 @@ public class ParquetFileReader implements Closeable {
    */
   public BloomFilter readBloomFilter(ColumnChunkMetaData meta) throws IOException {
     long bloomFilterOffset = meta.getBloomFilterOffset();
-    if (bloomFilterOffset == Long.MAX_VALUE) return null;
     f.seek(bloomFilterOffset);
+
     // Read Bloom filter data header.
     byte[] bytes = new byte[BlockSplitBloomFilter.HEADER_SIZE];
     f.read(bytes);
     ByteBuffer bloomHeader = ByteBuffer.wrap(bytes);
     IntBuffer headerBuffer = bloomHeader.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
     int numBytes = headerBuffer.get();
+    if (numBytes <= 0 || numBytes > BlockSplitBloomFilter.MAXIMUM_BYTES) {
+      return null;
+    }
+
     BloomFilter.HashStrategy hash = BloomFilter.HashStrategy.values()[headerBuffer.get()];
+    if (hash != BlockSplitBloomFilter.HashStrategy.MURMUR3_X64_128) {
+      return null;
+    }
+
     BloomFilter.Algorithm algorithm = BloomFilter.Algorithm.values()[headerBuffer.get()];
+    if (algorithm != BlockSplitBloomFilter.Algorithm.BLOCK) {
+      return null;
+    }
+
     byte[] bitset = new byte[numBytes];
     f.readFully(bitset);
     return new BlockSplitBloomFilter(bitset);
