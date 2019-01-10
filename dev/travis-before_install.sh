@@ -47,7 +47,7 @@ chmod +x ./configure
 ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php --without-nodejs
 sudo make install
 cd ..
-branch_specific_script="dev/travis-before-install-${TRAVIS_BRANCH}.sh"
+branch_specific_script="dev/travis-before_install-${TRAVIS_BRANCH}.sh"
 if [[ -e "$branch_specific_script" ]]
 then
   . "$branch_specific_script"
