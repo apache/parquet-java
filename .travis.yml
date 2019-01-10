@@ -1,6 +1,6 @@
 language: java
 before_install:
-  - bash dev/travis_before-install.sh
+  - bash dev/travis-before_install.sh
 
 env:
   - HADOOP_PROFILE=default TEST_CODECS=uncompressed,brotli
