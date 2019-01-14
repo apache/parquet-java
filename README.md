@@ -28,21 +28,7 @@ You can find some details about the format and intended use cases in our [Hadoop
 
 ## Building
 
-Parquet-MR uses Maven to build and depends on both the thrift and protoc compilers.
-
-### Install Protobuf
-
-To build and install the protobuf compiler, run:
-
-```
-wget https://github.com/google/protobuf/archive/v3.5.1.tar.gz -O protobuf-3.5.1.tar.gz
-tar xzf protobuf-3.5.1.tar.gz
-cd protobuf-3.5.1
-./configure
-make
-sudo make install
-sudo ldconfig
-```
+Parquet-MR uses Maven to build and depends on the thrift compiler (protoc is now managed by maven plugin).
 
 ### Install Thrift
 
