@@ -518,7 +518,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       }
 
       public ParquetCompressionCodecException(Throwable cause) {
-
+        super(cause);
       }
     }
   }
