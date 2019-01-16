@@ -35,6 +35,9 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWrite
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.schema.MessageType;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * This class represents all the configurable Parquet properties.
  */
@@ -49,6 +52,7 @@ public class ParquetProperties {
   public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
   public static final int DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH = 64;
   public static final int DEFAULT_PAGE_ROW_COUNT_LIMIT = 20_000;
+  public static final boolean DEFAULT_BLOOM_FILTER_ENABLED = false;
 
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
@@ -86,11 +90,16 @@ public class ParquetProperties {
   private final ByteBufferAllocator allocator;
   private final ValuesWriterFactory valuesWriterFactory;
   private final int columnIndexTruncateLength;
+  private final boolean enableBloomFilter;
+
+  // The key-value pair represents the column name and its expected distinct number of values in a row group.
+  private final Map<String, Long> bloomFilterExpectedDistinctNumbers;
   private final int pageRowCountLimit;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
-                            ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, int pageRowCountLimit) {
+                            ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, int pageRowCountLimit,
+                            boolean enableBloomFilter, Map<String, Long> bloomFilterExpectedDistinctNumber) {
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
@@ -104,6 +113,8 @@ public class ParquetProperties {
 
     this.valuesWriterFactory = writerFactory;
     this.columnIndexTruncateLength = columnIndexMinMaxTruncateLength;
+    this.enableBloomFilter = enableBloomFilter;
+    this.bloomFilterExpectedDistinctNumbers = bloomFilterExpectedDistinctNumber;
     this.pageRowCountLimit = pageRowCountLimit;
   }
 
@@ -201,6 +212,14 @@ public class ParquetProperties {
     return pageRowCountLimit;
   }
 
+  public boolean isBloomFilterEnabled() {
+    return enableBloomFilter;
+  }
+
+  public Map<String, Long> getBloomFilterColumnExpectedNDVs() {
+    return bloomFilterExpectedDistinctNumbers;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -220,6 +239,8 @@ public class ParquetProperties {
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
     private int columnIndexTruncateLength = DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
+    private boolean enableBloomFilter = DEFAULT_BLOOM_FILTER_ENABLED;
+    private Map<String, Long> bloomFilterColumnExpectedNDVs = new HashMap<>();
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
 
     private Builder() {
@@ -236,6 +257,8 @@ public class ParquetProperties {
       this.valuesWriterFactory = toCopy.valuesWriterFactory;
       this.allocator = toCopy.allocator;
       this.pageRowCountLimit = toCopy.pageRowCountLimit;
+      this.enableBloomFilter = toCopy.enableBloomFilter;
+      this.bloomFilterColumnExpectedNDVs = toCopy.bloomFilterExpectedDistinctNumbers;
     }
 
     /**
@@ -324,6 +347,27 @@ public class ParquetProperties {
       return this;
     }
 
+    /**
+     * Set to enable Bloom filter.
+     *
+     * @param enableBloomFilter a boolean to indicate whether to enable Bloom filter.
+     * @return this builder for method chaining.
+     */
+    public Builder withBloomFilterEnabled(boolean enableBloomFilter) {
+      this.enableBloomFilter = enableBloomFilter;
+      return this;
+    }
+    /**
+     * Set Bloom filter info for columns.
+     *
+     * @param columnExpectedNDVs the columns expected number of distinct values in a row group
+     * @return this builder for method chaining
+     */
+    public Builder withBloomFilterInfo(HashMap<String, Long> columnExpectedNDVs) {
+      this.bloomFilterColumnExpectedNDVs = columnExpectedNDVs;
+      return this;
+    }
+
     public Builder withPageRowCountLimit(int rowCount) {
       Preconditions.checkArgument(rowCount > 0, "Invalid row count limit for pages: " + rowCount);
       pageRowCountLimit = rowCount;
@@ -334,7 +378,8 @@ public class ParquetProperties {
       ParquetProperties properties =
         new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength, pageRowCountLimit);
+          estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength, pageRowCountLimit,
+          enableBloomFilter, bloomFilterColumnExpectedNDVs);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently
       // creation of ValuesWriters is invoked from within ParquetProperties. In the future
       // we'd like to decouple that and won't need to pass an object to properties and then pass the

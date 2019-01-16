@@ -29,6 +29,7 @@ import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -54,10 +55,16 @@ final class ColumnWriterV2 extends ColumnWriterBase {
     }
   }
 
-  private static final ValuesWriter NULL_WRITER = new DevNullValuesWriter();
 
   ColumnWriterV2(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
     super(path, pageWriter, props);
+  }
+
+  private static final ValuesWriter NULL_WRITER = new DevNullValuesWriter();
+
+  ColumnWriterV2(ColumnDescriptor path, PageWriter pageWriter, BloomFilterWriter bloomFilterWriter,
+                 ParquetProperties props) {
+    super(path, pageWriter, bloomFilterWriter, props);
   }
 
   @Override

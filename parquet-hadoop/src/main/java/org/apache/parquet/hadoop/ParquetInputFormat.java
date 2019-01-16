@@ -135,6 +135,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String COLUMN_INDEX_FILTERING_ENABLED = "parquet.filter.columnindex.enabled";
 
   /**
+   * key to configure whether row group bloom filtering is enabled
+   */
+  public static final String BLOOM_FILTERING_ENABLED = "parquet.filter.bloom.enabled";
+  public static final boolean BLOOM_FILTER_ENABLED_DEFAULT = false;
+
+  /**
    * key to turn on or off task side metadata loading (default true)
    * if true then metadata is read on the task side and some tasks may finish immediately.
    * if false metadata is read on the client which is slower if there is a lot of metadata but tasks will only be spawn if there is work to do.

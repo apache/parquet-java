@@ -17,11 +17,9 @@
  * under the License.
  */
 package org.apache.parquet.hadoop;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.parquet.Strings;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
@@ -29,18 +27,15 @@ import org.apache.parquet.column.values.bloomfilter.BloomFilterReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.io.ParquetDecodingException;
-
 /**
  * A {@link BloomFilterReader} implementation that reads Bloom filter data from
  * an open {@link ParquetFileReader}.
  *
  */
-
 public class BloomFilterDataReader implements BloomFilterReader {
   private final ParquetFileReader reader;
   private final Map<String, ColumnChunkMetaData> columns;
   private final Map<String, BloomFilter> cache = new HashMap<>();
-
   public BloomFilterDataReader(ParquetFileReader fileReader, BlockMetaData block) {
     this.reader = fileReader;
     this.columns = new HashMap<>();
@@ -48,7 +43,6 @@ public class BloomFilterDataReader implements BloomFilterReader {
       columns.put(column.getPath().toDotString(), column);
     }
   }
-
   @Override
   public BloomFilter readBloomFilter(ColumnDescriptor descriptor) {
     String dotPath = Strings.join(descriptor.getPath(), ".");
@@ -57,11 +51,9 @@ public class BloomFilterDataReader implements BloomFilterReader {
       throw new ParquetDecodingException(
         "Cannot load Bloom filter data, unknown column: " + dotPath);
     }
-
     if (cache.containsKey(dotPath)) {
       return cache.get(dotPath);
     }
-
     try {
       synchronized (cache) {
         if (!cache.containsKey(dotPath)) {
@@ -70,11 +62,10 @@ public class BloomFilterDataReader implements BloomFilterReader {
           cache.put(dotPath, bloomFilter);
         }
       }
-
       return cache.get(dotPath);
     } catch (IOException e) {
       throw new ParquetDecodingException(
-        "Failed to read Bloom filter data", e);
+        "Failed to read Bloom data", e);
     }
   }
 }

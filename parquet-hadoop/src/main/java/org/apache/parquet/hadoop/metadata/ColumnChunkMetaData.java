@@ -145,18 +145,18 @@ abstract public class ColumnChunkMetaData {
   }
 
   public static ColumnChunkMetaData get(
-      ColumnPath path,
-      PrimitiveType type,
-      CompressionCodecName codec,
-      EncodingStats encodingStats,
-      Set<Encoding> encodings,
-      Statistics statistics,
-      long firstDataPage,
-      long dictionaryPageOffset,
-      long bloomFilterDataOffset,
-      long valueCount,
-      long totalSize,
-      long totalUncompressedSize) {
+    ColumnPath path,
+    PrimitiveType type,
+    CompressionCodecName codec,
+    EncodingStats encodingStats,
+    Set<Encoding> encodings,
+    Statistics statistics,
+    long firstDataPage,
+    long dictionaryPageOffset,
+    long bloomFilterDataOffset,
+    long valueCount,
+    long totalSize,
+    long totalUncompressedSize) {
     // to save space we store those always positive longs in ints when they fit.
     if (positiveLongFitsInAnInt(firstDataPage)
       && positiveLongFitsInAnInt(dictionaryPageOffset)
@@ -164,26 +164,26 @@ abstract public class ColumnChunkMetaData {
       && positiveLongFitsInAnInt(totalSize)
       && positiveLongFitsInAnInt(totalUncompressedSize)) {
       return new IntColumnChunkMetaData(
-          path, type, codec,
-          encodingStats, encodings,
-          statistics,
-          firstDataPage,
-          dictionaryPageOffset,
-          bloomFilterDataOffset,
-          valueCount,
-          totalSize,
-          totalUncompressedSize);
+        path, type, codec,
+        encodingStats, encodings,
+        statistics,
+        firstDataPage,
+        dictionaryPageOffset,
+        bloomFilterDataOffset,
+        valueCount,
+        totalSize,
+        totalUncompressedSize);
     } else {
       return new LongColumnChunkMetaData(
-          path, type, codec,
-          encodingStats, encodings,
-          statistics,
-          firstDataPage,
-          dictionaryPageOffset,
-          bloomFilterDataOffset,
-          valueCount,
-          totalSize,
-          totalUncompressedSize);
+        path, type, codec,
+        encodingStats, encodings,
+        statistics,
+        firstDataPage,
+        dictionaryPageOffset,
+        bloomFilterDataOffset,
+        valueCount,
+        totalSize,
+        totalUncompressedSize);
     }
   }
 

@@ -20,18 +20,6 @@ package org.apache.parquet.format.converter;
 
 import static java.util.Collections.emptyList;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaDataByStart;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.bsonType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.jsonType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.listType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.mapType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
@@ -208,87 +196,45 @@ public class TestParquetMetadataConverter {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     MessageType expected = Types.buildMessage()
       .required(PrimitiveTypeName.INT64)
-      .as(timestampType(false, MILLIS))
+      .as(timestampType(false, LogicalTypeAnnotation.TimeUnit.MILLIS))
       .named("aTimestampNonUtcMillis")
       .required(PrimitiveTypeName.INT64)
-      .as(timestampType(true, MILLIS))
+      .as(timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS))
       .named("aTimestampUtcMillis")
       .required(PrimitiveTypeName.INT64)
-      .as(timestampType(false, MICROS))
+      .as(timestampType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
       .named("aTimestampNonUtcMicros")
       .required(PrimitiveTypeName.INT64)
-      .as(timestampType(true, MICROS))
+      .as(timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS))
       .named("aTimestampUtcMicros")
       .required(PrimitiveTypeName.INT64)
-      .as(timestampType(false, NANOS))
+      .as(timestampType(false, LogicalTypeAnnotation.TimeUnit.NANOS))
       .named("aTimestampNonUtcNanos")
       .required(PrimitiveTypeName.INT64)
-      .as(timestampType(true, NANOS))
+      .as(timestampType(true, LogicalTypeAnnotation.TimeUnit.NANOS))
       .named("aTimestampUtcNanos")
       .required(PrimitiveTypeName.INT32)
-      .as(timeType(false, MILLIS))
+      .as(timeType(false, LogicalTypeAnnotation.TimeUnit.MILLIS))
       .named("aTimeNonUtcMillis")
       .required(PrimitiveTypeName.INT32)
-      .as(timeType(true, MILLIS))
+      .as(timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS))
       .named("aTimeUtcMillis")
       .required(PrimitiveTypeName.INT64)
-      .as(timeType(false, MICROS))
+      .as(timeType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
       .named("aTimeNonUtcMicros")
       .required(PrimitiveTypeName.INT64)
-      .as(timeType(true, MICROS))
+      .as(timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS))
       .named("aTimeUtcMicros")
       .required(PrimitiveTypeName.INT64)
-      .as(timeType(false, NANOS))
+      .as(timeType(false, LogicalTypeAnnotation.TimeUnit.NANOS))
       .named("aTimeNonUtcNanos")
       .required(PrimitiveTypeName.INT64)
-      .as(timeType(true, NANOS))
+      .as(timeType(true, LogicalTypeAnnotation.TimeUnit.NANOS))
       .named("aTimeUtcNanos")
       .named("Message");
     List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
     MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
     assertEquals(expected, schema);
-  }
-
-  @Test
-  public void testLogicalToConvertedTypeConversion() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-
-    assertEquals(ConvertedType.UTF8, parquetMetadataConverter.convertToConvertedType(stringType()));
-    assertEquals(ConvertedType.ENUM, parquetMetadataConverter.convertToConvertedType(enumType()));
-
-    assertEquals(ConvertedType.INT_8, parquetMetadataConverter.convertToConvertedType(intType(8, true)));
-    assertEquals(ConvertedType.INT_16, parquetMetadataConverter.convertToConvertedType(intType(16, true)));
-    assertEquals(ConvertedType.INT_32, parquetMetadataConverter.convertToConvertedType(intType(32, true)));
-    assertEquals(ConvertedType.INT_64, parquetMetadataConverter.convertToConvertedType(intType(64, true)));
-    assertEquals(ConvertedType.UINT_8, parquetMetadataConverter.convertToConvertedType(intType(8, false)));
-    assertEquals(ConvertedType.UINT_16, parquetMetadataConverter.convertToConvertedType(intType(16, false)));
-    assertEquals(ConvertedType.UINT_32, parquetMetadataConverter.convertToConvertedType(intType(32, false)));
-    assertEquals(ConvertedType.UINT_64, parquetMetadataConverter.convertToConvertedType(intType(64, false)));
-    assertEquals(ConvertedType.DECIMAL, parquetMetadataConverter.convertToConvertedType(decimalType(8, 16)));
-
-    assertEquals(ConvertedType.TIMESTAMP_MILLIS, parquetMetadataConverter.convertToConvertedType(timestampType(true, MILLIS)));
-    assertEquals(ConvertedType.TIMESTAMP_MICROS, parquetMetadataConverter.convertToConvertedType(timestampType(true, MICROS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(true, NANOS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(false, MILLIS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(false, MICROS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(false, NANOS)));
-
-    assertEquals(ConvertedType.TIME_MILLIS, parquetMetadataConverter.convertToConvertedType(timeType(true, MILLIS)));
-    assertEquals(ConvertedType.TIME_MICROS, parquetMetadataConverter.convertToConvertedType(timeType(true, MICROS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timeType(true, NANOS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timeType(false, MILLIS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timeType(false, MICROS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timeType(false, NANOS)));
-
-    assertEquals(ConvertedType.DATE, parquetMetadataConverter.convertToConvertedType(dateType()));
-
-    assertEquals(ConvertedType.INTERVAL, parquetMetadataConverter.convertToConvertedType(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance()));
-    assertEquals(ConvertedType.JSON, parquetMetadataConverter.convertToConvertedType(jsonType()));
-    assertEquals(ConvertedType.BSON, parquetMetadataConverter.convertToConvertedType(bsonType()));
-
-    assertEquals(ConvertedType.LIST, parquetMetadataConverter.convertToConvertedType(listType()));
-    assertEquals(ConvertedType.MAP, parquetMetadataConverter.convertToConvertedType(mapType()));
-    assertEquals(ConvertedType.MAP_KEY_VALUE, parquetMetadataConverter.convertToConvertedType(LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance()));
   }
 
   @Test
@@ -1078,7 +1024,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(200l);
     stats.updateStats(500l);
     builder.add(stats);
-    org.apache.parquet.format.ColumnIndex parquetColumnIndex =
+    org.apache.parquet.format.ColumnIndex parquetColumnIndex = 
         ParquetMetadataConverter.toParquetColumnIndex(type, builder.build());
     ColumnIndex columnIndex = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
