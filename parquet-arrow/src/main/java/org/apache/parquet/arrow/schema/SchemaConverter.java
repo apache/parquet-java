@@ -498,7 +498,17 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        return field(new ArrowType.Binary());
+        LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+        if (logicalTypeAnnotation == null) {
+          return field(new ArrowType.Binary());
+        }
+
+        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            return of(decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
+          }
+        }).orElseThrow(() -> new IllegalArgumentException("illegal type " + type));
       }
 
       @Override

@@ -419,6 +419,26 @@ public class TestSchemaConverter {
     Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
   }
 
+  @Test
+  public void testParquetFixedBinaryToArrow() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Binary())
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test
+  public void testParquetFixedBinaryToArrowDecimal() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(5).as(DECIMAL).precision(8).scale(2).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Decimal(8, 2))
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
   @Test(expected = IllegalStateException.class)
   public void testParquetInt64TimeMillisToArrow() {
     converter.fromParquet(Types.buildMessage()
