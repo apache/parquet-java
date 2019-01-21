@@ -2,6 +2,10 @@ language: java
 before_install:
   - bash dev/travis-before_install.sh
 
+jdk:
+  - openjdk8
+  - openjdk11
+
 env:
   - HADOOP_PROFILE=default TEST_CODECS=uncompressed,brotli
   - HADOOP_PROFILE=default TEST_CODECS=gzip,snappy
