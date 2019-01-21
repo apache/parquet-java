@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -126,6 +126,7 @@ abstract public class ColumnChunkMetaData {
           statistics,
           firstDataPage,
           dictionaryPageOffset,
+          0,
           valueCount,
           totalSize,
           totalUncompressedSize);
@@ -136,9 +137,53 @@ abstract public class ColumnChunkMetaData {
           statistics,
           firstDataPage,
           dictionaryPageOffset,
+          0,
           valueCount,
           totalSize,
           totalUncompressedSize);
+    }
+  }
+
+  public static ColumnChunkMetaData get(
+    ColumnPath path,
+    PrimitiveType type,
+    CompressionCodecName codec,
+    EncodingStats encodingStats,
+    Set<Encoding> encodings,
+    Statistics statistics,
+    long firstDataPage,
+    long dictionaryPageOffset,
+    long bloomFilterDataOffset,
+    long valueCount,
+    long totalSize,
+    long totalUncompressedSize) {
+    // to save space we store those always positive longs in ints when they fit.
+    if (positiveLongFitsInAnInt(firstDataPage)
+      && positiveLongFitsInAnInt(dictionaryPageOffset)
+      && positiveLongFitsInAnInt(valueCount)
+      && positiveLongFitsInAnInt(totalSize)
+      && positiveLongFitsInAnInt(totalUncompressedSize)) {
+      return new IntColumnChunkMetaData(
+        path, type, codec,
+        encodingStats, encodings,
+        statistics,
+        firstDataPage,
+        dictionaryPageOffset,
+        bloomFilterDataOffset,
+        valueCount,
+        totalSize,
+        totalUncompressedSize);
+    } else {
+      return new LongColumnChunkMetaData(
+        path, type, codec,
+        encodingStats, encodings,
+        statistics,
+        firstDataPage,
+        dictionaryPageOffset,
+        bloomFilterDataOffset,
+        valueCount,
+        totalSize,
+        totalUncompressedSize);
     }
   }
 
@@ -221,6 +266,11 @@ abstract public class ColumnChunkMetaData {
   abstract public long getDictionaryPageOffset();
 
   /**
+   * @return the location of the bloomFilter filter data if any
+   */
+  abstract public long getBloomFilterOffset();
+
+  /**
    * @return count of values in this block of the column
    */
   abstract public long getValueCount();
@@ -295,6 +345,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
 
   private final int firstDataPage;
   private final int dictionaryPageOffset;
+  private final int bloomFilterDataOffset;
   private final int valueCount;
   private final int totalSize;
   private final int totalUncompressedSize;
@@ -321,12 +372,14 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
       Statistics statistics,
       long firstDataPage,
       long dictionaryPageOffset,
+      long bloomFilterDataOffset,
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
     super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
     this.firstDataPage = positiveLongToInt(firstDataPage);
     this.dictionaryPageOffset = positiveLongToInt(dictionaryPageOffset);
+    this.bloomFilterDataOffset = positiveLongToInt(bloomFilterDataOffset);
     this.valueCount = positiveLongToInt(valueCount);
     this.totalSize = positiveLongToInt(totalSize);
     this.totalUncompressedSize = positiveLongToInt(totalUncompressedSize);
@@ -369,6 +422,13 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   }
 
   /**
+   * @return the location of bloom filter if any
+   */
+  public long getBloomFilterOffset() {
+    return intToPositiveLong(bloomFilterDataOffset);
+  }
+
+  /**
    * @return count of values in this block of the column
    */
   public long getValueCount() {
@@ -400,6 +460,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
 
   private final long firstDataPageOffset;
   private final long dictionaryPageOffset;
+  private final long bloomFilterDataOffset;
   private final long valueCount;
   private final long totalSize;
   private final long totalUncompressedSize;
@@ -426,12 +487,14 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
       Statistics statistics,
       long firstDataPageOffset,
       long dictionaryPageOffset,
+      long bloomFilterDataOffset,
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
     super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
     this.firstDataPageOffset = firstDataPageOffset;
     this.dictionaryPageOffset = dictionaryPageOffset;
+    this.bloomFilterDataOffset = bloomFilterDataOffset;
     this.valueCount = valueCount;
     this.totalSize = totalSize;
     this.totalUncompressedSize = totalUncompressedSize;
@@ -450,6 +513,13 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
    */
   public long getDictionaryPageOffset() {
     return dictionaryPageOffset;
+  }
+
+  /**
+   * @return the location of the bloom filter if any
+   */
+  public long getBloomFilterOffset() {
+    return bloomFilterDataOffset;
   }
 
   /**

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,6 +23,8 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -144,6 +146,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
   public static final String COLUMN_INDEX_TRUNCATE_LENGTH = "parquet.columnindex.truncate.length";
+  public static final String BLOOM_FILTER_COLUMN_NAMES = "parquet.bloom.filter.column.names";
+  public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.expected.ndv";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
@@ -208,6 +212,29 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static boolean getEnableDictionary(JobContext jobContext) {
     return getEnableDictionary(getConfiguration(jobContext));
+  }
+
+  public static Map<String, Long> getBloomFilterColumnExpectedNDVs(Configuration conf) {
+    Map<String, Long> kv = new HashMap<>();
+    String columnNamesConf = conf.get(BLOOM_FILTER_COLUMN_NAMES);
+    String expectedNDVsConf = conf.get(BLOOM_FILTER_EXPECTED_NDV);
+
+    if (columnNamesConf == null || expectedNDVsConf == null) {
+      return kv;
+    }
+
+    String[] columnNames = columnNamesConf.split(",");
+    String[] expectedNDVs = expectedNDVsConf.split(",");
+
+    if (columnNames.length == expectedNDVs.length) {
+      for (int i = 0; i < columnNames.length; i++) {
+        kv.put(columnNames[i], Long.getLong(expectedNDVs[i]));
+      }
+    } else {
+      LOG.warn("Bloom filter column names are not match expected NDVs");
+    }
+
+    return kv;
   }
 
   public static int getBlockSize(JobContext jobContext) {
@@ -388,6 +415,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
         .withDictionaryEncoding(getEnableDictionary(conf))
+        .withBloomFilterInfo(getBloomFilterColumnExpectedNDVs(conf))
         .withWriterVersion(getWriterVersion(conf))
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
@@ -412,6 +440,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Min row count for page size check is: {}", props.getMinRowCountForPageSizeCheck());
       LOG.info("Max row count for page size check is: {}", props.getMaxRowCountForPageSizeCheck());
       LOG.info("Truncate length for column indexes is: {}", props.getColumnIndexTruncateLength());
+      LOG.info("Bloom filter enabled column names are: {}", props.getBloomFilterColumnExpectedNDVs().keySet());
+      LOG.info("Bloom filter enabled column expected number of distinct values are: {}",
+        props.getBloomFilterColumnExpectedNDVs().values());
       LOG.info("Page row count limit to {}", props.getPageRowCountLimit());
     }
 

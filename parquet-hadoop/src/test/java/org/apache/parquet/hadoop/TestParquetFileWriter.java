@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -27,6 +27,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterReader;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.junit.Assume;
 import org.junit.Rule;
@@ -217,6 +220,42 @@ public class TestParquetFileWriter {
       assertNull(r.readNextRowGroup());
     }
     PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
+  public void testBloomWriteRead() throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
+    File testFile = temp.newFile();
+    testFile.delete();
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+    configuration.set("parquet.bloomFilter.filter.column.names", "foo");
+    String colPath[] = {"foo"};
+    ColumnDescriptor col = schema.getColumnDescription(colPath);
+    BinaryStatistics stats1 = new BinaryStatistics();
+    ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
+    w.start();
+    w.startBlock(3);
+    w.startColumn(col, 5, CODEC);
+    w.writeDataPage(2, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
+    BloomFilter bloomData = new BlockSplitBloomFilter(0);
+    bloomData.insertHash(bloomData.hash(Binary.fromString("hello")));
+    bloomData.insertHash(bloomData.hash(Binary.fromString("world")));
+    long blStarts = w.getPos();
+    w.writeBloomFilter(bloomData);
+    w.endColumn();
+    w.endBlock();
+    w.end(new HashMap<String, String>());
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    assertEquals("bloomFilter offset",
+      blStarts, readFooter.getBlocks().get(0).getColumns().get(0).getBloomFilterOffset());
+    ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+      Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(colPath)));
+    BloomFilterReader bloomFilterReader =  r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
+    BloomFilter bloomDataRead = bloomFilterReader.readBloomFilter(col);
+    assertTrue(bloomDataRead.findHash(bloomData.hash(Binary.fromString("hello"))));
+    assertTrue(bloomDataRead.findHash(bloomData.hash(Binary.fromString("world"))));
   }
 
   @Test

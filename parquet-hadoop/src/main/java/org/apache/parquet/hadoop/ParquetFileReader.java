@@ -33,6 +33,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.SequenceInputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -69,6 +71,8 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
@@ -1043,6 +1047,46 @@ public class ParquetFileReader implements Closeable {
     return new DictionaryPage(
         bin, uncompressedPageSize, dictHeader.getNum_values(),
         converter.getEncoding(dictHeader.getEncoding()));
+  }
+
+  public BloomFilterDataReader getBloomFilterDataReader(BlockMetaData block) {
+    return new BloomFilterDataReader(this, block);
+  }
+
+  /**
+   * Reads Bloom filter data for the given column chunk.
+   *
+   * @param meta a column's ColumnChunkMetaData to read the dictionary from
+   * @return an BloomFilter object.
+   * @throws IOException if there is an error while reading the Bloom filter.
+   */
+  public BloomFilter readBloomFilter(ColumnChunkMetaData meta) throws IOException {
+    long bloomFilterOffset = meta.getBloomFilterOffset();
+    f.seek(bloomFilterOffset);
+
+    // Read Bloom filter data header.
+    byte[] bytes = new byte[BlockSplitBloomFilter.HEADER_SIZE];
+    f.read(bytes);
+    ByteBuffer bloomHeader = ByteBuffer.wrap(bytes);
+    IntBuffer headerBuffer = bloomHeader.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
+    int numBytes = headerBuffer.get();
+    if (numBytes <= 0 || numBytes > BlockSplitBloomFilter.MAXIMUM_BYTES) {
+      return null;
+    }
+
+    BloomFilter.HashStrategy hash = BloomFilter.HashStrategy.values()[headerBuffer.get()];
+    if (hash != BlockSplitBloomFilter.HashStrategy.MURMUR3_X64_128) {
+      return null;
+    }
+
+    BloomFilter.Algorithm algorithm = BloomFilter.Algorithm.values()[headerBuffer.get()];
+    if (algorithm != BlockSplitBloomFilter.Algorithm.BLOCK) {
+      return null;
+    }
+
+    byte[] bitset = new byte[numBytes];
+    f.readFully(bitset);
+    return new BlockSplitBloomFilter(bitset);
   }
 
   /**
