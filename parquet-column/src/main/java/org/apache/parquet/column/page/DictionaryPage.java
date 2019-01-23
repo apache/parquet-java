@@ -22,7 +22,6 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.IOException;
 
-import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 
@@ -53,7 +52,7 @@ public class DictionaryPage extends Page {
    * @param encoding the encoding used
    */
   public DictionaryPage(BytesInput bytes, int uncompressedSize, int dictionarySize, Encoding encoding) {
-    super(Ints.checkedCast(bytes.size()), uncompressedSize);
+    super(Math.toIntExact(bytes.size()), uncompressedSize);
     this.bytes = checkNotNull(bytes, "bytes");
     this.dictionarySize = dictionarySize;
     this.encoding = checkNotNull(encoding, "encoding");

@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.Objects;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
@@ -68,7 +67,7 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
     try {
       // prepend the length of the column
       BytesInput rle = encoder.toBytes();
-      return BytesInput.concat(BytesInput.fromInt(Ints.checkedCast(rle.size())), rle);
+      return BytesInput.concat(BytesInput.fromInt(Math.toIntExact(rle.size())), rle);
     } catch (IOException e) {
       throw new ParquetEncodingException(e);
     }

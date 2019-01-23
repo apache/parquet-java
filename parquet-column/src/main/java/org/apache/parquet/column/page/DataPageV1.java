@@ -20,7 +20,6 @@ package org.apache.parquet.column.page;
 
 import java.util.Optional;
 
-import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.Statistics;
@@ -44,7 +43,7 @@ public class DataPageV1 extends DataPage {
    * @param valuesEncoding the values encoding for this page
    */
   public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
-    super(Ints.checkedCast(bytes.size()), uncompressedSize, valueCount);
+    super(Math.toIntExact(bytes.size()), uncompressedSize, valueCount);
     this.bytes = bytes;
     this.statistics = statistics;
     this.rlEncoding = rlEncoding;
@@ -66,7 +65,7 @@ public class DataPageV1 extends DataPage {
    */
   public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, long firstRowIndex, int rowCount,
       Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
-    super(Ints.checkedCast(bytes.size()), uncompressedSize, valueCount, firstRowIndex);
+    super(Math.toIntExact(bytes.size()), uncompressedSize, valueCount, firstRowIndex);
     this.bytes = bytes;
     this.statistics = statistics;
     this.rlEncoding = rlEncoding;
