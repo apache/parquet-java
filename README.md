@@ -35,19 +35,19 @@ Parquet-MR uses Maven to build and depends on the thrift compiler (protoc is now
 To build and install the thrift compiler, run:
 
 ```
-wget -nv http://archive.apache.org/dist/thrift/0.9.3/thrift-0.9.3.tar.gz
-tar xzf thrift-0.9.3.tar.gz
-cd thrift-0.9.3
+wget -nv http://archive.apache.org/dist/thrift/0.12.0/thrift-0.12.0.tar.gz
+tar xzf thrift-0.12.0.tar.gz
+cd thrift-0.12.0
 chmod +x ./configure
 ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php --without-nodejs
 sudo make install
 ```
 
-If you're on OSX and use homebrew, you can instead install Thrift 0.9.x with `brew` and ensure that it comes first in your `PATH`.
+If you're on OSX and use homebrew, you can instead install Thrift 0.12.0 with `brew` and ensure that it comes first in your `PATH`.
 
 ```
-brew install thrift@0.9
-export PATH="/usr/local/opt/thrift@0.9/bin:$PATH"
+brew install thrift@0.12.0
+export PATH="/usr/local/opt/thrift@0.12.0/bin:$PATH"
 ```
 
 ### Build Parquet with Maven
