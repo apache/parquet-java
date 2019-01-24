@@ -18,12 +18,12 @@
  */
 package org.apache.parquet.avro;
 
-import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -247,7 +247,7 @@ public class TestReadWriteOldListBehavior {
         .set("mylong", 2L)
         .set("myfloat", 3.1f)
         .set("mydouble", 4.1)
-        .set("mybytes", ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)))
+        .set("mybytes", ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)))
         .set("mystring", "hello")
         .set("mynestedrecord", nestedRecord)
         .set("myenum", "a")
@@ -276,7 +276,7 @@ public class TestReadWriteOldListBehavior {
     assertEquals(2L, nextRecord.get("mylong"));
     assertEquals(3.1f, nextRecord.get("myfloat"));
     assertEquals(4.1, nextRecord.get("mydouble"));
-    assertEquals(ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)), nextRecord.get("mybytes"));
+    assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
     assertEquals(str("hello"), nextRecord.get("mystring"));
     assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
     assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
@@ -327,7 +327,7 @@ public class TestReadWriteOldListBehavior {
         .set("mylong", 2L)
         .set("myfloat", 3.1f)
         .set("mydouble", 4.1)
-        .set("mybytes", ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)))
+        .set("mybytes", ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)))
         .set("mystring", "hello")
         .set("mynestedrecord", nestedRecord)
         .set("myenum", "a")
@@ -512,7 +512,7 @@ public class TestReadWriteOldListBehavior {
     record.put("mylong", 2L);
     record.put("myfloat", 3.1f);
     record.put("mydouble", 4.1);
-    record.put("mybytes", ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)));
+    record.put("mybytes", ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)));
     record.put("mystring", "hello");
     record.put("myenum", "a");
     record.put("mynestedint", 1);
@@ -573,7 +573,7 @@ public class TestReadWriteOldListBehavior {
     assertEquals(2L, nextRecord.get("mylong"));
     assertEquals(3.1f, nextRecord.get("myfloat"));
     assertEquals(4.1, nextRecord.get("mydouble"));
-    assertEquals(ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)), nextRecord.get("mybytes"));
+    assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
     assertEquals(str("hello"), nextRecord.get("mystring"));
     assertEquals(str("a"), nextRecord.get("myenum"));
     assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));

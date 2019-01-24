@@ -20,7 +20,6 @@
 package org.apache.parquet.cli;
 
 import com.beust.jcommander.internal.Lists;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Resources;
@@ -52,16 +51,13 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
 public abstract class BaseCommand implements Command, Configurable {
-
-  @VisibleForTesting
-  static final Charset UTF8 = Charset.forName("utf8");
 
   private static final String RESOURCE_URI_SCHEME = "resource";
   private static final String STDIN_AS_SOURCE = "stdin";
@@ -103,7 +99,7 @@ public abstract class BaseCommand implements Command, Configurable {
     } else {
       FSDataOutputStream outgoing = create(filename);
       try {
-        outgoing.write(content.getBytes(UTF8));
+        outgoing.write(content.getBytes(StandardCharsets.UTF_8));
       } finally {
         outgoing.close();
       }
