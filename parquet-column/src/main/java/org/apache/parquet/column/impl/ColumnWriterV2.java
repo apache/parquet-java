@@ -20,7 +20,6 @@ package org.apache.parquet.column.impl;
 
 import java.io.IOException;
 
-import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -78,7 +77,7 @@ final class ColumnWriterV2 extends ColumnWriterBase {
     Encoding encoding = values.getEncoding();
     pageWriter.writePageV2(
         rowCount,
-        Ints.checkedCast(statistics.getNumNulls()),
+        Math.toIntExact(statistics.getNumNulls()),
         valueCount,
         repetitionLevels.getBytes(),
         definitionLevels.getBytes(),
