@@ -239,17 +239,14 @@ public class TestParquetFileWriter {
     w.startColumn(col, 5, CODEC);
     w.writeDataPage(2, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.writeDataPage(3, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
     BloomFilter bloomData = new BlockSplitBloomFilter(0);
     bloomData.insertHash(bloomData.hash(Binary.fromString("hello")));
     bloomData.insertHash(bloomData.hash(Binary.fromString("world")));
-    long blStarts = w.getPos();
     w.writeBloomFilter(bloomData);
-    w.endColumn();
     w.endBlock();
     w.end(new HashMap<String, String>());
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
-    assertEquals("bloomFilter offset",
-      blStarts, readFooter.getBlocks().get(0).getColumns().get(0).getBloomFilterOffset());
     ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
       Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(colPath)));
     BloomFilterReader bloomFilterReader =  r.getBloomFilterDataReader(readFooter.getBlocks().get(0));

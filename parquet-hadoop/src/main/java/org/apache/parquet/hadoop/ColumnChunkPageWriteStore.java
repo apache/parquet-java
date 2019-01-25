@@ -35,6 +35,8 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
@@ -50,7 +52,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
-  private static final class ColumnChunkPageWriter implements PageWriter {
+  private static final class ColumnChunkPageWriter implements PageWriter, BloomFilterWriter {
 
     private final ColumnDescriptor path;
     private final BytesCompressor compressor;
@@ -69,6 +71,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private Set<Encoding> dlEncodings = new HashSet<Encoding>();
     private List<Encoding> dataEncodings = new ArrayList<Encoding>();
 
+    private BloomFilter bloomFilter;
     private ColumnIndexBuilder columnIndexBuilder;
     private OffsetIndexBuilder offsetIndexBuilder;
     private Statistics totalStatistics;
@@ -227,6 +230,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           totalStatistics,
           columnIndexBuilder,
           offsetIndexBuilder,
+          bloomFilter,
           rlEncodings,
           dlEncodings,
           dataEncodings);
@@ -267,6 +271,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       return buf.memUsageString(prefix + " ColumnChunkPageWriter");
     }
 
+    @Override
+    public void writeBloomFilter(BloomFilter bloomFilter) {
+      this.bloomFilter = bloomFilter;
+    }
   }
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();

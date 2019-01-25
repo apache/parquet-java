@@ -1192,12 +1192,12 @@ public class ParquetMetadataConverter {
                   messageType.getType(path.toArray()).asPrimitiveType()),
               metaData.data_page_offset,
               metaData.dictionary_page_offset,
-              metaData.bloom_filter_offset,
               metaData.num_values,
               metaData.total_compressed_size,
               metaData.total_uncompressed_size);
           column.setColumnIndexReference(toColumnIndexReference(columnChunk));
           column.setOffsetIndexReference(toOffsetIndexReference(columnChunk));
+          column.setBloomFilterOffset(metaData.bloom_filter_offset);
           // TODO
           // index_page_offset
           // key_value_metadata
