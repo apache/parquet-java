@@ -71,7 +71,7 @@ Parquet is a very active project, and new features are being added quickly. Here
 
 
 * Type-specific encoding
-* Hive integration
+* Hive integration (deprecated)
 * Pig integration
 * Cascading integration
 * Crunch integration
@@ -133,6 +133,8 @@ If the data was stored using Pig, things will "just work". If the data was store
 ## Hive integration
 
 Hive integration is provided via the [parquet-hive](https://github.com/apache/parquet-mr/tree/master/parquet-hive) sub-project.
+
+Hive integration is now deprecated within the Parquet project. It is now maintained by Apache Hive.
 
 ## Build
 
