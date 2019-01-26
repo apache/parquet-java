@@ -38,7 +38,7 @@
       <url>http://conjars.org/repo</url>
     </repository>
   </repositories>
-  
+
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -98,7 +98,7 @@
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>scrooge-core_${scala.binary.version}</artifactId>
-      <version>4.7.0</version>
+      <version>19.1.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -164,7 +164,7 @@
         <plugin>
             <groupId>net.alchim31.maven</groupId>
             <artifactId>scala-maven-plugin</artifactId>
-            <version>3.1.6</version>
+            <version>3.4.4</version>
             <executions>
                 <execution>
                     <id>scala-compile-first</id>
@@ -203,7 +203,7 @@
         <plugin>
             <groupId>com.twitter</groupId>
             <artifactId>scrooge-maven-plugin</artifactId>
-            <version>3.17.0</version>
+            <version>19.1.0</version>
             <configuration>
                 <outputDirectory>${project.build.directory}/generated-test-sources/scrooge</outputDirectory>
                 <thriftNamespaceMappings>
