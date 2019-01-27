@@ -19,7 +19,7 @@
 package org.apache.parquet.thrift;
 
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.thrift.TException;
@@ -140,7 +140,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
    */
   @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
-    List<Action> buffer = new LinkedList<Action>();
+    List<Action> buffer = new ArrayList<Action>(1);
     try{
         boolean hasFieldsIgnored = readOneStruct(in, buffer, thriftType);
         if (hasFieldsIgnored) {
