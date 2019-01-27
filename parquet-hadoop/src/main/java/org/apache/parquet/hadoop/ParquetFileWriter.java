@@ -848,7 +848,7 @@ public class ParquetFileWriter {
     // copy the data for all chunks
     long start = -1;
     long length = 0;
-    long blockCompressedSize = 0;
+    long blockUncompressedSize = 0L;
     for (int i = 0; i < columnsInOrder.size(); i += 1) {
       ColumnChunkMetaData chunk = columnsInOrder.get(i);
 
@@ -889,10 +889,10 @@ public class ParquetFileWriter {
           chunk.getTotalSize(),
           chunk.getTotalUncompressedSize()));
 
-      blockCompressedSize += chunk.getTotalSize();
+      blockUncompressedSize += chunk.getTotalUncompressedSize();
     }
 
-    currentBlock.setTotalByteSize(blockCompressedSize);
+    currentBlock.setTotalByteSize(blockUncompressedSize);
 
     endBlock();
   }
