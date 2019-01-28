@@ -19,6 +19,16 @@
 
 # Parquet #
 
+### Version 1.10.1 ### 
+ 
+Release Notes - Parquet - Version 1.10.1 
+ 
+#### Bug 
+ 
+*   [PARQUET-1510](https://issues.apache.org/jira/browse/PARQUET-1510) \- Dictionary filter skips null values when evaluating not-equals. 
+*   [PARQUET-1309](https://issues.apache.org/jira/browse/PARQUET-1309) \- Parquet Java uses incorrect stats and dictionary filter properties 
+
+
 ### Version 1.10.0 ###
 
 Release Notes - Parquet - Version 1.10.0
