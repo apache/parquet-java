@@ -178,7 +178,10 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-      if (dictSet != null && dictSet.size() == 1 && dictSet.contains(value)) {
+      boolean mayContainNull = (meta.getStatistics() == null
+          || !meta.getStatistics().isNumNullsSet()
+          || meta.getStatistics().getNumNulls() > 0);
+      if (dictSet != null && dictSet.size() == 1 && dictSet.contains(value) && !mayContainNull) {
         return BLOCK_CANNOT_MATCH;
       }
     } catch (IOException e) {
