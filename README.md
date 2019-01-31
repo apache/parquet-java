@@ -35,9 +35,10 @@ Parquet-MR uses Maven to build and depends on both the thrift and protoc compile
 To build and install the protobuf compiler, run:
 
 ```
-wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
-tar xzf protobuf-2.5.0.tar.gz
-cd  protobuf-2.5.0
+wget https://github.com/google/protobuf/archive/v3.5.1.tar.gz -O protobuf-3.5.1.tar.gz
+tar xzf protobuf-3.5.1.tar.gz
+cd protobuf-3.5.1
+./autogen.sh
 ./configure
 make
 sudo make install
@@ -49,11 +50,11 @@ sudo ldconfig
 To build and install the thrift compiler, run:
 
 ```
-wget -nv http://archive.apache.org/dist/thrift/0.7.0/thrift-0.7.0.tar.gz
-tar xzf thrift-0.7.0.tar.gz
-cd thrift-0.7.0
+wget -nv http://archive.apache.org/dist/thrift/0.9.3/thrift-0.9.3.tar.gz
+tar xzf thrift-0.9.3.tar.gz
+cd thrift-0.9.3
 chmod +x ./configure
-./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
+./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php --without-nodejs
 sudo make install
 ```
 
@@ -148,29 +149,28 @@ The build runs in [Travis CI](http://travis-ci.org/apache/parquet-mr):
 [![Build Status](https://travis-ci.org/apache/parquet-mr.svg?branch=master)](http://travis-ci.org/apache/parquet-mr)
 
 ## Add Parquet as a dependency in Maven
-The current release is version `1.8.1`
 
 ```xml
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.8.1</version>
+      <version>1.10.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.8.1</version>
+      <version>1.10.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.8.1</version>
+      <version>1.10.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.8.1</version>
+      <version>1.10.1</version>
     </dependency>
   </dependencies>
 ```
