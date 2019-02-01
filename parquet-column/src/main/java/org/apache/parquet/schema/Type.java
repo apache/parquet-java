@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.parquet.io.InvalidRecordException;
@@ -111,6 +112,28 @@ abstract public class Type {
      */
     abstract public boolean isMoreRestrictiveThan(Repetition other);
 
+
+    /**
+     * @param repetitions repetitions to traverse
+     * @return the least restrictive repetition of all repetitions provided
+     */
+    public static Repetition leastRestrictive(Repetition... repetitions) {
+      boolean hasOptional = false;
+
+      for (Repetition repetition : repetitions) {
+        if (repetition == REPEATED) {
+          return REPEATED;
+        } else if (repetition == OPTIONAL) {
+          hasOptional = true;
+        }
+      }
+
+      if (hasOptional) {
+        return OPTIONAL;
+      }
+
+      return REQUIRED;
+    }
   }
 
   private final String name;
