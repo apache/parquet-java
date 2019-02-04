@@ -664,7 +664,9 @@ public class ParquetFileWriter {
   }
 
   public void appendFile(InputFile file) throws IOException {
-    ParquetFileReader.open(file).appendTo(this);
+    try (ParquetFileReader reader = ParquetFileReader.open(file)) {
+      reader.appendTo(this);
+    }
   }
 
   public int merge(List<InputFile> inputFiles, CodecFactory.BytesCompressor compressor, String createdBy, long maxBlockSize) throws IOException {
