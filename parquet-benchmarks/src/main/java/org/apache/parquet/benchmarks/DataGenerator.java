@@ -59,6 +59,10 @@ public class DataGenerator {
 //      generateData(parquetFile_1M_LZO, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, LZO, ONE_MILLION);
       generateData(file_1M_SNAPPY, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, SNAPPY, ONE_MILLION);
       generateData(file_1M_GZIP, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, GZIP, ONE_MILLION);
+
+      generateData(file_1M_BS64K_PS4K, configuration, PARQUET_2_0, 65536, 4096, 100, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M_BS64K_PS4K_SNAPPY, configuration, PARQUET_2_0, 65536, 4096, 100, SNAPPY, ONE_MILLION);
+      generateData(file_1M_BS64K_PS4K_GZIP, configuration, PARQUET_2_0, 65536, 4096, 100, GZIP, ONE_MILLION);
     }
     catch (IOException e) {
       throw new RuntimeException(e);

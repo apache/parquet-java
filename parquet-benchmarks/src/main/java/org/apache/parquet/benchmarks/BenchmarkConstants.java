@@ -39,4 +39,6 @@ public class BenchmarkConstants {
   public static final int PAGE_SIZE_8M = 8 * 1024 * 1024;
 
   public static final int DICT_PAGE_SIZE = 512;
+
+  public static final int THREAD_COUNT = 16;
 }
