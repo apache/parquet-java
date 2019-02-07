@@ -24,7 +24,7 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -101,7 +101,7 @@ public class ParquetFileWriter {
 
   public static final String PARQUET_METADATA_FILE = "_metadata";
   public static final String MAGIC_STR = "PAR1";
-  public static final byte[] MAGIC = MAGIC_STR.getBytes(Charset.forName("ASCII"));
+  public static final byte[] MAGIC = MAGIC_STR.getBytes(StandardCharsets.US_ASCII);
   public static final String PARQUET_COMMON_METADATA_FILE = "_common_metadata";
   public static final int CURRENT_VERSION = 1;
 
