@@ -51,6 +51,7 @@ public class CleanUtil {
       CLEAN_METHOD.invoke(cleaner);
     } catch (IllegalAccessException | InvocationTargetException e) {
       // Ignore clean failure
+      logger.warn("Clean failed for buffer " + buffer.getClass().getSimpleName(), e);
     }
   }
 }

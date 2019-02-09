@@ -32,13 +32,13 @@ import org.apache.parquet.Preconditions;
  * entire input in setInput and compresses it as one compressed block.
  */
 public class SnappyCompressor implements Compressor {
-  private static final int maxBufferSize = 64 * 1024 * 1024;
+  private static final int initialBufferSize = 64 * 1024 * 1024;
 
   // Buffer for compressed output. This buffer grows as necessary.
-  private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
+  private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
 
   // Buffer for uncompressed input. This buffer grows as necessary.
-  private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
+  private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
 
   private long bytesRead = 0L;
   private long bytesWritten = 0L;
@@ -152,15 +152,15 @@ public class SnappyCompressor implements Compressor {
 
   @Override
   public synchronized void reset() {
-    if (inputBuffer.capacity() > maxBufferSize) {
+    if (inputBuffer.capacity() > initialBufferSize) {
       ByteBuffer oldBuffer = inputBuffer;
-      inputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
+      inputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
       CleanUtil.clean(oldBuffer);
     }
 
-    if (outputBuffer.capacity() > maxBufferSize) {
+    if (outputBuffer.capacity() > initialBufferSize) {
       ByteBuffer oldBuffer = outputBuffer;
-      outputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
+      outputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
       CleanUtil.clean(oldBuffer);
     }
 

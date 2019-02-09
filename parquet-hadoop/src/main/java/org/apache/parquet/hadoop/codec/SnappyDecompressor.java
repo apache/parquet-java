@@ -27,13 +27,13 @@ import org.xerial.snappy.Snappy;
 import org.apache.parquet.Preconditions;
 
 public class SnappyDecompressor implements Decompressor {
-  private static final int maxBufferSize = 64 * 1024 * 1024;
+  private static final int initialBufferSize = 64 * 1024 * 1024;
 
   // Buffer for uncompressed output. This buffer grows as necessary.
-  private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
+  private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
 
   // Buffer for compressed input. This buffer grows as necessary.
-  private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
+  private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
 
   private boolean finished;
 
@@ -137,15 +137,15 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public synchronized void reset() {
-    if (inputBuffer.capacity() > maxBufferSize) {
+    if (inputBuffer.capacity() > initialBufferSize) {
       ByteBuffer oldBuffer = inputBuffer;
-      inputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
+      inputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
       CleanUtil.clean(oldBuffer);
     }
 
-    if (outputBuffer.capacity() > maxBufferSize) {
+    if (outputBuffer.capacity() > initialBufferSize) {
       ByteBuffer oldBuffer = outputBuffer;
-      outputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
+      outputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
       CleanUtil.clean(oldBuffer);
     }
 
