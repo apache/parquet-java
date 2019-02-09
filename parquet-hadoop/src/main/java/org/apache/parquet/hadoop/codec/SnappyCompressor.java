@@ -26,20 +26,19 @@ import org.apache.hadoop.io.compress.Compressor;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.Preconditions;
-import sun.nio.ch.DirectBuffer;
 
 /**
  * This class is a wrapper around the snappy compressor. It always consumes the
  * entire input in setInput and compresses it as one compressed block.
  */
 public class SnappyCompressor implements Compressor {
+  private static final int maxBufferSize = 64 * 1024 * 1024;
+
   // Buffer for compressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
 
   // Buffer for uncompressed input. This buffer grows as necessary.
   private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
-
-  private int maxBufferSize = 64 * 1024 * 1024;
 
   private long bytesRead = 0L;
   private long bytesWritten = 0L;
@@ -71,7 +70,7 @@ public class SnappyCompressor implements Compressor {
       if (maxOutputSize > outputBuffer.capacity()) {
         ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(maxOutputSize);
-        ((DirectBuffer)oldBuffer).cleaner().clean();
+        CleanUtil.clean(oldBuffer);
       }
       // Reset the previous outputBuffer
       outputBuffer.clear();
@@ -104,7 +103,7 @@ public class SnappyCompressor implements Compressor {
       tmp.put(inputBuffer);
       ByteBuffer oldBuffer = inputBuffer;
       inputBuffer = tmp;
-      ((DirectBuffer)(oldBuffer)).cleaner().clean();
+      CleanUtil.clean(oldBuffer);
     } else {
       inputBuffer.limit(inputBuffer.position() + len);
     }
@@ -156,13 +155,13 @@ public class SnappyCompressor implements Compressor {
     if (inputBuffer.capacity() > maxBufferSize) {
       ByteBuffer oldBuffer = inputBuffer;
       inputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
-      ((DirectBuffer)oldBuffer).cleaner().clean();
+      CleanUtil.clean(oldBuffer);
     }
 
     if (outputBuffer.capacity() > maxBufferSize) {
       ByteBuffer oldBuffer = outputBuffer;
       outputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
-      ((DirectBuffer)oldBuffer).cleaner().clean();
+      CleanUtil.clean(oldBuffer);
     }
 
     finishCalled = false;

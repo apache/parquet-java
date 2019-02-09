@@ -25,9 +25,10 @@ import org.apache.hadoop.io.compress.Decompressor;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.Preconditions;
-import sun.nio.ch.DirectBuffer;
 
 public class SnappyDecompressor implements Decompressor {
+  private static final int maxBufferSize = 64 * 1024 * 1024;
+
   // Buffer for uncompressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
 
@@ -35,8 +36,6 @@ public class SnappyDecompressor implements Decompressor {
   private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
 
   private boolean finished;
-
-  private int maxBufferSize = 64 * 1024 * 1024;
 
   /**
    * Fills specified buffer with uncompressed data. Returns actual number
@@ -66,7 +65,7 @@ public class SnappyDecompressor implements Decompressor {
       if (decompressedSize > outputBuffer.capacity()) {
         ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(decompressedSize);
-        ((DirectBuffer)oldBuffer).cleaner().clean();
+        CleanUtil.clean(oldBuffer);
       }
 
       // Reset the previous outputBuffer (i.e. set position to 0)
@@ -109,7 +108,7 @@ public class SnappyDecompressor implements Decompressor {
       newBuffer.put(inputBuffer);
       ByteBuffer oldBuffer = inputBuffer;
       inputBuffer = newBuffer;
-      ((DirectBuffer)(oldBuffer)).cleaner().clean();
+      CleanUtil.clean(oldBuffer);
     } else {
       inputBuffer.limit(inputBuffer.position() + len);
     }
@@ -141,13 +140,13 @@ public class SnappyDecompressor implements Decompressor {
     if (inputBuffer.capacity() > maxBufferSize) {
       ByteBuffer oldBuffer = inputBuffer;
       inputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
-      ((DirectBuffer)oldBuffer).cleaner().clean();
+      CleanUtil.clean(oldBuffer);
     }
 
     if (outputBuffer.capacity() > maxBufferSize) {
       ByteBuffer oldBuffer = outputBuffer;
       outputBuffer = ByteBuffer.allocateDirect(maxBufferSize);
-      ((DirectBuffer)oldBuffer).cleaner().clean();
+      CleanUtil.clean(oldBuffer);
     }
 
     finished = false;
