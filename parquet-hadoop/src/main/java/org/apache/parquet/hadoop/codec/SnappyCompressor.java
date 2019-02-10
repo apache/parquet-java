@@ -44,6 +44,11 @@ public class SnappyCompressor implements Compressor {
   private long bytesWritten = 0L;
   private boolean finishCalled = false;
 
+  public SnappyCompressor() {
+    inputBuffer.limit(0);
+    outputBuffer.limit(0);
+  }
+
   /**
    * Fills specified buffer with compressed data. Returns actual number
    * of bytes of compressed data. A return value of 0 indicates that

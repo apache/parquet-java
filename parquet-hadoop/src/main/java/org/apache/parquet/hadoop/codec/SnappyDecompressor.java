@@ -37,6 +37,11 @@ public class SnappyDecompressor implements Decompressor {
 
   private boolean finished;
 
+  public SnappyDecompressor() {
+    inputBuffer.limit(0);
+    outputBuffer.limit(0);
+  }
+
   /**
    * Fills specified buffer with uncompressed data. Returns actual number
    * of bytes of uncompressed data. A return value of 0 indicates that
