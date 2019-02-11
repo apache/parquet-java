@@ -32,7 +32,10 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
@@ -52,29 +55,31 @@ public class TestSimpleRecordConverter {
 
   @Test
   public void testConverter() throws IOException {
-    ParquetReader<SimpleRecord> reader =
-      ParquetReader.builder(new SimpleReadSupport(), new Path(testFile().getAbsolutePath())).build();
-    for (SimpleRecord record = reader.read(); record != null; record = reader.read()) {
-      for (SimpleRecord.NameValue value : record.getValues()) {
-        switch(value.getName()) {
-          case INT32_FIELD:
-            Assert.assertEquals(32, value.getValue());
-            break;
-          case INT64_FIELD:
-            Assert.assertEquals(64L, value.getValue());
-            break;
-          case FLOAT_FIELD:
-            Assert.assertEquals(1.0f, value.getValue());
-            break;
-          case DOUBLE_FIELD:
-            Assert.assertEquals(2.0d, value.getValue());
-            break;
-          case BINARY_FIELD:
-            Assert.assertArrayEquals("foobar".getBytes(), (byte[])value.getValue());
-            break;
-          case FIXED_LEN_BYTE_ARRAY_FIELD:
-            Assert.assertArrayEquals(new byte[]{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 }, (byte[])value.getValue());
-            break;
+    try (
+      ParquetReader<SimpleRecord> reader =
+        ParquetReader.builder(new SimpleReadSupport(), new Path(testFile().getAbsolutePath())).build()) {
+      for (SimpleRecord record = reader.read(); record != null; record = reader.read()) {
+        for (SimpleRecord.NameValue value : record.getValues()) {
+          switch(value.getName()) {
+            case INT32_FIELD:
+              Assert.assertEquals(32, value.getValue());
+              break;
+            case INT64_FIELD:
+              Assert.assertEquals(64L, value.getValue());
+              break;
+            case FLOAT_FIELD:
+              Assert.assertEquals(1.0f, value.getValue());
+              break;
+            case DOUBLE_FIELD:
+              Assert.assertEquals(2.0d, value.getValue());
+              break;
+            case BINARY_FIELD:
+              Assert.assertArrayEquals("foobar".getBytes(), (byte[])value.getValue());
+              break;
+            case FIXED_LEN_BYTE_ARRAY_FIELD:
+              Assert.assertArrayEquals(new byte[]{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 }, (byte[])value.getValue());
+              break;
+          }
         }
       }
     }
@@ -82,11 +87,10 @@ public class TestSimpleRecordConverter {
 
   @Before
   public void setUp() throws IOException {
-    MessageType schema = createSchema();
-    write(schema);
+    createTestParquetFile();
   }
 
-  private MessageType createSchema() {
+  private static MessageType createSchema() {
     return new MessageType("schema",
       new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.INT32, INT32_FIELD),
       new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.INT64, INT64_FIELD),
@@ -98,24 +102,26 @@ public class TestSimpleRecordConverter {
     );
   }
 
-  private void write(MessageType schema) throws IOException {
-    Path fsPpath = new Path(testFile().getPath());
+  private void createTestParquetFile() throws IOException {
+    Path fsPath = new Path(testFile().getPath());
     Configuration conf = new Configuration();
+
+    MessageType schema = createSchema();
     SimpleGroupFactory fact = new SimpleGroupFactory(schema);
     GroupWriteSupport.setSchema(schema, conf);
 
-    ParquetWriter<Group> writer = new ParquetWriter<Group>(
-      fsPpath,
-      new GroupWriteSupport(),
-      CompressionCodecName.UNCOMPRESSED,
-      1024,
-      1024,
-      512,
-      true,
-      false,
-      ParquetProperties.WriterVersion.PARQUET_2_0,
-      conf);
-    try {
+    try (
+      ParquetWriter<Group> writer = new ParquetWriter<>(
+        fsPath,
+        new GroupWriteSupport(),
+        CompressionCodecName.UNCOMPRESSED,
+        1024,
+        1024,
+        512,
+        true,
+        false,
+        ParquetProperties.WriterVersion.PARQUET_2_0,
+        conf)) {
       writer.write(fact.newGroup()
        .append(INT32_FIELD, 32)
        .append(INT64_FIELD, 64L)
@@ -124,8 +130,6 @@ public class TestSimpleRecordConverter {
        .append(BINARY_FIELD, Binary.fromString("foobar"))
        .append(FIXED_LEN_BYTE_ARRAY_FIELD,
          Binary.fromConstantByteArray(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 })));
-    } finally {
-      writer.close();
     }
   }
 
