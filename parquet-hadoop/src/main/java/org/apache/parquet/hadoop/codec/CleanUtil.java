@@ -56,6 +56,9 @@ public class CleanUtil {
   }
 
   public static void clean(ByteBuffer buffer) {
+    if (CLEANER_FIELD == null || CLEAN_METHOD == null) {
+      return;
+    }
     try {
       Object cleaner = CLEANER_FIELD.get(buffer);
       CLEAN_METHOD.invoke(cleaner);
