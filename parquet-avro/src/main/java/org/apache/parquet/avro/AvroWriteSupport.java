@@ -100,6 +100,10 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     this.model = model;
   }
 
+  protected Schema getAvroSchema() {
+    return this.rootAvroSchema;
+  }
+
   @Override
   public String getName() {
     return "avro";

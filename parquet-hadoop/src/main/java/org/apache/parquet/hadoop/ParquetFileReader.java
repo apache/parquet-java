@@ -20,6 +20,9 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.BLOOMFILTER;
+import static org.apache.parquet.crypto.CryptoClassLoader.getFileDecryptionPropertiesOrNull;
+import static org.apache.parquet.crypto.CryptoClassLoader.getParquetFileDecryptorOrNull;
+import static org.apache.parquet.crypto.CryptoClassLoader.getParquetFileEncryptorOrNull;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTIONARY;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
@@ -102,6 +105,7 @@ import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.SeekableInputStream;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.yetus.audience.InterfaceAudience.Private;
@@ -442,7 +446,7 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public static final ParquetMetadata readFooter(Configuration configuration, Path file) throws IOException {
-    return readFooter(configuration, file, NO_FILTER);
+    return readFooter(configuration, file, getFileDecryptionPropertiesOrNull(configuration));
   }
 
   /**
@@ -457,9 +461,9 @@ public class ParquetFileReader implements Closeable {
    *             use {@link ParquetFileReader#open(InputFile, ParquetReadOptions)}
    */
   public static ParquetMetadata readFooter(Configuration configuration, Path file, MetadataFilter filter) throws IOException {
-    return readFooter(HadoopInputFile.fromPath(file, configuration), filter);
+    return readFooter(configuration, file, filter, getFileDecryptionPropertiesOrNull(configuration));
   }
-
+  
   /**
    * @param configuration a configuration
    * @param file the Parquet File
@@ -485,7 +489,7 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file, MetadataFilter filter) throws IOException {
-    return readFooter(HadoopInputFile.fromStatus(file, configuration), filter);
+    return readFooter(HadoopInputFile.fromStatus(file, configuration), filter, getFileDecryptionPropertiesOrNull(configuration));
   }
 
   /**
@@ -560,7 +564,7 @@ public class ParquetFileReader implements Closeable {
   @Deprecated
   public static ParquetFileReader open(Configuration conf, Path file) throws IOException {
     return new ParquetFileReader(HadoopInputFile.fromPath(file, conf),
-        HadoopReadOptions.builder(conf).build());
+        HadoopReadOptions.builder(conf).build(), getFileDecryptionPropertiesOrNull(conf));
   }
 
   /**
@@ -574,7 +578,7 @@ public class ParquetFileReader implements Closeable {
   @Deprecated
   public static ParquetFileReader open(Configuration conf, Path file, MetadataFilter filter) throws IOException {
     return open(HadoopInputFile.fromPath(file, conf),
-        HadoopReadOptions.builder(conf).withMetadataFilter(filter).build());
+        HadoopReadOptions.builder(conf).withMetadataFilter(filter).build(), getFileDecryptionPropertiesOrNull(conf));
   }
 
   /**
@@ -680,7 +684,7 @@ public class ParquetFileReader implements Closeable {
   @Deprecated
   public ParquetFileReader(Configuration conf, Path file, MetadataFilter filter) throws IOException {
     this(HadoopInputFile.fromPath(file, conf),
-        HadoopReadOptions.builder(conf).withMetadataFilter(filter).build());
+        HadoopReadOptions.builder(conf).withMetadataFilter(filter).build(), getFileDecryptionPropertiesOrNull(conf));
   }
 
   /**
@@ -692,6 +696,19 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public ParquetFileReader(Configuration conf, Path file, ParquetMetadata footer) throws IOException {
+    this(conf, file, footer, null);
+  }
+
+  /**
+   * @param conf the Hadoop Configuration
+   * @param file Path to a parquet file
+   * @param footer a {@link ParquetMetadata} footer already read from the file
+   * @throws IOException if the file can not be opened
+   * @deprecated will be removed in 2.0.0.
+   */
+  @Deprecated
+  public ParquetFileReader(Configuration conf, Path file, ParquetMetadata footer, InternalFileDecryptor fileDecryptor) throws IOException {
+    this.fileDecryptor = fileDecryptor;
     this.converter = new ParquetMetadataConverter(conf);
     this.file = HadoopInputFile.fromPath(file, conf);
     this.f = this.file.newStream();

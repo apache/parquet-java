@@ -94,8 +94,8 @@
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.12.0</thrift.version>
-    <format.thrift.version>0.12.0</format.thrift.version>
+    <thrift.version>0.9.3</thrift.version>
+    <format.thrift.version>0.9.3</format.thrift.version>
     <fastutil.version>8.2.3</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
@@ -463,6 +463,7 @@
             <exclude>thrift-${thrift.version}/**</exclude>
             <exclude>thrift-${thrift.version}.tar.gz</exclude>
             <exclude>**/dependency-reduced-pom.xml</exclude>
+            <exclude>.arcconfig</exclude>
           </excludes>
         </configuration>
       </plugin>

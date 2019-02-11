@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.crypto.CryptoClassLoader.getFileEncryptionPropertiesOrNull;
+import static org.apache.parquet.crypto.CryptoClassLoader.getParquetFileEncryptorOrNull;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
@@ -277,7 +280,15 @@ public class ParquetWriter<T> implements Closeable {
       ParquetProperties encodingProps) throws IOException {
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
+    //if data mask is enabled, add mask columns if need
+
     MessageType schema = writeContext.getSchema();
+
+    //Try to get encryptor from configured class. If not configured, null is returned.
+    if (encryptionProperties == null) {
+      encryptionProperties = getFileEncryptionPropertiesOrNull(conf, writeContext);
+    }
+
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(
       file, schema, mode, rowGroupSize, maxPaddingSize,

@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.crypto.CryptoClassLoader.getParquetFileDecryptorOrNull;
 import static org.apache.parquet.hadoop.ParquetInputFormat.SPLIT_FILES;
 
 import java.io.IOException;
@@ -37,6 +38,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.crypto.CryptoClassLoader;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -160,7 +162,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
     // open a reader with the metadata filter
     ParquetFileReader reader = ParquetFileReader.open(
-        HadoopInputFile.fromPath(path, configuration), optionsBuilder.build());
+        HadoopInputFile.fromPath(path, configuration), optionsBuilder.build(), CryptoClassLoader.getFileDecryptionPropertiesOrNull(configuration));
 
     if (rowGroupOffsets != null) {
       // verify a row group was found for each offset
