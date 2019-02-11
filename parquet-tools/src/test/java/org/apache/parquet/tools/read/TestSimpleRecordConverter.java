@@ -32,14 +32,11 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.IOException;
-
 
 public class TestSimpleRecordConverter {
 
@@ -50,13 +47,13 @@ public class TestSimpleRecordConverter {
   private static final String BINARY_FIELD = "binary_field";
   private static final String FIXED_LEN_BYTE_ARRAY_FIELD = "flba_field";
 
-
-  private File testFile;
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Test
   public void testConverter() throws IOException {
     ParquetReader<SimpleRecord> reader =
-      ParquetReader.builder(new SimpleReadSupport(), new Path(this.testFile.getAbsolutePath())).build();
+      ParquetReader.builder(new SimpleReadSupport(), new Path(testFile().getAbsolutePath())).build();
     for (SimpleRecord record = reader.read(); record != null; record = reader.read()) {
       for (SimpleRecord.NameValue value : record.getValues()) {
         switch(value.getName()) {
@@ -85,14 +82,8 @@ public class TestSimpleRecordConverter {
 
   @Before
   public void setUp() throws IOException {
-    this.testFile = createTempFile();
     MessageType schema = createSchema();
-    write(schema, testFile);
-  }
-
-  @After
-  public void tearDown() {
-    this.testFile.delete();
+    write(schema);
   }
 
   private MessageType createSchema() {
@@ -107,8 +98,8 @@ public class TestSimpleRecordConverter {
     );
   }
 
-  private void write(MessageType schema, File f) throws IOException {
-    Path fsPpath = new Path(f.getPath());
+  private void write(MessageType schema) throws IOException {
+    Path fsPpath = new Path(testFile().getPath());
     Configuration conf = new Configuration();
     SimpleGroupFactory fact = new SimpleGroupFactory(schema);
     GroupWriteSupport.setSchema(schema, conf);
@@ -138,10 +129,7 @@ public class TestSimpleRecordConverter {
     }
   }
 
-  private File createTempFile() throws IOException {
-    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
-    tmp.deleteOnExit();
-    tmp.delete();
-    return tmp;
+  private File testFile() {
+    return new File(this.tempFolder.getRoot(), getClass().getSimpleName() + ".parquet");
   }
 }
