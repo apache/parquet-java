@@ -26,6 +26,11 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A Helper class which use reflections to clean up DirectBuffer. It's implemented for
+ * better compatibility with both java8 and java9+, because the Cleaner class is moved to
+ * another place since java9+.
+ */
 public class CleanUtil {
   private static final Logger logger = LoggerFactory.getLogger(CleanUtil.class);
   private static final Field CLEANER_FIELD;
@@ -33,23 +38,27 @@ public class CleanUtil {
 
   static {
     ByteBuffer buf = null;
+    Field cleanerField = null;
+    Method cleanMethod = null;
     try {
       buf = ByteBuffer.allocateDirect(1);
-      CLEANER_FIELD = buf.getClass().getDeclaredField("cleaner");
-      CLEANER_FIELD.setAccessible(true);
-      Object cleaner = CLEANER_FIELD.get(buf);
-      CLEAN_METHOD = cleaner.getClass().getDeclaredMethod("clean");
-    } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException e) {
+      cleanerField = buf.getClass().getDeclaredField("cleaner");
+      cleanerField.setAccessible(true);
+      Object cleaner = cleanerField.get(buf);
+      cleanMethod = cleaner.getClass().getDeclaredMethod("clean");
+    } catch (Throwable e) {
       clean(buf);
-      throw new IllegalStateException("No available cleaner found.", e);
+      logger.warn("Initialization failed for cleanerField or cleanMethod", e);
     }
+    CLEANER_FIELD = cleanerField;
+    CLEAN_METHOD = cleanMethod;
   }
 
   public static void clean(ByteBuffer buffer) {
     try {
       Object cleaner = CLEANER_FIELD.get(buffer);
       CLEAN_METHOD.invoke(cleaner);
-    } catch (IllegalAccessException | InvocationTargetException e) {
+    } catch (Throwable e) {
       // Ignore clean failure
       logger.warn("Clean failed for buffer " + buffer.getClass().getSimpleName(), e);
     }
