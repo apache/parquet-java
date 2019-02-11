@@ -46,9 +46,10 @@ public class CleanUtil {
       cleanerField.setAccessible(true);
       Object cleaner = cleanerField.get(buf);
       cleanMethod = cleaner.getClass().getDeclaredMethod("clean");
-    } catch (Throwable e) {
-      clean(buf);
+    } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException e) {
       logger.warn("Initialization failed for cleanerField or cleanMethod", e);
+    } finally {
+      clean(buf);
     }
     CLEANER_FIELD = cleanerField;
     CLEAN_METHOD = cleanMethod;
@@ -58,7 +59,7 @@ public class CleanUtil {
     try {
       Object cleaner = CLEANER_FIELD.get(buffer);
       CLEAN_METHOD.invoke(cleaner);
-    } catch (Throwable e) {
+    } catch (IllegalAccessException | InvocationTargetException | NullPointerException e) {
       // Ignore clean failure
       logger.warn("Clean failed for buffer " + buffer.getClass().getSimpleName(), e);
     }
