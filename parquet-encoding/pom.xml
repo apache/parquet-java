@@ -41,12 +41,6 @@
       <artifactId>parquet-common</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>1.10</version>
-      <scope>compile</scope>
-    </dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>
