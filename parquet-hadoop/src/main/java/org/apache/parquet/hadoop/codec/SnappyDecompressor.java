@@ -27,14 +27,21 @@ import org.xerial.snappy.Snappy;
 import org.apache.parquet.Preconditions;
 
 public class SnappyDecompressor implements Decompressor {
+  private static final int initialBufferSize = 64 * 1024 * 1024;
+
   // Buffer for uncompressed output. This buffer grows as necessary.
-  private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
+  private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
 
   // Buffer for compressed input. This buffer grows as necessary.
-  private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
+  private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
 
   private boolean finished;
-  
+
+  public SnappyDecompressor() {
+    inputBuffer.limit(0);
+    outputBuffer.limit(0);
+  }
+
   /**
    * Fills specified buffer with uncompressed data. Returns actual number
    * of bytes of uncompressed data. A return value of 0 indicates that
@@ -61,7 +68,9 @@ public class SnappyDecompressor implements Decompressor {
       // There is compressed input, decompress it now.
       int decompressedSize = Snappy.uncompressedLength(inputBuffer);
       if (decompressedSize > outputBuffer.capacity()) {
+        ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(decompressedSize);
+        CleanUtil.clean(oldBuffer);
       }
 
       // Reset the previous outputBuffer (i.e. set position to 0)
@@ -102,7 +111,9 @@ public class SnappyDecompressor implements Decompressor {
       ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
       inputBuffer.rewind();
       newBuffer.put(inputBuffer);
-      inputBuffer = newBuffer;      
+      ByteBuffer oldBuffer = inputBuffer;
+      inputBuffer = newBuffer;
+      CleanUtil.clean(oldBuffer);
     } else {
       inputBuffer.limit(inputBuffer.position() + len);
     }
@@ -131,6 +142,18 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public synchronized void reset() {
+    if (inputBuffer.capacity() > initialBufferSize) {
+      ByteBuffer oldBuffer = inputBuffer;
+      inputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
+      CleanUtil.clean(oldBuffer);
+    }
+
+    if (outputBuffer.capacity() > initialBufferSize) {
+      ByteBuffer oldBuffer = outputBuffer;
+      outputBuffer = ByteBuffer.allocateDirect(initialBufferSize);
+      CleanUtil.clean(oldBuffer);
+    }
+
     finished = false;
     inputBuffer.rewind();
     outputBuffer.rewind();
