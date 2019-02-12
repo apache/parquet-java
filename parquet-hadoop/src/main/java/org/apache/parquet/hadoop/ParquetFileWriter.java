@@ -559,7 +559,7 @@ public class ParquetFileWriter {
    * Write a Bloom filter
    * @param bloomFilter the bloom filter of column values
    */
-  public void writeBloomFilter(BloomFilter bloomFilter)  {
+  protected void writeBloomFilter(BloomFilter bloomFilter)  {
     currentBloomFilters.add(bloomFilter);
   }
 
