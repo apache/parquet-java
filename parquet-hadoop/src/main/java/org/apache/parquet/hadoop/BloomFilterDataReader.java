@@ -24,6 +24,7 @@ import org.apache.parquet.Strings;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterReader;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterUtility;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -36,6 +37,7 @@ public class BloomFilterDataReader implements BloomFilterReader {
   private final ParquetFileReader reader;
   private final Map<String, ColumnChunkMetaData> columns;
   private final Map<String, BloomFilter> cache = new HashMap<>();
+
   public BloomFilterDataReader(ParquetFileReader fileReader, BlockMetaData block) {
     this.reader = fileReader;
     this.columns = new HashMap<>();
@@ -43,13 +45,14 @@ public class BloomFilterDataReader implements BloomFilterReader {
       columns.put(column.getPath().toDotString(), column);
     }
   }
+
   @Override
   public BloomFilter readBloomFilter(ColumnDescriptor descriptor) {
     String dotPath = Strings.join(descriptor.getPath(), ".");
     ColumnChunkMetaData column = columns.get(dotPath);
     if (column == null) {
       throw new ParquetDecodingException(
-        "Cannot load Bloom filter data, unknown column: " + dotPath);
+        "Cannot read Bloom filter data from meta data of column: " + dotPath);
     }
     if (cache.containsKey(dotPath)) {
       return cache.get(dotPath);
@@ -65,7 +68,35 @@ public class BloomFilterDataReader implements BloomFilterReader {
       return cache.get(dotPath);
     } catch (IOException e) {
       throw new ParquetDecodingException(
-        "Failed to read Bloom data", e);
+        "Failed to read Bloom filter data", e);
     }
   }
+
+  @Override
+  public BloomFilterUtility buildBloomFilterUtility(ColumnDescriptor desc) {
+    BloomFilter bloomFilterData = readBloomFilter(desc);
+
+    String dotPath = Strings.join(desc.getPath(), ".");
+    ColumnChunkMetaData meta = columns.get(dotPath);
+    if (meta == null) {
+      throw new ParquetDecodingException(
+        "Cannot read Bloom filter data from meta data of column: " + dotPath);
+    }
+
+    switch (meta.getType()){
+      case INT32:
+        return new BloomFilterUtility.IntBloomFilter(bloomFilterData);
+      case INT64:
+        return new BloomFilterUtility.LongBloomFilter(bloomFilterData);
+      case FLOAT:
+        return new BloomFilterUtility.FloatBloomFilter(bloomFilterData);
+      case DOUBLE:
+        return new BloomFilterUtility.DoubleBloomFilter(bloomFilterData);
+      case BINARY:
+        return new BloomFilterUtility.BinaryBloomFilter(bloomFilterData);
+      default:
+        return null;
+    }
+  }
+
 }

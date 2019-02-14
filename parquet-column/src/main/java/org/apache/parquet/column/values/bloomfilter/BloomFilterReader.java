@@ -26,7 +26,15 @@ public interface BloomFilterReader {
    * Returns a {@link BloomFilter} for the given column descriptor.
    *
    * @param path the descriptor of the column
-   * @return the bloomFilter dta for that column, or null if there isn't one
+   * @return the bloomFilter data for the column, or null if there isn't one
    */
   BloomFilter readBloomFilter(ColumnDescriptor path);
+
+  /**
+   * Returns a {@link BloomFilterUtility} for the given column descriptor.
+   *
+   * @param path the descriptor of the column
+   * @return a concrete bloom filter utility
+   */
+  BloomFilterUtility buildBloomFilterUtility(ColumnDescriptor path);
 }
