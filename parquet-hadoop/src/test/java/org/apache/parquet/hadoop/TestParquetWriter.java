@@ -179,41 +179,32 @@ public class TestParquetWriter {
   public void testNullValuesWithPageRowLimit() throws IOException {
     MessageType schema = Types.buildMessage().optionalList().optionalElement(BINARY).as(stringType()).named("str_list")
         .named("msg");
+    final int recordCount = 100;
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
     GroupFactory factory = new SimpleGroupFactory(schema);
     Group listNull = factory.newGroup();
-    Group elementNull = factory.newGroup();
-    elementNull.addGroup("str_list").addGroup("list");
-    Group elementValue = factory.newGroup();
-    elementValue.addGroup("str_list").addGroup("list").add("element", "value");
-    List<Group> records = Arrays.asList(
-        listNull,
-        elementNull,
-        elementValue,
-        elementNull,
-        listNull,
-        elementValue,
-        elementNull);
 
     File file = temp.newFile();
     file.delete();
     Path path = new Path(file.getAbsolutePath());
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-        .withPageRowCountLimit(1)
+        .withPageRowCountLimit(10)
         .withConf(conf)
         .build()) {
-      for (Group group : records) {
-        writer.write(group);
+      for (int i = 0; i < recordCount; ++i) {
+        writer.write(listNull);
       }
     }
 
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).build()) {
-      for (Group group : records) {
-        assertEquals(group.toString(), reader.read().toString());
+      int readRecordCount = 0;
+      for (Group group = reader.read(); group != null; group = reader.read()) {
+        assertEquals(listNull.toString(), group.toString());
+        ++readRecordCount;
       }
-      assertNull("End of file: reader should return null", reader.read());
+      assertEquals("Number of written records should be equal to the read one", recordCount, readRecordCount);
     }
   }
 }
