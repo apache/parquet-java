@@ -34,8 +34,6 @@ import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.map.JsonMappingException;
 
 /**
  * computes a summary of the input to a json string
@@ -176,8 +174,6 @@ public class Summary extends EvalFunc<String> implements Algebraic {
    * @param t
    * @return
    * @throws ExecException
-   * @throws JsonParseException
-   * @throws JsonMappingException
    * @throws IOException
    */
   private static TupleSummaryData merge(Tuple t) throws IOException {

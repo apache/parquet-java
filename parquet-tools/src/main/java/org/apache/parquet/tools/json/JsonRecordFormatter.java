@@ -19,11 +19,11 @@
 
 package org.apache.parquet.tools.json;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.tools.read.SimpleRecord;
-import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.IOException;
 import java.util.*;

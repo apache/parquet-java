@@ -21,14 +21,14 @@ package org.apache.parquet.thrift.struct;
 import java.io.IOException;
 import java.io.StringWriter;
 
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig.Feature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 class JSON {
 
   private static ObjectMapper om = new ObjectMapper();
   static {
-    om.configure(Feature.INDENT_OUTPUT, true);
+    om.enable(SerializationFeature.INDENT_OUTPUT);
   }
 
   static <T> T fromJSON(String json, Class<T> clzz) {

@@ -18,9 +18,9 @@
  */
 package org.apache.parquet.thrift.struct;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.thrift.TFieldRequirementType;
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
 
 public class ThriftField {
   public static enum Requirement {
