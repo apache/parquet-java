@@ -300,7 +300,9 @@ public class MessageColumnIO extends GroupColumnIO {
 
       // We need to flush the cached null values before ending the record to ensure that everything is sent to the
       // writer before the current page would be closed
-      flush();
+      if (columns.isColumnFlushNeeded()) {
+        flush();
+      }
 
       columns.endRecord();
       if (DEBUG) log("< MESSAGE END >");

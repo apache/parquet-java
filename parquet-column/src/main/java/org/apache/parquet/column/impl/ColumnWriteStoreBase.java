@@ -229,4 +229,9 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       rowCountForNextSizeCheck = rowCountForNextRowCountCheck;
     }
   }
+
+  @Override
+  public boolean isColumnFlushNeeded() {
+    return rowCount + 1 >= rowCountForNextSizeCheck;
+  }
 }

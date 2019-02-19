@@ -142,7 +142,6 @@ public class NestedNullWritingBenchmarks {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(BLACK_HOLE)
         .withWriteMode(Mode.OVERWRITE)
         .withType(SCHEMA)
-        .withPageRowCountLimit(Integer.MAX_VALUE) // Disabling row count limit so PARQUET-1531 will not be triggered
         .build()) {
       for (int i = 0; i < RECORD_COUNT; ++i) {
         writer.write(generator.nextValue());
