@@ -42,7 +42,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -67,7 +66,6 @@ import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
-import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -1408,7 +1406,27 @@ public class ParquetFileReader implements Closeable {
      * @throws IOException if there is an error while reading from the stream
      */
     public void readAll(SeekableInputStream f, ChunkListBuilder builder) throws IOException {
-      List<ByteBuffer> buffers = readBlocks(f, offset, length);
+      List<Chunk> result = new ArrayList<Chunk>(chunks.size());
+      f.seek(offset);
+
+      int fullAllocations = length / options.getMaxAllocationSize();
+      int lastAllocationSize = length % options.getMaxAllocationSize();
+
+      int numAllocations = fullAllocations + (lastAllocationSize > 0 ? 1 : 0);
+      List<ByteBuffer> buffers = new ArrayList<>(numAllocations);
+
+      for (int i = 0; i < fullAllocations; i += 1) {
+        buffers.add(options.getAllocator().allocate(options.getMaxAllocationSize()));
+      }
+
+      if (lastAllocationSize > 0) {
+        buffers.add(options.getAllocator().allocate(lastAllocationSize));
+      }
+
+      for (ByteBuffer buffer : buffers) {
+        f.readFully(buffer);
+        buffer.flip();
+      }
 
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
@@ -1426,74 +1444,6 @@ public class ParquetFileReader implements Closeable {
       return offset + length;
     }
 
-  }
-
-  /**
-   * @param f file to read the blocks from
-   * @return the ByteBuffer blocks
-   * @throws IOException if there is an error while reading from the stream
-   */
-  List<ByteBuffer> readBlocks(SeekableInputStream f, long offset, int length) throws IOException {
-    f.seek(offset);
-
-    int fullAllocations = length / options.getMaxAllocationSize();
-    int lastAllocationSize = length % options.getMaxAllocationSize();
-
-    int numAllocations = fullAllocations + (lastAllocationSize > 0 ? 1 : 0);
-    List<ByteBuffer> buffers = new ArrayList<>(numAllocations);
-
-    for (int i = 0; i < fullAllocations; i++) {
-      buffers.add(options.getAllocator().allocate(options.getMaxAllocationSize()));
-    }
-
-    if (lastAllocationSize > 0) {
-      buffers.add(options.getAllocator().allocate(lastAllocationSize));
-    }
-
-    for (ByteBuffer buffer : buffers) {
-      f.readFully(buffer);
-      buffer.flip();
-    }
-    return buffers;
-  }
-
-  Optional<PageReader> readColumnInBlock(int blockIndex, ColumnDescriptor columnDescriptor) {
-    BlockMetaData block = blocks.get(blockIndex);
-    if (block.getRowCount() == 0) {
-      throw new RuntimeException("Illegal row group of 0 rows");
-    }
-    Optional<ColumnChunkMetaData> mc = findColumnByPath(block, columnDescriptor.getPath());
-
-    return mc.map(column -> new ChunkDescriptor(columnDescriptor, column, column.getStartingPos(), (int) column.getTotalSize()))
-      .map(chunk -> readChunk(f, chunk));
-  }
-
-  private ColumnChunkPageReader readChunk(SeekableInputStream f, ChunkDescriptor descriptor) {
-    try {
-      List<ByteBuffer> buffers = readBlocks(f, descriptor.fileOffset, descriptor.size);
-      ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
-      Chunk chunk = new WorkaroundChunk(descriptor, stream.sliceBuffers(descriptor.size), f, null);
-      return chunk.readAllPages();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private Optional<ColumnChunkMetaData> findColumnByPath(BlockMetaData block, String[] path) {
-    for (ColumnChunkMetaData column : block.getColumns()) {
-      if (Arrays.equals(column.getPath().toArray(), path)) {
-        return Optional.of(column);
-      }
-    }
-    return Optional.empty();
-  }
-
-  public int blocksCount() {
-    return blocks.size();
-  }
-
-  public BlockMetaData getBlockMetaData(int blockIndex) {
-    return blocks.get(blockIndex);
   }
 
 }
