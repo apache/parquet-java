@@ -60,12 +60,10 @@ import java.util.Set;
 
 public class AvroJson {
 
-  private static final JsonFactory FACTORY = new JsonFactory();
+  private static final JsonFactory FACTORY = new JsonFactory(new ObjectMapper());
 
   public static Iterator<JsonNode> parser(final InputStream stream) {
-    try {
-      JsonParser parser = FACTORY.createParser(stream);
-      parser.setCodec(new ObjectMapper());
+    try(JsonParser parser = FACTORY.createParser(stream)) {
       return parser.readValuesAs(JsonNode.class);
     } catch (IOException e) {
       throw new RuntimeIOException("Cannot read from stream", e);
