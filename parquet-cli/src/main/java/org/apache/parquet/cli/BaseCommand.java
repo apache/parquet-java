@@ -50,6 +50,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
@@ -175,12 +176,13 @@ public abstract class BaseCommand implements Command, Configurable {
    * @throws IOException if there is an error creating a qualified URI
    */
   public URI qualifiedURI(String filename) throws IOException {
-    URI fileURI = URI.create(filename);
-    if (RESOURCE_URI_SCHEME.equals(fileURI.getScheme())) {
-      return fileURI;
-    } else {
-      return qualifiedPath(filename).toUri();
-    }
+    try {
+      URI fileURI = new URI(filename);
+      if (RESOURCE_URI_SCHEME.equals(fileURI.getScheme())) {
+        return fileURI;
+      }
+    } catch (URISyntaxException ignore) {}
+    return qualifiedPath(filename).toUri();
   }
 
   /**
@@ -392,5 +394,4 @@ public abstract class BaseCommand implements Command, Configurable {
           "Could not determine file format of %s.", source));
     }
   }
-
 }
