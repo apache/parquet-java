@@ -60,7 +60,8 @@ import java.util.Set;
 
 public class AvroJson {
 
-  private static final JsonFactory FACTORY = new JsonFactory(new ObjectMapper());
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final JsonFactory FACTORY = new JsonFactory(MAPPER);
 
   public static Iterator<JsonNode> parser(final InputStream stream) {
     try(JsonParser parser = FACTORY.createParser(stream)) {
@@ -75,9 +76,8 @@ public class AvroJson {
   }
 
   public static <T> T parse(String json, Class<T> returnType) {
-    ObjectMapper mapper = new ObjectMapper();
     try {
-      return mapper.readValue(json, returnType);
+      return MAPPER.readValue(json, returnType);
     } catch (JsonParseException e) {
       throw new IllegalArgumentException("Invalid JSON", e);
     } catch (JsonMappingException e) {
@@ -92,9 +92,8 @@ public class AvroJson {
   }
 
   public static <T> T parse(InputStream json, Class<T> returnType) {
-    ObjectMapper mapper = new ObjectMapper();
     try {
-      return mapper.readValue(json, returnType);
+      return MAPPER.readValue(json, returnType);
     } catch (JsonParseException e) {
       throw new IllegalArgumentException("Invalid JSON stream", e);
     } catch (JsonMappingException e) {
