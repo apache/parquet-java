@@ -380,9 +380,6 @@ public class GroupType extends Type {
       Type merged;
       if (toMerge.containsField(type.getName())) {
         Type fieldToMerge = toMerge.getType(type.getName());
-        if (fieldToMerge.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
-          throw new IncompatibleSchemaModificationException("repetition constraint is more restrictive: can not merge type " + fieldToMerge + " into " + type);
-        }
         if (type.getOriginalType() != null && fieldToMerge.getOriginalType() != type.getOriginalType()) {
           throw new IncompatibleSchemaModificationException("cannot merge original type " + fieldToMerge.getOriginalType() + " into " + type.getOriginalType());
         }

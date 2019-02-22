@@ -728,7 +728,8 @@ public final class PrimitiveType extends Type {
       }
     }
 
-    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive, toMerge.getRepetition());
+    Repetition repetition = Repetition.leastRestrictive(this.getRepetition(), toMerge.getRepetition());
+    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive, repetition);
 
     if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitive) {
       builder.length(length);

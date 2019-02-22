@@ -89,12 +89,11 @@ public class TestMessageType {
     MessageType t4 = new MessageType("root2",
         new PrimitiveType(REQUIRED, BINARY, "a"));
 
-    try {
-      t3.union(t4);
-      fail("moving from optional to required");
-    } catch (IncompatibleSchemaModificationException e) {
-      assertEquals("repetition constraint is more restrictive: can not merge type required binary a into optional binary a", e.getMessage());
-    }
+    assertEquals(
+        t3.union(t4),
+        new MessageType("root1",
+            new PrimitiveType(OPTIONAL, BINARY, "a"))
+        );
 
     assertEquals(
         t4.union(t3),
