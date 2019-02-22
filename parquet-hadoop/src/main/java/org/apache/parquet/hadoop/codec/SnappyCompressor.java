@@ -113,7 +113,8 @@ public class SnappyCompressor implements Compressor {
 
   @Override
   public void end() {
-    // No-op		
+    CleanUtil.clean(inputBuffer);
+    CleanUtil.clean(outputBuffer);
   }
 
   @Override

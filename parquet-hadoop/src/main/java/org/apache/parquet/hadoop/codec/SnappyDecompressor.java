@@ -115,7 +115,8 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public void end() {
-    // No-op		
+    CleanUtil.clean(inputBuffer);
+    CleanUtil.clean(outputBuffer);
   }
 
   @Override
