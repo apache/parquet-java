@@ -85,7 +85,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     }
   }
 
-  public ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+  private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
     PrimitiveConverter converter = getPrimitiveConverter(path);
     return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
   }
