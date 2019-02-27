@@ -54,6 +54,11 @@
       <version>${opencsv.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-jackson</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>${jackson.version}</version>
