@@ -40,12 +40,11 @@ class JSON {
   }
 
   static String toJSON(Object o) {
-    final StringWriter sw = new StringWriter();
-    try {
-      om.writeValue(sw, o);
+    try(final StringWriter sw = new StringWriter()) {
+        om.writeValue(sw, o);
+      return sw.toString();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    return sw.toString();
   }
 }
