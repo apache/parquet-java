@@ -16,25 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.filter2.BloomFilterLevel;
 
-import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.values.bloomfilter.BloomFilterReader;
-import org.apache.parquet.column.values.bloomfilter.BloomFilterUtility;
-import org.apache.parquet.filter2.predicate.FilterPredicate;
-import org.apache.parquet.filter2.predicate.Operators;
-import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
-import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
+package org.apache.parquet.filter2.BloomFilterLevel;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators;
+import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
+import org.apache.parquet.hadoop.BloomFilterReader;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
-
 public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
+  private static final Logger LOG = LoggerFactory.getLogger(BloomFilterImpl.class);
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
@@ -63,7 +65,7 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
   // is this column chunk composed entirely of nulls?
   // assumes the column chunk's statistics is not empty
   private boolean isAllNulls(ColumnChunkMetaData column) {
-    return column.getStatistics().getNumNulls() == column.getValueCount();
+    return BLOCK_MIGHT_MATCH;
   }
 
   @Override
@@ -78,16 +80,20 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
 
     Operators.Column<T> filterColumn = eq.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
-    ColumnDescriptor col = new ColumnDescriptor(meta.getPath().toArray(), meta.getType(), -1, -1);
     if (meta == null) {
       // the column isn't in this file so all values are null, but the value
       // must be non-null because of the above check.
       return BLOCK_CANNOT_MATCH;
     }
 
-    BloomFilterUtility bloomFilterUtility = bloomFilterReader.buildBloomFilterUtility(col);
-    if (bloomFilterUtility != null && !bloomFilterUtility.contains(value)) {
-      return BLOCK_CANNOT_MATCH;
+    try {
+      BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(meta);
+      if (bloomFilter != null && !bloomFilter.findHash(bloomFilter.hash(value))) {
+        return BLOCK_CANNOT_MATCH;
+      }
+    } catch (RuntimeException e) {
+      LOG.warn(e.getMessage());
+      return BLOCK_MIGHT_MATCH;
     }
 
     return BLOCK_MIGHT_MATCH;
@@ -95,25 +101,6 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
 
   @Override
   public <T extends Comparable<T>> Boolean visit(Operators.NotEq<T> notEq) {
-    Operators.Column<T> filterColumn = notEq.getColumn();
-    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
-
-    T value = notEq.getValue();
-
-    if (meta == null) {
-      if (value == null) {
-        // null is always equal to null
-        return BLOCK_CANNOT_MATCH;
-      }
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    if (value == null) {
-      // we are looking for records where v notEq(null)
-      // so, if this is a column of all nulls, we can drop it
-      return isAllNulls(meta);
-    }
-
     return BLOCK_MIGHT_MATCH;
   }
 
@@ -153,34 +140,9 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
       "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
   }
 
-
   private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(Operators.UserDefined<T, U> ud, boolean inverted) {
-    Operators.Column<T> filterColumn = ud.getColumn();
-    ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    U udp = ud.getUserDefinedPredicate();
-
-    if (columnChunk == null) {
-      // the column isn't in this file so all values are null.
-      // lets run the udp with null value to see if it keeps null or not.
-      if (inverted) {
-        return udp.keep(null);
-      } else {
-        return !udp.keep(null);
-      }
-    }
-
-    if (isAllNulls(columnChunk)) {
-      // lets run the udp with null value to see if it keeps null or not.
-      if (inverted) {
-        return udp.keep(null);
-      } else {
-        return !udp.keep(null);
-      }
-    }
-
     return BLOCK_MIGHT_MATCH;
   }
-
 
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(Operators.UserDefined<T, U> udp) {

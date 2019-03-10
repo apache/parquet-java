@@ -1049,8 +1049,8 @@ public class ParquetFileReader implements Closeable {
         converter.getEncoding(dictHeader.getEncoding()));
   }
 
-  public BloomFilterDataReader getBloomFilterDataReader(BlockMetaData block) {
-    return new BloomFilterDataReader(this, block);
+  public BloomFilterReader getBloomFilterDataReader(BlockMetaData block) {
+    return new BloomFilterReader(this, block);
   }
 
   /**
