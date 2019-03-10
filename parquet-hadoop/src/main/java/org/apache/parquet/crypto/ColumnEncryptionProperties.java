@@ -61,14 +61,6 @@ public class ColumnEncryptionProperties {
     this.keyMetaData = keyMetaData;
   }
   
-  /**
-   * Convenience builder for regular (not nested) columns.
-   * @param name
-   * @param encrypt
-   */
-  public static Builder builder(String name, boolean encrypt) {
-    return builder(ColumnPath.get(name), encrypt);
-  }
   
   /**
    * Convenience builder for encrypted regular (not nested) columns.
@@ -91,7 +83,7 @@ public class ColumnEncryptionProperties {
    * @param path
    * @param encrypt
    */
-  public static Builder builder(ColumnPath path, boolean encrypt) {
+  static Builder builder(ColumnPath path, boolean encrypt) {
     return new Builder(path, encrypt);
   }
   

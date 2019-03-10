@@ -34,7 +34,6 @@ import static org.apache.parquet.crypto.AesEncryptor.AAD_FILE_UNIQUE_LENGTH;
 public class FileEncryptionProperties {
   
   private static final ParquetCipher ALGORITHM_DEFAULT = ParquetCipher.AES_GCM_V1;
-  private static final boolean ENCRYPT_THE_REST_DEFAULT = true;
   private static final boolean ENCRYPTED_FOOTER_DEFAULT = true;
   
   private final EncryptionAlgorithm algorithm;
@@ -43,14 +42,12 @@ public class FileEncryptionProperties {
   private final byte[] footerKeyMetadata;
   private final byte[] fileAAD;
   private final Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap;
-  private final boolean encryptTheRest;
 
   
   private FileEncryptionProperties(ParquetCipher cipher, 
       byte[] footerKey, byte[] footerKeyMetadata, boolean encryptedFooter,
       byte[] aadPrefix, boolean storeAadPrefixInFile,
-      Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap, 
-      boolean encryptTheRest) {
+      Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap) {
     
     if (null == footerKey) {
       throw new IllegalArgumentException("Footer key is null");
@@ -60,31 +57,9 @@ public class FileEncryptionProperties {
       throw new IllegalArgumentException("Wrong footer key length " + footerKey.length);
     }
     
-    if (!encryptedFooter) {
-      if (encryptTheRest) {
-        throw new IllegalArgumentException("Encrypt the rest is true with plaintext footer");
-      }
-      if (null == columnPropertyMap) {
-        throw new IllegalArgumentException("Footer and all columns are unencrypted (no properties set)");
-      }
-      else {
-        // Check column properties
-        boolean allAreUnencrypted = true;
-        for (ColumnEncryptionProperties columnProperties : columnPropertyMap.values()) {
-          if (columnProperties.isEncrypted()) {
-            if (null == columnProperties.getKeyBytes()) {
-              throw new IllegalArgumentException("No encryption key for column: " + 
-                  columnProperties.getPath());
-            }
-            allAreUnencrypted = false;
-          }
-        }
-        if (allAreUnencrypted) {
-          throw new IllegalArgumentException("Footer and all columns are unencrypted");
-        }
-      }
+    if (null != columnPropertyMap && columnPropertyMap.size() == 0) {
+      throw new IllegalArgumentException("No encrypted columns");
     }
-
     
     SecureRandom random = new SecureRandom();
     byte[] aadFileUnique = new byte[AAD_FILE_UNIQUE_LENGTH];
@@ -120,7 +95,6 @@ public class FileEncryptionProperties {
     this.footerKeyMetadata = footerKeyMetadata;
     this.encryptedFooter = encryptedFooter;
     this.columnPropertyMap = columnPropertyMap;
-    this.encryptTheRest = encryptTheRest;
   }
   
   /**
@@ -141,14 +115,12 @@ public class FileEncryptionProperties {
     private byte[] footerKeyMetadata;
     private byte[] aadPrefix;
     private Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap;
-    private boolean encryptTheRest;
     private boolean storeAadPrefixInFile;
     
     
     private Builder(byte[] footerKey) {
       this.parquetCipher = ALGORITHM_DEFAULT;
       this.encryptedFooter = ENCRYPTED_FOOTER_DEFAULT;
-      this.encryptTheRest = ENCRYPT_THE_REST_DEFAULT;
       this.footerKey = footerKey;
     }
     
@@ -257,7 +229,6 @@ public class FileEncryptionProperties {
       }
       // Copy the map to make column properties immutable
       this.columnPropertyMap = new HashMap<ColumnPath, ColumnEncryptionProperties>(columnPropertyMap);
-      this.encryptTheRest = encryptTheRest;
       return this;
     }
     
@@ -265,7 +236,7 @@ public class FileEncryptionProperties {
       return new FileEncryptionProperties(parquetCipher, 
           footerKey, footerKeyMetadata, encryptedFooter,
           aadPrefix, storeAadPrefixInFile, 
-          columnPropertyMap, encryptTheRest);
+          columnPropertyMap);
     }
   }
   
@@ -290,14 +261,20 @@ public class FileEncryptionProperties {
   }
 
   public ColumnEncryptionProperties getColumnProperties(ColumnPath columnPath) {
-    if (null != columnPropertyMap) {
+    if (null == columnPropertyMap) {
+      // encrypted, with footer key
+      return ColumnEncryptionProperties.builder(columnPath, true).build();
+    }
+    else {
       ColumnEncryptionProperties columnProperties = columnPropertyMap.get(columnPath);
       if (null != columnProperties) {
         return columnProperties;
       }
+      else {
+        // plaintext column
+        return ColumnEncryptionProperties.builder(columnPath, false).build();
+      }
     }
-    // Not in the map. Create using the encryptTheRest flag.
-    return ColumnEncryptionProperties.builder(columnPath, encryptTheRest).build();
   }
 
   public byte[] getFileAAD() {
