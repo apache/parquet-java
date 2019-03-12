@@ -201,34 +201,21 @@ public class FileEncryptionProperties {
     }
     
     /**
-     * Set column encryption properties. 
-     * The map doesn't have to include all columns in a file, 
-     * the rest of the columns will be left unencrypted.
-     * @param columnPropertyMap
+     * Set the list of encrypted columns and their properties (keys etc).
+     * If not called, all columns will be encrypted with the footer key. 
+     * If called, the file columns not in the list will be left unencrypted.
+     * @param encryptedColumns
      * @return
      */
-    public Builder withColumnProperties(Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap)  {
-      return withColumnProperties(columnPropertyMap, false);
-    }
-    
-    /**
-     * Set column encryption properties. 
-     * The map doesn't have to include all columns in a file. If encryptTheRest is true, 
-     * the rest of the columns (not in the map) will be encrypted with the footer encryption key. 
-     * If encryptTheRest is false, the rest of the columns will be left unencrypted.
-     * @param columnPropertyMap
-     * @param encryptTheRest  
-     */
-    public Builder withColumnProperties(Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap, 
-        boolean encryptTheRest)  {
-      if (null == columnPropertyMap) {
+    public Builder withEncryptedColumns(Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns)  {
+      if (null == encryptedColumns) {
         return this;
       }
       if (null != this.columnPropertyMap) {
         throw new IllegalArgumentException("Column properties already set");
       }
       // Copy the map to make column properties immutable
-      this.columnPropertyMap = new HashMap<ColumnPath, ColumnEncryptionProperties>(columnPropertyMap);
+      this.columnPropertyMap = new HashMap<ColumnPath, ColumnEncryptionProperties>(encryptedColumns);
       return this;
     }
     

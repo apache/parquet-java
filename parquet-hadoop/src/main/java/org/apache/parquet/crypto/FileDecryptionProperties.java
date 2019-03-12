@@ -20,6 +20,7 @@
 
 package org.apache.parquet.crypto;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -93,24 +94,29 @@ public class FileDecryptionProperties {
     }
 
     /**
-     * Set the column encryption properties.
+     * Set explicit column keys (decryption properties).
+     * Its also possible to set a key retriever on this property object. Upon file decryption, 
+     * availability of explicit keys is checked before invocation of the retriever callback.
+     * If an explicit key is available for a footer or a column, its key metadata will
+     * be ignored. 
      * @param columnPropertyMap
      * @return
      */
-    public Builder withColumnProperties(Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap) {
-      if (null == columnPropertyMap) {
+    public Builder withColumnKeys(Map<ColumnPath, ColumnDecryptionProperties> columnProperties) {
+      if (null == columnProperties) {
         return this;
       }
       if (null != this.columnPropertyMap) {
         throw new IllegalArgumentException("Column properties already set");
       }
-      this.columnPropertyMap = columnPropertyMap;
+      // Copy the map to make column properties immutable
+      this.columnPropertyMap = new HashMap<ColumnPath, ColumnDecryptionProperties>(columnProperties);
       return this;
     }
     
     /**
      * Set a key retriever callback. Its also possible to
-     * set explicit footer or column keys on this property object. Upon file decryption, 
+     * set explicit footer or column keys on this file property object. Upon file decryption, 
      * availability of explicit keys is checked before invocation of the retriever callback.
      * If an explicit key is available for a footer or a column, its key metadata will
      * be ignored. 
