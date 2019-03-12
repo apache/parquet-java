@@ -21,6 +21,7 @@ package org.apache.parquet.cli;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -45,24 +46,32 @@ public class BaseCommandTest {
 
   @Test
   public void qualifiedPathOnLinuxTest() throws IOException {
+    Assume.assumeFalse
+             (System.getProperty("os.name").toLowerCase().startsWith("win"));
     Path path = this.command.qualifiedPath(LINUX_FILE_PATH);
     Assert.assertEquals("test.parquet", path.getName());
   }
 
   @Test
   public void qualifiedPathOnWinTest() throws IOException {
+    Assume.assumeFalse
+             (System.getProperty("os.name").toLowerCase().startsWith("linux"));
     Path path = this.command.qualifiedPath(WIN_FILE_PATH);
     Assert.assertEquals("test.parquet", path.getName());
   }
 
   @Test
   public void qualifiedURILinuxFileTest() throws IOException {
+    Assume.assumeFalse
+             (System.getProperty("os.name").toLowerCase().startsWith("win"));
     URI uri = this.command.qualifiedURI(LINUX_FILE_PATH);
     Assert.assertEquals("/var/tmp/test.parquet", uri.getPath());
   }
 
   @Test
   public void qualifiedURIWinFileTest() throws IOException {
+    Assume.assumeFalse
+             (System.getProperty("os.name").toLowerCase().startsWith("linux"));
     URI uri = this.command.qualifiedURI(WIN_FILE_PATH);
     Assert.assertEquals("/C:/Test/Downloads/test.parquet", uri.getPath());
   }
