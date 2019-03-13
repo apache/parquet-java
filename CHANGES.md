@@ -61,12 +61,13 @@ Release Notes - Parquet - Version 1.11.0
 *   [PARQUET-1514](https://issues.apache.org/jira/browse/PARQUET-1514) - ParquetFileWriter Records Compressed Bytes instead of Uncompressed Bytes
 *   [PARQUET-1527](https://issues.apache.org/jira/browse/PARQUET-1527) - \[parquet-tools\] cat command throw java.lang.ClassCastException
 *   [PARQUET-1529](https://issues.apache.org/jira/browse/PARQUET-1529) - Shade fastutil in all modules where used
+*   [PARQUET-1531](https://issues.apache.org/jira/browse/PARQUET-1531) - Page row count limit causes empty pages to be written from MessageColumnIO
+*   [PARQUET-1533](https://issues.apache.org/jira/browse/PARQUET-1533) - TestSnappy() throws OOM exception with Parquet-1485 change
 
 #### New Feature
 
 *   [PARQUET-1201](https://issues.apache.org/jira/browse/PARQUET-1201) - Column indexes
 *   [PARQUET-1253](https://issues.apache.org/jira/browse/PARQUET-1253) - Support for new logical type representation
-*   [PARQUET-1381](https://issues.apache.org/jira/browse/PARQUET-1381) - Add merge blocks command to parquet-tools
 *   [PARQUET-1388](https://issues.apache.org/jira/browse/PARQUET-1388) - Nanosecond precision time and timestamp - parquet-mr
 
 #### Improvement
