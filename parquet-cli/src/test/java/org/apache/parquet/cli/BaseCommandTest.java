@@ -33,8 +33,8 @@ import java.util.List;
 
 public class BaseCommandTest {
 
+  private static final String FILE_PATH = "/var/tmp/test.parquet";
   private static final String WIN_FILE_PATH = "C:\\Test\\Downloads\\test.parquet";
-  private static final String LINUX_FILE_PATH = "/var/tmp/test.parquet";
 
   private Logger console = LoggerFactory.getLogger(BaseCommandTest.class);
   private TestCommand command;
@@ -44,42 +44,40 @@ public class BaseCommandTest {
     this.command = new TestCommand(this.console);
   }
 
+  // For All OS
   @Test
-  public void qualifiedPathOnLinuxTest() throws IOException {
-    Assume.assumeFalse
-             (System.getProperty("os.name").toLowerCase().startsWith("win"));
-    Path path = this.command.qualifiedPath(LINUX_FILE_PATH);
+  public void qualifiedPathTest() throws IOException {
+    Path path = this.command.qualifiedPath(FILE_PATH);
     Assert.assertEquals("test.parquet", path.getName());
   }
 
   @Test
-  public void qualifiedPathOnWinTest() throws IOException {
-    Assume.assumeFalse
-             (System.getProperty("os.name").toLowerCase().startsWith("linux"));
-    Path path = this.command.qualifiedPath(WIN_FILE_PATH);
-    Assert.assertEquals("test.parquet", path.getName());
-  }
-
-  @Test
-  public void qualifiedURILinuxFileTest() throws IOException {
-    Assume.assumeFalse
-             (System.getProperty("os.name").toLowerCase().startsWith("win"));
-    URI uri = this.command.qualifiedURI(LINUX_FILE_PATH);
+  public void qualifiedURITest() throws IOException {
+    URI uri = this.command.qualifiedURI(FILE_PATH);
     Assert.assertEquals("/var/tmp/test.parquet", uri.getPath());
-  }
-
-  @Test
-  public void qualifiedURIWinFileTest() throws IOException {
-    Assume.assumeFalse
-             (System.getProperty("os.name").toLowerCase().startsWith("linux"));
-    URI uri = this.command.qualifiedURI(WIN_FILE_PATH);
-    Assert.assertEquals("/C:/Test/Downloads/test.parquet", uri.getPath());
   }
 
   @Test
   public void qualifiedURIResourceURITest() throws IOException {
     URI uri = this.command.qualifiedURI("resource:/a");
     Assert.assertEquals("/a", uri.getPath());
+  }
+
+  // For Windows
+  @Test
+  public void qualifiedPathTestForWindows() throws IOException {
+    Assume.assumeTrue
+             (System.getProperty("os.name").toLowerCase().startsWith("win"));
+    Path path = this.command.qualifiedPath(WIN_FILE_PATH);
+    Assert.assertEquals("test.parquet", path.getName());
+  }
+
+  @Test
+  public void qualifiedURITestForWindows() throws IOException {
+    Assume.assumeTrue
+             (System.getProperty("os.name").toLowerCase().startsWith("win"));
+    URI uri = this.command.qualifiedURI(WIN_FILE_PATH);
+    Assert.assertEquals("/C:/Test/Downloads/test.parquet", uri.getPath());
   }
 
   class TestCommand extends BaseCommand {
