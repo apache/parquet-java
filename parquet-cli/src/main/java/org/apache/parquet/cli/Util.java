@@ -128,9 +128,11 @@ public class Util {
   }
 
   public static String humanReadable(byte[] bytes, int len) {
+    Preconditions.checkArgument(len >= 5, "Display length must be minimum 5");
     if (bytes == null || bytes.length == 0) {
       return "null";
     }
+
     final String asString = HashCode.fromBytes(bytes).toString();
     return "0x" + Ascii.truncate(asString, len - 2, "...");
   }
