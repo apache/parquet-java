@@ -261,10 +261,9 @@ public class BlockSplitBloomFilter implements BloomFilter {
     return this.bitset.length;
   }
 
-
   @Override
   public long hash(Object value) {
-    ByteBuffer plain = null;
+    ByteBuffer plain;
 
     if (value instanceof Binary) {
       return hashFunction.hashBytes(((Binary) value).getBytes()).asLong();
@@ -287,5 +286,38 @@ public class BlockSplitBloomFilter implements BloomFilter {
     }
 
     return hashFunction.hashBytes(plain.array()).asLong();
+  }
+
+  @Override
+  public long hash(int value) {
+    ByteBuffer plain = ByteBuffer.allocate(Integer.SIZE/Byte.SIZE);
+    plain.order(ByteOrder.LITTLE_ENDIAN).putInt(value);
+    return hashFunction.hashBytes(plain.array()).asLong();
+  }
+
+  @Override
+  public long hash(long value) {
+    ByteBuffer plain = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
+    plain.order(ByteOrder.LITTLE_ENDIAN).putLong(value);
+    return hashFunction.hashBytes(plain.array()).asLong();
+  }
+
+  @Override
+  public long hash(double value) {
+    ByteBuffer plain = ByteBuffer.allocate(Double.SIZE/Byte.SIZE);
+    plain.order(ByteOrder.LITTLE_ENDIAN).putDouble(value);
+    return hashFunction.hashBytes(plain.array()).asLong();
+  }
+
+  @Override
+  public long hash(float value) {
+    ByteBuffer plain = ByteBuffer.allocate(Float.SIZE/Byte.SIZE);
+    plain.order(ByteOrder.LITTLE_ENDIAN).putFloat(value);
+    return hashFunction.hashBytes(plain.array()).asLong();
+  }
+
+  @Override
+  public long hash(Binary value) {
+    return hashFunction.hashBytes(value.getBytes()).asLong();
   }
 }

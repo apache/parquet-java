@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.values.bloomfilter;
 
+import org.apache.parquet.io.api.Binary;
+
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -26,7 +28,7 @@ import java.io.OutputStream;
  * in a set. The Bloom filter usually consists of a bit set that represents a elements set,
  * a hash strategy and a Bloom filter algorithm.
  */
-public interface BloomFilter<T> {
+public interface BloomFilter {
   // Bloom filter Hash strategy.
   enum HashStrategy {
     MURMUR3_X64_128(0);
@@ -77,10 +79,50 @@ public interface BloomFilter<T> {
   long getBitsetSize();
 
   /**
-   * Compute hash for value by using its plain encoding result.
+   * Compute hash for int value by using its plain encoding result.
    *
    * @param value the value to hash
    * @return hash result
    */
-  long hash (T value);
+  long hash(int value);
+
+  /**
+   * Compute hash for long value by using its plain encoding result.
+   *
+   * @param value the value to hash
+   * @return hash result
+   */
+  long hash(long value) ;
+
+  /**
+   * Compute hash for double value by using its plain encoding result.
+   *
+   * @param value the value to hash
+   * @return hash result
+   */
+  long hash(double value);
+
+  /**
+   * Compute hash for float value by using its plain encoding result.
+   *
+   * @param value the value to hash
+   * @return hash result
+   */
+  long hash(float value);
+
+  /**
+   * Compute hash for Binary value by using its plain encoding result.
+   *
+   * @param value the value to hash
+   * @return hash result
+   */
+  long hash(Binary value);
+
+  /**
+   * Compute hash for Object value by using its plain encoding result.
+   *
+   * @param value the value to hash
+   * @return hash result
+   */
+  long hash(Object value);
 }

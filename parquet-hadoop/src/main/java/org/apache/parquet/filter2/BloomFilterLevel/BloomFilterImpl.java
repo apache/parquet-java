@@ -62,12 +62,6 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
     return columns.get(columnPath);
   }
 
-  // is this column chunk composed entirely of nulls?
-  // assumes the column chunk's statistics is not empty
-  private boolean isAllNulls(ColumnChunkMetaData column) {
-    return BLOCK_MIGHT_MATCH;
-  }
-
   @Override
   public <T extends Comparable<T>> Boolean visit(Operators.Eq<T> eq) {
     T value = eq.getValue();
