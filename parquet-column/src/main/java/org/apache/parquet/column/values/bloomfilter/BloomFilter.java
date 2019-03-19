@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.bloomfilter;
 
 import org.apache.parquet.io.api.Binary;
+
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -71,6 +72,13 @@ public interface BloomFilter {
   boolean findHash(long hash);
 
   /**
+   * Get the number of bytes for bitset in this Bloom filter.
+   *
+   * @return The number of bytes for bitset in this Bloom filter.
+   */
+  long getBitsetSize();
+
+  /**
    * Compute hash for int value by using its plain encoding result.
    *
    * @param value the value to hash
@@ -111,9 +119,10 @@ public interface BloomFilter {
   long hash(Binary value);
 
   /**
-   * Get the number of bytes for bitset in this Bloom filter.
+   * Compute hash for Object value by using its plain encoding result.
    *
-   * @return The number of bytes for bitset in this Bloom filter.
+   * @param value the value to hash
+   * @return hash result
    */
-  long getBitsetSize();
+  long hash(Object value);
 }

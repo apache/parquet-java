@@ -29,7 +29,6 @@ import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
-import org.apache.parquet.column.values.bloomfilter.BloomFilterReader;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.junit.Assume;
 import org.junit.Rule;
@@ -249,10 +248,10 @@ public class TestParquetFileWriter {
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
     ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
       Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(colPath)));
-    BloomFilterReader bloomFilterReader =  r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
-    BloomFilter bloomDataRead = bloomFilterReader.readBloomFilter(col);
-    assertTrue(bloomDataRead.findHash(bloomData.hash(Binary.fromString("hello"))));
-    assertTrue(bloomDataRead.findHash(bloomData.hash(Binary.fromString("world"))));
+    BloomFilterReader bloomFilterReader = r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
+    BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(readFooter.getBlocks().get(0).getColumns().get(0));
+    assertTrue(bloomFilter.findHash(bloomData.hash(Binary.fromString("hello"))));
+    assertTrue(bloomFilter.findHash(bloomData.hash(Binary.fromString("world"))));
   }
 
   @Test

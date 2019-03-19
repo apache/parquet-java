@@ -18,11 +18,13 @@
  */
 
 package org.apache.parquet.column.values.bloomfilter;
+
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -139,7 +141,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
         hashFunction = Hashing.murmur3_128(DEFAULT_SEED);
         break;
       default:
-        throw new RuntimeException("Not supported hash strategy");
+        throw new RuntimeException("Unsupported hash strategy");
     }
   }
 
@@ -255,6 +257,38 @@ public class BlockSplitBloomFilter implements BloomFilter {
   }
 
   @Override
+  public long getBitsetSize() {
+    return this.bitset.length;
+  }
+
+  @Override
+  public long hash(Object value) {
+    ByteBuffer plain;
+
+    if (value instanceof Binary) {
+      return hashFunction.hashBytes(((Binary) value).getBytes()).asLong();
+    }
+
+    if (value instanceof Integer) {
+      plain = ByteBuffer.allocate(Integer.SIZE/Byte.SIZE);
+      plain.order(ByteOrder.LITTLE_ENDIAN).putInt(((Integer)value).intValue());
+    } else if (value instanceof Long) {
+      plain = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
+      plain.order(ByteOrder.LITTLE_ENDIAN).putLong(((Long)value).longValue());
+    } else if (value instanceof Float) {
+      plain = ByteBuffer.allocate(Float.SIZE/Byte.SIZE);
+      plain.order(ByteOrder.LITTLE_ENDIAN).putFloat(((Float)value).floatValue());
+    } else if (value instanceof Double) {
+      plain = ByteBuffer.allocate(Double.SIZE/ Byte.SIZE);
+      plain.order(ByteOrder.LITTLE_ENDIAN).putDouble(((Double)value).doubleValue());
+    } else {
+      throw new RuntimeException("Parquet Bloom filter: Not supported type");
+    }
+
+    return hashFunction.hashBytes(plain.array()).asLong();
+  }
+
+  @Override
   public long hash(int value) {
     ByteBuffer plain = ByteBuffer.allocate(Integer.SIZE/Byte.SIZE);
     plain.order(ByteOrder.LITTLE_ENDIAN).putInt(value);
@@ -285,10 +319,5 @@ public class BlockSplitBloomFilter implements BloomFilter {
   @Override
   public long hash(Binary value) {
     return hashFunction.hashBytes(value.getBytes()).asLong();
-  }
-
-  @Override
-  public long getBitsetSize() {
-    return this.bitset.length;
   }
 }
