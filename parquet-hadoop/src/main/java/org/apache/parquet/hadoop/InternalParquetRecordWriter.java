@@ -44,10 +44,6 @@ import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import gov.rfb.contagil.hadoop.mapred.parquet.ParquetFileWriter;
-import gov.rfb.contagil.hadoop.mapred.parquet.ParquetOutputFormat;
-import gov.rfb.contagil.hadoop.mapred.parquet.ParquetFileWriter.Mode;
-
 class InternalParquetRecordWriter<T> {
   private static final Logger LOG = LoggerFactory.getLogger(InternalParquetRecordWriter.class);
 
