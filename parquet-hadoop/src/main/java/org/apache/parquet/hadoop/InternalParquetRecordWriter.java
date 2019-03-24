@@ -249,7 +249,7 @@ class InternalParquetRecordWriter<T> {
     long blockSize = ParquetOutputFormat.getLongBlockSize(conf);
     int maxPaddingSize = ParquetOutputFormat.getMaxPaddingSize(conf);
     ParquetFileWriter new_writer = new ParquetFileWriter(HadoopOutputFile.fromPath(new_file, conf),
-        parquetFileWriter.getSchema(), Mode.CREATE, blockSize, maxPaddingSize);
+        parquetFileWriter.getSchema(), ParquetFileWriter.Mode.CREATE, blockSize, maxPaddingSize);
     new_writer.start();
     parquetFileWriter = new_writer;
   }
