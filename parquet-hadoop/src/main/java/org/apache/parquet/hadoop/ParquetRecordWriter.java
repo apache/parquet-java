@@ -152,6 +152,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, codecFactory.getCompressor(codec), validating,
         props);
+    internalWriter.setSplitFilePerBlock(ParquetOutputFormat.isSplitFilePerBlock(conf));
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(internalWriter, blockSize);
   }
