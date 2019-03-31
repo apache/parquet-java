@@ -46,7 +46,7 @@ sudo make install
 If you're on OSX and use homebrew, you can instead install Thrift 0.12.0 with `brew` and ensure that it comes first in your `PATH`.
 
 ```
-brew install thrift@0.12.0
+brew install thrift@0.12
 export PATH="/usr/local/opt/thrift@0.12.0/bin:$PATH"
 ```
 
