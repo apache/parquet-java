@@ -85,16 +85,14 @@ public class TestReadWriteOldListBehavior {
     tmp.deleteOnExit();
     tmp.delete();
     Path file = new Path(tmp.getPath());
-
-    AvroParquetWriter<GenericRecord> writer =
-        new AvroParquetWriter<GenericRecord>(file, schema);
-
-    // Write a record with an empty array.
     List<Integer> emptyArray = new ArrayList<Integer>();
-    GenericData.Record record = new GenericRecordBuilder(schema)
+
+    try(AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<GenericRecord>(file, schema)) {
+      // Write a record with an empty array.
+      GenericData.Record record = new GenericRecordBuilder(schema)
         .set("myarray", emptyArray).build();
-    writer.write(record);
-    writer.close();
+      writer.write(record);
+    }
 
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
@@ -112,16 +110,14 @@ public class TestReadWriteOldListBehavior {
     tmp.deleteOnExit();
     tmp.delete();
     Path file = new Path(tmp.getPath());
-
-    AvroParquetWriter<GenericRecord> writer = 
-        new AvroParquetWriter<GenericRecord>(file, schema);
-
-    // Write a record with an empty map.
     ImmutableMap emptyMap = new ImmutableMap.Builder<String, Integer>().build();
-    GenericData.Record record = new GenericRecordBuilder(schema)
+
+    try(AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<GenericRecord>(file, schema)) {
+      // Write a record with an empty map.
+      GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mymap", emptyMap).build();
-    writer.write(record);
-    writer.close();
+      writer.write(record);
+    }
 
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
@@ -139,20 +135,18 @@ public class TestReadWriteOldListBehavior {
     tmp.deleteOnExit();
     tmp.delete();
     Path file = new Path(tmp.getPath());
+    Map<CharSequence, Integer> map = new HashMap<>();
 
-    AvroParquetWriter<GenericRecord> writer =
-        new AvroParquetWriter<GenericRecord>(file, schema);
+    try(AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<GenericRecord>(file, schema)) {
+      // Write a record with a null value
+      map.put(str("thirty-four"), 34);
+      map.put(str("eleventy-one"), null);
+      map.put(str("one-hundred"), 100);
 
-    // Write a record with a null value
-    Map<CharSequence, Integer> map = new HashMap<CharSequence, Integer>();
-    map.put(str("thirty-four"), 34);
-    map.put(str("eleventy-one"), null);
-    map.put(str("one-hundred"), 100);
-
-    GenericData.Record record = new GenericRecordBuilder(schema)
+      GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mymap", map).build();
-    writer.write(record);
-    writer.close();
+      writer.write(record);
+    }
 
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
@@ -172,18 +166,17 @@ public class TestReadWriteOldListBehavior {
     tmp.delete();
     Path file = new Path(tmp.getPath());
 
-    AvroParquetWriter<GenericRecord> writer =
-        new AvroParquetWriter<GenericRecord>(file, schema);
+    try(AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<GenericRecord>(file, schema)) {
+      // Write a record with a null value
+      Map<String, Integer> map = new HashMap<String, Integer>();
+      map.put("thirty-four", 34);
+      map.put("eleventy-one", null);
+      map.put("one-hundred", 100);
 
-    // Write a record with a null value
-    Map<String, Integer> map = new HashMap<String, Integer>();
-    map.put("thirty-four", 34);
-    map.put("eleventy-one", null);
-    map.put("one-hundred", 100);
-
-    GenericData.Record record = new GenericRecordBuilder(schema)
+      GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mymap", map).build();
-    writer.write(record);
+      writer.write(record);
+    }
   }
 
   @Test
@@ -196,15 +189,13 @@ public class TestReadWriteOldListBehavior {
     tmp.delete();
     Path file = new Path(tmp.getPath());
 
-    AvroParquetWriter<GenericRecord> writer = 
-        new AvroParquetWriter<GenericRecord>(file, schema);
-
-    // Write a record with a map with Utf8 keys.
-    GenericData.Record record = new GenericRecordBuilder(schema)
+    try(AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<GenericRecord>(file, schema)) {
+      // Write a record with a map with Utf8 keys.
+      GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mymap", ImmutableMap.of(new Utf8("a"), 1, new Utf8("b"), 2))
         .build();
-    writer.write(record);
-    writer.close();
+      writer.write(record);
+    }
 
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
@@ -222,25 +213,23 @@ public class TestReadWriteOldListBehavior {
     tmp.deleteOnExit();
     tmp.delete();
     Path file = new Path(tmp.getPath());
-    
-    AvroParquetWriter<GenericRecord> writer = new
-        AvroParquetWriter<GenericRecord>(file, schema);
 
     GenericData.Record nestedRecord = new GenericRecordBuilder(
-        schema.getField("mynestedrecord").schema())
-            .set("mynestedint", 1).build();
+      schema.getField("mynestedrecord").schema())
+      .set("mynestedint", 1).build();
 
     List<Integer> integerArray = Arrays.asList(1, 2, 3);
     GenericData.Array<Integer> genericIntegerArray = new GenericData.Array<Integer>(
-        Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
+      Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
 
     GenericFixed genericFixed = new GenericData.Fixed(
-        Schema.createFixed("fixed", null, null, 1), new byte[] { (byte) 65 });
+      Schema.createFixed("fixed", null, null, 1), new byte[]{(byte) 65});
 
     List<Integer> emptyArray = new ArrayList<Integer>();
     ImmutableMap emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
-    GenericData.Record record = new GenericRecordBuilder(schema)
+    try(AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<>(file, schema)) {
+      GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mynull", null)
         .set("myboolean", true)
         .set("myint", 1)
@@ -260,8 +249,8 @@ public class TestReadWriteOldListBehavior {
         .set("myfixed", genericFixed)
         .build();
 
-    writer.write(record);
-    writer.close();
+      writer.write(record);
+    }
 
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
@@ -362,7 +351,7 @@ public class TestReadWriteOldListBehavior {
     Path file = new Path(tmp.getPath());
 
     // write file using Parquet APIs
-    ParquetWriter<Map<String, Object>> parquetWriter = new ParquetWriter<Map<String, Object>>(file,
+    try(ParquetWriter<Map<String, Object>> parquetWriter = new ParquetWriter<Map<String, Object>>(file,
         new WriteSupport<Map<String, Object>>() {
 
       private RecordConsumer recordConsumer;
@@ -505,26 +494,26 @@ public class TestReadWriteOldListBehavior {
 
         recordConsumer.endMessage();
       }
-    });
-    Map<String, Object> record = new HashMap<String, Object>();
-    record.put("myboolean", true);
-    record.put("myint", 1);
-    record.put("mylong", 2L);
-    record.put("myfloat", 3.1f);
-    record.put("mydouble", 4.1);
-    record.put("mybytes", ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)));
-    record.put("mystring", "hello");
-    record.put("myenum", "a");
-    record.put("mynestedint", 1);
-    record.put("myarray", new int[] {1, 2, 3});
-    record.put("myoptionalarray", new int[]{1, 2, 3});
-    record.put("myarrayofoptional", new Integer[] {1, null, 2, null, 3});
-    record.put("myrecordarraya", new int[] {1, 2, 3});
-    record.put("myrecordarrayb", new int[] {4, 5, 6});
-    record.put("mymap", ImmutableMap.of("a", 1, "b", 2));
-    record.put("myfixed", new byte[] { (byte) 65 });
-    parquetWriter.write(record);
-    parquetWriter.close();
+    })) {
+      Map<String, Object> record = new HashMap<String, Object>();
+      record.put("myboolean", true);
+      record.put("myint", 1);
+      record.put("mylong", 2L);
+      record.put("myfloat", 3.1f);
+      record.put("mydouble", 4.1);
+      record.put("mybytes", ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)));
+      record.put("mystring", "hello");
+      record.put("myenum", "a");
+      record.put("mynestedint", 1);
+      record.put("myarray", new int[]{1, 2, 3});
+      record.put("myoptionalarray", new int[]{1, 2, 3});
+      record.put("myarrayofoptional", new Integer[]{1, null, 2, null, 3});
+      record.put("myrecordarraya", new int[]{1, 2, 3});
+      record.put("myrecordarrayb", new int[]{4, 5, 6});
+      record.put("mymap", ImmutableMap.of("a", 1, "b", 2));
+      record.put("myfixed", new byte[]{(byte) 65});
+      parquetWriter.write(record);
+    }
 
     Schema nestedRecordSchema = Schema.createRecord("mynestedrecord", null, null, false);
     nestedRecordSchema.setFields(Arrays.asList(
