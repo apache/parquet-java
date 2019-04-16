@@ -71,7 +71,12 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
     Configuration conf = new Configuration();
 
     if (options.hasOption('c')) {
-      ProtoReadSupport.setProtobufClass(conf, options.getOptionValue('c'));
+      String clsName = options.getOptionValue('c');
+
+      System.out.println("class name: " + clsName);
+      Class.forName(clsName);
+
+      ProtoReadSupport.setProtobufClass(conf, clsName);
     }
     if (options.hasOption('p')) {
       ProtoReadSupport.setRequestedProjection(conf, options.getOptionValue('p'));
