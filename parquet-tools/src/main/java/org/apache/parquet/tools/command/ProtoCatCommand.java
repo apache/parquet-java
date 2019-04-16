@@ -74,6 +74,7 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
       String clsName = options.getOptionValue('c');
 
       Main.out.println("class name: " + clsName);
+      Main.out.println("classpath: " + System.getProperty("java.class.path"));
       Class.forName(clsName);
       Main.out.println("loaded!");
 
