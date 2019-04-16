@@ -73,8 +73,9 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
     if (options.hasOption('c')) {
       String clsName = options.getOptionValue('c');
 
-      System.out.println("class name: " + clsName);
+      Main.out.println("class name: " + clsName);
       Class.forName(clsName);
+      Main.out.println("loaded!");
 
       ProtoReadSupport.setProtobufClass(conf, clsName);
     }
