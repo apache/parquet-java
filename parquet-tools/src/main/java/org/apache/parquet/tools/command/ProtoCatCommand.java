@@ -23,6 +23,7 @@ import java.io.File;
 import java.util.Objects;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.proto.ProtoReadSupport;
@@ -35,6 +36,11 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
   };
 
   private static final Options OPTIONS = new Options();
+
+  static {
+    OPTIONS.addOption("c", "class", true, "Protobuf message class name.");
+    OPTIONS.addOption("p", "projection", true, "Requested projection.");
+  }
 
   public ProtoCatCommand() {
     super(1, 1);
@@ -62,22 +68,35 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
     String[] args = options.getArgs();
     String input = args[0];
 
-    processInput(new File(input));
+    Configuration conf = new Configuration();
+
+    if (options.hasOption('c')) {
+      ProtoReadSupport.setProtobufClass(conf, options.getOptionValue('c'));
+    }
+    if (options.hasOption('p')) {
+      ProtoReadSupport.setRequestedProjection(conf, options.getOptionValue('p'));
+    }
+
+    processInput(new File(input), conf);
   }
 
-  private static void processInput(File input) throws Exception {
+  private static void processInput(File input, Configuration conf) throws Exception {
+    if (!input.exists() || !input.canRead())
+      return;
+
     if (input.isFile()) {
-      processFile(input);
+      processFile(input, conf);
     } else if (input.isDirectory()) {
       for (File child : Objects.requireNonNull(input.listFiles())) {
-        processInput(child);
+        processInput(child, conf);
       }
     }
   }
 
-  private static void processFile(File inputFile) throws Exception {
+  private static void processFile(File inputFile, Configuration conf) throws Exception {
     Path filePath = new Path(inputFile.getAbsolutePath());
-    try (ParquetReader<Message> reader = ParquetReader.builder(new ProtoReadSupport<>(), filePath).build()) {
+    try (ParquetReader<Message> reader =
+           ParquetReader.builder(new ProtoReadSupport<>(), filePath).withConf(conf).build()) {
       for (Message msg = reader.read(); msg != null; msg = reader.read()) {
         msg.writeDelimitedTo(Main.out);
       }
