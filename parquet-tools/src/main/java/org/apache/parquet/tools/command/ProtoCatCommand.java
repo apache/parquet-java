@@ -31,9 +31,11 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.log4j.Level;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.proto.ProtoReadSupport;
 import org.apache.parquet.tools.Main;
+import org.slf4j.impl.Log4jLoggerFactory;
 
 public class ProtoCatCommand extends ArgsOnlyCommand {
   private static final String[] USAGE = new String[] {
@@ -71,6 +73,10 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
   @Override
   public void execute(CommandLine options) throws Exception {
     super.execute(options);
+
+    if (!options.hasOption("debug")) {
+      org.apache.log4j.Logger.getLogger("").setLevel(Level.OFF);
+    }
 
     String[] args = options.getArgs();
     String input = args[0];
