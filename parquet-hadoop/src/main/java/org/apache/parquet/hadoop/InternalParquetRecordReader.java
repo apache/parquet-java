@@ -132,7 +132,7 @@ class InternalParquetRecordReader<T> {
       totalTimeSpentReadingBytes += timeSpentReading;
       BenchmarkCounter.incrementTime(timeSpentReading);
       if (LOG.isInfoEnabled()) LOG.info("block read in memory in {} ms. row count = {}", timeSpentReading, pages.getRowCount());
-      if (LOG.isDebugEnabled()) LOG.debug("initializing Record assembly with requested schema {}", requestedSchema);
+      LOG.debug("initializing Record assembly with requested schema {}", requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);
       recordReader = columnIO.getRecordReader(pages, recordConverter,
           filterRecords ? filter : FilterCompat.NOOP);
@@ -212,7 +212,6 @@ class InternalParquetRecordReader<T> {
   }
 
   public boolean nextKeyValue() throws IOException, InterruptedException {
-    boolean logDebug = LOG.isDebugEnabled();
     boolean recordFound = false;
 
     while (!recordFound) {
@@ -228,26 +227,26 @@ class InternalParquetRecordReader<T> {
         } catch (RecordMaterializationException e) {
           // this might throw, but it's fatal if it does.
           unmaterializableRecordCounter.incErrors(e);
-          if (logDebug) LOG.debug("skipping a corrupt record");
+          LOG.debug("skipping a corrupt record");
           continue;
         }
 
         if (recordReader.shouldSkipCurrentRecord()) {
           // this record is being filtered via the filter2 package
-          if (logDebug) LOG.debug("skipping record");
+          LOG.debug("skipping record");
           continue;
         }
 
         if (currentValue == null) {
           // only happens with FilteredRecordReader at end of block
           current = totalCountLoadedSoFar;
-          if (logDebug) LOG.debug("filtered record reader reached end of block");
+          LOG.debug("filtered record reader reached end of block");
           continue;
         }
 
         recordFound = true;
 
-        if (logDebug) LOG.debug("read value: {}", currentValue);
+        LOG.debug("read value: {}", currentValue);
       } catch (RuntimeException e) {
         throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, reader.getPath()), e);
       }
