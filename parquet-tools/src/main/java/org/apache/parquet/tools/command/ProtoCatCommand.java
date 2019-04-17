@@ -20,6 +20,8 @@ package org.apache.parquet.tools.command;
 
 import com.google.protobuf.Message;
 import java.io.File;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Objects;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -91,7 +93,10 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
     if (input.isFile()) {
       processFile(input, conf);
     } else if (input.isDirectory()) {
-      for (File child : Objects.requireNonNull(input.listFiles())) {
+      File[] files = Objects.requireNonNull(input.listFiles());
+      Arrays.sort(files, Comparator.comparing(File::getName));
+
+      for (File child : files) {
         processInput(child, conf);
       }
     }
