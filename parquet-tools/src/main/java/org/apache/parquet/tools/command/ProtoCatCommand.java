@@ -35,7 +35,6 @@ import org.apache.log4j.Level;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.proto.ProtoReadSupport;
 import org.apache.parquet.tools.Main;
-import org.slf4j.impl.Log4jLoggerFactory;
 
 public class ProtoCatCommand extends ArgsOnlyCommand {
   private static final String[] USAGE = new String[] {
