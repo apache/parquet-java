@@ -18,8 +18,12 @@
  */
 package org.apache.parquet.tools.command;
 
+import com.google.protobuf.AbstractMessageLite;
+import com.google.protobuf.CodedOutputStream;
 import com.google.protobuf.Message;
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
@@ -42,6 +46,7 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
   static {
     OPTIONS.addOption("c", "class", true, "Protobuf message class name.");
     OPTIONS.addOption("p", "projection", true, "Requested projection.");
+    OPTIONS.addOption("b", "buffer-size", true, "Buffer size in kilobytes (256KB by default).");
   }
 
   public ProtoCatCommand() {
@@ -71,44 +76,66 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
     String input = args[0];
 
     Configuration conf = new Configuration();
+    ProtoReadSupport.setProtoRecordConverterBuildBefore(conf, true);
 
     if (options.hasOption('c')) {
       String msgClassName = options.getOptionValue('c');
       ProtoReadSupport.setProtobufClass(conf, msgClassName);
     }
+
     if (options.hasOption('p')) {
       String projection = options.getOptionValue('p');
       ProtoReadSupport.setRequestedProjection(conf, projection);
     }
 
-    ProtoReadSupport.setProtoRecordConverterBuildBefore(conf, true);
+    int bufferSizeKB = 256;
+    if (options.hasOption('b')) {
+      bufferSizeKB = Integer.parseInt(options.getOptionValue('b'));
+    }
 
-    processInput(new File(input), conf);
+    final CodedOutputStream codedOutput =
+      CodedOutputStream.newInstance(Main.out, bufferSizeKB * 1024);
+
+    processInput(new File(input), conf, codedOutput);
   }
 
-  private static void processInput(File input, Configuration conf) throws Exception {
+  private static void processInput(File input, Configuration conf, CodedOutputStream codedOutput) throws Exception {
     if (!input.exists() || !input.canRead())
       return;
 
     if (input.isFile()) {
-      processFile(input, conf);
+      processFile(input, conf, codedOutput);
     } else if (input.isDirectory()) {
       File[] files = Objects.requireNonNull(input.listFiles());
       Arrays.sort(files, Comparator.comparing(File::getName));
 
       for (File child : files) {
-        processInput(child, conf);
+        processInput(child, conf, codedOutput);
       }
     }
   }
 
-  private static void processFile(File inputFile, Configuration conf) throws Exception {
+  private static void processFile(File inputFile, Configuration conf, CodedOutputStream codedOutput) throws Exception {
     Path filePath = new Path(inputFile.getAbsolutePath());
     try (ParquetReader<Message> reader =
            ParquetReader.builder(new ProtoReadSupport<>(), filePath).withConf(conf).build()) {
       for (Message msg = reader.read(); msg != null; msg = reader.read()) {
-        msg.writeDelimitedTo(Main.out);
+        writeDelimited(msg, codedOutput);
       }
+      codedOutput.flush();
     }
+  }
+
+  /**
+   * Based on {@link AbstractMessageLite#writeDelimitedTo(OutputStream)}.
+   *
+   * @param msg Message.
+   * @param codedOutput Output.
+   * @throws IOException If failed.
+   */
+  private static void writeDelimited(Message msg, CodedOutputStream codedOutput) throws IOException {
+    final int serialized = msg.getSerializedSize();
+    codedOutput.writeUInt32NoTag(serialized);
+    msg.writeTo(codedOutput);
   }
 }
