@@ -30,7 +30,6 @@ import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Type;
 
@@ -79,12 +78,6 @@ class ProtoMessageConverter extends GroupConverter {
     for (Type parquetField : parquetSchema.getFields()) {
       Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
 
-      if (protoField == null) {
-        String description = "Scheme mismatch \n\"" + parquetField + "\"" +
-                "\n proto descriptor:\n" + protoDescriptor.toProto();
-        throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
-      }
-
       converters[parquetFieldIndex - 1] = newMessageConverter(myBuilder, protoField, parquetField);
 
       parquetFieldIndex++;
@@ -109,6 +102,12 @@ class ProtoMessageConverter extends GroupConverter {
   }
 
   private Converter newMessageConverter(final Message.Builder parentBuilder, final Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
+    if (fieldDescriptor == null) {
+      // Did not find this field in Protobuf, just ignore it.
+      return parquetType.isPrimitive() ?
+        NoopPrimitiveConverter.INSTANCE :
+        NoopGroupConverter.INSTANCE;
+    }
 
     boolean isRepeated = fieldDescriptor.isRepeated();
 
@@ -182,6 +181,64 @@ class ProtoMessageConverter extends GroupConverter {
      */
     public abstract void add(Object value);
 
+  }
+
+  final static class NoopPrimitiveConverter extends PrimitiveConverter {
+    static final NoopPrimitiveConverter INSTANCE = new NoopPrimitiveConverter();
+
+    @Override
+    public void addBinary(Binary value) {
+      // noop
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      // noop
+    }
+
+    @Override
+    public void addDouble(double value) {
+      // noop
+    }
+
+    @Override
+    public void addFloat(float value) {
+      // noop
+    }
+
+    @Override
+    public void addInt(int value) {
+      // noop
+    }
+
+    @Override
+    public void addLong(long value) {
+      // noop
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      // noop
+    }
+  }
+
+  final static class NoopGroupConverter extends GroupConverter {
+    static final NoopGroupConverter INSTANCE = new NoopGroupConverter();
+
+    @Override
+    public Converter getConverter(int fieldIndex) {
+      return NoopPrimitiveConverter.INSTANCE;
+    }
+
+    @Override
+    public void start() {
+      // noop
+    }
+
+    @Override
+    public void end() {
+      // noop
+    }
   }
 
   final class ProtoEnumConverter extends PrimitiveConverter {
