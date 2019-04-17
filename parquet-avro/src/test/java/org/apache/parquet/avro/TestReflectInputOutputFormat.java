@@ -380,7 +380,7 @@ public class TestReflectInputOutputFormat {
     for (Schema.Field field : ReflectData.get().getSchema(Car.class).getFields()) {
       if (!"optionalExtra".equals(field.name())) {
         fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultValue(), field.order()));
+            field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
@@ -441,7 +441,7 @@ public class TestReflectInputOutputFormat {
       // No make!
       if ("engine".equals(field.name()) || "year".equals(field.name()) || "vin".equals(field.name())) {
         fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultValue(), field.order()));
+            field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
