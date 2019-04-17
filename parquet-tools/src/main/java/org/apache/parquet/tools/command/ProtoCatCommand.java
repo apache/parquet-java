@@ -79,6 +79,8 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
       ProtoReadSupport.setRequestedProjection(conf, projection);
     }
 
+    ProtoReadSupport.setProtoRecordConverterBuildBefore(conf, true);
+
     processInput(new File(input), conf);
   }
 
