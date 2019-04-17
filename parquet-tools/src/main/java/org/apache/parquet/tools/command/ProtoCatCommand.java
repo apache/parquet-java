@@ -73,10 +73,6 @@ public class ProtoCatCommand extends ArgsOnlyCommand {
   public void execute(CommandLine options) throws Exception {
     super.execute(options);
 
-    if (!options.hasOption("debug")) {
-      org.apache.log4j.Logger.getLogger("").setLevel(Level.OFF);
-    }
-
     String[] args = options.getArgs();
     String input = args[0];
 
