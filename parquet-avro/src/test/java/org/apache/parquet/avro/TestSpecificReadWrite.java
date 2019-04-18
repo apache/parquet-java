@@ -195,7 +195,7 @@ public class TestSpecificReadWrite {
       }
 
       //Schema schemaClone = parser.parse(field.schema().toString(false));
-      Schema.Field fieldClone = new Schema.Field(name, field.schema(), field.doc(), field.defaultValue());
+      Schema.Field fieldClone = new Schema.Field(name, field.schema(), field.doc(), field.defaultVal());
       projectedFields.add(fieldClone);
     }
 
