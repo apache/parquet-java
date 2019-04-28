@@ -121,6 +121,13 @@ public class WrappedKeyManager {
     keyCounter = 0;
   }
 
+  /**
+   * Generates random data encryption key, and creates its metadata.
+   * The metadata is comprised of the wrapped data key (encrypted with master key), and the identity of the master key.
+   * @param masterKeyID
+   * @return
+   * @throws IOException
+   */
   public ParquetKey generateKey(String masterKeyID) throws IOException {
     byte[] dataKey = new byte[16]; //TODO
     random.nextBytes(dataKey);

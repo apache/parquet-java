@@ -27,6 +27,11 @@ import org.apache.parquet.crypto.KeyAccessDeniedException;
 
 public interface KmsClient {
   
+  /**
+   * Supports key wrapping (envelope encryption of data key by master key) inside 
+   * KMS server.
+   * @return
+   */
   public boolean supportsServerSideWrapping();
   
   /**
@@ -38,7 +43,7 @@ public interface KmsClient {
    * 
    * @param keyIdentifier: a string that uniquely identifies the key in KMS: 
    * ranging from a simple key ID, to e.g. a JSON with key ID, KMS instance etc.
-   * @return
+   * @return Base64 encoded data key 
    * @throws UnsupportedOperationException
    * @throws KeyAccessDeniedException
    * @throws IOException
