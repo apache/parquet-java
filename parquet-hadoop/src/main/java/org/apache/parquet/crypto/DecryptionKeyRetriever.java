@@ -25,7 +25,8 @@ import java.io.IOException;
 public interface DecryptionKeyRetriever {
 
   /**
-   * Key length must be either 16, 24 or 32 bytes.
+   * Must be thread-safe.
+   * Key length can be either 16, 24 or 32 bytes.
    * @param keyMetaData
    * @return
    * @throws KeyAccessDeniedException

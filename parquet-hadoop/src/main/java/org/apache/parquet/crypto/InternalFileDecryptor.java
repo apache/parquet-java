@@ -45,6 +45,7 @@ public class InternalFileDecryptor {
   private boolean allColumnCryptoMetaDataProcessed = false;
   private BlockCipher.Decryptor aesGcmDecryptorWithFooterKey;
   private BlockCipher.Decryptor aesCtrDecryptorWithFooterKey;
+  private boolean plaintextFile;
 
   public InternalFileDecryptor(FileDecryptionProperties fileDecryptionProperties) throws IOException {
     this.fileDecryptionProperties= fileDecryptionProperties;
@@ -54,6 +55,7 @@ public class InternalFileDecryptor {
     aadPrefix = fileDecryptionProperties.getAADPrefix();
     columnMap = new HashMap<ColumnPath, InternalColumnDecryptionSetup>();
     this.aadPrefixVerifier = fileDecryptionProperties.getAADPrefixVerifier();
+    this.plaintextFile = false;
   }
   
   private BlockCipher.Decryptor getThriftModuleDecryptor(byte[] columnKey) throws IOException {
@@ -269,6 +271,18 @@ public class InternalFileDecryptor {
 
   public boolean checkFooterIntegrity() {
     return checkPlaintextFooterIntegrity;
+  }
+
+  public boolean plaintextFilesAllowed() {
+    return fileDecryptionProperties.plaintextFilesAllowed();
+  }
+
+  public void setPlaintextFile() {
+    plaintextFile = true;
+  }
+
+  public boolean plaintextFile() {
+    return plaintextFile;
   }
 }
 

@@ -28,6 +28,7 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 public class FileDecryptionProperties {
 
   private static final boolean CHECK_SIGNATURE = true;
+  private static final boolean ALLOW_PLAINTEXT_FILES = false;
 
   private final byte[] footerKey;
   private final DecryptionKeyRetriever keyRetriever;
@@ -35,10 +36,11 @@ public class FileDecryptionProperties {
   private final AADPrefixVerifier aadPrefixVerifier;
   private final Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap;
   private final boolean checkPlaintextFooterIntegrity;
+  private final boolean allowPlaintextFiles;
   
   private FileDecryptionProperties(byte[] footerKey, DecryptionKeyRetriever keyRetriever,
       boolean checkPlaintextFooterIntegrity,  byte[] aadPrefix, AADPrefixVerifier aadPrefixVerifier,
-      Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap) {
+      Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap, boolean allowPlaintextFiles) {
     
     if ((null == footerKey) && (null == keyRetriever) && (null == columnPropertyMap)) {
       throw new IllegalArgumentException("No decryption properties are specified");
@@ -58,6 +60,7 @@ public class FileDecryptionProperties {
     this.aadPrefix = aadPrefix;
     this.columnPropertyMap = columnPropertyMap;
     this.aadPrefixVerifier = aadPrefixVerifier;
+    this.allowPlaintextFiles = allowPlaintextFiles;
   }
 
   public static Builder builder() {
@@ -71,9 +74,11 @@ public class FileDecryptionProperties {
     private AADPrefixVerifier aadPrefixVerifier;
     private Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap;
     private boolean checkPlaintextFooterIntegrity;
+    private boolean plaintextFilesAllowed;
     
     private Builder() {
       this.checkPlaintextFooterIntegrity = CHECK_SIGNATURE;
+      this.plaintextFilesAllowed = ALLOW_PLAINTEXT_FILES;
     }
 
     /**
@@ -167,7 +172,6 @@ public class FileDecryptionProperties {
     
     /**
      * Set callback for verification of AAD Prefixes stored in file.
-     * If not 
      * @param aadPrefixVerifier
      * @return
      */
@@ -182,9 +186,21 @@ public class FileDecryptionProperties {
       return this;
     }
     
+    /**
+     * By default, reading plaintext (unencrypted) files is not allowed when using a decryptor 
+     * - in order to detect files that were not encrypted by mistake. 
+     * However, the default behavior can be overriden by calling this method.
+     * The caller should use then a different method to ensure encryption of files with sensitive data.
+     * @return
+     */
+    public Builder withPlaintextFilesAllowed() {
+      this.plaintextFilesAllowed  = true;
+      return this;
+    }
+    
     public FileDecryptionProperties build() {
-      return new FileDecryptionProperties(footerKey, keyRetriever, 
-          checkPlaintextFooterIntegrity, aadPrefixBytes, aadPrefixVerifier, columnPropertyMap);
+      return new FileDecryptionProperties(footerKey, keyRetriever, checkPlaintextFooterIntegrity, 
+          aadPrefixBytes, aadPrefixVerifier, columnPropertyMap, plaintextFilesAllowed);
     }
   }
   
@@ -209,6 +225,10 @@ public class FileDecryptionProperties {
   
   public boolean checkFooterIntegrity() {
     return checkPlaintextFooterIntegrity;
+  }
+  
+  boolean plaintextFilesAllowed() {
+    return allowPlaintextFiles;
   }
 
   AADPrefixVerifier getAADPrefixVerifier() {
