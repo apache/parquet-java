@@ -388,7 +388,7 @@ public class TestReadWrite {
     }
 
     Object expectedEnumSymbol = compat ? "a" :
-      new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
+        new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
 
     assertNotNull(nextRecord);
     assertEquals(null, nextRecord.get("mynull"));
@@ -415,7 +415,7 @@ public class TestReadWrite {
     Path file = new Path(createTempFile().getPath());
 
     // write file using Parquet APIs
-    try(ParquetWriter<Map<String, Object>> parquetWriter = new ParquetWriter<Map<String, Object>>(file,
+    try(ParquetWriter<Map<String, Object>> parquetWriter = new ParquetWriter<>(file,
         new WriteSupport<Map<String, Object>>() {
 
       private RecordConsumer recordConsumer;

@@ -215,15 +215,15 @@ public class TestReadWriteOldListBehavior {
     Path file = new Path(tmp.getPath());
 
     GenericData.Record nestedRecord = new GenericRecordBuilder(
-      schema.getField("mynestedrecord").schema())
-      .set("mynestedint", 1).build();
+        schema.getField("mynestedrecord").schema())
+            .set("mynestedint", 1).build();
 
     List<Integer> integerArray = Arrays.asList(1, 2, 3);
     GenericData.Array<Integer> genericIntegerArray = new GenericData.Array<Integer>(
-      Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
+        Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
 
     GenericFixed genericFixed = new GenericData.Fixed(
-      Schema.createFixed("fixed", null, null, 1), new byte[]{(byte) 65});
+        Schema.createFixed("fixed", null, null, 1), new byte[]{(byte) 65});
 
     List<Integer> emptyArray = new ArrayList<Integer>();
     ImmutableMap emptyMap = new ImmutableMap.Builder<String, Integer>().build();

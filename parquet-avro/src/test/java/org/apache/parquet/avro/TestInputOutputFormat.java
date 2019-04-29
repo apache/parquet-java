@@ -57,7 +57,7 @@ public class TestInputOutputFormat {
 
   public static GenericRecord nextRecord(Integer i) {
     return new GenericRecordBuilder(avroSchema).set("a", i).build();
-  }
+  };
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, GenericRecord> {
 
@@ -74,6 +74,7 @@ public class TestInputOutputFormat {
     protected void map(Void key, GenericRecord value, Context context) throws IOException ,InterruptedException {
       context.write(null, new Text(value.toString()));
     }
+
   }
 
   @Test

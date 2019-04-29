@@ -1,4 +1,4 @@
-/*
+/* 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * 
  *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -435,13 +435,13 @@ public class TestReflectInputOutputFormat {
     // Test schema projection by dropping the engine, year, and vin (like ShortCar),
     // but making make optional (unlike ShortCar)
     Schema projection = Schema.createRecord(CAR_SCHEMA.getName(),
-      CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(), false);
+        CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(), false);
     List<Schema.Field> fields = Lists.newArrayList();
     for (Schema.Field field : CAR_SCHEMA.getFields()) {
       // No make!
       if ("engine".equals(field.name()) || "year".equals(field.name()) || "vin".equals(field.name())) {
         fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-          field.defaultVal(), field.order()));
+            field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
