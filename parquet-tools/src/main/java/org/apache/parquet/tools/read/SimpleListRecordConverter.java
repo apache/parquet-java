@@ -22,8 +22,8 @@ import org.apache.parquet.schema.GroupType;
 
 public class SimpleListRecordConverter extends SimpleRecordConverter {
 
-  public SimpleListRecordConverter(GroupType schema, String name, SimpleRecordConverter parent) {
-    super(schema, name, parent);
+  public SimpleListRecordConverter(GroupType schema, String name, SimpleRecordConverter parent, boolean showEmptyFields) {
+    super(schema, name, parent, showEmptyFields);
   }
 
   @Override

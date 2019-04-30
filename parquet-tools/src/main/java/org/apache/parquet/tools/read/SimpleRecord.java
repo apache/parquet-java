@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -30,6 +30,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.BinaryNode;
+import org.codehaus.jackson.node.NullNode;
 
 public class SimpleRecord {
   protected final List<NameValue> values;
@@ -41,8 +42,11 @@ public class SimpleRecord {
   public void add(String name, Object value) {
     values.add(new NameValue(name,value));
   }
-  
+
   public List<NameValue> getValues() {
+    if (values == null) {
+        return new ArrayList<NameValue>();
+    }
     return Collections.unmodifiableList(values);
   }
 
@@ -119,7 +123,9 @@ public class SimpleRecord {
   }
 
   protected static Object toJsonValue(Object val) {
-    if (SimpleRecord.class.isAssignableFrom(val.getClass())) {
+    if (val == null) {
+        return null;
+    } else if (SimpleRecord.class.isAssignableFrom(val.getClass())) {
       return ((SimpleRecord) val).toJsonObject();
     } else if (byte[].class == val.getClass()) {
       return new BinaryNode((byte[]) val);

@@ -21,6 +21,8 @@ package org.apache.parquet.tools.read;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
@@ -30,6 +32,8 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Type;
 
+
+
 import static java.util.Optional.of;
 
 public class SimpleRecordConverter extends GroupConverter {
@@ -37,15 +41,23 @@ public class SimpleRecordConverter extends GroupConverter {
   private final String name;
   private final SimpleRecordConverter parent;
   protected SimpleRecord record;
+  private GroupType schema;
+  private boolean showEmptyFields;
 
   public SimpleRecordConverter(GroupType schema) {
-    this(schema, null, null);
+    this(schema, null, null, false);
   }
 
-  public SimpleRecordConverter(GroupType schema, String name, SimpleRecordConverter parent) {
+  public SimpleRecordConverter(GroupType schema, boolean showEmptyFields) {
+    this(schema, null, null, showEmptyFields);
+  }
+
+  public SimpleRecordConverter(GroupType schema, String name, SimpleRecordConverter parent, boolean showEmptyFields) {
     this.converters = new Converter[schema.getFieldCount()];
     this.parent = parent;
     this.name = name;
+    this.schema = schema;
+    this.showEmptyFields = showEmptyFields;
 
     int i = 0;
     for (Type field: schema.getFields()) {
@@ -70,6 +82,8 @@ public class SimpleRecordConverter extends GroupConverter {
             return of(new DecimalConverter(field.getName(), scale));
           }
         }).orElse(new SimplePrimitiveConverter(field.getName()));
+      } else {
+          return new SimplePrimitiveConverter(field.getName());
       }
       return new SimplePrimitiveConverter(field.getName());
     }
@@ -79,16 +93,16 @@ public class SimpleRecordConverter extends GroupConverter {
       return ltype.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
         @Override
         public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
-          return of(new SimpleMapRecordConverter(groupType, field.getName(), SimpleRecordConverter.this));
+          return of(new SimpleMapRecordConverter(groupType, field.getName(), SimpleRecordConverter.this, SimpleRecordConverter.this.showEmptyFields));
         }
 
         @Override
         public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
-          return of(new SimpleListRecordConverter(groupType, field.getName(), SimpleRecordConverter.this));
+          return of(new SimpleListRecordConverter(groupType, field.getName(), SimpleRecordConverter.this, SimpleRecordConverter.this.showEmptyFields));
         }
-      }).orElse(new SimpleRecordConverter(groupType, field.getName(), this));
+      }).orElse(new SimpleRecordConverter(groupType, field.getName(), this, SimpleRecordConverter.this.showEmptyFields));
     }
-    return new SimpleRecordConverter(groupType, field.getName(), this);
+    return new SimpleRecordConverter(groupType, field.getName(), this, SimpleRecordConverter.this.showEmptyFields);
   }
 
   @Override
@@ -110,6 +124,21 @@ public class SimpleRecordConverter extends GroupConverter {
     if (parent != null) {
       parent.getCurrentRecord().add(name, record);
     }
+    if (this.showEmptyFields) {
+        addEmptyFields();
+    }
+  }
+
+  private void addEmptyFields() {
+    Set<String> recordKeys = record
+        .getValues().stream()
+        .map(nv -> nv.getName())
+        .collect(Collectors.toSet());
+
+    this.schema.getFields().stream()
+        .map(field -> field.getName())
+        .filter(name -> !recordKeys.contains(name))
+        .forEach(name -> record.add(name, null));
   }
 
   private class SimplePrimitiveConverter extends PrimitiveConverter {

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -46,7 +46,12 @@ public class HeadCommand extends ArgsOnlyCommand {
                                .withDescription("The number of records to show (default: " + DEFAULT + ")")
                                .hasOptionalArg()
                                .create('n');
+    Option showEmpty = OptionBuilder.withLongOpt("show-nulls")
+                        .withDescription("Show fields with null values.")
+                        .create('n');
+
     OPTIONS.addOption(help);
+    OPTIONS.addOption(showEmpty);
   }
 
   public HeadCommand() {
@@ -83,7 +88,7 @@ public class HeadCommand extends ArgsOnlyCommand {
     ParquetReader<SimpleRecord> reader = null;
     try {
       PrintWriter writer = new PrintWriter(Main.out, true);
-      reader = ParquetReader.builder(new SimpleReadSupport(), new Path(input)).build();
+      reader = ParquetReader.builder(new SimpleReadSupport(options.hasOption('n')), new Path(input)).build();
       for (SimpleRecord value = reader.read(); value != null && num-- > 0; value = reader.read()) {
         value.prettyPrint(writer);
         writer.println();
