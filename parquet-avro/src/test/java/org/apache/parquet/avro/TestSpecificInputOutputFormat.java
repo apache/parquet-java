@@ -189,29 +189,29 @@ public class TestSpecificInputOutputFormat {
 
     final Path mapperOutput = new Path(outputPath.toString(),
         "part-m-00000.parquet");
-    final AvroParquetReader<Car> out = new AvroParquetReader<Car>(mapperOutput);
-    Car car;
-    Car previousCar = null;
-    int lineNumber = 0;
-    while ((car = out.read()) != null) {
-      if (previousCar != null) {
-         // Testing reference equality here. The "model" field should be dictionary-encoded.
-         assertTrue(car.getModel() == previousCar.getModel());
+    try(final AvroParquetReader<Car> out = new AvroParquetReader<>(mapperOutput)) {
+      Car car;
+      Car previousCar = null;
+      int lineNumber = 0;
+      while ((car = out.read()) != null) {
+        if (previousCar != null) {
+          // Testing reference equality here. The "model" field should be dictionary-encoded.
+          assertTrue(car.getModel() == previousCar.getModel());
+        }
+        // Make sure that predicate push down worked as expected
+        if (car.getEngine().getType() == EngineType.PETROL) {
+          fail("UnboundRecordFilter failed to remove cars with PETROL engines");
+        }
+        // Note we use lineNumber * 2 because of predicate push down
+        Car expectedCar = nextRecord(lineNumber * 2);
+        // We removed the optional extra field using projection so we shouldn't
+        // see it here...
+        expectedCar.setOptionalExtra(null);
+        assertEquals("line " + lineNumber, expectedCar, car);
+        ++lineNumber;
+        previousCar = car;
       }
-      // Make sure that predicate push down worked as expected
-      if (car.getEngine().getType() == EngineType.PETROL) {
-        fail("UnboundRecordFilter failed to remove cars with PETROL engines");
-      }
-      // Note we use lineNumber * 2 because of predicate push down
-      Car expectedCar = nextRecord(lineNumber * 2);
-      // We removed the optional extra field using projection so we shouldn't
-      // see it here...
-      expectedCar.setOptionalExtra(null);
-      assertEquals("line " + lineNumber, expectedCar, car);
-      ++lineNumber;
-      previousCar = car;
     }
-    out.close();
   }
 
   @Test
@@ -249,21 +249,21 @@ public class TestSpecificInputOutputFormat {
     waitForJob(job);
 
     final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
-    final AvroParquetReader<ShortCar> out = new AvroParquetReader<ShortCar>(mapperOutput);
-    ShortCar car;
-    int lineNumber = 0;
-    while ((car = out.read()) != null) {
-      // Make sure that predicate push down worked as expected
-      // Note we use lineNumber * 2 because of predicate push down
-      Car expectedCar = nextRecord(lineNumber * 2);
-      // We removed the optional extra field using projection so we shouldn't see it here...
-      assertNull(car.getMake());
-      assertEquals(car.getEngine(), expectedCar.getEngine());
-      assertEquals(car.getYear(), expectedCar.getYear());
-      assertEquals(car.getVin(), expectedCar.getVin());
-      ++lineNumber;
+    try(final AvroParquetReader<ShortCar> out = new AvroParquetReader<>(mapperOutput)) {
+      ShortCar car;
+      int lineNumber = 0;
+      while ((car = out.read()) != null) {
+        // Make sure that predicate push down worked as expected
+        // Note we use lineNumber * 2 because of predicate push down
+        Car expectedCar = nextRecord(lineNumber * 2);
+        // We removed the optional extra field using projection so we shouldn't see it here...
+        assertNull(car.getMake());
+        assertEquals(car.getEngine(), expectedCar.getEngine());
+        assertEquals(car.getYear(), expectedCar.getYear());
+        assertEquals(car.getVin(), expectedCar.getVin());
+        ++lineNumber;
+      }
     }
-    out.close();
   }
 
   private void waitForJob(Job job) throws Exception {

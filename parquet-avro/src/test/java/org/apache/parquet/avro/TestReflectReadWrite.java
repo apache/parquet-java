@@ -50,12 +50,13 @@ public class TestReflectReadWrite {
     AvroReadSupport.setAvroDataSupplier(conf, ReflectDataSupplier.class);
 
     Path path = writePojosToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-    ParquetReader<Pojo> reader = new AvroParquetReader<Pojo>(conf, path);
-    Pojo object = getPojo();
-    for (int i = 0; i < 10; i++) {
-      assertEquals(object, reader.read());
+    try(ParquetReader<Pojo> reader = new AvroParquetReader<Pojo>(conf, path)) {
+      Pojo object = getPojo();
+      for (int i = 0; i < 10; i++) {
+        assertEquals(object, reader.read());
+      }
+      assertNull(reader.read());
     }
-    assertNull(reader.read());
   }
 
   @Test
@@ -65,12 +66,13 @@ public class TestReflectReadWrite {
     AvroReadSupport.setAvroDataSupplier(conf, GenericDataSupplier.class);
 
     Path path = writePojosToParquetFile(2, CompressionCodecName.UNCOMPRESSED, false);
-    ParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(conf, path);
-    GenericRecord object = getGenericPojoUtf8();
-    for (int i = 0; i < 2; i += 1) {
-      assertEquals(object, reader.read());
+    try(ParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(conf, path)) {
+      GenericRecord object = getGenericPojoUtf8();
+      for (int i = 0; i < 2; i += 1) {
+        assertEquals(object, reader.read());
+      }
+      assertNull(reader.read());
     }
-    assertNull(reader.read());
   }
 
   private GenericRecord getGenericPojoUtf8() {
@@ -135,16 +137,16 @@ public class TestReflectReadWrite {
     Pojo object = getPojo();
 
     Schema schema = ReflectData.get().getSchema(object.getClass());
-    ParquetWriter<Pojo> writer = AvroParquetWriter.<Pojo>builder(path)
+    try(ParquetWriter<Pojo> writer = AvroParquetWriter.<Pojo>builder(path)
         .withSchema(schema)
         .withCompressionCodec(compression)
         .withDataModel(ReflectData.get())
         .withDictionaryEncoding(enableDictionary)
-        .build();
-    for (int i = 0; i < num; i++) {
-      writer.write(object);
+        .build()) {
+      for (int i = 0; i < num; i++) {
+        writer.write(object);
+      }
     }
-    writer.close();
     return path;
   }
 
