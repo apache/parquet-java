@@ -309,7 +309,7 @@ public class AvroJson {
           // check that each field is present or has a default
           boolean missingField = false;
           for (Schema.Field field : schema.getFields()) {
-            if (!datum.has(field.name()) && field.defaultValue() == null) {
+            if (!datum.has(field.name()) && field.defaultVal() == null) {
               missingField = true;
               break;
             }
