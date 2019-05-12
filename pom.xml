@@ -480,6 +480,7 @@
             <exclude>**/*.md.vm</exclude>
             <exclude>**/.classpath</exclude>
             <exclude>**/.project</exclude>
+            <exclude>**/*.factorypath</exclude>
             <exclude>**/.settings/**</exclude>
             <exclude>**/build/**</exclude>
             <exclude>**/target/**</exclude>
