@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -53,7 +53,7 @@ public class SnappyDecompressor implements Decompressor {
 	if (inputBuffer.position() == 0 && !outputBuffer.hasRemaining()) {
       return 0;
     }
-    
+
     if (!outputBuffer.hasRemaining()) {
       inputBuffer.rewind();
       Preconditions.checkArgument(inputBuffer.position() == 0, "Invalid position of 0.");
@@ -79,7 +79,7 @@ public class SnappyDecompressor implements Decompressor {
     // Return compressed output up to 'len'
     int numBytes = Math.min(len, outputBuffer.remaining());
     outputBuffer.get(buffer, off, numBytes);
-    return numBytes;	    
+    return numBytes;
   }
 
   /**
@@ -101,15 +101,17 @@ public class SnappyDecompressor implements Decompressor {
     SnappyUtil.validateBuffer(buffer, off, len);
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
-      final ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
+      int maxSize = Math.max(inputBuffer.position() * 2 , inputBuffer.position() + len);
+      ByteBuffer newBuffer = ByteBuffer.allocateDirect(maxSize);
       inputBuffer.rewind();
       newBuffer.put(inputBuffer);
       final ByteBuffer oldBuffer = inputBuffer;
       inputBuffer = newBuffer;
       CleanUtil.cleanDirectBuffer(oldBuffer);
-    } else {
-      inputBuffer.limit(inputBuffer.position() + len);
     }
+
+    inputBuffer.limit(inputBuffer.position() + len);
+
     inputBuffer.put(buffer, off, len);
   }
 
@@ -150,7 +152,7 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public void setDictionary(byte[] b, int off, int len) {
-    // No-op		
+    // No-op
   }
 
 } //class SnappyDecompressor
