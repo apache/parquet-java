@@ -92,15 +92,11 @@ public class PrintFooter {
         long t0 = System.currentTimeMillis();
         Deque<Future<ParquetMetadata>> footers = new LinkedBlockingDeque<Future<ParquetMetadata>>();
         for (final FileStatus currentFile : statuses) {
-          footers.add(threadPool.submit(new Callable<ParquetMetadata>() {
-            @Override
-            public ParquetMetadata call() throws Exception {
-              try {
-                ParquetMetadata footer = ParquetFileReader.readFooter(configuration, currentFile, NO_FILTER);
-                return footer;
-              } catch (Exception e) {
-                throw new ParquetDecodingException("could not read footer", e);
-              }
+          footers.add(threadPool.submit(() -> {
+            try {
+              return ParquetFileReader.readFooter(configuration, currentFile, NO_FILTER);
+            } catch (Exception e) {
+              throw new ParquetDecodingException("could not read footer", e);
             }
           }));
         }

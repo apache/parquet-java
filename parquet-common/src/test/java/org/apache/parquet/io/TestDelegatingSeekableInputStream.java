@@ -68,12 +68,9 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals("Stream position should reflect bytes read", 10, stream.getPos());
 
     TestUtils.assertThrows("Should throw EOFException if no more bytes left",
-        EOFException.class, new Callable<Void>() {
-          @Override
-          public Void call() throws IOException {
-            DelegatingSeekableInputStream.readFully(stream, buffer, 0, 1);
-            return null;
-          }
+        EOFException.class, (Callable<Void>) () -> {
+          DelegatingSeekableInputStream.readFully(stream, buffer, 0, 1);
+          return null;
         });
   }
 
@@ -84,12 +81,9 @@ public class TestDelegatingSeekableInputStream {
     final MockInputStream stream = new MockInputStream(2, 3, 3);
 
     TestUtils.assertThrows("Should throw EOFException if no more bytes left",
-        EOFException.class, new Callable<Void>() {
-          @Override
-          public Void call() throws IOException {
-            DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
-            return null;
-          }
+        EOFException.class, (Callable<Void>) () -> {
+          DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
+          return null;
         });
 
     Assert.assertArrayEquals("Should have consumed bytes",
@@ -131,12 +125,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals("Stream position should reflect bytes read", 5, stream.getPos());
   }
 
-  private static final ThreadLocal<byte[]> TEMP = new ThreadLocal<byte[]>() {
-    @Override
-    protected byte[] initialValue() {
-      return new byte[8192];
-    }
-  };
+  private static final ThreadLocal<byte[]> TEMP = ThreadLocal.withInitial(() -> new byte[8192]);
 
   @Test
   public void testHeapRead() throws Exception {
@@ -523,12 +512,9 @@ public class TestDelegatingSeekableInputStream {
     final MockInputStream stream = new MockInputStream();
 
     TestUtils.assertThrows("Should throw EOFException",
-        EOFException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
-            return null;
-          }
+        EOFException.class, () -> {
+          DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
+          return null;
         });
 
     Assert.assertEquals(0, readBuffer.position());
@@ -684,12 +670,9 @@ public class TestDelegatingSeekableInputStream {
     final MockInputStream stream = new MockInputStream();
 
     TestUtils.assertThrows("Should throw EOFException",
-        EOFException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
-            return null;
-          }
+        EOFException.class, () -> {
+          DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
+          return null;
         });
 
     // NOTE: This behavior differs from readFullyHeapBuffer because direct uses

@@ -269,13 +269,10 @@ public class TestParquetWriterAppendBlocks {
 
     TestUtils.assertThrows("Should complain that id column is dropped",
         IllegalArgumentException.class,
-        new Callable<Void>() {
-          @Override
-          public Void call() throws Exception {
-            writer.appendRowGroups(incoming, footer.getBlocks(), false);
-            return null;
-          }
-        });
+      (Callable<Void>) () -> {
+        writer.appendRowGroups(incoming, footer.getBlocks(), false);
+        return null;
+      });
   }
 
   @Test
@@ -293,13 +290,10 @@ public class TestParquetWriterAppendBlocks {
 
     TestUtils.assertThrows("Should complain that value column is missing",
         IllegalArgumentException.class,
-        new Callable<Void>() {
-          @Override
-          public Void call() throws Exception {
-            writer.appendFile(CONF, file1);
-            return null;
-          }
-        });
+      (Callable<Void>) () -> {
+        writer.appendFile(CONF, file1);
+        return null;
+      });
   }
 
   private Path newTemp() throws IOException {

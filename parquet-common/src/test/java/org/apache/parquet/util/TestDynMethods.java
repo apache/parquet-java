@@ -31,20 +31,10 @@ public class TestDynMethods {
     final DynMethods.Builder builder = new DynMethods.Builder("concat");
 
     TestUtils.assertThrows("Checked build should throw NoSuchMethodException",
-        NoSuchMethodException.class, new Callable() {
-          @Override
-          public Object call() throws NoSuchMethodException {
-            return builder.buildChecked();
-          }
-        });
+        NoSuchMethodException.class, (Callable) builder::buildChecked);
 
     TestUtils.assertThrows("Normal build should throw RuntimeException",
-        RuntimeException.class, new Runnable() {
-          @Override
-          public void run() {
-            builder.build();
-          }
-        });
+        RuntimeException.class, (Callable) builder::build);
   }
 
   @Test
@@ -53,20 +43,10 @@ public class TestDynMethods {
         .impl("not.a.RealClass", String.class, String.class);
 
     TestUtils.assertThrows("Checked build should throw NoSuchMethodException",
-        NoSuchMethodException.class, new Callable() {
-          @Override
-          public Object call() throws NoSuchMethodException {
-            return builder.buildChecked();
-          }
-        });
+        NoSuchMethodException.class, (Callable) builder::buildChecked);
 
     TestUtils.assertThrows("Normal build should throw RuntimeException",
-        RuntimeException.class, new Runnable() {
-          @Override
-          public void run() {
-            builder.build();
-          }
-        });
+        RuntimeException.class, (Runnable) builder::build);
   }
 
   @Test
@@ -75,20 +55,10 @@ public class TestDynMethods {
         .impl(Concatenator.class, "cat2strings", String.class, String.class);
 
     TestUtils.assertThrows("Checked build should throw NoSuchMethodException",
-        NoSuchMethodException.class, new Callable() {
-          @Override
-          public Object call() throws NoSuchMethodException {
-            return builder.buildChecked();
-          }
-        });
+        NoSuchMethodException.class, (Callable) builder::buildChecked);
 
     TestUtils.assertThrows("Normal build should throw RuntimeException",
-        RuntimeException.class, new Runnable() {
-          @Override
-          public void run() {
-            builder.build();
-          }
-        });
+        RuntimeException.class, (Runnable) builder::build);
   }
 
   @Test
@@ -144,20 +114,10 @@ public class TestDynMethods {
         .buildChecked();
 
     TestUtils.assertThrows("Should fail if non-string arguments are passed",
-        IllegalArgumentException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return cat.invoke(obj, 3, 4);
-          }
-        });
+        IllegalArgumentException.class, () -> cat.invoke(obj, 3, 4));
 
     TestUtils.assertThrows("Should fail if non-string arguments are passed",
-        IllegalArgumentException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return cat.invokeChecked(obj, 3, 4);
-          }
-        });
+        IllegalArgumentException.class, () -> cat.invokeChecked(obj, 3, 4));
   }
 
   @Test
@@ -170,20 +130,10 @@ public class TestDynMethods {
         .buildChecked();
 
     TestUtils.assertThrows("Should re-throw the exception",
-        SomeCheckedException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return cat.invokeChecked(obj, exc);
-          }
-        });
+        SomeCheckedException.class, () -> cat.invokeChecked(obj, exc));
 
     TestUtils.assertThrows("Should wrap the exception in RuntimeException",
-        RuntimeException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return cat.invoke(obj, exc);
-          }
-        });
+        RuntimeException.class, () -> cat.invoke(obj, exc));
   }
 
   @Test
@@ -213,14 +163,9 @@ public class TestDynMethods {
     Concatenator obj = new Concatenator("-");
 
     TestUtils.assertThrows("Should fail to find hidden method",
-        NoSuchMethodException.class, new Callable() {
-          @Override
-          public Object call() throws NoSuchMethodException {
-            return new DynMethods.Builder("setSeparator")
-                .impl(Concatenator.class, String.class)
-                .buildChecked();
-          }
-        });
+        NoSuchMethodException.class, () -> new DynMethods.Builder("setSeparator")
+            .impl(Concatenator.class, String.class)
+            .buildChecked());
 
     DynMethods.UnboundMethod changeSep = new DynMethods.Builder("setSeparator")
         .hiddenImpl(Concatenator.class, String.class)
@@ -264,31 +209,16 @@ public class TestDynMethods {
         .impl(Concatenator.class, String[].class);
 
     TestUtils.assertThrows("Should complain that method is static",
-        IllegalStateException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return builder.buildChecked(new Concatenator());
-          }
-        });
+        IllegalStateException.class, () -> builder.buildChecked(new Concatenator()));
 
     TestUtils.assertThrows("Should complain that method is static",
-        IllegalStateException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return builder.build(new Concatenator());
-          }
-        });
+        IllegalStateException.class, () -> builder.build(new Concatenator()));
 
     final DynMethods.UnboundMethod staticCat = builder.buildChecked();
     Assert.assertTrue("Should be static", staticCat.isStatic());
 
     TestUtils.assertThrows("Should complain that method is static",
-        IllegalStateException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return staticCat.bind(new Concatenator());
-          }
-        });
+        IllegalStateException.class, () -> staticCat.bind(new Concatenator()));
   }
 
   @Test
@@ -308,32 +238,17 @@ public class TestDynMethods {
         .impl(Concatenator.class, String.class, String.class);
 
     TestUtils.assertThrows("Should complain that method is not static",
-        IllegalStateException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return builder.buildStatic();
-          }
-        });
+        IllegalStateException.class, builder::buildStatic);
 
     TestUtils.assertThrows("Should complain that method is not static",
-        IllegalStateException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return builder.buildStaticChecked();
-          }
-        });
+        IllegalStateException.class, builder::buildStaticChecked);
 
     final DynMethods.UnboundMethod cat2 = builder.buildChecked();
     Assert.assertFalse("concat(String,String) should not be static",
         cat2.isStatic());
 
     TestUtils.assertThrows("Should complain that method is not static",
-        IllegalStateException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return cat2.asStatic();
-          }
-        });
+        IllegalStateException.class, cat2::asStatic);
   }
 
   @Test
@@ -352,19 +267,9 @@ public class TestDynMethods {
 
     // constructors cannot be bound
     TestUtils.assertThrows("Should complain that ctor method is static",
-        IllegalStateException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return builder.buildChecked(new Concatenator());
-          }
-        });
+        IllegalStateException.class, () -> builder.buildChecked(new Concatenator()));
     TestUtils.assertThrows("Should complain that ctor method is static",
-        IllegalStateException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return builder.build(new Concatenator());
-          }
-        });
+        IllegalStateException.class, () -> builder.build(new Concatenator()));
 
     Concatenator concatenator = newConcatenator.asStatic().invoke("*");
     Assert.assertEquals("Should function as a concatenator",
