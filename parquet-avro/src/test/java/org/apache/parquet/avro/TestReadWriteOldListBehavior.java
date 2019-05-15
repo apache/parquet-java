@@ -299,13 +299,13 @@ public class TestReadWriteOldListBehavior {
     GenericFixed genericFixed = new GenericData.Fixed(
         Schema.createFixed("fixed", null, null, 1), new byte[] { (byte) 65 });
 
-    List<Integer> emptyArray = new ArrayList<>();
+    List<Integer> emptyArray = new ArrayList<Integer>();
     ImmutableMap emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
     Schema arrayOfOptionalIntegers = Schema.createArray(
         optional(Schema.create(Schema.Type.INT)));
     GenericData.Array<Integer> genericIntegerArrayWithNulls =
-        new GenericData.Array<>(
+        new GenericData.Array<Integer>(
             arrayOfOptionalIntegers,
             Arrays.asList(1, null, 2, null, 3));
 
@@ -330,7 +330,7 @@ public class TestReadWriteOldListBehavior {
         .build();
 
     final AvroParquetWriter<GenericRecord> writer =
-        new AvroParquetWriter<>(file, schema);
+        new AvroParquetWriter<GenericRecord>(file, schema);
 
     try {
       writer.write(record);
