@@ -81,19 +81,17 @@ public class AvroTestUtil {
     Configuration conf = new Configuration(false);
     AvroReadSupport.setRequestedProjection(conf, schema);
     AvroReadSupport.setAvroReadSchema(conf, schema);
-    ParquetReader<D> fileReader = AvroParquetReader
-        .<D>builder(new Path(file.toString()))
-        .withDataModel(model) // reflect disables compatibility
-        .withConf(conf)
-        .build();
+    // reflect disables compatibility
 
-    try {
+    try (ParquetReader<D> fileReader = AvroParquetReader
+      .<D>builder(new Path(file.toString()))
+      .withDataModel(model) // reflect disables compatibility
+      .withConf(conf)
+      .build()) {
       D datum;
       while ((datum = fileReader.read()) != null) {
         data.add(datum);
       }
-    } finally {
-      fileReader.close();
     }
 
     return data;
@@ -103,18 +101,15 @@ public class AvroTestUtil {
   public static <D> File write(TemporaryFolder temp, GenericData model, Schema schema, D... data) throws IOException {
     File file = temp.newFile();
     Assert.assertTrue(file.delete());
-    ParquetWriter<D> writer = AvroParquetWriter
-        .<D>builder(new Path(file.toString()))
-        .withDataModel(model)
-        .withSchema(schema)
-        .build();
 
-    try {
+    try (ParquetWriter<D> writer = AvroParquetWriter
+      .<D>builder(new Path(file.toString()))
+      .withDataModel(model)
+      .withSchema(schema)
+      .build()) {
       for (D datum : data) {
         writer.write(datum);
       }
-    } finally {
-      writer.close();
     }
 
     return file;

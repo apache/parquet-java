@@ -89,20 +89,20 @@ public class TestReadWrite {
     Schema schema = new Schema.Parser().parse(
         Resources.getResource("array.avsc").openStream());
 
+    // Write a record with an empty array.
+    List<Integer> emptyArray = new ArrayList<>();
+
     Path file = new Path(createTempFile().getPath());
 
-    ParquetWriter<GenericRecord> writer = AvroParquetWriter
+    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
         .<GenericRecord>builder(file)
         .withSchema(schema)
         .withConf(testConf)
-        .build();
-
-    // Write a record with an empty array.
-    List<Integer> emptyArray = new ArrayList<Integer>();
-    GenericData.Record record = new GenericRecordBuilder(schema)
+        .build()) {
+      GenericData.Record record = new GenericRecordBuilder(schema)
         .set("myarray", emptyArray).build();
-    writer.write(record);
-    writer.close();
+      writer.write(record);
+    }
 
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();

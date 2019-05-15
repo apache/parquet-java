@@ -305,7 +305,7 @@ public class TestReadWriteOldListBehavior {
     Schema arrayOfOptionalIntegers = Schema.createArray(
         optional(Schema.create(Schema.Type.INT)));
     GenericData.Array<Integer> genericIntegerArrayWithNulls =
-        new GenericData.Array<Integer>(
+        new GenericData.Array<>(
             arrayOfOptionalIntegers,
             Arrays.asList(1, null, 2, null, 3));
 
@@ -329,17 +329,12 @@ public class TestReadWriteOldListBehavior {
         .set("myfixed", genericFixed)
         .build();
 
-    final AvroParquetWriter<GenericRecord> writer =
-        new AvroParquetWriter<GenericRecord>(file, schema);
-
-    try {
+    try (AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<>(file, schema)) {
       writer.write(record);
       fail("Should not succeed writing an array with null values");
     } catch (Exception e) {
       Assert.assertTrue("Error message should provide context and help",
-          e.getMessage().contains("parquet.avro.write-old-list-structure"));
-    } finally {
-      writer.close();
+        e.getMessage().contains("parquet.avro.write-old-list-structure"));
     }
   }
 
