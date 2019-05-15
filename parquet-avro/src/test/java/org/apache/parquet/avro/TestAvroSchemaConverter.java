@@ -20,6 +20,7 @@ package org.apache.parquet.avro;
 
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
+import org.apache.avro.JsonProperties;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
@@ -28,7 +29,6 @@ import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.codehaus.jackson.node.NullNode;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -292,8 +292,8 @@ public class TestAvroSchemaConverter {
   public void testOptionalFields() throws Exception {
     Schema schema = Schema.createRecord("record1", null, null, false);
     Schema optionalInt = optional(Schema.create(INT));
-    schema.setFields(Arrays.asList(
-        new Schema.Field("myint", optionalInt, null, NullNode.getInstance())
+    schema.setFields(Collections.singletonList(
+      new Schema.Field("myint", optionalInt, null, JsonProperties.NULL_VALUE)
     ));
     testRoundTripConversion(
         schema,
@@ -347,7 +347,7 @@ public class TestAvroSchemaConverter {
         Schema.create(INT),
         Schema.create(Schema.Type.FLOAT)));
     schema.setFields(Arrays.asList(
-        new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())));
+        new Schema.Field("myunion", multipleTypes, null, JsonProperties.NULL_VALUE)));
 
     // Avro union is modelled using optional data members of the different
     // types. This does not translate back into an Avro union
@@ -366,8 +366,8 @@ public class TestAvroSchemaConverter {
     Schema innerRecord = Schema.createRecord("element", null, null, false);
     Schema optionalString = optional(Schema.create(Schema.Type.STRING));
     innerRecord.setFields(Lists.newArrayList(
-        new Schema.Field("s1", optionalString, null, NullNode.getInstance()),
-        new Schema.Field("s2", optionalString, null, NullNode.getInstance())
+        new Schema.Field("s1", optionalString, null, JsonProperties.NULL_VALUE),
+        new Schema.Field("s2", optionalString, null, JsonProperties.NULL_VALUE)
     ));
     Schema schema = Schema.createRecord("HasArray", null, null, false);
     schema.setFields(Lists.newArrayList(
@@ -393,8 +393,8 @@ public class TestAvroSchemaConverter {
     Schema innerRecord = Schema.createRecord("InnerRecord", null, null, false);
     Schema optionalString = optional(Schema.create(Schema.Type.STRING));
     innerRecord.setFields(Lists.newArrayList(
-        new Schema.Field("s1", optionalString, null, NullNode.getInstance()),
-        new Schema.Field("s2", optionalString, null, NullNode.getInstance())
+        new Schema.Field("s1", optionalString, null, JsonProperties.NULL_VALUE),
+        new Schema.Field("s2", optionalString, null, JsonProperties.NULL_VALUE)
     ));
     Schema schema = Schema.createRecord("HasArray", null, null, false);
     schema.setFields(Lists.newArrayList(
@@ -420,7 +420,7 @@ public class TestAvroSchemaConverter {
         Schema.create(INT))));
     Schema schema = Schema.createRecord("AvroCompatListInList", null, null, false);
     schema.setFields(Lists.newArrayList(
-        new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
+        new Schema.Field("listOfLists", listOfLists, null, JsonProperties.NULL_VALUE)
     ));
     System.err.println("Avro schema: " + schema.toString(true));
 
@@ -449,7 +449,7 @@ public class TestAvroSchemaConverter {
         Schema.create(INT))));
     Schema schema = Schema.createRecord("ThriftCompatListInList", null, null, false);
     schema.setFields(Lists.newArrayList(
-        new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
+        new Schema.Field("listOfLists", listOfLists, null, JsonProperties.NULL_VALUE)
     ));
     System.err.println("Avro schema: " + schema.toString(true));
 
@@ -482,7 +482,7 @@ public class TestAvroSchemaConverter {
         Schema.create(INT))));
     Schema schema = Schema.createRecord("UnknownTwoLevelListInList", null, null, false);
     schema.setFields(Lists.newArrayList(
-        new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
+        new Schema.Field("listOfLists", listOfLists, null, JsonProperties.NULL_VALUE)
     ));
     System.err.println("Avro schema: " + schema.toString(true));
 

@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.apache.avro.JsonProperties;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -31,7 +33,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.codehaus.jackson.node.NullNode;
 import org.junit.Assert;
 import org.junit.rules.TemporaryFolder;
 
@@ -48,7 +49,7 @@ public class AvroTestUtil {
   }
 
   public static Schema.Field optionalField(String name, Schema schema) {
-    return new Schema.Field(name, optional(schema), null, NullNode.getInstance());
+    return new Schema.Field(name, optional(schema), null, JsonProperties.NULL_VALUE);
   }
 
   public static Schema array(Schema element) {

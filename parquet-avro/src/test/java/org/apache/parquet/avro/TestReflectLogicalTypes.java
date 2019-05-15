@@ -120,7 +120,7 @@ public class TestReflectLogicalTypes {
   public void testDecimalBytes() throws IOException {
     Schema schema = REFLECT.getSchema(DecimalRecordBytes.class);
     Assert.assertEquals("Should have the correct record name",
-        "org.apache.parquet.avro.TestReflectLogicalTypes$",
+        "org.apache.parquet.avro.TestReflectLogicalTypes",
         schema.getNamespace());
     Assert.assertEquals("Should have the correct record name",
         "DecimalRecordBytes",
@@ -179,7 +179,7 @@ public class TestReflectLogicalTypes {
   public void testDecimalFixed() throws IOException {
     Schema schema = REFLECT.getSchema(DecimalRecordFixed.class);
     Assert.assertEquals("Should have the correct record name",
-        "org.apache.parquet.avro.TestReflectLogicalTypes$",
+        "org.apache.parquet.avro.TestReflectLogicalTypes",
         schema.getNamespace());
     Assert.assertEquals("Should have the correct record name",
         "DecimalRecordFixed",
@@ -260,7 +260,6 @@ public class TestReflectLogicalTypes {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   public void testPairRecord() throws IOException {
     ReflectData model = new ReflectData();
     model.addLogicalTypeConversion(new Conversion<Pair>() {
@@ -298,7 +297,7 @@ public class TestReflectLogicalTypes {
 
     Schema schema = model.getSchema(PairRecord.class);
     Assert.assertEquals("Should have the correct record name",
-        "org.apache.parquet.avro.TestReflectLogicalTypes$",
+        "org.apache.parquet.avro.TestReflectLogicalTypes",
         schema.getNamespace());
     Assert.assertEquals("Should have the correct record name",
         "PairRecord",

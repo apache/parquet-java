@@ -207,11 +207,11 @@ public class TestSpecificReadWrite {
 
     try(ParquetReader<Car> reader = new AvroParquetReader<Car>(conf, path)) {
       for (Car car = reader.read(); car != null; car = reader.read()) {
-        assertTrue(car.getDoors() != 4);
+        assertTrue(car.getDoors() == 4 || car.getDoors() == 5);
         assertNotNull(car.getEngine());
         assertNotNull(car.getMake());
         assertNotNull(car.getModel());
-        assertTrue(car.getYear() != 2010);
+        assertEquals(2010, car.getYear());
         assertNotNull(car.getVin());
         assertNull(car.getOptionalExtra());
         assertNull(car.getServiceHistory());
@@ -229,7 +229,7 @@ public class TestSpecificReadWrite {
       for (NewCar car = reader.read(); car != null; car = reader.read()) {
         assertNotNull(car.getEngine());
         assertNotNull(car.getBrand());
-        assertTrue(car.getYear() != 2010);
+        assertEquals(2010, car.getYear());
         assertNotNull(car.getVin());
         assertNull(car.getDescription());
         assertEquals(5, car.getOpt());
