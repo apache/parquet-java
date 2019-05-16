@@ -305,25 +305,30 @@ public abstract class BaseCommand implements Command, Configurable {
         // TODO: add these to the reader builder
         AvroReadSupport.setRequestedProjection(conf, projection);
         AvroReadSupport.setAvroReadSchema(conf, projection);
-        final ParquetReader<D> parquet = AvroParquetReader.<D>builder(qualifiedPath(source))
+        try(final ParquetReader<D> parquet = AvroParquetReader.<D>builder(qualifiedPath(source))
             .disableCompatibility()
             .withDataModel(GenericData.get())
             .withConf(conf)
-            .build();
-        return new Iterable<D>() {
+            .build()) {
+        return new Iterable<D>()
+        {
           @Override
-          public Iterator<D> iterator() {
-            return new Iterator<D>() {
+          public Iterator<D> iterator()
+          {
+            return new Iterator<D>()
+            {
               private boolean hasNext = false;
               private D next = advance();
 
               @Override
-              public boolean hasNext() {
+              public boolean hasNext()
+              {
                 return hasNext;
               }
 
               @Override
-              public D next() {
+              public D next()
+              {
                 if (!hasNext) {
                   throw new NoSuchElementException();
                 }
@@ -332,24 +337,27 @@ public abstract class BaseCommand implements Command, Configurable {
                 return toReturn;
               }
 
-              private D advance() {
+              private D advance()
+              {
                 try {
                   D next = parquet.read();
                   this.hasNext = (next != null);
                   return next;
                 } catch (IOException e) {
                   throw new RuntimeException(
-                      "Failed while reading Parquet file: " + source, e);
+                    "Failed while reading Parquet file: " + source, e);
                 }
               }
 
               @Override
-              public void remove() {
+              public void remove()
+              {
                 throw new UnsupportedOperationException("Remove is not supported");
               }
             };
           }
         };
+        }
 
       case AVRO:
         Iterable<D> avroReader = (Iterable<D>) DataFileReader.openReader(
