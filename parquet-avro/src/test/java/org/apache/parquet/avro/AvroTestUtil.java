@@ -81,7 +81,6 @@ public class AvroTestUtil {
     Configuration conf = new Configuration(false);
     AvroReadSupport.setRequestedProjection(conf, schema);
     AvroReadSupport.setAvroReadSchema(conf, schema);
-    // reflect disables compatibility
 
     try (ParquetReader<D> fileReader = AvroParquetReader
       .<D>builder(new Path(file.toString()))
