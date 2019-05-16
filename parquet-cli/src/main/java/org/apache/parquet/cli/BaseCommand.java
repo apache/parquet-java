@@ -310,25 +310,20 @@ public abstract class BaseCommand implements Command, Configurable {
             .withDataModel(GenericData.get())
             .withConf(conf)
             .build()) {
-        return new Iterable<D>()
-        {
+        return new Iterable<D>() {
           @Override
-          public Iterator<D> iterator()
-          {
-            return new Iterator<D>()
-            {
+          public Iterator<D> iterator() {
+            return new Iterator<D>() {
               private boolean hasNext = false;
               private D next = advance();
 
               @Override
-              public boolean hasNext()
-              {
+              public boolean hasNext() {
                 return hasNext;
               }
 
               @Override
-              public D next()
-              {
+              public D next() {
                 if (!hasNext) {
                   throw new NoSuchElementException();
                 }
@@ -337,8 +332,7 @@ public abstract class BaseCommand implements Command, Configurable {
                 return toReturn;
               }
 
-              private D advance()
-              {
+              private D advance() {
                 try {
                   D next = parquet.read();
                   this.hasNext = (next != null);
@@ -350,8 +344,7 @@ public abstract class BaseCommand implements Command, Configurable {
               }
 
               @Override
-              public void remove()
-              {
+              public void remove() {
                 throw new UnsupportedOperationException("Remove is not supported");
               }
             };
