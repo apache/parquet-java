@@ -305,11 +305,11 @@ public abstract class BaseCommand implements Command, Configurable {
         // TODO: add these to the reader builder
         AvroReadSupport.setRequestedProjection(conf, projection);
         AvroReadSupport.setAvroReadSchema(conf, projection);
-        try(final ParquetReader<D> parquet = AvroParquetReader.<D>builder(qualifiedPath(source))
+        final ParquetReader<D> parquet = AvroParquetReader.<D>builder(qualifiedPath(source))
             .disableCompatibility()
             .withDataModel(GenericData.get())
             .withConf(conf)
-            .build()) {
+            .build();
         return new Iterable<D>() {
           @Override
           public Iterator<D> iterator() {
@@ -339,7 +339,7 @@ public abstract class BaseCommand implements Command, Configurable {
                   return next;
                 } catch (IOException e) {
                   throw new RuntimeException(
-                    "Failed while reading Parquet file: " + source, e);
+                      "Failed while reading Parquet file: " + source, e);
                 }
               }
 
@@ -350,7 +350,6 @@ public abstract class BaseCommand implements Command, Configurable {
             };
           }
         };
-        }
 
       case AVRO:
         Iterable<D> avroReader = (Iterable<D>) DataFileReader.openReader(
