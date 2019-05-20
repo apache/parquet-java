@@ -26,6 +26,7 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 
 public class InternalFileDecryptor {
@@ -46,8 +47,14 @@ public class InternalFileDecryptor {
   private BlockCipher.Decryptor aesGcmDecryptorWithFooterKey;
   private BlockCipher.Decryptor aesCtrDecryptorWithFooterKey;
   private boolean plaintextFile;
+  private LinkedList<AesDecryptor> allDecryptors;
 
   public InternalFileDecryptor(FileDecryptionProperties fileDecryptionProperties) throws IOException {
+    
+    if (fileDecryptionProperties.isUtilized()) {
+      throw new IOException("Re-using decryption properties with explicit keys for another file");
+    }
+    fileDecryptionProperties.setUtilized();
     this.fileDecryptionProperties= fileDecryptionProperties;
     checkPlaintextFooterIntegrity = fileDecryptionProperties.checkFooterIntegrity();
     footerKey = fileDecryptionProperties.getFooterKey();
@@ -56,17 +63,18 @@ public class InternalFileDecryptor {
     columnMap = new HashMap<ColumnPath, InternalColumnDecryptionSetup>();
     this.aadPrefixVerifier = fileDecryptionProperties.getAADPrefixVerifier();
     this.plaintextFile = false;
+    allDecryptors = new LinkedList<AesDecryptor>();
   }
   
   private BlockCipher.Decryptor getThriftModuleDecryptor(byte[] columnKey) throws IOException {
     if (null == columnKey) { // Decryptor with footer key
       if (null == aesGcmDecryptorWithFooterKey) {
-        aesGcmDecryptorWithFooterKey = new AesDecryptor(AesEncryptor.Mode.GCM, footerKey);
+        aesGcmDecryptorWithFooterKey = new AesDecryptor(AesEncryptor.Mode.GCM, footerKey, allDecryptors);
       }
       return aesGcmDecryptorWithFooterKey;
     }
     else { // Decryptor with column key
-      return new AesDecryptor(AesEncryptor.Mode.GCM, columnKey);
+      return new AesDecryptor(AesEncryptor.Mode.GCM, columnKey, allDecryptors);
     }
   }
   
@@ -77,12 +85,12 @@ public class InternalFileDecryptor {
     // AES_GCM_CTR_V1
     if (null == columnKey) { // Decryptor with footer key
       if (null == aesCtrDecryptorWithFooterKey) {
-        aesCtrDecryptorWithFooterKey = new AesDecryptor(AesEncryptor.Mode.CTR, footerKey);
+        aesCtrDecryptorWithFooterKey = new AesDecryptor(AesEncryptor.Mode.CTR, footerKey, allDecryptors);
       }
       return aesCtrDecryptorWithFooterKey;
     }
     else { // Decryptor with column key
-      return new AesDecryptor(AesEncryptor.Mode.CTR, columnKey);
+      return new AesDecryptor(AesEncryptor.Mode.CTR, columnKey, allDecryptors);
     }
   }
 
@@ -266,7 +274,7 @@ public class InternalFileDecryptor {
       throw new IOException("Requesting signed footer encryptor in file with encrypted footer");
     }
     if (null == footerKey) throw new IOException("Footer key unavailable");
-    return new AesEncryptor(AesEncryptor.Mode.GCM, footerKey);
+    return new AesEncryptor(AesEncryptor.Mode.GCM, footerKey, null);
   }
 
   public boolean checkFooterIntegrity() {
@@ -283,6 +291,13 @@ public class InternalFileDecryptor {
 
   public boolean plaintextFile() {
     return plaintextFile;
+  }
+  
+  public void wipeOutDecryptionKeys() throws IOException {
+    fileDecryptionProperties.wipeOutDecryptionKeys();
+    for (AesDecryptor decryptor : allDecryptors) {
+      decryptor.wipeOut();
+    }
   }
 }
 

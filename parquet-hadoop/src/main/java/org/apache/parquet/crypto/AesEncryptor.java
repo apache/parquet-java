@@ -21,11 +21,11 @@ package org.apache.parquet.crypto;
 
 
 import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
+import javax.security.auth.DestroyFailedException;
 
+import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.format.BlockCipher;
 
@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.LinkedList;
 
 public class AesEncryptor implements BlockCipher.Encryptor{
 
@@ -52,16 +53,16 @@ public class AesEncryptor implements BlockCipher.Encryptor{
 
   public static final int NONCE_LENGTH = 12;
   public static final int GCM_TAG_LENGTH = 16;
+  public static final int SIZE_LENGTH = 4;
   
   static final int CTR_IV_LENGTH = 16;
   static final int CHUNK_LENGTH = 4 * 1024;
-  static final int INT_LENGTH = 4;
   static final int AAD_FILE_UNIQUE_LENGTH = 8;
 
-  private final SecretKey aesKey;
+  private EncryptionKey aesKey;
   private final SecureRandom randomGenerator;
   private final int tagLength;
-  private final Cipher aesCipher;
+  private Cipher aesCipher;
   private final Mode aesMode;
   private final byte[] ctrIV;
   private final byte[] localNonce;
@@ -70,14 +71,16 @@ public class AesEncryptor implements BlockCipher.Encryptor{
    * 
    * @param mode GCM or CTR
    * @param keyBytes encryption key
+   * @param allEncryptors 
    * @throws IllegalArgumentException
    * @throws IOException
    */
-  public AesEncryptor(Mode mode, byte[] keyBytes) throws IllegalArgumentException, IOException {
+  public AesEncryptor(Mode mode, byte[] keyBytes, LinkedList<AesEncryptor> allEncryptors) throws IllegalArgumentException, IOException {
     if (null == keyBytes) {
       throw new IllegalArgumentException("Null key bytes");
     }
-    aesKey = new SecretKeySpec(keyBytes, "AES");
+    aesKey = new EncryptionKey(keyBytes);
+    
     randomGenerator = new SecureRandom();
     aesMode = mode;
     
@@ -104,6 +107,7 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     }
     
     localNonce = new byte[NONCE_LENGTH];
+    if (null != allEncryptors) allEncryptors.add(this);
   }
 
   @Override
@@ -137,7 +141,7 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     if (nonce.length != NONCE_LENGTH) throw new IOException("Wrong nonce length " + nonce.length);
     int plainTextLength = plainText.length;
     int cipherTextLength = NONCE_LENGTH + plainTextLength + tagLength;
-    int lengthBufferLength = (writeLength? INT_LENGTH: 0);
+    int lengthBufferLength = (writeLength? SIZE_LENGTH: 0);
     byte[] cipherText = new byte[lengthBufferLength + cipherTextLength];
     int inputLength = plainTextLength;
     int inputOffset = 0;
@@ -227,6 +231,16 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     output[1] = (byte)(0xff & (input >> 8));
     output[0] = (byte)(0xff & (input));
     return output;
+  }
+
+  public void wipeOut() {
+    
+    try {
+      aesKey.destroy();
+    } catch (DestroyFailedException e) {
+      throw new ShouldNeverHappenException(e);
+    }
+    aesCipher = null; // dereference for GC
   }
 }
 

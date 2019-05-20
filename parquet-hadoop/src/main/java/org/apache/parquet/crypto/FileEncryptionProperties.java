@@ -23,6 +23,7 @@ package org.apache.parquet.crypto;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,12 +43,17 @@ public class FileEncryptionProperties {
   private final byte[] footerKeyMetadata;
   private final byte[] fileAAD;
   private final Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap;
+  private boolean utilized;
 
   
   private FileEncryptionProperties(ParquetCipher cipher, 
       byte[] footerKey, byte[] footerKeyMetadata, boolean encryptedFooter,
       byte[] aadPrefix, boolean storeAadPrefixInFile,
       Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap) {
+    
+    // file encryption properties object can be used for writing only one file.
+    // Upon completion of file writing, the encryption keys in the properties will be wiped out (set to 0 in memory).
+    utilized = false;
     
     if (null == footerKey) {
       throw new IllegalArgumentException("Footer key is null");
@@ -98,6 +104,11 @@ public class FileEncryptionProperties {
   }
   
   /**
+   * New encryption properties object must be created for each encrypted file.
+   * Encryption keys (footer and column) are cloned.
+   * Upon completion of file writing, the cloned encryption keys in the properties will 
+   * be wiped out (array values set to 0).
+   * Caller is responsible for wiping out the input key array. 
    * 
    * @param keyBytes Encryption key for file footer and some (or all) columns. 
    * Key length must be either 16, 24 or 32 bytes.
@@ -109,7 +120,7 @@ public class FileEncryptionProperties {
   
   
   public static class Builder {
-    private byte[] footerKey;
+    private byte[] footerKeyBytes;
     private boolean encryptedFooter;
     private ParquetCipher parquetCipher;
     private byte[] footerKeyMetadata;
@@ -121,7 +132,8 @@ public class FileEncryptionProperties {
     private Builder(byte[] footerKey) {
       this.parquetCipher = ALGORITHM_DEFAULT;
       this.encryptedFooter = ENCRYPTED_FOOTER_DEFAULT;
-      this.footerKey = footerKey;
+      this.footerKeyBytes = new byte[footerKey.length];
+      System.arraycopy(footerKey, 0, this.footerKeyBytes, 0, footerKey.length);
     }
     
     /**
@@ -196,6 +208,9 @@ public class FileEncryptionProperties {
      * If not called, and if AAD Prefix is set, it will be stored.
      */
     public Builder withoutAADPrefixStorage() {
+      if (null == this.aadPrefix) {
+        throw new IllegalArgumentException("AAD Prefix not yet set");
+      }
       this.storeAadPrefixInFile = false;
       return this;
     }
@@ -214,6 +229,12 @@ public class FileEncryptionProperties {
       if (null != this.columnPropertyMap) {
         throw new IllegalArgumentException("Column properties already set");
       }
+      for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : encryptedColumns.entrySet()) {
+        if(entry.getValue().isUtilized()) {
+          throw new IllegalArgumentException("Column properties re-used in another file");
+        }
+        entry.getValue().setUtilized();
+      }
       // Copy the map to make column properties immutable
       this.columnPropertyMap = new HashMap<ColumnPath, ColumnEncryptionProperties>(encryptedColumns);
       return this;
@@ -221,7 +242,7 @@ public class FileEncryptionProperties {
     
     public FileEncryptionProperties build() {
       return new FileEncryptionProperties(parquetCipher, 
-          footerKey, footerKeyMetadata, encryptedFooter,
+          footerKeyBytes, footerKeyMetadata, encryptedFooter,
           aadPrefix, storeAadPrefixInFile, 
           columnPropertyMap);
     }
@@ -231,20 +252,12 @@ public class FileEncryptionProperties {
     return algorithm;
   }
 
-  public byte[] getFooterEncryptionKey() {
-    return (encryptedFooter? footerKey : null);
+  public byte[] getFooterKey() {
+    return footerKey;
   }
 
-  public byte[] getFooterEncryptionKeyMetadata() {
-    return (encryptedFooter? footerKeyMetadata : null);
-  }
-  
-  public byte[] getFooterSigningKey() {
-    return (encryptedFooter? null: footerKey);
-  }
-
-  public byte[] getFooterSigningKeyMetadata() {
-    return (encryptedFooter? null : footerKeyMetadata);
+  public byte[] getFooterKeyMetadata() {
+    return footerKeyMetadata;
   }
 
   public ColumnEncryptionProperties getColumnProperties(ColumnPath columnPath) {
@@ -270,5 +283,23 @@ public class FileEncryptionProperties {
 
   public boolean encryptedFooter() {
     return encryptedFooter;
+  }
+
+  boolean isUtilized() {
+    return utilized;
+  }
+
+  void setUtilized() {
+    utilized = true;
+  }
+
+  void wipeOutEncryptionKeys() {
+    Arrays.fill(footerKey, (byte)0);
+    
+    if (null != columnPropertyMap) {
+      for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnPropertyMap.entrySet()) {
+        entry.getValue().wipeOutEncryptionKey();
+      }
+    }
   }
 }

@@ -24,14 +24,15 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
+import javax.security.auth.DestroyFailedException;
 
 import static org.apache.parquet.crypto.AesEncryptor.NONCE_LENGTH;
 import static org.apache.parquet.crypto.AesEncryptor.GCM_TAG_LENGTH;
 import static org.apache.parquet.crypto.AesEncryptor.CTR_IV_LENGTH;
 import static org.apache.parquet.crypto.AesEncryptor.CHUNK_LENGTH; 
-import static org.apache.parquet.crypto.AesEncryptor.INT_LENGTH;
+import static org.apache.parquet.crypto.AesEncryptor.SIZE_LENGTH;
 
+import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.crypto.AesEncryptor.Mode;
 import org.apache.parquet.format.BlockCipher;
 
@@ -39,14 +40,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
+import java.util.LinkedList;
 
 
 public class AesDecryptor implements BlockCipher.Decryptor{
 
   private final Mode aesMode;
-  private final SecretKey aesKey;
+  private SecretKey aesKey;
   private final int tagLength;
-  private final Cipher aesCipher;
+  private Cipher aesCipher;
   private final byte[] ctrIV;
   private final byte[] nonce;
 
@@ -57,12 +59,12 @@ public class AesDecryptor implements BlockCipher.Decryptor{
    * @throws IllegalArgumentException
    * @throws IOException
    */
-  public AesDecryptor(Mode mode, byte[] keyBytes) throws IllegalArgumentException, IOException {
+  public AesDecryptor(Mode mode, byte[] keyBytes, LinkedList<AesDecryptor> allDecryptors) throws IllegalArgumentException, IOException {
     if (null == keyBytes) {
       throw new IllegalArgumentException("Null key bytes");
     }
     this.aesMode = mode;
-    aesKey = new SecretKeySpec(keyBytes, "AES");
+    aesKey = new EncryptionKey(keyBytes);
     if (Mode.GCM == mode) {
       tagLength = GCM_TAG_LENGTH;
       try {
@@ -85,12 +87,13 @@ public class AesDecryptor implements BlockCipher.Decryptor{
     }
     
     nonce = new byte[NONCE_LENGTH];
+    if (null != allDecryptors) allDecryptors.add(this);
   }
 
   @Override
   public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD)  throws IOException {
-    int cipherTextOffset = INT_LENGTH;
-    int cipherTextLength = lengthAndCiphertext.length - INT_LENGTH;
+    int cipherTextOffset = SIZE_LENGTH;
+    int cipherTextLength = lengthAndCiphertext.length - SIZE_LENGTH;
     return decrypt(lengthAndCiphertext, cipherTextOffset, cipherTextLength, AAD);
   }
   
@@ -149,12 +152,12 @@ public class AesDecryptor implements BlockCipher.Decryptor{
 
   @Override
   public byte[] decryptInputStream(InputStream from, byte[] AAD) throws IOException {
-    byte[] lengthBuffer = new byte[INT_LENGTH];
+    byte[] lengthBuffer = new byte[SIZE_LENGTH];
     int gotBytes = 0;
     
     // Read the length of encrypted Thrift structure
-    while (gotBytes < INT_LENGTH) {
-      int n = from.read(lengthBuffer, gotBytes, INT_LENGTH - gotBytes);
+    while (gotBytes < SIZE_LENGTH) {
+      int n = from.read(lengthBuffer, gotBytes, SIZE_LENGTH - gotBytes);
       if (n <= 0) {
         throw new IOException("Tried to read int (4 bytes), but only got " + gotBytes + " bytes.");
       }
@@ -180,6 +183,15 @@ public class AesDecryptor implements BlockCipher.Decryptor{
     }
     // Decrypt the structure contents
    return decrypt(ciphertextBuffer, 0, ciphertextLength, AAD);
+  }
+  
+  void wipeOut() {
+    try {
+      aesKey.destroy();
+    } catch (DestroyFailedException e) {
+      throw new ShouldNeverHappenException(e);
+    }
+    aesCipher = null; // dereference for GC
   }
 }
 

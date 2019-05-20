@@ -19,6 +19,8 @@
 
 package org.apache.parquet.crypto;
 
+import java.util.Arrays;
+
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 /**
@@ -30,6 +32,8 @@ public class ColumnDecryptionProperties {
   
   private final ColumnPath columnPath;
   private final byte[] keyBytes;
+  
+  private boolean utilized;
   
   private ColumnDecryptionProperties(ColumnPath columnPath, byte[] keyBytes) {
     if (null == columnPath) {
@@ -43,6 +47,7 @@ public class ColumnDecryptionProperties {
     
     this.columnPath = columnPath;
     this.keyBytes = keyBytes;
+    this.utilized = false;
   }
   
   /**
@@ -76,16 +81,21 @@ public class ColumnDecryptionProperties {
      * the metadata will be ignored, the column will be decrypted with this key.
      * However, if the column was encrypted with the footer key, it will also be decrypted with the
      * footer key, and the column key passed in this method will be ignored.
-     * @param keyBytes Key length must be either 16, 24 or 32 bytes.
+     * 
+     * The key is cloned, and will be wiped out (array values set to 0) upon completion of file reading.
+     * Caller is responsible for wiping out the input key array. 
+     * 
+     * @param columnKey Key length must be either 16, 24 or 32 bytes.
      */
-    public Builder withKey(byte[] keyBytes) {
-      if (null == keyBytes) {
+    public Builder withKey(byte[] columnKey) {
+      if (null == columnKey) {
         return this;
       }
       if (null != this.keyBytes) {
         throw new IllegalArgumentException("Key already set on column: " + columnPath);
       }
-      this.keyBytes = keyBytes;
+      this.keyBytes = new byte[columnKey.length];
+      System.arraycopy(columnKey, 0, this.keyBytes, 0, columnKey.length);
       return this;
     }
     
@@ -100,5 +110,24 @@ public class ColumnDecryptionProperties {
 
   public byte[] getKeyBytes() {
     return keyBytes;
+  }
+
+  boolean isUtilized() {
+    return utilized;
+  }
+
+  void setUtilized() {
+    utilized = true;
+  }
+
+  void wipeOutDecryptionKey() {
+    if (null != keyBytes) {
+      Arrays.fill(keyBytes, (byte)0);
+    }
+  }
+
+  ColumnDecryptionProperties deepClone() {
+    byte[] columnKeyBytes = (null == keyBytes?null:keyBytes.clone());
+    return new ColumnDecryptionProperties(columnPath, columnKeyBytes);
   }
 }

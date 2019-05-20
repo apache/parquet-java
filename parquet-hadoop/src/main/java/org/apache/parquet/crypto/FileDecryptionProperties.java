@@ -20,6 +20,7 @@
 
 package org.apache.parquet.crypto;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,6 +38,8 @@ public class FileDecryptionProperties {
   private final Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap;
   private final boolean checkPlaintextFooterIntegrity;
   private final boolean allowPlaintextFiles;
+  
+  private boolean utilized;
   
   private FileDecryptionProperties(byte[] footerKey, DecryptionKeyRetriever keyRetriever,
       boolean checkPlaintextFooterIntegrity,  byte[] aadPrefix, AADPrefixVerifier aadPrefixVerifier,
@@ -61,6 +64,7 @@ public class FileDecryptionProperties {
     this.columnPropertyMap = columnPropertyMap;
     this.aadPrefixVerifier = aadPrefixVerifier;
     this.allowPlaintextFiles = allowPlaintextFiles;
+    this.utilized = false;
   }
 
   public static Builder builder() {
@@ -68,7 +72,7 @@ public class FileDecryptionProperties {
   }
   
   public static class Builder {
-    private byte[] footerKey;
+    private byte[] footerKeyBytes;
     private DecryptionKeyRetriever keyRetriever;
     private byte[] aadPrefixBytes;
     private AADPrefixVerifier aadPrefixVerifier;
@@ -85,16 +89,23 @@ public class FileDecryptionProperties {
      * Set an explicit footer key. If applied on a file that contains footer key metadata - 
      * the metadata will be ignored, the footer will be decrypted/verified with this key.
      * If explicit key is not set, footer key will be fetched from key retriever.
+     * 
+     * With explicit keys or AAD prefix, new encryption properties object must be created for each encrypted file.
+     * Explicit encryption keys (footer and column) are cloned.
+     * Upon completion of file reading, the cloned encryption keys in the properties will 
+     * be wiped out (array values set to 0).
+     * Caller is responsible for wiping out the input key array. 
      * @param footerKey Key length must be either 16, 24 or 32 bytes. 
      */
     public Builder withFooterKey(byte[] footerKey) {
       if (null == footerKey) {
         return this;
       }
-      if (null != this.footerKey) {
+      if (null != this.footerKeyBytes) {
         throw new IllegalArgumentException("Footer key already set");
       }
-      this.footerKey = footerKey;
+      this.footerKeyBytes = new byte[footerKey.length];
+      System.arraycopy(footerKey, 0, this.footerKeyBytes, 0, footerKey.length);
       return this;
     }
 
@@ -113,6 +124,12 @@ public class FileDecryptionProperties {
       }
       if (null != this.columnPropertyMap) {
         throw new IllegalArgumentException("Column properties already set");
+      }
+      for (Map.Entry<ColumnPath, ColumnDecryptionProperties> entry : columnProperties.entrySet()) {
+        if(entry.getValue().isUtilized()) {
+          throw new IllegalArgumentException("Column properties re-used in another file");
+        }
+        entry.getValue().setUtilized();
       }
       // Copy the map to make column properties immutable
       this.columnPropertyMap = new HashMap<ColumnPath, ColumnDecryptionProperties>(columnProperties);
@@ -199,7 +216,7 @@ public class FileDecryptionProperties {
     }
     
     public FileDecryptionProperties build() {
-      return new FileDecryptionProperties(footerKey, keyRetriever, checkPlaintextFooterIntegrity, 
+      return new FileDecryptionProperties(footerKeyBytes, keyRetriever, checkPlaintextFooterIntegrity, 
           aadPrefixBytes, aadPrefixVerifier, columnPropertyMap, plaintextFilesAllowed);
     }
   }
@@ -233,5 +250,41 @@ public class FileDecryptionProperties {
 
   AADPrefixVerifier getAADPrefixVerifier() {
     return aadPrefixVerifier;
+  }
+
+  void wipeOutDecryptionKeys() {
+    if (null != footerKey) Arrays.fill(footerKey, (byte)0);
+    
+    if (null != columnPropertyMap) {
+      for (Map.Entry<ColumnPath, ColumnDecryptionProperties> entry : columnPropertyMap.entrySet()) {
+        entry.getValue().wipeOutDecryptionKey();
+      }
+    }
+  }
+
+  boolean isUtilized() {
+    if (null == footerKey && null == columnPropertyMap && null == aadPrefix) return false;
+    
+    return utilized;
+  }
+
+  void setUtilized() {
+    utilized = true;
+  }
+
+  public FileDecryptionProperties deepCopy() {
+    
+    byte[] footerKeyBytes = (null == footerKey?null:footerKey.clone());
+    Map<ColumnPath, ColumnDecryptionProperties> columnProps = null;
+    if (null != columnPropertyMap) {
+      columnProps = new HashMap<ColumnPath, ColumnDecryptionProperties>();
+      for (Map.Entry<ColumnPath, ColumnDecryptionProperties> entry : columnPropertyMap.entrySet()) {
+        columnProps.put(entry.getKey(), entry.getValue().deepClone());
+      }
+    }
+    
+    return new FileDecryptionProperties(footerKeyBytes, keyRetriever,
+        checkPlaintextFooterIntegrity,  aadPrefix, aadPrefixVerifier,
+        columnProps, allowPlaintextFiles);
   }
 }
