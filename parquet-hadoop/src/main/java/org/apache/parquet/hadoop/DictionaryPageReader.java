@@ -122,13 +122,6 @@ class DictionaryPageReader implements DictionaryPageReadStore {
   }
 
   private boolean hasDictionaryPage(ColumnChunkMetaData column) {
-    EncodingStats stats = column.getEncodingStats();
-    if (stats != null) {
-      // ensure there is a dictionary page and that it is used to encode data pages
-      return stats.hasDictionaryPages() && stats.hasDictionaryEncodedPages();
-    }
-
-    Set<Encoding> encodings = column.getEncodings();
-    return (encodings.contains(PLAIN_DICTIONARY) || encodings.contains(RLE_DICTIONARY));
+    return column.hasDictionaryPage();
   }
 }

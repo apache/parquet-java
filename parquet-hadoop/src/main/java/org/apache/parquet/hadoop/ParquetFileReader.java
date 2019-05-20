@@ -21,10 +21,12 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTIONARY;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
+import static org.apache.parquet.format.Util.readFileCryptoMetaData;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
 import static org.apache.parquet.hadoop.ColumnIndexFilterUtils.calculateOffsetRanges;
 import static org.apache.parquet.hadoop.ColumnIndexFilterUtils.filterOffsetIndex;
+import static org.apache.parquet.hadoop.ParquetFileWriter.EFMAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
@@ -70,11 +72,17 @@ import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
+import org.apache.parquet.crypto.AesEncryptor;
+import org.apache.parquet.crypto.FileDecryptionProperties;
+import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
+import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
+import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
+import org.apache.parquet.format.FileCryptoMetaData;
 import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -114,6 +122,8 @@ public class ParquetFileReader implements Closeable {
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
   private final ParquetMetadataConverter converter;
+
+  private InternalFileDecryptor fileDecryptor = null;
 
   /**
    * for files provided, check if there's a summary file.
@@ -442,7 +452,12 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public static final ParquetMetadata readFooter(Configuration configuration, Path file) throws IOException {
-    return readFooter(configuration, file, NO_FILTER);
+    return readFooter(configuration, file, (FileDecryptionProperties) null);
+  }
+  @Deprecated
+  public static final ParquetMetadata readFooter(Configuration configuration, Path file, 
+      FileDecryptionProperties fileDecryptionProperties) throws IOException {
+    return readFooter(configuration, file, NO_FILTER, fileDecryptionProperties);
   }
 
   /**
@@ -457,7 +472,12 @@ public class ParquetFileReader implements Closeable {
    *             use {@link ParquetFileReader#open(InputFile, ParquetReadOptions)}
    */
   public static ParquetMetadata readFooter(Configuration configuration, Path file, MetadataFilter filter) throws IOException {
-    return readFooter(HadoopInputFile.fromPath(file, configuration), filter);
+    return readFooter(configuration, file, filter, (FileDecryptionProperties) null);
+  }
+
+  public static ParquetMetadata readFooter(Configuration configuration, Path file, MetadataFilter filter, 
+      FileDecryptionProperties fileDecryptionProperties) throws IOException {
+    return readFooter(HadoopInputFile.fromPath(file, configuration), filter, fileDecryptionProperties);
   }
 
   /**
@@ -499,6 +519,12 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public static final ParquetMetadata readFooter(InputFile file, MetadataFilter filter) throws IOException {
+    return readFooter(file, filter, (FileDecryptionProperties) null);
+  }
+
+  @Deprecated
+  public static final ParquetMetadata readFooter(InputFile file, MetadataFilter filter, 
+      FileDecryptionProperties fileDecryptionProperties) throws IOException {
     ParquetReadOptions options;
     if (file instanceof HadoopInputFile) {
       options = HadoopReadOptions.builder(((HadoopInputFile) file).getConfiguration())
@@ -508,40 +534,80 @@ public class ParquetFileReader implements Closeable {
     }
 
     try (SeekableInputStream in = file.newStream()) {
-      return readFooter(file, options, in);
+      return readFooter(file, options, in, fileDecryptionProperties);
     }
   }
 
-  private static final ParquetMetadata readFooter(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
+  private static final ParquetMetadata readFooter(InputFile file, ParquetReadOptions options, SeekableInputStream f, 
+      FileDecryptionProperties fileDecryptionProperties) throws IOException {
     ParquetMetadataConverter converter = new ParquetMetadataConverter(options);
-    return readFooter(file, options, f, converter);
+    return readFooter(file, options, f, converter, fileDecryptionProperties, (InternalFileDecryptor) null);
   }
 
-  private static final ParquetMetadata readFooter(InputFile file, ParquetReadOptions options, SeekableInputStream f, ParquetMetadataConverter converter) throws IOException {
+  private static final ParquetMetadata readFooter(InputFile file, ParquetReadOptions options, 
+      SeekableInputStream f, ParquetMetadataConverter converter, 
+      FileDecryptionProperties fileDecryptionProperties, InternalFileDecryptor fileDecryptor) throws IOException {
+
     long fileLen = file.getLength();
     String filePath = file.toString();
     LOG.debug("File length {}", fileLen);
+
     int FOOTER_LENGTH_SIZE = 4;
     if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
-      throw new RuntimeException(filePath + " is not a Parquet file (too small length: " + fileLen + ")");
+      throw new RuntimeException(filePath + " is not a Parquet file (length is too low: " + fileLen + ")");
     }
-    long footerLengthIndex = fileLen - FOOTER_LENGTH_SIZE - MAGIC.length;
-    LOG.debug("reading footer index at {}", footerLengthIndex);
 
-    f.seek(footerLengthIndex);
-    int footerLength = readIntLittleEndian(f);
+    // Read footer length and magic string - with a single seek
     byte[] magic = new byte[MAGIC.length];
+    long fileMetadataLengthIndex = fileLen - magic.length - FOOTER_LENGTH_SIZE;
+    LOG.debug("reading footer index at {}", fileMetadataLengthIndex);
+    f.seek(fileMetadataLengthIndex);
+    int fileMetadataLength = readIntLittleEndian(f);
     f.readFully(magic);
-    if (!Arrays.equals(MAGIC, magic)) {
-      throw new RuntimeException(filePath + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+
+    boolean encryptedFooterMode;
+    if (Arrays.equals(MAGIC, magic)) {
+      encryptedFooterMode = false;
     }
-    long footerIndex = footerLengthIndex - footerLength;
-    LOG.debug("read footer length: {}, footer index: {}", footerLength, footerIndex);
-    if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
-      throw new RuntimeException("corrupted file: the footer index is not within the file: " + footerIndex);
+    else if (Arrays.equals(EFMAGIC, magic)) {
+      encryptedFooterMode = true;
     }
-    f.seek(footerIndex);
-    return converter.readParquetMetadata(f, options.getMetadataFilter());
+    else {
+      throw new RuntimeException(filePath + " is not a Parquet file. Expected magic number at tail, but found " + Arrays.toString(magic));
+    }
+
+    long fileMetadataIndex = fileMetadataLengthIndex - fileMetadataLength;
+    LOG.debug("read footer length: {}, footer index: {}", fileMetadataLength, fileMetadataIndex);
+    if (fileMetadataIndex < magic.length || fileMetadataIndex >= fileMetadataLengthIndex) {
+      throw new RuntimeException("corrupted file: the footer index is not within the file: " + fileMetadataIndex);
+    }
+    f.seek(fileMetadataIndex);
+
+    boolean wipeDecryptor = false;
+    if (null == fileDecryptor && null != fileDecryptionProperties) { // reading footer only
+      fileDecryptor = new InternalFileDecryptor(fileDecryptionProperties.deepCopy()); // cant re-use same props. will be wiped out.
+      wipeDecryptor = true;
+    }
+
+    // Regular file, or encrypted file with plaintext footer
+    if (!encryptedFooterMode) {
+      ParquetMetadata result = converter.readParquetMetadata(f, options.getMetadataFilter(), fileDecryptor, false, 
+          fileMetadataIndex, fileMetadataLength);
+      if (wipeDecryptor) fileDecryptor.wipeOutDecryptionKeys();
+      return result;
+    }
+
+    // Encrypted file with encrypted footer
+    if (null == fileDecryptor) {
+      throw new RuntimeException("Trying to read file with encrypted footer. No keys available");
+    }
+    FileCryptoMetaData fileCryptoMetaData = readFileCryptoMetaData(f);
+    fileDecryptor.setFileCryptoMetaData(fileCryptoMetaData.getEncryption_algorithm(), 
+        true, fileCryptoMetaData.getKey_metadata());
+    // footer offset and length required only for signed plaintext footers
+    ParquetMetadata result =  converter.readParquetMetadata(f, options.getMetadataFilter(), fileDecryptor, true, 0, 0); 
+    if (wipeDecryptor) fileDecryptor.wipeOutDecryptionKeys();
+    return result;
   }
 
   /**
@@ -604,8 +670,13 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if there is an error while opening the file
    */
   public static ParquetFileReader open(InputFile file, ParquetReadOptions options) throws IOException {
-    return new ParquetFileReader(file, options);
+    return open(file, options, (FileDecryptionProperties) null);
   }
+
+  public static ParquetFileReader open(InputFile file, ParquetReadOptions options, FileDecryptionProperties fileDecryptionProperties) throws IOException {
+    return new ParquetFileReader(file, options, fileDecryptionProperties);
+  }
+
 
   private final InputFile file;
   private final SeekableInputStream f;
@@ -633,7 +704,7 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public ParquetFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks,
-                           List<ColumnDescriptor> columns) throws IOException {
+      List<ColumnDescriptor> columns) throws IOException {
     this(configuration, null, filePath, blocks, columns);
   }
 
@@ -700,17 +771,28 @@ public class ParquetFileReader implements Closeable {
   }
 
   public ParquetFileReader(InputFile file, ParquetReadOptions options) throws IOException {
+    this(file, options, (FileDecryptionProperties) null);
+  }
+
+  public ParquetFileReader(InputFile file, ParquetReadOptions options, FileDecryptionProperties fileDecryptionProperties) throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
     this.f = file.newStream();
     this.options = options;
+    if (null != fileDecryptionProperties) {
+      fileDecryptor = new InternalFileDecryptor(fileDecryptionProperties);
+    }
     try {
-      this.footer = readFooter(file, options, f, converter);
+      this.footer = readFooter(file, options, f, converter, fileDecryptionProperties, fileDecryptor);
     } catch (Exception e) {
       // In case that reading footer throws an exception in the constructor, the new stream
       // should be closed. Otherwise, there's no way to close this outside.
       f.close();
       throw e;
+    }
+    if (null != fileDecryptionProperties && fileDecryptor.plaintextFile() && fileDecryptor.plaintextFilesAllowed()) {
+      // Plaintext file. No need in decryptor
+      fileDecryptor = null;
     }
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = filterRowGroups(footer.getBlocks());
@@ -729,7 +811,7 @@ public class ParquetFileReader implements Closeable {
     if (footer == null) {
       try {
         // don't read the row groups because this.blocks is always set
-        this.footer = readFooter(file, options, f, converter);
+        this.footer = readFooter(file, options, f, converter, (FileDecryptionProperties) null, fileDecryptor);
       } catch (IOException e) {
         throw new ParquetDecodingException("Unable to read file footer", e);
       }
@@ -830,16 +912,27 @@ public class ParquetFileReader implements Closeable {
     ConsecutivePartList currentParts = null;
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
-      BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
+      if (!mc.isHiddenColumn()) {
+        BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
+      }
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
-        long startingPos = mc.getStartingPos();
-        // first part or not consecutive => new list
-        if (currentParts == null || currentParts.endPos() != startingPos) {
-          currentParts = new ConsecutivePartList(startingPos);
-          allParts.add(currentParts);
+        if (!mc.isHiddenColumn()) { 
+          long startingPos = mc.getStartingPos();
+          // first part or not consecutive => new list
+          if (currentParts == null || currentParts.endPos() != startingPos) {
+            currentParts = new ConsecutivePartList(startingPos);
+            allParts.add(currentParts);
+          }
+          currentParts.addChunk(new ChunkDescriptor(columnDescriptor, mc, false, startingPos, (int)mc.getTotalSize(), (ArrayList<Short>)null));
         }
-        currentParts.addChunk(new ChunkDescriptor(columnDescriptor, mc, startingPos, (int)mc.getTotalSize()));
+        else {
+          if (currentParts == null) {
+            currentParts = new ConsecutivePartList(0); // First column(s) is (are) hidden
+            allParts.add(currentParts);
+          }
+          currentParts.addChunk(new ChunkDescriptor(columnDescriptor, mc, true, -1, -1, (ArrayList<Short>)null)); // hidden column chunk
+        }
       }
     }
     // actually read all the chunks
@@ -848,7 +941,7 @@ public class ParquetFileReader implements Closeable {
       consecutiveChunks.readAll(f, builder);
     }
     for (Chunk chunk : builder.build()) {
-      currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
+      readChunkPages(chunk, block);
     }
 
     // avoid re-reading bytes the dictionary reader is used after this call
@@ -900,26 +993,36 @@ public class ParquetFileReader implements Closeable {
     ChunkListBuilder builder = new ChunkListBuilder();
     List<ConsecutivePartList> allParts = new ArrayList<ConsecutivePartList>();
     ConsecutivePartList currentParts = null;
+
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
-      if (columnDescriptor != null) {
-        OffsetIndex offsetIndex = ciStore.getOffsetIndex(mc.getPath());
-
-        OffsetIndex filteredOffsetIndex = filterOffsetIndex(offsetIndex, rowRanges,
-            block.getRowCount());
-        for (OffsetRange range : calculateOffsetRanges(filteredOffsetIndex, mc, offsetIndex.getOffset(0))) {
-          BenchmarkCounter.incrementTotalBytes(range.getLength());
-          long startingPos = range.getOffset();
-          // first part or not consecutive => new list
-          if (currentParts == null || currentParts.endPos() != startingPos) {
-            currentParts = new ConsecutivePartList(startingPos);
+      if (columnDescriptor != null) { 
+        if (mc.isHiddenColumn()) {
+          if (currentParts == null) {
+            currentParts = new ConsecutivePartList(0); // First column(s) is (are) hidden
             allParts.add(currentParts);
           }
-          ChunkDescriptor chunkDescriptor = new ChunkDescriptor(columnDescriptor, mc, startingPos,
-              (int) range.getLength());
-          currentParts.addChunk(chunkDescriptor);
-          builder.setOffsetIndex(chunkDescriptor, filteredOffsetIndex);
+          currentParts.addChunk(new ChunkDescriptor(columnDescriptor, mc, true, -1, -1, (ArrayList<Short>)null)); // hidden column chunk
+        }
+        else {
+          OffsetIndex offsetIndex = ciStore.getOffsetIndex(pathKey);
+          OffsetIndex filteredOffsetIndex = filterOffsetIndex(offsetIndex, rowRanges,
+              block.getRowCount());
+          for (OffsetRange range : calculateOffsetRanges(filteredOffsetIndex, mc, offsetIndex.getOffset(0))) {
+            ArrayList<Short> pageList = getPageList(range, offsetIndex);
+            BenchmarkCounter.incrementTotalBytes(range.getLength());
+            long startingPos = range.getOffset();
+            // first part or not consecutive => new list
+            if (currentParts == null || currentParts.endPos() != startingPos) {
+              currentParts = new ConsecutivePartList(startingPos);
+              allParts.add(currentParts);
+            }
+            ChunkDescriptor chunkDescriptor = new ChunkDescriptor(columnDescriptor, mc, false, startingPos,
+                (int) range.getLength(), pageList);
+            currentParts.addChunk(chunkDescriptor);
+            builder.setOffsetIndex(chunkDescriptor, filteredOffsetIndex);
+          }
         }
       }
     }
@@ -928,7 +1031,7 @@ public class ParquetFileReader implements Closeable {
       consecutiveChunks.readAll(f, builder);
     }
     for (Chunk chunk : builder.build()) {
-      currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
+      readChunkPages(chunk, block);
     }
 
     // avoid re-reading bytes the dictionary reader is used after this call
@@ -939,6 +1042,52 @@ public class ParquetFileReader implements Closeable {
     advanceToNextBlock();
 
     return currentRowGroup;
+  }
+
+  private static ArrayList<Short> getPageList(OffsetRange range, OffsetIndex offsetIndex) {
+    long firstOffset = range.getOffset();
+    long lastOffset = firstOffset + range.getLength();
+    ArrayList<Short> pageList = new ArrayList<Short>();
+
+    for (int i=0; i < offsetIndex.getPageCount(); i++) {
+      long pageOffset = offsetIndex.getOffset(i);
+      if (pageOffset >= firstOffset) {
+        if (pageOffset <= lastOffset) {
+          if (pageOffset < lastOffset) {
+            pageList.add(Short.valueOf((short)i));
+          }
+          else {
+            return pageList;
+          }
+        }
+      }
+    }
+
+    return pageList;
+  }
+
+  private void readChunkPages(Chunk chunk, BlockMetaData block) throws IOException {
+    if (null == fileDecryptor) {
+      currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
+      return;
+    }
+
+    // Encrypted file
+    if (chunk.descriptor.hiddenColumn) {
+      currentRowGroup.addHiddenColumn(chunk.descriptor.col);
+    }
+    else {
+      ColumnPath columnPath = ColumnPath.get(chunk.descriptor.col.getPath());
+      InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.getColumnSetup(columnPath);
+      if (!columnDecryptionSetup.isEncrypted()) {
+        currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
+      }
+      else if (columnDecryptionSetup.isKeyAvailable()) {
+        currentRowGroup.addColumn(chunk.descriptor.col, 
+            chunk.readAllPages(columnDecryptionSetup.getMetaDataDecryptor(), columnDecryptionSetup.getDataDecryptor(), 
+                fileDecryptor.getFileAAD(), block.getOrdinal(), columnDecryptionSetup.getOrdinal()));
+      }
+    }
   }
 
   private ColumnIndexStore getColumnIndexStore(int blockIndex) {
@@ -1009,14 +1158,13 @@ public class ParquetFileReader implements Closeable {
       return null;
     }
 
-    // TODO: this should use getDictionaryPageOffset() but it isn't reliable.
     if (f.getPos() != meta.getStartingPos()) {
       f.seek(meta.getStartingPos());
     }
 
     PageHeader pageHeader = Util.readPageHeader(f);
     if (!pageHeader.isSetDictionary_page_header()) {
-      return null; // TODO: should this complain?
+      return null;
     }
 
     DictionaryPage compressedPage = readCompressedDictionary(pageHeader, f);
@@ -1059,7 +1207,21 @@ public class ParquetFileReader implements Closeable {
       return null;
     }
     f.seek(ref.getOffset());
-    return ParquetMetadataConverter.fromParquetColumnIndex(column.getPrimitiveType(), Util.readColumnIndex(f));
+    BlockCipher.Decryptor columnIndexDecryptor = null;
+    byte[] columnIndexAAD = null;
+    if (null != fileDecryptor) {
+      if (column.isHiddenColumn()) {
+        throw new IOException("Reading ColumnIndex of hidden column " + column.getPath());
+      }
+      InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.getColumnSetup(column.getPath());
+      if (columnDecryptionSetup.isEncrypted()) {
+        columnIndexDecryptor = columnDecryptionSetup.getMetaDataDecryptor();
+        columnIndexAAD = AesEncryptor.createModuleAAD(fileDecryptor.getFileAAD(), AesEncryptor.ColumnIndex, 
+            column.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), (short)-1);
+      }
+    }
+    return ParquetMetadataConverter.fromParquetColumnIndex(column.getPrimitiveType(), 
+        Util.readColumnIndex(f, columnIndexDecryptor, columnIndexAAD));
   }
 
   /**
@@ -1076,11 +1238,30 @@ public class ParquetFileReader implements Closeable {
       return null;
     }
     f.seek(ref.getOffset());
-    return ParquetMetadataConverter.fromParquetOffsetIndex(Util.readOffsetIndex(f));
+    BlockCipher.Decryptor offsetIndexDecryptor = null;
+    byte[] offsetIndexAAD = null;
+    if (null != fileDecryptor) {
+      if (column.isHiddenColumn()) {
+        throw new IOException("Reading OffsetIndex of hidden column " + column.getPath());
+      }
+      InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.getColumnSetup(column.getPath());
+      if (columnDecryptionSetup.isEncrypted()) {
+        offsetIndexDecryptor = columnDecryptionSetup.getMetaDataDecryptor();
+        offsetIndexAAD = AesEncryptor.createModuleAAD(fileDecryptor.getFileAAD(), AesEncryptor.OffsetIndex, 
+            column.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), (short)-1);
+      }
+    }
+    return ParquetMetadataConverter.fromParquetOffsetIndex(Util.readOffsetIndex(f, offsetIndexDecryptor, offsetIndexAAD));
   }
 
+  /**
+   * Closes input stream. If encrypted, wipes out keys in memory.
+   */
   @Override
   public void close() throws IOException {
+    if (null != fileDecryptor) {
+      fileDecryptor.wipeOutDecryptionKeys();
+    }
     try {
       if (f != null) {
         f.close();
@@ -1162,7 +1343,11 @@ public class ParquetFileReader implements Closeable {
     }
 
     protected PageHeader readPageHeader() throws IOException {
-      return Util.readPageHeader(stream);
+      return readPageHeader((BlockCipher.Decryptor) null, (byte[]) null);
+    }
+
+    protected PageHeader readPageHeader(BlockCipher.Decryptor blockDecryptor, byte[] pageHeaderAAD) throws IOException {
+      return Util.readPageHeader(stream, blockDecryptor, pageHeaderAAD);
     }
 
     /**
@@ -1170,93 +1355,127 @@ public class ParquetFileReader implements Closeable {
      * @return the list of pages
      */
     public ColumnChunkPageReader readAllPages() throws IOException {
+      return readAllPages((BlockCipher.Decryptor) null, (BlockCipher.Decryptor) null, (byte[]) null, (short) -1, (short) -1);
+    }
+
+    public ColumnChunkPageReader readAllPages(BlockCipher.Decryptor headerBlockDecryptor, BlockCipher.Decryptor pageBlockDecryptor, 
+        byte[] aadPrefix, short rowGroupOrdinal, short columnOrdinal) throws IOException {
       List<DataPage> pagesInChunk = new ArrayList<DataPage>();
       DictionaryPage dictionaryPage = null;
       PrimitiveType type = getFileMetaData().getSchema()
           .getType(descriptor.col.getPath()).asPrimitiveType();
       long valuesCountReadSoFar = 0;
       int dataPageCountReadSoFar = 0;
+      byte[] dataPageHeaderAAD = null;
+      if (null != headerBlockDecryptor) {
+        dataPageHeaderAAD = AesEncryptor.createModuleAAD(aadPrefix, AesEncryptor.DataPageHeader, rowGroupOrdinal, 
+            columnOrdinal, getPageOrdinal(dataPageCountReadSoFar));
+      }
       while (hasMorePages(valuesCountReadSoFar, dataPageCountReadSoFar)) {
-        PageHeader pageHeader = readPageHeader();
+        byte[] pageHeaderAAD = dataPageHeaderAAD;
+        if (null != headerBlockDecryptor) {
+          // Important: this verifies file integrity (makes sure dictionary page had not been removed)
+          if (null == dictionaryPage && descriptor.metadata.hasDictionaryPage()) {
+            pageHeaderAAD = AesEncryptor.createModuleAAD(aadPrefix, AesEncryptor.DictionaryPageHeader, rowGroupOrdinal, columnOrdinal, (short) -1);
+          }
+          else {
+            short pageOrdinal = getPageOrdinal(dataPageCountReadSoFar);
+            if (pageOrdinal < 0) break;
+            AesEncryptor.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);
+          }
+        }
+        PageHeader pageHeader = readPageHeader(headerBlockDecryptor, pageHeaderAAD);
         int uncompressedPageSize = pageHeader.getUncompressed_page_size();
         int compressedPageSize = pageHeader.getCompressed_page_size();
         switch (pageHeader.type) {
-          case DICTIONARY_PAGE:
-            // there is only one dictionary page per column chunk
-            if (dictionaryPage != null) {
-              throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
-            }
-            DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
-            dictionaryPage =
-                new DictionaryPage(
-                    this.readAsBytesInput(compressedPageSize),
-                    uncompressedPageSize,
-                    dicHeader.getNum_values(),
-                    converter.getEncoding(dicHeader.getEncoding())
-                    );
-            break;
-          case DATA_PAGE:
-            DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
-            pagesInChunk.add(
-                new DataPageV1(
-                    this.readAsBytesInput(compressedPageSize),
-                    dataHeaderV1.getNum_values(),
-                    uncompressedPageSize,
-                    converter.fromParquetStatistics(
-                        getFileMetaData().getCreatedBy(),
-                        dataHeaderV1.getStatistics(),
-                        type),
-                    converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
-                    converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
-                    converter.getEncoding(dataHeaderV1.getEncoding())
-                    ));
-            valuesCountReadSoFar += dataHeaderV1.getNum_values();
-            ++dataPageCountReadSoFar;
-            break;
-          case DATA_PAGE_V2:
-            DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
-            int dataSize = compressedPageSize - dataHeaderV2.getRepetition_levels_byte_length() - dataHeaderV2.getDefinition_levels_byte_length();
-            pagesInChunk.add(
-                new DataPageV2(
-                    dataHeaderV2.getNum_rows(),
-                    dataHeaderV2.getNum_nulls(),
-                    dataHeaderV2.getNum_values(),
-                    this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length()),
-                    this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length()),
-                    converter.getEncoding(dataHeaderV2.getEncoding()),
-                    this.readAsBytesInput(dataSize),
-                    uncompressedPageSize,
-                    converter.fromParquetStatistics(
-                        getFileMetaData().getCreatedBy(),
-                        dataHeaderV2.getStatistics(),
-                        type),
-                    dataHeaderV2.isIs_compressed()
-                    ));
-            valuesCountReadSoFar += dataHeaderV2.getNum_values();
-            ++dataPageCountReadSoFar;
-            break;
-          default:
-            LOG.debug("skipping page of type {} of size {}", pageHeader.getType(), compressedPageSize);
-            stream.skipFully(compressedPageSize);
-            break;
+        case DICTIONARY_PAGE:
+          // there is only one dictionary page per column chunk
+          if (dictionaryPage != null) {
+            throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
+          }
+          DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
+          dictionaryPage =
+              new DictionaryPage(
+                  this.readAsBytesInput(compressedPageSize),
+                  uncompressedPageSize,
+                  dicHeader.getNum_values(),
+                  converter.getEncoding(dicHeader.getEncoding())
+                  );
+          break;
+        case DATA_PAGE:
+          DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
+          pagesInChunk.add(
+              new DataPageV1(
+                  this.readAsBytesInput(compressedPageSize),
+                  dataHeaderV1.getNum_values(),
+                  uncompressedPageSize,
+                  converter.fromParquetStatistics(
+                      getFileMetaData().getCreatedBy(),
+                      dataHeaderV1.getStatistics(),
+                      type),
+                  converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
+                  converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
+                  converter.getEncoding(dataHeaderV1.getEncoding())
+                  ));
+          valuesCountReadSoFar += dataHeaderV1.getNum_values();
+          ++dataPageCountReadSoFar;
+          break;
+        case DATA_PAGE_V2:
+          DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
+          int dataSize = compressedPageSize - dataHeaderV2.getRepetition_levels_byte_length() - dataHeaderV2.getDefinition_levels_byte_length();
+          pagesInChunk.add(
+              new DataPageV2(
+                  dataHeaderV2.getNum_rows(),
+                  dataHeaderV2.getNum_nulls(),
+                  dataHeaderV2.getNum_values(),
+                  this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length()),
+                  this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length()),
+                  converter.getEncoding(dataHeaderV2.getEncoding()),
+                  this.readAsBytesInput(dataSize),
+                  uncompressedPageSize,
+                  converter.fromParquetStatistics(
+                      getFileMetaData().getCreatedBy(),
+                      dataHeaderV2.getStatistics(),
+                      type),
+                  dataHeaderV2.isIs_compressed()
+                  ));
+          valuesCountReadSoFar += dataHeaderV2.getNum_values();
+          ++dataPageCountReadSoFar;
+          break;
+        default:
+          LOG.debug("skipping page of type {} of size {}", pageHeader.getType(), compressedPageSize);
+          stream.skipFully(compressedPageSize);
+          break;
         }
       }
       if (offsetIndex == null && valuesCountReadSoFar != descriptor.metadata.getValueCount()) {
         // Would be nice to have a CorruptParquetFileException or something as a subclass?
         throw new IOException(
             "Expected " + descriptor.metadata.getValueCount() + " values in column chunk at " +
-            getPath() + " offset " + descriptor.metadata.getFirstDataPageOffset() +
-            " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
-            + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
+                getPath() + " offset " + descriptor.metadata.getFirstDataPageOffset() +
+                " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
+                + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex,
-          blocks.get(currentBlock).getRowCount());
+          blocks.get(currentBlock).getRowCount(), descriptor.col.getPath(), descriptor.pageList,
+          pageBlockDecryptor, aadPrefix, rowGroupOrdinal, columnOrdinal);
     }
 
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
       return offsetIndex == null ? valuesCountReadSoFar < descriptor.metadata.getValueCount()
           : dataPageCountReadSoFar < offsetIndex.getPageCount();
+    }
+
+    private short getPageOrdinal(int pageNumber) {
+      ArrayList<Short> pageList = descriptor.pageList;
+      if (null == pageList) {
+        return (short) pageNumber;
+      }
+      if (pageNumber == pageList.size()) {
+        return -1;
+      }
+      return pageList.get(pageNumber).shortValue();
     }
 
     /**
@@ -1339,6 +1558,8 @@ public class ParquetFileReader implements Closeable {
     private final ColumnChunkMetaData metadata;
     private final long fileOffset;
     private final int size;
+    private final boolean hiddenColumn;
+    private final ArrayList<Short> pageList;
 
     /**
      * @param col column this chunk is part of
@@ -1349,13 +1570,17 @@ public class ParquetFileReader implements Closeable {
     private ChunkDescriptor(
         ColumnDescriptor col,
         ColumnChunkMetaData metadata,
+        boolean hidden,
         long fileOffset,
-        int size) {
+        int size,
+        ArrayList<Short> pageList) {
       super();
       this.col = col;
       this.metadata = metadata;
       this.fileOffset = fileOffset;
       this.size = size;
+      this.hiddenColumn = hidden;
+      this.pageList = pageList;
     }
 
     @Override
@@ -1399,7 +1624,7 @@ public class ParquetFileReader implements Closeable {
      */
     public void addChunk(ChunkDescriptor descriptor) {
       chunks.add(descriptor);
-      length += descriptor.size;
+      if (!descriptor.hiddenColumn) length += descriptor.size;
     }
 
     /**
@@ -1464,8 +1689,9 @@ public class ParquetFileReader implements Closeable {
     }
     Optional<ColumnChunkMetaData> mc = findColumnByPath(block, columnDescriptor.getPath());
 
-    return mc.map(column -> new ChunkDescriptor(columnDescriptor, column, column.getStartingPos(), (int) column.getTotalSize()))
-      .map(chunk -> readChunk(f, chunk));
+    return mc.map(column -> new ChunkDescriptor(columnDescriptor, column, false, column.getStartingPos(), 
+        (int) column.getTotalSize(), (ArrayList<Short>)null))
+        .map(chunk -> readChunk(f, chunk));
   }
 
   private ColumnChunkPageReader readChunk(SeekableInputStream f, ChunkDescriptor descriptor) {

@@ -18,11 +18,13 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.format.Util.writeFileCryptoMetaData;
 import static org.apache.parquet.format.Util.writeFileMetaData;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.MAX_STATS_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -61,9 +63,15 @@ import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.crypto.AesEncryptor;
+import org.apache.parquet.crypto.FileEncryptionProperties;
+import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
+import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.example.DummyRecordConverter;
+import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -102,6 +110,8 @@ public class ParquetFileWriter {
   public static final String PARQUET_METADATA_FILE = "_metadata";
   public static final String MAGIC_STR = "PAR1";
   public static final byte[] MAGIC = MAGIC_STR.getBytes(Charset.forName("ASCII"));
+  public static final String EF_MAGIC_STR = "PARE";
+  public static final byte[] EFMAGIC = EF_MAGIC_STR.getBytes(Charset.forName("ASCII"));
   public static final String PARQUET_COMMON_METADATA_FILE = "_common_metadata";
   public static final int CURRENT_VERSION = 1;
 
@@ -115,6 +125,7 @@ public class ParquetFileWriter {
   private final PositionOutputStream out;
   private final AlignmentStrategy alignment;
   private final int columnIndexTruncateLength;
+  private final InternalFileEncryptor fileEncryptor;
 
   // file data
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -278,7 +289,14 @@ public class ParquetFileWriter {
    * @throws IOException if the file can not be created
    */
   public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
-                           long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength)
+      long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength)
+          throws IOException {
+    this(file, schema, mode, rowGroupSize, maxPaddingSize, columnIndexTruncateLength, (FileEncryptionProperties) null);
+  }
+  
+  public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
+                           long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength,
+                           FileEncryptionProperties encryptionProperties)
       throws IOException {
     TypeUtil.checkValidWriteSchema(schema);
 
@@ -296,6 +314,13 @@ public class ParquetFileWriter {
       this.out = file.createOrOverwrite(blockSize);
     } else {
       this.out = file.create(blockSize);
+    }
+    
+    if (null != encryptionProperties) {
+      this.fileEncryptor = new InternalFileEncryptor(encryptionProperties);
+    }
+    else {
+      this.fileEncryptor = null;
     }
 
     this.encodingStatsBuilder = new EncodingStats.Builder();
@@ -324,6 +349,7 @@ public class ParquetFileWriter {
     this.encodingStatsBuilder = new EncodingStats.Builder();
     // no truncation is needed for testing
     this.columnIndexTruncateLength = Integer.MAX_VALUE;
+    this.fileEncryptor = null;
   }
   /**
    * start the file
@@ -332,7 +358,15 @@ public class ParquetFileWriter {
   public void start() throws IOException {
     state = state.start();
     LOG.debug("{}: start", out.getPos());
-    out.write(MAGIC);
+    byte[] magic = MAGIC;
+    if (null != fileEncryptor && fileEncryptor.isFooterEncrypted()) {
+      magic = EFMAGIC;
+    }
+    out.write(magic);
+  }
+  
+  InternalFileEncryptor getEncryptor() {
+    return fileEncryptor;
   }
 
   /**
@@ -388,6 +422,11 @@ public class ParquetFileWriter {
    * @throws IOException if there is an error while writing
    */
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
+    writeDictionaryPage(dictionaryPage, (BlockCipher.Encryptor) null, (byte[]) null);
+  }
+  
+  public void writeDictionaryPage(DictionaryPage dictionaryPage, 
+      BlockCipher.Encryptor headerBlockEncryptor, byte[] AAD) throws IOException {
     state = state.write();
     LOG.debug("{}: write dictionary page: {} values", out.getPos(), dictionaryPage.getDictionarySize());
     currentChunkDictionaryPageOffset = out.getPos();
@@ -398,7 +437,9 @@ public class ParquetFileWriter {
         compressedPageSize,
         dictionaryPage.getDictionarySize(),
         dictionaryPage.getEncoding(),
-        out);
+        out,
+        headerBlockEncryptor, 
+        AAD);
     long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
     this.uncompressedLength += uncompressedSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
@@ -576,11 +617,39 @@ public class ParquetFileWriter {
       Set<Encoding> rlEncodings,
       Set<Encoding> dlEncodings,
       List<Encoding> dataEncodings) throws IOException {
+    writeColumnChunk(descriptor, valueCount, compressionCodecName, dictionaryPage, bytes,
+      uncompressedTotalPageSize, compressedTotalPageSize, totalStats, columnIndexBuilder, offsetIndexBuilder,
+      rlEncodings, dlEncodings, dataEncodings, (BlockCipher.Encryptor) null, (short) 0, (short) 0, (byte[]) null);
+  }
+  
+  void writeColumnChunk(ColumnDescriptor descriptor,
+      long valueCount,
+      CompressionCodecName compressionCodecName,
+      DictionaryPage dictionaryPage,
+      BytesInput bytes,
+      long uncompressedTotalPageSize,
+      long compressedTotalPageSize,
+      Statistics<?> totalStats,
+      ColumnIndexBuilder columnIndexBuilder,
+      OffsetIndexBuilder offsetIndexBuilder,
+      Set<Encoding> rlEncodings,
+      Set<Encoding> dlEncodings,
+      List<Encoding> dataEncodings,
+      BlockCipher.Encryptor headerBlockEncryptor,
+      short rowGroupOrdinal, 
+      short columnOrdinal,
+      byte[] fileAAD) throws IOException {
+
     startColumn(descriptor, valueCount, compressionCodecName);
 
     state = state.write();
     if (dictionaryPage != null) {
-      writeDictionaryPage(dictionaryPage);
+      byte[] dictonaryPageHeaderAAD = null;
+      if (null != headerBlockEncryptor) {
+        dictonaryPageHeaderAAD = AesEncryptor.createModuleAAD(fileAAD, AesEncryptor.DictionaryPageHeader, 
+            rowGroupOrdinal, columnOrdinal, (short) -1);
+      }
+      writeDictionaryPage(dictionaryPage, headerBlockEncryptor, dictonaryPageHeaderAAD);
     }
     LOG.debug("{}: write data pages", out.getPos());
     long headersSize = bytes.size() - compressedTotalPageSize;
@@ -644,6 +713,7 @@ public class ParquetFileWriter {
     state = state.endBlock();
     LOG.debug("{}: end block", out.getPos());
     currentBlock.setRowCount(currentRecordCount);
+    currentBlock.setOrdinal((short)blocks.size());
     blocks.add(currentBlock);
     columnIndexes.add(currentColumnIndexes);
     offsetIndexes.add(currentOffsetIndexes);
@@ -936,27 +1006,32 @@ public class ParquetFileWriter {
 
   /**
    * ends a file once all blocks have been written.
-   * closes the file.
+   * closes the file. if encrypted, wipes out the keys in memory.
    * @param extraMetaData the extra meta data to write in the footer
    * @throws IOException if there is an error while writing
    */
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
-    serializeColumnIndexes(columnIndexes, blocks, out);
-    serializeOffsetIndexes(offsetIndexes, blocks, out);
+    serializeColumnIndexes(columnIndexes, blocks, out, fileEncryptor);
+    serializeOffsetIndexes(offsetIndexes, blocks, out, fileEncryptor);
     LOG.debug("{}: end", out.getPos());
     this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
-    serializeFooter(footer, out);
+    serializeFooter(footer, out, fileEncryptor);
+    if (null != fileEncryptor) {
+      fileEncryptor.wipeOutEncryptionKeys();
+    }
     out.close();
   }
 
   private static void serializeColumnIndexes(
       List<List<ColumnIndex>> columnIndexes,
       List<BlockMetaData> blocks,
-      PositionOutputStream out) throws IOException {
+      PositionOutputStream out,
+      InternalFileEncryptor fileEncryptor) throws IOException {
     LOG.debug("{}: column indexes", out.getPos());
     for (int bIndex = 0, bSize = blocks.size(); bIndex < bSize; ++bIndex) {
-      List<ColumnChunkMetaData> columns = blocks.get(bIndex).getColumns();
+      BlockMetaData block = blocks.get(bIndex);
+      List<ColumnChunkMetaData> columns = block.getColumns();
       List<ColumnIndex> blockColumnIndexes = columnIndexes.get(bIndex);
       for (int cIndex = 0, cSize = columns.size(); cIndex < cSize; ++cIndex) {
         ColumnChunkMetaData column = columns.get(cIndex);
@@ -965,8 +1040,18 @@ public class ParquetFileWriter {
         if (columnIndex == null) {
           continue;
         }
+        BlockCipher.Encryptor columnIndexEncryptor = null;
+        byte[] columnIndexAAD = null;
+        if (null != fileEncryptor) {
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, (short) cIndex);
+          if (columnEncryptionSetup.isEncrypted()) {
+            columnIndexEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
+            columnIndexAAD = AesEncryptor.createModuleAAD(fileEncryptor.getFileAAD(), AesEncryptor.ColumnIndex, 
+                block.getOrdinal(), columnEncryptionSetup.getOrdinal(), (short)-1);
+          }
+        }
         long offset = out.getPos();
-        Util.writeColumnIndex(columnIndex, out);
+        Util.writeColumnIndex(columnIndex, out, columnIndexEncryptor, columnIndexAAD);
         column.setColumnIndexReference(new IndexReference(offset, (int) (out.getPos() - offset)));
       }
     }
@@ -975,10 +1060,12 @@ public class ParquetFileWriter {
   private static void serializeOffsetIndexes(
       List<List<OffsetIndex>> offsetIndexes,
       List<BlockMetaData> blocks,
-      PositionOutputStream out) throws IOException {
+      PositionOutputStream out,
+      InternalFileEncryptor fileEncryptor) throws IOException {
     LOG.debug("{}: offset indexes", out.getPos());
     for (int bIndex = 0, bSize = blocks.size(); bIndex < bSize; ++bIndex) {
-      List<ColumnChunkMetaData> columns = blocks.get(bIndex).getColumns();
+      BlockMetaData block = blocks.get(bIndex);
+      List<ColumnChunkMetaData> columns = block.getColumns();
       List<OffsetIndex> blockOffsetIndexes = offsetIndexes.get(bIndex);
       for (int cIndex = 0, cSize = columns.size(); cIndex < cSize; ++cIndex) {
         OffsetIndex offsetIndex = blockOffsetIndexes.get(cIndex);
@@ -986,20 +1073,74 @@ public class ParquetFileWriter {
           continue;
         }
         ColumnChunkMetaData column = columns.get(cIndex);
+        BlockCipher.Encryptor offsetIndexEncryptor = null;
+        byte[] offsetIndexAAD = null;
+        if (null != fileEncryptor) {
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, (short) cIndex);
+          if (columnEncryptionSetup.isEncrypted()) {
+            offsetIndexEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
+            offsetIndexAAD = AesEncryptor.createModuleAAD(fileEncryptor.getFileAAD(), AesEncryptor.OffsetIndex, 
+                block.getOrdinal(), columnEncryptionSetup.getOrdinal(), (short)-1);
+          }
+        }
         long offset = out.getPos();
-        Util.writeOffsetIndex(ParquetMetadataConverter.toParquetOffsetIndex(offsetIndex), out);
+        Util.writeOffsetIndex(ParquetMetadataConverter.toParquetOffsetIndex(offsetIndex), out, offsetIndexEncryptor, offsetIndexAAD);
         column.setOffsetIndexReference(new IndexReference(offset, (int) (out.getPos() - offset)));
       }
     }
   }
 
-  private static void serializeFooter(ParquetMetadata footer, PositionOutputStream out) throws IOException {
-    long footerIndex = out.getPos();
-    org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
-    writeFileMetaData(parquetMetadata, out);
-    LOG.debug("{}: footer length = {}" , out.getPos(), (out.getPos() - footerIndex));
-    BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
-    out.write(MAGIC);
+  private static void serializeFooter(ParquetMetadata footer, PositionOutputStream out,
+      InternalFileEncryptor fileEncryptor) throws IOException {
+    
+    // Unencrypted file
+    if (null == fileEncryptor) {
+      long footerIndex = out.getPos();
+      org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
+      writeFileMetaData(parquetMetadata, out);
+      LOG.debug("{}: footer length = {}" , out.getPos(), (out.getPos() - footerIndex));
+      BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
+      out.write(MAGIC);
+      return;
+    }
+    
+    org.apache.parquet.format.FileMetaData parquetMetadata =
+        metadataConverter.toParquetMetadata(CURRENT_VERSION, footer, fileEncryptor);
+    
+    // Encrypted file with plaintext footer 
+    if (!fileEncryptor.isFooterEncrypted()) {
+      long footerIndex = out.getPos();
+      parquetMetadata.setEncryption_algorithm(fileEncryptor.getEncryptionAlgorithm());
+      // create footer signature (nonce + tag of encrypted footer)
+      byte[] footerSigningKeyMetaData = fileEncryptor.getFooterSigningKeyMetaData();
+      if (null != footerSigningKeyMetaData) {
+        parquetMetadata.setFooter_signing_key_metadata(footerSigningKeyMetaData);
+      }
+      ByteArrayOutputStream tempOutStream = new ByteArrayOutputStream();
+      writeFileMetaData(parquetMetadata, tempOutStream);
+      byte[] serializedFooter = tempOutStream.toByteArray();
+      byte[] footerAAD = AesEncryptor.createFooterAAD(fileEncryptor.getFileAAD());
+      byte[] encryptedFooter = fileEncryptor.getSignedFooterEncryptor().encrypt(serializedFooter, footerAAD);
+      byte[] signature = new byte[AesEncryptor.NONCE_LENGTH + AesEncryptor.GCM_TAG_LENGTH];
+      System.arraycopy(encryptedFooter, AesEncryptor.SIZE_LENGTH, signature, 0, AesEncryptor.NONCE_LENGTH); // copy Nonce
+      System.arraycopy(encryptedFooter, encryptedFooter.length - AesEncryptor.GCM_TAG_LENGTH, 
+          signature, AesEncryptor.NONCE_LENGTH, AesEncryptor.GCM_TAG_LENGTH); // copy GCM Tag
+      out.write(serializedFooter);
+      out.write(signature);
+      BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
+      out.write(MAGIC);
+      return;
+    }
+
+    // Encrypted file with encrypted footer
+    long cryptoFooterIndex = out.getPos();
+    writeFileCryptoMetaData(fileEncryptor.getFileCryptoMetaData(), out);
+    byte[] footerAAD = AesEncryptor.createFooterAAD(fileEncryptor.getFileAAD());
+    writeFileMetaData(parquetMetadata, out, fileEncryptor.getFooterEncryptor(), footerAAD);
+    int combinedMetaDataLength = (int)(out.getPos() - cryptoFooterIndex);
+    LOG.debug("{}: crypto metadata and footer length = {}" , out.getPos(), combinedMetaDataLength);
+    BytesUtils.writeIntLittleEndian(out, combinedMetaDataLength);
+    out.write(EFMAGIC);
   }
 
   public ParquetMetadata getFooter() {
@@ -1108,7 +1249,7 @@ public class ParquetFileWriter {
       throws IOException {
     PositionOutputStream metadata = HadoopStreams.wrap(fs.create(outputPath));
     metadata.write(MAGIC);
-    serializeFooter(metadataFooter, metadata);
+    serializeFooter(metadataFooter, metadata, (InternalFileEncryptor) null);
     metadata.close();
   }
 
