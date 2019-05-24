@@ -29,7 +29,7 @@ sudo apt-get install -qq build-essential pv autoconf automake libtool curl make 
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
-wget -nv http://archive.apache.org/dist/thrift/${THIFT_VERSION}/thrift-${THIFT_VERSION}.tar.gz
+wget -nv https://archive.apache.org/dist/thrift/${THIFT_VERSION}/thrift-${THIFT_VERSION}.tar.gz
 tar zxf thrift-${THIFT_VERSION}.tar.gz
 cd thrift-${THIFT_VERSION}
 chmod +x ./configure
