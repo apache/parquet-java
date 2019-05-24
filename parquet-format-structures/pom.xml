@@ -31,7 +31,7 @@
   <packaging>jar</packaging>
 
   <name>Apache Parquet Format Structures</name>
-  <url>http://parquet.apache.org/</url>
+  <url>https://parquet.apache.org/</url>
   <description>Parquet-mr related java classes to use the parquet-format thrift structures.</description>
 
   <properties>
