@@ -37,10 +37,14 @@ import org.junit.rules.TemporaryFolder;
 
 public class AvroTestUtil {
 
-  public static Schema record(String name, Schema.Field... fields) {
-    Schema record = Schema.createRecord(name, null, null, false);
+  public static Schema record(String name, String namespace, Schema.Field... fields) {
+    Schema record = Schema.createRecord(name, null, namespace, false);
     record.setFields(Arrays.asList(fields));
     return record;
+  }
+
+  public static Schema record(String name, Schema.Field... fields) {
+    return record(name, null, fields);
   }
 
   public static Schema.Field field(String name, Schema schema) {
