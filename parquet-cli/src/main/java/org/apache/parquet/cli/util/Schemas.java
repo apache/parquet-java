@@ -419,10 +419,10 @@ public class Schemas {
             leftField.name(),
             mergeOrUnion(leftField.schema(), rightField.schema()),
             coalesce(leftField.doc(), rightField.doc()),
-            coalesce(leftField.defaultValue(), rightField.defaultValue())
+            coalesce(leftField.defaultVal(), rightField.defaultVal())
         ));
       } else {
-        if (leftField.defaultValue() != null) {
+        if (leftField.defaultVal() != null) {
           fields.add(copy(leftField));
         } else {
           fields.add(new Schema.Field(
@@ -435,7 +435,7 @@ public class Schemas {
 
     for (Schema.Field rightField : right.getFields()) {
       if (left.getField(rightField.name()) == null) {
-        if (rightField.defaultValue() != null) {
+        if (rightField.defaultVal() != null) {
           fields.add(copy(rightField));
         } else {
           fields.add(new Schema.Field(
@@ -460,7 +460,7 @@ public class Schemas {
    */
   public static Schema.Field copy(Schema.Field field) {
     return new Schema.Field(
-        field.name(), field.schema(), field.doc(), field.defaultValue());
+        field.name(), field.schema(), field.doc(), field.defaultVal());
   }
 
   private static float fieldSimilarity(Schema left, Schema right) {

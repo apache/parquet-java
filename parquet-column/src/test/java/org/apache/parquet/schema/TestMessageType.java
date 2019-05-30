@@ -20,9 +20,6 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.OriginalType.LIST;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
@@ -30,6 +27,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -89,12 +89,11 @@ public class TestMessageType {
     MessageType t4 = new MessageType("root2",
         new PrimitiveType(REQUIRED, BINARY, "a"));
 
-    try {
-      t3.union(t4);
-      fail("moving from optional to required");
-    } catch (IncompatibleSchemaModificationException e) {
-      assertEquals("repetition constraint is more restrictive: can not merge type required binary a into optional binary a", e.getMessage());
-    }
+    assertEquals(
+        t3.union(t4),
+        new MessageType("root1",
+            new PrimitiveType(OPTIONAL, BINARY, "a"))
+        );
 
     assertEquals(
         t4.union(t3),

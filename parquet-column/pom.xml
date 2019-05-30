@@ -118,15 +118,10 @@
               <minimizeJar>true</minimizeJar>
               <artifactSet>
                 <includes>
-                  <include>it.unimi.dsi:fastutil</include>
                   <include>com.google.guava:guava</include>
                 </includes>
               </artifactSet>
               <relocations>
-                <relocation>
-                  <pattern>it.unimi.dsi</pattern>
-                  <shadedPattern>org.apache.parquet.it.unimi.dsi</shadedPattern>
-                </relocation>
                 <relocation>
                   <pattern>com.google.common</pattern>
                   <shadedPattern>org.apache.parquet.com.google.common</shadedPattern>

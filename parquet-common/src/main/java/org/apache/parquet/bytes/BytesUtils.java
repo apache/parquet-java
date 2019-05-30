@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,8 @@ import org.slf4j.LoggerFactory;
 public class BytesUtils {
   private static final Logger LOG = LoggerFactory.getLogger(BytesUtils.class);
 
+  /** @deprecated Use {@link StandardCharsets#UTF_8} instead */
+  @Deprecated
   public static final Charset UTF8 = Charset.forName("UTF-8");
 
   /**

@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.Ints.checkedCast;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -27,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
-import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
@@ -118,7 +115,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV1.getValueCount(),
                   dataPageV1.getUncompressedSize(),
                   firstRowIndex,
-                  checkedCast(offsetIndex.getLastRowIndex(currentPageIndex, rowCount) - firstRowIndex + 1),
+                  Math.toIntExact(offsetIndex.getLastRowIndex(currentPageIndex, rowCount) - firstRowIndex + 1),
                   dataPageV1.getStatistics(),
                   dataPageV1.getRlEncoding(),
                   dataPageV1.getDlEncoding(),
@@ -148,7 +145,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
             }
           }
           try {
-            int uncompressedSize = Ints.checkedCast(
+            int uncompressedSize = Math.toIntExact(
                 dataPageV2.getUncompressedSize()
                     - dataPageV2.getDefinitionLevels().size()
                     - dataPageV2.getRepetitionLevels().size());

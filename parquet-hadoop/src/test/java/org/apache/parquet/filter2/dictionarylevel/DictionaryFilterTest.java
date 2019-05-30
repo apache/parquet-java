@@ -88,6 +88,7 @@ public class DictionaryFilterTest {
       "message test { "
           + "required binary binary_field; "
           + "required binary single_value_field; "
+          + "optional binary optional_single_value_field; "
           + "required fixed_len_byte_array(17) fixed_field (DECIMAL(40,4)); "
           + "required int32 int32_field; "
           + "required int64 int64_field; "
@@ -164,6 +165,11 @@ public class DictionaryFilterTest {
           .append("fallback_binary_field", i < (nElements / 2) ?
               ALPHABET.substring(index, index+1) : UUID.randomUUID().toString())
           .append("int96_field", INT96_VALUES[i % INT96_VALUES.length]);
+
+      // 10% of the time, leave the field null
+      if (index % 10 > 0) {
+        group.append("optional_single_value_field", "sharp");
+      }
 
       writer.write(group);
     }
@@ -256,7 +262,7 @@ public class DictionaryFilterTest {
   @SuppressWarnings("deprecation")
   private void testDictionaryEncodedColumnsV1() throws Exception {
     Set<String> dictionaryEncodedColumns = new HashSet<String>(Arrays.asList(
-        "binary_field", "single_value_field", "int32_field", "int64_field",
+        "binary_field", "single_value_field", "optional_single_value_field", "int32_field", "int64_field",
         "double_field", "float_field", "int96_field"));
     for (ColumnChunkMetaData column : ccmd) {
       String name = column.getPath().toDotString();
@@ -281,7 +287,7 @@ public class DictionaryFilterTest {
 
   private void testDictionaryEncodedColumnsV2() throws Exception {
     Set<String> dictionaryEncodedColumns = new HashSet<String>(Arrays.asList(
-        "binary_field", "single_value_field", "fixed_field", "int32_field",
+        "binary_field", "single_value_field", "optional_single_value_field", "fixed_field", "int32_field",
         "int64_field", "double_field", "float_field", "int96_field"));
     for (ColumnChunkMetaData column : ccmd) {
       EncodingStats encStats = column.getEncodingStats();
@@ -355,6 +361,7 @@ public class DictionaryFilterTest {
   @Test
   public void testNotEqBinary() throws Exception {
     BinaryColumn sharp = binaryColumn("single_value_field");
+    BinaryColumn sharpAndNull = binaryColumn("optional_single_value_field");
     BinaryColumn b = binaryColumn("binary_field");
 
     assertTrue("Should drop block with only the excluded value",
@@ -362,6 +369,12 @@ public class DictionaryFilterTest {
 
     assertFalse("Should not drop block with any other value",
         canDrop(notEq(sharp, Binary.fromString("applause")), ccmd, dictionaries));
+
+    assertFalse("Should not drop block with only the excluded value and null",
+        canDrop(notEq(sharpAndNull, Binary.fromString("sharp")), ccmd, dictionaries));
+
+    assertFalse("Should not drop block with any other value",
+        canDrop(notEq(sharpAndNull, Binary.fromString("applause")), ccmd, dictionaries));
 
     assertFalse("Should not drop block with a known value",
         canDrop(notEq(b, Binary.fromString("x")), ccmd, dictionaries));

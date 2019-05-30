@@ -19,29 +19,20 @@
 package org.apache.parquet.tools.command;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.hadoop.CodecFactory;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
-import org.apache.parquet.io.InputFile;
 import org.apache.parquet.tools.Main;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-
-import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
-import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
 
 public class MergeCommand extends ArgsOnlyCommand {
   public static final String[] USAGE = new String[] {
@@ -58,41 +49,10 @@ public class MergeCommand extends ArgsOnlyCommand {
 
   private Configuration conf;
 
-  private static final Options OPTIONS;
-  static {
-    OPTIONS = new Options();
-
-    Option block = Option.builder("b")
-      .longOpt("block")
-      .desc("Merge adjacent blocks into one up to upper bound size limit default to 128 MB")
-      .build();
-
-    Option limit = Option.builder("l")
-      .longOpt("limit")
-      .desc("Upper bound for merged block size in megabytes. Default: 128 MB")
-      .hasArg()
-      .build();
-
-    Option codec = Option.builder("c")
-      .longOpt("codec")
-      .desc("Compression codec name. Default: SNAPPY. Valid values: UNCOMPRESSED, SNAPPY, GZIP, LZO, BROTLI, LZ4, ZSTD")
-      .hasArg()
-      .build();
-
-    OPTIONS.addOption(limit);
-    OPTIONS.addOption(block);
-    OPTIONS.addOption(codec);
-  }
-
   public MergeCommand() {
     super(2, MAX_FILE_NUM + 1);
 
     conf = new Configuration();
-  }
-
-  @Override
-  public Options getOptions() {
-    return OPTIONS;
   }
 
   @Override
@@ -103,32 +63,18 @@ public class MergeCommand extends ArgsOnlyCommand {
   @Override
   public String getCommandDescription() {
     return "Merges multiple Parquet files into one. " +
-      "Without -b option the command doesn't merge row groups, just places one after the other. " +
+      "The command doesn't merge row groups, just places one after the other. " +
       "When used to merge many small files, the resulting file will still contain small row groups, " +
-      "which usually leads to bad query performance. " +
-      "To have adjacent small blocks merged together use -b option. " +
-      "Blocks will be grouped into larger one until the upper bound is reached. " +
-      "Default block upper bound 128 MB and default compression SNAPPY can be customized using -l and -c options";
+      "which usually leads to bad query performance.";
   }
 
   @Override
   public void execute(CommandLine options) throws Exception {
-    boolean mergeBlocks = options.hasOption('b');
-    int maxBlockSize = options.hasOption('l')? Integer.parseInt(options.getOptionValue('l')) * 1024 * 1024 : DEFAULT_BLOCK_SIZE;
-    CompressionCodecName compressionCodec = options.hasOption('c') ? CompressionCodecName.valueOf(options.getOptionValue('c')) : CompressionCodecName.SNAPPY;
     // Prepare arguments
     List<String> args = options.getArgList();
     List<Path> inputFiles = getInputFiles(args.subList(0, args.size() - 1));
     Path outputFile = new Path(args.get(args.size() - 1));
-    if (mergeBlocks) {
-      CodecFactory.BytesCompressor compressor = new CodecFactory(conf, DEFAULT_PAGE_SIZE).getCompressor(compressionCodec);
-      mergeBlocks(maxBlockSize, compressor, inputFiles, outputFile);
-    } else {
-      mergeFiles(inputFiles, outputFile);
-    }
-  }
 
-  private void mergeFiles(List<Path> inputFiles, Path outputFile) throws IOException {
     // Merge schema and extraMeta
     FileMetaData mergedMeta = mergedMetadata(inputFiles);
     PrintWriter out = new PrintWriter(Main.out, true);
@@ -155,23 +101,6 @@ public class MergeCommand extends ArgsOnlyCommand {
         "which usually leads to bad query performance!");
     }
     writer.end(mergedMeta.getKeyValueMetaData());
-  }
-
-  private void mergeBlocks(int maxBlockSize, CodecFactory.BytesCompressor compressor, List<Path> inputFiles, Path outputFile) throws IOException {
-    // Merge schema and extraMeta
-    FileMetaData mergedMeta = mergedMetadata(inputFiles);
-
-    // Merge data
-    ParquetFileWriter writer = new ParquetFileWriter(conf, mergedMeta.getSchema(), outputFile, ParquetFileWriter.Mode.CREATE);
-    List<InputFile> inputFileList = inputFiles.stream()
-      .map(input -> {
-        try {
-          return HadoopInputFile.fromPath(input, conf);
-        } catch (Exception e) {
-          throw new RuntimeException(e);
-        }
-      }).collect(Collectors.toList());
-    writer.merge(inputFileList, compressor, mergedMeta.getCreatedBy(), maxBlockSize);
   }
 
   private FileMetaData mergedMetadata(List<Path> inputFiles) throws IOException {

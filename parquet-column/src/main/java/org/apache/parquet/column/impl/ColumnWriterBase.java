@@ -378,6 +378,9 @@ abstract class ColumnWriterBase implements ColumnWriter {
    * Writes the current data to a new page in the page store
    */
   void writePage() {
+    if (valueCount == 0) {
+      throw new ParquetEncodingException("writing empty page");
+    }
     this.rowsWrittenSoFar += pageRowCount;
     if (DEBUG)
       LOG.debug("write page");

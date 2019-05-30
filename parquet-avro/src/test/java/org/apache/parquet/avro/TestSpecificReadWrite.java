@@ -66,54 +66,59 @@ public class TestSpecificReadWrite {
   @Test
   public void testCompatReadWriteSpecific() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path);
-    for (int i = 0; i < 10; i++) {
-      assertEquals(getVwPolo().toString(), reader.read().toString());
-      assertEquals(getVwPassat().toString(), reader.read().toString());
-      assertEquals(getBmwMini().toString(), reader.read().toString());
+    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
+      for (int i = 0; i < 10; i++) {
+        assertEquals(getVwPolo().toString(), reader.read().toString());
+        assertEquals(getVwPassat().toString(), reader.read().toString());
+        assertEquals(getBmwMini().toString(), reader.read().toString());
+      }
+      assertNull(reader.read());
     }
-    assertNull(reader.read());
   }
 
   @Test
   public void testReadWriteSpecificWithDictionary() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, true);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path);
-    for (int i = 0; i < 10; i++) {
-      assertEquals(getVwPolo().toString(), reader.read().toString());
-      assertEquals(getVwPassat().toString(), reader.read().toString());
-      assertEquals(getBmwMini().toString(), reader.read().toString());
+    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
+      for (int i = 0; i < 10; i++) {
+        assertEquals(getVwPolo().toString(), reader.read().toString());
+        assertEquals(getVwPassat().toString(), reader.read().toString());
+        assertEquals(getBmwMini().toString(), reader.read().toString());
+      }
+      assertNull(reader.read());
     }
-    assertNull(reader.read());
   }
 
   @Test
   public void testFilterMatchesMultiple() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("Volkswagen")));
-    for (int i = 0; i < 10; i++) {
-      assertEquals(getVwPolo().toString(), reader.read().toString());
-      assertEquals(getVwPassat().toString(), reader.read().toString());
+    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
+      for (int i = 0; i < 10; i++) {
+        assertEquals(getVwPolo().toString(), reader.read().toString());
+        assertEquals(getVwPassat().toString(), reader.read().toString());
+      }
+      assertNull(reader.read());
     }
-    assertNull(reader.read());
   }
 
   @Test
   public void testFilterMatchesMultipleBlocks() throws IOException {
     Path path = writeCarsToParquetFile(10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE/64, DEFAULT_PAGE_SIZE/64);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("Volkswagen")));
-    for (int i = 0; i < 10000; i++) {
-      assertEquals(getVwPolo().toString(), reader.read().toString());
-      assertEquals(getVwPassat().toString(), reader.read().toString());
+    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
+      for (int i = 0; i < 10000; i++) {
+        assertEquals(getVwPolo().toString(), reader.read().toString());
+        assertEquals(getVwPassat().toString(), reader.read().toString());
+      }
+      assertNull(reader.read());
     }
-    assertNull(reader.read());
   }
 
   @Test
   public void testFilterMatchesNoBlocks() throws IOException {
     Path path = writeCarsToParquetFile(10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE/64, DEFAULT_PAGE_SIZE/64);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("Bogus")));
-    assertNull(reader.read());
+    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Bogus")))) {
+      assertNull(reader.read());
+    }
   }
 
   @Test
@@ -127,36 +132,38 @@ public class TestSpecificReadWrite {
     Car vwPassat = getVwPassat();
     Car bmwMini  = getBmwMini();
 
-    ParquetWriter<Car> writer = new AvroParquetWriter<Car>(path, Car.SCHEMA$,
+    try(ParquetWriter<Car> writer = new AvroParquetWriter<Car>(path, Car.SCHEMA$,
         CompressionCodecName.UNCOMPRESSED, DEFAULT_BLOCK_SIZE/128, DEFAULT_PAGE_SIZE/128,
-        false);
-    for (int i = 0; i < 10000; i++) {
-      writer.write(vwPolo);
-      writer.write(vwPassat);
-      writer.write(vwPolo);
+        false)) {
+      for (int i = 0; i < 10000; i++) {
+        writer.write(vwPolo);
+        writer.write(vwPassat);
+        writer.write(vwPolo);
+      }
+      writer.write(bmwMini); // only write BMW in last block
     }
-    writer.write(bmwMini); // only write BMW in last block
-    writer.close();
 
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make",
-        equalTo("BMW")));
-    assertEquals(getBmwMini().toString(), reader.read().toString());
-    assertNull(reader.read());
+    try(ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make",
+        equalTo("BMW")))) {
+      assertEquals(getBmwMini().toString(), reader.read().toString());
+      assertNull(reader.read());
+    }
   }
 
   @Test
   public void testFilterWithDictionary() throws IOException {
     Path path = writeCarsToParquetFile(1,CompressionCodecName.UNCOMPRESSED,true);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("Volkswagen")));
-    assertEquals(getVwPolo().toString(), reader.read().toString());
-    assertEquals(getVwPassat().toString(), reader.read().toString());
-    assertNull(reader.read());
+    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
+      assertEquals(getVwPolo().toString(), reader.read().toString());
+      assertEquals(getVwPassat().toString(), reader.read().toString());
+      assertNull(reader.read());
+    }
   }
 
   @Test
   public void testFilterOnSubAttribute() throws IOException {
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
-    
+
     ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("engine.type", equalTo(EngineType.DIESEL)));
     assertEquals(reader.read().toString(), getVwPassat().toString());
     assertNull(reader.read());
@@ -188,7 +195,7 @@ public class TestSpecificReadWrite {
       }
 
       //Schema schemaClone = parser.parse(field.schema().toString(false));
-      Schema.Field fieldClone = new Schema.Field(name, field.schema(), field.doc(), field.defaultValue());
+      Schema.Field fieldClone = new Schema.Field(name, field.schema(), field.doc(), field.defaultVal());
       projectedFields.add(fieldClone);
     }
 
@@ -196,16 +203,17 @@ public class TestSpecificReadWrite {
     projectedSchema.setFields(projectedFields);
     AvroReadSupport.setRequestedProjection(conf, projectedSchema);
 
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(conf, path);
-    for (Car car = reader.read(); car != null; car = reader.read()) {
-      assertEquals(car.getDoors() != null, true);
-      assertEquals(car.getEngine() != null, true);
-      assertEquals(car.getMake() != null, true);
-      assertEquals(car.getModel() != null, true);
-      assertEquals(car.getYear() != null, true);
-      assertEquals(car.getVin() != null, true);
-      assertNull(car.getOptionalExtra());
-      assertNull(car.getServiceHistory());
+    try(ParquetReader<Car> reader = new AvroParquetReader<Car>(conf, path)) {
+      for (Car car = reader.read(); car != null; car = reader.read()) {
+        assertEquals(car.getDoors() != null, true);
+        assertEquals(car.getEngine() != null, true);
+        assertEquals(car.getMake() != null, true);
+        assertEquals(car.getModel() != null, true);
+        assertEquals(car.getYear() != null, true);
+        assertEquals(car.getVin() != null, true);
+        assertNull(car.getOptionalExtra());
+        assertNull(car.getServiceHistory());
+      }
     }
   }
 
@@ -215,14 +223,15 @@ public class TestSpecificReadWrite {
     Configuration conf = new Configuration(testConf);
     AvroReadSupport.setAvroReadSchema(conf, NewCar.SCHEMA$);
 
-    ParquetReader<NewCar> reader = new AvroParquetReader<NewCar>(conf, path);
-    for (NewCar car = reader.read(); car != null; car = reader.read()) {
-      assertEquals(car.getEngine() != null, true);
-      assertEquals(car.getBrand() != null, true);
-      assertEquals(car.getYear() != null, true);
-      assertEquals(car.getVin() != null, true);
-      assertEquals(car.getDescription() == null, true);
-      assertEquals(car.getOpt() == 5, true);
+    try(ParquetReader<NewCar> reader = new AvroParquetReader<>(conf, path)) {
+      for (NewCar car = reader.read(); car != null; car = reader.read()) {
+        assertEquals(car.getEngine() != null, true);
+        assertEquals(car.getBrand() != null, true);
+        assertEquals(car.getYear() != null, true);
+        assertEquals(car.getVin() != null, true);
+        assertEquals(car.getDescription() == null, true);
+        assertEquals(car.getOpt() == 5, true);
+      }
     }
   }
 
@@ -240,14 +249,14 @@ public class TestSpecificReadWrite {
     Car vwPassat = getVwPassat();
     Car bmwMini  = getBmwMini();
 
-    ParquetWriter<Car> writer = new AvroParquetWriter<Car>(path,Car.SCHEMA$, compression,
-        blockSize, pageSize, enableDictionary);
-    for (int i = 0; i < num; i++) {
-      writer.write(vwPolo);
-      writer.write(vwPassat);
-      writer.write(bmwMini);
+    try(ParquetWriter<Car> writer = new AvroParquetWriter<>(path, Car.SCHEMA$, compression,
+      blockSize, pageSize, enableDictionary)) {
+      for (int i = 0; i < num; i++) {
+        writer.write(vwPolo);
+        writer.write(vwPassat);
+        writer.write(bmwMini);
+      }
     }
-    writer.close();
     return path;
   }
 

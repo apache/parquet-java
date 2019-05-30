@@ -21,6 +21,11 @@ package org.apache.parquet.hadoop.util;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 
+/**
+ * A {@link PathFilter} that filters out hidden files. A file is considered to
+ * be hidden, and should not be considered for processing, when the file name
+ * starts with a period ('.') or an underscore ('_').
+ */
 public class HiddenFileFilter implements PathFilter {
   public static final HiddenFileFilter INSTANCE = new HiddenFileFilter();
 
@@ -28,6 +33,7 @@ public class HiddenFileFilter implements PathFilter {
 
   @Override
   public boolean accept(Path p) {
-    return !p.getName().startsWith("_") && !p.getName().startsWith(".");
+    final char c = p.getName().charAt(0);
+    return c != '.' && c != '_';
   }
 }

@@ -34,7 +34,9 @@ import org.apache.parquet.schema.Types;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static java.util.Optional.empty;
@@ -243,17 +245,18 @@ public class AvroSchemaConverter {
   }
 
   public Schema convert(MessageType parquetSchema) {
-    return convertFields(parquetSchema.getName(), parquetSchema.getFields());
+    return convertFields(parquetSchema.getName(), parquetSchema.getFields(), new HashMap<>());
   }
 
   Schema convert(GroupType parquetSchema) {
-    return convertFields(parquetSchema.getName(), parquetSchema.getFields());
+    return convertFields(parquetSchema.getName(), parquetSchema.getFields(), new HashMap<>());
   }
 
-  private Schema convertFields(String name, List<Type> parquetFields) {
+  private Schema convertFields(String name, List<Type> parquetFields, Map<String, Integer> names) {
     List<Schema.Field> fields = new ArrayList<Schema.Field>();
+    Integer nameCount = names.merge(name, 1, (oldValue, value) -> oldValue + 1);
     for (Type parquetType : parquetFields) {
-      Schema fieldSchema = convertField(parquetType);
+      Schema fieldSchema = convertField(parquetType, names);
       if (parquetType.isRepetition(REPEATED)) {
         throw new UnsupportedOperationException("REPEATED not supported outside LIST or MAP. Type: " + parquetType);
       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
@@ -264,12 +267,12 @@ public class AvroSchemaConverter {
             parquetType.getName(), fieldSchema, null, (Object) null));
       }
     }
-    Schema schema = Schema.createRecord(name, null, null, false);
+    Schema schema = Schema.createRecord(name, null, nameCount > 1 ? name + nameCount : null, false);
     schema.setFields(fields);
     return schema;
   }
 
-  private Schema convertField(final Type parquetType) {
+  private Schema convertField(final Type parquetType, Map<String, Integer> names) {
     if (parquetType.isPrimitive()) {
       final PrimitiveType asPrimitive = parquetType.asPrimitiveType();
       final PrimitiveTypeName parquetPrimitiveTypeName =
@@ -291,7 +294,7 @@ public class AvroSchemaConverter {
             }
             @Override
             public Schema convertINT96(PrimitiveTypeName primitiveTypeName) {
-              throw new IllegalArgumentException("INT96 not yet implemented.");
+              throw new IllegalArgumentException("INT96 not implemented and is deprecated");
             }
             @Override
             public Schema convertFLOAT(PrimitiveTypeName primitiveTypeName) {
@@ -342,13 +345,13 @@ public class AvroSchemaConverter {
             }
             if (isElementType(repeatedType, parquetGroupType.getName())) {
               // repeated element types are always required
-              return of(Schema.createArray(convertField(repeatedType)));
+              return of(Schema.createArray(convertField(repeatedType, names)));
             } else {
               Type elementType = repeatedType.asGroupType().getType(0);
               if (elementType.isRepetition(Type.Repetition.OPTIONAL)) {
-                return of(Schema.createArray(optional(convertField(elementType))));
+                return of(Schema.createArray(optional(convertField(elementType, names))));
               } else {
-                return of(Schema.createArray(convertField(elementType)));
+                return of(Schema.createArray(convertField(elementType, names)));
               }
             }
           }
@@ -382,9 +385,9 @@ public class AvroSchemaConverter {
             }
             Type valueType = mapKeyValType.getType(1);
             if (valueType.isRepetition(Type.Repetition.OPTIONAL)) {
-              return of(Schema.createMap(optional(convertField(valueType))));
+              return of(Schema.createMap(optional(convertField(valueType, names))));
             } else {
-              return of(Schema.createMap(convertField(valueType)));
+              return of(Schema.createMap(convertField(valueType, names)));
             }
           }
 
@@ -395,7 +398,7 @@ public class AvroSchemaConverter {
         }).orElseThrow(() -> new UnsupportedOperationException("Cannot convert Parquet type " + parquetType));
       } else {
         // if no original type then it's a record
-        return convertFields(parquetGroupType.getName(), parquetGroupType.getFields());
+        return convertFields(parquetGroupType.getName(), parquetGroupType.getFields(), names);
       }
     }
   }
