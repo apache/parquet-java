@@ -1114,12 +1114,13 @@ public class TestArrayCompatibility extends DirectWriterTest {
                 instance(structWithElementField, "element", 34.0F))));
 
     // check the schema
-    ParquetFileReader reader = ParquetFileReader
-        .open(new Configuration(), test);
-    MessageType fileSchema = reader.getFileMetaData().getSchema();
-    Assert.assertEquals("Converted schema should assume 2-layer structure",
+    final MessageType fileSchema;
+    try (ParquetFileReader reader = ParquetFileReader.open(new Configuration(), test)) {
+      fileSchema = reader.getFileMetaData().getSchema();
+      Assert.assertEquals("Converted schema should assume 2-layer structure",
         oldSchema,
         new AvroSchemaConverter(OLD_BEHAVIOR_CONF).convert(fileSchema));
+    }
 
     // both should default to the 2-layer structure
     assertReaderContains(oldBehaviorReader(test), oldSchema, oldRecord);
