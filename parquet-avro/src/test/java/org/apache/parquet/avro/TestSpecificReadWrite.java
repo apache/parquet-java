@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,6 +19,8 @@
 package org.apache.parquet.avro;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNull;
 import static org.apache.parquet.filter.ColumnPredicates.equalTo;
 import static org.apache.parquet.filter.ColumnRecordFilter.column;
@@ -205,12 +207,12 @@ public class TestSpecificReadWrite {
 
     try(ParquetReader<Car> reader = new AvroParquetReader<Car>(conf, path)) {
       for (Car car = reader.read(); car != null; car = reader.read()) {
-        assertEquals(car.getDoors() != null, true);
-        assertEquals(car.getEngine() != null, true);
-        assertEquals(car.getMake() != null, true);
-        assertEquals(car.getModel() != null, true);
-        assertEquals(car.getYear() != null, true);
-        assertEquals(car.getVin() != null, true);
+        assertTrue(car.getDoors() == 4 || car.getDoors() == 5);
+        assertNotNull(car.getEngine());
+        assertNotNull(car.getMake());
+        assertNotNull(car.getModel());
+        assertEquals(2010, car.getYear());
+        assertNotNull(car.getVin());
         assertNull(car.getOptionalExtra());
         assertNull(car.getServiceHistory());
       }
@@ -225,12 +227,12 @@ public class TestSpecificReadWrite {
 
     try(ParquetReader<NewCar> reader = new AvroParquetReader<>(conf, path)) {
       for (NewCar car = reader.read(); car != null; car = reader.read()) {
-        assertEquals(car.getEngine() != null, true);
-        assertEquals(car.getBrand() != null, true);
-        assertEquals(car.getYear() != null, true);
-        assertEquals(car.getVin() != null, true);
-        assertEquals(car.getDescription() == null, true);
-        assertEquals(car.getOpt() == 5, true);
+        assertNotNull(car.getEngine());
+        assertNotNull(car.getBrand());
+        assertEquals(2010, car.getYear());
+        assertNotNull(car.getVin());
+        assertNull(car.getDescription());
+        assertEquals(5, car.getOpt());
       }
     }
   }
