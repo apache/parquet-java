@@ -20,7 +20,7 @@
 Parquet Jackson 
 ======
 
-Parquet-Jackson is just a dummy module to shade [Jackson](http://jackson.codehaus.org/) artifacts.
+Parquet-Jackson is just a dummy module to shade [Jackson](https://github.com/FasterXML/jackson/) artifacts.
 
 ## Rationale
 
@@ -37,6 +37,7 @@ parquet-jackson module will create a new jar artifact containing all Jackson cla
 
 Other Parquet modules which requires Jackson are configured to depend on parquet-jackson module and still perform shading. The difference is that all Jackson classes are excluded from inclusion, but references from Parquet to Jackson classes are still relocated. The shade plugin will also remove any reference to Jackson dependency but will preserve the parquet-jackson dependency which contains the relocated classes.
 
-### Why still refering directly to org.codehaus.jackson:\* in Parquet modules
+### Why still referring directly to com.fasterxml.jackson:\* in Parquet modules
+
 Because of the way Maven handles multi-modules project. Let's assume that parquet-foo module uses Jackson. When executing *mvn package*, parquet-jackson module will be built first and artifact will be packaged, and a new pom.xml without Jackson dependency is created and used by parquet-foo module. Since Jackson dependencies have been removed by the shade plugin, compilation of parquet-foo will fail.
 
