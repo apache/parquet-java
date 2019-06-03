@@ -71,12 +71,12 @@
     </dependency>
     <dependency>
       <groupId>${jackson.groupId}</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
+      <artifactId>jackson-core</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>${jackson.groupId}</groupId>
-      <artifactId>jackson-core-asl</artifactId>
+      <artifactId>jackson-databind</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>

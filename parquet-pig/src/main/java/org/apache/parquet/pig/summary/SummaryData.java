@@ -22,26 +22,26 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.annotate.JsonWriteNullProperties;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig.Feature;
 
 /**
  * Base class for a node of the data summary tree
  */
-@JsonWriteNullProperties(value = false)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public abstract class SummaryData {
 
   private static ObjectMapper objectMapper = new ObjectMapper();
   private static ObjectMapper prettyObjectMapper = new ObjectMapper();
   static {
-    prettyObjectMapper.getSerializationConfig().set(Feature.INDENT_OUTPUT, true);
+    prettyObjectMapper.enable(SerializationFeature.INDENT_OUTPUT);
   }
 
   private long count;

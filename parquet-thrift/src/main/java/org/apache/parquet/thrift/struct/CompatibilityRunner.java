@@ -19,8 +19,8 @@
 package org.apache.parquet.thrift.struct;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.thrift.TBase;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 
 import java.io.File;
