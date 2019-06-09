@@ -25,13 +25,18 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.api.RecordConsumer;
@@ -45,7 +50,7 @@ class InternalParquetRecordWriter<T> {
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
 
-  private final ParquetFileWriter parquetFileWriter;
+  private ParquetFileWriter parquetFileWriter;
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
@@ -57,6 +62,7 @@ class InternalParquetRecordWriter<T> {
   private final ParquetProperties props;
 
   private boolean closed;
+  private boolean splitFilePerBlock;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
@@ -146,6 +152,8 @@ class InternalParquetRecordWriter<T> {
       if (memSize > (nextRowGroupSize - 2 * recordSize)) {
         LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
         flushRowGroupToStore();
+        if (splitFilePerBlock)
+          startNewFile();
         initStore();
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
         this.lastRowGroupEndPos = parquetFileWriter.getPos();
@@ -189,8 +197,60 @@ class InternalParquetRecordWriter<T> {
   void setRowGroupSizeThreshold(long rowGroupSizeThreshold) {
     this.rowGroupSizeThreshold = rowGroupSizeThreshold;
   }
+  
+  boolean isSplitFilePerBlock() {
+    return splitFilePerBlock;
+  }
+  
+  void setSplitFilePerBlock(boolean split) {
+    splitFilePerBlock = split;
+  }
 
   MessageType getSchema() {
     return this.schema;
+  }
+
+  private void startNewFile() throws IOException {
+    // Finalizes previous file
+    FinalizedWriteContext finalWriteContext = writeSupport.finalizeWrite();
+    Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
+    String modelName = writeSupport.getName();
+    if (modelName != null) {
+      finalMetadata.put(ParquetWriter.OBJECT_MODEL_NAME_PROP, modelName);
+    }
+    finalMetadata.putAll(finalWriteContext.getExtraMetaData());
+    parquetFileWriter.end(finalMetadata);
+    // Gather information about previous file
+    org.apache.parquet.io.OutputFile prev_file = parquetFileWriter.getOutputFile();
+    if (prev_file==null)
+      throw new NullPointerException("Can't find out the filename used for writing PARQUET");
+    if (!(prev_file instanceof HadoopOutputFile))
+      throw new UnsupportedOperationException("expected HadoopOutputFile, but found "+prev_file.getClass().getName());
+    LOG.debug("Previous PARQUET filename: {}", prev_file);
+    HadoopOutputFile prev_hfile = (HadoopOutputFile)prev_file;
+    Configuration conf = prev_hfile.getConfiguration();
+    String file_extension;
+    if (compressor!=null && compressor.getCodecName()!=null)
+      file_extension = compressor.getCodecName().getExtension()+".parquet";
+    else
+      file_extension = ".parquet";
+    // Starts new file
+    Pattern filename_pattern = Pattern.compile("(-b\\d+)?"+Pattern.quote(file_extension)+"$", Pattern.CASE_INSENSITIVE);
+    Matcher mParquetSufix = filename_pattern.matcher(prev_file.toString());
+    String new_filename;
+    if (!mParquetSufix.find())
+      new_filename = prev_file.toString()+"-b1"+file_extension;
+    else if (mParquetSufix.groupCount()==0 || mParquetSufix.group(1)==null)
+      new_filename = prev_file.toString().substring(0, mParquetSufix.start())+"-b1"+file_extension;
+    else
+      new_filename = prev_file.toString().substring(0, mParquetSufix.start())+"-b"+(1+Integer.parseInt(mParquetSufix.group(1).substring(2)))+file_extension;
+    LOG.debug("New PARQUET filename: {}", new_filename);
+    Path new_file = new Path(new_filename);
+    long blockSize = ParquetOutputFormat.getLongBlockSize(conf);
+    int maxPaddingSize = ParquetOutputFormat.getMaxPaddingSize(conf);
+    ParquetFileWriter new_writer = new ParquetFileWriter(HadoopOutputFile.fromPath(new_file, conf),
+        parquetFileWriter.getSchema(), ParquetFileWriter.Mode.CREATE, blockSize, maxPaddingSize);
+    new_writer.start();
+    parquetFileWriter = new_writer;
   }
 }

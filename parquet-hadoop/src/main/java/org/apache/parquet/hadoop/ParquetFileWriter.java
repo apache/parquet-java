@@ -141,6 +141,8 @@ public class ParquetFileWriter {
   // set when end is called
   private ParquetMetadata footer = null;
 
+  private OutputFile outputFile;
+
   /**
    * Captures the order in which methods should be called
    */
@@ -270,6 +272,7 @@ public class ParquetFileWriter {
     TypeUtil.checkValidWriteSchema(schema);
 
     this.schema = schema;
+    this.outputFile = file;
 
     long blockSize = rowGroupSize;
     if (file.supportsBlockSize()) {
@@ -1192,4 +1195,13 @@ public class ParquetFileWriter {
       return (remaining <= maxPaddingSize);
     }
   }
+  
+  public OutputFile getOutputFile() {
+    return outputFile;
+  }
+
+  public MessageType getSchema() {
+    return schema;
+  }
+  
 }

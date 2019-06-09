@@ -145,6 +145,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
   public static final String COLUMN_INDEX_TRUNCATE_LENGTH = "parquet.columnindex.truncate.length";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
+  public static final String SPLIT_FILE_PER_BLOCK = "parquet.split.file.per.block";
+  public static final boolean DEFAULT_SPLIT_FILE_PER_BLOCK = false;
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -310,7 +312,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     conf.setInt(MAX_PADDING_BYTES, maxPaddingSize);
   }
 
-  private static int getMaxPaddingSize(Configuration conf) {
+  static int getMaxPaddingSize(Configuration conf) {
     return conf.getInt(MAX_PADDING_BYTES, ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
   }
 
@@ -336,6 +338,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   private static int getPageRowCountLimit(Configuration conf) {
     return conf.getInt(PAGE_ROW_COUNT_LIMIT, ParquetProperties.DEFAULT_PAGE_ROW_COUNT_LIMIT);
+  }
+  
+  public static void setSplitFilePerBlock(Configuration conf, boolean split) {
+    conf.setBoolean(SPLIT_FILE_PER_BLOCK, split);
+  }
+  
+  public static boolean isSplitFilePerBlock(Configuration conf) {
+    return conf.getBoolean(SPLIT_FILE_PER_BLOCK, DEFAULT_SPLIT_FILE_PER_BLOCK); 
   }
 
   private WriteSupport<T> writeSupport;
