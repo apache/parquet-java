@@ -274,6 +274,7 @@ public class DumpCommand extends ArgsOnlyCommand {
                 } else {
                   out.format(" ST:[none]");
                 }
+                out.format(" CRC:%s", pageV1.isSetCrc32() ? pageV1.getCrc32() : "-");
                 return null;
               }
 

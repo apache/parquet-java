@@ -25,8 +25,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
+import java.util.zip.CRC32;
+
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
@@ -68,8 +71,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final long rowCount;
     private int pageIndex = 0;
 
+    private final CRC32 crc;
+    boolean pageChecksumVerification;
+
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
-        DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount) {
+                          DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount,
+                          boolean pageChecksumVerification) {
       this.decompressor = decompressor;
       this.compressedPages = new LinkedList<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
@@ -80,6 +87,13 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       this.valueCount = count;
       this.offsetIndex = offsetIndex;
       this.rowCount = rowCount;
+      this.pageChecksumVerification = pageChecksumVerification;
+      this.crc = pageChecksumVerification ? new CRC32() : null;
+    }
+
+    ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
+                          DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount) {
+      this(decompressor, compressedPages, compressedDictionaryPage, offsetIndex, rowCount, ParquetProperties.DEFAULT_PAGE_VERIFY_CHECKSUM_ENABLED);
     }
 
     @Override
@@ -98,9 +112,27 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         @Override
         public DataPage visit(DataPageV1 dataPageV1) {
           try {
+            if (pageChecksumVerification && dataPageV1.isSetCrc32()) {
+              crc.reset();
+              crc.update(dataPageV1.getBytes().toByteArray());
+              if (dataPageV1.getCrc32() != (int) crc.getValue()) {
+                throw new ParquetDecodingException("could not verify page integrity, CRC checksum verification failed");
+              }
+            }
             BytesInput decompressed = decompressor.decompress(dataPageV1.getBytes(), dataPageV1.getUncompressedSize());
             if (offsetIndex == null) {
-              return new DataPageV1(
+              if (dataPageV1.isSetCrc32()) {
+                return new DataPageV1(
+                  decompressed,
+                  dataPageV1.getValueCount(),
+                  dataPageV1.getUncompressedSize(),
+                  dataPageV1.getStatistics(),
+                  dataPageV1.getRlEncoding(),
+                  dataPageV1.getDlEncoding(),
+                  dataPageV1.getValueEncoding(),
+                  dataPageV1.getCrc32());
+              } else {
+                return new DataPageV1(
                   decompressed,
                   dataPageV1.getValueCount(),
                   dataPageV1.getUncompressedSize(),
@@ -108,9 +140,23 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV1.getRlEncoding(),
                   dataPageV1.getDlEncoding(),
                   dataPageV1.getValueEncoding());
+              }
             } else {
               long firstRowIndex = offsetIndex.getFirstRowIndex(currentPageIndex);
-              return new DataPageV1(
+              if (dataPageV1.isSetCrc32()) {
+                return new DataPageV1(
+                  decompressed,
+                  dataPageV1.getValueCount(),
+                  dataPageV1.getUncompressedSize(),
+                  firstRowIndex,
+                  Math.toIntExact(offsetIndex.getLastRowIndex(currentPageIndex, rowCount) - firstRowIndex + 1),
+                  dataPageV1.getStatistics(),
+                  dataPageV1.getRlEncoding(),
+                  dataPageV1.getDlEncoding(),
+                  dataPageV1.getValueEncoding(),
+                  dataPageV1.getCrc32());
+              } else {
+                return new DataPageV1(
                   decompressed,
                   dataPageV1.getValueCount(),
                   dataPageV1.getUncompressedSize(),
@@ -120,6 +166,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV1.getRlEncoding(),
                   dataPageV1.getDlEncoding(),
                   dataPageV1.getValueEncoding());
+              }
             }
           } catch (IOException e) {
             throw new ParquetDecodingException("could not decompress page", e);

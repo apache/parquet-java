@@ -46,6 +46,7 @@ import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.ParquetProperties;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -155,7 +156,9 @@ public class TestColumnChunkPageWriteStore {
     {
       OutputFileForTesting outputFile = new OutputFileForTesting(file, conf);
       ParquetFileWriter writer = new ParquetFileWriter(outputFile, schema, Mode.CREATE,
-          ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
+          ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+          conf.getBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED,
+            ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED));
       writer.start();
       writer.startBlock(rowCount);
       pageOffset = outputFile.out().getPos();

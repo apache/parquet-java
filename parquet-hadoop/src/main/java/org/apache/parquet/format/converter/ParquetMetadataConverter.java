@@ -1338,13 +1338,15 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding rlEncoding,
       org.apache.parquet.column.Encoding dlEncoding,
       org.apache.parquet.column.Encoding valuesEncoding,
+      int crc32,
       OutputStream to) throws IOException {
     writePageHeader(newDataPageHeader(uncompressedSize,
                                       compressedSize,
                                       valueCount,
                                       rlEncoding,
                                       dlEncoding,
-                                      valuesEncoding), to);
+                                      valuesEncoding,
+                                      crc32), to);
   }
 
   // Statistics are no longer saved in page headers
@@ -1365,13 +1367,29 @@ public class ParquetMetadataConverter {
   }
 
   private PageHeader newDataPageHeader(
+    int uncompressedSize, int compressedSize,
+    int valueCount,
+    org.apache.parquet.column.Encoding rlEncoding,
+    org.apache.parquet.column.Encoding dlEncoding,
+    org.apache.parquet.column.Encoding valuesEncoding) {
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedSize, compressedSize);
+    pageHeader.setData_page_header(new DataPageHeader(
+      valueCount,
+      getEncoding(valuesEncoding),
+      getEncoding(dlEncoding),
+      getEncoding(rlEncoding)));
+    return pageHeader;
+  }
+
+  private PageHeader newDataPageHeader(
       int uncompressedSize, int compressedSize,
       int valueCount,
       org.apache.parquet.column.Encoding rlEncoding,
       org.apache.parquet.column.Encoding dlEncoding,
-      org.apache.parquet.column.Encoding valuesEncoding) {
+      org.apache.parquet.column.Encoding valuesEncoding,
+      int crc32) {
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedSize, compressedSize);
-    // TODO: pageHeader.crc = ...;
+    pageHeader.setCrc(crc32);
     pageHeader.setData_page_header(new DataPageHeader(
         valueCount,
         getEncoding(valuesEncoding),
@@ -1398,19 +1416,37 @@ public class ParquetMetadataConverter {
   }
 
   public void writeDataPageV1Header(
+    int uncompressedSize,
+    int compressedSize,
+    int valueCount,
+    org.apache.parquet.column.Encoding rlEncoding,
+    org.apache.parquet.column.Encoding dlEncoding,
+    org.apache.parquet.column.Encoding valuesEncoding,
+    OutputStream to) throws IOException {
+    writePageHeader(newDataPageHeader(uncompressedSize,
+      compressedSize,
+      valueCount,
+      rlEncoding,
+      dlEncoding,
+      valuesEncoding), to);
+  }
+
+  public void writeDataPageV1Header(
       int uncompressedSize,
       int compressedSize,
       int valueCount,
       org.apache.parquet.column.Encoding rlEncoding,
       org.apache.parquet.column.Encoding dlEncoding,
       org.apache.parquet.column.Encoding valuesEncoding,
+      int crc32,
       OutputStream to) throws IOException {
     writePageHeader(newDataPageHeader(uncompressedSize,
                                       compressedSize,
                                       valueCount,
                                       rlEncoding,
                                       dlEncoding,
-                                      valuesEncoding), to);
+                                      valuesEncoding,
+                                      crc32), to);
   }
 
   public void writeDataPageV2Header(

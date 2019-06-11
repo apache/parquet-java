@@ -1195,19 +1195,35 @@ public class ParquetFileReader implements Closeable {
             break;
           case DATA_PAGE:
             DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
-            pagesInChunk.add(
+            if (pageHeader.isSetCrc()) {
+              pagesInChunk.add(
                 new DataPageV1(
-                    this.readAsBytesInput(compressedPageSize),
-                    dataHeaderV1.getNum_values(),
-                    uncompressedPageSize,
-                    converter.fromParquetStatistics(
-                        getFileMetaData().getCreatedBy(),
-                        dataHeaderV1.getStatistics(),
-                        type),
-                    converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
-                    converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
-                    converter.getEncoding(dataHeaderV1.getEncoding())
-                    ));
+                  this.readAsBytesInput(compressedPageSize),
+                  dataHeaderV1.getNum_values(),
+                  uncompressedPageSize,
+                  converter.fromParquetStatistics(
+                    getFileMetaData().getCreatedBy(),
+                    dataHeaderV1.getStatistics(),
+                    type),
+                  converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
+                  converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
+                  converter.getEncoding(dataHeaderV1.getEncoding()),
+                  pageHeader.getCrc()
+                ));
+            } else {
+              pagesInChunk.add(
+                new DataPageV1(
+                  this.readAsBytesInput(compressedPageSize),
+                  dataHeaderV1.getNum_values(),
+                  uncompressedPageSize,
+                  converter.fromParquetStatistics(
+                    getFileMetaData().getCreatedBy(),
+                    dataHeaderV1.getStatistics(),
+                    type),
+                  converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
+                  converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
+                  converter.getEncoding(dataHeaderV1.getEncoding())));
+            }
             valuesCountReadSoFar += dataHeaderV1.getNum_values();
             ++dataPageCountReadSoFar;
             break;
@@ -1249,7 +1265,7 @@ public class ParquetFileReader implements Closeable {
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex,
-          blocks.get(currentBlock).getRowCount());
+          blocks.get(currentBlock).getRowCount(), options.usePageChecksumVerification());
     }
 
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {

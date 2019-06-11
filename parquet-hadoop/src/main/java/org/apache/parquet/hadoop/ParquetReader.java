@@ -280,6 +280,16 @@ public class ParquetReader<T> implements Closeable {
       return this;
     }
 
+    public Builder<T> usePageChecksumVerification(boolean usePageChecksumVerification) {
+      optionsBuilder.usePageChecksumVerification(usePageChecksumVerification);
+      return this;
+    }
+
+    public Builder<T> usePageChecksumVerification() {
+      optionsBuilder.usePageChecksumVerification();
+      return this;
+    }
+
     public Builder<T> withFileRange(long start, long end) {
       optionsBuilder.withRange(start, end);
       return this;
