@@ -111,11 +111,14 @@ public class Help implements Command {
       console.info("    {}\n\t{}",
           command, jc.getCommandDescription(command));
     }
-    console.info("\n  Examples:");
-    console.info("\n    # print information for create\n    {} help create",
-        programName);
-    console.info("\n  See '{} help <command>' for more information on a " +
+
+    jc.getCommands().keySet().stream().filter(s -> !s.equals("help")).findFirst().ifPresent(command -> {
+      console.info("\n  Examples:");
+      console.info("\n    # print information for {}\n    {} help {}",
+        command, programName, command);
+      console.info("\n  See '{} help <command>' for more information on a " +
         "specific command.", programName);
+    });
   }
 
   private boolean printOption(Logger console, ParameterDescription param) {
