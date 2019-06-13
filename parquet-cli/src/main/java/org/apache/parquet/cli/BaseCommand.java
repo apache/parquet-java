@@ -226,7 +226,9 @@ public abstract class BaseCommand implements Command, Configurable {
 
   @Override
   public Configuration getConf() {
-    return conf;
+    // In case conf is null, we'll return an empty configuration
+    // this can be on a local development machine
+    return null != conf ? conf : new Configuration();
   }
 
   /**
