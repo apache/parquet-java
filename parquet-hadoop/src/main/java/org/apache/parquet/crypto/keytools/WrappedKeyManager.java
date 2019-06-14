@@ -24,30 +24,46 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.AesDecryptor;
 import org.apache.parquet.crypto.AesEncryptor;
 import org.apache.parquet.crypto.DecryptionKeyRetriever;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 
-public class WrappedKeyManager {
+public class WrappedKeyManager implements FileKeyManager {
+  
+  private static final String wrappingMethod = "org.apache.parquet.crypto.keytools.WrappedKeyManager";
+  private static final String wrappingMethodVersion = "0.1";
+  
+  private static final String WRAPPING_METHOD_FIELD = "method";
+  private static final String WRAPPING_METHOD_VERSION_FIELD = "version";
+  private static final String MASTER_KEY_ID_FIELD = "masterKeyID";
+  private static final String WRAPPED_KEY_FIELD = "wrappedKey";
 
-  private final KmsClient kmsClient;
-  private final boolean wrapLocally;
-  private final WrappedKeyStore wrappedKeyStore;
-  private final String fileID;
+  private KmsClient kmsClient;
+  private boolean wrapLocally;
+  private  KeyMaterialStore keyMaterialStore;
+  private  String fileID;
 
-  private final SecureRandom random;
+  private  SecureRandom random;
   private short keyCounter;
 
   public static class WrappedKeyRetriever implements DecryptionKeyRetriever {
     private final KmsClient kmsClient;
     private final boolean unwrapLocally;
-    private final WrappedKeyStore keyStore;
+    private final KeyMaterialStore keyStore;
     private final String fileID;
 
-    private WrappedKeyRetriever(KmsClient kmsClient, boolean unwrapLocally, WrappedKeyStore keyStore, String fileID) {
+    private WrappedKeyRetriever(KmsClient kmsClient, boolean unwrapLocally, KeyMaterialStore keyStore, String fileID) {
       this.kmsClient = kmsClient;
       this.keyStore = keyStore;
       this.fileID = fileID;
@@ -58,15 +74,31 @@ public class WrappedKeyManager {
       String keyMaterial;
       if (null != keyStore) {
         String keyIDinFile = new String(keyMetaData, StandardCharsets.UTF_8);
-        keyMaterial = keyStore.getWrappedKey(fileID, keyIDinFile);
+        keyMaterial = keyStore.getKeyMaterial(fileID, keyIDinFile);
       }
       else {
         keyMaterial = new String(keyMetaData, StandardCharsets.UTF_8);
       }
-      String[] parts = keyMaterial.split(":");
-      if (parts.length != 2) throw new IOException("Wrong key material structure: " + keyMaterial);
-      String encodedWrappedDatakey = parts[0];
-      String masterKeyID = parts[1];
+      
+      JSONParser parser = new JSONParser();
+      JSONObject keyMaterialJson = null;
+      try {
+        keyMaterialJson = (JSONObject) parser.parse(keyMaterial);
+      } catch (ParseException e) {
+        throw new IOException("Failed to parse key material " + keyMaterial, e);
+      }
+      
+      String wrapMethod = (String) keyMaterialJson.get(WRAPPING_METHOD_FIELD);
+      if (!wrapMethod.equals(wrappingMethod)) {
+        throw new IOException("Wrong wrapping method " + wrapMethod);
+      }
+      
+      //String wrapMethodVersion = (String) jsonObject.get(WRAPPING_METHOD_VERSION_FIELD);
+      //TODO compare to wrappingMethodVersion
+          
+      String encodedWrappedDatakey = (String) keyMaterialJson.get(WRAPPED_KEY_FIELD);
+      String masterKeyID = (String) keyMaterialJson.get(MASTER_KEY_ID_FIELD);
+      
       byte[] dataKey = null;
       if (unwrapLocally) {
         byte[] wrappedDataKey = Base64.getDecoder().decode(encodedWrappedDatakey);
@@ -81,9 +113,9 @@ public class WrappedKeyManager {
           throw new IOException("Failed to get from KMS the master key " + masterKeyID);
         }
         byte[] masterKey = Base64.getDecoder().decode(encodedMasterKey);
-        AesDecryptor keyDecryptor = new AesDecryptor(AesEncryptor.Mode.GCM, masterKey);
-        byte[] AAD = masterKeyID.getBytes(StandardCharsets.UTF_8);
-        dataKey = keyDecryptor.decrypt(wrappedDataKey, 0, wrappedDataKey.length, AAD);
+        // TODO key wiping
+        AesDecryptor keyDecryptor = new AesDecryptor(AesEncryptor.Mode.GCM, masterKey, null);
+        dataKey = keyDecryptor.decrypt(wrappedDataKey, 0, wrappedDataKey.length, null);
       }
       else {
         String encodedDataKey = null;
@@ -102,23 +134,46 @@ public class WrappedKeyManager {
     }
   }
   
-  public WrappedKeyManager(KmsClient kmsClient) {
-    this(kmsClient, !kmsClient.supportsServerSideWrapping(), null, null);
-  }
-
-  public WrappedKeyManager(KmsClient kmsClient, boolean wrapLocally, WrappedKeyStore wrappedKeyStore, String fileID) {
+  @Override
+  public void initialize(Configuration configuration, KmsClient kmsClient, KeyMaterialStore keyMaterialStore, String fileID) throws IOException {
+    String localWrap = configuration.getTrimmed("encryption.wrap.locally");
+    if (null == localWrap || localWrap.equalsIgnoreCase("true")) {
+      wrapLocally = true; // true by default
+    }
+    else if (localWrap.equalsIgnoreCase("false")) {
+      wrapLocally = false;
+    }
+    else {
+      throw new IOException("Bad encryption.wrap.locally value: " + localWrap);
+    }
     if (!wrapLocally && !kmsClient.supportsServerSideWrapping()) {
       throw new UnsupportedOperationException("KMS client doesn't support server-side wrapping");
     }
-    if (null != wrappedKeyStore && null == fileID) {
-      throw new IllegalArgumentException("File ID must be supplied to wrapped key store");
-    }
     this.kmsClient = kmsClient;
-    this.wrapLocally = wrapLocally;
-    this.wrappedKeyStore = wrappedKeyStore;
+    this.keyMaterialStore = keyMaterialStore;
     this.fileID = fileID;
     random = new SecureRandom();
     keyCounter = 0;
+  }
+
+  @Override
+  public KeyWithMetadata getFooterEncryptionKey(String footerMasterKeyID) throws IOException {
+    return generateDataKey(footerMasterKeyID);
+  }
+
+  @Override
+  public KeyWithMetadata getColumnEncryptionKey(ColumnPath column, String columnMasterKeyID) throws IOException {
+    return generateDataKey(columnMasterKeyID);
+  }
+  
+  @Override
+  public DecryptionKeyRetriever getDecryptionKeyRetriever() {
+    return new WrappedKeyRetriever(kmsClient, wrapLocally, keyMaterialStore, fileID);
+  }
+
+  @Override
+  public void close() {
+    // TODO Wipe keys
   }
 
   /**
@@ -128,8 +183,8 @@ public class WrappedKeyManager {
    * @return
    * @throws IOException
    */
-  public ParquetKey generateKey(String masterKeyID) throws IOException {
-    byte[] dataKey = new byte[16]; //TODO
+  private KeyWithMetadata generateDataKey(String masterKeyID) throws IOException {
+    byte[] dataKey = new byte[16]; //TODO length. configure via properties
     random.nextBytes(dataKey);
     String encodedWrappedDataKey = null;
     if (wrapLocally) {
@@ -144,9 +199,9 @@ public class WrappedKeyManager {
         throw new IOException("KMS client doesnt support key fetching", e);
       }
       byte[] masterKey = Base64.getDecoder().decode(encodedMasterKey);
-      AesEncryptor keyEncryptor = new AesEncryptor(AesEncryptor.Mode.GCM, masterKey);
-      byte[] AAD = masterKeyID.getBytes(StandardCharsets.UTF_8);
-      byte[] wrappedDataKey = keyEncryptor.encrypt(false, dataKey, AAD);
+      // TODO key wiping
+      AesEncryptor keyEncryptor = new AesEncryptor(AesEncryptor.Mode.GCM, masterKey, null);
+      byte[] wrappedDataKey = keyEncryptor.encrypt(false, dataKey, null);
       encodedWrappedDataKey = Base64.getEncoder().encodeToString(wrappedDataKey);
     }
     else {
@@ -161,22 +216,25 @@ public class WrappedKeyManager {
         throw new IOException("KMS client doesnt support key wrapping", e);
       }
     }
-    String wrappedKeyMaterial = encodedWrappedDataKey + ":" + masterKeyID;
+    
+    Map<String, String> keyMaterialMap = new HashMap<String, String>(4);
+    keyMaterialMap.put(WRAPPING_METHOD_FIELD, wrappingMethod);
+    keyMaterialMap.put(WRAPPING_METHOD_VERSION_FIELD, wrappingMethodVersion);
+    keyMaterialMap.put(MASTER_KEY_ID_FIELD, masterKeyID);
+    keyMaterialMap.put(WRAPPED_KEY_FIELD, encodedWrappedDataKey);
+    String keyMaterial = JSONValue.toJSONString(keyMaterialMap);
+        
     byte[] keyMetadata = null;
-    if (null != wrappedKeyStore) {
+    if (null != keyMaterialStore) {
       String keyName = "k" + keyCounter;
-      wrappedKeyStore.storeWrappedKey(wrappedKeyMaterial, fileID, keyName);
+      keyMaterialStore.storeKeyMaterial(keyMaterial, fileID, keyName);
       keyMetadata = keyName.getBytes(StandardCharsets.UTF_8);
       keyCounter++;
     }
     else {
-      keyMetadata  = wrappedKeyMaterial.getBytes(StandardCharsets.UTF_8);
+      keyMetadata  = keyMaterial.getBytes(StandardCharsets.UTF_8);
     }
-    ParquetKey key = new ParquetKey(dataKey, keyMetadata);
+    KeyWithMetadata key = new KeyWithMetadata(dataKey, keyMetadata);
     return key;
-  }
-
-  public DecryptionKeyRetriever getKeyRetriever() {
-    return new WrappedKeyRetriever(kmsClient, wrapLocally, wrappedKeyStore, fileID);
   }
 }

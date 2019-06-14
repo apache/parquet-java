@@ -22,16 +22,16 @@ package org.apache.parquet.crypto.keytools;
 
 import java.nio.charset.StandardCharsets;
 
-public class ParquetKey {
+public class KeyWithMetadata {
   
   private final byte[] keyBytes;
   private final byte[] keyMetaData;
   
-  public ParquetKey(byte[] keyBytes, String keyID) {
+  public KeyWithMetadata(byte[] keyBytes, String keyID) {
     this(keyBytes, keyID.getBytes(StandardCharsets.UTF_8));
   }
   
-  public ParquetKey(byte[] keyBytes, byte[] keyMetaData) {
+  public KeyWithMetadata(byte[] keyBytes, byte[] keyMetaData) {
     this.keyBytes = keyBytes;
     this.keyMetaData = keyMetaData;
   }
