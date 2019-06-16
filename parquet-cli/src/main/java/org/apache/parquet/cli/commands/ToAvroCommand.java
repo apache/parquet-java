@@ -29,6 +29,7 @@ import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.io.DatumWriter;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
@@ -96,9 +97,8 @@ public class ToAvroCommand extends BaseCommand {
 
     Path outPath = qualifiedPath(outputPath);
     FileSystem outFS = outPath.getFileSystem(getConf());
-    if (overwrite && outFS.exists(outPath)) {
-      console.debug("Deleting output file {} (already exists)", outPath);
-      outFS.delete(outPath);
+    if (!overwrite && outFS.exists(outPath)) {
+      throw new FileAlreadyExistsException("Output file " + outputPath + " already exists");
     }
 
     Iterable<Record> reader = openDataFile(source, projection);

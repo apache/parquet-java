@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.cli.commands;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -29,5 +31,21 @@ public class ToAvroCommandTest extends AvroFileTest {
   public void testToAvroCommand() throws IOException {
     File avroFile = toAvro(parquetFile());
     Assert.assertTrue(avroFile.exists());
+  }
+
+  @Test
+  public void testToAvroCommandOverwriteExistentFile() throws IOException {
+    File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
+    FileUtils.touch(outputFile);
+    Assert.assertEquals(0, outputFile.length());
+    File avroFile = toAvro(parquetFile(), outputFile, true);
+    Assert.assertTrue(0 < avroFile.length());
+  }
+
+  @Test(expected = FileAlreadyExistsException.class)
+  public void testToAvroCommandOverwriteExistentFileWithoutOverwriteOption() throws IOException {
+    File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
+    FileUtils.touch(outputFile);
+    toAvro(parquetFile(), outputFile, false);
   }
 }

@@ -26,14 +26,19 @@ import java.util.Arrays;
 
 public class AvroFileTest extends ParquetFileTest {
 
-  protected File toAvro(File parquetFile) throws IOException {
+  protected File toAvro(File inputFile) throws IOException {
+    File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
+    return toAvro(inputFile, outputFile, false);
+  }
+
+  protected File toAvro(File inputFile, File outputFile, boolean overwrite) throws IOException {
     ToAvroCommand command = new ToAvroCommand(createLogger());
-    command.targets = Arrays.asList(parquetFile.getAbsolutePath());
-    File output = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
-    command.outputPath = output.getAbsolutePath();
+    command.targets = Arrays.asList(inputFile.getAbsolutePath());
+    command.outputPath = outputFile.getAbsolutePath();
+    command.overwrite = overwrite;
     command.setConf(new Configuration());
     int exitCode = command.run();
     assert(exitCode == 0);
-    return output;
+    return outputFile;
   }
 }
