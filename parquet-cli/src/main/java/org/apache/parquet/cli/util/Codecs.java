@@ -42,6 +42,8 @@ public class Codecs {
         return CodecFactory.snappyCodec();
       case GZIP:
         return CodecFactory.deflateCodec(9);
+      case ZSTD:
+        return CodecFactory.zstandardCodec(CodecFactory.DEFAULT_ZSTANDARD_LEVEL);
       default:
         throw new IllegalArgumentException(
             "Codec incompatible with Avro: " + codec);
