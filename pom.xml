@@ -366,6 +366,17 @@
     </pluginManagement>
     <plugins>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>${maven-javadoc-plugin.version}</version>
+        <configuration>
+          <sourceFileExcludes>
+            <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
+          </sourceFileExcludes>
+          <source>8</source>
+        </configuration>
+      </plugin>
+      <plugin>
         <groupId>com.mycila.maven-license-plugin</groupId>
         <artifactId>maven-license-plugin</artifactId>
         <version>1.10.b1</version>
