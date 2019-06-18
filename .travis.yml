@@ -1,4 +1,6 @@
 language: java
+dist: xenial
+
 before_install:
   - ./dev/travis-before_install.sh
 
