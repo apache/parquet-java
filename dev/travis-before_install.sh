@@ -25,6 +25,7 @@ export THIFT_VERSION=0.12.0
 set -e
 date
 sudo apt-get update -qq
+sudo apt-get upgrade -qq
 sudo apt-get install -qq --no-install-recommends build-essential pv autoconf automake libtool curl make \
    g++ unzip libboost-dev libboost-test-dev libboost-program-options-dev \
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
@@ -33,7 +34,7 @@ pwd
 wget -qO- https://archive.apache.org/dist/thrift/0.12.0/thrift-0.12.0.tar.gz | tar zxf -
 cd thrift-${THIFT_VERSION}
 chmod +x ./configure
-./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php --without-nodejs --without-java --without-go --without-cpp --without-python --without-python3
+./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php --without-nodejs --without-java --without-go --without-cpp --without-python
 sudo make install
 cd ..
 branch_specific_script="dev/travis-before_install-${TRAVIS_BRANCH}.sh"
