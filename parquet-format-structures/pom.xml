@@ -129,7 +129,8 @@
         <version>${maven-javadoc-plugin.version}</version>
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
-          <doclint>None</doclint>
+          <doclint>none</doclint>
+          <source>8</source>
         </configuration>
       </plugin>
     </plugins>
@@ -144,6 +145,7 @@
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
           <doclint>none</doclint>
+          <source>8</source>
         </configuration>
       </plugin>
     </plugins>

@@ -182,6 +182,7 @@
           <sourceFileExcludes>
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
+          <source>8</source>
         </configuration>
       </plugin>
       <plugin>
