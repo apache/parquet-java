@@ -86,7 +86,7 @@ public class HadoopReadOptions extends ParquetReadOptions {
       useRecordFilter(conf.getBoolean(RECORD_FILTERING_ENABLED, true));
       useColumnIndexFilter(conf.getBoolean(COLUMN_INDEX_FILTERING_ENABLED, true));
       usePageChecksumVerification(conf.getBoolean(PAGE_VERIFY_CHECKSUM_ENABLED,
-        ParquetProperties.DEFAULT_PAGE_VERIFY_CHECKSUM_ENABLED));
+        PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT));
       withCodecFactory(HadoopCodecs.newFactory(conf, 0));
       withRecordFilter(getFilter(conf));
       withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
