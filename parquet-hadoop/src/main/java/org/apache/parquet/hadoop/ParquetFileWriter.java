@@ -332,9 +332,7 @@ public class ParquetFileWriter {
     this.encodingStatsBuilder = new EncodingStats.Builder();
     // no truncation is needed for testing
     this.columnIndexTruncateLength = Integer.MAX_VALUE;
-    this.pageWriteChecksumEnabled = configuration.getBoolean(
-      ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED,
-      ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+    this.pageWriteChecksumEnabled = ParquetOutputFormat.getPageWriteChecksumEnabled(configuration);
     this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
   }
   /**

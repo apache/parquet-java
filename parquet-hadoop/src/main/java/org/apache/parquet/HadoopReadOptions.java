@@ -21,7 +21,6 @@ package org.apache.parquet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
@@ -86,7 +85,7 @@ public class HadoopReadOptions extends ParquetReadOptions {
       useRecordFilter(conf.getBoolean(RECORD_FILTERING_ENABLED, true));
       useColumnIndexFilter(conf.getBoolean(COLUMN_INDEX_FILTERING_ENABLED, true));
       usePageChecksumVerification(conf.getBoolean(PAGE_VERIFY_CHECKSUM_ENABLED,
-        PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT));
+        usePageChecksumVerification));
       withCodecFactory(HadoopCodecs.newFactory(conf, 0));
       withRecordFilter(getFilter(conf));
       withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
