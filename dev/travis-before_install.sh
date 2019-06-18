@@ -25,7 +25,7 @@ export THIFT_VERSION=0.12.0
 set -e
 date
 sudo apt-get update -qq
-sudo apt-get upgrade -qq
+sudo apt-get upgrade -y -qq
 sudo apt-get install -qq --no-install-recommends build-essential pv autoconf automake libtool curl make \
    g++ unzip libboost-dev libboost-test-dev libboost-program-options-dev \
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
