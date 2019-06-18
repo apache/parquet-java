@@ -1,6 +1,6 @@
 language: java
 before_install:
-  - bash dev/travis-before_install.sh
+  - ./dev/travis-before_install.sh
 
 jdk:
   - openjdk8
