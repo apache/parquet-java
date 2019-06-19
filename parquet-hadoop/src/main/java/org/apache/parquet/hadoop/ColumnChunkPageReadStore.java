@@ -69,7 +69,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private int pageIndex = 0;
 
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
-                          DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount) {
+        DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount) {
       this.decompressor = decompressor;
       this.compressedPages = new LinkedList<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
@@ -102,25 +102,25 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
             DataPageV1 decompressedPage;
             if (offsetIndex == null) {
               decompressedPage = new DataPageV1(
-                decompressed,
-                dataPageV1.getValueCount(),
-                dataPageV1.getUncompressedSize(),
-                dataPageV1.getStatistics(),
-                dataPageV1.getRlEncoding(),
-                dataPageV1.getDlEncoding(),
-                dataPageV1.getValueEncoding());
+                  decompressed,
+                  dataPageV1.getValueCount(),
+                  dataPageV1.getUncompressedSize(),
+                  dataPageV1.getStatistics(),
+                  dataPageV1.getRlEncoding(),
+                  dataPageV1.getDlEncoding(),
+                  dataPageV1.getValueEncoding());
             } else {
               long firstRowIndex = offsetIndex.getFirstRowIndex(currentPageIndex);
               decompressedPage = new DataPageV1(
-                decompressed,
-                dataPageV1.getValueCount(),
-                dataPageV1.getUncompressedSize(),
-                firstRowIndex,
-                Math.toIntExact(offsetIndex.getLastRowIndex(currentPageIndex, rowCount) - firstRowIndex + 1),
-                dataPageV1.getStatistics(),
-                dataPageV1.getRlEncoding(),
-                dataPageV1.getDlEncoding(),
-                dataPageV1.getValueEncoding());
+                  decompressed,
+                  dataPageV1.getValueCount(),
+                  dataPageV1.getUncompressedSize(),
+                  firstRowIndex,
+                  Math.toIntExact(offsetIndex.getLastRowIndex(currentPageIndex, rowCount) - firstRowIndex + 1),
+                  dataPageV1.getStatistics(),
+                  dataPageV1.getRlEncoding(),
+                  dataPageV1.getDlEncoding(),
+                  dataPageV1.getValueEncoding());
             }
             if (dataPageV1.isSetCrc()) decompressedPage.setCrc(dataPageV1.getCrc());
             return decompressedPage;
@@ -136,44 +136,44 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               return dataPageV2;
             } else {
               return DataPageV2.uncompressed(
-                dataPageV2.getRowCount(),
-                dataPageV2.getNullCount(),
-                dataPageV2.getValueCount(),
-                offsetIndex.getFirstRowIndex(currentPageIndex),
-                dataPageV2.getRepetitionLevels(),
-                dataPageV2.getDefinitionLevels(),
-                dataPageV2.getDataEncoding(),
-                dataPageV2.getData(),
-                dataPageV2.getStatistics());
+                  dataPageV2.getRowCount(),
+                  dataPageV2.getNullCount(),
+                  dataPageV2.getValueCount(),
+                  offsetIndex.getFirstRowIndex(currentPageIndex),
+                  dataPageV2.getRepetitionLevels(),
+                  dataPageV2.getDefinitionLevels(),
+                  dataPageV2.getDataEncoding(),
+                  dataPageV2.getData(),
+                  dataPageV2.getStatistics());
             }
           }
           try {
             int uncompressedSize = Math.toIntExact(
-              dataPageV2.getUncompressedSize()
-                - dataPageV2.getDefinitionLevels().size()
-                - dataPageV2.getRepetitionLevels().size());
+                dataPageV2.getUncompressedSize()
+                    - dataPageV2.getDefinitionLevels().size()
+                    - dataPageV2.getRepetitionLevels().size());
             BytesInput decompressed = decompressor.decompress(dataPageV2.getData(), uncompressedSize);
             if (offsetIndex == null) {
               return DataPageV2.uncompressed(
-                dataPageV2.getRowCount(),
-                dataPageV2.getNullCount(),
-                dataPageV2.getValueCount(),
-                dataPageV2.getRepetitionLevels(),
-                dataPageV2.getDefinitionLevels(),
-                dataPageV2.getDataEncoding(),
-                decompressed,
-                dataPageV2.getStatistics());
+                  dataPageV2.getRowCount(),
+                  dataPageV2.getNullCount(),
+                  dataPageV2.getValueCount(),
+                  dataPageV2.getRepetitionLevels(),
+                  dataPageV2.getDefinitionLevels(),
+                  dataPageV2.getDataEncoding(),
+                  decompressed,
+                  dataPageV2.getStatistics());
             } else {
               return DataPageV2.uncompressed(
-                dataPageV2.getRowCount(),
-                dataPageV2.getNullCount(),
-                dataPageV2.getValueCount(),
-                offsetIndex.getFirstRowIndex(currentPageIndex),
-                dataPageV2.getRepetitionLevels(),
-                dataPageV2.getDefinitionLevels(),
-                dataPageV2.getDataEncoding(),
-                decompressed,
-                dataPageV2.getStatistics());
+                  dataPageV2.getRowCount(),
+                  dataPageV2.getNullCount(),
+                  dataPageV2.getValueCount(),
+                  offsetIndex.getFirstRowIndex(currentPageIndex),
+                  dataPageV2.getRepetitionLevels(),
+                  dataPageV2.getDefinitionLevels(),
+                  dataPageV2.getDataEncoding(),
+                  decompressed,
+                  dataPageV2.getStatistics());
             }
           } catch (IOException e) {
             throw new ParquetDecodingException("could not decompress page", e);
