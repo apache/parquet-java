@@ -86,6 +86,11 @@
       <version>1.6</version>
     </dependency>
     <dependency>
+      <groupId>it.unimi.dsi</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>${fastutil.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.github.rdblue</groupId>
       <artifactId>brotli-codec</artifactId>
       <version>${brotli-codec.version}</version>
