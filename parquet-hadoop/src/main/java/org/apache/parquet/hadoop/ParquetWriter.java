@@ -278,11 +278,8 @@ public class ParquetWriter<T> implements Closeable {
     MessageType schema = writeContext.getSchema();
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(
-      file, schema, mode, rowGroupSize, maxPaddingSize, encodingProps.getColumnIndexTruncateLength(),
-      conf.getBoolean(
-        ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED,
-        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED
-      ));
+      file, schema, mode, rowGroupSize, maxPaddingSize,
+      encodingProps.getColumnIndexTruncateLength(), encodingProps.getPageWriteChecksumEnabled());
     fileWriter.start();
 
     this.codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());

@@ -43,4 +43,25 @@ abstract public class Page {
     return uncompressedSize;
   }
 
+  // Note: the following fields are only used for testing purposes and are NOT used in checksum
+  // verification. The crc value here is merely a copy of the actual crc field read in
+  // ParquetFileReader.Chunk.readAllPages()
+  private int crc;
+  private boolean isSetCrc = false;
+
+  // Visible for testing
+  public void setCrc(int crc) {
+    this.crc = crc;
+    this.isSetCrc = true;
+  }
+
+  // Visible for testing
+  public int getCrc() {
+    return crc;
+  }
+
+  // Visible for testing
+  public boolean isSetCrc() {
+    return isSetCrc;
+  }
 }

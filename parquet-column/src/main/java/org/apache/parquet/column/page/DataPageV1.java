@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -33,10 +33,6 @@ public class DataPageV1 extends DataPage {
   private final Encoding valuesEncoding;
   private final int indexRowCount;
 
-  // We need an additional flag, since we can not use a default value for the crc32
-  private final int crc32;
-  private final boolean isSetCrc32;
-
   /**
    * @param bytes the bytes for this page
    * @param valueCount count of values in this page
@@ -45,11 +41,8 @@ public class DataPageV1 extends DataPage {
    * @param rlEncoding the repetition level encoding for this page
    * @param dlEncoding the definition level encoding for this page
    * @param valuesEncoding the values encoding for this page
-   * @param crc32 the crc32 for this page
    */
-  private DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize,
-                    Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding,
-                    Encoding valuesEncoding, int crc32, boolean isSetCrc32) {
+  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
     super(Math.toIntExact(bytes.size()), uncompressedSize, valueCount);
     this.bytes = bytes;
     this.statistics = statistics;
@@ -57,41 +50,6 @@ public class DataPageV1 extends DataPage {
     this.dlEncoding = dlEncoding;
     this.valuesEncoding = valuesEncoding;
     this.indexRowCount = -1;
-    this.crc32 = crc32;
-    this.isSetCrc32 = isSetCrc32;
-  }
-
-  /**
-   * @param bytes the bytes for this page
-   * @param valueCount count of values in this page
-   * @param uncompressedSize the uncompressed size of the page
-   * @param statistics of the page's values (max, min, num_null)
-   * @param rlEncoding the repetition level encoding for this page
-   * @param dlEncoding the definition level encoding for this page
-   * @param valuesEncoding the values encoding for this page
-   */
-  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize,
-                    Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding,
-                    Encoding valuesEncoding) {
-    this(bytes, valueCount, uncompressedSize, statistics, rlEncoding, dlEncoding, valuesEncoding,
-      0, false);
-  }
-
-  /**
-   * @param bytes the bytes for this page
-   * @param valueCount count of values in this page
-   * @param uncompressedSize the uncompressed size of the page
-   * @param statistics of the page's values (max, min, num_null)
-   * @param rlEncoding the repetition level encoding for this page
-   * @param dlEncoding the definition level encoding for this page
-   * @param valuesEncoding the values encoding for this page
-   * @param crc32 the crc32 for this page
-   */
-  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize,
-                    Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding,
-                    Encoding valuesEncoding, int crc32) {
-    this(bytes, valueCount, uncompressedSize, statistics, rlEncoding, dlEncoding, valuesEncoding,
-      crc32, true);
   }
 
   /**
@@ -104,11 +62,9 @@ public class DataPageV1 extends DataPage {
    * @param rlEncoding the repetition level encoding for this page
    * @param dlEncoding the definition level encoding for this page
    * @param valuesEncoding the values encoding for this page
-   * @param crc32 the crc32 for this page
    */
-  private DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, long firstRowIndex,
-                    int rowCount, Statistics<?> statistics, Encoding rlEncoding,
-                    Encoding dlEncoding, Encoding valuesEncoding, int crc32, boolean isSetCrc32) {
+  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, long firstRowIndex, int rowCount,
+                    Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
     super(Math.toIntExact(bytes.size()), uncompressedSize, valueCount, firstRowIndex);
     this.bytes = bytes;
     this.statistics = statistics;
@@ -116,45 +72,6 @@ public class DataPageV1 extends DataPage {
     this.dlEncoding = dlEncoding;
     this.valuesEncoding = valuesEncoding;
     this.indexRowCount = rowCount;
-    this.crc32 = crc32;
-    this.isSetCrc32 = isSetCrc32;
-  }
-
-  /**
-   * @param bytes the bytes for this page
-   * @param valueCount count of values in this page
-   * @param uncompressedSize the uncompressed size of the page
-   * @param firstRowIndex the index of the first row in this page
-   * @param rowCount the number of rows in this page
-   * @param statistics of the page's values (max, min, num_null)
-   * @param rlEncoding the repetition level encoding for this page
-   * @param dlEncoding the definition level encoding for this page
-   * @param valuesEncoding the values encoding for this page
-   */
-  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, long firstRowIndex,
-                    int rowCount, Statistics<?> statistics, Encoding rlEncoding,
-                    Encoding dlEncoding, Encoding valuesEncoding) {
-    this(bytes, valueCount, uncompressedSize, firstRowIndex, rowCount, statistics, rlEncoding,
-      dlEncoding, valuesEncoding, 0, false);
-  }
-
-  /**
-   * @param bytes the bytes for this page
-   * @param valueCount count of values in this page
-   * @param uncompressedSize the uncompressed size of the page
-   * @param firstRowIndex the index of the first row in this page
-   * @param rowCount the number of rows in this page
-   * @param statistics of the page's values (max, min, num_null)
-   * @param rlEncoding the repetition level encoding for this page
-   * @param dlEncoding the definition level encoding for this page
-   * @param valuesEncoding the values encoding for this page
-   * @param crc32 the crc32 for this page
-   */
-  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, long firstRowIndex,
-                    int rowCount, Statistics<?> statistics, Encoding rlEncoding,
-                    Encoding dlEncoding, Encoding valuesEncoding, int crc32) {
-    this(bytes, valueCount, uncompressedSize, firstRowIndex, rowCount, statistics, rlEncoding,
-      dlEncoding, valuesEncoding, crc32, true);
   }
 
   /**
@@ -193,25 +110,9 @@ public class DataPageV1 extends DataPage {
     return valuesEncoding;
   }
 
-  /**
-   * @return the crc32 for this page
-   */
-  public int getCrc32() {
-    return crc32;
-  }
-
-  /**
-   * @return the boolean representing whether the crc32 field is actually set
-   */
-  public boolean isSetCrc32() {
-    return isSetCrc32;
-  }
-
   @Override
   public String toString() {
-    return "Page [bytes.size=" + bytes.size() + ", valueCount=" + getValueCount() +
-      ", uncompressedSize=" + getUncompressedSize() + (isSetCrc32() ? ", crc=" + getCrc32() : "" )
-      + "]";
+    return "Page [bytes.size=" + bytes.size() + ", valueCount=" + getValueCount() + ", uncompressedSize=" + getUncompressedSize() + "]";
   }
 
   @Override

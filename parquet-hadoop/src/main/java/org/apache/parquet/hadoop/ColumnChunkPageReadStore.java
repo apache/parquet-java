@@ -25,11 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
-import java.util.zip.CRC32;
-
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
@@ -71,12 +68,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final long rowCount;
     private int pageIndex = 0;
 
-    private final CRC32 crc;
-    boolean pageChecksumVerification;
-
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
-                          DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount,
-                          boolean pageChecksumVerification) {
+                          DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount) {
       this.decompressor = decompressor;
       this.compressedPages = new LinkedList<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
@@ -87,13 +80,6 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       this.valueCount = count;
       this.offsetIndex = offsetIndex;
       this.rowCount = rowCount;
-      this.pageChecksumVerification = pageChecksumVerification;
-      this.crc = pageChecksumVerification ? new CRC32() : null;
-    }
-
-    ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
-                          DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount) {
-      this(decompressor, compressedPages, compressedDictionaryPage, offsetIndex, rowCount, ParquetProperties.DEFAULT_PAGE_VERIFY_CHECKSUM_ENABLED);
     }
 
     @Override
@@ -112,62 +98,32 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         @Override
         public DataPage visit(DataPageV1 dataPageV1) {
           try {
-            if (pageChecksumVerification && dataPageV1.isSetCrc32()) {
-              crc.reset();
-              crc.update(dataPageV1.getBytes().toByteArray());
-              if (dataPageV1.getCrc32() != (int) crc.getValue()) {
-                throw new ParquetDecodingException("could not verify page integrity, CRC checksum verification failed");
-              }
-            }
             BytesInput decompressed = decompressor.decompress(dataPageV1.getBytes(), dataPageV1.getUncompressedSize());
+            DataPageV1 decompressedPage;
             if (offsetIndex == null) {
-              if (dataPageV1.isSetCrc32()) {
-                return new DataPageV1(
-                  decompressed,
-                  dataPageV1.getValueCount(),
-                  dataPageV1.getUncompressedSize(),
-                  dataPageV1.getStatistics(),
-                  dataPageV1.getRlEncoding(),
-                  dataPageV1.getDlEncoding(),
-                  dataPageV1.getValueEncoding(),
-                  dataPageV1.getCrc32());
-              } else {
-                return new DataPageV1(
-                  decompressed,
-                  dataPageV1.getValueCount(),
-                  dataPageV1.getUncompressedSize(),
-                  dataPageV1.getStatistics(),
-                  dataPageV1.getRlEncoding(),
-                  dataPageV1.getDlEncoding(),
-                  dataPageV1.getValueEncoding());
-              }
+              decompressedPage = new DataPageV1(
+                decompressed,
+                dataPageV1.getValueCount(),
+                dataPageV1.getUncompressedSize(),
+                dataPageV1.getStatistics(),
+                dataPageV1.getRlEncoding(),
+                dataPageV1.getDlEncoding(),
+                dataPageV1.getValueEncoding());
             } else {
               long firstRowIndex = offsetIndex.getFirstRowIndex(currentPageIndex);
-              if (dataPageV1.isSetCrc32()) {
-                return new DataPageV1(
-                  decompressed,
-                  dataPageV1.getValueCount(),
-                  dataPageV1.getUncompressedSize(),
-                  firstRowIndex,
-                  Math.toIntExact(offsetIndex.getLastRowIndex(currentPageIndex, rowCount) - firstRowIndex + 1),
-                  dataPageV1.getStatistics(),
-                  dataPageV1.getRlEncoding(),
-                  dataPageV1.getDlEncoding(),
-                  dataPageV1.getValueEncoding(),
-                  dataPageV1.getCrc32());
-              } else {
-                return new DataPageV1(
-                  decompressed,
-                  dataPageV1.getValueCount(),
-                  dataPageV1.getUncompressedSize(),
-                  firstRowIndex,
-                  Math.toIntExact(offsetIndex.getLastRowIndex(currentPageIndex, rowCount) - firstRowIndex + 1),
-                  dataPageV1.getStatistics(),
-                  dataPageV1.getRlEncoding(),
-                  dataPageV1.getDlEncoding(),
-                  dataPageV1.getValueEncoding());
-              }
+              decompressedPage = new DataPageV1(
+                decompressed,
+                dataPageV1.getValueCount(),
+                dataPageV1.getUncompressedSize(),
+                firstRowIndex,
+                Math.toIntExact(offsetIndex.getLastRowIndex(currentPageIndex, rowCount) - firstRowIndex + 1),
+                dataPageV1.getStatistics(),
+                dataPageV1.getRlEncoding(),
+                dataPageV1.getDlEncoding(),
+                dataPageV1.getValueEncoding());
             }
+            if (dataPageV1.isSetCrc()) decompressedPage.setCrc(dataPageV1.getCrc());
+            return decompressedPage;
           } catch (IOException e) {
             throw new ParquetDecodingException("could not decompress page", e);
           }
@@ -180,44 +136,44 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               return dataPageV2;
             } else {
               return DataPageV2.uncompressed(
-                  dataPageV2.getRowCount(),
-                  dataPageV2.getNullCount(),
-                  dataPageV2.getValueCount(),
-                  offsetIndex.getFirstRowIndex(currentPageIndex),
-                  dataPageV2.getRepetitionLevels(),
-                  dataPageV2.getDefinitionLevels(),
-                  dataPageV2.getDataEncoding(),
-                  dataPageV2.getData(),
-                  dataPageV2.getStatistics());
+                dataPageV2.getRowCount(),
+                dataPageV2.getNullCount(),
+                dataPageV2.getValueCount(),
+                offsetIndex.getFirstRowIndex(currentPageIndex),
+                dataPageV2.getRepetitionLevels(),
+                dataPageV2.getDefinitionLevels(),
+                dataPageV2.getDataEncoding(),
+                dataPageV2.getData(),
+                dataPageV2.getStatistics());
             }
           }
           try {
             int uncompressedSize = Math.toIntExact(
-                dataPageV2.getUncompressedSize()
-                    - dataPageV2.getDefinitionLevels().size()
-                    - dataPageV2.getRepetitionLevels().size());
+              dataPageV2.getUncompressedSize()
+                - dataPageV2.getDefinitionLevels().size()
+                - dataPageV2.getRepetitionLevels().size());
             BytesInput decompressed = decompressor.decompress(dataPageV2.getData(), uncompressedSize);
             if (offsetIndex == null) {
               return DataPageV2.uncompressed(
-                  dataPageV2.getRowCount(),
-                  dataPageV2.getNullCount(),
-                  dataPageV2.getValueCount(),
-                  dataPageV2.getRepetitionLevels(),
-                  dataPageV2.getDefinitionLevels(),
-                  dataPageV2.getDataEncoding(),
-                  decompressed,
-                  dataPageV2.getStatistics());
+                dataPageV2.getRowCount(),
+                dataPageV2.getNullCount(),
+                dataPageV2.getValueCount(),
+                dataPageV2.getRepetitionLevels(),
+                dataPageV2.getDefinitionLevels(),
+                dataPageV2.getDataEncoding(),
+                decompressed,
+                dataPageV2.getStatistics());
             } else {
               return DataPageV2.uncompressed(
-                  dataPageV2.getRowCount(),
-                  dataPageV2.getNullCount(),
-                  dataPageV2.getValueCount(),
-                  offsetIndex.getFirstRowIndex(currentPageIndex),
-                  dataPageV2.getRepetitionLevels(),
-                  dataPageV2.getDefinitionLevels(),
-                  dataPageV2.getDataEncoding(),
-                  decompressed,
-                  dataPageV2.getStatistics());
+                dataPageV2.getRowCount(),
+                dataPageV2.getNullCount(),
+                dataPageV2.getValueCount(),
+                offsetIndex.getFirstRowIndex(currentPageIndex),
+                dataPageV2.getRepetitionLevels(),
+                dataPageV2.getDefinitionLevels(),
+                dataPageV2.getDataEncoding(),
+                decompressed,
+                dataPageV2.getStatistics());
             }
           } catch (IOException e) {
             throw new ParquetDecodingException("could not decompress page", e);
@@ -232,10 +188,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         return null;
       }
       try {
-        return new DictionaryPage(
-            decompressor.decompress(compressedDictionaryPage.getBytes(), compressedDictionaryPage.getUncompressedSize()),
-            compressedDictionaryPage.getDictionarySize(),
-            compressedDictionaryPage.getEncoding());
+        DictionaryPage decompressedPage = new DictionaryPage(
+          decompressor.decompress(compressedDictionaryPage.getBytes(), compressedDictionaryPage.getUncompressedSize()),
+          compressedDictionaryPage.getDictionarySize(),
+          compressedDictionaryPage.getEncoding());
+        if (compressedDictionaryPage.isSetCrc()) decompressedPage.setCrc(compressedDictionaryPage.getCrc());
+        return decompressedPage;
       } catch (IOException e) {
         throw new ParquetDecodingException("Could not decompress dictionary page", e);
       }

@@ -206,11 +206,7 @@ public class ParquetFileWriter {
   public ParquetFileWriter(Configuration configuration, MessageType schema,
       Path file) throws IOException {
     this(HadoopOutputFile.fromPath(file, configuration),
-      schema, Mode.CREATE, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT,
-      configuration.getBoolean(
-        ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED,
-        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED
-      ));
+      schema, Mode.CREATE, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT);
   }
 
   /**
@@ -225,11 +221,7 @@ public class ParquetFileWriter {
   public ParquetFileWriter(Configuration configuration, MessageType schema,
                            Path file, Mode mode) throws IOException {
     this(HadoopOutputFile.fromPath(file, configuration),
-      schema, mode, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT,
-      configuration.getBoolean(
-        ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED,
-        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED
-      ));
+      schema, mode, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT);
   }
 
   /**
@@ -248,11 +240,7 @@ public class ParquetFileWriter {
                            int maxPaddingSize)
       throws IOException {
     this(HadoopOutputFile.fromPath(file, configuration),
-      schema, mode, rowGroupSize, maxPaddingSize,
-      configuration.getBoolean(
-        ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED,
-        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED
-      ));
+      schema, mode, rowGroupSize, maxPaddingSize);
   }
 
   /**
@@ -261,16 +249,16 @@ public class ParquetFileWriter {
    * @param mode file creation mode
    * @param rowGroupSize the row group size
    * @param maxPaddingSize the maximum padding
-   * @param pageWriteChecksumEnabled whether to write out page level checksums
    * @throws IOException if the file can not be created
    * @deprecated will be removed in 2.0.0
    */
   @Deprecated
   public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
-                           long rowGroupSize, int maxPaddingSize, boolean pageWriteChecksumEnabled)
+                           long rowGroupSize, int maxPaddingSize)
       throws IOException {
     this(file, schema, mode, rowGroupSize, maxPaddingSize,
-      ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH, pageWriteChecksumEnabled);
+      ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
+      ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
   /**
    * @param file OutputFile to create or overwrite
@@ -403,12 +391,24 @@ public class ParquetFileWriter {
     currentChunkDictionaryPageOffset = out.getPos();
     int uncompressedSize = dictionaryPage.getUncompressedSize();
     int compressedPageSize = (int)dictionaryPage.getBytes().size(); // TODO: fix casts
-    metadataConverter.writeDictionaryPageHeader(
+    if (pageWriteChecksumEnabled) {
+      crc.reset();
+      crc.update(dictionaryPage.getBytes().toByteArray());
+      metadataConverter.writeDictionaryPageHeader(
+        uncompressedSize,
+        compressedPageSize,
+        dictionaryPage.getDictionarySize(),
+        dictionaryPage.getEncoding(),
+        (int) crc.getValue(),
+        out);
+    } else {
+      metadataConverter.writeDictionaryPageHeader(
         uncompressedSize,
         compressedPageSize,
         dictionaryPage.getDictionarySize(),
         dictionaryPage.getEncoding(),
         out);
+    }
     long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
     this.uncompressedLength += uncompressedSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
@@ -443,26 +443,13 @@ public class ParquetFileWriter {
     long beforeHeader = out.getPos();
     LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
     int compressedPageSize = (int)bytes.size();
-    if (pageWriteChecksumEnabled) {
-      crc.reset();
-      crc.update(bytes.toByteArray());
-      metadataConverter.writeDataPageV1Header(
-        uncompressedPageSize, compressedPageSize,
-        valueCount,
-        rlEncoding,
-        dlEncoding,
-        valuesEncoding,
-        (int) crc.getValue(),
-        out);
-    } else {
-      metadataConverter.writeDataPageV1Header(
-        uncompressedPageSize, compressedPageSize,
-        valueCount,
-        rlEncoding,
-        dlEncoding,
-        valuesEncoding,
-        out);
-    }
+    metadataConverter.writeDataPageV1Header(
+      uncompressedPageSize, compressedPageSize,
+      valueCount,
+      rlEncoding,
+      dlEncoding,
+      valuesEncoding,
+      out);
     long headerSize = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedPageSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
