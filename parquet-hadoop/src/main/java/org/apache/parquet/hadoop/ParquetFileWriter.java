@@ -204,9 +204,9 @@ public class ParquetFileWriter {
    */
   @Deprecated
   public ParquetFileWriter(Configuration configuration, MessageType schema,
-      Path file) throws IOException {
+                           Path file) throws IOException {
     this(HadoopOutputFile.fromPath(file, configuration),
-      schema, Mode.CREATE, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT);
+        schema, Mode.CREATE, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT);
   }
 
   /**
@@ -221,7 +221,7 @@ public class ParquetFileWriter {
   public ParquetFileWriter(Configuration configuration, MessageType schema,
                            Path file, Mode mode) throws IOException {
     this(HadoopOutputFile.fromPath(file, configuration),
-      schema, mode, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT);
+        schema, mode, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT);
   }
 
   /**
@@ -240,7 +240,7 @@ public class ParquetFileWriter {
                            int maxPaddingSize)
       throws IOException {
     this(HadoopOutputFile.fromPath(file, configuration),
-      schema, mode, rowGroupSize, maxPaddingSize);
+        schema, mode, rowGroupSize, maxPaddingSize);
   }
 
   /**
@@ -257,8 +257,8 @@ public class ParquetFileWriter {
                            long rowGroupSize, int maxPaddingSize)
       throws IOException {
     this(file, schema, mode, rowGroupSize, maxPaddingSize,
-      ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
-      ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+        ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
+        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
   /**
    * @param file OutputFile to create or overwrite
@@ -444,12 +444,12 @@ public class ParquetFileWriter {
     LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
     int compressedPageSize = (int)bytes.size();
     metadataConverter.writeDataPageV1Header(
-      uncompressedPageSize, compressedPageSize,
-      valueCount,
-      rlEncoding,
-      dlEncoding,
-      valuesEncoding,
-      out);
+        uncompressedPageSize, compressedPageSize,
+        valueCount,
+        rlEncoding,
+        dlEncoding,
+        valuesEncoding,
+        out);
     long headerSize = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedPageSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
