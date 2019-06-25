@@ -27,8 +27,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /*
-Strongly inspired by:
-https://github.com/apache/tomcat/blob/master/java/org/apache/tomcat/util/buf/ByteBufferUtils.java
+ * A Helper class which use reflections to clean up DirectBuffer. It's implemented for
+ * better compatibility with both java8 and java9+, because the Cleaner class is moved to
+ * another place since java9+.
+ *
+ * Strongly inspired by:
+ * https://github.com/apache/tomcat/blob/master/java/org/apache/tomcat/util/buf/ByteBufferUtils.java
  */
 public class CleanUtil
 {
@@ -93,15 +97,14 @@ public class CleanUtil
         cleanMethod.invoke(cleanerMethod.invoke(buf));
       } catch (IllegalAccessException | IllegalArgumentException
         | InvocationTargetException | SecurityException e) {
-        // Ignore
+        logger.warn("Error while cleaning up the DirectBuffer", e);
       }
     } else if (invokeCleanerMethod != null) {
       try {
         invokeCleanerMethod.invoke(unsafe, buf);
       } catch (IllegalAccessException | IllegalArgumentException
         | InvocationTargetException | SecurityException e) {
-        // Ignore
-        e.printStackTrace();
+        logger.warn("Error while cleaning up the DirectBuffer", e);
       }
     }
   }
