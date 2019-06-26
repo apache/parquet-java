@@ -26,7 +26,7 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/*
+/**
  * A Helper class which use reflections to clean up DirectBuffer. It's implemented for
  * better compatibility with both java8 and java9+, because the Cleaner class is moved to
  * another place since java9+.
