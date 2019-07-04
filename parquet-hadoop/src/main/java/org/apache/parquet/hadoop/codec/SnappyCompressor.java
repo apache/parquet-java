@@ -68,7 +68,7 @@ public class SnappyCompressor implements Compressor {
       if (maxOutputSize > outputBuffer.capacity()) {
         ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(maxOutputSize);
-        CleanUtil.clean(oldBuffer);
+        CleanUtil.cleanDirectBuffer(oldBuffer);
       }
       // Reset the previous outputBuffer
       outputBuffer.clear();
@@ -101,7 +101,7 @@ public class SnappyCompressor implements Compressor {
       tmp.put(inputBuffer);
       ByteBuffer oldBuffer = inputBuffer;
       inputBuffer = tmp;
-      CleanUtil.clean(oldBuffer);
+      CleanUtil.cleanDirectBuffer(oldBuffer);
     } else {
       inputBuffer.limit(inputBuffer.position() + len);
     }
@@ -113,8 +113,8 @@ public class SnappyCompressor implements Compressor {
 
   @Override
   public void end() {
-    CleanUtil.clean(inputBuffer);
-    CleanUtil.clean(outputBuffer);
+    CleanUtil.cleanDirectBuffer(inputBuffer);
+    CleanUtil.cleanDirectBuffer(outputBuffer);
   }
 
   @Override
