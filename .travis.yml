@@ -1,10 +1,36 @@
-language: java
-before_install:
-  - bash dev/travis-before_install.sh
+language: generic
+
+services:
+  - docker
 
 env:
-  - HADOOP_PROFILE=default TEST_CODECS=uncompressed,brotli
-  - HADOOP_PROFILE=default TEST_CODECS=gzip,snappy
+  global:
+    - JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+    - IMAGE=parquet-mr
+    - CACHE_FOLDER=$HOME/docker-images
+    - CACHE_FILE=${CACHE_FOLDER}/parquet-mr.tgz
+  matrix:
+    - TEST_CODECS=uncompressed,brotli
+    - TEST_CODECS=gzip,snappy
 
-install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
-script: mvn verify javadoc:javadoc -P $HADOOP_PROFILE
+cache:
+  directories:
+    - "$HOME/.m2"
+    - ${CACHE_FOLDER}
+
+before_install:
+  - if [[ -f ${CACHE_FILE} ]]; then
+      docker load -i "${CACHE_FILE}";
+    else
+      docker build -f dev/Dockerfile -t "${IMAGE}" "${PWD}";
+      mkdir -p "${CACHE_FOLDER}";
+      docker save "${IMAGE}" | gzip -c > "${CACHE_FILE}";
+    fi
+
+install: docker run -v $HOME/.m2:/root/.m2 -v ${PWD}:/parquet-mr -e JAVA_HOME=$JAVA_HOME -e TEST_CODECS=$TEST_CODECS -i -t parquet-mr /bin/bash -c "cd /parquet-mr && mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)"
+
+script: docker run -v $HOME/.m2:/root/.m2 -v ${PWD}:/parquet-mr -e JAVA_HOME=$JAVA_HOME -e TEST_CODECS=$TEST_CODECS -i -t parquet-mr /bin/bash -c "cd /parquet-mr && mvn verify javadoc:javadoc"
+
+before_cache:
+  - rm -Rf $HOME/.m2/repository/org/apache/parquet
+  - find $HOME/.m2/repository/ -name *SNAPSHOT | xargs rm -Rf

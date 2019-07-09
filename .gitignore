@@ -19,3 +19,6 @@ target/
 .cache
 *~
 mvn_install.log
+.factorypath
+bin/
+
