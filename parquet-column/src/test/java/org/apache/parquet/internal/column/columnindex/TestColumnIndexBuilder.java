@@ -104,7 +104,8 @@ public class TestColumnIndexBuilder {
 
     @Override
     public boolean keep(Binary value) {
-      return value != null && value.length() > 0 && value.getBytesUnsafe()[0] == 'B';
+      // Deliberately not checking for null to verify the handling of NPE
+      return value.length() > 0 && value.getBytesUnsafe()[0] == 'B';
     }
 
     @Override
@@ -140,7 +141,8 @@ public class TestColumnIndexBuilder {
   public static class DoubleIsInteger extends UserDefinedPredicate<Double> {
     @Override
     public boolean keep(Double value) {
-      return value != null && Math.floor(value) == value;
+      // Deliberately not checking for null to verify the handling of NPE
+      return Math.floor(value) == value;
     }
 
     @Override
@@ -168,7 +170,8 @@ public class TestColumnIndexBuilder {
 
     @Override
     public boolean keep(Float value) {
-      return value != null && Math.floor(value) == value;
+      // Deliberately not checking for null to verify the handling of NPE
+      return Math.floor(value) == value;
     }
 
     @Override
@@ -192,7 +195,8 @@ public class TestColumnIndexBuilder {
   public static class IntegerIsDivisableWith3 extends UserDefinedPredicate<Integer> {
     @Override
     public boolean keep(Integer value) {
-      return value != null && value % 3 == 0;
+      // Deliberately not checking for null to verify the handling of NPE
+      return value % 3 == 0;
     }
 
     @Override
@@ -213,7 +217,8 @@ public class TestColumnIndexBuilder {
   public static class LongIsDivisableWith3 extends UserDefinedPredicate<Long> {
     @Override
     public boolean keep(Long value) {
-      return value != null && value % 3 == 0;
+      // Deliberately not checking for null to verify the handling of NPE
+      return value % 3 == 0;
     }
 
     @Override

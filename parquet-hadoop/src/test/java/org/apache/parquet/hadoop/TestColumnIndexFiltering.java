@@ -330,7 +330,7 @@ public class TestColumnIndexFiltering {
     private static final Binary V = Binary.fromString("v");
 
     private static boolean isStartingWithVowel(String str) {
-      if (str == null || str.isEmpty()) {
+      if (str.isEmpty()) {
         return false;
       }
       switch (str.charAt(0)) {
@@ -347,7 +347,8 @@ public class TestColumnIndexFiltering {
 
     @Override
     public boolean keep(Binary value) {
-      return value != null && isStartingWithVowel(value.toStringUsingUTF8());
+      // Deliberately not checking for null to verify the handling of NPE
+      return isStartingWithVowel(value.toStringUsingUTF8());
     }
 
     @Override
@@ -385,7 +386,8 @@ public class TestColumnIndexFiltering {
 
     @Override
     public boolean keep(Long value) {
-      return value != null && value % divisor == 0;
+      // Deliberately not checking for null to verify the handling of NPE
+      return value % divisor == 0;
     }
 
     @Override
@@ -406,13 +408,15 @@ public class TestColumnIndexFiltering {
   @Test
   public void testUDF() throws IOException {
     assertCorrectFiltering(
-        record -> NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0,
+        record -> record.getName() != null
+            && (NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0),
         or(userDefined(binaryColumn("name"), NameStartsWithVowel.class),
             userDefined(longColumn("id"), new IsDivisibleBy(234))));
     assertCorrectFiltering(
-        record -> !(NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0),
-            not(or(userDefined(binaryColumn("name"), NameStartsWithVowel.class),
-                userDefined(longColumn("id"), new IsDivisibleBy(234)))));
+        record -> record.getName() == null
+            || !(NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0),
+        not(or(userDefined(binaryColumn("name"), NameStartsWithVowel.class),
+            userDefined(longColumn("id"), new IsDivisibleBy(234)))));
   }
 
   @Test
