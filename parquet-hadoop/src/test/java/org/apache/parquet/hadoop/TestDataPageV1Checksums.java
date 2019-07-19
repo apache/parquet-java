@@ -517,18 +517,17 @@ public class TestDataPageV1Checksums {
    * check that the crc's are identical.
    */
   private void assertCrcSetAndCorrect(Page page, byte[] referenceBytes) {
-    assertTrue("Checksum was not set in page", page.isSetCrc());
-    int crcFromPage = page.getCrc();
+    assertTrue("Checksum was not set in page", page.getCrc().isPresent());
+    int crcFromPage = page.getCrc().getAsInt();
     crc.reset();
     crc.update(referenceBytes);
     assertEquals("Checksum found in page did not match calculated reference checksum",
       crc.getValue(), (long) crcFromPage & 0xffffffffL);
   }
 
-  /** Verify that the crc is not set and that is has the default value */
+  /** Verify that the crc is not set */
   private void assertCrcNotSet(Page page) {
-    assertFalse("Checksum was set in page", page.isSetCrc());
-    assertEquals("Checksum does not have default value", 0, page.getCrc());
+    assertFalse("Checksum was set in page", page.getCrc().isPresent());
   }
 
   /**

@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.zip.CRC32;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -72,6 +73,8 @@ public class DumpCommand extends ArgsOnlyCommand {
     public static final String TABS = "    ";
     public static final int BLOCK_BUFFER_SIZE = 64 * 1024;
     public static final String[] USAGE = new String[] { "<input>", "where <input> is the parquet file to print to stdout" };
+
+    private static CRC32 crc = new CRC32();
 
     public static final Options OPTIONS;
     static {
@@ -242,6 +245,12 @@ public class DumpCommand extends ArgsOnlyCommand {
         }
     }
 
+    private static boolean verifyCrc(int referenceCrc, byte[] bytes) {
+      crc.reset();
+      crc.update(bytes);
+      return crc.getValue() == ((long) referenceCrc & 0xffffffffL);
+    }
+
     public static void dump(final PrettyPrintWriter out, PageReadStore store, ColumnDescriptor column) throws IOException {
         PageReader reader = store.getPageReader(column);
 
@@ -274,7 +283,15 @@ public class DumpCommand extends ArgsOnlyCommand {
                 } else {
                   out.format(" ST:[none]");
                 }
-                out.format(" CRC:%s", pageV1.isSetCrc() ? pageV1.getCrc() : "-");
+                if (pageV1.getCrc().isPresent()) {
+                  try {
+                    out.format(" CRC:%s", verifyCrc(pageV1.getCrc().getAsInt(), pageV1.getBytes().toByteArray()) ? "[verified]" : "[PAGE CORRUPT]");
+                  } catch (IOException e) {
+                    out.format(" CRC:[error getting page bytes]");
+                  }
+                } else {
+                  out.format(" CRC:[none]");
+                }
                 return null;
               }
 

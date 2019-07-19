@@ -122,7 +122,9 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV1.getDlEncoding(),
                   dataPageV1.getValueEncoding());
             }
-            if (dataPageV1.isSetCrc()) decompressedPage.setCrc(dataPageV1.getCrc());
+            if (dataPageV1.getCrc().isPresent()) {
+              decompressedPage.setCrc(dataPageV1.getCrc().getAsInt());
+            }
             return decompressedPage;
           } catch (IOException e) {
             throw new ParquetDecodingException("could not decompress page", e);
@@ -192,7 +194,9 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
           decompressor.decompress(compressedDictionaryPage.getBytes(), compressedDictionaryPage.getUncompressedSize()),
           compressedDictionaryPage.getDictionarySize(),
           compressedDictionaryPage.getEncoding());
-        if (compressedDictionaryPage.isSetCrc()) decompressedPage.setCrc(compressedDictionaryPage.getCrc());
+        if (compressedDictionaryPage.getCrc().isPresent()) {
+          decompressedPage.setCrc(compressedDictionaryPage.getCrc().getAsInt());
+        }
         return decompressedPage;
       } catch (IOException e) {
         throw new ParquetDecodingException("Could not decompress dictionary page", e);

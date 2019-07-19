@@ -1212,7 +1212,9 @@ public class ParquetFileReader implements Closeable {
                     converter.getEncoding(dicHeader.getEncoding())
                     );
             // Copy crc to new page, used for testing
-            if (pageHeader.isSetCrc()) dictionaryPage.setCrc(pageHeader.getCrc());
+            if (pageHeader.isSetCrc()) {
+              dictionaryPage.setCrc(pageHeader.getCrc());
+            }
             break;
           case DATA_PAGE:
             DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
@@ -1233,7 +1235,9 @@ public class ParquetFileReader implements Closeable {
               converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
               converter.getEncoding(dataHeaderV1.getEncoding()));
             // Copy crc to new page, used for testing
-            if (pageHeader.isSetCrc()) dataPageV1.setCrc(pageHeader.getCrc());
+            if (pageHeader.isSetCrc()) {
+              dataPageV1.setCrc(pageHeader.getCrc());
+            }
             pagesInChunk.add(dataPageV1);
             valuesCountReadSoFar += dataHeaderV1.getNum_values();
             ++dataPageCountReadSoFar;

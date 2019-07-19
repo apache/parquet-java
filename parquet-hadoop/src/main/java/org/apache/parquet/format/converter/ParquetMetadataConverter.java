@@ -1338,15 +1338,13 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding rlEncoding,
       org.apache.parquet.column.Encoding dlEncoding,
       org.apache.parquet.column.Encoding valuesEncoding,
-      int crc,
       OutputStream to) throws IOException {
     writePageHeader(newDataPageHeader(uncompressedSize,
                                       compressedSize,
                                       valueCount,
                                       rlEncoding,
                                       dlEncoding,
-                                      valuesEncoding,
-                                      crc), to);
+                                      valuesEncoding), to);
   }
 
   // Statistics are no longer saved in page headers

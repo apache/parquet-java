@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.page;
 
+import java.util.OptionalInt;
+
 /**
  * one page in a chunk
  */
@@ -46,22 +48,15 @@ abstract public class Page {
   // Note: the following fields are only used for testing purposes and are NOT used in checksum
   // verification. The crc value here is merely a copy of the actual crc field read in
   // ParquetFileReader.Chunk.readAllPages()
-  private int crc;
-  private boolean isSetCrc = false;
+  private OptionalInt crc = OptionalInt.empty();
 
   // Visible for testing
   public void setCrc(int crc) {
-    this.crc = crc;
-    this.isSetCrc = true;
+    this.crc = OptionalInt.of(crc);
   }
 
   // Visible for testing
-  public int getCrc() {
+  public OptionalInt getCrc() {
     return crc;
-  }
-
-  // Visible for testing
-  public boolean isSetCrc() {
-    return isSetCrc;
   }
 }
