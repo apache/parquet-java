@@ -379,21 +379,36 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   @Override
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
+    return getRecordWriter(taskAttemptContext, Mode.CREATE);
+  }
+
+  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Mode mode)
+      throws IOException, InterruptedException {
 
     final Configuration conf = getConfiguration(taskAttemptContext);
 
     CompressionCodecName codec = getCodec(taskAttemptContext);
     String extension = codec.getExtension() + ".parquet";
     Path file = getDefaultWorkFile(taskAttemptContext, extension);
-    return getRecordWriter(conf, file, codec);
+    return getRecordWriter(conf, file, codec, mode);
   }
 
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
+    throws IOException, InterruptedException {
+    return getRecordWriter(taskAttemptContext, file, Mode.CREATE);
+  }
+
+  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file, Mode mode)
       throws IOException, InterruptedException {
-    return getRecordWriter(getConfiguration(taskAttemptContext), file, getCodec(taskAttemptContext));
+    return getRecordWriter(getConfiguration(taskAttemptContext), file, getCodec(taskAttemptContext), mode);
   }
 
   public RecordWriter<Void, T> getRecordWriter(Configuration conf, Path file, CompressionCodecName codec)
+      throws IOException, InterruptedException {
+    return getRecordWriter(conf, file, codec, Mode.CREATE);
+  }
+
+  public RecordWriter<Void, T> getRecordWriter(Configuration conf, Path file, CompressionCodecName codec, Mode mode)
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
@@ -432,8 +447,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
-      init.getSchema(), Mode.CREATE, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
-      props.getPageWriteChecksumEnabled());
+        init.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
+        props.getPageWriteChecksumEnabled());
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
