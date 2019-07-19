@@ -50,7 +50,7 @@ public class ParquetProperties {
   public static final int DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH = 64;
   public static final int DEFAULT_PAGE_ROW_COUNT_LIMIT = 20_000;
 
-  public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = false;
+  public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
