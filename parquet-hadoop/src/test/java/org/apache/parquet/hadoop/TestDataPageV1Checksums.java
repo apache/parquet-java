@@ -21,7 +21,11 @@ package org.apache.parquet.hadoop;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Random;
 import java.util.zip.CRC32;
 
 import org.apache.hadoop.conf.Configuration;
@@ -30,7 +34,11 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.page.*;
+import org.apache.parquet.column.page.DataPageV1;
+import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.Page;
+import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
@@ -41,7 +49,11 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
-import org.apache.parquet.io.*;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.OutputFile;
+import org.apache.parquet.io.PositionOutputStream;
+import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.Types;
@@ -50,7 +62,11 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Tests that page level checksums are correctly written and that checksum verification works as
@@ -156,36 +172,35 @@ public class TestDataPageV1Checksums {
     file.delete();
     Path path = new Path(file.toURI());
 
-    ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
       .withConf(conf)
       .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
       .withCompressionCodec(compression)
       .withDictionaryEncoding(dictionaryEncoding)
       .withType(schemaNestedWithNulls)
       .withPageWriteChecksumEnabled(ParquetOutputFormat.getPageWriteChecksumEnabled(conf))
-      .build();
+      .build()) {
+      GroupFactory groupFactory = new SimpleGroupFactory(schemaNestedWithNulls);
+      Random rand = new Random(42);
 
-    GroupFactory groupFactory = new SimpleGroupFactory(schemaNestedWithNulls);
-    Random rand = new Random(42);
-
-    for (int i = 0; i < numRecordsNestedWithNullsFile; i++) {
-      Group group = groupFactory.newGroup();
-      if (rand.nextDouble() > nullRatio) {
-        // With equal probability, write out either 1 or 3 values in group e. To ensure our values
-        // are dictionary encoded when required, perform modulo.
-        if (rand.nextDouble() > 0.5) {
-          group.addGroup("c").append("id", (long) i).addGroup("d")
-            .append("val", rand.nextInt() % 10);
-        } else {
-          group.addGroup("c").append("id", (long) i).addGroup("d")
-            .append("val", rand.nextInt() % 10)
-            .append("val", rand.nextInt() % 10)
-            .append("val", rand.nextInt() % 10);
+      for (int i = 0; i < numRecordsNestedWithNullsFile; i++) {
+        Group group = groupFactory.newGroup();
+        if (rand.nextDouble() > nullRatio) {
+          // With equal probability, write out either 1 or 3 values in group e. To ensure our values
+          // are dictionary encoded when required, perform modulo.
+          if (rand.nextDouble() > 0.5) {
+            group.addGroup("c").append("id", (long) i).addGroup("d")
+              .append("val", rand.nextInt() % 10);
+          } else {
+            group.addGroup("c").append("id", (long) i).addGroup("d")
+              .append("val", rand.nextInt() % 10)
+              .append("val", rand.nextInt() % 10)
+              .append("val", rand.nextInt() % 10);
+          }
         }
+        writer.write(group);
       }
-      writer.write(group);
     }
-    writer.close();
 
     return path;
   }
@@ -317,47 +332,48 @@ public class TestDataPageV1Checksums {
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED);
 
     InputFile inputFile = HadoopInputFile.fromPath(path, conf);
-    SeekableInputStream inputStream = inputFile.newStream();
-    int fileLen = (int) inputFile.getLength();
+    try (SeekableInputStream inputStream = inputFile.newStream()) {
+      int fileLen = (int) inputFile.getLength();
+      byte[] fileBytes = new byte[fileLen];
+      inputStream.readFully(fileBytes);
+      inputStream.close();
 
-    byte[] fileBytes = new byte[fileLen];
-    inputStream.readFully(fileBytes);
-    inputStream.close();
+      // There are 4 pages in total (2 per column), we corrupt the first page of the first column
+      // and the second page of the second column. We do this by altering a byte roughly in the
+      // middle of each page to be corrupted
+      fileBytes[fileLen / 8]++;
+      fileBytes[fileLen / 8 + ((fileLen / 4) * 3)]++;
 
-    // There are 4 pages in total (2 per column), we corrupt the first page of the first column and
-    // the second page of the second column. We do this by altering a byte roughly in the middle of
-    // each page to be corrupted
-    fileBytes[fileLen / 8]++;
-    fileBytes[fileLen / 8 + ((fileLen / 4) * 3)]++;
+      OutputFile outputFile = HadoopOutputFile.fromPath(path, conf);
+      try (PositionOutputStream outputStream = outputFile.createOrOverwrite(1024 * 1024)) {
+        outputStream.write(fileBytes);
+        outputStream.close();
 
-    OutputFile outputFile = HadoopOutputFile.fromPath(path, conf);
-    PositionOutputStream outputStream = outputFile.createOrOverwrite(1024 * 1024);
-    outputStream.write(fileBytes);
-    outputStream.close();
+        // First we disable checksum verification, the corruption will go undetected as it is in the
+        // data section of the page
+        conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
+        try (ParquetFileReader reader = getParquetFileReader(path, conf,
+          Arrays.asList(colADesc, colBDesc))) {
+          PageReadStore pageReadStore = reader.readNextRowGroup();
 
-    // First we disable checksum verification, the corruption will go undetected as it is in the
-    // data section of the page
-    conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
-    try (ParquetFileReader reader = getParquetFileReader(path, conf,
-      Arrays.asList(colADesc, colBDesc))) {
-      PageReadStore pageReadStore = reader.readNextRowGroup();
+          DataPageV1 colAPage1 = readNextPage(colADesc, pageReadStore);
+          assertFalse("Data in page was not corrupted",
+            Arrays.equals(colAPage1.getBytes().toByteArray(), colAPage1Bytes));
+          readNextPage(colADesc, pageReadStore);
+          readNextPage(colBDesc, pageReadStore);
+          DataPageV1 colBPage2 = readNextPage(colBDesc, pageReadStore);
+          assertFalse("Data in page was not corrupted",
+            Arrays.equals(colBPage2.getBytes().toByteArray(), colBPage2Bytes));
+        }
 
-      DataPageV1 colAPage1 = readNextPage(colADesc, pageReadStore);
-      assertFalse("Data in page was not corrupted",
-        Arrays.equals(colAPage1.getBytes().toByteArray(), colAPage1Bytes));
-      readNextPage(colADesc, pageReadStore);
-      readNextPage(colBDesc, pageReadStore);
-      DataPageV1 colBPage2 = readNextPage(colBDesc, pageReadStore);
-      assertFalse("Data in page was not corrupted",
-        Arrays.equals(colBPage2.getBytes().toByteArray(), colBPage2Bytes));
-    }
-
-    // Now we enable checksum verification, the corruption should be detected
-    conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
-    try (ParquetFileReader reader =
-      getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
-      // We expect an exception on the first encountered corrupt page (in readAllPages)
-      assertVerificationFailed(reader);
+        // Now we enable checksum verification, the corruption should be detected
+        conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
+        try (ParquetFileReader reader =
+               getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+          // We expect an exception on the first encountered corrupt page (in readAllPages)
+          assertVerificationFailed(reader);
+        }
+      }
     }
   }
 

@@ -99,7 +99,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         public DataPage visit(DataPageV1 dataPageV1) {
           try {
             BytesInput decompressed = decompressor.decompress(dataPageV1.getBytes(), dataPageV1.getUncompressedSize());
-            DataPageV1 decompressedPage;
+            final DataPageV1 decompressedPage;
             if (offsetIndex == null) {
               decompressedPage = new DataPageV1(
                   decompressed,
