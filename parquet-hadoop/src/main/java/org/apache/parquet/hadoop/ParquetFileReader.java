@@ -1068,12 +1068,12 @@ public class ParquetFileReader implements Closeable {
     ByteBuffer bloomHeader = ByteBuffer.wrap(bytes);
     IntBuffer headerBuffer = bloomHeader.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
     int numBytes = headerBuffer.get();
-    if (numBytes <= 0 || numBytes > BlockSplitBloomFilter.MAXIMUM_BYTES) {
+    if (numBytes <= 0 || numBytes > BlockSplitBloomFilter.DEFAULT_MAXIMUM_BYTES) {
       return null;
     }
 
     BloomFilter.HashStrategy hash = BloomFilter.HashStrategy.values()[headerBuffer.get()];
-    if (hash != BlockSplitBloomFilter.HashStrategy.MURMUR3_X64_128) {
+    if (hash != BlockSplitBloomFilter.HashStrategy.XXH64) {
       return null;
     }
 

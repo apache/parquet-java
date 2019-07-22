@@ -20,6 +20,7 @@ package org.apache.parquet.column.impl;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
@@ -85,14 +86,27 @@ abstract class ColumnWriterBase implements ColumnWriter {
     if (path.getPath().length != 1 || bloomFilterWriter == null) {
       return;
     }
+    String column = path.getPath()[0];
 
     this.bloomFilterWriter = bloomFilterWriter;
+    Set<String> bloomFilterColumns = props.getBloomFilterColumns();
+    if (!bloomFilterColumns.contains(column)) {
+      return;
+    }
+    int maxBloomFilterSize = props.getMaxBloomFilterBytes();
+
     Map<String, Long> bloomFilterColumnExpectedNDVs = props.getBloomFilterColumnExpectedNDVs();
-    String column = path.getPath()[0];
-    if (bloomFilterColumnExpectedNDVs.keySet().contains(column)) {
-      int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(bloomFilterColumnExpectedNDVs.get(column).intValue(),
-        BlockSplitBloomFilter.DEFAULT_FPP);
-      this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits/8);
+    if (bloomFilterColumnExpectedNDVs.size() > 0) {
+      // If user specify the column NDV, we construct Bloom filter from it.
+      if (bloomFilterColumnExpectedNDVs.keySet().contains(column)) {
+        int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(bloomFilterColumnExpectedNDVs.get(column).intValue(),
+          BlockSplitBloomFilter.DEFAULT_FPP);
+
+        this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
+      }
+    }
+    else {
+      this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize);
     }
   }
 

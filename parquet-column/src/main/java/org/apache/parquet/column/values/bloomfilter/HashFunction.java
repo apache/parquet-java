@@ -16,16 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.parquet.column.values.bloomfilter;
 
-public interface BloomFilterWriter {
-  /**
-   * Write a Bloom filter
-   *
-   * @param bloomFilter the Bloom filter to write
-   *
-   */
-  void writeBloomFilter(BloomFilter bloomFilter);
-}
+import java.nio.ByteBuffer;
 
+/**
+ * A interface contains a set of hash functions used by Bloom filter.
+ */
+public interface HashFunction {
+
+  /**
+   * compute the hash value for a byte array.
+   * @param input the input byte array
+   * @return a result of long value.
+   */
+  long hashBytes(byte[] input);
+
+  /**
+   * compute the hash value for a ByteBuffer.
+   * @param input the input ByteBuffer
+   * @return a result of long value.
+   */
+  long hashByteBuffer(ByteBuffer input);
+}

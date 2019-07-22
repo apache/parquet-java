@@ -19,13 +19,22 @@
 
 package org.apache.parquet.column.values.bloomfilter;
 
-public interface BloomFilterWriter {
-  /**
-   * Write a Bloom filter
-   *
-   * @param bloomFilter the Bloom filter to write
-   *
-   */
-  void writeBloomFilter(BloomFilter bloomFilter);
-}
+import net.openhft.hashing.LongHashFunction;
 
+import java.nio.ByteBuffer;
+
+/**
+ * The implementation of HashFunction interface. The XxHash uses XXH64 version xxHash
+ * with a seed of 0.
+ */
+public class XxHash implements HashFunction {
+  @Override
+  public long hashBytes(byte[] input) {
+    return LongHashFunction.xx().hashBytes(input);
+  }
+
+  @Override
+  public long hashByteBuffer(ByteBuffer input) {
+    return LongHashFunction.xx().hashBytes(input);
+  }
+}
