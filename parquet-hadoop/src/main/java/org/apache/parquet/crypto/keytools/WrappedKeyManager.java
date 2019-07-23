@@ -21,6 +21,7 @@
 package org.apache.parquet.crypto.keytools;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -33,10 +34,9 @@ import org.apache.parquet.crypto.AesEncryptor;
 import org.apache.parquet.crypto.DecryptionKeyRetriever;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 
 
 public class WrappedKeyManager implements FileKeyManager {
@@ -48,6 +48,8 @@ public class WrappedKeyManager implements FileKeyManager {
   private static final String WRAPPING_METHOD_VERSION_FIELD = "version";
   private static final String MASTER_KEY_ID_FIELD = "masterKeyID";
   private static final String WRAPPED_KEY_FIELD = "wrappedKey";
+
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private KmsClient kmsClient;
   private boolean wrapLocally;
@@ -79,25 +81,25 @@ public class WrappedKeyManager implements FileKeyManager {
       else {
         keyMaterial = new String(keyMetaData, StandardCharsets.UTF_8);
       }
-      
-      JSONParser parser = new JSONParser();
-      JSONObject keyMaterialJson = null;
+
+      Map<String, String> keyMaterialJson = null;
       try {
-        keyMaterialJson = (JSONObject) parser.parse(keyMaterial);
-      } catch (ParseException e) {
+        keyMaterialJson = objectMapper.readValue(new StringReader(keyMaterial),
+                new TypeReference<Map<String, String>>() {});
+      } catch (JsonProcessingException e) {
         throw new IOException("Failed to parse key material " + keyMaterial, e);
       }
       
-      String wrapMethod = (String) keyMaterialJson.get(WRAPPING_METHOD_FIELD);
-      if (!wrapMethod.equals(wrappingMethod)) {
+      String wrapMethod = keyMaterialJson.get(WRAPPING_METHOD_FIELD);
+      if (!wrappingMethod.equals(wrapMethod)) {
         throw new IOException("Wrong wrapping method " + wrapMethod);
       }
       
       //String wrapMethodVersion = (String) jsonObject.get(WRAPPING_METHOD_VERSION_FIELD);
       //TODO compare to wrappingMethodVersion
           
-      String encodedWrappedDatakey = (String) keyMaterialJson.get(WRAPPED_KEY_FIELD);
-      String masterKeyID = (String) keyMaterialJson.get(MASTER_KEY_ID_FIELD);
+      String encodedWrappedDatakey = keyMaterialJson.get(WRAPPED_KEY_FIELD);
+      String masterKeyID = keyMaterialJson.get(MASTER_KEY_ID_FIELD);
       
       byte[] dataKey = null;
       if (unwrapLocally) {
@@ -222,7 +224,7 @@ public class WrappedKeyManager implements FileKeyManager {
     keyMaterialMap.put(WRAPPING_METHOD_VERSION_FIELD, wrappingMethodVersion);
     keyMaterialMap.put(MASTER_KEY_ID_FIELD, masterKeyID);
     keyMaterialMap.put(WRAPPED_KEY_FIELD, encodedWrappedDataKey);
-    String keyMaterial = JSONValue.toJSONString(keyMaterialMap);
+    String keyMaterial = objectMapper.writeValueAsString(keyMaterialMap);
         
     byte[] keyMetadata = null;
     if (null != keyMaterialStore) {

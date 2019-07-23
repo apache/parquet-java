@@ -48,7 +48,7 @@ public interface FileKeyManager {
   public void initialize(Configuration configuration, KmsClient kmsClient, KeyMaterialStore keyMaterialStore, String fileID) throws IOException;
   
   /**
-   * Generates or fetched a column data encryption key, and creates its metadata. 
+   * File writing/encryption: Generates or fetches a column encryption key, and creates its metadata. 
    * Eg can generate a random data key, and wrap it with a master key. ColumnKeyID is the master key then.
    * Or can fetch the data key from KMS. ColumnKeyID is the data key in this case.
    * @param column
@@ -59,14 +59,19 @@ public interface FileKeyManager {
   public KeyWithMetadata getColumnEncryptionKey(ColumnPath column, String columnKeyID) throws IOException;
   
   /**
-   * Footer key metadata can store additional information (such as KMS instance identity) - so it doesnt have
-   * to be stored in each column key metadata.
+   * File writing/encryption: Generates or fetches a footer encryption/signing key, and creates its metadata.
+   * Similar to column keys, but separate because footer key metadata can store additional information (such as 
+   * KMS instance identity) - so it doesn't have to be stored in each column key metadata.
    * @param footerKeyID
    * @return
    * @throws IOException
    */
   public KeyWithMetadata getFooterEncryptionKey(String footerKeyID) throws IOException;
   
+  /**
+   * File reading/decryption: Returns key retrieval callback.
+   * @return
+   */
   public DecryptionKeyRetriever getDecryptionKeyRetriever();
   
   /**
