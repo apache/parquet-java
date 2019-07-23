@@ -118,7 +118,7 @@ public class TestDataPageV1Checksums {
     writer.start();
     writer.startBlock(numRecordsLargeFile);
 
-    CodecFactory codecFactory = new CodecFactory(conf, 1024 * 1024);
+    CodecFactory codecFactory = new CodecFactory(conf, PAGE_SIZE);
     CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(compression);
 
     ColumnChunkPageWriteStore writeStore = new ColumnChunkPageWriteStore(

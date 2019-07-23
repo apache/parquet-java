@@ -20,13 +20,29 @@ package org.apache.parquet.benchmarks;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
-import org.apache.parquet.hadoop.*;
+import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 
-import static org.apache.parquet.benchmarks.BenchmarkConstants.*;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_K;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_MILLION;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.configuration;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_SNAPPY;
 
 import java.io.IOException;
 
@@ -36,7 +52,7 @@ public class PageChecksumReadBenchmarks {
   private PageChecksumDataGenerator pageChecksumDataGenerator = new PageChecksumDataGenerator();
 
   @Setup(Level.Trial)
-  public void setup() throws IOException {
+  public void setup() {
     pageChecksumDataGenerator.generateAll();
   }
 
@@ -47,21 +63,21 @@ public class PageChecksumReadBenchmarks {
 
   private void readFile(Path file, int nRows, boolean verifyChecksums, Blackhole blackhole)
     throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
-      .withConf(configuration)
-      .usePageChecksumVerification(verifyChecksums)
-      .build();
-    for (int i = 0; i < nRows; i++) {
-      Group group = reader.read();
-      blackhole.consume(group.getLong("long_field", 0));
-      blackhole.consume(group.getBinary("binary_field", 0));
-      Group subgroup = group.getGroup("group", 0);
-      blackhole.consume(subgroup.getInteger("int_field", 0));
-      blackhole.consume(subgroup.getInteger("int_field", 1));
-      blackhole.consume(subgroup.getInteger("int_field", 2));
-      blackhole.consume(subgroup.getInteger("int_field", 3));
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
+        .withConf(configuration)
+        .usePageChecksumVerification(verifyChecksums)
+        .build()) {
+      for (int i = 0; i < nRows; i++) {
+        Group group = reader.read();
+        blackhole.consume(group.getLong("long_field", 0));
+        blackhole.consume(group.getBinary("binary_field", 0));
+        Group subgroup = group.getGroup("group", 0);
+        blackhole.consume(subgroup.getInteger("int_field", 0));
+        blackhole.consume(subgroup.getInteger("int_field", 1));
+        blackhole.consume(subgroup.getInteger("int_field", 2));
+        blackhole.consume(subgroup.getInteger("int_field", 3));
+      }
     }
-    reader.close();
   }
 
   // 100k rows, uncompressed, GZIP, Snappy

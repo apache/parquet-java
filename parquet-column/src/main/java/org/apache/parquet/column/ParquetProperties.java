@@ -109,7 +109,6 @@ public class ParquetProperties {
     this.valuesWriterFactory = writerFactory;
     this.columnIndexTruncateLength = columnIndexMinMaxTruncateLength;
     this.pageRowCountLimit = pageRowCountLimit;
-
     this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
   }
 
