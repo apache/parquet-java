@@ -39,7 +39,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
 
-public class WrappedKeyManager implements FileKeyManager {
+public class WrappedKeyManager extends FileKeyManager {
   
   private static final String wrappingMethod = "org.apache.parquet.crypto.keytools.WrappedKeyManager";
   private static final String wrappingMethodVersion = "0.1";
@@ -47,36 +47,44 @@ public class WrappedKeyManager implements FileKeyManager {
   private static final String WRAPPING_METHOD_FIELD = "method";
   private static final String WRAPPING_METHOD_VERSION_FIELD = "version";
   private static final String MASTER_KEY_ID_FIELD = "masterKeyID";
+  private static final String KMS_INSTANCE_ID_FIELD = "kmsInstanceID";
   private static final String WRAPPED_KEY_FIELD = "wrappedKey";
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  private KmsClient kmsClient;
+  private Configuration hadoopConfiguration;
   private boolean wrapLocally;
-  private  KeyMaterialStore keyMaterialStore;
-  private  String fileID;
+  private KeyMaterialStore keyMaterialStore;
+  private String fileID;
 
-  private  SecureRandom random;
+  private SecureRandom random;
   private short keyCounter;
 
-  public static class WrappedKeyRetriever implements DecryptionKeyRetriever {
-    private final KmsClient kmsClient;
-    private final boolean unwrapLocally;
-    private final KeyMaterialStore keyStore;
-    private final String fileID;
 
-    private WrappedKeyRetriever(KmsClient kmsClient, boolean unwrapLocally, KeyMaterialStore keyStore, String fileID) {
+  public static class WrappedKeyRetriever implements DecryptionKeyRetriever {
+    private KmsClient kmsClient;
+    private String kmsInstanceID;
+    private final boolean unwrapLocally;
+    private final KeyMaterialStore keyMaterialStore;
+    private final String fileID;
+    private final Configuration hadoopConfiguration;
+
+    private WrappedKeyRetriever(KmsClient kmsClient, String kmsInstanceID, Configuration hadoopConfiguration, boolean unwrapLocally,
+                                KeyMaterialStore keyMaterialStore, String fileID) {
       this.kmsClient = kmsClient;
-      this.keyStore = keyStore;
+      this.kmsInstanceID = kmsInstanceID;
+      this.hadoopConfiguration = hadoopConfiguration;
+      this.keyMaterialStore = keyMaterialStore;
       this.fileID = fileID;
       this.unwrapLocally = unwrapLocally;
     }
 
+    @Override
     public byte[] getKey(byte[] keyMetaData) throws IOException, KeyAccessDeniedException {
       String keyMaterial;
-      if (null != keyStore) {
+      if (null != keyMaterialStore) {
         String keyIDinFile = new String(keyMetaData, StandardCharsets.UTF_8);
-        keyMaterial = keyStore.getKeyMaterial(fileID, keyIDinFile);
+        keyMaterial = keyMaterialStore.getKeyMaterial(fileID, keyIDinFile);
       }
       else {
         keyMaterial = new String(keyMetaData, StandardCharsets.UTF_8);
@@ -100,6 +108,10 @@ public class WrappedKeyManager implements FileKeyManager {
           
       String encodedWrappedDatakey = keyMaterialJson.get(WRAPPED_KEY_FIELD);
       String masterKeyID = keyMaterialJson.get(MASTER_KEY_ID_FIELD);
+      if (null == kmsClient) {
+        kmsInstanceID = keyMaterialJson.get(KMS_INSTANCE_ID_FIELD);
+        kmsClient = getKmsClient(this.hadoopConfiguration, kmsInstanceID);
+      }
       
       byte[] dataKey = null;
       if (unwrapLocally) {
@@ -135,9 +147,10 @@ public class WrappedKeyManager implements FileKeyManager {
       return dataKey;
     }
   }
-  
+
   @Override
-  public void initialize(Configuration configuration, KmsClient kmsClient, KeyMaterialStore keyMaterialStore, String fileID) throws IOException {
+  public void initialize(Configuration configuration, KmsClient kmsClient, KeyMaterialStore keyMaterialStore,
+                         String fileID) throws IOException {
     String localWrap = configuration.getTrimmed("encryption.wrap.locally");
     if (null == localWrap || localWrap.equalsIgnoreCase("true")) {
       wrapLocally = true; // true by default
@@ -148,10 +161,8 @@ public class WrappedKeyManager implements FileKeyManager {
     else {
       throw new IOException("Bad encryption.wrap.locally value: " + localWrap);
     }
-    if (!wrapLocally && !kmsClient.supportsServerSideWrapping()) {
-      throw new UnsupportedOperationException("KMS client doesn't support server-side wrapping");
-    }
     this.kmsClient = kmsClient;
+    this.hadoopConfiguration = configuration;
     this.keyMaterialStore = keyMaterialStore;
     this.fileID = fileID;
     random = new SecureRandom();
@@ -160,17 +171,17 @@ public class WrappedKeyManager implements FileKeyManager {
 
   @Override
   public KeyWithMetadata getFooterEncryptionKey(String footerMasterKeyID) throws IOException {
-    return generateDataKey(footerMasterKeyID);
+    return generateDataKey(footerMasterKeyID, true);
   }
 
   @Override
   public KeyWithMetadata getColumnEncryptionKey(ColumnPath column, String columnMasterKeyID) throws IOException {
-    return generateDataKey(columnMasterKeyID);
+    return generateDataKey(columnMasterKeyID, false);
   }
   
   @Override
   public DecryptionKeyRetriever getDecryptionKeyRetriever() {
-    return new WrappedKeyRetriever(kmsClient, wrapLocally, keyMaterialStore, fileID);
+    return new WrappedKeyRetriever(kmsClient, kmsInstanceID, hadoopConfiguration, wrapLocally, keyMaterialStore, fileID);
   }
 
   @Override
@@ -185,7 +196,10 @@ public class WrappedKeyManager implements FileKeyManager {
    * @return
    * @throws IOException
    */
-  private KeyWithMetadata generateDataKey(String masterKeyID) throws IOException {
+  private KeyWithMetadata generateDataKey(String masterKeyID, boolean addKMSInstance) throws IOException {
+    if (null == kmsClient) {
+      throw new IOException("No KMS client available.");
+    }
     byte[] dataKey = new byte[16]; //TODO length. configure via properties
     random.nextBytes(dataKey);
     String encodedWrappedDataKey = null;
@@ -207,6 +221,9 @@ public class WrappedKeyManager implements FileKeyManager {
       encodedWrappedDataKey = Base64.getEncoder().encodeToString(wrappedDataKey);
     }
     else {
+      if (!kmsClient.supportsServerSideWrapping()) {
+        throw new UnsupportedOperationException("KMS client doesn't support server-side wrapping");
+      }
       String encodedDataKey = Base64.getEncoder().encodeToString(dataKey);
       try {
         encodedWrappedDataKey = kmsClient.wrapDataKeyInServer(encodedDataKey, masterKeyID);
@@ -223,6 +240,9 @@ public class WrappedKeyManager implements FileKeyManager {
     keyMaterialMap.put(WRAPPING_METHOD_FIELD, wrappingMethod);
     keyMaterialMap.put(WRAPPING_METHOD_VERSION_FIELD, wrappingMethodVersion);
     keyMaterialMap.put(MASTER_KEY_ID_FIELD, masterKeyID);
+    if (addKMSInstance) {
+      keyMaterialMap.put(KMS_INSTANCE_ID_FIELD, kmsInstanceID);
+    }
     keyMaterialMap.put(WRAPPED_KEY_FIELD, encodedWrappedDataKey);
     String keyMaterial = objectMapper.writeValueAsString(keyMaterialMap);
         
