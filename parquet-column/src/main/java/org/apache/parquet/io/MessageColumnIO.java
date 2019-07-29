@@ -54,9 +54,6 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * Message level of the IO structure
- *
- *
- * @author Julien Le Dem
  */
 public class MessageColumnIO extends GroupColumnIO {
   private static final Logger LOG = LoggerFactory.getLogger(MessageColumnIO.class);
@@ -84,7 +81,12 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   /**
-   * @deprecated use {@link #getRecordReader(PageReadStore, RecordMaterializer, Filter)}
+   * @param columns a page read store with the column data
+   * @param recordMaterializer a record materializer
+   * @param filter a record filter
+   * @param <T> the type of records returned by the reader
+   * @return a record reader
+   * @deprecated use getRecordReader(PageReadStore, RecordMaterializer, Filter)
    */
   @Deprecated
   public <T> RecordReader<T> getRecordReader(PageReadStore columns,
@@ -109,7 +111,7 @@ public class MessageColumnIO extends GroupColumnIO {
       public RecordReader<T> visit(FilterPredicateCompat filterPredicateCompat) {
 
         FilterPredicate predicate = filterPredicateCompat.getFilterPredicate();
-        IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder();
+        IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder(leaves);
         IncrementallyUpdatedFilterPredicate streamingPredicate = builder.build(predicate);
         RecordMaterializer<T> filteringRecordMaterializer = new FilteringRecordMaterializer<T>(
             recordMaterializer,
@@ -295,6 +297,13 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void endMessage() {
       writeNullForMissingFieldsAtCurrentLevel();
+
+      // We need to flush the cached null values before ending the record to ensure that everything is sent to the
+      // writer before the current page would be closed
+      if (columns.isColumnFlushNeeded()) {
+        flush();
+      }
+
       columns.endRecord();
       if (DEBUG) log("< MESSAGE END >");
       if (DEBUG) printState();

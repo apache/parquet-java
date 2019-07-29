@@ -35,8 +35,8 @@ public class AvroParquetOutputFormat<T> extends ParquetOutputFormat<T> {
    * schema so that the records can be written in Parquet format. It is also
    * stored in the Parquet metadata so that records can be reconstructed as Avro
    * objects at read time without specifying a read schema.
-   * @param job
-   * @param schema
+   * @param job a job
+   * @param schema a schema for the data that will be written
    * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setSchema(Job job, Schema schema) {

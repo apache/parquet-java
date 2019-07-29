@@ -33,7 +33,6 @@ import java.io.IOException;
 /**
  * Write integers with delta encoding and binary packing
  * The format is as follows:
- * <p/>
  * <pre>
  *   {@code
  *     delta-binary-packing: <page-header> <block>*
@@ -45,10 +44,8 @@ import java.io.IOException;
  *     blockSizeInValues,blockSizeInValues,totalValueCount,firstValue : unsigned varint
  *   }
  * </pre>
- *
+ * <p>
  * The algorithm and format is inspired by D. Lemire's paper: http://lemire.me/blog/archives/2012/09/12/fast-integer-compression-decoding-billions-of-integers-per-second/
- *
- * @author Tianshuo Deng
  */
 public abstract class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 

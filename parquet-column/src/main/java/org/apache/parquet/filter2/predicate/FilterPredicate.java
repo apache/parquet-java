@@ -48,12 +48,16 @@ public interface FilterPredicate {
 
   /**
    * A FilterPredicate must accept a Visitor, per the visitor pattern.
+   * @param visitor a visitor
+   * @param <R> return type of the visitor
+   * @return the return value of Visitor#visit(this)
    */
   <R> R accept(Visitor<R> visitor);
 
   /**
    * A FilterPredicate Visitor must visit all the operators in a FilterPredicate expression tree,
    * and must handle recursion itself, per the visitor pattern.
+   * @param <R> return type of the visitor
    */
   public static interface Visitor<R> {
     <T extends Comparable<T>> R visit(Eq<T> eq);

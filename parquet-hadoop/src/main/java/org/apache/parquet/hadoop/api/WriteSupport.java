@@ -33,17 +33,12 @@ import org.apache.parquet.schema.MessageType;
 /**
  * Abstraction to use with {@link org.apache.parquet.hadoop.ParquetOutputFormat} to convert incoming records
  *
- * @author Julien Le Dem
- *
  * @param <T> the type of the incoming records
  */
 abstract public class WriteSupport<T> {
 
   /**
    * information to be persisted in the file
-   *
-   * @author Julien Le Dem
-   *
    */
   public static final class WriteContext {
     private final MessageType schema;
@@ -75,9 +70,6 @@ abstract public class WriteSupport<T> {
 
   /**
    * Information to be added in the file once all the records have been written
-   *
-   * @author Julien Le Dem
-   *
    */
   public static final class FinalizedWriteContext {
     private final Map<String, String> extraMetaData;

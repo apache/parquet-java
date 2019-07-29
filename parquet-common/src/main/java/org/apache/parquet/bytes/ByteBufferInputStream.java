@@ -16,67 +16,145 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.parquet.bytes;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
 
-/**
- * This ByteBufferInputStream does not consume the ByteBuffer being passed in, 
- * but will create a slice of the current buffer.
- */
+import org.apache.parquet.ShouldNeverHappenException;
+
 public class ByteBufferInputStream extends InputStream {
-	
-  protected ByteBuffer byteBuf;
-  protected int initPos;
-  protected int count;
-  public ByteBufferInputStream(ByteBuffer buffer) {
-    this(buffer, buffer.position(), buffer.remaining());
+
+  // Used to maintain the deprecated behavior of instantiating ByteBufferInputStream directly
+  private final ByteBufferInputStream delegate;
+
+  public static ByteBufferInputStream wrap(ByteBuffer... buffers) {
+    if (buffers.length == 1) {
+      return new SingleBufferInputStream(buffers[0]);
+    } else {
+      return new MultiBufferInputStream(Arrays.asList(buffers));
+    }
   }
-  
+
+  public static ByteBufferInputStream wrap(List<ByteBuffer> buffers) {
+    if (buffers.size() == 1) {
+      return new SingleBufferInputStream(buffers.get(0));
+    } else {
+      return new MultiBufferInputStream(buffers);
+    }
+  }
+
+  ByteBufferInputStream() {
+    delegate = null;
+  }
+
+  /**
+   * @param buffer
+   *          the buffer to be wrapped in this input stream
+   * @deprecated Will be removed in 2.0.0; Use {@link #wrap(ByteBuffer...)} instead
+   */
+  @Deprecated
+  public ByteBufferInputStream(ByteBuffer buffer) {
+    delegate = wrap(buffer);
+  }
+
+  /**
+   * @param buffer
+   *          the buffer to be wrapped in this input stream
+   * @param offset
+   *          the offset of the data in the buffer
+   * @param count
+   *          the number of bytes to be read from the buffer
+   * @deprecated Will be removed in 2.0.0; Use {@link #wrap(ByteBuffer...)} instead
+   */
+  @Deprecated
   public ByteBufferInputStream(ByteBuffer buffer, int offset, int count) {
     ByteBuffer temp = buffer.duplicate();
     temp.position(offset);
-    byteBuf = temp.slice();
+    ByteBuffer byteBuf = temp.slice();
     byteBuf.limit(count);
-    this.initPos = offset;
-    this.count = count;
+    delegate = wrap(byteBuf);
   }
-  
+
+  /**
+   * @return the slice of the byte buffer inside this stream
+   * @deprecated Will be removed in 2.0.0; Use {@link #slice(int)} instead
+   */
+  @Deprecated
   public ByteBuffer toByteBuffer() {
-    return byteBuf.slice();
-  }
-  
-  @Override
-  public int read() throws IOException {
-    if (!byteBuf.hasRemaining()) {
-    	return -1;
+    try {
+      return slice(available());
+    } catch (EOFException e) {
+      throw new ShouldNeverHappenException(e);
     }
-    //Workaround for unsigned byte
-    return byteBuf.get() & 0xFF;
   }
 
-  @Override
-  public int read(byte[] bytes, int offset, int length) throws IOException {
-    int count = Math.min(byteBuf.remaining(), length);
-    if (count == 0) return -1;
-    byteBuf.get(bytes, offset, count);
-    return count;
+  public long position() {
+    return delegate.position();
   }
-  
-  @Override
+
+  public void skipFully(long n) throws IOException {
+    long skipped = skip(n);
+    if (skipped < n) {
+      throw new EOFException(
+          "Not enough bytes to skip: " + skipped + " < " + n);
+    }
+  }
+
+  public int read(ByteBuffer out) {
+    return delegate.read(out);
+  }
+
+  public ByteBuffer slice(int length) throws EOFException {
+    return delegate.slice(length);
+  }
+
+  public List<ByteBuffer> sliceBuffers(long length) throws EOFException {
+    return delegate.sliceBuffers(length);
+  }
+
+  public ByteBufferInputStream sliceStream(long length) throws EOFException {
+    return ByteBufferInputStream.wrap(sliceBuffers(length));
+  }
+
+  public List<ByteBuffer> remainingBuffers() {
+    return delegate.remainingBuffers();
+  }
+
+  public ByteBufferInputStream remainingStream() {
+    return ByteBufferInputStream.wrap(remainingBuffers());
+  }
+
+  public int read() throws IOException {
+    return delegate.read();
+  }
+
+  public int read(byte[] b, int off, int len) throws IOException {
+    return delegate.read(b, off, len);
+  }
+
   public long skip(long n) {
-	  if (n > byteBuf.remaining())
-	    n = byteBuf.remaining();
-	  int pos = byteBuf.position();
-	  byteBuf.position((int)(pos + n));
-	  return n;
+    return delegate.skip(n);
   }
 
-
-  @Override
   public int available() {
-    return byteBuf.remaining();
+    return delegate.available();
+  }
+
+  public void mark(int readlimit) {
+    delegate.mark(readlimit);
+  }
+
+  public void reset() throws IOException {
+    delegate.reset();
+  }
+
+  public boolean markSupported() {
+    return delegate.markSupported();
   }
 }

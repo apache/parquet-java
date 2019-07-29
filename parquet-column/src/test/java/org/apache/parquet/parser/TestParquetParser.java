@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,6 +18,12 @@
  */
 package org.apache.parquet.parser;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.junit.Assert.assertEquals;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
@@ -43,7 +49,7 @@ import org.apache.parquet.schema.Types.MessageTypeBuilder;
 
 public class TestParquetParser {
   @Test
-  public void testPaperExample() throws Exception {
+  public void testPaperExample() {
     String example =
         "message Document {\n" +
         "  required int64 DocId;\n" +
@@ -115,16 +121,33 @@ public class TestParquetParser {
   }
 
   @Test
-  public void testUTF8Annotation() {
+  public void testSTRINGAnnotation() {
     String message =
         "message StringMessage {\n" +
+        "  required binary string (STRING);\n" +
+        "}\n";
+
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
+        .required(BINARY).as(stringType()).named("string")
+        .named("StringMessage");
+
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
+  }
+
+  @Test
+  public void testUTF8Annotation() {
+    String message =
+      "message StringMessage {\n" +
         "  required binary string (UTF8);\n" +
         "}\n";
 
     MessageType parsed = parseMessageType(message);
     MessageType expected = buildMessage()
-        .required(BINARY).as(UTF8).named("string")
-        .named("StringMessage");
+      .required(BINARY).as(UTF8).named("string")
+      .named("StringMessage");
 
     assertEquals(expected, parsed);
     MessageType reparsed = parseMessageType(parsed.toString());
@@ -248,6 +271,10 @@ public class TestParquetParser {
         "  required int32 time (TIME_MILLIS);" +
         "  required int64 timestamp (TIMESTAMP_MILLIS);" +
         "  required FIXED_LEN_BYTE_ARRAY(12) interval (INTERVAL);" +
+        "  required int32 newTime (TIME(MILLIS,true));" +
+        "  required int64 nanoTime (TIME(NANOS,true));" +
+        "  required int64 newTimestamp (TIMESTAMP(MILLIS,false));" +
+        "  required int64 nanoTimestamp (TIMESTAMP(NANOS,false));" +
         "}\n";
 
     MessageType parsed = MessageTypeParser.parseMessageType(message);
@@ -256,7 +283,11 @@ public class TestParquetParser {
         .required(INT32).as(TIME_MILLIS).named("time")
         .required(INT64).as(TIMESTAMP_MILLIS).named("timestamp")
         .required(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("interval")
-        .named("TimeMessage");
+        .required(INT32).as(timeType(true, MILLIS)).named("newTime")
+        .required(INT64).as(timeType(true, NANOS)).named("nanoTime")
+        .required(INT64).as(timestampType(false, MILLIS)).named("newTimestamp")
+        .required(INT64).as(timestampType(false, NANOS)).named("nanoTimestamp")
+      .named("TimeMessage");
 
     assertEquals(expected, parsed);
     MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
@@ -287,6 +318,36 @@ public class TestParquetParser {
         .required(INT32).as(UINT_32).named("u32")
         .required(INT64).as(UINT_64).named("u64")
         .named("IntMessage");
+
+    assertEquals(expected, parsed);
+    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
+  }
+
+  @Test
+  public void testIntegerAnnotations() {
+    String message = "message IntMessage {" +
+      "  required int32 i8 (INTEGER(8,true));" +
+      "  required int32 i16 (INTEGER(16,true));" +
+      "  required int32 i32 (INTEGER(32,true));" +
+      "  required int64 i64 (INTEGER(64,true));" +
+      "  required int32 u8 (INTEGER(8,false));" +
+      "  required int32 u16 (INTEGER(16,false));" +
+      "  required int32 u32 (INTEGER(32,false));" +
+      "  required int64 u64 (INTEGER(64,false));" +
+      "}\n";
+
+    MessageType parsed = MessageTypeParser.parseMessageType(message);
+    MessageType expected = Types.buildMessage()
+      .required(INT32).as(intType(8, true)).named("i8")
+      .required(INT32).as(intType(16, true)).named("i16")
+      .required(INT32).as(intType(32, true)).named("i32")
+      .required(INT64).as(intType(64, true)).named("i64")
+      .required(INT32).as(intType(8, false)).named("u8")
+      .required(INT32).as(intType(16, false)).named("u16")
+      .required(INT32).as(intType(32, false)).named("u32")
+      .required(INT64).as(intType(64, false)).named("u64")
+      .named("IntMessage");
 
     assertEquals(expected, parsed);
     MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());

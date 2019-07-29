@@ -20,13 +20,16 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.OriginalType.LIST;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -86,12 +89,11 @@ public class TestMessageType {
     MessageType t4 = new MessageType("root2",
         new PrimitiveType(REQUIRED, BINARY, "a"));
 
-    try {
-      t3.union(t4);
-      fail("moving from optional to required");
-    } catch (IncompatibleSchemaModificationException e) {
-      assertEquals("repetition constraint is more restrictive: can not merge type required binary a into optional binary a", e.getMessage());
-    }
+    assertEquals(
+        t3.union(t4),
+        new MessageType("root1",
+            new PrimitiveType(OPTIONAL, BINARY, "a"))
+        );
 
     assertEquals(
         t4.union(t3),
@@ -145,7 +147,7 @@ public class TestMessageType {
       t9.union(t10);
       fail("moving from BINARY (UTF8) to BINARY");
     } catch (IncompatibleSchemaModificationException e) {
-      assertEquals("cannot merge original type null into UTF8", e.getMessage());
+      assertEquals("cannot merge logical type null into STRING", e.getMessage());
     }
 
     MessageType t11 = Types.buildMessage()
@@ -186,6 +188,48 @@ public class TestMessageType {
                 new GroupType(REQUIRED, "g3",
                     new PrimitiveType(OPTIONAL, BINARY, "c")))),
         t5.union(t6));
+  }
+
+  @Test
+  public void testMergeSchemaWithColumnOrder() {
+    MessageType m1 = Types.buildMessage().addFields(
+        Types.requiredList().element(
+            Types.optional(BINARY).columnOrder(ColumnOrder.undefined()).named("a")
+            ).named("g"),
+        Types.optional(INT96).named("b")
+        ).named("root");
+    MessageType m2 = Types.buildMessage().addFields(
+        Types.requiredList().element(
+            Types.optional(BINARY).columnOrder(ColumnOrder.undefined()).named("a")
+            ).named("g"),
+        Types.optional(BINARY).named("c")
+        ).named("root");
+    MessageType m3 = Types.buildMessage().addFields(
+        Types.requiredList().element(
+            Types.optional(BINARY).named("a")
+            ).named("g")
+        ).named("root");
+
+    assertEquals(
+        Types.buildMessage().addFields(
+            Types.requiredList().element(
+                Types.optional(BINARY).named("a")
+                ).named("g"),
+            Types.optional(INT96).named("b"),
+            Types.optional(BINARY).named("c")
+            ).named("root"),
+        m1.union(m2));
+    try {
+      m1.union(m3);
+      fail("An IncompatibleSchemaModificationException should have been thrown");
+    } catch (Exception e) {
+      assertTrue(
+          "The thrown exception should have been IncompatibleSchemaModificationException but was " + e.getClass(),
+          e instanceof IncompatibleSchemaModificationException);
+      assertEquals(
+          "can not merge type optional binary a with column order TYPE_DEFINED_ORDER into optional binary a with column order UNDEFINED",
+          e.getMessage());
+    }
   }
 
   @Test

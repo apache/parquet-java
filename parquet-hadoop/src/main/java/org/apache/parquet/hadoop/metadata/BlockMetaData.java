@@ -25,9 +25,6 @@ import java.util.List;
 
 /**
  * Block metadata stored in the footer and passed in an InputSplit
- *
- * @author Julien Le Dem
- *
  */
 public class BlockMetaData {
 

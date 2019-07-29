@@ -27,7 +27,7 @@ Merging a pull request requires being a committer on the project.
 have an apache and apache-github remote setup
 ```
 git remote add apache-github https://github.com/apache/parquet-mr.git
-git remote add apache https://git-wip-us.apache.org/repos/asf/parquet-mr.git
+git remote add apache https://gitbox.apache.org/repos/asf?p=parquet-mr.git
 ```
 run the following command
 ```
@@ -50,7 +50,7 @@ source	repo/branch
 target	master
 url	https://api.github.com/repos/apache/parquet-mr/pulls/X
 
-Proceed with merging pull request #3? (y/n): 
+Proceed with merging pull request #3? (y/n):
 ```
 If this looks good, type y and hit enter.
 ```

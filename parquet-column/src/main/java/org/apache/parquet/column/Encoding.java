@@ -53,9 +53,6 @@ import org.apache.parquet.io.ParquetDecodingException;
 
 /**
  * encoding of the data
- *
- * @author Julien Le Dem
- *
  */
 public enum Encoding {
 
@@ -258,8 +255,11 @@ public enum Encoding {
 
   /**
    * initializes a dictionary from a page
-   * @param dictionaryPage
+   * @param descriptor the column descriptor for the dictionary-encoded column
+   * @param dictionaryPage a dictionary page
    * @return the corresponding dictionary
+   * @throws IOException if there is an exception while reading the dictionary page
+   * @throws UnsupportedOperationException if the encoding is not dictionary based
    */
   public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
     throw new UnsupportedOperationException(this.name() + " does not support dictionary");
@@ -271,7 +271,7 @@ public enum Encoding {
    * @param descriptor the column to read
    * @param valuesType the type of values
    * @return the proper values reader for the given column
-   * @throw {@link UnsupportedOperationException} if the encoding is dictionary based
+   * @throws UnsupportedOperationException if the encoding is dictionary based
    */
   public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
     throw new UnsupportedOperationException("Error decoding " + descriptor + ". " + this.name() + " is dictionary based");
@@ -284,7 +284,7 @@ public enum Encoding {
    * @param valuesType the type of values
    * @param dictionary the dictionary
    * @return the proper values reader for the given column
-   * @throw {@link UnsupportedOperationException} if the encoding is not dictionary based
+   * @throws UnsupportedOperationException if the encoding is not dictionary based
    */
   public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
     throw new UnsupportedOperationException(this.name() + " is not dictionary based");

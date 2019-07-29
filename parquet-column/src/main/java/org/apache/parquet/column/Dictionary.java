@@ -22,9 +22,6 @@ import org.apache.parquet.io.api.Binary;
 
 /**
  * a dictionary to decode dictionary based encodings
- *
- * @author Julien Le Dem
- *
  */
 public abstract class Dictionary {
 

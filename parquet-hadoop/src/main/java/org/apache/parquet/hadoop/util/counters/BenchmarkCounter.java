@@ -26,8 +26,6 @@ import org.apache.parquet.hadoop.util.counters.mapreduce.MapReduceCounterLoader;
 
 /**
  * Encapsulate counter operations, compatible with Hadoop1/2, mapred/mapreduce API
- *
- * @author Tianshuo Deng
  */
 public class BenchmarkCounter {
 
@@ -46,7 +44,7 @@ public class BenchmarkCounter {
   /**
    * Init counters in hadoop's mapreduce API, support both 1.x and 2.x
    *
-   * @param context
+   * @param context a task attempt context
    */
   public static void initCounterFromContext(TaskAttemptContext context) {
     counterLoader = new MapReduceCounterLoader(context);
@@ -56,8 +54,8 @@ public class BenchmarkCounter {
   /**
    * Init counters in hadoop's mapred API, which is used by cascading and Hive.
    *
-   * @param reporter
-   * @param configuration
+   * @param reporter a reporter
+   * @param configuration a configuration
    */
   public static void initCounterFromReporter(Reporter reporter, Configuration configuration) {
     counterLoader = new MapRedCounterLoader(reporter, configuration);

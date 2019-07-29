@@ -18,25 +18,77 @@
  */
 package org.apache.parquet.filter2.predicate;
 
+import java.util.Comparator;
+
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * Contains statistics about a group of records
+ *
+ * @param <T> the type of values described by the statistics instance
  */
 public class Statistics<T> {
   private final T min;
   private final T max;
+  private final Comparator<T> comparator;
 
+  // Intended for use only within Parquet itself.
+  /**
+   * @param min the min value
+   * @param max the max value
+   * @deprecated will be removed in 2.0.0. Use {@link #Statistics(Object, Object, Comparator)} instead
+   */
+  @Deprecated
   public Statistics(T min, T max) {
     this.min = checkNotNull(min, "min");
     this.max = checkNotNull(max, "max");
+    this.comparator = null;
   }
 
+  // Intended for use only within Parquet itself.
+
+  /**
+   * @param min the min value
+   * @param max the max value
+   * @param comparator a comparator to use when comparing values described by this statistics instance
+   */
+  public Statistics(T min, T max, Comparator<T> comparator) {
+    this.min = checkNotNull(min, "min");
+    this.max = checkNotNull(max, "max");
+    this.comparator = checkNotNull(comparator, "comparator");
+  }
+
+  /**
+   * Returns the generic object representing the min value in the statistics. The
+   * natural ordering of type {@code T} defined by the {@code compareTo} method
+   * might not be appropriate for the actual logical type. Use
+   * {@link #getComparator()} for comparing.
+   *
+   * @return the min value
+   */
   public T getMin() {
     return min;
   }
 
+  /**
+   * Returns the generic object representing the max value in the statistics. The
+   * natural ordering of type {@code T} defined by the {@code compareTo} method
+   * might not be appropriate for the actual logical type. Use
+   * {@link #getComparator()} for comparing.
+   *
+   * @return the max value
+   */
   public T getMax() {
     return max;
+  }
+
+  /**
+   * Returns the comparator to be used to compare two generic values in the proper way (e.g. unsigned comparison for
+   * UINT_32)
+   *
+   * @return a comparator for the values described by the statistics instance
+   */
+  public Comparator<T> getComparator() {
+    return comparator;
   }
 }

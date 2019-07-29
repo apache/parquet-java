@@ -64,6 +64,11 @@ public class HeadCommand extends ArgsOnlyCommand {
   }
 
   @Override
+  public String getCommandDescription() {
+    return "Prints the first n record of the Parquet file";
+  }
+
+  @Override
   public void execute(CommandLine options) throws Exception {
     super.execute(options);
 

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
@@ -91,7 +92,7 @@ public class BenchmarkReadingRandomIntegers {
   }
 
   private void readData(ValuesReader reader, byte[] deltaBytes) throws IOException {
-    reader.initFromPage(data.length, ByteBuffer.wrap(deltaBytes), 0);
+    reader.initFromPage(data.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(deltaBytes)));
     for (int i = 0; i < data.length; i++) {
       reader.readInteger();
     }

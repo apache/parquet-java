@@ -41,12 +41,6 @@ import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
-/**
- * make sure {@link Log#LEVEL} is set to {@link Level#OFF}
- *
- * @author Julien Le Dem
- *
- */
 public class TupleConsumerPerfTest {
 
   private static final int TOP_LEVEL_COLS = 1;

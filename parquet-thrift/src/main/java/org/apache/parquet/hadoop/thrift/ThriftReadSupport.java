@@ -80,6 +80,8 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
    * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified
    * (for example, ScroogeRecordConverter from parquet-scrooge).
    *
+   * @param conf a mapred jobconf
+   * @param klass a thrift class
    * @deprecated use {@link #setRecordConverterClass(Configuration, Class)} below
    */
   @Deprecated
@@ -93,6 +95,9 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
    * implementation creates standard Apache Thrift {@link TBase} objects; to support alternatives, such
    * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified
    * (for example, ScroogeRecordConverter from parquet-scrooge).
+   *
+   * @param conf a configuration
+   * @param klass a thrift class
    */
   public static void setRecordConverterClass(Configuration conf,
                                              Class<?> klass) {

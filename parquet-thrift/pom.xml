@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.9.1-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -52,6 +52,12 @@
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
       <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.twitter.elephantbird</groupId>
@@ -70,12 +76,12 @@
     </dependency>
     <dependency>
       <groupId>${jackson.groupId}</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
+      <artifactId>jackson-core</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>${jackson.groupId}</groupId>
-      <artifactId>jackson-core-asl</artifactId>
+      <artifactId>jackson-databind</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
@@ -117,8 +123,15 @@
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
+      <artifactId>slf4j-simple</artifactId>
       <version>${slf4j.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <!-- needed for Pig tests -->
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>1.2.17</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -131,6 +144,17 @@
 
   </dependencies>
 
+  <dependencyManagement>
+    <dependencies>
+      <!-- com.twitter.elephantbird brings in an older version of libthrift so we force to use our own one -->
+      <dependency>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>libthrift</artifactId>
+        <version>${thrift.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <build>
     <plugins>
       <plugin>
@@ -142,9 +166,9 @@
       </plugin>
       <!-- thrift -->
       <plugin>
-        <groupId>org.apache.thrift.tools</groupId>
-        <artifactId>maven-thrift-plugin</artifactId>
-        <version>${maven-thrift-plugin.version}</version>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>thrift-maven-plugin</artifactId>
+        <version>${thrift-maven-plugin.version}</version>
         <configuration>
           <thriftExecutable>${thrift.executable}</thriftExecutable>
         </configuration>

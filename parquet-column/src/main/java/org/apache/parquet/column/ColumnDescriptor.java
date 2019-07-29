@@ -20,19 +20,17 @@ package org.apache.parquet.column;
 
 import java.util.Arrays;
 
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
 
 /**
  * Describes a column's type as well as its position in its containing schema.
- *
- * @author Julien Le Dem
- *
  */
 public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   private final String[] path;
-  private final PrimitiveTypeName type;
-  private final int typeLength;
+  private final PrimitiveType type;
   private final int maxRep;
   private final int maxDef;
 
@@ -42,8 +40,10 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
    * @param type the type of the field
    * @param maxRep the maximum repetition level for that path
    * @param maxDef the maximum definition level for that path
+   * @deprecated will be removed in 2.0.0; Use {@link #ColumnDescriptor(String[], PrimitiveType, int, int)}
    */
-  public ColumnDescriptor(String[] path, PrimitiveTypeName type, int maxRep, 
+  @Deprecated
+  public ColumnDescriptor(String[] path, PrimitiveTypeName type, int maxRep,
                           int maxDef) {
     this(path, type, 0, maxRep, maxDef);
   }
@@ -52,15 +52,26 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
    *
    * @param path the path to the leaf field in the schema
    * @param type the type of the field
+   * @param typeLength the length of the type, if type is a fixed-length byte array
+   * @param maxRep the maximum repetition level for that path
+   * @param maxDef the maximum definition level for that path
+   * @deprecated will be removed in 2.0.0; Use {@link #ColumnDescriptor(String[], PrimitiveType, int, int)}
+   */
+  @Deprecated
+  public ColumnDescriptor(String[] path, PrimitiveTypeName type,
+                          int typeLength, int maxRep, int maxDef) {
+    this(path, new PrimitiveType(Type.Repetition.OPTIONAL, type, typeLength,""), maxRep, maxDef);
+  }
+
+  /**
+   * @param path the path to the leaf field in the schema
+   * @param type the type of the field
    * @param maxRep the maximum repetition level for that path
    * @param maxDef the maximum definition level for that path
    */
-  public ColumnDescriptor(String[] path, PrimitiveTypeName type, 
-                          int typeLength, int maxRep, int maxDef) {
-    super();
+  public ColumnDescriptor(String[] path, PrimitiveType type, int maxRep, int maxDef) {
     this.path = path;
     this.type = type;
-    this.typeLength = typeLength;
     this.maxRep = maxRep;
     this.maxDef = maxDef;
   }
@@ -88,16 +99,27 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   /**
    * @return the type of that column
+   * @deprecated will removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
+  @Deprecated
   public PrimitiveTypeName getType() {
-    return type;
+    return type.getPrimitiveTypeName();
   }
 
   /**
    * @return the size of the type
+   * @deprecated will removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    **/
+  @Deprecated
   public int getTypeLength() {
-    return typeLength;
+    return type.getTypeLength();
+  }
+
+  /**
+   * @return the primitive type object of the column
+   */
+  public PrimitiveType getPrimitiveType() {
+    return type;
   }
 
   @Override

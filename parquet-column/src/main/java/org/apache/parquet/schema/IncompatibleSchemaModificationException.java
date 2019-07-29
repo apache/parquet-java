@@ -22,9 +22,6 @@ import org.apache.parquet.ParquetRuntimeException;
 
 /**
  * thrown when we are trying to read together files with incompatible schemas.
- *
- * @author Julien Le Dem
- *
  */
 public class IncompatibleSchemaModificationException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;

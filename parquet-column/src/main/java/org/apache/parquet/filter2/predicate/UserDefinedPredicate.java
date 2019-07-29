@@ -39,7 +39,28 @@ public abstract class UserDefinedPredicate<T extends Comparable<T>> {
   public UserDefinedPredicate() { }
 
   /**
+   * Returns whether this predicate accepts {@code null} values.
+   *
+   * @return {@code true} if this predicate accepts {@code null} values, {@code false} otherwise
+   */
+  public boolean acceptsNullValue() {
+    try {
+      return keep(null);
+    } catch (NullPointerException e) {
+      // The implementor might not be prepared to handle null values;
+      // in this case this predicate obviously does not accept nulls
+      return false;
+    }
+  }
+
+  /**
    * Return true to keep the record with this value, false to drop it.
+   * <p>
+   * This method shall handle {@code null} values returning whether this user defined predicate accepts {@code null}
+   * values or not.
+   *
+   * @param value a value (might be {@code null})
+   * @return true to keep the record with the value, false to drop it
    */
   public abstract boolean keep(T value);
 
@@ -51,13 +72,16 @@ public abstract class UserDefinedPredicate<T extends Comparable<T>> {
    *
    * It is safe to always return false here, if you simply want to visit each record via the {@link #keep} method,
    * though it is much more efficient to drop entire chunks of records here if you can.
+   *
+   * @param statistics statistics for the column
+   * @return true if none of the values described by statistics can match the predicate
    */
   public abstract boolean canDrop(Statistics<T> statistics);
 
   /**
    * Same as {@link #canDrop} except this method describes the logical inverse
    * behavior of this predicate. If this predicate is passed to the not() operator, then
-   * {@link #inverseCanDrop} will be called instead of {@link #canDrop}
+   * this method will be called instead of {@link #canDrop}
    *
    * It is safe to always return false here, if you simply want to visit each record via the {@link #keep} method,
    * though it is much more efficient to drop entire chunks of records here if you can.
@@ -65,33 +89,29 @@ public abstract class UserDefinedPredicate<T extends Comparable<T>> {
    * It may be valid to simply return !canDrop(statistics) but that is not always the case.
    * To illustrate, look at this re-implementation of a UDP that checks for values greater than 7:
    *
-   * {@code 
-   * 
+   * <pre>
    * // This is just an example, you should use the built in {@link FilterApi#gt} operator instead of
    * // implementing your own like this.
    *  
-   * public class IntGreaterThan7UDP extends UserDefinedPredicate<Integer> {
-   *   @Override
+   * public class IntGreaterThan7UDP extends UserDefinedPredicate&lt;Integer&gt; {
    *   public boolean keep(Integer value) {
    *     // here we just check if the value is greater than 7.
    *     // here, parquet knows that if the predicate not(columnX, IntGreaterThan7UDP) is being evaluated,
    *     // it is safe to simply use !IntEquals7UDP.keep(value)
-   *     return value > 7;
+   *     return value &gt; 7;
    *   }
    * 
-   *   @Override
-   *   public boolean canDrop(Statistics<Integer> statistics) {
+   *   public boolean canDrop(Statistics&lt;Integer&gt; statistics) {
    *     // here we drop a group of records if they are all less than or equal to 7,
    *     // (there can't possibly be any values greater than 7 in this group of records)
-   *     return statistics.getMax() <= 7;
+   *     return statistics.getMax() &lt;= 7;
    *   }
    * 
-   *   @Override
-   *   public boolean inverseCanDrop(Statistics<Integer> statistics) {
+   *   public boolean inverseCanDrop(Statistics&lt;Integer&gt; statistics) {
    *     // here the predicate not(columnX, IntGreaterThan7UDP) is being evaluated, which means we want
    *     // to keep all records whose value is is not greater than 7, or, rephrased, whose value is less than or equal to 7.
    *     // notice what would happen if parquet just tried to evaluate !IntGreaterThan7UDP.canDrop():
-   *     // !IntGreaterThan7UDP.canDrop(stats) == !(stats.getMax() <= 7) == (stats.getMax() > 7)
+   *     // !IntGreaterThan7UDP.canDrop(stats) == !(stats.getMax() &lt;= 7) == (stats.getMax() &lt; 7)
    *     // it would drop the following group of records: [100, 1, 2, 3], even though this group of records contains values
    *     // less than than or equal to 7.
    * 
@@ -99,10 +119,13 @@ public abstract class UserDefinedPredicate<T extends Comparable<T>> {
    *     // for example: the group of records: [100, 8, 9, 10] has a min of 8, so there's no way there are going
    *     // to be records with a value
    *     // less than or equal to 7 in this group.
-   *     return statistics.getMin() > 7;
+   *     return statistics.getMin() &gt; 7;
    *   }
    * }
-   * }
+   * </pre>
+   *
+   * @param statistics statistics for the column
+   * @return false if none of the values described by statistics can match the predicate
    */
   public abstract boolean inverseCanDrop(Statistics<T> statistics);
 }

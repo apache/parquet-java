@@ -35,6 +35,7 @@ import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.*;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 import org.apache.parquet.thrift.struct.ThriftTypeID;
+import org.apache.thrift.meta_data.FieldMetaData;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,6 +67,9 @@ public class ThriftSchemaConverter {
    * This method may throw if structOrUnionType is unknown.
    *
    * Use convertWithoutProjection below to convert a StructType to MessageType
+   *
+   * @param struct the thrift type descriptor
+   * @return the struct as a Parquet message type
    */
   public MessageType convert(StructType struct) {
     MessageType messageType = ThriftSchemaConvertVisitor.convert(struct, fieldProjectionFilter, true);
@@ -76,6 +80,9 @@ public class ThriftSchemaConverter {
   /**
    * struct is not required to have known structOrUnionType, which is useful
    * for converting a StructType from an (older) file schema to a MessageType
+   *
+   * @param struct the thrift type descriptor
+   * @return the struct as a Parquet message type
    */
   public static MessageType convertWithoutProjection(StructType struct) {
     return ThriftSchemaConvertVisitor.convert(struct, FieldProjectionFilter.ALL_COLUMNS, false);
@@ -162,7 +169,14 @@ public class ThriftSchemaConverter {
         type = new I64Type();
         break;
       case STRING:
-        type = new StringType();
+        StringType stringType = new StringType();
+        FieldMetaData fieldMetaData = field.getFieldMetaData();
+        // There is no real binary type (see THRIFT-1920) in Thrift,
+        // binary data is represented by String type with an additional binary flag.
+        if (fieldMetaData != null && fieldMetaData.valueMetaData.isBinary()) {
+          stringType.setBinary(true);
+        }
+        type = stringType;
         break;
       case STRUCT:
         type = toStructType(field.gettStructDescriptor());

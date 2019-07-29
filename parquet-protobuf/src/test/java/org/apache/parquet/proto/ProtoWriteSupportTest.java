@@ -31,8 +31,12 @@ import org.apache.parquet.proto.test.TestProtobuf;
 public class ProtoWriteSupportTest {
 
   private <T extends Message> ProtoWriteSupport<T> createReadConsumerInstance(Class<T> cls, RecordConsumer readConsumerMock) {
+    return createReadConsumerInstance(cls, readConsumerMock, new Configuration());
+  }
+
+  private <T extends Message> ProtoWriteSupport<T> createReadConsumerInstance(Class<T> cls, RecordConsumer readConsumerMock, Configuration conf) {
     ProtoWriteSupport support = new ProtoWriteSupport(cls);
-    support.init(new Configuration());
+    support.init(conf);
     support.prepareForWrite(readConsumerMock);
     return support;
   }
@@ -80,6 +84,45 @@ public class ProtoWriteSupportTest {
   }
 
   @Test
+  public void testRepeatedIntMessageSpecsCompliant() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock, conf);
+
+    TestProtobuf.RepeatedIntMessage.Builder msg = TestProtobuf.RepeatedIntMessage.newBuilder();
+    msg.addRepeatedInt(1323);
+    msg.addRepeatedInt(54469);
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("repeatedInt", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("list", 0);
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).addInteger(1323);
+    inOrder.verify(readConsumerMock).endField("element", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).addInteger(54469);
+    inOrder.verify(readConsumerMock).endField("element", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("list", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("repeatedInt", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
   public void testRepeatedIntMessage() throws Exception {
     RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock);
@@ -96,6 +139,79 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startField("repeatedInt", 0);
     inOrder.verify(readConsumerMock).addInteger(1323);
     inOrder.verify(readConsumerMock).addInteger(54469);
+    inOrder.verify(readConsumerMock).endField("repeatedInt", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testRepeatedIntMessageEmptySpecsCompliant() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock, conf);
+
+    TestProtobuf.RepeatedIntMessage.Builder msg = TestProtobuf.RepeatedIntMessage.newBuilder();
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testRepeatedIntMessageEmpty() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock);
+
+    TestProtobuf.RepeatedIntMessage.Builder msg = TestProtobuf.RepeatedIntMessage.newBuilder();
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3RepeatedIntMessageSpecsCompliant() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.RepeatedIntMessage.class, readConsumerMock, conf);
+
+    TestProto3.RepeatedIntMessage.Builder msg = TestProto3.RepeatedIntMessage.newBuilder();
+    msg.addRepeatedInt(1323);
+    msg.addRepeatedInt(54469);
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("repeatedInt", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("list", 0);
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).addInteger(1323);
+    inOrder.verify(readConsumerMock).endField("element", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).addInteger(54469);
+    inOrder.verify(readConsumerMock).endField("element", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("list", 0);
+    inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("repeatedInt", 0);
     inOrder.verify(readConsumerMock).endMessage();
     Mockito.verifyNoMoreInteractions(readConsumerMock);
@@ -124,6 +240,268 @@ public class ProtoWriteSupportTest {
   }
 
   @Test
+  public void testProto3RepeatedIntMessageEmptySpecsCompliant() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock, conf);
+
+    TestProtobuf.RepeatedIntMessage.Builder msg = TestProtobuf.RepeatedIntMessage.newBuilder();
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3RepeatedIntMessageEmpty() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock);
+
+    TestProtobuf.RepeatedIntMessage.Builder msg = TestProtobuf.RepeatedIntMessage.newBuilder();
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testMapIntMessageSpecsCompliant() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.MapIntMessage.class, readConsumerMock, conf);
+
+    TestProtobuf.MapIntMessage.Builder msg = TestProtobuf.MapIntMessage.newBuilder();
+    msg.putMapInt(123, 1);
+    msg.putMapInt(234, 2);
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("mapInt", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key_value", 0);
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key", 0);
+    inOrder.verify(readConsumerMock).addInteger(123);
+    inOrder.verify(readConsumerMock).endField("key", 0);
+    inOrder.verify(readConsumerMock).startField("value", 1);
+    inOrder.verify(readConsumerMock).addInteger(1);
+    inOrder.verify(readConsumerMock).endField("value", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key", 0);
+    inOrder.verify(readConsumerMock).addInteger(234);
+    inOrder.verify(readConsumerMock).endField("key", 0);
+    inOrder.verify(readConsumerMock).startField("value", 1);
+    inOrder.verify(readConsumerMock).addInteger(2);
+    inOrder.verify(readConsumerMock).endField("value", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("key_value", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("mapInt", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testMapIntMessage() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.MapIntMessage.class, readConsumerMock);
+
+    TestProtobuf.MapIntMessage.Builder msg = TestProtobuf.MapIntMessage.newBuilder();
+    msg.putMapInt(123, 1);
+    msg.putMapInt(234, 2);
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("mapInt", 0);
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key", 0);
+    inOrder.verify(readConsumerMock).addInteger(123);
+    inOrder.verify(readConsumerMock).endField("key", 0);
+    inOrder.verify(readConsumerMock).startField("value", 1);
+    inOrder.verify(readConsumerMock).addInteger(1);
+    inOrder.verify(readConsumerMock).endField("value", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key", 0);
+    inOrder.verify(readConsumerMock).addInteger(234);
+    inOrder.verify(readConsumerMock).endField("key", 0);
+    inOrder.verify(readConsumerMock).startField("value", 1);
+    inOrder.verify(readConsumerMock).addInteger(2);
+    inOrder.verify(readConsumerMock).endField("value", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("mapInt", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testMapIntMessageEmptySpecsCompliant() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.MapIntMessage.class, readConsumerMock, conf);
+
+    TestProtobuf.MapIntMessage.Builder msg = TestProtobuf.MapIntMessage.newBuilder();
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testMapIntMessageEmpty() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.MapIntMessage.class, readConsumerMock);
+
+    TestProtobuf.MapIntMessage.Builder msg = TestProtobuf.MapIntMessage.newBuilder();
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3MapIntMessageSpecsCompliant() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.MapIntMessage.class, readConsumerMock, conf);
+
+    TestProto3.MapIntMessage.Builder msg = TestProto3.MapIntMessage.newBuilder();
+    msg.putMapInt(123, 1);
+    msg.putMapInt(234, 2);
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("mapInt", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key_value", 0);
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key", 0);
+    inOrder.verify(readConsumerMock).addInteger(123);
+    inOrder.verify(readConsumerMock).endField("key", 0);
+    inOrder.verify(readConsumerMock).startField("value", 1);
+    inOrder.verify(readConsumerMock).addInteger(1);
+    inOrder.verify(readConsumerMock).endField("value", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key", 0);
+    inOrder.verify(readConsumerMock).addInteger(234);
+    inOrder.verify(readConsumerMock).endField("key", 0);
+    inOrder.verify(readConsumerMock).startField("value", 1);
+    inOrder.verify(readConsumerMock).addInteger(2);
+    inOrder.verify(readConsumerMock).endField("value", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("key_value", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("mapInt", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3MapIntMessage() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.MapIntMessage.class, readConsumerMock);
+
+    TestProto3.MapIntMessage.Builder msg = TestProto3.MapIntMessage.newBuilder();
+    msg.putMapInt(123, 1);
+    msg.putMapInt(234, 2);
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("mapInt", 0);
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key", 0);
+    inOrder.verify(readConsumerMock).addInteger(123);
+    inOrder.verify(readConsumerMock).endField("key", 0);
+    inOrder.verify(readConsumerMock).startField("value", 1);
+    inOrder.verify(readConsumerMock).addInteger(1);
+    inOrder.verify(readConsumerMock).endField("value", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("key", 0);
+    inOrder.verify(readConsumerMock).addInteger(234);
+    inOrder.verify(readConsumerMock).endField("key", 0);
+    inOrder.verify(readConsumerMock).startField("value", 1);
+    inOrder.verify(readConsumerMock).addInteger(2);
+    inOrder.verify(readConsumerMock).endField("value", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("mapInt", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3MapIntMessageEmptySpecsCompliant() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.MapIntMessage.class, readConsumerMock, conf);
+
+    TestProto3.MapIntMessage.Builder msg = TestProto3.MapIntMessage.newBuilder();
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3MapIntMessageEmpty() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.MapIntMessage.class, readConsumerMock);
+
+    TestProto3.MapIntMessage.Builder msg = TestProto3.MapIntMessage.newBuilder();
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
   public void testRepeatedInnerMessageMessage_message() throws Exception {
     RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.TopMessage.class, readConsumerMock);
@@ -137,6 +515,7 @@ public class ProtoWriteSupportTest {
 
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("inner", 0);
+
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
@@ -145,6 +524,46 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
     inOrder.verify(readConsumerMock).endField("two", 1);
     inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("inner", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testRepeatedInnerMessageSpecsCompliantMessage_message() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.TopMessage.class, readConsumerMock, conf);
+
+    TestProtobuf.TopMessage.Builder msg = TestProtobuf.TopMessage.newBuilder();
+    msg.addInnerBuilder().setOne("one").setTwo("two");
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("inner", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("list", 0);
+
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("one", 0);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
+    inOrder.verify(readConsumerMock).endField("one", 0);
+    inOrder.verify(readConsumerMock).startField("two", 1);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
+    inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("element", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("list", 0);
+    inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("inner", 0);
     inOrder.verify(readConsumerMock).endMessage();
     Mockito.verifyNoMoreInteractions(readConsumerMock);
@@ -152,7 +571,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3RepeatedInnerMessageMessage_message() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);;
     ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.TopMessage.class, readConsumerMock);
 
     TestProto3.TopMessage.Builder msg = TestProto3.TopMessage.newBuilder();
@@ -164,6 +583,7 @@ public class ProtoWriteSupportTest {
 
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("inner", 0);
+
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
@@ -171,6 +591,96 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startField("two", 1);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
     inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("inner", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3RepeatedInnerMessageSpecsCompliantMessage_message() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.TopMessage.class, readConsumerMock, conf);
+
+    TestProto3.TopMessage.Builder msg = TestProto3.TopMessage.newBuilder();
+    msg.addInnerBuilder().setOne("one").setTwo("two");
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("inner", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("list", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("one", 0);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
+    inOrder.verify(readConsumerMock).endField("one", 0);
+    inOrder.verify(readConsumerMock).startField("two", 1);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
+    inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("element", 0);
+
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("list", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("inner", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+
+  @Test
+  public void testRepeatedInnerMessageSpecsCompliantMessage_scalar() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.TopMessage.class, readConsumerMock, conf);
+
+    TestProtobuf.TopMessage.Builder msg = TestProtobuf.TopMessage.newBuilder();
+    msg.addInnerBuilder().setOne("one");
+    msg.addInnerBuilder().setTwo("two");
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("inner", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("list", 0);
+
+    //first inner message
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("one", 0);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
+    inOrder.verify(readConsumerMock).endField("one", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("element", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    //second inner message
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("two", 1);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
+    inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("element", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("list", 0);
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("inner", 0);
     inOrder.verify(readConsumerMock).endMessage();
@@ -192,6 +702,7 @@ public class ProtoWriteSupportTest {
 
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("inner", 0);
+
     //first inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
@@ -226,6 +737,7 @@ public class ProtoWriteSupportTest {
 
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("inner", 0);
+
     //first inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
@@ -240,6 +752,55 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endField("two", 1);
     inOrder.verify(readConsumerMock).endGroup();
 
+    inOrder.verify(readConsumerMock).endField("inner", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3RepeatedInnerMessageSpecsCompliantMessage_scalar() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.TopMessage.class, readConsumerMock, conf);
+
+    TestProto3.TopMessage.Builder msg = TestProto3.TopMessage.newBuilder();
+    msg.addInnerBuilder().setOne("one");
+    msg.addInnerBuilder().setTwo("two");
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("inner", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("list", 0);
+
+    //first inner message
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("one", 0);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
+    inOrder.verify(readConsumerMock).endField("one", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("element", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    //second inner message
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("element", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("two", 1);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
+    inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("element", 0);
+    inOrder.verify(readConsumerMock).endGroup();
+
+    inOrder.verify(readConsumerMock).endField("list", 0);
+    inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("inner", 0);
     inOrder.verify(readConsumerMock).endMessage();
     Mockito.verifyNoMoreInteractions(readConsumerMock);

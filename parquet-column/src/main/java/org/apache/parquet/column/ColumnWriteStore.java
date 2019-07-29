@@ -21,8 +21,6 @@ package org.apache.parquet.column;
 /**
  * Container which can construct writers for multiple columns to be stored
  * together.
- *
- * @author Julien Le Dem
  */
 public interface ColumnWriteStore {
   /**
@@ -54,7 +52,7 @@ public interface ColumnWriteStore {
   abstract public long getBufferedSize();
 
   /**
-   * used for debugging pupose
+   * used for debugging purpose
    * @return a formated string representing memory usage per column
    */
   abstract public String memUsageString();
@@ -64,4 +62,14 @@ public interface ColumnWriteStore {
    */
   abstract public void close();
 
+  /**
+   * Returns whether flushing the possibly cached values (or nulls) to the underlying column writers is necessary,
+   * because the pages might be closed after the next invocation of {@link #endRecord()}.
+   *
+   * @return {@code true} if all the values shall be written to the underlying column writers before calling
+   *         {@link #endRecord()}
+   */
+  default boolean isColumnFlushNeeded() {
+    return false;
+  }
 }

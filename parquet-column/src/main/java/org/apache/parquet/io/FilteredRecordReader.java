@@ -26,8 +26,6 @@ import org.apache.parquet.io.api.RecordMaterializer;
 
 /**
  * Extends the
- * @author Jacob Metcalf
- *
  */
 class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
 

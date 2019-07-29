@@ -20,9 +20,6 @@ package org.apache.parquet.pig.summary;
 
 /**
  * Summary data for a Number
- *
- * @author Julien Le Dem
- *
  */
 public class NumberSummaryData extends SummaryData {
 

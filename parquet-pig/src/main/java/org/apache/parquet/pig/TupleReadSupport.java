@@ -46,9 +46,6 @@ import org.slf4j.LoggerFactory;
 /**
  * Read support for Pig Tuple
  * a Pig MetaDataBlock is expected in the initialization call
- *
- * @author Julien Le Dem
- *
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
   static final String PARQUET_PIG_SCHEMA = "parquet.pig.schema";

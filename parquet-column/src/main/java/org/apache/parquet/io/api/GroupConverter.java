@@ -21,9 +21,6 @@ package org.apache.parquet.io.api;
 
 /**
  * converter for group nodes
- *
- * @author Julien Le Dem
- *
  */
 abstract public class GroupConverter extends Converter {
 

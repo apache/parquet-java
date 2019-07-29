@@ -24,19 +24,19 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * utility methods to deal with bytes
- *
- * @author Julien Le Dem
- *
  */
 public class BytesUtils {
   private static final Logger LOG = LoggerFactory.getLogger(BytesUtils.class);
 
+  /** @deprecated Use {@link StandardCharsets#UTF_8} instead */
+  @Deprecated
   public static final Charset UTF8 = Charset.forName("UTF-8");
 
   /**
@@ -50,10 +50,10 @@ public class BytesUtils {
 
   /**
    * reads an int in little endian at the given position
-   * @param in
-   * @param offset
-   * @return
-   * @throws IOException
+   * @param in a byte buffer
+   * @param offset an offset into the byte buffer
+   * @return the integer at position offset read using little endian byte order
+   * @throws IOException if there is an exception reading from the byte buffer
    */
   public static int readIntLittleEndian(ByteBuffer in, int offset) throws IOException {
     int ch4 = in.get(offset) & 0xff;
@@ -65,10 +65,10 @@ public class BytesUtils {
   
   /**
    * reads an int in little endian at the given position
-   * @param in
-   * @param offset
-   * @return
-   * @throws IOException
+   * @param in a byte array
+   * @param offset an offset into the byte array
+   * @return the integer at position offset read using little endian byte order
+   * @throws IOException if there is an exception reading from the byte array
    */
   public static int readIntLittleEndian(byte[] in, int offset) throws IOException {
     int ch4 = in[offset] & 0xff;
@@ -165,6 +165,11 @@ public class BytesUtils {
   /**
    * Write a little endian int to out, using the the number of bytes required by
    * bit width
+   * @param out an output stream
+   * @param v an int value
+   * @param bitWidth bit width for padding
+   * @throws IOException if there is an exception while writing
+   *
    */
   public static void writeIntLittleEndianPaddedOnBitWidth(OutputStream out, int v, int bitWidth)
       throws IOException {
@@ -204,9 +209,9 @@ public class BytesUtils {
 
   /**
    * uses a trick mentioned in https://developers.google.com/protocol-buffers/docs/encoding to read zigZag encoded data
-   * @param in
-   * @return
-   * @throws IOException
+   * @param in an input stream
+   * @return the value of a zig-zag varint read from the current position in the stream
+   * @throws IOException if there is an exception while reading
    */
   public static int readZigZagVarInt(InputStream in) throws IOException {
     int raw = readUnsignedVarInt(in);
@@ -237,9 +242,9 @@ public class BytesUtils {
   /**
    * uses a trick mentioned in https://developers.google.com/protocol-buffers/docs/encoding to read zigZag encoded data
    * TODO: the implementation is compatible with readZigZagVarInt. Is there a need for different functions?
-   * @param in
-   * @return
-   * @throws IOException
+   * @param in an input stream
+   * @return the value of a zig-zag var-long read from the current position in the stream
+   * @throws IOException if there is an exception while reading
    */
   public static long readZigZagVarLong(InputStream in) throws IOException {
     long raw = readUnsignedVarLong(in);

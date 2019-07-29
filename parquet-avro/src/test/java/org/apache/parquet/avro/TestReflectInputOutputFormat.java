@@ -380,7 +380,7 @@ public class TestReflectInputOutputFormat {
     for (Schema.Field field : ReflectData.get().getSchema(Car.class).getFields()) {
       if (!"optionalExtra".equals(field.name())) {
         fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultValue(), field.order()));
+            field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
@@ -397,29 +397,29 @@ public class TestReflectInputOutputFormat {
 
     final Path mapperOutput = new Path(outputPath.toString(),
         "part-m-00000.parquet");
-    final AvroParquetReader<Car> out = new AvroParquetReader<Car>(conf, mapperOutput);
-    Car car;
-    Car previousCar = null;
-    int lineNumber = 0;
-    while ((car = out.read()) != null) {
-      if (previousCar != null) {
-         // Testing reference equality here. The "model" field should be dictionary-encoded.
-         assertTrue(car.model == previousCar.model);
+    try(final AvroParquetReader<Car> out = new AvroParquetReader<Car>(conf, mapperOutput)) {
+      Car car;
+      Car previousCar = null;
+      int lineNumber = 0;
+      while ((car = out.read()) != null) {
+        if (previousCar != null) {
+          // Testing reference equality here. The "model" field should be dictionary-encoded.
+          assertTrue(car.model == previousCar.model);
+        }
+        // Make sure that predicate push down worked as expected
+        if (car.engine.type == EngineType.PETROL) {
+          fail("UnboundRecordFilter failed to remove cars with PETROL engines");
+        }
+        // Note we use lineNumber * 2 because of predicate push down
+        Car expectedCar = nextRecord(lineNumber * 2);
+        // We removed the optional extra field using projection so we shouldn't
+        // see it here...
+        expectedCar.optionalExtra = null;
+        assertEquals("line " + lineNumber, expectedCar, car);
+        ++lineNumber;
+        previousCar = car;
       }
-      // Make sure that predicate push down worked as expected
-      if (car.engine.type == EngineType.PETROL) {
-        fail("UnboundRecordFilter failed to remove cars with PETROL engines");
-      }
-      // Note we use lineNumber * 2 because of predicate push down
-      Car expectedCar = nextRecord(lineNumber * 2);
-      // We removed the optional extra field using projection so we shouldn't
-      // see it here...
-      expectedCar.optionalExtra = null;
-      assertEquals("line " + lineNumber, expectedCar, car);
-      ++lineNumber;
-      previousCar = car;
     }
-    out.close();
   }
 
   @Test
@@ -441,7 +441,7 @@ public class TestReflectInputOutputFormat {
       // No make!
       if ("engine".equals(field.name()) || "year".equals(field.name()) || "vin".equals(field.name())) {
         fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultValue(), field.order()));
+            field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
@@ -458,21 +458,21 @@ public class TestReflectInputOutputFormat {
     waitForJob(job);
 
     final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
-    final AvroParquetReader<ShortCar> out = new AvroParquetReader<ShortCar>(conf, mapperOutput);
-    ShortCar car;
-    int lineNumber = 0;
-    while ((car = out.read()) != null) {
-      // Make sure that predicate push down worked as expected
-      // Note we use lineNumber * 2 because of predicate push down
-      Car expectedCar = nextRecord(lineNumber * 2);
-      // We removed the optional extra field using projection so we shouldn't see it here...
-      assertNull(car.make);
-      assertEquals(car.engine, expectedCar.engine);
-      assertEquals(car.year, expectedCar.year);
-      assertArrayEquals(car.vin, expectedCar.vin);
-      ++lineNumber;
+    try(final AvroParquetReader<ShortCar> out = new AvroParquetReader<ShortCar>(conf, mapperOutput)) {
+      ShortCar car;
+      int lineNumber = 0;
+      while ((car = out.read()) != null) {
+        // Make sure that predicate push down worked as expected
+        // Note we use lineNumber * 2 because of predicate push down
+        Car expectedCar = nextRecord(lineNumber * 2);
+        // We removed the optional extra field using projection so we shouldn't see it here...
+        assertNull(car.make);
+        assertEquals(car.engine, expectedCar.engine);
+        assertEquals(car.year, expectedCar.year);
+        assertArrayEquals(car.vin, expectedCar.vin);
+        ++lineNumber;
+      }
     }
-    out.close();
   }
 
   private void waitForJob(Job job) throws Exception {

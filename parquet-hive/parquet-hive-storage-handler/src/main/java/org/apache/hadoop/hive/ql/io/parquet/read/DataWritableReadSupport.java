@@ -40,11 +40,9 @@ import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 
 /**
- *
  * A MapWritableReadSupport
  *
  * Manages the translation between Hive and Parquet
- *
  */
 public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
 
@@ -56,7 +54,7 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
    * From a string which columns names (including hive column), return a list
    * of string columns
    *
-   * @param comma separated list of columns
+   * @param columns comma separated list of columns
    * @return list with virtual columns removed
    */
   private static List<String> getColumns(final String columns) {
@@ -114,7 +112,7 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
    * It creates the hive read support to interpret data from parquet to hive
    *
    * @param configuration // unused
-   * @param keyValueMetaData
+   * @param keyValueMetaData string map of metadata
    * @param fileSchema // unused
    * @param readContext containing the requested schema and the schema of the hive table
    * @return Record Materialize for Hive

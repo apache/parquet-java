@@ -19,8 +19,7 @@
 package org.apache.parquet.column.values.rle;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 
 /**
@@ -30,24 +29,21 @@ import org.apache.parquet.column.values.ValuesReader;
  */
 public class ZeroIntegerValuesReader extends ValuesReader {
   
-  private int nextOffset;
-
   public int readInteger() {
     return 0;
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
-    this.nextOffset = offset;
-  }
-  
-  @Override
-  public int getNextOffset() {
-    return nextOffset;
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
+    updateNextOffset(0);
   }
 
   @Override
   public void skip() {
+  }
+
+  @Override
+  public void skip(int n) {
   }
 
 }

@@ -1,34 +1,10 @@
 language: java
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install build-essential
-  - mkdir protobuf_install
-  - pushd protobuf_install
-  - wget https://github.com/google/protobuf/archive/v3.2.0.tar.gz -O protobuf-3.2.0.tar.gz
-  - tar xzf protobuf-3.2.0.tar.gz
-  - cd protobuf-3.2.0
-  - sudo apt-get install autoconf automake libtool curl make g++ unzip
-  - ./autogen.sh
-  - ./configure
-  - make
-  - make check
-  - sudo make install
-  - sudo ldconfig
-  - protoc --version
-  - popd
-  - pwd
-  - sudo apt-get install -qq libboost-dev libboost-test-dev libboost-program-options-dev libevent-dev automake libtool flex bison pkg-config g++ libssl-dev
-  - wget -nv http://archive.apache.org/dist/thrift/0.7.0/thrift-0.7.0.tar.gz
-  - tar zxf thrift-0.7.0.tar.gz
-  - cd thrift-0.7.0
-  - chmod +x ./configure
-  - ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
-  - sudo make install
-  - cd ..
+  - bash dev/travis-before_install.sh
 
 env:
-  - HADOOP_PROFILE=hadoop-1 TEST_CODECS=uncompressed
+  - HADOOP_PROFILE=default TEST_CODECS=uncompressed,brotli
   - HADOOP_PROFILE=default TEST_CODECS=gzip,snappy
 
-install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true > mvn_install.log || mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true > mvn_install.log || (cat mvn_install.log && false)
-script: mvn test -P $HADOOP_PROFILE
+install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
+script: mvn verify --batch-mode javadoc:javadoc -P $HADOOP_PROFILE

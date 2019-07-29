@@ -33,10 +33,6 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
 
-/**
- * @author Julien Le Dem
- *
- */
 public class PerfTest {
 
   public static void main(String[] args) {

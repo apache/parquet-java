@@ -24,11 +24,14 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.internal.hadoop.metadata.IndexReference;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Types;
+import org.apache.yetus.audience.InterfaceAudience.Private;
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
- * @author Julien Le Dem
  */
 abstract public class ColumnChunkMetaData {
 
@@ -65,9 +68,43 @@ abstract public class ColumnChunkMetaData {
         valueCount, totalSize, totalUncompressedSize);
   }
 
+  /**
+   * @param path the path of this column in the write schema
+   * @param type primitive type for this column
+   * @param codec the compression codec used to compress
+   * @param encodingStats EncodingStats for the encodings used in this column
+   * @param encodings a set of encoding used in this column
+   * @param statistics statistics for the data in this column
+   * @param firstDataPage offset of the first non-dictionary page
+   * @param dictionaryPageOffset offset of the the dictionary page
+   * @param valueCount number of values
+   * @param totalSize total compressed size
+   * @param totalUncompressedSize uncompressed data size
+   * @return a column chunk metadata instance
+   * @deprecated will be removed in 2.0.0. Use
+   *             {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, EncodingStats, Set, Statistics, long, long, long, long, long)}
+   *             instead.
+   */
+  @Deprecated
   public static ColumnChunkMetaData get(
       ColumnPath path,
       PrimitiveTypeName type,
+      CompressionCodecName codec,
+      EncodingStats encodingStats,
+      Set<Encoding> encodings,
+      Statistics statistics,
+      long firstDataPage,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
+      long totalUncompressedSize) {
+    return get(path, Types.optional(type).named("fake_type"), codec, encodingStats, encodings, statistics,
+        firstDataPage, dictionaryPageOffset, valueCount, totalSize, totalUncompressedSize);
+  }
+
+  public static ColumnChunkMetaData get(
+      ColumnPath path,
+      PrimitiveType type,
       CompressionCodecName codec,
       EncodingStats encodingStats,
       Set<Encoding> encodings,
@@ -121,7 +158,7 @@ abstract public class ColumnChunkMetaData {
   /**
    * checks that a positive long value fits in an int.
    * (reindexed on Integer.MIN_VALUE)
-   * @param value
+   * @param value a long value
    * @return whether it fits
    */
   protected static boolean positiveLongFitsInAnInt(long value) {
@@ -132,6 +169,9 @@ abstract public class ColumnChunkMetaData {
 
   // we save 3 references by storing together the column properties that have few distinct values
   private final ColumnChunkProperties properties;
+
+  private IndexReference columnIndexReference;
+  private IndexReference offsetIndexReference;
 
   protected ColumnChunkMetaData(ColumnChunkProperties columnChunkProperties) {
     this(null, columnChunkProperties);
@@ -156,9 +196,18 @@ abstract public class ColumnChunkMetaData {
 
   /**
    * @return type of the column
+   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
+  @Deprecated
   public PrimitiveTypeName getType() {
     return properties.getType();
+  }
+
+  /**
+   * @return the primitive type object of the column
+   */
+  public PrimitiveType getPrimitiveType() {
+    return properties.getPrimitiveType();
   }
 
   /**
@@ -190,6 +239,40 @@ abstract public class ColumnChunkMetaData {
    * @return the stats for this column
    */
   abstract public Statistics getStatistics();
+
+  /**
+   * @return the reference to the column index
+   */
+  @Private
+  public IndexReference getColumnIndexReference() {
+    return columnIndexReference;
+  }
+
+  /**
+   * @param indexReference
+   *          the reference to the column index
+   */
+  @Private
+  public void setColumnIndexReference(IndexReference indexReference) {
+    this.columnIndexReference = indexReference;
+  }
+
+  /**
+   * @return the reference to the offset index
+   */
+  @Private
+  public IndexReference getOffsetIndexReference() {
+    return offsetIndexReference;
+  }
+
+  /**
+   * @param offsetIndexReference
+   *          the reference to the offset index
+   */
+  @Private
+  public void setOffsetIndexReference(IndexReference offsetIndexReference) {
+    this.offsetIndexReference = offsetIndexReference;
+  }
 
   /**
    * @return all the encodings used in this column
@@ -231,7 +314,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
    */
   IntColumnChunkMetaData(
       ColumnPath path,
-      PrimitiveTypeName type,
+      PrimitiveType type,
       CompressionCodecName codec,
       EncodingStats encodingStats,
       Set<Encoding> encodings,
@@ -336,7 +419,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
    */
   LongColumnChunkMetaData(
       ColumnPath path,
-      PrimitiveTypeName type,
+      PrimitiveType type,
       CompressionCodecName codec,
       EncodingStats encodingStats,
       Set<Encoding> encodings,

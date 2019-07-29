@@ -37,6 +37,7 @@ public final class ColumnRecordFilter implements RecordFilter {
    *
    * @param columnPath Dot separated path specifier, e.g. "engine.capacity"
    * @param predicate Should call getBinary etc. and check the value
+   * @return a column filter
    */
   public static final UnboundRecordFilter column(final String columnPath,
                                                  final ColumnPredicates.Predicate predicate) {

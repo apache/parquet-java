@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Stricter Implementation of {@link FieldProjectionFilter}.
  *
- * See {@link parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter} for the previous
+ * See {@link org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter} for the previous
  * syntax that allows for more powerful glob patterns, but has less error reporting and less strict requirements.
  *
  * This filter requires that every *possible* expansion of glob expressions (like '{x,y,z}') must match at least one
@@ -70,7 +70,10 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
    * columnsToKeepGlobs should be a list of Strings in the format expected by
    * {@link Strings#expandGlobToWildCardPaths(String, char)}, separated by ';'
    * Should only be used for parsing values out of the hadoop config -- for APIs
-   * and programmatic access, use {@link StrictFieldProjectionFilter(List)}.
+   * and programmatic access, use {@link #StrictFieldProjectionFilter(List)}.
+   *
+   * @param columnsToKeepGlobs glob pattern for columns to keep
+   * @return a field projection filter
    */
   public static StrictFieldProjectionFilter fromSemicolonDelimitedString(String columnsToKeepGlobs) {
     return new StrictFieldProjectionFilter(parseSemicolonDelimitedString(columnsToKeepGlobs));
@@ -79,6 +82,7 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
   /**
    * Construct a StrictFieldProjectionFilter from a list of Strings in the format expected by
    * {@link Strings#expandGlobToWildCardPaths(String, char)}
+   * @param columnsToKeepGlobs glob patterns for columns to keep
    */
   public StrictFieldProjectionFilter(List<String> columnsToKeepGlobs) {
     this.columnsToKeep = new ArrayList<WildcardPathStatus>();

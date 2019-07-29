@@ -47,10 +47,10 @@ import org.apache.parquet.schema.MessageTypeParser;
  *
  * This class is private to the ParquetInputFormat.
  * Backward compatibility is not maintained.
- *
- * @author Julien Le Dem
+ * @deprecated will be removed in 2.0.0. use FileInputSplit instead.
  */
 @Private
+@Deprecated
 public class ParquetInputSplit extends FileSplit implements Writable {
 
 
@@ -67,15 +67,15 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   /**
    * For compatibility only
    * use {@link ParquetInputSplit#ParquetInputSplit(Path, long, long, long, String[], long[])}
-   * @param path
-   * @param start
-   * @param length
-   * @param hosts
-   * @param blocks
-   * @param requestedSchema
-   * @param fileSchema
-   * @param extraMetadata
-   * @param readSupportMetadata
+   * @param path a Path
+   * @param start split start location
+   * @param length split length
+   * @param hosts locality information for this split
+   * @param blocks Parquet blocks in this split
+   * @param requestedSchema the requested schema
+   * @param fileSchema the file schema
+   * @param extraMetadata string map of file metadata
+   * @param readSupportMetadata string map of metadata from read support
    */
   @Deprecated
   public ParquetInputSplit(
@@ -129,7 +129,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    *
    * @param split a mapreduce FileSplit
    * @return a ParquetInputSplit
-   * @throws IOException
+   * @throws IOException if there is an error while creating the Parquet split
    */
   static ParquetInputSplit from(FileSplit split) throws IOException {
     return new ParquetInputSplit(split.getPath(),
@@ -141,9 +141,9 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * Builds a {@code ParquetInputSplit} from a mapred
    * {@link org.apache.hadoop.mapred.FileSplit}.
    *
-   * @param split a mapreduce FileSplit
+   * @param split a mapred FileSplit
    * @return a ParquetInputSplit
-   * @throws IOException
+   * @throws IOException if there is an error while creating the Parquet split
    */
   static ParquetInputSplit from(org.apache.hadoop.mapred.FileSplit split) throws IOException {
     return new ParquetInputSplit(split.getPath(),
@@ -196,7 +196,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
 
   /**
    * @return app specific metadata from the file
-   * @deprecated the file footer is no longer read before creating input splits
+   * @deprecated will be removed in 2.0.0. the file footer is no longer read before creating input splits
    */
   @Deprecated
   public Map<String, String> getExtraMetadata() {
@@ -206,6 +206,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
 
   /**
    * @return app specific metadata provided by the read support in the init phase
+   * @deprecated will be removed in 2.0.0.
    */
   @Deprecated
   Map<String, String> getReadSupportMetadata() {
@@ -215,6 +216,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
 
   /**
    * @return the offsets of the row group selected if this has been determined on the client side
+   * @deprecated will be removed in 2.0.0.
    */
   public long[] getRowGroupOffsets() {
     return rowGroupOffsets;

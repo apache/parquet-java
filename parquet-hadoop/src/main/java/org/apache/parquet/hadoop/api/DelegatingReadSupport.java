@@ -28,9 +28,7 @@ import org.apache.parquet.schema.MessageType;
 /**
  * Helps composing read supports
  *
- * @author Julien Le Dem
- *
- * @param <T>
+ * @param <T> the Java class of objects created by this ReadSupport
  */
 public class DelegatingReadSupport<T> extends ReadSupport<T> {
 

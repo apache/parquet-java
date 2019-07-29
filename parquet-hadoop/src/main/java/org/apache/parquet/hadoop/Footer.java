@@ -24,11 +24,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 
 /**
- *
  * Represent the footer for a given file
- *
- * @author Julien Le Dem
- *
  */
 public class Footer {
 

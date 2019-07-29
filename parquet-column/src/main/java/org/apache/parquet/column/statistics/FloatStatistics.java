@@ -19,11 +19,38 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 
 public class FloatStatistics extends Statistics<Float> {
 
+  // A fake type object to be used to generate the proper comparator
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT)
+      .named("fake_float_type");
+
   private float max;
   private float min;
+
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
+  public FloatStatistics() {
+    // Creating a fake primitive type to have the proper comparator
+    this(DEFAULT_FAKE_TYPE);
+  }
+
+  FloatStatistics(PrimitiveType type) {
+    super(type);
+  }
+
+  private FloatStatistics(FloatStatistics other) {
+    super(other.type());
+    if (other.hasNonNullValue()) {
+      initializeStats(other.min, other.max);
+    }
+    setNumNulls(other.getNumNulls());
+  }
 
   @Override
   public void updateStats(float value) {
@@ -62,23 +89,18 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
+  String stringify(Float value) {
+    return stringifier.stringify(value);
+  }
+
+  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || (8 < size);
   }
 
-  @Override
-  public String toString() {
-    if (this.hasNonNullValue())
-      return String.format("min: %.5f, max: %.5f, num_nulls: %d", min, max, this.getNumNulls());
-    else if (!this.isEmpty())
-      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
-    else
-      return "no stats for this column";
-  }
-
   public void updateStats(float min_value, float max_value) {
-    if (min_value < min) { min = min_value; }
-    if (max_value > max) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) { min = min_value; }
+    if (comparator().compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(float min_value, float max_value) {
@@ -97,6 +119,14 @@ public class FloatStatistics extends Statistics<Float> {
     return max;
   }
 
+  public int compareMinToValue(float value) {
+    return comparator().compare(min, value);
+  }
+
+  public int compareMaxToValue(float value) {
+    return comparator().compare(max, value);
+  }
+
   public float getMax() {
     return max;
   }
@@ -109,5 +139,10 @@ public class FloatStatistics extends Statistics<Float> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public FloatStatistics copy() {
+    return new FloatStatistics(this);
   }
 }

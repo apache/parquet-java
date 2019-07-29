@@ -22,14 +22,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 /**
  * Improvable micro benchmark for bitpacking
  * run with: -verbose:gc -Xmx2g -Xms2g
- * @author Julien Le Dem
- *
  */
 public class BitPackingPerfTest {
 
@@ -88,7 +87,7 @@ public class BitPackingPerfTest {
     System.out.print(" no gc <");
     for (int k = 0; k < N; k++) {
       long t2 = System.nanoTime();
-      r.initFromPage(result.length, ByteBuffer.wrap(bytes), 0);
+      r.initFromPage(result.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(bytes)));
       for (int i = 0; i < result.length; i++) {
         result[i] = r.readInteger();
       }

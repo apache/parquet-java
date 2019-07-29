@@ -22,24 +22,41 @@ import java.util.Arrays;
 import java.util.Set;
 
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
 
 public class ColumnChunkProperties {
 
   private static Canonicalizer<ColumnChunkProperties> properties = new Canonicalizer<ColumnChunkProperties>();
 
+  /**
+   * @param path the path of this column in the write schema
+   * @param type the primitive type of this column
+   * @param codec the compression codec used for this column
+   * @param encodings a set of encodings used by this column
+   * @return column chunk properties
+   * @deprecated will be removed in 2.0.0. Use {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, Set)}
+   *             instead.
+   */
+  @Deprecated
   public static ColumnChunkProperties get(ColumnPath path, PrimitiveTypeName type, CompressionCodecName codec, Set<Encoding> encodings) {
+    return get(path, new PrimitiveType(Type.Repetition.OPTIONAL, type, ""), codec, encodings);
+  }
+
+  public static ColumnChunkProperties get(ColumnPath path, PrimitiveType type, CompressionCodecName codec,
+      Set<Encoding> encodings) {
     return properties.canonicalize(new ColumnChunkProperties(codec, path, type, encodings));
   }
 
   private final CompressionCodecName codec;
   private final ColumnPath path;
-  private final PrimitiveTypeName type;
+  private final PrimitiveType type;
   private final Set<Encoding> encodings;
 
   private ColumnChunkProperties(CompressionCodecName codec,
                                 ColumnPath path,
-                                PrimitiveTypeName type,
+                                PrimitiveType type,
                                 Set<Encoding> encodings) {
     super();
     this.codec = codec;
@@ -56,7 +73,19 @@ public class ColumnChunkProperties {
     return path;
   }
 
+  /**
+   * @return the primitive type name for the column
+   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
+   */
+  @Deprecated
   public PrimitiveTypeName getType() {
+    return type.getPrimitiveTypeName();
+  }
+
+  /**
+   * @return the primitive type object for the column
+   */
+  public PrimitiveType getPrimitiveType() {
     return type;
   }
 
@@ -68,7 +97,7 @@ public class ColumnChunkProperties {
   public boolean equals(Object obj) {
     if (obj instanceof ColumnChunkProperties) {
       ColumnChunkProperties other = (ColumnChunkProperties)obj;
-      return other.codec == codec && other.path.equals(path) && other.type == type && equals(other.encodings, encodings);
+      return other.codec == codec && other.path.equals(path) && other.type.equals(type) && equals(other.encodings, encodings);
     }
     return false;
   }

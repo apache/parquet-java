@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -37,22 +37,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonIgnore;
-import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonSubTypes;
-import org.codehaus.jackson.annotate.JsonTypeInfo;
-import org.codehaus.jackson.annotate.JsonTypeInfo.As;
-import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 
 /**
  * Descriptor for a Thrift class.
  * Used to persist the thrift schema
- *
- * @author Julien Le Dem
- *
  */
-@JsonTypeInfo(use = Id.NAME, include = As.PROPERTY, property = "id")
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "id")
 @JsonSubTypes({
     @JsonSubTypes.Type(value=ThriftType.BoolType.class, name="BOOL"),
     @JsonSubTypes.Type(value=ThriftType.ByteType.class, name="BYTE"),
@@ -233,7 +229,7 @@ public abstract class ThriftType {
     public StructType(@JsonProperty("children") List<ThriftField> children,
                       @JsonProperty("structOrUnionType") StructOrUnionType structOrUnionType) {
       super(STRUCT);
-      this.structOrUnionType = structOrUnionType == null ? StructOrUnionType.UNKNOWN : structOrUnionType;
+      this.structOrUnionType = structOrUnionType == null ? StructOrUnionType.STRUCT : structOrUnionType;
       this.children = children;
       int maxId = 0;
       if (children != null) {
@@ -641,11 +637,21 @@ public abstract class ThriftType {
   }
 
   public static class StringType extends ThriftType {
+    private boolean binary = false;
 
     @JsonCreator
     public StringType() {
       super(STRING);
     }
+
+    public boolean isBinary() {
+      return binary;
+    }
+
+    public void setBinary(boolean binary) {
+      this.binary = binary;
+    }
+
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);

@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.pig;
 
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.junit.Assert.assertEquals;
 import static org.apache.parquet.pig.PigSchemaConverter.pigSchemaToString;
@@ -31,12 +31,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.OriginalType;
-import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
@@ -215,7 +212,7 @@ public class TestPigSchemaConverter {
         "}\n",
         "a:{" + PigSchemaConverter.ARRAY_VALUE_NAME + ":(b: chararray)}");
   }
-  
+
   private void testFixedConversion(String schemaString, String pigSchemaString)
       throws Exception {
     Schema expectedPigSchema = Utils.getSchemaFromString(pigSchemaString);
@@ -224,7 +221,7 @@ public class TestPigSchemaConverter {
     assertEquals("converting " + schemaString + " to " + pigSchemaString,
                  expectedPigSchema, pigSchema);
   }
-  
+
   @Test
   public void testMapWithFixed() throws Exception {
     testFixedConversion(
@@ -244,11 +241,39 @@ public class TestPigSchemaConverter {
   }
 
   @Test
-  public void testAnnonymousField() throws Exception {
+  public void testMapWithFixedWithoutOriginalType() throws Exception {
+    testFixedConversion(
+      "message spark_schema {\n" +
+      "  optional binary a;\n" +
+      "  optional group b (MAP) {\n" +
+      "    repeated group map {\n" +
+      "      required binary key;\n" +
+      "      optional group value {\n" +
+      "        optional fixed_len_byte_array(5) c;\n" +
+      "        optional fixed_len_byte_array(7) d;\n" +
+      "      }\n" +
+      "    }\n" +
+      "  }\n" +
+      "}\n",
+      "a:bytearray, b:[(c:bytearray, d:bytearray)]");
+  }
+
+  @Test
+  public void testInt96() throws Exception {
+    testFixedConversion(
+      "message spark_schema {\n" +
+        "  optional int96 datetime;\n" +
+        "}",
+      "datetime:bytearray"
+    );
+  }
+
+  @Test
+  public void testAnonymousField() throws Exception {
     testConversion(
         "a:chararray, int",
         "message pig_schema {\n" +
-        "  optional binary a;\n" +
+        "  optional binary a (UTF8);\n" +
         "  optional int32 val_0;\n" +
         "}\n");
   }

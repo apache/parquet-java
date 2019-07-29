@@ -43,9 +43,6 @@ import org.apache.parquet.schema.GroupType;
 
 /**
  * Converts groups into Pig Maps
- *
- * @author Julien Le Dem
- *
  */
 final class MapConverter extends GroupConverter {
 
@@ -87,8 +84,6 @@ final class MapConverter extends GroupConverter {
 
   /**
    * to contain the values of the Map until we read them all
-   * @author Julien Le Dem
-   *
    */
   private static final class BufferMap extends AbstractMap<String, Object> {
     private List<Entry<String, Object>> entries = new ArrayList<Entry<String, Object>>();
@@ -124,9 +119,6 @@ final class MapConverter extends GroupConverter {
 
   /**
    * convert Key/Value groups into map entries
-   *
-   * @author Julien Le Dem
-   *
    */
   final class MapKeyValueConverter extends GroupConverter {
 
@@ -185,9 +177,6 @@ final class MapConverter extends GroupConverter {
 
   /**
    * convert the key into a string
-   *
-   * @author Julien Le Dem
-   *
    */
   final class StringKeyConverter extends PrimitiveConverter {
 

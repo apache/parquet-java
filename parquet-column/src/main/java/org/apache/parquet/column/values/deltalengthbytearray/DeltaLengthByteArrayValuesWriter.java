@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
  *   delta-length-byte-array : length* byte-array*
  *   }
  * </pre>
- * @author Aniket Mokashi
  *
  */
 public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {

@@ -39,8 +39,6 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  *
  * @see ParquetOutputFormat
  *
- * @author Julien Le Dem
- *
  * @param <T> the type of the materialized records
  */
 public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
@@ -56,10 +54,12 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
    * @param blockSize the size of a block in the file (this will be approximate)
+   * @param pageSize the size of a page in the file (this will be approximate)
    * @param compressor the compressor used to compress the pages
    * @param dictionaryPageSize the threshold for dictionary size
    * @param enableDictionary to enable the dictionary
    * @param validating if schema validation should be turned on
+   * @param writerVersion writer compatibility version
    */
   @Deprecated
   public ParquetRecordWriter(
@@ -92,10 +92,13 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
    * @param blockSize the size of a block in the file (this will be approximate)
+   * @param pageSize the size of a page in the file (this will be approximate)
    * @param compressor the compressor used to compress the pages
    * @param dictionaryPageSize the threshold for dictionary size
    * @param enableDictionary to enable the dictionary
    * @param validating if schema validation should be turned on
+   * @param writerVersion writer compatibility version
+   * @param memoryManager memory manager for the write
    */
   @Deprecated
   public ParquetRecordWriter(

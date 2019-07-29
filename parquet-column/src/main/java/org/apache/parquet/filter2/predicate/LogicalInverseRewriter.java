@@ -38,7 +38,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.or;
 /**
  * Recursively removes all use of the not() operator in a predicate
  * by replacing all instances of not(x) with the inverse(x),
- * eg: not(and(eq(), not(eq(y))) -> or(notEq(), eq(y))
+ * eg: not(and(eq(), not(eq(y))) -&gt; or(notEq(), eq(y))
  *
  * The returned predicate should have the same meaning as the original, but
  * without the use of the not() operator.

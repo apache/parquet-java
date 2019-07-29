@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -46,9 +45,17 @@ import static java.lang.Thread.sleep;
 public class WriteUsingMR {
 
   private static final Logger LOG = LoggerFactory.getLogger(WriteUsingMR.class);
-  Configuration conf = new Configuration();
+  private final Configuration conf;
   private static List<Message> inputMessages;
   Path outputPath;
+
+  public WriteUsingMR() {
+    this(new Configuration());
+  }
+
+  public WriteUsingMR(Configuration conf) {
+    this.conf = conf;
+  }
 
   public Configuration getConfiguration() {
     return conf;

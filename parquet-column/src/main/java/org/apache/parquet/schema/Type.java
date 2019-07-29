@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.parquet.io.InvalidRecordException;
@@ -34,15 +35,22 @@ abstract public class Type {
 
   /**
    * represents a field ID
-   *
-   * @author Julien Le Dem
-   *
    */
   public static final class ID {
     private final int id;
 
     public ID(int id) {
       this.id = id;
+    }
+
+    /**
+     * For bean serialization, used by Cascading 3.
+     * @return this type's id
+     * @deprecated use {@link #intValue()} instead.
+     */
+    @Deprecated
+    public int getId() {
+      return id;
     }
 
     public int intValue() {
@@ -67,8 +75,6 @@ abstract public class Type {
 
   /**
    * Constraint on the repetition of a field
-   *
-   * @author Julien Le Dem
    */
   public static enum Repetition {
     /**
@@ -101,16 +107,38 @@ abstract public class Type {
     ;
 
     /**
-     * @param other
+     * @param other a repetition to test
      * @return true if it is strictly more restrictive than other
      */
     abstract public boolean isMoreRestrictiveThan(Repetition other);
 
+
+    /**
+     * @param repetitions repetitions to traverse
+     * @return the least restrictive repetition of all repetitions provided
+     */
+    public static Repetition leastRestrictive(Repetition... repetitions) {
+      boolean hasOptional = false;
+
+      for (Repetition repetition : repetitions) {
+        if (repetition == REPEATED) {
+          return REPEATED;
+        } else if (repetition == OPTIONAL) {
+          hasOptional = true;
+        }
+      }
+
+      if (hasOptional) {
+        return OPTIONAL;
+      }
+
+      return REQUIRED;
+    }
   }
 
   private final String name;
   private final Repetition repetition;
-  private final OriginalType originalType;
+  private final LogicalTypeAnnotation logicalTypeAnnotation;
   private final ID id;
 
   /**
@@ -119,7 +147,7 @@ abstract public class Type {
    */
   @Deprecated
   public Type(String name, Repetition repetition) {
-    this(name, repetition, null, null);
+    this(name, repetition, (LogicalTypeAnnotation) null, null);
   }
 
   /**
@@ -139,15 +167,31 @@ abstract public class Type {
    * @param id (optional) the id of the fields.
    */
   Type(String name, Repetition repetition, OriginalType originalType, ID id) {
+    this(name, repetition, originalType, null, id);
+  }
+
+  Type(String name, Repetition repetition, OriginalType originalType, DecimalMetadata decimalMetadata, ID id) {
     super();
     this.name = checkNotNull(name, "name");
     this.repetition = checkNotNull(repetition, "repetition");
-    this.originalType = originalType;
+    this.logicalTypeAnnotation = originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType, decimalMetadata);
+    this.id = id;
+  }
+
+  Type(String name, Repetition repetition, LogicalTypeAnnotation logicalTypeAnnotation) {
+    this(name, repetition, logicalTypeAnnotation, null);
+  }
+
+  Type(String name, Repetition repetition, LogicalTypeAnnotation logicalTypeAnnotation, ID id) {
+    super();
+    this.name = checkNotNull(name, "name");
+    this.repetition = checkNotNull(repetition, "repetition");
+    this.logicalTypeAnnotation = logicalTypeAnnotation;
     this.id = id;
   }
 
   /**
-   * @param id
+   * @param id an integer id
    * @return the same type with the id field set
    */
   public abstract Type withId(int id);
@@ -160,7 +204,7 @@ abstract public class Type {
   }
 
   /**
-   * @param rep
+   * @param rep repetition level to test
    * @return if repetition of the type is rep
    */
   public boolean isRepetition(Repetition rep) {
@@ -181,11 +225,15 @@ abstract public class Type {
     return id;
   }
 
+  public LogicalTypeAnnotation getLogicalTypeAnnotation() {
+    return logicalTypeAnnotation;
+  }
+
   /**
    * @return the original type (LIST, MAP, ...)
    */
   public OriginalType getOriginalType() {
-    return originalType;
+    return logicalTypeAnnotation == null ? null : logicalTypeAnnotation.toOriginalType();
   }
 
   /**
@@ -238,8 +286,8 @@ abstract public class Type {
   public int hashCode() {
     int c = repetition.hashCode();
     c = 31 * c + name.hashCode();
-    if (originalType != null) {
-      c = 31 * c +  originalType.hashCode();
+    if (logicalTypeAnnotation != null) {
+      c = 31 * c +  logicalTypeAnnotation.hashCode();
     }
     if (id != null) {
       c = 31 * c + id.hashCode();
@@ -252,7 +300,8 @@ abstract public class Type {
         name.equals(other.name)
         && repetition == other.repetition
         && eqOrBothNull(repetition, other.repetition)
-        && eqOrBothNull(id, other.id);
+        && eqOrBothNull(id, other.id)
+        && eqOrBothNull(logicalTypeAnnotation, other.logicalTypeAnnotation);
   };
 
   @Override
@@ -309,7 +358,9 @@ abstract public class Type {
 
   /**
    *
+   * @param path a list of groups to convert
    * @param converter logic to convert the tree
+   * @param <T> the type returned by the converter
    * @return the converted tree
    */
    abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);

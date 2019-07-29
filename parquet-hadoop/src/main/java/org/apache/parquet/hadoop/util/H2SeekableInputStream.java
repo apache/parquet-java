@@ -20,7 +20,7 @@
 package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.io.SeekableInputStream;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
  * SeekableInputStream implementation for FSDataInputStream that implements
  * ByteBufferReadable in Hadoop 2.
  */
-class H2SeekableInputStream extends SeekableInputStream {
+class H2SeekableInputStream extends DelegatingSeekableInputStream {
 
   // Visible for testing
   interface Reader {
@@ -40,6 +40,7 @@ class H2SeekableInputStream extends SeekableInputStream {
   private final Reader reader;
 
   public H2SeekableInputStream(FSDataInputStream stream) {
+    super(stream);
     this.stream = stream;
     this.reader = new H2Reader();
   }
@@ -57,21 +58,6 @@ class H2SeekableInputStream extends SeekableInputStream {
   @Override
   public void seek(long newPos) throws IOException {
     stream.seek(newPos);
-  }
-
-  @Override
-  public int read() throws IOException {
-    return stream.read();
-  }
-
-  @Override
-  public int read(byte[] b, int off, int len) throws IOException {
-    return stream.read(b, off, len);
-  }
-
-  @Override
-  public void readFully(byte[] bytes) throws IOException {
-    stream.readFully(bytes, 0, bytes.length);
   }
 
   @Override

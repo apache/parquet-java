@@ -22,64 +22,61 @@ import org.apache.parquet.io.api.Binary;
 
 /**
  * writer for (repetition level, definition level, values) triplets
- *
- * @author Julien Le Dem
- *
  */
 public interface ColumnWriter {
 
   /**
    * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
+   * @param value an int value
+   * @param repetitionLevel a repetition level
+   * @param definitionLevel a definition level
    */
   void write(int value, int repetitionLevel, int definitionLevel);
 
   /**
    * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
+   * @param value a long value
+   * @param repetitionLevel a repetition level
+   * @param definitionLevel a definition level
    */
   void write(long value, int repetitionLevel, int definitionLevel);
 
   /**
    * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
+   * @param value a boolean value
+   * @param repetitionLevel a repetition level
+   * @param definitionLevel a definition level
    */
   void write(boolean value, int repetitionLevel, int definitionLevel);
 
   /**
    * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
+   * @param value a Binary value
+   * @param repetitionLevel a repetition level
+   * @param definitionLevel a definition level
    */
   void write(Binary value, int repetitionLevel, int definitionLevel);
 
   /**
    * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
+   * @param value a float value
+   * @param repetitionLevel a repetition level
+   * @param definitionLevel a definition level
    */
   void write(float value, int repetitionLevel, int definitionLevel);
 
   /**
    * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
+   * @param value a double value
+   * @param repetitionLevel a repetition level
+   * @param definitionLevel a definition level
    */
   void write(double value, int repetitionLevel, int definitionLevel);
 
   /**
    * writes the current null value
-   * @param repetitionLevel
-   * @param definitionLevel
+   * @param repetitionLevel a repetition level
+   * @param definitionLevel a definition level
    */
   void writeNull(int repetitionLevel, int definitionLevel);
 

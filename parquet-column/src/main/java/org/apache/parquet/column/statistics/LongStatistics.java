@@ -19,11 +19,37 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 
 public class LongStatistics extends Statistics<Long> {
 
+  // A fake type object to be used to generate the proper comparator
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT64)
+      .named("fake_int64_type");
+
   private long max;
   private long min;
+
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
+  public LongStatistics() {
+    this(DEFAULT_FAKE_TYPE);
+  }
+
+  LongStatistics(PrimitiveType type) {
+    super(type);
+  }
+
+  private LongStatistics(LongStatistics other) {
+    super(other.type());
+    if (other.hasNonNullValue()) {
+      initializeStats(other.min, other.max);
+    }
+    setNumNulls(other.getNumNulls());
+  }
 
   @Override
   public void updateStats(long value) {
@@ -62,23 +88,18 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
+  String stringify(Long value) {
+    return stringifier.stringify(value);
+  }
+
+  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || (16 < size);
   }
 
-  @Override
-  public String toString() {
-    if (this.hasNonNullValue())
-      return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
-    else if (!this.isEmpty())
-      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
-    else
-      return "no stats for this column";
-  }
-
   public void updateStats(long min_value, long max_value) {
-    if (min_value < min) { min = min_value; }
-    if (max_value > max) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) { min = min_value; }
+    if (comparator().compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(long min_value, long max_value) {
@@ -97,6 +118,14 @@ public class LongStatistics extends Statistics<Long> {
     return max;
   }
 
+  public int compareMinToValue(long value) {
+    return comparator().compare(min, value);
+  }
+
+  public int compareMaxToValue(long value) {
+    return comparator().compare(max, value);
+  }
+
   public long getMax() {
     return max;
   }
@@ -109,5 +138,10 @@ public class LongStatistics extends Statistics<Long> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public LongStatistics copy() {
+    return new LongStatistics(this);
   }
 }

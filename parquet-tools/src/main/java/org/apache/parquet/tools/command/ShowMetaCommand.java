@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,17 +18,16 @@
  */
 package org.apache.parquet.tools.command;
 
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
-
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.hadoop.Footer;
 import org.apache.parquet.hadoop.ParquetFileReader;
-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.apache.parquet.tools.util.MetadataUtils;
 import org.apache.parquet.tools.util.PrettyPrintWriter;
 import org.apache.parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
 
@@ -40,6 +39,15 @@ public class ShowMetaCommand extends ArgsOnlyCommand {
     "where <input> is the parquet file to print to stdout"
   };
 
+  public static final Options OPTIONS;
+  static {
+    OPTIONS = new Options();
+    Option originalType = OptionBuilder.withLongOpt("originalType")
+      .withDescription("Print logical types in OriginalType representation.")
+      .create('o');
+    OPTIONS.addOption(originalType);
+  }
+
   public ShowMetaCommand() {
     super(1, 1);
   }
@@ -50,12 +58,23 @@ public class ShowMetaCommand extends ArgsOnlyCommand {
   }
 
   @Override
+  public String getCommandDescription() {
+    return "Prints the metadata of Parquet file(s)";
+  }
+
+  @Override
+  public Options getOptions() {
+    return OPTIONS;
+  }
+
+  @Override
   public void execute(CommandLine options) throws Exception {
     super.execute(options);
 
     String[] args = options.getArgs();
     String input = args[0];
-    
+    boolean showOriginalTypes = options.hasOption('o');
+
     Configuration conf = new Configuration();
     Path inputPath = new Path(input);
     FileStatus inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath);
@@ -69,7 +88,7 @@ public class ShowMetaCommand extends ArgsOnlyCommand {
 
     for(Footer f: footers) {
       out.format("file: %s%n" , f.getFile());
-      MetadataUtils.showDetails(out, f.getParquetMetadata());
+      MetadataUtils.showDetails(out, f.getParquetMetadata(), showOriginalTypes);
       out.flushColumns();
     }
   }

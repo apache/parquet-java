@@ -26,6 +26,8 @@ public interface ByteBufferAllocator {
   /**
    * For RefCounted implementations using direct memory, the release method
    * needs to be called to free references to the allocated memory.
+   *
+   * @param b a ByteBuffer
    */
   void release(ByteBuffer b);
 

@@ -61,9 +61,7 @@ import org.slf4j.LoggerFactory;
 /**
  * converts the columnar events into a Thrift protocol.
  *
- * @author Julien Le Dem
- *
- * @param <T>
+ * @param <T> the Java type of records created by this converter
  */
 public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
@@ -82,9 +80,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * Handles field events creation by wrapping the converter for the actual type
-   *
-   * @author Julien Le Dem
-   *
    */
   static class PrimitiveFieldHandler extends PrimitiveConverter {
 
@@ -161,9 +156,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * Handles field events creation by wrapping the converter for the actual type
-   *
-   * @author Julien Le Dem
-   *
    */
   static class GroupFieldhandler extends GroupConverter {
 
@@ -210,9 +202,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * counts the instances created to use in List/Set/Map that need to inform of the element count in the protocol
-   *
-   * @author Julien Le Dem
-   *
    */
   static class GroupCounter extends GroupConverter implements Counter {
 
@@ -253,9 +242,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * counts the instances created to use in List/Set/Map that need to inform of the element count in the protocol
-   *
-   * @author Julien Le Dem
-   *
    */
   static class PrimitiveCounter extends PrimitiveConverter implements Counter {
 
@@ -316,9 +302,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * convert primitive values
-   *
-   * @author Julien Le Dem
-   *
    */
   static class FieldPrimitiveConverter extends PrimitiveConverter {
 
@@ -408,8 +391,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts Binary into String
-   * @author Julien Le Dem
-   *
    */
   static class FieldStringConverter extends PrimitiveConverter {
 
@@ -437,8 +418,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts Binary into Enum
-   * @author Julien Le Dem
-   *
    */
    static class FieldEnumConverter extends PrimitiveConverter {
 
@@ -479,8 +458,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * convert to Maps
-   * @author Julien Le Dem
-   *
    */
   class MapConverter extends GroupConverter {
 
@@ -541,8 +518,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts to a key value pair (in maps)
-   * @author Julien Le Dem
-   *
    */
   class MapKeyValueConverter extends GroupConverter {
 
@@ -579,8 +554,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts to a Set
-   * @author Julien Le Dem
-   *
    */
   class SetConverter extends CollectionConverter {
 
@@ -616,8 +589,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts to a List
-   * @author Julien Le Dem
-   *
    */
   class ListConverter extends CollectionConverter {
 
@@ -653,8 +624,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * Base class to convert List and Set which basically work the same
-   * @author Julien Le Dem
-   *
    */
   abstract class CollectionConverter extends GroupConverter {
 
@@ -776,8 +745,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts to Struct
-   * @author Julien Le Dem
-   *
    */
   class StructConverter extends GroupConverter {
 
@@ -868,6 +835,10 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * This is for compatibility only.
+   * @param thriftReader the class responsible for instantiating the final object and read from the protocol
+   * @param name the name of that type ( the thrift class simple name)
+   * @param requestedParquetSchema the schema for the incoming columnar events
+   * @param thriftType the thrift type descriptor
    * @deprecated will be removed in 2.x
    */
   @Deprecated

@@ -27,9 +27,6 @@ import java.util.Arrays;
 
 /**
  * This class can be used to wrap an actual RecordConsumer and log all calls
- *
- * @author Julien Le Dem
- *
  */
 public class RecordConsumerLoggingWrapper extends RecordConsumer {
     private static final Logger LOG = LoggerFactory.getLogger(RecordConsumerLoggingWrapper.class);
@@ -40,7 +37,7 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
 
     /**
      * all calls a delegate to the wrapped delegate
-     * @param delegate
+     * @param delegate a wrapped record consumer that does the real work
      */
     public RecordConsumerLoggingWrapper(RecordConsumer delegate) {
       this.delegate = delegate;

@@ -26,9 +26,7 @@ import org.apache.parquet.io.api.RecordConsumer;
  *
  * Helps composing write supports
  *
- * @author Julien Le Dem
- *
- * @param <T>
+ * @param <T> the Java class of objects written with this WriteSupport
  */
 public class DelegatingWriteSupport<T> extends WriteSupport<T> {
 

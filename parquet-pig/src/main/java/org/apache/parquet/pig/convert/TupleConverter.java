@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.math.BigDecimal;
 
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.DataType;
@@ -40,21 +41,14 @@ import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.pig.TupleConversionException;
-import org.apache.parquet.pig.convert.DecimalUtils;
 import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.DecimalMetadata;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 
 /**
  * converts a group into a tuple
- *
- * @author Julien Le Dem
- *
  */
-
 public class TupleConverter extends GroupConverter {
 
   private static final TupleFactory TF = TupleFactory.getInstance();
@@ -78,7 +72,7 @@ public class TupleConverter extends GroupConverter {
         FieldSchema field = pigSchema.getField(i);
         if(parquetSchema.containsField(field.alias) || columnIndexAccess) {
           Type type = getType(columnIndexAccess, field.alias, i);
-          
+
           if(type != null) {
             final int index = i;
             converters[c++] = newConverter(field, type, new ParentValueContainer() {
@@ -89,7 +83,7 @@ public class TupleConverter extends GroupConverter {
             }, elephantBirdCompatible, columnIndexAccess);
           }
         }
-        
+
       }
     } catch (FrontendException e) {
       throw new ParquetDecodingException("can not initialize pig converter from:\n" + parquetSchema + "\n" + pigSchema, e);
@@ -104,10 +98,10 @@ public class TupleConverter extends GroupConverter {
     } else {
       return parquetSchema.getType(parquetSchema.getFieldIndex(alias));
     }
-    
+
     return null;
   }
-  
+
   static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent, boolean elephantBirdCompatible, boolean columnIndexAccess) {
     try {
       switch (pigField.type) {
@@ -126,7 +120,7 @@ public class TupleConverter extends GroupConverter {
       case DataType.CHARARRAY:
           //If the orignal type isn't a string, we don't want to use the dictionary because
           //a custom implementation will be needed for each type.  Just default to no dictionary.
-        return new FieldStringConverter(parent, type.getOriginalType() == OriginalType.UTF8);
+        return new FieldStringConverter(parent, type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation);
       case DataType.BYTEARRAY:
         return new FieldByteArrayConverter(parent);
       case DataType.INTEGER:
@@ -221,8 +215,6 @@ public class TupleConverter extends GroupConverter {
   /**
    * handle string values.
    * In case of dictionary encoding, the strings will be decoded only once.
-   * @author Julien Le Dem
-   *
    */
   static final class FieldStringConverter extends PrimitiveConverter {
 
@@ -283,14 +275,10 @@ public class TupleConverter extends GroupConverter {
     public void addBoolean(boolean value) {
       parent.add(Boolean.toString(value));
     }
-    
-    
   }
 
   /**
    * handles DataByteArrays
-   * @author Julien Le Dem
-   *
    */
   static final class FieldByteArrayConverter extends PrimitiveConverter {
 
@@ -309,8 +297,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * Handles doubles
-   * @author Julien Le Dem
-   *
    */
   static final class FieldDoubleConverter extends PrimitiveConverter {
 
@@ -354,8 +340,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * handles floats
-   * @author Julien Le Dem
-   *
    */
   static final class FieldFloatConverter extends PrimitiveConverter {
 
@@ -399,9 +383,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * Handles longs
-   *
-   * @author Julien Le Dem
-   *
    */
   static final class FieldLongConverter extends PrimitiveConverter {
 
@@ -418,7 +399,7 @@ public class TupleConverter extends GroupConverter {
 
     @Override
     public void addInt(int value) {
-      parent.add((long)value); 
+      parent.add((long)value);
     }
 
     @Override
@@ -440,13 +421,11 @@ public class TupleConverter extends GroupConverter {
     public void addBinary(Binary value) {
       parent.add(Long.parseLong(value.toStringUsingUTF8()));
     }
-    
+
   }
 
   /**
    * handle integers
-   * @author Julien Le Dem
-   *
    */
   static final class FieldIntegerConverter extends PrimitiveConverter {
 
@@ -490,8 +469,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * handle booleans
-   * @author Julien Le Dem
-   *
    */
   static final class FieldBooleanConverter extends PrimitiveConverter {
 
@@ -530,13 +507,10 @@ public class TupleConverter extends GroupConverter {
     public void addBinary(Binary value) {
       parent.add(Boolean.parseBoolean(value.toStringUsingUTF8()));
     }
-
-    
   }
 
   /**
    * handle decimal type
-   *
    */
   static final class FieldBigDecimalConverter extends PrimitiveConverter {
     private final ParentValueContainer parent;
@@ -558,9 +532,6 @@ public class TupleConverter extends GroupConverter {
 
   /**
    * Converts groups into bags
-   *
-   * @author Julien Le Dem
-   *
    */
   static class BagConverter extends GroupConverter {
 
@@ -577,7 +548,8 @@ public class TupleConverter extends GroupConverter {
 
       ParentValueContainer childsParent;
       FieldSchema pigField;
-      if (nestedType.isPrimitive() || nestedType.getOriginalType() == OriginalType.MAP || nestedType.getOriginalType() == OriginalType.LIST) {
+      if (nestedType.isPrimitive() || nestedType.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation
+        || nestedType.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
         // Pig bags always contain tuples
         // In that case we need to wrap the value in an extra tuple
         childsParent = new ParentValueContainer() {

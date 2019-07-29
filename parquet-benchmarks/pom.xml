@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.9.1-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -32,7 +32,7 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
-    <jmh.version>1.17.3</jmh.version>
+    <jmh.version>1.21</jmh.version>
     <uberjar.name>parquet-benchmarks</uberjar.name>
   </properties>
 
@@ -48,9 +48,15 @@
        <version>${project.version}</version>
     </dependency>
     <dependency>
-       <groupId>org.apache.hadoop</groupId>
-       <artifactId>hadoop-client</artifactId>
-       <version>${hadoop.version}</version>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client</artifactId>
+      <version>${hadoop.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
        <groupId>org.openjdk.jmh</groupId>
@@ -67,12 +73,21 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
       <version>${slf4j.version}</version>
-      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>it.unimi.dsi</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>${fastutil.version}</version>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
+      <!-- This module disables semver checks because it is not a public API.
+      <plugin>
+        <artifactId>maven-enforcer-plugin</artifactId>
+      </plugin>
+      -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>

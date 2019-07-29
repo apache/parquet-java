@@ -60,9 +60,6 @@ import org.slf4j.LoggerFactory;
 /**
  * Will attempt to encode values using a dictionary and fall back to plain encoding
  *  if the dictionary gets too big
- *
- * @author Julien Le Dem
- *
  */
 public abstract class DictionaryValuesWriter extends ValuesWriter implements RequiresFallback {
   private static final Logger LOG = LoggerFactory.getLogger(DictionaryValuesWriter.class);
@@ -103,9 +100,6 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
      (currently used for off-heap memory which is not garbage collected) */
   private List<RunLengthBitPackingHybridEncoder> encoders = new ArrayList<RunLengthBitPackingHybridEncoder>();
 
-  /**
-   * @param maxDictionaryByteSize
-   */
   protected DictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
     this.allocator = allocator;
     this.maxDictionaryByteSize = maxDictionaryByteSize;
@@ -238,17 +232,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         );
   }
 
-  /**
-   *
-   */
   public static class PlainBinaryDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
     protected Object2IntMap<Binary> binaryDictionaryContent = new Object2IntLinkedOpenHashMap<Binary>();
 
-    /**
-     * @param maxDictionaryByteSize
-     */
     public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       binaryDictionaryContent.defaultReturnValue(-1);
@@ -309,16 +297,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
   }
 
-  /**
-   *
-   */
   public static class PlainFixedLenArrayDictionaryValuesWriter extends PlainBinaryDictionaryValuesWriter {
 
     private final int length;
 
-    /**
-     * @param maxDictionaryByteSize
-     */
     public PlainFixedLenArrayDictionaryValuesWriter(int maxDictionaryByteSize, int length, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       this.length = length;
@@ -352,17 +334,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
   }
 
-  /**
-   *
-   */
   public static class PlainLongDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
     private Long2IntMap longDictionaryContent = new Long2IntLinkedOpenHashMap();
 
-    /**
-     * @param maxDictionaryByteSize
-     */
     public PlainLongDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       longDictionaryContent.defaultReturnValue(-1);
@@ -423,17 +399,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
   }
 
-  /**
-   *
-   */
   public static class PlainDoubleDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
     private Double2IntMap doubleDictionaryContent = new Double2IntLinkedOpenHashMap();
 
-    /**
-     * @param maxDictionaryByteSize
-     */
     public PlainDoubleDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       doubleDictionaryContent.defaultReturnValue(-1);
@@ -494,17 +464,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
   }
 
-  /**
-   *
-   */
   public static class PlainIntegerDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
     private Int2IntMap intDictionaryContent = new Int2IntLinkedOpenHashMap();
 
-    /**
-     * @param maxDictionaryByteSize
-     */
     public PlainIntegerDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       intDictionaryContent.defaultReturnValue(-1);
@@ -565,17 +529,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
   }
 
-  /**
-   *
-   */
   public static class PlainFloatDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
     private Float2IntMap floatDictionaryContent = new Float2IntLinkedOpenHashMap();
 
-    /**
-     * @param maxDictionaryByteSize
-     */
     public PlainFloatDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       floatDictionaryContent.defaultReturnValue(-1);

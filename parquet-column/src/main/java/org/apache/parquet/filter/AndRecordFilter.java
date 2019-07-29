@@ -25,8 +25,6 @@ import org.apache.parquet.column.ColumnReader;
  * Provides ability to chain two filters together. Bear in mind that the first one will
  * short circuit the second. Useful if getting a page of already filtered result.
  *  i.e and( column("manufacturer", equalTo("Volkswagen")), page(100,50))
- *
- * @author Jacob Metcalf
  */
 public final class AndRecordFilter implements RecordFilter {
 
@@ -37,6 +35,7 @@ public final class AndRecordFilter implements RecordFilter {
    * Returns builder for creating an and filter.
    * @param filter1 The first filter to check.
    * @param filter2 The second filter to check.
+   * @return an unbound and filter
    */
   public static final UnboundRecordFilter and( final UnboundRecordFilter filter1, final UnboundRecordFilter filter2 ) {
     Preconditions.checkNotNull( filter1, "filter1" );

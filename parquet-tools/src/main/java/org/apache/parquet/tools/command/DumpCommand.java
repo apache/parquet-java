@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.zip.CRC32;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -57,7 +58,7 @@ import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.tools.util.MetadataUtils;
+import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.tools.util.PrettyPrintWriter;
 import org.apache.parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
 
@@ -72,6 +73,8 @@ public class DumpCommand extends ArgsOnlyCommand {
     public static final String TABS = "    ";
     public static final int BLOCK_BUFFER_SIZE = 64 * 1024;
     public static final String[] USAGE = new String[] { "<input>", "where <input> is the parquet file to print to stdout" };
+
+    private static CRC32 crc = new CRC32();
 
     public static final Options OPTIONS;
     static {
@@ -113,7 +116,12 @@ public class DumpCommand extends ArgsOnlyCommand {
         return USAGE;
     }
 
-    @Override
+  @Override
+  public String getCommandDescription() {
+    return "Prints the content and metadata of a Parquet file";
+  }
+
+  @Override
     public void execute(CommandLine options) throws Exception {
         super.execute(options);
 
@@ -237,6 +245,12 @@ public class DumpCommand extends ArgsOnlyCommand {
         }
     }
 
+    private static boolean verifyCrc(int referenceCrc, byte[] bytes) {
+      crc.reset();
+      crc.update(bytes);
+      return crc.getValue() == ((long) referenceCrc & 0xffffffffL);
+    }
+
     public static void dump(final PrettyPrintWriter out, PageReadStore store, ColumnDescriptor column) throws IOException {
         PageReader reader = store.getPageReader(column);
 
@@ -268,6 +282,15 @@ public class DumpCommand extends ArgsOnlyCommand {
                   out.format(" ST:[%s]", statistics);
                 } else {
                   out.format(" ST:[none]");
+                }
+                if (pageV1.getCrc().isPresent()) {
+                  try {
+                    out.format(" CRC:%s", verifyCrc(pageV1.getCrc().getAsInt(), pageV1.getBytes().toByteArray()) ? "[verified]" : "[PAGE CORRUPT]");
+                  } catch (IOException e) {
+                    out.format(" CRC:[error getting page bytes]");
+                  }
+                } else {
+                  out.format(" CRC:[none]");
                 }
                 return null;
               }
@@ -304,16 +327,29 @@ public class DumpCommand extends ArgsOnlyCommand {
 
             out.format("value %d: R:%d D:%d V:", offset+i, rlvl, dlvl);
             if (dlvl == dmax) {
-                switch (column.getType()) {
-                case BINARY:  out.format("%s", binaryToString(creader.getBinary())); break;
-                case BOOLEAN: out.format("%s", creader.getBoolean()); break;
-                case DOUBLE:  out.format("%s", creader.getDouble()); break;
-                case FLOAT:   out.format("%s", creader.getFloat()); break;
-                case INT32:   out.format("%s", creader.getInteger()); break;
-                case INT64:   out.format("%s", creader.getLong()); break;
-                case INT96:   out.format("%s", binaryToBigInteger(creader.getBinary())); break;
-                case FIXED_LEN_BYTE_ARRAY: out.format("%s", binaryToString(creader.getBinary())); break;
-                }
+              PrimitiveStringifier stringifier =  column.getPrimitiveType().stringifier();
+              switch (column.getType()) {
+                case FIXED_LEN_BYTE_ARRAY:
+                case INT96:
+                case BINARY:
+                  out.print(stringifier.stringify(creader.getBinary()));
+                  break;
+                case BOOLEAN:
+                  out.print(stringifier.stringify(creader.getBoolean()));
+                  break;
+                case DOUBLE:
+                  out.print(stringifier.stringify(creader.getDouble()));
+                  break;
+                case FLOAT:
+                  out.print(stringifier.stringify(creader.getFloat()));
+                  break;
+                case INT32:
+                  out.print(stringifier.stringify(creader.getInteger()));
+                  break;
+                case INT64:
+                  out.print(stringifier.stringify(creader.getLong()));
+                  break;
+              }
             } else {
                 out.format("<null>");
             }

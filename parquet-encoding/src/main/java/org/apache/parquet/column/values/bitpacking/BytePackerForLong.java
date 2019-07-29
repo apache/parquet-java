@@ -21,9 +21,6 @@ import java.nio.ByteBuffer;
  *
  * packing unpacking treats: - n values at a time (with n % 8 == 0) - bitWidth * (n/8) bytes at a
  * time.
- *
- * @author Vassil Lunchev
- *
  */
 public abstract class BytePackerForLong {
 

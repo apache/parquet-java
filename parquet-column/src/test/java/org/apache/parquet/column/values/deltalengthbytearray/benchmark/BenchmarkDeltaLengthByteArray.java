@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.deltalengthbytearray.benchmark;
 
 import java.io.IOException;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -52,9 +53,9 @@ public class BenchmarkDeltaLengthByteArray {
     BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
 
     Utils.writeData(writer, values);
-    byte [] data = writer.getBytes().toByteArray();
+    ByteBufferInputStream data = writer.getBytes().toInputStream();
     Binary[] bin = Utils.readData(reader, data, values.length);
-    System.out.println("size " + data.length);
+    System.out.println("size " + data.position());
   }
 
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
@@ -64,9 +65,9 @@ public class BenchmarkDeltaLengthByteArray {
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
 
     Utils.writeData(writer, values);
-    byte [] data = writer.getBytes().toByteArray();
+    ByteBufferInputStream data = writer.getBytes().toInputStream();
     Binary[] bin = Utils.readData(reader, data, values.length);
-    System.out.println("size " + data.length);
+    System.out.println("size " + data.position());
   }
 
 }

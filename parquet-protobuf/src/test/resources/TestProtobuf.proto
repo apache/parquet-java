@@ -122,6 +122,14 @@ message RepeatedIntMessage {
     repeated int32 repeatedInt = 1;
 }
 
+message RepeatedInnerMessage {
+    repeated InnerMessage repeatedInnerMessage = 1;
+}
+
+message MapIntMessage {
+    map<int32, int32> mapInt = 1;
+}
+
 message HighIndexMessage {
     repeated int32 repeatedInt = 50000;
 }

@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.tools.read;
 
+import com.fasterxml.jackson.databind.node.BinaryNode;
 import com.google.common.collect.Maps;
-import org.codehaus.jackson.node.BinaryNode;
 
 import java.util.Arrays;
 import java.util.Map;

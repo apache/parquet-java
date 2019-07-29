@@ -24,6 +24,8 @@ import java.util.concurrent.Callable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.statistics.Statistics;
+import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 
 public class TestUtils {
@@ -60,5 +62,24 @@ public class TestUtils {
         throw e;
       }
     }
+  }
+
+  public static void assertStatsValuesEqual(Statistics<?> stats1, Statistics<?> stats2) {
+    assertStatsValuesEqual(null, stats1, stats2);
+  }
+
+  // To be used to assert that the values (min, max, num-of-nulls) equals. It might be used in cases when creating
+  // Statistics object for the proper Type would require too much work/code duplications etc.
+  public static void assertStatsValuesEqual(String message, Statistics<?> expected, Statistics<?> actual) {
+    if (expected == actual) {
+      return;
+    }
+    if (expected == null || actual == null) {
+      Assert.assertEquals(expected, actual);
+    }
+    Assert.assertThat(actual, CoreMatchers.instanceOf(expected.getClass()));
+    Assert.assertArrayEquals(message, expected.getMaxBytes(), actual.getMaxBytes());
+    Assert.assertArrayEquals(message, expected.getMinBytes(), actual.getMinBytes());
+    Assert.assertEquals(message, expected.getNumNulls(), actual.getNumNulls());
   }
 }

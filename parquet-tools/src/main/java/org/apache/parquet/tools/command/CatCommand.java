@@ -60,6 +60,11 @@ public class CatCommand extends ArgsOnlyCommand {
   }
 
   @Override
+  public String getCommandDescription() {
+    return "Prints the content of a Parquet file. The output contains only the data, no metadata is displayed";
+  }
+
+  @Override
   public Options getOptions() {
     return OPTIONS;
   }

@@ -165,7 +165,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       if (field.schema().getType() == Schema.Type.NULL) {
         continue; // skip null since Parquet does not write nulls
       }
-      if (field.defaultValue() == null || this.model.getDefaultValue(field) == null) {
+      if (field.defaultVal() == null || this.model.getDefaultValue(field) == null) {
         continue; // field has no default
       }
       // use this.model because model may be null

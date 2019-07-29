@@ -20,41 +20,34 @@
 Parquet MR [![Build Status](https://travis-ci.org/apache/parquet-mr.svg?branch=master)](http://travis-ci.org/apache/parquet-mr)
 ======
 
-Parquet-MR contains the java implementation of the [Parquet format](https://github.com/apache/parquet-format). 
+Parquet-MR contains the java implementation of the [Parquet format](https://github.com/apache/parquet-format).
 Parquet is a columnar storage format for Hadoop; it provides efficient storage and encoding of data.
-Parquet uses the [record shredding and assembly algorithm](https://github.com/Parquet/parquet-mr/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper to represent nested structures.
+Parquet uses the [record shredding and assembly algorithm](https://github.com/julienledem/redelm/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper to represent nested structures.
 
 You can find some details about the format and intended use cases in our [Hadoop Summit 2013 presentation](http://www.slideshare.net/julienledem/parquet-hadoop-summit-2013)
 
 ## Building
 
-Parquet-MR uses Maven to build and depends on both the thrift and protoc compilers.
-
-### Install Protobuf
-
-To build and install the protobuf compiler, run:
-
-```
-wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
-tar xzf protobuf-2.5.0.tar.gz
-cd  protobuf-2.5.0
-./configure
-make
-sudo make install
-sudo ldconfig
-```
+Parquet-MR uses Maven to build and depends on the thrift compiler (protoc is now managed by maven plugin).
 
 ### Install Thrift
 
 To build and install the thrift compiler, run:
 
 ```
-wget -nv http://archive.apache.org/dist/thrift/0.7.0/thrift-0.7.0.tar.gz
-tar xzf thrift-0.7.0.tar.gz
-cd thrift-0.7.0
+wget -nv http://archive.apache.org/dist/thrift/0.12.0/thrift-0.12.0.tar.gz
+tar xzf thrift-0.12.0.tar.gz
+cd thrift-0.12.0
 chmod +x ./configure
-./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
+./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php --without-nodejs
 sudo make install
+```
+
+If you're on OSX and use homebrew, you can instead install Thrift 0.12.0 with `brew` and ensure that it comes first in your `PATH`.
+
+```
+brew install thrift@0.12
+export PATH="/usr/local/opt/thrift@0.12.0/bin:$PATH"
 ```
 
 ### Build Parquet with Maven
@@ -67,31 +60,29 @@ LC_ALL=C mvn clean install
 
 ## Features
 
-Parquet is a very active project, and new features are being added quickly; below is the state as of June 2013.
+Parquet is a very active project, and new features are being added quickly. Here are a few features:
 
 
-<table>
-  <tr><th>Feature</th><th>In trunk</th><th>In dev</th><th>Planned</th><th>Expected release</th></tr>
-  <tr><td>Type-specific encoding</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Hive integration</td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/28">28</a>)</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Pig integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Cascading integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Crunch integration</td><td>YES (<a href ="https://issues.apache.org/jira/browse/CRUNCH-277">CRUNCH-277</a>)</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Impala integration</td><td>YES (non-nested)</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Java Map/Reduce API</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Native Avro support</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Native Thrift support</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Complex structure support</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Future-proofed versioning</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>RLE</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Bit Packing</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Adaptive dictionary encoding</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Predicate pushdown</td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/68">68</a>)</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Column stats</td><td>YES</td><td></td></td><td></td><td>2.0</td></tr>  
-  <tr><td>Delta encoding</td><td>YES</td><td></td></td><td></td><td>2.0</td></tr>
-  <tr><td>Native Protocol Buffers support</td><td>YES</td><td></td><td></td><td>1.0</td></tr>
-  <tr><td>Index pages</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
-</table>
+* Type-specific encoding
+* Hive integration (deprecated)
+* Pig integration
+* Cascading integration
+* Crunch integration
+* Apache Arrow integration
+* Apache Scrooge integration
+* Impala integration (non-nested)
+* Java Map/Reduce API
+* Native Avro support
+* Native Thrift support
+* Native Protocol Buffers support
+* Complex structure support
+* Run-length encoding (RLE)
+* Bit Packing
+* Adaptive dictionary encoding
+* Predicate pushdown
+* Column stats
+* Delta encoding
+* Index pages
 
 ## Map/Reduce integration
 
@@ -136,48 +127,48 @@ If the data was stored using Pig, things will "just work". If the data was store
 
 Hive integration is provided via the [parquet-hive](https://github.com/apache/parquet-mr/tree/master/parquet-hive) sub-project.
 
+Hive integration is now deprecated within the Parquet project. It is now maintained by Apache Hive.
+
 ## Build
 
-to run the unit tests:
-mvn test
+To run the unit tests: `mvn test`
 
-to build the jars:
-mvn package
+To build the jars: `mvn package`
 
 The build runs in [Travis CI](http://travis-ci.org/apache/parquet-mr):
 [![Build Status](https://travis-ci.org/apache/parquet-mr.svg?branch=master)](http://travis-ci.org/apache/parquet-mr)
 
 ## Add Parquet as a dependency in Maven
-The current release is version `1.8.1`
+The current release is version `1.10.0`
 
 ```xml
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.8.1</version>
+      <version>1.10.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.8.1</version>
+      <version>1.10.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.8.1</version>
+      <version>1.10.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.8.1</version>
+      <version>1.10.0</version>
     </dependency>
   </dependencies>
 ```
 
 ### How To Contribute
 
-We prefer to receive contributions in the form of GitHub pull requests. Please send pull requests against the [github.com/apache/parquet-mr](https://github.com/apache/parquet-mr) repository. If you've previously forked Parquet from its old location, you will need to add a remote or update your origin remote to https://github.com/apache/parquet-mr.git
+We prefer to receive contributions in the form of GitHub pull requests. Please send pull requests against the [parquet-mr](https://github.com/apache/parquet-mr) Git repository. If you've previously forked Parquet from its old location, you will need to add a remote or update your origin remote to https://github.com/apache/parquet-mr.git
 
 If you are looking for some ideas on what to contribute, check out jira issues for this project labeled ["pick-me-up"](https://issues.apache.org/jira/browse/PARQUET-5?jql=project%20%3D%20PARQUET%20and%20labels%20%3D%20pick-me-up%20and%20status%20%3D%20open).
 Comment on the issue and/or contact [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/) with your questions and ideas.
@@ -189,8 +180,8 @@ To contribute a patch:
   1. Break your work into small, single-purpose patches if possible. It’s much harder to merge in a large change with a lot of disjoint features.
   2. Create a JIRA for your patch on the [Parquet Project JIRA](https://issues.apache.org/jira/browse/PARQUET).
   3. Submit the patch as a GitHub pull request against the master branch. For a tutorial, see the GitHub guides on forking a repo and sending a pull request. Prefix your pull request name with the JIRA name (ex: https://github.com/apache/parquet-mr/pull/240).
-  4. Make sure that your code passes the unit tests. You can run the tests with `mvn test` in the root directory. 
-  5. Add new unit tests for your code. 
+  4. Make sure that your code passes the unit tests. You can run the tests with `mvn test` in the root directory.
+  5. Add new unit tests for your code.
 
 We tend to do fairly close readings of pull requests, and you may get a lot of comments. Some common issues that are not code structure related, but still important:
   * Use 2 spaces for whitespace. Not tabs, not 4 spaces. The number of the spacing shall be 2.
@@ -212,11 +203,11 @@ We hold ourselves and the Parquet developer community to two codes of conduct:
   2. [The Twitter OSS Code of Conduct](https://github.com/twitter/code-of-conduct/blob/master/code-of-conduct.md)
 
 ## Discussions
-* Mailing list: [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/) 
+* Mailing list: [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/)
 * Bug trackter: [jira](https://issues.apache.org/jira/browse/PARQUET)
 * Discussions also take place in github pull requests
 
 ## License
 
 Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
-See also: 
+See also:

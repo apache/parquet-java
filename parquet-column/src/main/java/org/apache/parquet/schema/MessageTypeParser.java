@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,7 +18,9 @@
  */
 package org.apache.parquet.schema;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.StringTokenizer;
 
@@ -31,8 +33,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Parses a schema from a textual format similar to that described in the Dremel paper.
- *
- * @author Julien Le Dem
  */
 public class MessageTypeParser {
   private static final Logger LOG = LoggerFactory.getLogger(MessageTypeParser.class);
@@ -161,25 +161,44 @@ public class MessageTypeParser {
     t = st.nextToken();
     OriginalType originalType = null;
     if (t.equalsIgnoreCase("(")) {
-      originalType = OriginalType.valueOf(st.nextToken());
-      childBuilder.as(originalType);
-      if (OriginalType.DECIMAL == originalType) {
+      t = st.nextToken();
+      if (isLogicalType(t)) {
+        LogicalTypeAnnotation.LogicalTypeToken logicalType = LogicalTypeAnnotation.LogicalTypeToken.valueOf(t);
         t = st.nextToken();
-        // parse precision and scale
-        if (t.equalsIgnoreCase("(")) {
-          childBuilder.precision(Integer.parseInt(st.nextToken()));
-          t = st.nextToken();
-          if (t.equalsIgnoreCase(",")) {
-            childBuilder.scale(Integer.parseInt(st.nextToken()));
+        List<String> tokens = new ArrayList<>();
+        if ("(".equals(t)) {
+          while (!")".equals(t)) {
+            if (!(",".equals(t) || "(".equals(t) || ")".equals(t))) {
+              tokens.add(t);
+            }
             t = st.nextToken();
           }
-          check(t, ")", "decimal type ended by )", st);
           t = st.nextToken();
         }
+        LogicalTypeAnnotation logicalTypeAnnotation = logicalType.fromString(tokens);
+        childBuilder.as(logicalTypeAnnotation);
       } else {
-        t = st.nextToken();
+        // Try to parse as old logical type, called OriginalType
+        originalType = OriginalType.valueOf(t);
+        childBuilder.as(originalType);
+        if (OriginalType.DECIMAL == originalType) {
+          t = st.nextToken();
+          // parse precision and scale
+          if (t.equalsIgnoreCase("(")) {
+            childBuilder.precision(Integer.parseInt(st.nextToken()));
+            t = st.nextToken();
+            if (t.equalsIgnoreCase(",")) {
+              childBuilder.scale(Integer.parseInt(st.nextToken()));
+              t = st.nextToken();
+            }
+            check(t, ")", "decimal type ended by )", st);
+            t = st.nextToken();
+          }
+        } else {
+          t = st.nextToken();
+        }
       }
-      check(t, ")", "original type ended by )", st);
+      check(t, ")", "logical type ended by )", st);
       t = st.nextToken();
     }
     if (t.equals("=")) {
@@ -193,6 +212,10 @@ public class MessageTypeParser {
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException("problem reading type: type = " + type + ", name = " + name + ", original type = " + originalType, e);
     }
+  }
+
+  private static boolean isLogicalType(String t) {
+    return Arrays.stream(LogicalTypeAnnotation.LogicalTypeToken.values()).anyMatch((type) -> type.name().equals(t));
   }
 
   private static PrimitiveTypeName asPrimitive(String t, Tokenizer st) {

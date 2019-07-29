@@ -21,13 +21,12 @@ package org.apache.parquet.filter;
 
 /**
  * Filter to be applied to a record to work out whether to skip it.
- *
- * @author Jacob Metcalf
  */
 public interface RecordFilter {
 
   /**
    * Works out whether the current record can pass through the filter.
+   * @return true if the current value for the column reader matches the predicate.
    */
   boolean isMatch();
 

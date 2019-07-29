@@ -19,20 +19,17 @@
 package org.apache.parquet.arrow.schema;
 
 import static java.util.Arrays.asList;
-import static org.apache.parquet.schema.OriginalType.DATE;
-import static org.apache.parquet.schema.OriginalType.DECIMAL;
-import static org.apache.parquet.schema.OriginalType.INTERVAL;
-import static org.apache.parquet.schema.OriginalType.INT_16;
-import static org.apache.parquet.schema.OriginalType.INT_32;
-import static org.apache.parquet.schema.OriginalType.INT_64;
-import static org.apache.parquet.schema.OriginalType.INT_8;
-import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
-import static org.apache.parquet.schema.OriginalType.TIME_MILLIS;
-import static org.apache.parquet.schema.OriginalType.UINT_16;
-import static org.apache.parquet.schema.OriginalType.UINT_32;
-import static org.apache.parquet.schema.OriginalType.UINT_64;
-import static org.apache.parquet.schema.OriginalType.UINT_8;
-import static org.apache.parquet.schema.OriginalType.UTF8;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
@@ -46,9 +43,11 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-import org.apache.arrow.flatbuf.Precision;
-import org.apache.arrow.flatbuf.TimeUnit;
+import org.apache.arrow.vector.types.DateUnit;
+import org.apache.arrow.vector.types.FloatingPointPrecision;
+import org.apache.arrow.vector.types.TimeUnit;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.ArrowType.ArrowTypeVisitor;
 import org.apache.arrow.vector.types.pojo.ArrowType.Binary;
@@ -59,7 +58,7 @@ import org.apache.arrow.vector.types.pojo.ArrowType.FloatingPoint;
 import org.apache.arrow.vector.types.pojo.ArrowType.Int;
 import org.apache.arrow.vector.types.pojo.ArrowType.Interval;
 import org.apache.arrow.vector.types.pojo.ArrowType.Null;
-import org.apache.arrow.vector.types.pojo.ArrowType.Struct_;
+import org.apache.arrow.vector.types.pojo.ArrowType.Struct;
 import org.apache.arrow.vector.types.pojo.ArrowType.Time;
 import org.apache.arrow.vector.types.pojo.ArrowType.Timestamp;
 import org.apache.arrow.vector.types.pojo.ArrowType.Union;
@@ -72,10 +71,9 @@ import org.apache.parquet.arrow.schema.SchemaMapping.RepeatedTypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.StructTypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.TypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.UnionTypeMapping;
-import org.apache.parquet.schema.DecimalMetadata;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
@@ -88,10 +86,19 @@ import org.apache.parquet.schema.Types.GroupBuilder;
  */
 public class SchemaConverter {
 
+  // Indicates if Int96 should be converted to Arrow Timestamp
+  private final boolean convertInt96ToArrowTimestamp;
+
   /**
    * For when we'll need this to be configurable
    */
   public SchemaConverter() {
+    this(false);
+  }
+
+  // TODO(PARQUET-1511): pass the parameters in a configuration object
+  public SchemaConverter(final boolean convertInt96ToArrowTimestamp) {
+    this.convertInt96ToArrowTimestamp = convertInt96ToArrowTimestamp;
   }
 
   /**
@@ -141,13 +148,22 @@ public class SchemaConverter {
       }
 
       @Override
-      public TypeMapping visit(Struct_ type) {
+      public TypeMapping visit(Struct type) {
         List<TypeMapping> parquetTypes = fromArrow(children);
         return new StructTypeMapping(field, addToBuilder(parquetTypes, Types.buildGroup(OPTIONAL)).named(fieldName), parquetTypes);
       }
 
       @Override
       public TypeMapping visit(org.apache.arrow.vector.types.pojo.ArrowType.List type) {
+        return createListTypeMapping();
+      }
+
+      @Override
+      public TypeMapping visit(org.apache.arrow.vector.types.pojo.ArrowType.FixedSizeList type) {
+        return createListTypeMapping();
+      }
+
+      private ListTypeMapping createListTypeMapping() {
         if (children.size() != 1) {
           throw new IllegalArgumentException("list fields must have exactly one child: " + field);
         }
@@ -167,37 +183,35 @@ public class SchemaConverter {
       public TypeMapping visit(Int type) {
         boolean signed = type.getIsSigned();
         switch (type.getBitWidth()) {
-        case 8:
-          return primitive(INT32, signed ? INT_8 : UINT_8);
-        case 16:
-          return primitive(INT32, signed ? INT_16 : UINT_16);
-        case 32:
-          return primitive(INT32, signed ? INT_32 : UINT_32);
-        case 64:
-          return primitive(INT64, signed ? INT_64 : UINT_64);
-        default:
-          throw new IllegalArgumentException("Illegal int type: " + field);
+          case 8:
+          case 16:
+          case 32:
+            return primitive(INT32, intType(type.getBitWidth(), signed));
+          case 64:
+            return primitive(INT64, intType(64, signed));
+          default:
+            throw new IllegalArgumentException("Illegal int type: " + field);
         }
       }
 
       @Override
       public TypeMapping visit(FloatingPoint type) {
         switch (type.getPrecision()) {
-        case Precision.HALF:
-          // TODO(PARQUET-757): original type HalfFloat
-          return primitive(FLOAT);
-        case Precision.SINGLE:
-          return primitive(FLOAT);
-        case Precision.DOUBLE:
-          return primitive(DOUBLE);
-        default:
-          throw new IllegalArgumentException("Illegal float type: " + field);
+          case HALF:
+            // TODO(PARQUET-757): original type HalfFloat
+            return primitive(FLOAT);
+          case SINGLE:
+            return primitive(FLOAT);
+          case DOUBLE:
+            return primitive(DOUBLE);
+          default:
+            throw new IllegalArgumentException("Illegal float type: " + field);
         }
       }
 
       @Override
       public TypeMapping visit(Utf8 type) {
-        return primitive(BINARY, UTF8);
+        return primitive(BINARY, stringType());
       }
 
       @Override
@@ -211,9 +225,9 @@ public class SchemaConverter {
       }
 
       /**
-       * @see https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#decimal
-       * @param type
-       * @return
+       * See https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#decimal
+       * @param type an arrow decimal type
+       * @return a mapping from the arrow decimal to the Parquet type
        */
       @Override
       public TypeMapping visit(Decimal type) {
@@ -231,26 +245,53 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping visit(Date type) {
-        return primitive(INT32, DATE);
+        return primitive(INT32, dateType());
       }
 
       @Override
       public TypeMapping visit(Time type) {
-        return primitive(INT32, TIME_MILLIS);
+        int bitWidth = type.getBitWidth();
+        TimeUnit timeUnit = type.getUnit();
+        if (bitWidth == 32 && timeUnit == TimeUnit.MILLISECOND) {
+          return primitive(INT32, timeType(false, MILLIS));
+        } else if (bitWidth == 64 && timeUnit == TimeUnit.MICROSECOND) {
+          return primitive(INT64, timeType(false, MICROS));
+        } else if (bitWidth == 64 && timeUnit == TimeUnit.NANOSECOND) {
+          return primitive(INT64, timeType(false, NANOS));
+        }
+        throw new UnsupportedOperationException("Unsupported type " + type);
       }
 
       @Override
       public TypeMapping visit(Timestamp type) {
-        return primitive(INT64, TIMESTAMP_MILLIS);
+        TimeUnit timeUnit = type.getUnit();
+        if (timeUnit == TimeUnit.MILLISECOND) {
+          return primitive(INT64, timestampType(isUtcNormalized(type), MILLIS));
+        } else if (timeUnit == TimeUnit.MICROSECOND) {
+          return primitive(INT64, timestampType(isUtcNormalized(type), MICROS));
+        } else if (timeUnit == TimeUnit.NANOSECOND) {
+          return primitive(INT64, timestampType(isUtcNormalized(type), NANOS));
+        }
+        throw new UnsupportedOperationException("Unsupported type " + type);
+      }
+
+      private boolean isUtcNormalized(Timestamp timestamp) {
+        String timeZone = timestamp.getTimezone();
+        return timeZone != null && !timeZone.isEmpty();
       }
 
       /**
-       * @see https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#interval
+       * See https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#interval
        */
       @Override
       public TypeMapping visit(Interval type) {
         // TODO(PARQUET-675): fix interval original types
-        return primitiveFLBA(12, INTERVAL);
+        return primitiveFLBA(12, LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance());
+      }
+
+      @Override
+      public TypeMapping visit(ArrowType.FixedSizeBinary fixedSizeBinary) {
+        return primitive(BINARY);
       }
 
       private TypeMapping mapping(PrimitiveType parquetType) {
@@ -258,18 +299,18 @@ public class SchemaConverter {
       }
 
       private TypeMapping decimal(PrimitiveTypeName type, int precision, int scale) {
-        return mapping(Types.optional(type).as(DECIMAL).precision(precision).scale(scale).named(fieldName));
+        return mapping(Types.optional(type).as(decimalType(scale, precision)).named(fieldName));
       }
 
       private TypeMapping primitive(PrimitiveTypeName type) {
         return mapping(Types.optional(type).named(fieldName));
       }
 
-      private TypeMapping primitive(PrimitiveTypeName type, OriginalType otype) {
+      private TypeMapping primitive(PrimitiveTypeName type, LogicalTypeAnnotation otype) {
         return mapping(Types.optional(type).as(otype).named(fieldName));
       }
 
-      private TypeMapping primitiveFLBA(int length, OriginalType otype) {
+      private TypeMapping primitiveFLBA(int length, LogicalTypeAnnotation otype) {
         return mapping(Types.optional(FIXED_LEN_BYTE_ARRAY).length(length).as(otype).named(fieldName));
       }
     });
@@ -311,7 +352,7 @@ public class SchemaConverter {
    * @param type parquet type
    * @param name overrides parquet.getName)
    * @param repetition overrides parquet.getRepetition()
-   * @return
+   * @return a type mapping from the Parquet type to an Arrow type
    */
   private TypeMapping fromParquet(Type type, String name, Repetition repetition) {
     if (repetition == REPEATED) {
@@ -333,21 +374,21 @@ public class SchemaConverter {
    * @return the mapping
    */
   private TypeMapping fromParquetGroup(GroupType type, String name) {
-    OriginalType ot = type.getOriginalType();
-    if (ot == null) {
+    LogicalTypeAnnotation logicalType = type.getLogicalTypeAnnotation();
+    if (logicalType == null) {
       List<TypeMapping> typeMappings = fromParquet(type.getFields());
-      Field arrowField = new Field(name, type.isRepetition(OPTIONAL), new Struct_(), fields(typeMappings));
+      Field arrowField = new Field(name, type.isRepetition(OPTIONAL), new Struct(), fields(typeMappings));
       return new StructTypeMapping(arrowField, type, typeMappings);
     } else {
-      switch (ot) {
-        case LIST:
+      return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
+        @Override
+        public Optional<TypeMapping> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
           List3Levels list3Levels = new List3Levels(type);
           TypeMapping child = fromParquet(list3Levels.getElement(), null, list3Levels.getElement().getRepetition());
           Field arrowField = new Field(name, type.isRepetition(OPTIONAL), new ArrowType.List(), asList(child.getArrowField()));
-          return new ListTypeMapping(arrowField, list3Levels, child);
-        default:
-          throw new UnsupportedOperationException("Unsupported type " + type);
-      }
+          return of(new ListTypeMapping(arrowField, list3Levels, child));
+        }
+      }).orElseThrow(() -> new UnsupportedOperationException("Unsupported type " + type));
     }
   }
 
@@ -366,115 +407,120 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping convertFLOAT(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        return field(new ArrowType.FloatingPoint(Precision.SINGLE));
+        return field(new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE));
       }
 
       @Override
       public TypeMapping convertDOUBLE(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        return field(new ArrowType.FloatingPoint(Precision.DOUBLE));
+        return field(new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE));
       }
 
       @Override
       public TypeMapping convertINT32(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        OriginalType ot = type.getOriginalType();
-        if (ot == null) {
+        LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+        if (logicalTypeAnnotation == null) {
           return integer(32, true);
         }
-        switch (ot) {
-        case INT_8:
-          return integer(8, true);
-        case INT_16:
-          return integer(16, true);
-        case INT_32:
-          return integer(32, true);
-        case UINT_8:
-          return integer(8, false);
-        case UINT_16:
-          return integer(16, false);
-        case UINT_32:
-          return integer(32, false);
-        case DECIMAL:
-          return decimal(type.getDecimalMetadata());
-        case DATE:
-          return field(new ArrowType.Date());
-        case TIMESTAMP_MICROS:
-          return field(new ArrowType.Timestamp(TimeUnit.MICROSECOND));
-        case TIMESTAMP_MILLIS:
-          return field(new ArrowType.Timestamp(TimeUnit.MILLISECOND));
-        case TIME_MILLIS:
-          return field(new ArrowType.Time());
-        default:
-        case TIME_MICROS:
-        case INT_64:
-        case UINT_64:
-        case UTF8:
-        case ENUM:
-        case BSON:
-        case INTERVAL:
-        case JSON:
-        case LIST:
-        case MAP:
-        case MAP_KEY_VALUE:
-          throw new IllegalArgumentException("illegal type " + type);
-        }
+        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            return of(decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
+          }
+
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
+            return of(field(new ArrowType.Date(DateUnit.DAY)));
+          }
+
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+            return timeLogicalType.getUnit() == MILLIS ? of(field(new ArrowType.Time(TimeUnit.MILLISECOND, 32))) : empty();
+          }
+
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
+            if (intLogicalType.getBitWidth() == 64) {
+              return empty();
+            }
+            return of(integer(intLogicalType.getBitWidth(), intLogicalType.isSigned()));
+          }
+        }).orElseThrow(() -> new IllegalArgumentException("illegal type " + type));
       }
 
       @Override
       public TypeMapping convertINT64(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        OriginalType ot = type.getOriginalType();
-        if (ot == null) {
+        LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+        if (logicalTypeAnnotation == null) {
           return integer(64, true);
         }
-        switch (ot) {
-        case INT_8:
-          return integer(8, true);
-        case INT_16:
-          return integer(16, true);
-        case INT_32:
-          return integer(32, true);
-        case INT_64:
-          return integer(64, true);
-        case UINT_8:
-          return integer(8, false);
-        case UINT_16:
-          return integer(16, false);
-        case UINT_32:
-          return integer(32, false);
-        case UINT_64:
-          return integer(64, false);
-        case DECIMAL:
-          return decimal(type.getDecimalMetadata());
-        case DATE:
-          return field(new ArrowType.Date());
-        case TIMESTAMP_MICROS:
-          return field(new ArrowType.Timestamp(TimeUnit.MICROSECOND));
-        case TIMESTAMP_MILLIS:
-          return field(new ArrowType.Timestamp(TimeUnit.MILLISECOND));
-        case TIME_MILLIS:
-          return field(new ArrowType.Time());
-        default:
-        case TIME_MICROS:
-        case UTF8:
-        case ENUM:
-        case BSON:
-        case INTERVAL:
-        case JSON:
-        case LIST:
-        case MAP:
-        case MAP_KEY_VALUE:
-          throw new IllegalArgumentException("illegal type " + type);
-        }
+
+        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
+            return of(field(new ArrowType.Date(DateUnit.DAY)));
+          }
+
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            return of(decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
+          }
+
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
+            return of(integer(intLogicalType.getBitWidth(), intLogicalType.isSigned()));
+          }
+
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+            if (timeLogicalType.getUnit() == MICROS) {
+              return of(field(new ArrowType.Time(TimeUnit.MICROSECOND, 64)));
+            }  else if (timeLogicalType.getUnit() == NANOS) {
+              return of(field(new ArrowType.Time(TimeUnit.NANOSECOND, 64)));
+            }
+            return empty();
+          }
+
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+            switch (timestampLogicalType.getUnit()) {
+              case MICROS:
+                return of(field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, getTimeZone(timestampLogicalType))));
+              case MILLIS:
+                return of(field(new ArrowType.Timestamp(TimeUnit.MILLISECOND, getTimeZone(timestampLogicalType))));
+              case NANOS:
+                return of(field(new ArrowType.Timestamp(TimeUnit.NANOSECOND, getTimeZone(timestampLogicalType))));
+            }
+            return empty();
+          }
+
+          private String getTimeZone(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+            return timestampLogicalType.isAdjustedToUTC() ? "UTC" : null;
+          }
+        }).orElseThrow(() -> new IllegalArgumentException("illegal type " + type));
       }
 
       @Override
       public TypeMapping convertINT96(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        // Possibly timestamp
-        return field(new ArrowType.Binary());
+        if (convertInt96ToArrowTimestamp) {
+          return field(new ArrowType.Timestamp(TimeUnit.NANOSECOND, null));
+        } else {
+          return field(new ArrowType.Binary());
+        }
       }
 
       @Override
       public TypeMapping convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        return field(new ArrowType.Binary());
+        LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+        if (logicalTypeAnnotation == null) {
+          return field(new ArrowType.Binary());
+        }
+
+        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            return of(decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
+          }
+        }).orElseThrow(() -> new IllegalArgumentException("illegal type " + type));
       }
 
       @Override
@@ -484,22 +530,25 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping convertBINARY(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        OriginalType ot = type.getOriginalType();
-        if (ot == null) {
+        LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+        if (logicalTypeAnnotation == null) {
           return field(new ArrowType.Binary());
         }
-        switch (ot) {
-        case UTF8:
-          return field(new ArrowType.Utf8());
-        case DECIMAL:
-          return decimal(type.getDecimalMetadata());
-        default:
-          throw new IllegalArgumentException("illegal type " + type);
-        }
+        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
+            return of(field(new ArrowType.Utf8()));
+          }
+
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            return of(decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
+          }
+        }).orElseThrow(() -> new IllegalArgumentException("illegal type " + type));
       }
 
-      private TypeMapping decimal(DecimalMetadata decimalMetadata) {
-        return field(new ArrowType.Decimal(decimalMetadata.getPrecision(), decimalMetadata.getScale()));
+      private TypeMapping decimal(int precision, int scale) {
+        return field(new ArrowType.Decimal(precision, scale));
       }
 
       private TypeMapping integer(int width, boolean signed) {
@@ -511,8 +560,8 @@ public class SchemaConverter {
   /**
    * Maps a Parquet and Arrow Schema
    * For now does not validate primitive type compatibility
-   * @param arrowSchema
-   * @param parquetSchema
+   * @param arrowSchema an Arrow schema
+   * @param parquetSchema a Parquet message type
    * @return the mapping between the 2
    */
   public SchemaMapping map(Schema arrowSchema, MessageType parquetSchema) {
@@ -545,7 +594,7 @@ public class SchemaConverter {
       }
 
       @Override
-      public TypeMapping visit(Struct_ type) {
+      public TypeMapping visit(Struct type) {
         if (parquetField.isPrimitive()) {
           throw new IllegalArgumentException("Parquet type not a group: " + parquetField);
         }
@@ -555,6 +604,15 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping visit(org.apache.arrow.vector.types.pojo.ArrowType.List type) {
+        return createListTypeMapping(type);
+      }
+
+      @Override
+      public TypeMapping visit(org.apache.arrow.vector.types.pojo.ArrowType.FixedSizeList type) {
+        return createListTypeMapping(type);
+      }
+
+      private TypeMapping createListTypeMapping(ArrowType.ComplexType type) {
         if (arrowField.getChildren().size() != 1) {
           throw new IllegalArgumentException("Invalid list type: " + type);
         }
@@ -628,6 +686,11 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping visit(Interval type) {
+        return primitive();
+      }
+
+      @Override
+      public TypeMapping visit(ArrowType.FixedSizeBinary fixedSizeBinary) {
         return primitive();
       }
 

@@ -23,8 +23,6 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * Thrown if the specified column type is unknown in the underlying storage
- *
- * @author  Katya Gonina
  */
 public class UnknownColumnTypeException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;

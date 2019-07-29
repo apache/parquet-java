@@ -28,7 +28,7 @@ import org.apache.parquet.schema.MessageType;
  * It delegates conversion of inner fields to {@link ProtoMessageConverter} class using inheritance.
  * Schema is converted in {@link ProtoSchemaConverter} class.
  *
- * @author Lukas Nalezenec
+ * @param <T> the Java class of protobuf messages created by this converter
  */
 public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessageConverter {
 
@@ -77,6 +77,7 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
 
   /***
    * if buildBefore is true, Protocol Buffer builder is build to message before returning record.
+   * @param buildBefore whether to build before
    */
   public void setBuildBefore(boolean buildBefore) {
     this.buildBefore = buildBefore;

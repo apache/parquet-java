@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Callable;
 
-import static org.apache.parquet.hadoop.util.MockInputStream.TEST_ARRAY;
+import static org.apache.parquet.hadoop.util.MockHadoopInputStream.TEST_ARRAY;
 
 public class TestHadoop2ByteBufferReads {
 
@@ -59,7 +59,7 @@ public class TestHadoop2ByteBufferReads {
   public void testHeapReadFullySmallBuffer() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocate(8);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
@@ -79,7 +79,7 @@ public class TestHadoop2ByteBufferReads {
   public void testHeapReadFullyLargeBuffer() throws Exception {
     final ByteBuffer readBuffer = ByteBuffer.allocate(20);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     final MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     TestUtils.assertThrows("Should throw EOFException",
@@ -105,7 +105,7 @@ public class TestHadoop2ByteBufferReads {
   public void testHeapReadFullyJustRight() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocate(10);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     // reads all of the bytes available without EOFException
@@ -127,7 +127,7 @@ public class TestHadoop2ByteBufferReads {
   public void testHeapReadFullySmallReads() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocate(10);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream(2, 3, 3));
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
@@ -149,7 +149,7 @@ public class TestHadoop2ByteBufferReads {
     readBuffer.position(3);
     readBuffer.mark();
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream(2, 3, 3));
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
@@ -170,7 +170,7 @@ public class TestHadoop2ByteBufferReads {
     ByteBuffer readBuffer = ByteBuffer.allocate(10);
     readBuffer.limit(7);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream(2, 3, 3));
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
@@ -203,7 +203,7 @@ public class TestHadoop2ByteBufferReads {
     readBuffer.limit(7);
     readBuffer.mark();
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream(2, 3, 3));
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
@@ -233,7 +233,7 @@ public class TestHadoop2ByteBufferReads {
   public void testDirectReadFullySmallBuffer() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocateDirect(8);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
@@ -253,7 +253,7 @@ public class TestHadoop2ByteBufferReads {
   public void testDirectReadFullyLargeBuffer() throws Exception {
     final ByteBuffer readBuffer = ByteBuffer.allocateDirect(20);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     final MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     TestUtils.assertThrows("Should throw EOFException",
@@ -279,7 +279,7 @@ public class TestHadoop2ByteBufferReads {
   public void testDirectReadFullyJustRight() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream());
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     // reads all of the bytes available without EOFException
@@ -301,7 +301,7 @@ public class TestHadoop2ByteBufferReads {
   public void testDirectReadFullySmallReads() throws Exception {
     ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream(2, 3, 3));
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
@@ -323,7 +323,7 @@ public class TestHadoop2ByteBufferReads {
     readBuffer.position(3);
     readBuffer.mark();
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream(2, 3, 3));
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
@@ -344,7 +344,7 @@ public class TestHadoop2ByteBufferReads {
     ByteBuffer readBuffer = ByteBuffer.allocateDirect(10);
     readBuffer.limit(7);
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream(2, 3, 3));
     H2SeekableInputStream.Reader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);
@@ -377,7 +377,7 @@ public class TestHadoop2ByteBufferReads {
     readBuffer.limit(7);
     readBuffer.mark();
 
-    FSDataInputStream hadoopStream = new FSDataInputStream(new MockInputStream(2, 3, 3));
+    FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream(2, 3, 3));
     MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     H2SeekableInputStream.readFully(reader, readBuffer);

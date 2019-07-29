@@ -34,6 +34,9 @@ public class ScroogeRecordConverter<T extends ThriftStruct> extends ThriftRecord
 
   /**
    * This is for compatibility only.
+   * @param thriftClass a thrift class
+   * @param parquetSchema a parquet schema
+   * @param thriftType a thrift type descriptor
    * @deprecated will be removed in 2.x
    */
   @Deprecated

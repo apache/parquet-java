@@ -23,10 +23,7 @@ import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
 /**
  *
  * Used to add extra behavior to a ValuesWriter that requires fallback
- * @See {@link FallbackValuesWriter}
- *
- * @author Julien Le Dem
- *
+ * @see FallbackValuesWriter
  */
 public interface RequiresFallback {
 

@@ -24,8 +24,6 @@ import java.util.List;
  * to convert a MessageType tree
  * @see Type#convert(List, TypeConverter)
  *
- * @author Julien Le Dem
- *
  * @param <T> the resulting Type
  */
 public interface TypeConverter<T> {

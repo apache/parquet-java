@@ -19,11 +19,37 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 
 public class IntStatistics extends Statistics<Integer> {
 
+  // A fake type object to be used to generate the proper comparator
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT32)
+      .named("fake_int32_type");
+
   private int max;
   private int min;
+
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
+  public IntStatistics() {
+    this(DEFAULT_FAKE_TYPE);
+  }
+
+  IntStatistics(PrimitiveType type) {
+    super(type);
+  }
+
+  private IntStatistics(IntStatistics other) {
+    super(other.type());
+    if (other.hasNonNullValue()) {
+      initializeStats(other.min, other.max);
+    }
+    setNumNulls(other.getNumNulls());
+  }
 
   @Override
   public void updateStats(int value) {
@@ -62,23 +88,18 @@ public class IntStatistics extends Statistics<Integer> {
   }
 
   @Override
+  String stringify(Integer value) {
+    return stringifier.stringify(value);
+  }
+
+  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || (8 < size);
   }
 
-  @Override
-  public String toString() {
-    if (this.hasNonNullValue())
-      return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
-    else if (!this.isEmpty())
-      return String.format("num_nulls: %d, min/max is not defined", this.getNumNulls());
-    else
-      return "no stats for this column";
-  }
-
   public void updateStats(int min_value, int max_value) {
-    if (min_value < min) { min = min_value; }
-    if (max_value > max) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) { min = min_value; }
+    if (comparator().compare(max, max_value) < 0) { max = max_value; }
   }
 
   public void initializeStats(int min_value, int max_value) {
@@ -97,6 +118,14 @@ public class IntStatistics extends Statistics<Integer> {
     return max;
   }
 
+  public int compareMinToValue(int value) {
+    return comparator().compare(min, value);
+  }
+
+  public int compareMaxToValue(int value) {
+    return comparator().compare(max, value);
+  }
+
   public int getMax() {
     return max;
   }
@@ -109,5 +138,10 @@ public class IntStatistics extends Statistics<Integer> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public IntStatistics copy() {
+    return new IntStatistics(this);
   }
 }

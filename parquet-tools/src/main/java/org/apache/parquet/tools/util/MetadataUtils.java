@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,9 +19,6 @@
 package org.apache.parquet.tools.util;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +27,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
@@ -42,6 +40,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 
+@Deprecated
 public class MetadataUtils {
   public static final double BAD_COMPRESSION_RATIO_CUTOFF = 0.97;
   public static final double GOOD_COMPRESSION_RATIO_CUTOFF = 1.2;
@@ -150,6 +149,12 @@ public class MetadataUtils {
     out.format(" SZ:%d/%d/%.2f", tsize, usize, ratio);
     out.format(" VC:%d", count);
     if (!encodings.isEmpty()) out.format(" ENC:%s", encodings);
+    Statistics<?> stats = meta.getStatistics();
+    if (stats != null) {
+      out.format(" ST:[%s]", stats);
+    } else {
+      out.format(" ST:[none]");
+    }
     out.println();
   }
 
@@ -159,7 +164,7 @@ public class MetadataUtils {
     int defl = desc.getMaxDefinitionLevel();
     int repl = desc.getMaxRepetitionLevel();
 
-    out.format("column desc: %s T:%s R:%d D:%d%n", path, type, repl, defl); 
+    out.format("column desc: %s T:%s R:%d D:%d%n", path, type, repl, defl);
   }
 
   public static void showDetails(PrettyPrintWriter out, MessageType type) {

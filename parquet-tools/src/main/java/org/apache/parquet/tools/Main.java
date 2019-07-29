@@ -99,6 +99,7 @@ public class Main {
       ustr = ustr + " " + usage[0];
     }
 
+    format.printWrapped(err, WIDTH, name + ":\n" + command.getCommandDescription());
     format.printUsage(err, WIDTH, ustr);
     format.printWrapped(err, WIDTH, LEFT_PAD, "where option is one of:");
     format.printOptions(err, WIDTH, options, LEFT_PAD, DESC_PAD);

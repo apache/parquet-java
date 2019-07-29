@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
@@ -43,7 +44,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
   /**
    * @param dictionaryPage the PLAIN encoded content of the dictionary
-   * @throws IOException
+   * @throws IOException if there is an exception while decoding the dictionary page
    */
   protected PlainValuesDictionary(DictionaryPage dictionaryPage) throws IOException {
     super(dictionaryPage.getEncoding());
@@ -67,7 +68,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
      * length.
      *
      * @param dictionaryPage a {@code DictionaryPage} of encoded binary values
-     * @throws IOException
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainBinaryDictionary(DictionaryPage dictionaryPage) throws IOException {
       this(dictionaryPage, null);
@@ -83,7 +84,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
      *
      * @param dictionaryPage a {@code DictionaryPage} of encoded binary values
      * @param length a fixed length of binary arrays, or null if not fixed
-     * @throws IOException
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainBinaryDictionary(DictionaryPage dictionaryPage, Integer length) throws IOException {
       super(dictionaryPage);
@@ -145,15 +146,15 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private long[] longDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
-     * @throws IOException
+     * @param dictionaryPage a dictionary page of encoded long values
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainLongDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
-      final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
+      ByteBufferInputStream in = dictionaryPage.getBytes().toInputStream();
       longDictionaryContent = new long[dictionaryPage.getDictionarySize()];
       LongPlainValuesReader longReader = new LongPlainValuesReader();
-      longReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, dictionaryByteBuf.position());
+      longReader.initFromPage(dictionaryPage.getDictionarySize(), in);
       for (int i = 0; i < longDictionaryContent.length; i++) {
         longDictionaryContent[i] = longReader.readLong();
       }
@@ -188,15 +189,15 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private double[] doubleDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
-     * @throws IOException
+     * @param dictionaryPage a dictionary page of encoded double values
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainDoubleDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
-      final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
+      ByteBufferInputStream in = dictionaryPage.getBytes().toInputStream();
       doubleDictionaryContent = new double[dictionaryPage.getDictionarySize()];
       DoublePlainValuesReader doubleReader = new DoublePlainValuesReader();
-      doubleReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, 0);
+      doubleReader.initFromPage(dictionaryPage.getDictionarySize(), in);
       for (int i = 0; i < doubleDictionaryContent.length; i++) {
         doubleDictionaryContent[i] = doubleReader.readDouble();
       }
@@ -231,15 +232,15 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private int[] intDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
-     * @throws IOException
+     * @param dictionaryPage a dictionary page of encoded integer values
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainIntegerDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
-      final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
+      ByteBufferInputStream in = dictionaryPage.getBytes().toInputStream();
       intDictionaryContent = new int[dictionaryPage.getDictionarySize()];
       IntegerPlainValuesReader intReader = new IntegerPlainValuesReader();
-      intReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, 0);
+      intReader.initFromPage(dictionaryPage.getDictionarySize(), in);
       for (int i = 0; i < intDictionaryContent.length; i++) {
         intDictionaryContent[i] = intReader.readInteger();
       }
@@ -274,15 +275,15 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private float[] floatDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
-     * @throws IOException
+     * @param dictionaryPage a dictionary page of encoded float values
+     * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainFloatDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
-      final ByteBuffer dictionaryByteBuf = dictionaryPage.getBytes().toByteBuffer();
+      ByteBufferInputStream in = dictionaryPage.getBytes().toInputStream();
       floatDictionaryContent = new float[dictionaryPage.getDictionarySize()];
       FloatPlainValuesReader floatReader = new FloatPlainValuesReader();
-      floatReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryByteBuf, dictionaryByteBuf.position());
+      floatReader.initFromPage(dictionaryPage.getDictionarySize(), in);
       for (int i = 0; i < floatDictionaryContent.length; i++) {
         floatDictionaryContent[i] = floatReader.readFloat();
       }

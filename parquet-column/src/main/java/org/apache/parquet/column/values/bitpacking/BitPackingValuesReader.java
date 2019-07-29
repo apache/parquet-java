@@ -22,7 +22,6 @@ import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static org.apache.parquet.column.values.bitpacking.BitPacking.createBitPackingReader;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
@@ -34,9 +33,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * a column reader that packs the ints in the number of bits required based on the maximum size.
- *
- * @author Julien Le Dem
- *
  */
 public class BitPackingValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(BitPackingValuesReader.class);
@@ -44,7 +40,6 @@ public class BitPackingValuesReader extends ValuesReader {
   private ByteBufferInputStream in;
   private BitPackingReader bitPackingReader;
   private final int bitsPerValue;
-  private int nextOffset;
 
   /**
    * @param bound the maximum value stored by this column
@@ -68,21 +63,17 @@ public class BitPackingValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, ByteBuffer, int)
+   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, ByteBufferInputStream)
    */
   @Override
-  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     int effectiveBitLength = valueCount * bitsPerValue;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength);
     LOG.debug("reading {} bytes for {} values of size {} bits.", length, valueCount, bitsPerValue);
-    this.in = new ByteBufferInputStream(in, offset, length);
-    this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);
-    this.nextOffset = offset + length;
-  }
 
-  @Override
-  public int getNextOffset() {
-    return nextOffset;
+    this.in = stream.sliceStream(length);
+    this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);
+    updateNextOffset(length);
   }
 
   @Override

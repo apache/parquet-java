@@ -88,8 +88,6 @@ import org.slf4j.LoggerFactory;
  * @see #FILTER_PREDICATE
  * @see #TASK_SIDE_METADATA
  *
- * @author Julien Le Dem
- *
  * @param <T> the type of the materialized records
  */
 public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
@@ -120,19 +118,26 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * key to configure whether record-level filtering is enabled
    */
   public static final String RECORD_FILTERING_ENABLED = "parquet.filter.record-level.enabled";
-  static final boolean RECORD_FILTERING_ENABLED_DEFAULT = true;
 
   /**
    * key to configure whether row group stats filtering is enabled
    */
   public static final String STATS_FILTERING_ENABLED = "parquet.filter.stats.enabled";
-  static final boolean STATS_FILTERING_ENABLED_DEFAULT = true;
 
   /**
    * key to configure whether row group dictionary filtering is enabled
    */
   public static final String DICTIONARY_FILTERING_ENABLED = "parquet.filter.dictionary.enabled";
-  static final boolean DICTIONARY_FILTERING_ENABLED_DEFAULT = false;
+
+  /**
+   * key to configure whether column index filtering of pages is enabled
+   */
+  public static final String COLUMN_INDEX_FILTERING_ENABLED = "parquet.filter.columnindex.enabled";
+
+  /**
+   * key to configure whether page level checksum verification is enabled
+   */
+  public static final String PAGE_VERIFY_CHECKSUM_ENABLED = "parquet.page.verify-checksum.enabled";
 
   /**
    * key to turn on or off task side metadata loading (default true)
@@ -169,6 +174,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   /**
+   * @param configuration a configuration
+   * @return an unbound record filter class
    * @deprecated use {@link #getFilter(Configuration)}
    */
   @Deprecated
@@ -226,6 +233,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * Returns a non-null Filter, which is a wrapper around either a
    * FilterPredicate, an UnboundRecordFilter, or a no-op filter.
+   *
+   * @param conf a configuration
+   * @return a filter for the unbound record filter specified in conf
    */
   public static Filter getFilter(Configuration conf) {
     return FilterCompat.get(getFilterPredicate(conf), getUnboundRecordFilterInstance(conf));
@@ -250,6 +260,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * the read support property in their configuration.
    *
    * @param readSupportClass a ReadSupport subclass
+   * @param <S> the Java read support type
    */
   public <S extends ReadSupport<T>> ParquetInputFormat(Class<S> readSupportClass) {
     this.readSupportClass = readSupportClass;
@@ -282,6 +293,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   /**
    * @param configuration to find the configuration for the read support
+   * @param <T> the Java type of objects created by the ReadSupport
    * @return the configured read support
    */
   @SuppressWarnings("unchecked")
@@ -292,6 +304,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   /**
    * @param readSupportClass to instantiate
+   * @param <T> the Java type of objects created by the ReadSupport
    * @return the configured read support
    */
   @SuppressWarnings("unchecked")
@@ -340,7 +353,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @param configuration the configuration to connect to the file system
    * @param footers the footers of the files to read
    * @return the splits for the footers
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    * @deprecated split planning using file footers will be removed
    */
   @Deprecated
@@ -402,7 +415,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * @param jobContext the current job context
    * @return the footers for the files
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    */
   public List<Footer> getFooters(JobContext jobContext) throws IOException {
     List<FileStatus> statuses = listStatus(jobContext);
@@ -476,7 +489,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @param configuration to connect to the file system
    * @param statuses the files to open
    * @return the footers of the files
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    */
   public List<Footer> getFooters(Configuration configuration, Collection<FileStatus> statuses) throws IOException {
     LOG.debug("reading {} files", statuses.size());
@@ -487,7 +500,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * @param jobContext the current job context
    * @return the merged metadata from the footers
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    */
   public GlobalMetaData getGlobalMetaData(JobContext jobContext) throws IOException {
     return ParquetFileWriter.getGlobalMetaData(getFooters(jobContext));

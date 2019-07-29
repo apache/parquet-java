@@ -31,6 +31,9 @@ public class TBaseRecordConverter<T extends TBase<?,?>> extends ThriftRecordConv
 
   /**
    * This is for compatibility only.
+   * @param thriftClass a thrift class
+   * @param requestedParquetSchema the requested Parquet schema
+   * @param thriftType the thrift type
    * @deprecated will be removed in 2.x
    */
   @Deprecated

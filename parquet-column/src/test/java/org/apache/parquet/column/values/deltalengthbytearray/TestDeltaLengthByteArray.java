@@ -43,7 +43,7 @@ public class TestDeltaLengthByteArray {
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
     
     Utils.writeData(writer, values);
-    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
       Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
@@ -57,10 +57,34 @@ public class TestDeltaLengthByteArray {
 
     String[] values = Utils.getRandomStringSamples(1000, 32);
     Utils.writeData(writer, values);
-    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
       Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+    }
+  }
+
+  @Test
+  public void testSkipWithRandomStrings() throws IOException {
+    DeltaLengthByteArrayValuesWriter writer = getDeltaLengthByteArrayValuesWriter();
+    DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
+
+    String[] values = Utils.getRandomStringSamples(1000, 32);
+    Utils.writeData(writer, values);
+
+    reader.initFromPage(values.length, writer.getBytes().toInputStream());
+    for (int i = 0; i < values.length; i += 2) {
+      Assert.assertEquals(Binary.fromString(values[i]), reader.readBytes());
+      reader.skip();
+    }
+
+    reader = new DeltaLengthByteArrayValuesReader();
+    reader.initFromPage(values.length, writer.getBytes().toInputStream());
+    int skipCount;
+    for (int i = 0; i < values.length; i += skipCount + 1) {
+      skipCount = (values.length - i) / 2;
+      Assert.assertEquals(Binary.fromString(values[i]), reader.readBytes());
+      reader.skip(skipCount);
     }
   }
 
@@ -70,7 +94,7 @@ public class TestDeltaLengthByteArray {
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
     Utils.writeData(writer, values);
-    int[] bin = Utils.readInts(reader, writer.getBytes().toByteArray(), values.length);
+    int[] bin = Utils.readInts(reader, writer.getBytes().toInputStream(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
       Assert.assertEquals(values[i].length(), bin[i]);

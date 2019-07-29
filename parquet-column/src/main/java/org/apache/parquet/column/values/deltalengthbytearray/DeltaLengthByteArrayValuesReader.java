@@ -20,52 +20,61 @@ package org.apache.parquet.column.values.deltalengthbytearray;
 
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Reads binary data written by {@link DeltaLengthByteArrayValuesWriter}
- *
- * @author Aniket Mokashi
- *
  */
 public class DeltaLengthByteArrayValuesReader extends ValuesReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(DeltaLengthByteArrayValuesReader.class);
   private ValuesReader lengthReader;
-  private ByteBuffer in;
-  private int offset;
+  private ByteBufferInputStream in;
 
   public DeltaLengthByteArrayValuesReader() {
     this.lengthReader = new DeltaBinaryPackingValuesReader();
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBuffer in, int offset)
+  public void initFromPage(int valueCount, ByteBufferInputStream stream)
       throws IOException {
-    LOG.debug("init from page at offset {} for length {}", offset, (in.limit() - offset));
-    lengthReader.initFromPage(valueCount, in, offset);
-    offset = lengthReader.getNextOffset();
-    this.in = in;
-    this.offset = offset;
+    LOG.debug("init from page at offset {} for length {}",
+        stream.position(), stream.available());
+    lengthReader.initFromPage(valueCount, stream);
+    this.in = stream.remainingStream();
   }
 
   @Override
   public Binary readBytes() {
     int length = lengthReader.readInteger();
-    int start = offset;
-    offset = start + length;
-    return Binary.fromConstantByteBuffer(in, start, length);
+    try {
+      return Binary.fromConstantByteBuffer(in.slice(length));
+    } catch (IOException e) {
+      throw new ParquetDecodingException("Failed to read " + length + " bytes");
+    }
   }
 
   @Override
   public void skip() {
-    int length = lengthReader.readInteger();
-    offset = offset + length;
+    skip(1);
+  }
+
+  @Override
+  public void skip(int n) {
+    int length = 0;
+    for (int i = 0; i < n; ++i) {
+      length += lengthReader.readInteger();
+    }
+    try {
+      in.skipFully(length);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("Failed to skip " + length + " bytes");
+    }
   }
 }

@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.9.1-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -35,7 +35,7 @@
   <repositories>
     <repository>
      <id>conjars.org</id>
-      <url>http://conjars.org/repo</url>
+      <url>https://conjars.org/repo</url>
     </repository>
   </repositories>
   
@@ -55,16 +55,12 @@
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
       <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.parquet</groupId>
-      <artifactId>parquet-jackson</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>${jackson.groupId}</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
-      <version>${jackson.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -138,9 +134,9 @@
 
       <!--for scrooge and thrift -->
         <plugin>
-            <groupId>org.apache.thrift.tools</groupId>
-            <artifactId>maven-thrift-plugin</artifactId>
-            <version>${maven-thrift-plugin.version}</version>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>thrift-maven-plugin</artifactId>
+            <version>${thrift-maven-plugin.version}</version>
             <configuration>
                 <thriftExecutable>${thrift.executable}</thriftExecutable>
             </configuration>

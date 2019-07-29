@@ -21,8 +21,10 @@ package org.apache.parquet.schema;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.ID;
 import org.slf4j.Logger;
@@ -37,7 +39,7 @@ import org.slf4j.LoggerFactory;
  *   Types.optional(INT32).named("number");
  * </pre>
  * <p>
- * The {@link #required(PrimitiveTypeName)} factory method produces a primitive
+ * The required(PrimitiveTypeName) factory method produces a primitive
  * type builder, and the {@link PrimitiveBuilder#named(String)} builds the
  * {@link PrimitiveType}. Between {@code required} and {@code named}, other
  * builder methods can be used to add type annotations or other type metadata:
@@ -46,7 +48,7 @@ import org.slf4j.LoggerFactory;
  *   Types.optional(FIXED_LEN_BYTE_ARRAY).length(20).named("sha1");
  * </pre>
  * <p>
- * Optional types are built using {@link #optional(PrimitiveTypeName)} to get
+ * Optional types are built using optional(PrimitiveTypeName) to get
  * the builder.
  * <p>
  * Groups are built similarly, using {@code requiredGroup()} (or the optional
@@ -104,6 +106,7 @@ import org.slf4j.LoggerFactory;
  * can be built using {@code requiredGroupValue()} (or the optionalGroupValue()
  * version) that returns MapGroupValue builder.
  *
+ * <pre>
  *   // required group zipMap (MAP) {
  *   //   repeated group map (MAP_KEY_VALUE) {
  *   //     required float key
@@ -197,7 +200,7 @@ public class Types {
     protected final Class<? extends P> returnClass;
 
     protected Type.Repetition repetition = null;
-    protected OriginalType originalType = null;
+    protected LogicalTypeAnnotation logicalTypeAnnotation = null;
     protected Type.ID id = null;
     private boolean repetitionAlreadySet = false;
 
@@ -249,9 +252,32 @@ public class Types {
      *
      * @param type an {@code OriginalType}
      * @return this builder for method chaining
+     *
+     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding logical type instead
      */
+    @Deprecated
     public THIS as(OriginalType type) {
-      this.originalType = type;
+      this.logicalTypeAnnotation = LogicalTypeAnnotation.fromOriginalType(type, null);
+      return self();
+    }
+
+    protected boolean newLogicalTypeSet;
+
+    /**
+     * Adds a type annotation ({@link LogicalTypeAnnotation}) to the type being built.
+     * <p>
+     * Type annotations are used to extend the types that parquet can store, by
+     * specifying how the primitive types should be interpreted. This keeps the
+     * set of primitive types to a minimum and reuses parquet's efficient
+     * encodings. For example, strings are stored as byte arrays (binary) with
+     * a UTF8 annotation.
+     *
+     * @param type an {@code {@link LogicalTypeAnnotation}}
+     * @return this builder for method chaining
+     */
+    public THIS as(LogicalTypeAnnotation type) {
+      this.logicalTypeAnnotation = type;
+      this.newLogicalTypeSet = true;
       return self();
     }
 
@@ -302,6 +328,9 @@ public class Types {
       }
     }
 
+    protected OriginalType getOriginalType () {
+      return logicalTypeAnnotation == null ? null : logicalTypeAnnotation.toOriginalType();
+    }
   }
 
   public abstract static class
@@ -316,6 +345,7 @@ public class Types {
     private int length = NOT_SET;
     private int precision = NOT_SET;
     private int scale = NOT_SET;
+    private ColumnOrder columnOrder;
 
     private BasePrimitiveBuilder(P parent, PrimitiveTypeName type) {
       super(parent);
@@ -341,6 +371,9 @@ public class Types {
       return self();
     }
 
+    private boolean precisionAlreadySet;
+    private boolean scaleAlreadySet;
+
     /**
      * Adds the precision for a DECIMAL.
      * <p>
@@ -350,9 +383,13 @@ public class Types {
      *
      * @param precision an int precision value for the DECIMAL
      * @return this builder for method chaining
+     *
+     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding decimal type instead
      */
+    @Deprecated
     public THIS precision(int precision) {
       this.precision = precision;
+      precisionAlreadySet = true;
       return self();
     }
 
@@ -368,9 +405,29 @@ public class Types {
      *
      * @param scale an int scale value for the DECIMAL
      * @return this builder for method chaining
+     *
+     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding decimal type instead
      */
+    @Deprecated
     public THIS scale(int scale) {
       this.scale = scale;
+      scaleAlreadySet = true;
+      return self();
+    }
+
+    /**
+     * Adds the column order for the primitive type.
+     * <p>
+     * In case of not set the default column order is {@link ColumnOrderName#TYPE_DEFINED_ORDER} except the type
+     * {@link PrimitiveTypeName#INT96} and the types annotated by {@link OriginalType#INTERVAL} where the default column
+     * order is {@link ColumnOrderName#UNDEFINED}.
+     *
+     * @param columnOrder
+     *          the column order for the primitive type
+     * @return this builder for method chaining
+     */
+    public THIS columnOrder(ColumnOrder columnOrder) {
+      this.columnOrder = columnOrder;
       return self();
     }
 
@@ -384,16 +441,28 @@ public class Types {
       DecimalMetadata meta = decimalMetadata();
 
       // validate type annotations and required metadata
-      if (originalType != null) {
-        switch (originalType) {
-          case UTF8:
-          case JSON:
-          case BSON:
-            Preconditions.checkState(
-                primitiveType == PrimitiveTypeName.BINARY,
-                originalType.toString() + " can only annotate binary fields");
-            break;
-          case DECIMAL:
+      if (logicalTypeAnnotation != null) {
+        logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Boolean>() {
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
+            checkBinaryPrimitiveType(stringLogicalType);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
+            checkBinaryPrimitiveType(jsonLogicalType);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
+            checkBinaryPrimitiveType(bsonLogicalType);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             Preconditions.checkState(
                 (primitiveType == PrimitiveTypeName.INT32) ||
                 (primitiveType == PrimitiveTypeName.INT64) ||
@@ -421,43 +490,96 @@ public class Types {
                   "FIXED(" + length + ") cannot store " + meta.getPrecision() +
                   " digits (max " + maxPrecision(length) + ")");
             }
-            break;
-          case DATE:
-          case TIME_MILLIS:
-          case UINT_8:
-          case UINT_16:
-          case UINT_32:
-          case INT_8:
-          case INT_16:
-          case INT_32:
-            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
-                originalType.toString() + " can only annotate INT32");
-            break;
-          case TIME_MICROS:
-          case TIMESTAMP_MILLIS:
-          case TIMESTAMP_MICROS:
-          case UINT_64:
-          case INT_64:
-            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,
-                originalType.toString() + " can only annotate INT64");
-            break;
-          case INTERVAL:
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
+            checkInt32PrimitiveType(dateLogicalType);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+            LogicalTypeAnnotation.TimeUnit unit = timeLogicalType.getUnit();
+            switch (unit) {
+              case MILLIS:
+                checkInt32PrimitiveType(timeLogicalType);
+                break;
+              case MICROS:
+              case NANOS:
+                checkInt64PrimitiveType(timeLogicalType);
+                break;
+              default:
+                throw new RuntimeException("Invalid time unit: " + unit);
+            }
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
+            int bitWidth = intLogicalType.getBitWidth();
+            switch (bitWidth) {
+              case 8:
+              case 16:
+              case 32:
+                checkInt32PrimitiveType(intLogicalType);
+                break;
+              case 64:
+                checkInt64PrimitiveType(intLogicalType);
+                break;
+              default:
+                throw new RuntimeException("Invalid bit width: " + bitWidth);
+            }
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+            checkInt64PrimitiveType(timestampLogicalType);
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
             Preconditions.checkState(
                 (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
                 (length == 12),
                 "INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
-            break;
-          case ENUM:
+            return Optional.of(true);
+          }
+
+          @Override
+          public Optional<Boolean> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
             Preconditions.checkState(
                 primitiveType == PrimitiveTypeName.BINARY,
                 "ENUM can only annotate binary fields");
-            break;
-          default:
-            throw new IllegalStateException(originalType + " can not be applied to a primitive type");
-        }
+            return Optional.of(true);
+          }
+
+          private void checkBinaryPrimitiveType(LogicalTypeAnnotation logicalTypeAnnotation) {
+            Preconditions.checkState(
+                primitiveType == PrimitiveTypeName.BINARY,
+              logicalTypeAnnotation.toString() + " can only annotate binary fields");
+          }
+
+          private void checkInt32PrimitiveType(LogicalTypeAnnotation logicalTypeAnnotation) {
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
+              logicalTypeAnnotation.toString() + " can only annotate INT32");
+          }
+
+          private void checkInt64PrimitiveType(LogicalTypeAnnotation logicalTypeAnnotation) {
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,
+              logicalTypeAnnotation.toString() + " can only annotate INT64");
+          }
+        }).orElseThrow(() -> new IllegalStateException(logicalTypeAnnotation + " can not be applied to a primitive type"));
       }
 
-      return new PrimitiveType(repetition, primitiveType, length, name, originalType, meta, id);
+      if (newLogicalTypeSet) {
+        return new PrimitiveType(repetition, primitiveType, length, name, logicalTypeAnnotation, id, columnOrder);
+      } else {
+        return new PrimitiveType(repetition, primitiveType, length, name, getOriginalType(), meta, id, columnOrder);
+      }
     }
 
     private static long maxPrecision(int numBytes) {
@@ -470,12 +592,25 @@ public class Types {
 
     protected DecimalMetadata decimalMetadata() {
       DecimalMetadata meta = null;
-      if (OriginalType.DECIMAL == originalType) {
+      if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
+        LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType = (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) logicalTypeAnnotation;
+        if (newLogicalTypeSet) {
+          if (scaleAlreadySet) {
+            Preconditions.checkArgument(this.scale == decimalType.getScale(),
+              "Decimal scale should match with the scale of the logical type");
+          }
+          if (precisionAlreadySet) {
+            Preconditions.checkArgument(this.precision == decimalType.getPrecision(),
+              "Decimal precision should match with the precision of the logical type");
+          }
+          scale = decimalType.getScale();
+          precision = decimalType.getPrecision();
+        }
         Preconditions.checkArgument(precision > 0,
             "Invalid DECIMAL precision: " + precision);
-        Preconditions.checkArgument(scale >= 0,
-            "Invalid DECIMAL scale: " + scale);
-        Preconditions.checkArgument(scale <= precision,
+        Preconditions.checkArgument(this.scale >= 0,
+            "Invalid DECIMAL scale: " + this.scale);
+        Preconditions.checkArgument(this.scale <= precision,
             "Invalid DECIMAL scale: cannot be greater than precision");
         meta = new DecimalMetadata(precision, scale);
       }
@@ -611,6 +746,7 @@ public class Types {
     /**
      * Adds {@code type} as a sub-field to the group configured by this builder.
      *
+     * @param type the type to add as a field
      * @return this builder for additional fields.
      */
     public THIS addField(Type type) {
@@ -621,6 +757,7 @@ public class Types {
     /**
      * Adds {@code types} as sub-fields of the group configured by this builder.
      *
+     * @param types an array of types to add as fields
      * @return this builder for additional fields.
      */
     public THIS addFields(Type... types) {
@@ -630,7 +767,11 @@ public class Types {
 
     @Override
     protected GroupType build(String name) {
-      return new GroupType(repetition, name, originalType, fields, id);
+      if (newLogicalTypeSet) {
+        return new GroupType(repetition, name, logicalTypeAnnotation, fields, id);
+      } else {
+        return new GroupType(repetition, name, getOriginalType(), fields, id);
+      }
     }
 
     public MapBuilder<THIS> map(
@@ -1025,17 +1166,23 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(originalType == null,
+      Preconditions.checkState(logicalTypeAnnotation == null,
           "MAP is already a logical type and can't be changed.");
       if (keyType == null) {
         keyType = STRING_KEY;
       }
+
+      GroupBuilder<GroupType> builder = buildGroup(repetition).as(OriginalType.MAP);
+      if (id != null) {
+        builder.id(id.intValue());
+      }
+
       if (valueType != null) {
-        return buildGroup(repetition).as(OriginalType.MAP)
+        return builder
             .repeatedGroup().addFields(keyType, valueType).named("map")
             .named(name);
       } else {
-        return buildGroup(repetition).as(OriginalType.MAP)
+        return builder
             .repeatedGroup().addFields(keyType).named("map")
             .named(name);
       }
@@ -1167,10 +1314,16 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(originalType == null,
+      Preconditions.checkState(logicalTypeAnnotation == null,
           "LIST is already the logical type and can't be changed");
       Preconditions.checkNotNull(elementType, "List element type");
-      return buildGroup(repetition).as(OriginalType.LIST)
+
+      GroupBuilder<GroupType> builder = buildGroup(repetition).as(OriginalType.LIST);
+      if (id != null) {
+        builder.id(id.intValue());
+      }
+
+      return builder
           .repeatedGroup().addFields(elementType).named("list")
           .named(name);
     }

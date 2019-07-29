@@ -33,7 +33,22 @@ public final class GlobExpander {
   private GlobExpander()  { }
 
   /**
-   * See {@link org.apache.parquet.Strings#expandGlob(String)} for docs.
+   * Expands a string with braces ("{}") into all of its possible permutations.
+   * We call anything inside of {} braces a "one-of" group.
+   *
+   * The only special characters in this glob syntax are '}', '{' and ','
+   *
+   * The top-level pattern must not contain any commas, but a "one-of" group separates
+   * its elements with commas, and a one-of group may contain sub one-of groups.
+   *
+   * For example:
+   * start{a,b,c}end -&gt; startaend, startbend, startcend
+   * start{a,{b,c},d} -&gt; startaend, startbend, startcend, startdend
+   * {a,b,c} -&gt; a, b, c
+   * start{a, b{x,y}} -&gt; starta, startbx, startby
+   *
+   * @param globPattern a string in the format described above
+   * @return a list of all the strings that would satisfy globPattern, including duplicates
    */
   public static List<String> expand(String globPattern) {
     return GlobExpanderImpl.expand(GlobParser.parse(globPattern));

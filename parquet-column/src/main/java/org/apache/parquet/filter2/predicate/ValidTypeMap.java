@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -25,11 +25,10 @@ import java.util.Set;
 
 import org.apache.parquet.filter2.predicate.Operators.Column;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
- * Contains all valid mappings from class -> parquet type (and vice versa) for use in
+ * Contains all valid mappings from class -&gt; parquet type (and vice versa) for use in
  * {@link FilterPredicate}s
  *
  * This is a bit ugly, but it allows us to provide good error messages at runtime
@@ -82,6 +81,7 @@ public class ValidTypeMap {
    *
    * @param foundColumn the column as declared by the user
    * @param primitiveType the primitive type according to the schema
+   * @param <T> the java Type of values in the column, must be Comparable
    */
   public static <T extends Comparable<T>> void assertTypeValid(Column<T> foundColumn, PrimitiveTypeName primitiveType) {
     Class<T> foundColumnType = foundColumn.getColumnType();

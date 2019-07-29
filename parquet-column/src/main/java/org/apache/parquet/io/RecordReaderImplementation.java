@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * used to read reassembled records
- * @author Julien Le Dem
  *
  * @param <T> the type of the materialized record
  */

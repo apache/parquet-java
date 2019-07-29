@@ -27,9 +27,6 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 /**
  * summary data for one field of a tuple
  * usually only one the *Summary member if set
- *
- * @author Julien Le Dem
- *
  */
 public class FieldSummaryData extends SummaryData {
 
@@ -65,9 +62,6 @@ public class FieldSummaryData extends SummaryData {
     error += otherFieldSummaryData.error;
   }
 
-  /**
-   * add an object to the summary data
-   */
   public void add(Schema schema, Object o) {
     super.add(o);
     if (o == null) {

@@ -22,13 +22,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.io.api.Binary;
 
 /**
  * Test Utility class
- * 
- * @author Aniket Mokashi
- *
  */
 public class Utils {
   private static Random randomLen = new Random();
@@ -59,33 +57,23 @@ public class Utils {
     }
   }
 
-  public static Binary[] readData(ValuesReader reader, byte[] data, int offset, int length)
+  public static Binary[] readData(ValuesReader reader, ByteBufferInputStream stream, int length)
       throws IOException {
     Binary[] bins = new Binary[length];
-    reader.initFromPage(length, ByteBuffer.wrap(data), 0);
+    reader.initFromPage(length, stream);
     for(int i=0; i < length; i++) {
       bins[i] = reader.readBytes();
     }
     return bins;
   }
-  
-  public static Binary[] readData(ValuesReader reader, byte[] data, int length)
-      throws IOException {
-    return readData(reader, data, 0, length);
-  }
-  
-  public static int[] readInts(ValuesReader reader, byte[] data, int offset, int length)
+
+  public static int[] readInts(ValuesReader reader, ByteBufferInputStream stream, int length)
       throws IOException {
     int[] ints = new int[length];
-    reader.initFromPage(length, ByteBuffer.wrap(data), offset);
+    reader.initFromPage(length, stream);
     for(int i=0; i < length; i++) {
       ints[i] = reader.readInteger();
     }
     return ints;
-  }
-  
-  public static int[] readInts(ValuesReader reader, byte[] data, int length)
-      throws IOException {
-    return readInts(reader, data, 0, length);
   }
 }

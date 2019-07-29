@@ -23,7 +23,6 @@ import org.apache.parquet.hadoop.util.counters.ICounter;
 
 /**
  * Adapt a mapred counter to ICounter
- * @author Tianshuo Deng
  */
 public class MapRedCounterAdapter implements ICounter {
   private org.apache.hadoop.mapred.Counters.Counter adaptee;

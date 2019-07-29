@@ -21,22 +21,17 @@ package org.apache.parquet.column.values.rle;
 import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
 
-import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 
-/**
- * @author Alex Levenson
- */
 public class TestRunLengthBitPackingHybridEncoder {
 
   private RunLengthBitPackingHybridEncoder getRunLengthBitPackingHybridEncoder() {

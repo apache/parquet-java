@@ -30,9 +30,6 @@ import org.apache.parquet.schema.MessageType;
 /**
  *
  * Context passed to ReadSupport when initializing for read
- *
- * @author Julien Le Dem
- *
  */
 public class InitContext {
 

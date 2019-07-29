@@ -32,11 +32,11 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  * The first way, that only supports filtering records during record assembly, is found
  * in {@link org.apache.parquet.filter}. The new API (found in {@link org.apache.parquet.filter2}) supports
  * also filtering entire rowgroups of records without reading them at all.
- *
+ * <p>
  * This class defines a common interface that both of these filters share,
  * {@link Filter}. A Filter can be either an {@link UnboundRecordFilter} from the old API, or
  * a {@link FilterPredicate} from the new API, or a sentinel no-op filter.
- *
+ * <p>
  * Having this common interface simplifies passing a filter through the read path of parquet's
  * codebase.
  */
@@ -64,6 +64,9 @@ public class FilterCompat {
    * Given a FilterPredicate, return a Filter that wraps it.
    * This method also logs the filter being used and rewrites
    * the predicate to not include the not() operator.
+   *
+   * @param filterPredicate a filter predicate
+   * @return a filter for the given predicate
    */
   public static Filter get(FilterPredicate filterPredicate) {
     checkNotNull(filterPredicate, "filterPredicate");
@@ -82,6 +85,9 @@ public class FilterCompat {
 
   /**
    * Given an UnboundRecordFilter, return a Filter that wraps it.
+   *
+   * @param unboundRecordFilter an unbound record filter
+   * @return a Filter for the given record filter (from the old API)
    */
   public static Filter get(UnboundRecordFilter unboundRecordFilter) {
     return new UnboundRecordFilterCompat(unboundRecordFilter);
@@ -90,10 +96,14 @@ public class FilterCompat {
   /**
    * Given either a FilterPredicate or the class of an UnboundRecordFilter, or neither (but not both)
    * return a Filter that wraps whichever was provided.
-   *
+   * <p>
    * Either filterPredicate or unboundRecordFilterClass must be null, or an exception is thrown.
-   *
+   * <p>
    * If both are null, the no op filter will be returned.
+   *
+   * @param filterPredicate a filter predicate, or null
+   * @param unboundRecordFilter an unbound record filter, or null
+   * @return a Filter wrapping either the predicate or the unbound record filter (from the old API)
    */
   public static Filter get(FilterPredicate filterPredicate, UnboundRecordFilter unboundRecordFilter) {
     checkArgument(filterPredicate == null || unboundRecordFilter == null,

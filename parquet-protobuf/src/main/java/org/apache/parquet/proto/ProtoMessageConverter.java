@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,27 +24,28 @@ import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.io.InvalidRecordException;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Type;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import static java.util.Optional.of;
 
 /**
  * Converts Protocol Buffer message (both top level and inner) to parquet.
  * This is internal class, use {@link ProtoRecordConverter}.
- *
- * @see {@link ProtoWriteSupport}
- * @author Lukas Nalezenec
  */
 class ProtoMessageConverter extends GroupConverter {
 
@@ -129,9 +130,23 @@ class ProtoMessageConverter extends GroupConverter {
       };
     }
 
-    return newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType);
-  }
+    LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
+    if (logicalTypeAnnotation == null) {
+      return newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType);
+    }
 
+    return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
+      @Override
+      public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
+        return of(new ListConverter(parentBuilder, fieldDescriptor, parquetType));
+      }
+
+      @Override
+      public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
+        return of(new MapConverter(parentBuilder, fieldDescriptor, parquetType));
+      }
+    }).orElseGet(() -> newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType));
+  }
 
   private Converter newScalarConverter(ParentValueContainer pvc, Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
 
@@ -344,5 +359,122 @@ class ProtoMessageConverter extends GroupConverter {
       parent.add(str);
     }
 
+  }
+
+  /**
+   * This class unwraps the additional LIST wrapper and makes it possible to read the underlying data and then convert
+   * it to protobuf.
+   * <p>
+   * Consider the following protobuf schema:
+   * message SimpleList {
+   *   repeated int64 first_array = 1;
+   * }
+   * <p>
+   * A LIST wrapper is created in parquet for the above mentioned protobuf schema:
+   * message SimpleList {
+   *   optional group first_array (LIST) = 1 {
+   *     repeated group list {
+   *         optional int32 element;
+   *     }
+   *   }
+   * }
+   * <p>
+   * The LIST wrappers are used by 3rd party tools, such as Hive, to read parquet arrays. The wrapper contains
+   * a repeated group named 'list', itself containing only one field called 'element' of the type of the repeated
+   * object (can be a primitive as in this example or a group in case of a repeated message in protobuf).
+   */
+  final class ListConverter extends GroupConverter {
+    private final Converter converter;
+
+    public ListConverter(Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
+      LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
+      if (!(logicalTypeAnnotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) || parquetType.isPrimitive()) {
+        throw new ParquetDecodingException("Expected LIST wrapper. Found: " + logicalTypeAnnotation + " instead.");
+      }
+
+      GroupType rootWrapperType = parquetType.asGroupType();
+      if (!rootWrapperType.containsField("list") || rootWrapperType.getType("list").isPrimitive()) {
+        throw new ParquetDecodingException("Expected repeated 'list' group inside LIST wrapperr but got: " + rootWrapperType);
+      }
+
+      GroupType listType = rootWrapperType.getType("list").asGroupType();
+      if (!listType.containsField("element")) {
+        throw new ParquetDecodingException("Expected 'element' inside repeated list group but got: " + listType);
+      }
+
+      Type elementType = listType.getType("element");
+      converter = newMessageConverter(parentBuilder, fieldDescriptor, elementType);
+    }
+
+    @Override
+    public Converter getConverter(int fieldIndex) {
+      if (fieldIndex > 0) {
+        throw new ParquetDecodingException("Unexpected multiple fields in the LIST wrapper");
+      }
+
+      return new GroupConverter() {
+        @Override
+        public Converter getConverter(int fieldIndex) {
+          return converter;
+        }
+
+        @Override
+        public void start() {
+
+        }
+
+        @Override
+        public void end() {
+
+        }
+      };
+    }
+
+    @Override
+    public void start() {
+
+    }
+
+    @Override
+    public void end() {
+
+    }
+  }
+
+
+  final class MapConverter extends GroupConverter {
+    private final Converter converter;
+
+    public MapConverter(Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
+      LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
+      if (!(logicalTypeAnnotation instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation)) {
+        throw new ParquetDecodingException("Expected MAP wrapper. Found: " + logicalTypeAnnotation + " instead.");
+      }
+
+      Type parquetSchema;
+      if (parquetType.asGroupType().containsField("key_value")){
+        parquetSchema = parquetType.asGroupType().getType("key_value");
+      } else {
+        throw new ParquetDecodingException("Expected map but got: " + parquetType);
+      }
+
+      converter = newMessageConverter(parentBuilder, fieldDescriptor, parquetSchema);
+    }
+
+    @Override
+    public Converter getConverter(int fieldIndex) {
+      if (fieldIndex > 0) {
+        throw new ParquetDecodingException("Unexpected multiple fields in the MAP wrapper");
+      }
+      return converter;
+    }
+
+    @Override
+    public void start() {
+    }
+
+    @Override
+    public void end() {
+    }
   }
 }

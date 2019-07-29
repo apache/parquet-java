@@ -25,9 +25,6 @@ import org.apache.parquet.io.api.Binary;
 
 /**
  * base class to implement an encoding for a given column
- *
- * @author Julien Le Dem
- *
  */
 public abstract class ValuesWriter {
 
@@ -80,7 +77,7 @@ public abstract class ValuesWriter {
   }
 
   /**
-   * ( > {@link #getBufferedSize} )
+   * ( &gt; {@link #getBufferedSize} )
    * @return the allocated size of the buffer
    */
   abstract public long getAllocatedSize();

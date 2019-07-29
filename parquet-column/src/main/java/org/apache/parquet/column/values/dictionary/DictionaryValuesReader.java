@@ -34,9 +34,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Reads values that have been dictionary encoded
- *
- * @author Julien Le Dem
- *
  */
 public class DictionaryValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(DictionaryValuesReader.class);
@@ -52,11 +49,12 @@ public class DictionaryValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBuffer page, int offset)
+  public void initFromPage(int valueCount, ByteBufferInputStream stream)
       throws IOException {
-    this.in = new ByteBufferInputStream(page, offset, page.limit() - offset);
-    if (page.limit() - offset > 0) {
-      LOG.debug("init from page at offset {} for length {}", offset, (page.limit() - offset));
+    this.in = stream.remainingStream();
+    if (in.available() > 0) {
+      LOG.debug("init from page at offset {} for length {}",
+          stream.position(), stream.available());
       int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
       LOG.debug("bit width {}", bitWidth);
       decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);

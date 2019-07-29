@@ -22,9 +22,6 @@ import org.apache.parquet.ParquetRuntimeException;
 
 /**
  * thrown if the schema can not be converted
- *
- * @author Julien Le Dem
- *
  */
 public class SchemaConversionException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;

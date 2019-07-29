@@ -23,8 +23,6 @@ import org.apache.parquet.column.ColumnReader;
 
 /**
  * Provides ability to chain two filters together.
- *
- * @author Frank Austin Nothaft
  */
 public final class OrRecordFilter implements RecordFilter {
 
@@ -35,6 +33,7 @@ public final class OrRecordFilter implements RecordFilter {
    * Returns builder for creating an and filter.
    * @param filter1 The first filter to check.
    * @param filter2 The second filter to check.
+   * @return an or record filter
    */
   public static final UnboundRecordFilter or( final UnboundRecordFilter filter1, final UnboundRecordFilter filter2 ) {
     Preconditions.checkNotNull( filter1, "filter1" );

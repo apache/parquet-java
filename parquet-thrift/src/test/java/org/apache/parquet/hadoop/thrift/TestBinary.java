@@ -21,9 +21,17 @@ package org.apache.parquet.hadoop.thrift;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.UUID;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.junit.Assert;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -32,6 +40,8 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.thrift.ThriftParquetReader;
 import org.apache.parquet.thrift.ThriftParquetWriter;
 import org.apache.parquet.thrift.test.binary.StringAndBinary;
+
+import static org.junit.Assert.assertEquals;
 
 public class TestBinary {
   @Rule
@@ -57,10 +67,20 @@ public class TestBinary {
         build(path)
         .withThriftClass(StringAndBinary.class)
         .build();
+
+
     StringAndBinary record = reader.read();
     reader.close();
 
-    Assert.assertEquals("Should match after serialization round trip",
+    assertSchema(ParquetFileReader.readFooter(new Configuration(), path));
+    assertEquals("Should match after serialization round trip",
         expected, record);
+  }
+
+  private void assertSchema(ParquetMetadata parquetMetadata) {
+    List<Type> fields = parquetMetadata.getFileMetaData().getSchema().getFields();
+    assertEquals(2, fields.size());
+    assertEquals(Types.required(PrimitiveType.PrimitiveTypeName.BINARY).as(OriginalType.UTF8).id(1).named("s"), fields.get(0));
+    assertEquals(Types.required(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("b"), fields.get(1));
   }
 }

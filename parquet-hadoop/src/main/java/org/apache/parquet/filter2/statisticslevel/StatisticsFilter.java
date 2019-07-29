@@ -40,7 +40,6 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 
-import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
@@ -122,6 +121,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     if (value == null) {
+      // We don't know anything about the nulls in this chunk
+      if (!stats.isNumNullsSet()) {
+        return BLOCK_MIGHT_MATCH;
+      }
       // we are looking for records where v eq(null)
       // so drop if there are no nulls in this chunk
       return !hasNulls(meta);
@@ -133,8 +136,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     // drop if value < min || value > max
-    return value.compareTo(stats.genericGetMin()) < 0 || value.compareTo(stats.genericGetMax()) > 0;
+    return stats.compareMinToValue(value) > 0 || stats.compareMaxToValue(value) < 0;
   }
 
   @Override
@@ -166,14 +174,19 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return isAllNulls(meta);
     }
 
-    if (hasNulls(meta)) {
+    if (stats.isNumNullsSet() && hasNulls(meta)) {
       // we are looking for records where v notEq(someNonNull)
       // but this chunk contains nulls, we cannot drop it
       return BLOCK_MIGHT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     // drop if this is a column where min = max = value
-    return value.compareTo(stats.genericGetMin()) == 0 && value.compareTo(stats.genericGetMax()) == 0;
+    return stats.compareMinToValue(value) == 0 && stats.compareMaxToValue(value) == 0;
   }
 
   @Override
@@ -201,10 +214,15 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = lt.getValue();
 
     // drop if value <= min
-    return  value.compareTo(stats.genericGetMin()) <= 0;
+    return stats.compareMinToValue(value) >= 0;
   }
 
   @Override
@@ -232,10 +250,15 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = ltEq.getValue();
 
     // drop if value < min
-    return value.compareTo(stats.genericGetMin()) < 0;
+    return stats.compareMinToValue(value) > 0;
   }
 
   @Override
@@ -263,10 +286,15 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = gt.getValue();
 
     // drop if value >= max
-    return value.compareTo(stats.genericGetMax()) >= 0;
+    return stats.compareMaxToValue(value) <= 0;
   }
 
   @Override
@@ -294,10 +322,15 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     T value = gtEq.getValue();
 
-    // drop if value >= max
-    return value.compareTo(stats.genericGetMax()) > 0;
+    // drop if value > max
+    return stats.compareMaxToValue(value) < 0;
   }
 
   @Override
@@ -333,9 +366,9 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       // the column isn't in this file so all values are null.
       // lets run the udp with null value to see if it keeps null or not.
       if (inverted) {
-        return udp.keep(null);
+        return udp.acceptsNullValue();
       } else {
-        return !udp.keep(null);
+        return !udp.acceptsNullValue();
       }
     }
 
@@ -349,14 +382,20 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     if (isAllNulls(columnChunk)) {
       // lets run the udp with null value to see if it keeps null or not.
       if (inverted) {
-        return udp.keep(null);
+        return udp.acceptsNullValue();
       } else {
-        return !udp.keep(null);
+        return !udp.acceptsNullValue();
       }
     }
 
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
     org.apache.parquet.filter2.predicate.Statistics<T> udpStats =
-        new org.apache.parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax());
+      new org.apache.parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax(),
+        stats.comparator());
 
     if (inverted) {
       return udp.inverseCanDrop(udpStats);

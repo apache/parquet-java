@@ -40,14 +40,12 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 import org.apache.parquet.hadoop.thrift.ThriftToParquetFileWriter;
 import org.apache.parquet.hadoop.util.ContextUtil;
@@ -55,8 +53,9 @@ import org.apache.parquet.thrift.test.Name;
 
 import java.io.File;
 import java.io.ByteArrayOutputStream;
-import java.util.HashMap;
-import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TestParquetTBaseScheme {
   final String txtInputPath = "target/test-classes/names.txt";

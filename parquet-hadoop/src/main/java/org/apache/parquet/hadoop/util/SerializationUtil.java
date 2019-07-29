@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,13 +23,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.conf.Configuration;
 
-import org.apache.parquet.Closeables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,31 +45,21 @@ public final class SerializationUtil {
   private SerializationUtil() { }
 
   /**
-   * Reads an object (that was written using
-   * {@link #writeObjectToConfAsBase64}) from a configuration.
+   * Writes an object to a configuration.
    *
    * @param key for the configuration
+   * @param obj the object to write
    * @param conf to read from
-   * @return the read object, or null if key is not present in conf
-   * @throws IOException
+   * @throws IOException if there is an error while writing
    */
   public static void writeObjectToConfAsBase64(String key, Object obj, Configuration conf) throws IOException {
-    ByteArrayOutputStream baos = null;
-    GZIPOutputStream gos = null;
-    ObjectOutputStream oos = null;
-
-    try {
-      baos = new ByteArrayOutputStream();
-      gos = new GZIPOutputStream(baos);
-      oos = new ObjectOutputStream(gos);
-      oos.writeObject(obj);
-    } finally {
-      Closeables.close(oos);
-      Closeables.close(gos);
-      Closeables.close(baos);
+    try(ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      try(GZIPOutputStream gos = new GZIPOutputStream(baos);
+            ObjectOutputStream oos = new ObjectOutputStream(gos)) {
+        oos.writeObject(obj);
+      }
+      conf.set(key, new String(Base64.encodeBase64(baos.toByteArray()), StandardCharsets.UTF_8));
     }
-
-    conf.set(key, new String(Base64.encodeBase64(baos.toByteArray()), "UTF-8"));
   }
 
   /**
@@ -78,8 +68,9 @@ public final class SerializationUtil {
    *
    * @param key for the configuration
    * @param conf to read from
+   * @param <T> the Java type of the deserialized object
    * @return the read object, or null if key is not present in conf
-   * @throws IOException
+   * @throws IOException if there is an error while reading
    */
   @SuppressWarnings("unchecked")
   public static <T> T readObjectFromConfAsBase64(String key, Configuration conf) throws IOException {
@@ -88,25 +79,16 @@ public final class SerializationUtil {
       return null;
     }
 
-    byte[] bytes = Base64.decodeBase64(b64.getBytes("UTF-8"));
+    byte[] bytes = Base64.decodeBase64(b64.getBytes(StandardCharsets.UTF_8));
 
-    ByteArrayInputStream bais = null;
-    GZIPInputStream gis = null;
-    ObjectInputStream ois = null;
-
-    try {
-      bais = new ByteArrayInputStream(bytes);
-      gis = new GZIPInputStream(bais);
-      ois = new ObjectInputStream(gis);
+    try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+           GZIPInputStream gis = new GZIPInputStream(bais);
+           ObjectInputStream ois  = new ObjectInputStream(gis)) {
       return (T) ois.readObject();
     } catch (ClassNotFoundException e) {
       throw new IOException("Could not read object from config with key " + key, e);
     } catch (ClassCastException e) {
       throw new IOException("Couldn't cast object read from config with key " + key, e);
-    } finally {
-      Closeables.close(ois);
-      Closeables.close(gis);
-      Closeables.close(bais);
     }
   }
 }

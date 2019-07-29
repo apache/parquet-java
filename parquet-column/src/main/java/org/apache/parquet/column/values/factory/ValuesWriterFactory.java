@@ -25,7 +25,9 @@ import org.apache.parquet.column.values.ValuesWriter;
 /**
  * Can be overridden to allow users to manually test different strategies to create ValuesWriters.
  * To do this, the ValuesWriterFactory to be used must be passed to the {@link org.apache.parquet.column.ParquetProperties.Builder}.
- * <ul>Lifecycle of ValuesWriterFactories is:
+ * <p>
+ * Lifecycle of ValuesWriterFactories is:
+ * <ul>
  * <li> Initialized while creating a {@link org.apache.parquet.column.ParquetProperties} using the Builder</li>
  * <li> If the factory must read Hadoop config, it needs to implement the Configurable interface.
  * In addition to that, ParquetOutputFormat needs to be updated to pass in the Hadoop config via the setConf()
@@ -37,11 +39,14 @@ public interface ValuesWriterFactory {
 
   /**
    * Used to initialize the factory. This method is called before newValuesWriter()
+   * @param parquetProperties a write configuration
    */
   void initialize(ParquetProperties parquetProperties);
 
   /**
    * Creates a ValuesWriter to write values for the given column.
+   * @param descriptor a column descriptor
+   * @return a new values writer for values in the descriptor's column
    */
   ValuesWriter newValuesWriter(ColumnDescriptor descriptor);
 }

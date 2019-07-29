@@ -36,9 +36,6 @@ import org.apache.parquet.io.ParquetEncodingException;
  * To store in Pig using a thrift class
  * usage:
  * STORE 'foo' USING parquet.thrift.pig.ParquetThriftStorer('my.thrift.Class');
- *
- * @author Julien Le Dem
- *
  */
 public class ParquetThriftStorer extends StoreFunc {
 

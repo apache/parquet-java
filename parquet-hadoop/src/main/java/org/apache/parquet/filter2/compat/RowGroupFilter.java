@@ -51,6 +51,14 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
     DICTIONARY
   }
 
+  /**
+   * @param filter a filter
+   * @param blocks a list of block metadata to filter
+   * @param schema the file schema
+   * @return a filtered list of block metadata
+   * @deprecated will be removed in 2.0.0.
+   */
+  @Deprecated
   public static List<BlockMetaData> filterRowGroups(Filter filter, List<BlockMetaData> blocks, MessageType schema) {
     checkNotNull(filter, "filter");
     return filter.accept(new RowGroupFilter(blocks, schema));

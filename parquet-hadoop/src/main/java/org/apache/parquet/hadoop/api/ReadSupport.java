@@ -29,8 +29,6 @@ import org.apache.parquet.schema.MessageTypeParser;
 /**
  * Abstraction used by the {@link org.apache.parquet.hadoop.ParquetInputFormat} to materialize records
  *
- * @author Julien Le Dem
- *
  * @param <T> the type of the materialized record
  */
 abstract public class ReadSupport<T> {
@@ -105,9 +103,6 @@ abstract public class ReadSupport<T> {
 
   /**
    * information to read the file
-   *
-   * @author Julien Le Dem
-   *
    */
   public static final class ReadContext {
     private final MessageType requestedSchema;

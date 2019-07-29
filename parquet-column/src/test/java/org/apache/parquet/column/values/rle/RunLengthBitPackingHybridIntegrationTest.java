@@ -26,9 +26,6 @@ import org.apache.parquet.bytes.DirectByteBufferAllocator;
 
 import static org.junit.Assert.assertEquals;
 
-/**
- * @author Alex Levenson
- */
 public class RunLengthBitPackingHybridIntegrationTest {
 
   @Test
@@ -72,7 +69,7 @@ public class RunLengthBitPackingHybridIntegrationTest {
     numValues += 1000;
 
     ByteBuffer encodedBytes = encoder.toBytes().toByteBuffer();
-    ByteBufferInputStream in = new ByteBufferInputStream(encodedBytes);
+    ByteBufferInputStream in = ByteBufferInputStream.wrap(encodedBytes);
 
     RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
 

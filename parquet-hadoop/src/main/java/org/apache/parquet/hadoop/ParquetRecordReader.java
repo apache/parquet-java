@@ -18,14 +18,9 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.*;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.offsets;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
 import static org.apache.parquet.hadoop.ParquetInputFormat.SPLIT_FILES;
-import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -37,21 +32,21 @@ import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.parquet.CorruptDeltaByteArrays;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
-import org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel;
-import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.ContextUtil;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
@@ -61,8 +56,6 @@ import org.slf4j.LoggerFactory;
  * Reads the records from a block of a Parquet file
  *
  * @see ParquetInputFormat
- *
- * @author Julien Le Dem
  *
  * @param <T> type of the materialized records
  */
@@ -89,7 +82,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    * @param filter for filtering individual records
-   * @deprecated use {@link #ParquetRecordReader(ReadSupport, Filter)}
+   * @deprecated will be removed in 2.0.0.
    */
   @Deprecated
   public ParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {
@@ -158,13 +151,16 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     long[] rowGroupOffsets = split.getRowGroupOffsets();
 
     // if task.side.metadata is set, rowGroupOffsets is null
-    MetadataFilter metadataFilter = (rowGroupOffsets != null ?
-        offsets(rowGroupOffsets) :
-        range(split.getStart(), split.getEnd()));
+    ParquetReadOptions.Builder optionsBuilder = HadoopReadOptions.builder(configuration);
+    if (rowGroupOffsets != null) {
+      optionsBuilder.withOffsets(rowGroupOffsets);
+    } else {
+      optionsBuilder.withRange(split.getStart(), split.getEnd());
+    }
 
     // open a reader with the metadata filter
     ParquetFileReader reader = ParquetFileReader.open(
-        configuration, path, metadataFilter);
+        HadoopInputFile.fromPath(path, configuration), optionsBuilder.build());
 
     if (rowGroupOffsets != null) {
       // verify a row group was found for each offset
@@ -175,10 +171,6 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
             + " expected: " + Arrays.toString(rowGroupOffsets)
             + " found: " + blocks);
       }
-
-    } else {
-      // apply data filters
-      reader.filterRowGroups(getFilter(configuration));
     }
 
     if (!reader.getRowGroups().isEmpty()) {

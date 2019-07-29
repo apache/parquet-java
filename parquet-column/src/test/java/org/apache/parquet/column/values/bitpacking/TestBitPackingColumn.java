@@ -25,6 +25,7 @@ import static org.apache.parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.junit.Test;
 
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -175,13 +176,29 @@ public class TestBitPackingColumn {
       LOG.debug("bytes: {}", TestBitPacking.toString(bytes));
       assertEquals(type.toString(), expected, TestBitPacking.toString(bytes));
       ValuesReader r = type.getReader(bound);
-      r.initFromPage(vals.length, ByteBuffer.wrap(bytes), 0);
+      r.initFromPage(vals.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(bytes)));
       int[] result = new int[vals.length];
       for (int i = 0; i < result.length; i++) {
         result[i] = r.readInteger();
       }
       LOG.debug("result: {}", TestBitPacking.toString(result));
       assertArrayEquals(type + " result: " + TestBitPacking.toString(result), vals, result);
+
+      // Test skipping
+      r.initFromPage(vals.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(bytes)));
+      for (int i = 0; i < vals.length; i += 2) {
+        assertEquals(vals[i], r.readInteger());
+        r.skip();
+      }
+
+      // Test n-skipping
+      r.initFromPage(vals.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(bytes)));
+      int skipCount;
+      for (int i = 0; i < vals.length; i += skipCount + 1) {
+        skipCount = (vals.length - i) / 2;
+        assertEquals(vals[i], r.readInteger());
+        r.skip(skipCount);
+      }
     }
   }
 

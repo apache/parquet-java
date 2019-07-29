@@ -76,9 +76,13 @@ public class AvroConverters {
       }
     }
 
+    public T prepareDictionaryValue(T value) {
+      return value;
+    }
+
     @Override
     public void addValueFromDictionary(int dictionaryId) {
-      parent.add(dict[dictionaryId]);
+      parent.add(prepareDictionaryValue(dict[dictionaryId]));
     }
   }
 
@@ -219,6 +223,11 @@ public class AvroConverters {
     @Override
     public ByteBuffer convert(Binary binary) {
       return ByteBuffer.wrap(binary.getBytes());
+    }
+
+    @Override
+    public ByteBuffer prepareDictionaryValue(ByteBuffer value) {
+      return value.duplicate();
     }
   }
 

@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.column.impl;
 
+import java.util.Optional;
+import java.util.PrimitiveIterator;
+
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
@@ -37,9 +40,6 @@ import org.apache.parquet.schema.Type;
  * Implementation of the ColumnReadStore
  *
  * Initializes individual columns based on schema and converter
- *
- * @author Julien Le Dem
- *
  */
 public class ColumnReadStoreImpl implements ColumnReadStore {
 
@@ -52,6 +52,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
    * @param pageReadStore underlying page storage
    * @param recordConverter the user provided converter to materialize records
    * @param schema the schema we are reading
+   * @param createdBy writer version string from the Parquet file being read
    */
   public ColumnReadStoreImpl(PageReadStore pageReadStore,
                              GroupConverter recordConverter,
@@ -74,7 +75,14 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
 
   @Override
   public ColumnReader getColumnReader(ColumnDescriptor path) {
-    return newMemColumnReader(path, pageReadStore.getPageReader(path));
+    PrimitiveConverter converter = getPrimitiveConverter(path);
+    PageReader pageReader = pageReadStore.getPageReader(path);
+    Optional<PrimitiveIterator.OfLong> rowIndexes = pageReadStore.getRowIndexes();
+    if (rowIndexes.isPresent()) {
+      return new SynchronizingColumnReader(path, pageReader, converter, writerVersion, rowIndexes.get());
+    } else {
+      return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
+    }
   }
 
   private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {

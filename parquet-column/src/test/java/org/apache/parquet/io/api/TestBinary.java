@@ -248,4 +248,24 @@ public class TestBinary {
 
     testSerializable(bf, reused);
   }
+
+  @Test
+  public void testCompare() {
+    Binary b1 = Binary.fromCharSequence("aaaaaaaa");
+    Binary b2 = Binary.fromString("aaaaaaab");
+    Binary b3 = Binary.fromReusedByteArray("aaaaaaaaaaa".getBytes(), 1, 8);
+    Binary b4 = Binary.fromConstantByteBuffer(ByteBuffer.wrap("aaaaaaac".getBytes()));
+
+    assertTrue(b1.compareTo(b2) < 0);
+    assertTrue(b2.compareTo(b1) > 0);
+    assertTrue(b3.compareTo(b4) < 0);
+    assertTrue(b4.compareTo(b3) > 0);
+    assertTrue(b1.compareTo(b4) < 0);
+    assertTrue(b4.compareTo(b1) > 0);
+    assertTrue(b2.compareTo(b4) < 0);
+    assertTrue(b4.compareTo(b2) > 0);
+
+    assertTrue(b1.compareTo(b3) == 0);
+    assertTrue(b3.compareTo(b1) == 0);
+  }
 }

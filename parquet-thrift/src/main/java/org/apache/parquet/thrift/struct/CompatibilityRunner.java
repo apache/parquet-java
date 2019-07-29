@@ -19,8 +19,8 @@
 package org.apache.parquet.thrift.struct;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.thrift.TBase;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 
 import java.io.File;
@@ -37,8 +37,6 @@ import java.util.LinkedList;
  * java CompatibilityRunner compare-json {old_json_path} {new_json_path}
  * The above command will succeed when the new schema is compatible with the old schema.
  * It will fail when they are not compatible. For compatibility rules: {@link CompatibilityChecker}
- *
- * @author Tianshuo Deng
  */
 public class CompatibilityRunner {
   public static void main(String[] args) throws Exception {

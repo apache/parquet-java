@@ -20,9 +20,6 @@ package org.apache.parquet.column.values.bitpacking;
 
 /**
  * Factory for packing implementations
- *
- * @author Julien Le Dem
- *
  */
 public enum Packer {
 

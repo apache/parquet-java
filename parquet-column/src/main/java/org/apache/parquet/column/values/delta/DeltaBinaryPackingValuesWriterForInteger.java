@@ -20,7 +20,6 @@ package org.apache.parquet.column.values.delta;
 
 import java.io.IOException;
 
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -30,8 +29,6 @@ import org.apache.parquet.io.ParquetEncodingException;
 
 /**
  * Write integers (INT32) with delta encoding and binary packing.
- * 
- * @author Vassil Lunchev
  */
 public class DeltaBinaryPackingValuesWriterForInteger extends DeltaBinaryPackingValuesWriter {
   /**
@@ -150,7 +147,7 @@ public class DeltaBinaryPackingValuesWriterForInteger extends DeltaBinaryPacking
   /**
    * iterate through values in each mini block and calculate the bitWidths of max values.
    *
-   * @param miniBlocksToFlush
+   * @param miniBlocksToFlush number of miniblocks
    */
   private void calculateBitWidthsForDeltaBlockBuffer(int miniBlocksToFlush) {
     for (int miniBlockIndex = 0; miniBlockIndex < miniBlocksToFlush; miniBlockIndex++) {
@@ -170,7 +167,7 @@ public class DeltaBinaryPackingValuesWriterForInteger extends DeltaBinaryPacking
   /**
    * getBytes will trigger flushing block buffer, DO NOT write after getBytes() is called without calling reset()
    *
-   * @return
+   * @return a BytesInput that contains the encoded page data
    */
   @Override
   public BytesInput getBytes() {

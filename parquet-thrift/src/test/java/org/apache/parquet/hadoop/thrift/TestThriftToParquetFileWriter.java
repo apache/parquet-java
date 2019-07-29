@@ -19,8 +19,6 @@
 package org.apache.parquet.hadoop.thrift;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
@@ -53,6 +51,7 @@ import org.junit.Test;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.TestUtils;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 
@@ -122,21 +121,21 @@ public class TestThriftToParquetFileWriter {
         for(ColumnChunkMetaData cmd: bmd.getColumns()) {
           switch(cmd.getType()) {
             case INT32:
-              assertTrue(intStatsSmall.equals((IntStatistics)cmd.getStatistics()));
+              TestUtils.assertStatsValuesEqual(intStatsSmall, cmd.getStatistics());
               break;
             case INT64:
-              assertTrue(longStatsSmall.equals((LongStatistics)cmd.getStatistics()));
+              TestUtils.assertStatsValuesEqual(longStatsSmall, cmd.getStatistics());
               break;
             case DOUBLE:
-              assertTrue(doubleStatsSmall.equals((DoubleStatistics)cmd.getStatistics()));
+              TestUtils.assertStatsValuesEqual(doubleStatsSmall, cmd.getStatistics());
               break;
             case BOOLEAN:
-              assertTrue(boolStats.equals((BooleanStatistics)cmd.getStatistics()));
+              TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatistics());
               break;
             case BINARY:
               // there is also info_string that has no statistics
               if(cmd.getPath().toString() == "[test_string]")
-                assertTrue(binaryStatsSmall.equals((BinaryStatistics)cmd.getStatistics()));
+                TestUtils.assertStatsValuesEqual(binaryStatsSmall, cmd.getStatistics());
               break;
            }
         }
@@ -171,21 +170,21 @@ public class TestThriftToParquetFileWriter {
              case INT32:
                // testing the correct limits of an int32, there are also byte and short, tested earlier
                if(cmd.getPath().toString() == "[test_i32]")
-                 assertTrue(intStatsLarge.equals((IntStatistics)cmd.getStatistics()));
+                 TestUtils.assertStatsValuesEqual(intStatsLarge, cmd.getStatistics());
                break;
              case INT64:
-               assertTrue(longStatsLarge.equals((LongStatistics)cmd.getStatistics()));
+               TestUtils.assertStatsValuesEqual(longStatsLarge, cmd.getStatistics());
                break;
              case DOUBLE:
-               assertTrue(doubleStatsLarge.equals((DoubleStatistics)cmd.getStatistics()));
+               TestUtils.assertStatsValuesEqual(doubleStatsLarge, cmd.getStatistics());
                break;
              case BOOLEAN:
-               assertTrue(boolStats.equals((BooleanStatistics)cmd.getStatistics()));
+               TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatistics());
                break;
              case BINARY:
                // there is also info_string that has no statistics
                if(cmd.getPath().toString() == "[test_string]")
-                 assertTrue(binaryStatsLarge.equals((BinaryStatistics)cmd.getStatistics()));
+                 TestUtils.assertStatsValuesEqual(binaryStatsLarge, cmd.getStatistics());
                break;
            }
         }

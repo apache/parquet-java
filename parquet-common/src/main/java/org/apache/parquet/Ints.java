@@ -20,9 +20,8 @@ package org.apache.parquet;
 
 /**
  * Utilities for working with ints
- *
- * @author Alex Levenson
  */
+@Deprecated
 public final class Ints {
   private Ints() { }
 
@@ -33,6 +32,7 @@ public final class Ints {
    * @param value a long to be casted to an int
    * @return an int that is == to value
    * @throws IllegalArgumentException if value can't be casted to an int
+   * @deprecated replaced by {@link java.lang.Math#toIntExact(long)}
    */
   public static int checkedCast(long value) {
     int valueI = (int) value;

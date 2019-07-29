@@ -19,11 +19,37 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 
 public class BinaryStatistics extends Statistics<Binary> {
 
+  // A fake type object to be used to generate the proper comparator
+  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
+      .named("fake_binary_type");
+
   private Binary max;
   private Binary min;
+
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   */
+  @Deprecated
+  public BinaryStatistics() {
+    this(DEFAULT_FAKE_TYPE);
+  }
+
+  BinaryStatistics(PrimitiveType type) {
+    super(type);
+  }
+
+  private BinaryStatistics(BinaryStatistics other) {
+    super(other.type());
+    if (other.hasNonNullValue()) {
+      initializeStats(other.min, other.max);
+    }
+    setNumNulls(other.getNumNulls());
+  }
 
   @Override
   public void updateStats(Binary value) {
@@ -68,30 +94,29 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
+  String stringify(Binary value) {
+    return stringifier.stringify(value);
+  }
+
+  @Override
   public boolean isSmallerThan(long size) {
     return !hasNonNullValue() || ((min.length() + max.length()) < size);
   }
 
-  @Override
-  public String toString() {
-    if (this.hasNonNullValue())
-      return String.format("min: %s, max: %s, num_nulls: %d", min.toStringUsingUTF8(), max.toStringUsingUTF8(), this.getNumNulls());
-   else if (!this.isEmpty())
-      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
-   else
-      return "no stats for this column";
-  }
-
   /**
+   * @param min_value a min binary
+   * @param max_value a max binary
    * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
    */
   @Deprecated
   public void updateStats(Binary min_value, Binary max_value) {
-    if (min.compareTo(min_value) > 0) { min = min_value.copy(); }
-    if (max.compareTo(max_value) < 0) { max = max_value.copy(); }
+    if (comparator().compare(min, min_value) > 0) { min = min_value.copy(); }
+    if (comparator().compare(max, max_value) < 0) { max = max_value.copy(); }
   }
 
   /**
+   * @param min_value a min binary
+   * @param max_value a max binary
    * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
    */
   @Deprecated
@@ -112,6 +137,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   /**
+   * @return the max binary
    * @deprecated use {@link #genericGetMax()}, will be removed in 2.0.0
    */
   @Deprecated
@@ -120,6 +146,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   /**
+   * @return the min binary
    * @deprecated use {@link #genericGetMin()}, will be removed in 2.0.0
    */
   @Deprecated
@@ -128,6 +155,8 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   /**
+   * @param min a min binary
+   * @param max a max binary
    * @deprecated use {@link #updateStats(Binary)}, will be removed in 2.0.0
    */
   @Deprecated
@@ -135,5 +164,10 @@ public class BinaryStatistics extends Statistics<Binary> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public BinaryStatistics copy() {
+    return new BinaryStatistics(this);
   }
 }

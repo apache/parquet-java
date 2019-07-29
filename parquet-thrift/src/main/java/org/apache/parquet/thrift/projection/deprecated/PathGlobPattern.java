@@ -28,8 +28,6 @@ import java.util.regex.PatternSyntaxException;
  * full path separated by '/', and double star matching
  *
  * This is used for parsing values assigned to ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY
- *
- * @author Tianshuo Deng
  */
 @Deprecated
 public class PathGlobPattern {

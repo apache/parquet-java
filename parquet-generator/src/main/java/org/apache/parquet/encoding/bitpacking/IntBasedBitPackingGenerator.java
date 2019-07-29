@@ -37,9 +37,6 @@ import java.io.IOException;
  * The generated classes pack the values into arrays of ints (as opposed to arrays of bytes) based on a given bit width.
  *
  * Note: This is not really used for now as the hadoop API does not really let write int[]. We need to revisit this
- *
- * @author Julien Le Dem
- *
  */
 public class IntBasedBitPackingGenerator {
 
@@ -70,7 +67,7 @@ public class IntBasedBitPackingGenerator {
         fw.append(" * Adapted to pack from the Most Significant Bit first\n");
       }
       fw.append(" * \n");
-      fw.append(" * @author automatically generated\n");
+      fw.append(" * Automatically generated\n");
       fw.append(" * @see IntBasedBitPackingGenerator\n");
       fw.append(" *\n");
       fw.append(" */\n");

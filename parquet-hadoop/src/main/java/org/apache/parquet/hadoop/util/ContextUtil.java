@@ -197,6 +197,10 @@ public class ContextUtil {
   /**
    * Creates JobContext from a JobConf and jobId using the correct constructor
    * for based on Hadoop version. <code>jobId</code> could be null.
+   *
+   * @param conf a configuration
+   * @param jobId a job id
+   * @return a job context
    */
   public static JobContext newJobContext(Configuration conf, JobID jobId) {
     try {
@@ -212,8 +216,12 @@ public class ContextUtil {
   }
 
   /**
-   * Creates TaskAttempContext from a JobConf and jobId using the correct
+   * Creates TaskAttemptContext from a JobConf and jobId using the correct
    * constructor for based on Hadoop version.
+   *
+   * @param conf a configuration
+   * @param taskAttemptId a task attempt id
+   * @return a task attempt context
    */
   public static TaskAttemptContext newTaskAttemptContext(
       Configuration conf, TaskAttemptID taskAttemptId) {
@@ -230,6 +238,9 @@ public class ContextUtil {
   }
 
   /**
+   * @param name a string name
+   * @param displayName a string display name
+   * @param value an initial value
    * @return with Hadoop 2 : <code>new GenericCounter(args)</code>,<br>
    *         with Hadoop 1 : <code>new Counter(args)</code>
    */
@@ -249,6 +260,9 @@ public class ContextUtil {
   /**
    * Invoke getConfiguration() method on JobContext. Works with both
    * Hadoop 1 and 2.
+   *
+   * @param context a job context
+   * @return the context's configuration
    */
   public static Configuration getConfiguration(JobContext context) {
     try {
@@ -291,6 +305,11 @@ public class ContextUtil {
 
   /**
    * Invokes a method and rethrows any exception as runtime exceptions.
+   *
+   * @param method a method
+   * @param obj an object to run method on
+   * @param args an array of arguments to the method
+   * @return the result of the method call
    */
   private static Object invoke(Method method, Object obj, Object... args) {
     try {

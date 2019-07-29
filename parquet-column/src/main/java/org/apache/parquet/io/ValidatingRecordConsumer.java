@@ -36,9 +36,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 /**
  * Wraps a record consumer
  * Validates the record written against the schema and pass down the event to the wrapped consumer
- *
- * @author Julien Le Dem
- *
  */
 public class ValidatingRecordConsumer extends RecordConsumer {
   private static final Logger LOG = LoggerFactory.getLogger(ValidatingRecordConsumer.class);

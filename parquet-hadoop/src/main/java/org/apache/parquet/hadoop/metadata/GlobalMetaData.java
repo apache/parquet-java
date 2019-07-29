@@ -32,9 +32,6 @@ import org.apache.parquet.schema.MessageType;
 /**
  * Merged metadata when reading from multiple files.
  * THis is to allow schema evolution
- *
- * @author Julien Le Dem
- *
  */
 public class GlobalMetaData implements Serializable {
   private static final long serialVersionUID = 1L;

@@ -34,9 +34,6 @@ import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 /**
  * The list of thrift types
- *
- * @author Julien Le Dem
- *
  */
 public enum ThriftTypeID {
   STOP (TType.STOP),

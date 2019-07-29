@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
 
 import org.apache.parquet.column.Encoding;
@@ -39,6 +38,7 @@ import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Types;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.io.api.Binary.fromString;
@@ -62,7 +62,8 @@ import static org.apache.parquet.filter2.statisticslevel.StatisticsFilter.canDro
 
 public class TestStatisticsFilter {
 
-  private static ColumnChunkMetaData getIntColumnMeta(IntStatistics stats, long valueCount) {
+  private static ColumnChunkMetaData getIntColumnMeta(org.apache.parquet.column.statistics.Statistics<?> stats,
+      long valueCount) {
     return ColumnChunkMetaData.get(ColumnPath.get("int", "column"),
         PrimitiveTypeName.INT32,
         CompressionCodecName.GZIP,
@@ -71,7 +72,8 @@ public class TestStatisticsFilter {
         0L, 0L, valueCount, 0L, 0L);
   }
 
-  private static ColumnChunkMetaData getDoubleColumnMeta(DoubleStatistics stats, long valueCount) {
+  private static ColumnChunkMetaData getDoubleColumnMeta(org.apache.parquet.column.statistics.Statistics<?> stats,
+      long valueCount) {
     return ColumnChunkMetaData.get(ColumnPath.get("double", "column"),
         PrimitiveTypeName.DOUBLE,
         CompressionCodecName.GZIP,
@@ -87,13 +89,16 @@ public class TestStatisticsFilter {
 
   private static final IntStatistics intStats = new IntStatistics();
   private static final IntStatistics nullIntStats = new IntStatistics();
+  private static final org.apache.parquet.column.statistics.Statistics<?> emptyIntStats = org.apache.parquet.column.statistics.Statistics
+      .getBuilderForReading(Types.required(PrimitiveTypeName.INT32).named("test_int32")).build();
   private static final DoubleStatistics doubleStats = new DoubleStatistics();
+  private static final org.apache.parquet.column.statistics.Statistics<?> missingMinMaxDoubleStats = org.apache.parquet.column.statistics.Statistics
+      .getBuilderForReading(Types.required(PrimitiveTypeName.DOUBLE).named("test_double")).withNumNulls(100).build();
 
   static {
     intStats.setMinMax(10, 100);
     doubleStats.setMinMax(10, 100);
 
-    nullIntStats.setMinMax(0, 0);
     nullIntStats.setNumNulls(177);
   }
 
@@ -105,6 +110,9 @@ public class TestStatisticsFilter {
       getIntColumnMeta(nullIntStats, 177L), // column of all nulls
       getDoubleColumnMeta(doubleStats, 177L));
 
+  private static final List<ColumnChunkMetaData> missingMinMaxColumnMetas = Arrays.asList(
+      getIntColumnMeta(emptyIntStats, 177L),                // missing min/max values and numNulls => stats is empty
+      getDoubleColumnMeta(missingMinMaxDoubleStats, 177L)); // missing min/max, some null values
 
   @Test
   public void testEqNonNull() {
@@ -116,6 +124,9 @@ public class TestStatisticsFilter {
     // drop columns of all nulls when looking for non-null value
     assertTrue(canDrop(eq(intColumn, 0), nullColumnMetas));
     assertTrue(canDrop(eq(missingColumn, fromString("any")), columnMetas));
+
+    assertFalse(canDrop(eq(intColumn, 50), missingMinMaxColumnMetas));
+    assertFalse(canDrop(eq(doubleColumn, 50.0), missingMinMaxColumnMetas));
   }
 
   @Test
@@ -137,6 +148,9 @@ public class TestStatisticsFilter {
         getDoubleColumnMeta(doubleStats, 177L))));
 
     assertFalse(canDrop(eq(missingColumn, null), columnMetas));
+
+    assertFalse(canDrop(eq(intColumn, null), missingMinMaxColumnMetas));
+    assertFalse(canDrop(eq(doubleColumn, null), missingMinMaxColumnMetas));
   }
 
   @Test
@@ -163,6 +177,9 @@ public class TestStatisticsFilter {
         getDoubleColumnMeta(doubleStats, 177L))));
 
     assertFalse(canDrop(notEq(missingColumn, fromString("any")), columnMetas));
+
+    assertFalse(canDrop(notEq(intColumn, 50), missingMinMaxColumnMetas));
+    assertFalse(canDrop(notEq(doubleColumn, 50.0), missingMinMaxColumnMetas));
   }
 
   @Test
@@ -192,6 +209,9 @@ public class TestStatisticsFilter {
         getDoubleColumnMeta(doubleStats, 177L))));
 
     assertTrue(canDrop(notEq(missingColumn, null), columnMetas));
+
+    assertFalse(canDrop(notEq(intColumn, null), missingMinMaxColumnMetas));
+    assertFalse(canDrop(notEq(doubleColumn, null), missingMinMaxColumnMetas));
   }
 
   @Test
@@ -205,6 +225,9 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(lt(intColumn, 7), nullColumnMetas));
 
     assertTrue(canDrop(lt(missingColumn, fromString("any")), columnMetas));
+
+    assertFalse(canDrop(lt(intColumn, 0), missingMinMaxColumnMetas));
+    assertFalse(canDrop(lt(doubleColumn, 0.0), missingMinMaxColumnMetas));
   }
 
   @Test
@@ -218,6 +241,9 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(ltEq(intColumn, 7), nullColumnMetas));
 
     assertTrue(canDrop(ltEq(missingColumn, fromString("any")), columnMetas));
+
+    assertFalse(canDrop(ltEq(intColumn, -1), missingMinMaxColumnMetas));
+    assertFalse(canDrop(ltEq(doubleColumn, -0.1), missingMinMaxColumnMetas));
   }
 
   @Test
@@ -231,6 +257,9 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(gt(intColumn, 7), nullColumnMetas));
 
     assertTrue(canDrop(gt(missingColumn, fromString("any")), columnMetas));
+
+    assertFalse(canDrop(gt(intColumn, 0), missingMinMaxColumnMetas));
+    assertFalse(canDrop(gt(doubleColumn, 0.0), missingMinMaxColumnMetas));
   }
 
   @Test
@@ -244,6 +273,9 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(gtEq(intColumn, 7), nullColumnMetas));
 
     assertTrue(canDrop(gtEq(missingColumn, fromString("any")), columnMetas));
+
+    assertFalse(canDrop(gtEq(intColumn, 1), missingMinMaxColumnMetas));
+    assertFalse(canDrop(gtEq(doubleColumn, 0.1), missingMinMaxColumnMetas));
   }
 
   @Test
@@ -297,6 +329,26 @@ public class TestStatisticsFilter {
     }
   }
 
+  public static class AllPositiveUdp extends UserDefinedPredicate<Double> {
+    @Override
+    public boolean keep(Double value) {
+      if (value == null) {
+        return true;
+      }
+      throw new RuntimeException("this method should not be called with value != null");
+    }
+
+    @Override
+    public boolean canDrop(Statistics<Double> statistics) {
+      return statistics.getMin() <= 0.0;
+    }
+
+    @Override
+    public boolean inverseCanDrop(Statistics<Double> statistics) {
+      return statistics.getMin() > 0.0;
+    }
+  }
+
   @Test
   public void testUdp() {
     FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class);
@@ -307,6 +359,8 @@ public class TestStatisticsFilter {
 
     FilterPredicate udpKeepMissingColumn = userDefined(missingColumn2, SevensAndEightsUdp.class);
     FilterPredicate invUdpKeepMissingColumn = LogicalInverseRewriter.rewrite(not(userDefined(missingColumn2, SevensAndEightsUdp.class)));
+
+    FilterPredicate allPositivePred = userDefined(doubleColumn, AllPositiveUdp.class);
 
     IntStatistics seven = new IntStatistics();
     seven.setMinMax(7, 7);
@@ -392,6 +446,8 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(invUdpKeepMissingColumn, Arrays.asList(
         getIntColumnMeta(neither, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(allPositivePred, missingMinMaxColumnMetas));
   }
 
   @Test

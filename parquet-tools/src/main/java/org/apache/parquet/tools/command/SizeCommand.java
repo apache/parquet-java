@@ -82,6 +82,11 @@ public class SizeCommand extends ArgsOnlyCommand {
   }
 
   @Override
+  public String getCommandDescription() {
+    return "Prints the size of Parquet file(s)";
+  }
+
+  @Override
   public void execute(CommandLine options) throws Exception {
     super.execute(options);
 

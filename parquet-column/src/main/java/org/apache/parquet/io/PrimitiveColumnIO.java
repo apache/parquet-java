@@ -30,10 +30,6 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * Primitive level of the IO structure
- *
- *
- * @author Julien Le Dem
- *
  */
 public class PrimitiveColumnIO extends ColumnIO {
 //  private static final Logger logger = Logger.getLogger(PrimitiveColumnIO.class.getName());
@@ -52,10 +48,9 @@ public class PrimitiveColumnIO extends ColumnIO {
     super.setLevels(r, d, fieldPath, fieldIndexPath, repetition, path);
     PrimitiveType type = getType().asPrimitiveType();
     this.columnDescriptor = new ColumnDescriptor(
-        fieldPath, 
-        type.getPrimitiveTypeName(),
-        type.getTypeLength(),
-        getRepetitionLevel(), 
+        fieldPath,
+        type,
+        getRepetitionLevel(),
         getDefinitionLevel());
     this.path = path.toArray(new ColumnIO[path.size()]);
   }

@@ -26,9 +26,6 @@ import java.nio.ByteBuffer;
  * packing unpacking treats:
  *  - n values at a time (with n % 8 == 0)
  *  - bitWidth * (n/8) bytes at a time.
- *
- * @author Julien Le Dem
- *
  */
 public abstract class BytePacker {
 
@@ -77,6 +74,10 @@ public abstract class BytePacker {
 
   /**
    * Compatibility API
+   * @param input the input bytes
+   * @param inPos where to read from in input
+   * @param output the output values
+   * @param outPos where to write to in output
    */
   @Deprecated
   public void unpack8Values(final byte[] input, final int inPos, final int[] output, final int outPos) {
@@ -95,6 +96,10 @@ public abstract class BytePacker {
 
   /**
    * Compatibility API
+   * @param input the input bytes
+   * @param inPos where to read from in input
+   * @param output the output values
+   * @param outPos where to write to in output
    */
   @Deprecated
   public void unpack32Values(byte[] input, int inPos, int[] output, int outPos) {
