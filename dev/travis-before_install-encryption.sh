@@ -20,7 +20,7 @@
 # travis-before_install.sh. It is run for the bloom-filter branch only.
 ################################################################################
 
-git clone -b encryption --single-branch https://github.com/apache/parquet-format.git
+git clone https://github.com/apache/parquet-format.git
 cd parquet-format
 mvn install -DskipTests
 cd ..

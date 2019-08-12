@@ -1,4 +1,5 @@
 language: java
+jdk: openjdk8
 before_install:
   - date
   - sudo apt-get update -qq
