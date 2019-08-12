@@ -23,7 +23,7 @@
 cd ..
 git clone https://github.com/apache/parquet-format.git
 cd parquet-format
-mvn install -DskipTests
+mvn install -DskipTests --batch-mode
 cd $TRAVIS_BUILD_DIR
 
 
