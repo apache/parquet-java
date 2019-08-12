@@ -20,8 +20,8 @@
 # travis-before_install.sh. It is run for the bloom-filter branch only.
 ################################################################################
 
+cd $TRAVIS_BUILD_DIR
 git clone https://github.com/apache/parquet-format.git
-cd parquet-format
-mvn install -DskipTests
-cd ..
+mvn -f $TRAVIS_BUILD_DIR/apache/parquet-format/pom.xm install -DskipTests
+cd -
 
