@@ -29,13 +29,13 @@ public interface BlockCipher{
     /**
      * Encrypts the plaintext.
      * 
-     * @param plaintext The plaintext starts at offset 0 of the input value, and fills up the entire byte array.
-     * @param AAD Encryption AAD (ignored in case of CTR cipher)
+     * @param plaintext - starts at offset 0 of the input, and fills up the entire byte array.
+     * @param AAD - Additional Authenticated Data for the encryption (ignored in case of CTR cipher)
      * @return lengthAndCiphertext The first 4 bytes of the returned value are the ciphertext length (little endian int). 
      * The ciphertext starts at offset 4  and fills up the rest of the returned byte array.
      * The ciphertext includes the nonce and (in case of GCM cipher) the tag, as detailed in the 
      * Parquet Modular Encryption specification.
-     * @throws IOException
+     * @throws IOException thrown upon any crypto problem encountered during encryption
      */
     public byte[] encrypt(byte[] plaintext, byte[] AAD) throws IOException;
   }
@@ -45,25 +45,25 @@ public interface BlockCipher{
     /**
      * Decrypts the ciphertext. 
      * 
-     * @param lengthAndCiphertext The first 4 bytes of the input value are the ciphertext length (little endian int). 
+     * @param lengthAndCiphertext - The first 4 bytes of the input are the ciphertext length (little endian int). 
      * The ciphertext starts at offset 4  and fills up the rest of the input byte array.
      * The ciphertext includes the nonce and (in case of GCM cipher) the tag, as detailed in the 
      * Parquet Modular Encryption specification.
-     * @param AAD Encryption AAD (ignored in case of CTR cipher)
-     * @return plaintext The plaintext starts at offset 0 of the input value, and fills up the entire byte array.
-     * @throws IOException
+     * @param AAD - Additional Authenticated Data for the decryption (ignored in case of CTR cipher)
+     * @return plaintext - starts at offset 0 of the output value, and fills up the entire byte array.
+     * @throws IOException thrown upon any crypto problem encountered during decryption
      */
     public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD) throws IOException;
     
     /**
      * Convenience decryption method that reads the length and ciphertext from the input stream.
      * 
-     * @param from
-     * @param AAD
-     * @return plaintext The plaintext starts at offset 0 of the input value, and fills up the entire byte array.
-     * @throws IOException
+     * @param from Input stream with length and ciphertext.
+     * @param AAD - Additional Authenticated Data for the decryption (ignored in case of CTR cipher)
+     * @return plaintext -  starts at offset 0 of the output, and fills up the entire byte array.
+     * @throws IOException thrown upon any crypto or IO problem encountered during decryption
      */
-    public byte[] decryptInputStream(InputStream from, byte[] AAD) throws IOException;
+    public byte[] decrypt(InputStream from, byte[] AAD) throws IOException;
   }
 }
 

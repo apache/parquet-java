@@ -57,6 +57,8 @@ import org.apache.parquet.format.event.TypedConsumer.StringConsumer;
  * We use the TCompactProtocol to serialize metadata
  */
 public class Util {
+  
+  private final static int INIT_MEM_ALLOC_ENCR_BUFFER = 100;
 
   public static void writeColumnIndex(ColumnIndex columnIndex, OutputStream to) throws IOException {
     writeColumnIndex(columnIndex, to, (BlockCipher.Encryptor) null, (byte[]) null);
@@ -251,7 +253,7 @@ public class Util {
     readFileMetaData(from, consumer, skipRowGroups, (BlockCipher.Decryptor) null, (byte[]) null);
   }
 
-  public static void readFileMetaData(InputStream input, final FileMetaDataConsumer consumer, 
+  public static void readFileMetaData(final InputStream input, final FileMetaDataConsumer consumer, 
       boolean skipRowGroups, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     try {
       DelegatingFieldConsumer eventConsumer = fieldConsumer()
@@ -302,12 +304,12 @@ public class Util {
         })));
       }
       
-      InputStream from;
+      final InputStream from;
       if (null == decryptor) {
         from = input;
       }
       else {
-        byte[] plainText =  decryptor.decryptInputStream(input, AAD);
+        byte[] plainText =  decryptor.decrypt(input, AAD);
         from = new ByteArrayInputStream(plainText);
       }
       new EventBasedThriftReader(protocol(from)).readStruct(eventConsumer);
@@ -329,13 +331,13 @@ public class Util {
   }
   
 
-  private static <T extends TBase<?,?>> T read(InputStream input, T tbase, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  private static <T extends TBase<?,?>> T read(final InputStream input, T tbase, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     InputStream from;
     if (null == decryptor) {
       from = input;
     }
     else {
-      byte[] plainText = decryptor.decryptInputStream(input, AAD);
+      byte[] plainText = decryptor.decrypt(input, AAD);
       from = new ByteArrayInputStream(plainText);
     }
     
@@ -357,14 +359,12 @@ public class Util {
       }
     }
     // Serialize and encrypt the structure
-    TMemoryBuffer thriftMemoryBuffer = new TMemoryBuffer(100);
-    try {
+    try (TMemoryBuffer thriftMemoryBuffer = new TMemoryBuffer(INIT_MEM_ALLOC_ENCR_BUFFER)) {
       tbase.write(new InterningProtocol(new TCompactProtocol(thriftMemoryBuffer)));
+      byte[] encryptedBuffer = encryptor.encrypt(thriftMemoryBuffer.getArray(), AAD);
+      to.write(encryptedBuffer);
     } catch (TException e) {
       throw new IOException("can not write " + tbase, e);
     }
-    byte[] encryptedBuffer = encryptor.encrypt(thriftMemoryBuffer.getArray(), AAD);
-    to.write(encryptedBuffer);
   }
 }
-
