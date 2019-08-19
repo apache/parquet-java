@@ -57,58 +57,58 @@ import org.apache.parquet.format.event.TypedConsumer.StringConsumer;
  * We use the TCompactProtocol to serialize metadata
  */
 public class Util {
-  
+
   private final static int INIT_MEM_ALLOC_ENCR_BUFFER = 100;
 
   public static void writeColumnIndex(ColumnIndex columnIndex, OutputStream to) throws IOException {
-    writeColumnIndex(columnIndex, to, (BlockCipher.Encryptor) null, (byte[]) null);
+    writeColumnIndex(columnIndex, to, null, null);
   }
-  
+
   public static void writeColumnIndex(ColumnIndex columnIndex, OutputStream to, 
       BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
     write(columnIndex, to, encryptor, AAD);
   }
 
   public static ColumnIndex readColumnIndex(InputStream from) throws IOException {
-    return readColumnIndex(from, (BlockCipher.Decryptor) null, (byte[]) null);
+    return readColumnIndex(from, null, null);
   }
-  
+
   public static ColumnIndex readColumnIndex(InputStream from, 
       BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     return read(from, new ColumnIndex(), decryptor, AAD);
   }
 
   public static void writeOffsetIndex(OffsetIndex offsetIndex, OutputStream to) throws IOException {
-    writeOffsetIndex(offsetIndex, to, (BlockCipher.Encryptor) null, (byte[]) null);
+    writeOffsetIndex(offsetIndex, to, null, null);
   }
-  
+
   public static void writeOffsetIndex(OffsetIndex offsetIndex, OutputStream to, 
       BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
     write(offsetIndex, to, encryptor, AAD);
   }
 
   public static OffsetIndex readOffsetIndex(InputStream from) throws IOException {
-    return readOffsetIndex(from, (BlockCipher.Decryptor) null, (byte[]) null);
+    return readOffsetIndex(from, null, null);
   }
-  
+
   public static OffsetIndex readOffsetIndex(InputStream from, 
       BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     return read(from, new OffsetIndex(), decryptor, AAD);
   }
 
   public static void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
-    writePageHeader(pageHeader, to, (BlockCipher.Encryptor) null, (byte[]) null);
+    writePageHeader(pageHeader, to, null, null);
   }
-  
+
   public static void writePageHeader(PageHeader pageHeader, OutputStream to, 
       BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
     write(pageHeader, to, encryptor, AAD);
   }
 
   public static PageHeader readPageHeader(InputStream from) throws IOException {
-    return readPageHeader(from, (BlockCipher.Decryptor) null, (byte[]) null);
+    return readPageHeader(from, null, null);
   }
-  
+
   public static PageHeader readPageHeader(InputStream from, 
       BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     return read(from, new PageHeader(), decryptor, AAD);
@@ -116,33 +116,33 @@ public class Util {
 
   public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, 
       OutputStream to) throws IOException {
-    writeFileMetaData(fileMetadata, to, (BlockCipher.Encryptor) null, (byte[]) null);
+    writeFileMetaData(fileMetadata, to, null, null);
   }
-  
+
   public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, 
       OutputStream to, BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
     write(fileMetadata, to, encryptor, AAD);
   }
 
   public static FileMetaData readFileMetaData(InputStream from) throws IOException {
-    return readFileMetaData(from, (BlockCipher.Decryptor) null, (byte[]) null);
+    return readFileMetaData(from, null, null);
   }
-  
+
   public static FileMetaData readFileMetaData(InputStream from, 
       BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     return read(from, new FileMetaData(), decryptor, AAD);
   }
-  
+
   public static void writeColumnMetaData(ColumnMetaData columnMetaData, OutputStream to, 
       BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
     write(columnMetaData, to, encryptor, AAD);
   }
-  
+
   public static ColumnMetaData readColumnMetaData(InputStream from, 
       BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     return read(from, new ColumnMetaData(), decryptor, AAD);
   }
-  
+
   /**
    * reads the meta data from the stream
    * @param from the stream to read the metadata from
@@ -153,7 +153,7 @@ public class Util {
   public static FileMetaData readFileMetaData(InputStream from, boolean skipRowGroups) throws IOException {
     return readFileMetaData(from, skipRowGroups, (BlockCipher.Decryptor) null, (byte[]) null);
   }
-  
+
   public static FileMetaData readFileMetaData(InputStream from, boolean skipRowGroups, 
       BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     FileMetaData md = new FileMetaData();
@@ -164,13 +164,13 @@ public class Util {
     }
     return md;
   }
-  
+
   public static void writeFileCryptoMetaData(org.apache.parquet.format.FileCryptoMetaData cryptoMetadata, OutputStream to) throws IOException { 
-    write(cryptoMetadata, to, (BlockCipher.Encryptor) null, (byte[]) null);
+    write(cryptoMetadata, to, null, null);
   }
-  
+
   public static FileCryptoMetaData readFileCryptoMetaData(InputStream from) throws IOException {
-    return read(from, new FileCryptoMetaData(), (BlockCipher.Decryptor) null, (byte[]) null);
+    return read(from, new FileCryptoMetaData(), null, null);
   }
 
   /**
@@ -228,7 +228,7 @@ public class Util {
     public void addKeyValueMetaData(KeyValue kv) {
       md.addToKey_value_metadata(kv);
     }
-    
+
     @Override
     public void setEncryptionAlgorithm(EncryptionAlgorithm encryptionAlgorithm) {
       md.setEncryption_algorithm(encryptionAlgorithm);
@@ -241,60 +241,60 @@ public class Util {
   }
 
   public static void readFileMetaData(InputStream from, FileMetaDataConsumer consumer) throws IOException {
-    readFileMetaData(from, consumer, (BlockCipher.Decryptor) null, (byte[]) null);
+    readFileMetaData(from, consumer, null, null);
   }
-  
+
   public static void readFileMetaData(InputStream from, FileMetaDataConsumer consumer, 
       BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     readFileMetaData(from, consumer, false, decryptor, AAD);
   }
-  
+
   public static void readFileMetaData(InputStream from, final FileMetaDataConsumer consumer, boolean skipRowGroups) throws IOException {
-    readFileMetaData(from, consumer, skipRowGroups, (BlockCipher.Decryptor) null, (byte[]) null);
+    readFileMetaData(from, consumer, skipRowGroups, null, null);
   }
 
   public static void readFileMetaData(final InputStream input, final FileMetaDataConsumer consumer, 
       boolean skipRowGroups, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     try {
       DelegatingFieldConsumer eventConsumer = fieldConsumer()
-      .onField(VERSION, new I32Consumer() {
-        @Override
-        public void consume(int value) {
-          consumer.setVersion(value);
-        }
-      }).onField(SCHEMA, listOf(SchemaElement.class, new Consumer<List<SchemaElement>>() {
-        @Override
-        public void consume(List<SchemaElement> schema) {
-          consumer.setSchema(schema);
-        }
-      })).onField(NUM_ROWS, new I64Consumer() {
-        @Override
-        public void consume(long value) {
-          consumer.setNumRows(value);
-        }
-      }).onField(KEY_VALUE_METADATA, listElementsOf(struct(KeyValue.class, new Consumer<KeyValue>() {
-        @Override
-        public void consume(KeyValue kv) {
-          consumer.addKeyValueMetaData(kv);
-        }
-      }))).onField(CREATED_BY, new StringConsumer() {
-        @Override
-        public void consume(String value) {
-          consumer.setCreatedBy(value);
-        }
-      }).onField(ENCRYPTION_ALGORITHM, struct(EncryptionAlgorithm.class, new Consumer<EncryptionAlgorithm>() {
-        @Override
-        public void consume(EncryptionAlgorithm encryptionAlgorithm) {
-          consumer.setEncryptionAlgorithm(encryptionAlgorithm);
-        }
-      })).onField(FOOTER_SIGNING_KEY_METADATA, new StringConsumer() {
-        @Override
-        public void consume(String value) {
-          byte[] keyMetadata = value.getBytes(StandardCharsets.UTF_8);
-          consumer.setFooterSigningKeyMetadata(keyMetadata);
-        }
-      });
-        
+          .onField(VERSION, new I32Consumer() {
+            @Override
+            public void consume(int value) {
+              consumer.setVersion(value);
+            }
+          }).onField(SCHEMA, listOf(SchemaElement.class, new Consumer<List<SchemaElement>>() {
+            @Override
+            public void consume(List<SchemaElement> schema) {
+              consumer.setSchema(schema);
+            }
+          })).onField(NUM_ROWS, new I64Consumer() {
+            @Override
+            public void consume(long value) {
+              consumer.setNumRows(value);
+            }
+          }).onField(KEY_VALUE_METADATA, listElementsOf(struct(KeyValue.class, new Consumer<KeyValue>() {
+            @Override
+            public void consume(KeyValue kv) {
+              consumer.addKeyValueMetaData(kv);
+            }
+          }))).onField(CREATED_BY, new StringConsumer() {
+            @Override
+            public void consume(String value) {
+              consumer.setCreatedBy(value);
+            }
+          }).onField(ENCRYPTION_ALGORITHM, struct(EncryptionAlgorithm.class, new Consumer<EncryptionAlgorithm>() {
+            @Override
+            public void consume(EncryptionAlgorithm encryptionAlgorithm) {
+              consumer.setEncryptionAlgorithm(encryptionAlgorithm);
+            }
+          })).onField(FOOTER_SIGNING_KEY_METADATA, new StringConsumer() {
+            @Override
+            public void consume(String value) {
+              byte[] keyMetadata = value.getBytes(StandardCharsets.UTF_8);
+              consumer.setFooterSigningKeyMetadata(keyMetadata);
+            }
+          });
+
       if (!skipRowGroups) {
         eventConsumer = eventConsumer.onField(ROW_GROUPS, listElementsOf(struct(RowGroup.class, new Consumer<RowGroup>() {
           @Override
@@ -303,7 +303,7 @@ public class Util {
           }
         })));
       }
-      
+
       final InputStream from;
       if (null == decryptor) {
         from = input;
@@ -329,18 +329,17 @@ public class Util {
   private static InterningProtocol protocol(TIOStreamTransport t) {
     return new InterningProtocol(new TCompactProtocol(t));
   }
-  
+
 
   private static <T extends TBase<?,?>> T read(final InputStream input, T tbase, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
-    InputStream from;
+    final InputStream from;
     if (null == decryptor) {
       from = input;
-    }
-    else {
+    } else {
       byte[] plainText = decryptor.decrypt(input, AAD);
       from = new ByteArrayInputStream(plainText);
     }
-    
+
     try {
       tbase.read(protocol(from));
       return tbase;
@@ -368,3 +367,4 @@ public class Util {
     }
   }
 }
+

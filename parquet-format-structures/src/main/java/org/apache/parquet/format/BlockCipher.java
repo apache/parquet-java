@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public interface BlockCipher{
-  
+
 
   public interface Encryptor{
     /**
@@ -54,7 +54,7 @@ public interface BlockCipher{
      * @throws IOException thrown upon any crypto problem encountered during decryption
      */
     public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD) throws IOException;
-    
+
     /**
      * Convenience decryption method that reads the length and ciphertext from the input stream.
      * 
@@ -66,5 +66,4 @@ public interface BlockCipher{
     public byte[] decrypt(InputStream from, byte[] AAD) throws IOException;
   }
 }
-
 
