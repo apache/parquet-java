@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  *   Types.optional(INT32).named("number");
  * </pre>
  * <p>
- * The required(PrimitiveTypeName) factory method produces a primitive
+ * The required({@link PrimitiveTypeName}) factory method produces a primitive
  * type builder, and the {@link PrimitiveBuilder#named(String)} builds the
  * {@link PrimitiveType}. Between {@code required} and {@code named}, other
  * builder methods can be used to add type annotations or other type metadata:
@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
  *   Types.optional(FIXED_LEN_BYTE_ARRAY).length(20).named("sha1");
  * </pre>
  * <p>
- * Optional types are built using optional(PrimitiveTypeName) to get
+ * Optional types are built using optional({@link PrimitiveTypeName}) to get
  * the builder.
  * <p>
  * Groups are built similarly, using {@code requiredGroup()} (or the optional
