@@ -36,6 +36,8 @@ import org.apache.parquet.schema.MessageType;
  */
 abstract public class WriteSupport<T> {
 
+  public boolean needCheckRowSize = false;
+
   /**
    * information to be persisted in the file
    */
