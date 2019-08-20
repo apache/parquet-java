@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
  *   Types.optional(FIXED_LEN_BYTE_ARRAY).length(20).named("sha1");
  * </pre>
  * <p>
- * Optional types are built using optional({@link PrimitiveTypeName}) to get
+ * Optional types are built using {@link #optional(PrimitiveTypeName)} to get
  * the builder.
  * <p>
  * Groups are built similarly, using {@code requiredGroup()} (or the optional
@@ -94,7 +94,7 @@ import org.slf4j.LoggerFactory;
  *        .named("User")
  * </pre>
  * <p>
- * Maps are built similarly, using {@code requiredMap()} (or the optionalMap()
+ * Maps are built similarly, using {@code requiredMap()} (or the  {@link #optionalMap()}
  * version) to return a map builder. Map builders provide {@code key} to add
  * a primitive as key or a {@code groupKey} to add a group as key. {@code key()}
  * returns a MapKey builder, which extends a primitive builder. On the other hand,
