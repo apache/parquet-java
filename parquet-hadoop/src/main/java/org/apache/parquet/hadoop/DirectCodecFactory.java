@@ -33,6 +33,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.hadoop.io.compress.DoNotPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
@@ -182,6 +183,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     public void release() {
       DirectCodecPool.INSTANCE.returnDecompressor(decompressor);
     }
+
+    @Override
+    public boolean isPooled() {
+      return true;
+    }
   }
 
   /**
@@ -226,6 +232,10 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       extraDecompressor.release();
     }
 
+    @Override
+    public boolean isPooled() {
+      return true;
+    }
   }
 
   public class NoopDecompressor extends BytesDecompressor {
@@ -246,6 +256,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
     @Override
     public void release() {}
+
+    @Override
+    public boolean isPooled() {
+      return false;
+    }
 
   }
 
@@ -270,6 +285,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
     @Override
     public void release() {}
+
+    @Override
+    public boolean isPooled() {
+      return extraDecompressor.isPooled();
+    }
   }
 
   public class SnappyCompressor extends BytesCompressor {
