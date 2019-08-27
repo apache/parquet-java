@@ -196,9 +196,9 @@ public class ConvertCSVCommand extends BaseCommand {
         "# Create a Parquet file from a CSV file",
         "sample.csv -o sample.parquet --schema schema.avsc",
         "# Create a Parquet file in HDFS from local CSV",
-        "path/to/sample.csv hdfs:/user/me/sample.parquet --schema schema.avsc",
+        "path/to/sample.csv -o hdfs:/user/me/sample.parquet --schema schema.avsc",
         "# Create an Avro file from CSV data in S3",
-        "s3:/data/path/sample.csv sample.avro --format avro --schema s3:/schemas/schema.avsc"
+        "s3:/data/path/sample.csv -o sample.avro --format avro --schema s3:/schemas/schema.avsc"
     );
   }
 }
