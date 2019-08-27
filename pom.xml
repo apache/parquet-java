@@ -108,28 +108,15 @@
   </properties>
 
   <modules>
-    <module>parquet-arrow</module>
     <module>parquet-avro</module>
     <module>parquet-benchmarks</module>
-    <module>parquet-cascading</module>
-    <module>parquet-cascading3</module>
-    <module>parquet-cli</module>
     <module>parquet-column</module>
     <module>parquet-common</module>
     <module>parquet-encoding</module>
     <module>parquet-generator</module>
     <module>parquet-hadoop</module>
     <module>parquet-jackson</module>
-    <module>parquet-pig</module>
-    <module>parquet-pig-bundle</module>
-    <module>parquet-protobuf</module>
-    <module>parquet-scala</module>
-    <module>parquet-scrooge</module>
-    <module>parquet-thrift</module>
     <module>parquet-hadoop-bundle</module>
-    <module>parquet-hive</module>
-    <module>parquet-hive-bundle</module>
-    <module>parquet-tools</module>
   </modules>
 
   <dependencies>
@@ -446,47 +433,6 @@
             </goals>
          </execution>
        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.rat</groupId>
-        <artifactId>apache-rat-plugin</artifactId>
-        <version>0.12</version>
-        <executions>
-          <execution>
-            <phase>test</phase>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <consoleOutput>true</consoleOutput>
-          <excludes>
-            <exclude>**/*.parquet</exclude>
-            <exclude>**/*.avro</exclude>
-            <exclude>**/*.json</exclude>
-            <exclude>**/names.txt</exclude> <!-- parquet-cascading test data -->
-            <exclude>**/*.avsc</exclude>
-            <exclude>**/*.iml</exclude>
-            <exclude>**/*.log</exclude>
-            <exclude>**/*.md.vm</exclude>
-            <exclude>**/.classpath</exclude>
-            <exclude>**/.project</exclude>
-            <exclude>**/.settings/**</exclude>
-            <exclude>**/build/**</exclude>
-            <exclude>**/target/**</exclude>
-            <exclude>.git/**</exclude>
-            <exclude>.gitignore</exclude>
-            <exclude>.idea/**</exclude>
-            <exclude>*/jdiff/*.xml</exclude>
-            <exclude>.travis.yml</exclude>
-            <exclude>licenses/**</exclude>
-            <exclude>protobuf_install/**</exclude>
-            <exclude>thrift-${thrift.version}/**</exclude>
-            <exclude>thrift-${thrift.version}.tar.gz</exclude>
-            <exclude>**/dependency-reduced-pom.xml</exclude>
-          </excludes>
-        </configuration>
       </plugin>
     </plugins>
   </build>
