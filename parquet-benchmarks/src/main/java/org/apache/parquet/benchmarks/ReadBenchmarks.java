@@ -20,6 +20,8 @@ package org.apache.parquet.benchmarks;
 
 import org.apache.hadoop.fs.Path;
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.infra.Blackhole;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -47,35 +49,35 @@ public class ReadBenchmarks {
     reader.close();
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsDefaultBlockAndPageSizeUncompressed(Blackhole blackhole)
           throws IOException
   {
     read(file_1M, ONE_MILLION, blackhole);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsBS256MPS4MUncompressed(Blackhole blackhole)
           throws IOException
   {
     read(file_1M_BS256M_PS4M, ONE_MILLION, blackhole);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsBS256MPS8MUncompressed(Blackhole blackhole)
           throws IOException
   {
     read(file_1M_BS256M_PS8M, ONE_MILLION, blackhole);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsBS512MPS4MUncompressed(Blackhole blackhole)
           throws IOException
   {
     read(file_1M_BS512M_PS4M, ONE_MILLION, blackhole);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsBS512MPS8MUncompressed(Blackhole blackhole)
           throws IOException
   {
@@ -90,14 +92,14 @@ public class ReadBenchmarks {
 //    read(parquetFile_1M_LZO, ONE_MILLION, blackhole);
 //  }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsDefaultBlockAndPageSizeSNAPPY(Blackhole blackhole)
           throws IOException
   {
     read(file_1M_SNAPPY, ONE_MILLION, blackhole);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsDefaultBlockAndPageSizeGZIP(Blackhole blackhole)
           throws IOException
   {

@@ -19,7 +19,9 @@
 package org.apache.parquet.benchmarks;
 
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
@@ -44,7 +46,7 @@ public class WriteBenchmarks {
     dataGenerator.cleanup();
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsDefaultBlockAndPageSizeUncompressed()
           throws IOException
   {
@@ -58,7 +60,7 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsBS256MPS4MUncompressed()
           throws IOException
   {
@@ -72,7 +74,7 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsBS256MPS8MUncompressed()
           throws IOException
   {
@@ -86,7 +88,7 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsBS512MPS4MUncompressed()
           throws IOException
   {
@@ -100,7 +102,7 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsBS512MPS8MUncompressed()
           throws IOException
   {
@@ -129,7 +131,7 @@ public class WriteBenchmarks {
 //            ONE_MILLION);
 //  }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsDefaultBlockAndPageSizeSNAPPY()
           throws IOException
   {
@@ -143,7 +145,7 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark
+  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsDefaultBlockAndPageSizeGZIP()
           throws IOException
   {

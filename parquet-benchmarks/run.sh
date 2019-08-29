@@ -21,10 +21,10 @@
 SCRIPT_PATH=$( cd "$(dirname "$0")" ; pwd -P )
 
 echo "Starting WRITE benchmarks"
-java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*Write* "$@"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.WriteBenchmarks "$@"
 echo "Generating test data"
 java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator generate
 echo "Data generated, starting READ benchmarks"
-java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*Read* "$@"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.WriteBenchmarks "$@"
 echo "Cleaning up generated data"
 java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator cleanup

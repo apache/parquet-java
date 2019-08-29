@@ -28,7 +28,7 @@ mvn --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true clean pa
 Then, you can run all the benchmarks with the following command
 
 ```
-./parquet-benchmarks/run.sh -wi 5 -i 5 -f 3 -bm all
+./parquet-benchmarks/run.sh -wi 5 -i 5 -f 3 
 ```
 
 To understand what each command line argument means and for more arguments please see

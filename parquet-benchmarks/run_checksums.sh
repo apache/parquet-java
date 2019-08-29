@@ -23,6 +23,6 @@ SCRIPT_PATH=$( cd "$(dirname "$0")" ; pwd -P )
 
 echo "Page level CRC checksum benchmarks"
 echo "Running write benchmarks"
-java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*PageChecksumWriteBenchmarks -bm ss "$@"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.PageChecksumWriteBenchmarks -bm ss "$@"
 echo "Running read benchmarks"
-java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*PageChecksumReadBenchmarks -bm ss "$@"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.PageChecksumReadBenchmarks -bm ss "$@"
