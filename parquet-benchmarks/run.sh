@@ -25,6 +25,6 @@ java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchm
 echo "Generating test data"
 java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator generate
 echo "Data generated, starting READ benchmarks"
-java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.WriteBenchmarks "$@"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.ReadBenchmarks "$@"
 echo "Cleaning up generated data"
 java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator cleanup
