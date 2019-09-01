@@ -38,13 +38,13 @@ public class FileDecryptionProperties {
   private final Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap;
   private final boolean checkPlaintextFooterIntegrity;
   private final boolean allowPlaintextFiles;
-  
+
   private boolean utilized;
-  
+
   private FileDecryptionProperties(byte[] footerKey, DecryptionKeyRetriever keyRetriever,
       boolean checkPlaintextFooterIntegrity,  byte[] aadPrefix, AADPrefixVerifier aadPrefixVerifier,
       Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap, boolean allowPlaintextFiles) {
-    
+
     if ((null == footerKey) && (null == keyRetriever) && (null == columnPropertyMap)) {
       throw new IllegalArgumentException("No decryption properties are specified");
     }
@@ -56,7 +56,7 @@ public class FileDecryptionProperties {
       throw new IllegalArgumentException("Can't check footer integrity with null footer key and null key retriever");
     }
 
-    
+
     this.footerKey = footerKey;
     this.checkPlaintextFooterIntegrity = checkPlaintextFooterIntegrity;
     this.keyRetriever = keyRetriever;
@@ -70,7 +70,7 @@ public class FileDecryptionProperties {
   public static Builder builder() {
     return new Builder();
   }
-  
+
   public static class Builder {
     private byte[] footerKeyBytes;
     private DecryptionKeyRetriever keyRetriever;
@@ -79,7 +79,7 @@ public class FileDecryptionProperties {
     private Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap;
     private boolean checkPlaintextFooterIntegrity;
     private boolean plaintextFilesAllowed;
-    
+
     private Builder() {
       this.checkPlaintextFooterIntegrity = CHECK_SIGNATURE;
       this.plaintextFilesAllowed = ALLOW_PLAINTEXT_FILES;
@@ -115,7 +115,7 @@ public class FileDecryptionProperties {
      * availability of explicit keys is checked before invocation of the retriever callback.
      * If an explicit key is available for a footer or a column, its key metadata will
      * be ignored. 
-     * @param columnPropertyMap
+     * @param columnProperties
      * @return
      */
     public Builder withColumnKeys(Map<ColumnPath, ColumnDecryptionProperties> columnProperties) {
@@ -135,7 +135,7 @@ public class FileDecryptionProperties {
       this.columnPropertyMap = new HashMap<ColumnPath, ColumnDecryptionProperties>(columnProperties);
       return this;
     }
-    
+
     /**
      * Set a key retriever callback. Its also possible to
      * set explicit footer or column keys on this file property object. Upon file decryption, 
@@ -154,21 +154,21 @@ public class FileDecryptionProperties {
       this.keyRetriever = keyRetriever;
       return this;
     }
-    
+
     /**
      * Skip integrity verification of plaintext footers.
      * If not called, integrity of plaintext footers will be checked in runtime, and an exception will 
      * be thrown in the following situations:
      * - footer signing key is not available (not passed, or not found by key retriever)
-     * - footer content and signature don't match
+     * - footer content doesn't match the signature
      * @return
      */
     public Builder withoutFooterSignatureVerification() {
       this.checkPlaintextFooterIntegrity = false;
       return this;
     }
-    
-    
+
+
     /**
      * Explicitly supply the file AAD prefix.
      * A must when a prefix is used for file encryption, but not stored in file.
@@ -186,7 +186,7 @@ public class FileDecryptionProperties {
       this.aadPrefixBytes = aadPrefixBytes;
       return this;
     }
-    
+
     /**
      * Set callback for verification of AAD Prefixes stored in file.
      * @param aadPrefixVerifier
@@ -202,7 +202,7 @@ public class FileDecryptionProperties {
       this.aadPrefixVerifier = aadPrefixVerifier;
       return this;
     }
-    
+
     /**
      * By default, reading plaintext (unencrypted) files is not allowed when using a decryptor 
      * - in order to detect files that were not encrypted by mistake. 
@@ -214,17 +214,17 @@ public class FileDecryptionProperties {
       this.plaintextFilesAllowed  = true;
       return this;
     }
-    
+
     public FileDecryptionProperties build() {
       return new FileDecryptionProperties(footerKeyBytes, keyRetriever, checkPlaintextFooterIntegrity, 
           aadPrefixBytes, aadPrefixVerifier, columnPropertyMap, plaintextFilesAllowed);
     }
   }
-  
+
   public byte[] getFooterKey() {
     return footerKey;
   }
-  
+
   public byte[] getColumnKey(ColumnPath path) {
     if (null == columnPropertyMap) return null;
     ColumnDecryptionProperties columnDecryptionProperties = columnPropertyMap.get(path);
@@ -239,11 +239,11 @@ public class FileDecryptionProperties {
   public byte[] getAADPrefix() {
     return aadPrefix;
   }
-  
+
   public boolean checkFooterIntegrity() {
     return checkPlaintextFooterIntegrity;
   }
-  
+
   boolean plaintextFilesAllowed() {
     return allowPlaintextFiles;
   }
@@ -254,7 +254,7 @@ public class FileDecryptionProperties {
 
   void wipeOutDecryptionKeys() {
     if (null != footerKey) Arrays.fill(footerKey, (byte)0);
-    
+
     if (null != columnPropertyMap) {
       for (Map.Entry<ColumnPath, ColumnDecryptionProperties> entry : columnPropertyMap.entrySet()) {
         entry.getValue().wipeOutDecryptionKey();
@@ -263,8 +263,9 @@ public class FileDecryptionProperties {
   }
 
   boolean isUtilized() {
+    // can be re-used if no explicit keys and no AAD prefix are specified
     if (null == footerKey && null == columnPropertyMap && null == aadPrefix) return false;
-    
+
     return utilized;
   }
 
@@ -272,8 +273,16 @@ public class FileDecryptionProperties {
     utilized = true;
   }
 
-  public FileDecryptionProperties deepCopy() {
-    
+  /** 
+   * DecryptionProperties object can be used for reading one file only.
+   * (unless this object keeps the keyRetrieval callback only, and no explicit keys or aadPrefix).
+   * At the end, keys are wiped out in the memory.
+   * This method allows to clone identical properties for another file, 
+   * with an option to update the aadPrefix (if newAadPrefix is null, 
+   * aadPrefix will be cloned too) 
+   */
+  public FileDecryptionProperties deepClone(byte[] newAadPrefix) {
+
     byte[] footerKeyBytes = (null == footerKey?null:footerKey.clone());
     Map<ColumnPath, ColumnDecryptionProperties> columnProps = null;
     if (null != columnPropertyMap) {
@@ -282,9 +291,11 @@ public class FileDecryptionProperties {
         columnProps.put(entry.getKey(), entry.getValue().deepClone());
       }
     }
-    
+
+    if (null == newAadPrefix) newAadPrefix = aadPrefix;
+
     return new FileDecryptionProperties(footerKeyBytes, keyRetriever,
-        checkPlaintextFooterIntegrity,  aadPrefix, aadPrefixVerifier,
+        checkPlaintextFooterIntegrity,  newAadPrefix, aadPrefixVerifier,
         columnProps, allowPlaintextFiles);
   }
 }

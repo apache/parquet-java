@@ -32,5 +32,5 @@ public interface AADPrefixVerifier {
    * @param aadPrefix
    * @throws IOException
    */
-  public void check(byte[] aadPrefix) throws IOException;
+  public void verify(byte[] aadPrefix) throws IOException;
 }

@@ -36,16 +36,14 @@ public enum ParquetCipher {
       return AES_GCM_V1;
     }
     return valueOf(name.toUpperCase(Locale.ENGLISH));
- }
+  }
 
   public EncryptionAlgorithm getEncryptionAlgorithm() {
     if (0 == algorithmID) {
       return EncryptionAlgorithm.AES_GCM_V1(new AesGcmV1());
-    }
-    else if (1 == algorithmID) {
+    } else if (1 == algorithmID) {
       return EncryptionAlgorithm.AES_GCM_CTR_V1(new AesGcmCtrV1());
-    }
-    else {
+    } else {
       return null;
     }
   }

@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-import java.util.Arrays;
 
 import org.apache.parquet.ParquetRuntimeException;
 
@@ -30,8 +29,12 @@ import org.apache.parquet.ParquetRuntimeException;
  */
 public class HiddenColumnException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
-  
-  public HiddenColumnException(String[] columnPath) {
-    super(Arrays.toString(columnPath));
+
+  public HiddenColumnException(String string) {
+    super(string);
+  }
+
+  public HiddenColumnException(String string, Exception e) {
+    super(string, e);
   }
 }

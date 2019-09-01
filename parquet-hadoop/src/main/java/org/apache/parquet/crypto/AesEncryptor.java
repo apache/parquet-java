@@ -40,7 +40,7 @@ public class AesEncryptor implements BlockCipher.Encryptor{
   public enum Mode {
     GCM, CTR
   }
-  
+
   // Module types
   public static final byte Footer = 0;
   public static final byte ColumnMetaData = 1;
@@ -53,8 +53,9 @@ public class AesEncryptor implements BlockCipher.Encryptor{
 
   public static final int NONCE_LENGTH = 12;
   public static final int GCM_TAG_LENGTH = 16;
+  public static final int GCM_TAG_LENGTH_BITS = 8 * GCM_TAG_LENGTH;
   public static final int SIZE_LENGTH = 4;
-  
+
   static final int CTR_IV_LENGTH = 16;
   static final int CHUNK_LENGTH = 4 * 1024;
   static final int AAD_FILE_UNIQUE_LENGTH = 8;
@@ -66,24 +67,19 @@ public class AesEncryptor implements BlockCipher.Encryptor{
   private final Mode aesMode;
   private final byte[] ctrIV;
   private final byte[] localNonce;
+  private boolean wipedOut;
 
-  /**
-   * 
-   * @param mode GCM or CTR
-   * @param keyBytes encryption key
-   * @param allEncryptors 
-   * @throws IllegalArgumentException
-   * @throws IOException
-   */
-  public AesEncryptor(Mode mode, byte[] keyBytes, LinkedList<AesEncryptor> allEncryptors) throws IllegalArgumentException, IOException {
+
+  public AesEncryptor(Mode mode, byte[] keyBytes, LinkedList<AesEncryptor> allEncryptors) 
+      throws IllegalArgumentException, IOException {
     if (null == keyBytes) {
       throw new IllegalArgumentException("Null key bytes");
     }
     aesKey = new EncryptionKey(keyBytes);
-    
+
     randomGenerator = new SecureRandom();
     aesMode = mode;
-    
+
     if (Mode.GCM == mode) {
       tagLength = GCM_TAG_LENGTH;
       try {
@@ -92,8 +88,7 @@ public class AesEncryptor implements BlockCipher.Encryptor{
         throw new IOException("Failed to create GCM cipher", e);
       }
       ctrIV = null;
-    }
-    else {
+    } else {
       tagLength = 0;
       try {
         aesCipher = Cipher.getInstance("AES/CTR/NoPadding");
@@ -105,40 +100,31 @@ public class AesEncryptor implements BlockCipher.Encryptor{
       // Setting last bit of initial CTR counter to 1
       ctrIV[CTR_IV_LENGTH - 1] = (byte) 1;
     }
-    
+
     localNonce = new byte[NONCE_LENGTH];
     if (null != allEncryptors) allEncryptors.add(this);
+    wipedOut = false;
   }
 
   @Override
   public byte[] encrypt(byte[] plainText, byte[] AAD)  throws IOException {
     return encrypt(true, plainText, AAD);
   }
-  
-  /**
-   * 
-   * @param writeLength whether to write buffer length (4-byte little endian)
-   * @param plainText
-   * @param AAD
-   * @return
-   * @throws IOException
-   */
+
   public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] AAD)  throws IOException {
     randomGenerator.nextBytes(localNonce);
     return encrypt(writeLength, plainText, localNonce, AAD);
   }
-  
-  /**
-   * 
-   * @param writeLength
-   * @param plainText
-   * @param nonce can be generated locally or supplied. the latter is needed for footer signature verification.
-   * @param AAD
-   * @return
-   * @throws IOException
-   */
-  public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD)  throws IOException {
-    if (nonce.length != NONCE_LENGTH) throw new IOException("Wrong nonce length " + nonce.length);
+
+
+  public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD)  
+      throws IOException {
+    if (wipedOut) {
+      throw new IOException("AES encryptor is wiped out");
+    }
+    if (nonce.length != NONCE_LENGTH) {
+      throw new IOException("Wrong nonce length " + nonce.length);
+    }
     int plainTextLength = plainText.length;
     int cipherTextLength = NONCE_LENGTH + plainTextLength + tagLength;
     int lengthBufferLength = (writeLength? SIZE_LENGTH: 0);
@@ -148,35 +134,38 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     int outputOffset = lengthBufferLength + NONCE_LENGTH;
     try {
       if (Mode.GCM == aesMode) {
-        GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, nonce);
+        GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, nonce);
         aesCipher.init(Cipher.ENCRYPT_MODE, aesKey, spec);
         if (null != AAD) aesCipher.updateAAD(AAD);
-      }
-      else {
+      } else {
         System.arraycopy(nonce, 0, ctrIV, 0, NONCE_LENGTH);
         IvParameterSpec spec = new IvParameterSpec(ctrIV);
         aesCipher.init(Cipher.ENCRYPT_MODE, aesKey, spec);
+
+        // Breaking encryption into multiple updates, to trigger h/w acceleration in Java 9+
+        while (inputLength > CHUNK_LENGTH) {
+          int written = aesCipher.update(plainText, inputOffset, CHUNK_LENGTH, cipherText, outputOffset);
+          inputOffset += CHUNK_LENGTH;
+          outputOffset += written;
+          inputLength -= CHUNK_LENGTH;
+        }
       }
-      // Breaking encryption into multiple updates, to trigger h/w acceleration in Java 9-11
-      while (inputLength > CHUNK_LENGTH) {
-        int written = aesCipher.update(plainText, inputOffset, CHUNK_LENGTH, cipherText, outputOffset);
-        inputOffset += CHUNK_LENGTH;
-        outputOffset += written;
-        inputLength -= CHUNK_LENGTH;
-      }
+
       aesCipher.doFinal(plainText, inputOffset, inputLength, cipherText, outputOffset);
     }
     catch (GeneralSecurityException e) {
       throw new IOException("Failed to encrypt", e);
     }
     // Add ciphertext length
-    if (writeLength) System.arraycopy(BytesUtils.intToBytes(cipherTextLength), 0, cipherText, 0, lengthBufferLength);
+    if (writeLength) {
+      System.arraycopy(BytesUtils.intToBytes(cipherTextLength), 0, cipherText, 0, lengthBufferLength);
+    }
     // Add the nonce
     System.arraycopy(nonce, 0, cipherText, lengthBufferLength, NONCE_LENGTH);
 
     return cipherText;
   }
-  
+
   public static byte[] createModuleAAD(byte[] fileAAD, byte moduleType, 
       short rowGroupOrdinal, short columnOrdinal, short pageOrdinal) {
     byte[] typeOrdinalBytes = new byte[1];
@@ -184,21 +173,21 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     if (Footer == moduleType) {
       return concatByteArrays(fileAAD, typeOrdinalBytes);      
     }
-    
+
     byte[] rowGroupOrdinalBytes = shortToBytesLE(rowGroupOrdinal);
     byte[] columnOrdinalBytes = shortToBytesLE(columnOrdinal);
     if (DataPage != moduleType && DataPageHeader != moduleType) {
       return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes); 
     }
-    
+
     byte[] pageOrdinalBytes = shortToBytesLE(pageOrdinal);
     return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes, pageOrdinalBytes);
   }
-  
+
   public static byte[] createFooterAAD(byte[] aadPrefixBytes) {
     return createModuleAAD(aadPrefixBytes, Footer, (short) -1, (short) -1, (short) -1);
   }
-  
+
   /**
    * Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
    * @param pageAAD
@@ -210,7 +199,7 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     System.arraycopy(pageOrdinalBytes, 0, pageAAD, length-2, 2);
   }
 
-  
+
   static byte[] concatByteArrays(byte[]... arrays) {
     int totalLength = 0;
     for (byte[] array : arrays) {
@@ -225,7 +214,7 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     }
     return output;
   }
-  
+
   private static byte[] shortToBytesLE(short input) {
     byte[] output  = new byte[2];
     output[1] = (byte)(0xff & (input >> 8));
@@ -234,7 +223,7 @@ public class AesEncryptor implements BlockCipher.Encryptor{
   }
 
   public void wipeOut() {
-    
+    wipedOut = true;
     try {
       aesKey.destroy();
     } catch (DestroyFailedException e) {

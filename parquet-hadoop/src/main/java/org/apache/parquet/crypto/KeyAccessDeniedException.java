@@ -23,7 +23,7 @@ import java.security.KeyException;
 
 public class KeyAccessDeniedException extends KeyException {
   private static final long serialVersionUID = 1L;
-  
+
   public KeyAccessDeniedException(String keyID) {
     super(keyID);
   }

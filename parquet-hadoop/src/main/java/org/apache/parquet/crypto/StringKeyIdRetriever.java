@@ -26,15 +26,15 @@ import java.util.Hashtable;
 public class StringKeyIdRetriever implements DecryptionKeyRetriever{
 
   private final Hashtable<String,byte[]> keyMap;
-  
+
   public StringKeyIdRetriever() {
     keyMap = new Hashtable<String,byte[]>();
   }
-  
+
   public void putKey(String keyId, byte[] keyBytes) {
     keyMap.put(keyId, keyBytes);
   }
-  
+
   @Override
   public byte[] getKey(byte[] keyMetaData) {
     String keyId = new String(keyMetaData, StandardCharsets.UTF_8);

@@ -25,22 +25,22 @@ import java.util.Arrays;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 public class ColumnEncryptionProperties {
-  
+
   private final boolean encrypted;
   private final ColumnPath columnPath;
   private final boolean encryptedWithFooterKey;
   private final byte[] keyBytes;
   private final byte[] keyMetaData;
-  
+
   private boolean utilized;
-  
+
   private ColumnEncryptionProperties(boolean encrypted, ColumnPath columnPath, 
       byte[] keyBytes, byte[] keyMetaData) {
-    
+
     // column encryption properties object (with a column key) can be used for writing only one file.
     // Upon completion of file writing, the encryption keys in the properties will be wiped out (set to 0 in memory).
     utilized = false;
-    
+
     if (null == columnPath) {
       throw new IllegalArgumentException("Null column path");
     }
@@ -68,37 +68,37 @@ public class ColumnEncryptionProperties {
     this.keyBytes = keyBytes;
     this.keyMetaData = keyMetaData;
   }
-  
-  
+
+
   /**
-   * Convenience builder for encrypted regular (not nested) columns.
-   * @param name
+   * Convenience builder for regular (not nested) columns.
+   * To make sure column name is not misspelled or misplaced, 
+   * file writer will verify that column is in file schema.
+   * @param name Column name
    */
   public static Builder builder(String name) {
     return builder(ColumnPath.get(name), true);
   }
-  
+
   /**
-   * Convenience builder for encrypted columns.
+   * Builder for encrypted columns.
+   * To make sure column path is not misspelled or misplaced, 
+   * file writer will verify this column is in file schema.
    * @param path
    */
   public static Builder builder(ColumnPath path) {
     return builder(path, true);
   }
-  
-  /**
-   * 
-   * @param path
-   * @param encrypt
-   */
+
+
   static Builder builder(ColumnPath path, boolean encrypt) {
     return new Builder(path, encrypt);
   }
-  
+
   public static class Builder {
     private final boolean encrypted;
     private final ColumnPath columnPath;
-    
+
     private byte[] keyBytes;
     private byte[] keyMetaData;
 
@@ -106,7 +106,7 @@ public class ColumnEncryptionProperties {
       this.encrypted = encrypted;
       this.columnPath = path;
     }
-    
+
     /**
      * Set a column-specific key.
      * If key is not set on an encrypted column, the column will
@@ -126,7 +126,7 @@ public class ColumnEncryptionProperties {
       System.arraycopy(columnKey, 0, this.keyBytes, 0, columnKey.length);
       return this;
     }
-    
+
     /**
      * Set a key retrieval metadata.
      * use either withKeyMetaData or withKeyID, not both
@@ -142,7 +142,7 @@ public class ColumnEncryptionProperties {
       this.keyMetaData = keyMetaData;
       return this;
     }
-    
+
     /**
      * Set a key retrieval metadata (converted from String).
      * use either withKeyMetaData or withKeyID, not both
@@ -155,7 +155,7 @@ public class ColumnEncryptionProperties {
       byte[] metaData = keyId.getBytes(StandardCharsets.UTF_8);
       return withKeyMetaData(metaData);
     }
-    
+
     public ColumnEncryptionProperties build() {
       return new ColumnEncryptionProperties(encrypted, columnPath, keyBytes, keyMetaData);
     }
@@ -191,12 +191,19 @@ public class ColumnEncryptionProperties {
 
 
   boolean isUtilized() {
-    if (null == keyBytes) return false; // can re-use column properties without encryption keys
+    // can re-use column properties without encryption keys
+    if (null == keyBytes) return false;
     return utilized;
   }
 
 
   void setUtilized() {
     utilized = true;
+  }
+
+
+  ColumnEncryptionProperties deepClone() {
+    byte[] columnKeyBytes = (null == keyBytes? null : keyBytes.clone());
+    return new ColumnEncryptionProperties(encrypted, columnPath, columnKeyBytes, keyMetaData);
   }
 }

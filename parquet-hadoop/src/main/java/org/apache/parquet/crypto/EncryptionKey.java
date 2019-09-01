@@ -27,18 +27,18 @@ import javax.security.auth.DestroyFailedException;
 
 // Standard Java encryption key classes' destroy implementation is broken (known bug) 
 public class EncryptionKey implements SecretKey, KeySpec {
-  
+
   private static final long serialVersionUID = -6356998586122608817L;
-  
+
   private final byte[] keyBytes;
   private boolean destroyed;
-  
+
   EncryptionKey(byte[] key) {
     keyBytes = new byte[key.length];
     System.arraycopy(key, 0, keyBytes, 0, key.length);
     destroyed = false;
   }
-  
+
 
   @Override
   public String getAlgorithm() {
@@ -54,18 +54,18 @@ public class EncryptionKey implements SecretKey, KeySpec {
   public String getFormat() {
     return "RAW";
   }
-  
+
   @Override
   public void destroy() throws DestroyFailedException {
     Arrays.fill(keyBytes, (byte)0);
     destroyed = true;
   }
-  
+
   @Override
   public boolean isDestroyed() {
     return destroyed;
   }
-  
+
   public boolean equals(Object o) {
     byte[] keyBytes2 = ((EncryptionKey) o).getEncoded();
     if (keyBytes.length != keyBytes2.length) return false;

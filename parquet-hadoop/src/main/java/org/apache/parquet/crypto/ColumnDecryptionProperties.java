@@ -29,12 +29,12 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
  * key retriever are not available)
  */
 public class ColumnDecryptionProperties {
-  
+
   private final ColumnPath columnPath;
   private final byte[] keyBytes;
-  
+
   private boolean utilized;
-  
+
   private ColumnDecryptionProperties(ColumnPath columnPath, byte[] keyBytes) {
     if (null == columnPath) {
       throw new IllegalArgumentException("Null column path");
@@ -44,12 +44,12 @@ public class ColumnDecryptionProperties {
       throw new IllegalArgumentException("Wrong key length: " + keyBytes.length + 
           " on column: " + columnPath);
     }
-    
+
     this.columnPath = columnPath;
     this.keyBytes = keyBytes;
     this.utilized = false;
   }
-  
+
   /**
    * Convenience builder for regular (not nested) columns.
    * @param name
@@ -58,7 +58,7 @@ public class ColumnDecryptionProperties {
   public static Builder builder(String name) {
     return builder(ColumnPath.get(name));
   }
-  
+
   /**
    * 
    * @param path
@@ -66,7 +66,7 @@ public class ColumnDecryptionProperties {
   public static Builder builder(ColumnPath path) {
     return new Builder(path);
   }
-  
+
   public static class Builder {
     private final ColumnPath columnPath;
     private byte[] keyBytes;
@@ -74,7 +74,7 @@ public class ColumnDecryptionProperties {
     private Builder(ColumnPath path) {
       this.columnPath = path;
     }
-    
+
     /**
      * Set an explicit column key. 
      * If applied on a file that contains key metadata for this column - 
@@ -98,7 +98,7 @@ public class ColumnDecryptionProperties {
       System.arraycopy(columnKey, 0, this.keyBytes, 0, columnKey.length);
       return this;
     }
-    
+
     public ColumnDecryptionProperties build() {
       return new ColumnDecryptionProperties(columnPath, keyBytes);
     }
@@ -127,7 +127,7 @@ public class ColumnDecryptionProperties {
   }
 
   ColumnDecryptionProperties deepClone() {
-    byte[] columnKeyBytes = (null == keyBytes?null:keyBytes.clone());
+    byte[] columnKeyBytes = (null == keyBytes? null : keyBytes.clone());
     return new ColumnDecryptionProperties(columnPath, columnKeyBytes);
   }
 }
