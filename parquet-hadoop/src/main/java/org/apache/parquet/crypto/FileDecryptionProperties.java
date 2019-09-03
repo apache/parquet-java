@@ -56,7 +56,6 @@ public class FileDecryptionProperties {
       throw new IllegalArgumentException("Can't check footer integrity with null footer key and null key retriever");
     }
 
-
     this.footerKey = footerKey;
     this.checkPlaintextFooterIntegrity = checkPlaintextFooterIntegrity;
     this.keyRetriever = keyRetriever;

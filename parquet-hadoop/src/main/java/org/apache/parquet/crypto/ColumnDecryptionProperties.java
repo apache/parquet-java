@@ -39,8 +39,10 @@ public class ColumnDecryptionProperties {
     if (null == columnPath) {
       throw new IllegalArgumentException("Null column path");
     }
-    if ((null != keyBytes) && 
-        !(keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) {
+    if (null == keyBytes) {
+      throw new IllegalArgumentException("Null key for column " + columnPath);
+    }
+    if (!(keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) {
       throw new IllegalArgumentException("Wrong key length: " + keyBytes.length + 
           " on column: " + columnPath);
     }
@@ -89,7 +91,7 @@ public class ColumnDecryptionProperties {
      */
     public Builder withKey(byte[] columnKey) {
       if (null == columnKey) {
-        return this;
+        throw new IllegalArgumentException("Setting null key on column: " + columnPath);
       }
       if (null != this.keyBytes) {
         throw new IllegalArgumentException("Key already set on column: " + columnPath);
@@ -121,13 +123,11 @@ public class ColumnDecryptionProperties {
   }
 
   void wipeOutDecryptionKey() {
-    if (null != keyBytes) {
-      Arrays.fill(keyBytes, (byte)0);
-    }
+    Arrays.fill(keyBytes, (byte)0);
   }
 
   ColumnDecryptionProperties deepClone() {
-    byte[] columnKeyBytes = (null == keyBytes? null : keyBytes.clone());
+    byte[] columnKeyBytes = keyBytes.clone();
     return new ColumnDecryptionProperties(columnPath, columnKeyBytes);
   }
 }

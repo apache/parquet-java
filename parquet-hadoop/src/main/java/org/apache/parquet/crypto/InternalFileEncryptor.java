@@ -66,11 +66,11 @@ public class InternalFileEncryptor {
   private BlockCipher.Encryptor getThriftModuleEncryptor(byte[] columnKey) throws IOException {
     if (null == columnKey) { // Encryptor with footer key
       if (null == aesGcmEncryptorWithFooterKey) {
-        aesGcmEncryptorWithFooterKey = new AesEncryptor(AesEncryptor.Mode.GCM, footerKey, allEncryptors);
+        aesGcmEncryptorWithFooterKey = new AesEncryptor(AesEncryptor.AesMode.GCM, footerKey, allEncryptors);
       }
       return aesGcmEncryptorWithFooterKey;
     } else { // Encryptor with column key
-      return new AesEncryptor(AesEncryptor.Mode.GCM, columnKey, allEncryptors);
+      return new AesEncryptor(AesEncryptor.AesMode.GCM, columnKey, allEncryptors);
     }
   }
 
@@ -81,11 +81,11 @@ public class InternalFileEncryptor {
     // AES_GCM_CTR_V1
     if (null == columnKey) { // Encryptor with footer key
       if (null == aesCtrEncryptorWithFooterKey) {
-        aesCtrEncryptorWithFooterKey = new AesEncryptor(AesEncryptor.Mode.CTR, footerKey, allEncryptors);
+        aesCtrEncryptorWithFooterKey = new AesEncryptor(AesEncryptor.AesMode.CTR, footerKey, allEncryptors);
       }
       return aesCtrEncryptorWithFooterKey;
     } else { // Encryptor with column key
-      return new AesEncryptor(AesEncryptor.Mode.CTR, columnKey, allEncryptors);
+      return new AesEncryptor(AesEncryptor.AesMode.CTR, columnKey, allEncryptors);
     }
   }
 
@@ -190,7 +190,7 @@ public class InternalFileEncryptor {
     if (wipedOut) {
       throw new IOException("File encryptor is wiped out");
     }
-    return new AesEncryptor(AesEncryptor.Mode.GCM, footerKey, allEncryptors);
+    return new AesEncryptor(AesEncryptor.AesMode.GCM, footerKey, allEncryptors);
   }
 
 

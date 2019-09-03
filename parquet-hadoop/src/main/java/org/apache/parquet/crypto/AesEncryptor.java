@@ -32,13 +32,23 @@ import org.apache.parquet.format.BlockCipher;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.LinkedList;
 
 public class AesEncryptor implements BlockCipher.Encryptor{
 
-  public enum Mode {
-    GCM, CTR
+  public enum AesMode {
+    GCM("AES/GCM/NoPadding"),
+    CTR("AES/CTR/NoPadding");
+
+    private String cipherName;
+
+    AesMode(String cipherName) {
+      this.cipherName = cipherName;
+    }
+
+    public String getCipherName() {
+      return cipherName;
+    }
   }
 
   // Module types
@@ -64,13 +74,13 @@ public class AesEncryptor implements BlockCipher.Encryptor{
   private final SecureRandom randomGenerator;
   private final int tagLength;
   private Cipher aesCipher;
-  private final Mode aesMode;
+  private final boolean gcmMode;
   private final byte[] ctrIV;
   private final byte[] localNonce;
   private boolean wipedOut;
 
 
-  public AesEncryptor(Mode mode, byte[] keyBytes, LinkedList<AesEncryptor> allEncryptors) 
+  public AesEncryptor(AesMode mode, byte[] keyBytes, LinkedList<AesEncryptor> allEncryptors) 
       throws IllegalArgumentException, IOException {
     if (null == keyBytes) {
       throw new IllegalArgumentException("Null key bytes");
@@ -78,25 +88,25 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     aesKey = new EncryptionKey(keyBytes);
 
     randomGenerator = new SecureRandom();
-    aesMode = mode;
 
-    if (Mode.GCM == mode) {
+    if (AesMode.GCM == mode) {
+      gcmMode = true;
       tagLength = GCM_TAG_LENGTH;
       try {
-        aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
+        aesCipher = Cipher.getInstance(AesMode.GCM.getCipherName());
       } catch (GeneralSecurityException e) {
         throw new IOException("Failed to create GCM cipher", e);
       }
       ctrIV = null;
     } else {
+      gcmMode = false;
       tagLength = 0;
       try {
-        aesCipher = Cipher.getInstance("AES/CTR/NoPadding");
+        aesCipher = Cipher.getInstance(AesMode.CTR.getCipherName());
       } catch (GeneralSecurityException e) {
         throw new IOException("Failed to create CTR cipher", e);
       }
       ctrIV = new byte[CTR_IV_LENGTH];
-      Arrays.fill(ctrIV, (byte) 0);
       // Setting last bit of initial CTR counter to 1
       ctrIV[CTR_IV_LENGTH - 1] = (byte) 1;
     }
@@ -127,13 +137,13 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     }
     int plainTextLength = plainText.length;
     int cipherTextLength = NONCE_LENGTH + plainTextLength + tagLength;
-    int lengthBufferLength = (writeLength? SIZE_LENGTH: 0);
+    int lengthBufferLength = writeLength? SIZE_LENGTH : 0;
     byte[] cipherText = new byte[lengthBufferLength + cipherTextLength];
     int inputLength = plainTextLength;
     int inputOffset = 0;
     int outputOffset = lengthBufferLength + NONCE_LENGTH;
     try {
-      if (Mode.GCM == aesMode) {
+      if (gcmMode) {
         GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, nonce);
         aesCipher.init(Cipher.ENCRYPT_MODE, aesKey, spec);
         if (null != AAD) aesCipher.updateAAD(AAD);
@@ -198,7 +208,6 @@ public class AesEncryptor implements BlockCipher.Encryptor{
     int length = pageAAD.length;
     System.arraycopy(pageOrdinalBytes, 0, pageAAD, length-2, 2);
   }
-
 
   static byte[] concatByteArrays(byte[]... arrays) {
     int totalLength = 0;

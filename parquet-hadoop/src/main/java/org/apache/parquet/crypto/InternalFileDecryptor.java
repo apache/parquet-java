@@ -42,6 +42,7 @@ public class InternalFileDecryptor {
   private EncryptionAlgorithm algorithm;
   private byte[] fileAAD;
   private boolean encryptedFooter;
+  private byte[] footerKeyMetaData;
   private boolean fileCryptoMetaDataProcessed = false;
   private BlockCipher.Decryptor aesGcmDecryptorWithFooterKey;
   private BlockCipher.Decryptor aesCtrDecryptorWithFooterKey;
@@ -70,11 +71,11 @@ public class InternalFileDecryptor {
   private BlockCipher.Decryptor getThriftModuleDecryptor(byte[] columnKey) throws IOException {
     if (null == columnKey) { // Decryptor with footer key
       if (null == aesGcmDecryptorWithFooterKey) {
-        aesGcmDecryptorWithFooterKey = new AesDecryptor(AesEncryptor.Mode.GCM, footerKey, allDecryptors);
+        aesGcmDecryptorWithFooterKey = new AesDecryptor(AesEncryptor.AesMode.GCM, footerKey, allDecryptors);
       }
       return aesGcmDecryptorWithFooterKey;
     } else { // Decryptor with column key
-      return new AesDecryptor(AesEncryptor.Mode.GCM, columnKey, allDecryptors);
+      return new AesDecryptor(AesEncryptor.AesMode.GCM, columnKey, allDecryptors);
     }
   }
 
@@ -85,11 +86,11 @@ public class InternalFileDecryptor {
     // AES_GCM_CTR_V1
     if (null == columnKey) { // Decryptor with footer key
       if (null == aesCtrDecryptorWithFooterKey) {
-        aesCtrDecryptorWithFooterKey = new AesDecryptor(AesEncryptor.Mode.CTR, footerKey, allDecryptors);
+        aesCtrDecryptorWithFooterKey = new AesDecryptor(AesEncryptor.AesMode.CTR, footerKey, allDecryptors);
       }
       return aesCtrDecryptorWithFooterKey;
     } else { // Decryptor with column key
-      return new AesDecryptor(AesEncryptor.Mode.CTR, columnKey, allDecryptors);
+      return new AesDecryptor(AesEncryptor.AesMode.CTR, columnKey, allDecryptors);
     }
   }
 
@@ -130,6 +131,7 @@ public class InternalFileDecryptor {
       fileCryptoMetaDataProcessed = true;
       this.encryptedFooter = encryptedFooter;
       this.algorithm = algorithm;
+      this.footerKeyMetaData = footerKeyMetaData;
 
       byte[] aadFileUnique;
       boolean mustSupplyAadPrefix;
@@ -202,14 +204,17 @@ public class InternalFileDecryptor {
         }
       }
     } else {
-      // re-use of the decryptor. compare the crypto metadata.
+      // re-use of the decryptor (for the same file, to save footer key KMS interaction). 
+      // check the crypto metadata.
       if (!this.algorithm.equals(algorithm)) {
         throw new IOException("Decryptor re-use: Different algorithm");
       }
       if (encryptedFooter != this.encryptedFooter) {
         throw new IOException("Decryptor re-use: Different footer encryption");
       }
-      // TODO check other fields?
+      if (!Arrays.equals(this.footerKeyMetaData, footerKeyMetaData)) {
+        throw new IOException("Decryptor re-use: Different footer key metadata ");
+      }
     }
   }
 
@@ -228,21 +233,26 @@ public class InternalFileDecryptor {
       if (columnDecryptionSetup.isEncrypted() != encrypted) {
         throw new IOException("Re-use: wrong encrypted flag. Column: " + path);
       }
-      if (encrypted && (encryptedWithFooterKey != columnDecryptionSetup.isEncryptedWithFooterKey())) {
-        throw new IOException("Re-use: wrong encryption key (column vs footer). Column: " + path);
+      if (encrypted) {
+        if (encryptedWithFooterKey != columnDecryptionSetup.isEncryptedWithFooterKey()) {
+          throw new IOException("Re-use: wrong encryption key (column vs footer). Column: " + path);
+        }
+        if (!encryptedWithFooterKey && !Arrays.equals(columnDecryptionSetup.getKeyMetadata(), keyMetadata)) {
+          throw new IOException("Decryptor re-use: Different footer key metadata ");
+        }
       }
       return columnDecryptionSetup;
     }
 
     if (!encrypted) {
-      columnDecryptionSetup = new InternalColumnDecryptionSetup(path, false,  false, null, null, columnOrdinal);
+      columnDecryptionSetup = new InternalColumnDecryptionSetup(path, false,  false, null, null, columnOrdinal, null);
     } else {
       if (encryptedWithFooterKey) {
         if (null == footerKey) {
           throw new IOException("Column " + path + " is encrypted with NULL footer key");
         }
         columnDecryptionSetup = new InternalColumnDecryptionSetup(path, true, true, 
-            getDataModuleDecryptor(null), getThriftModuleDecryptor(null), columnOrdinal);
+            getDataModuleDecryptor(null), getThriftModuleDecryptor(null), columnOrdinal, null);
       } else {
         // Column is encrypted with column-specific key
         byte[] columnKeyBytes = fileDecryptionProperties.getColumnKey(path);
@@ -260,7 +270,7 @@ public class InternalFileDecryptor {
           throw new IOException("Column " + path + ": key unavailable");
         } else { // Key is available
           columnDecryptionSetup = new InternalColumnDecryptionSetup(path, true, false, 
-              getDataModuleDecryptor(columnKeyBytes), getThriftModuleDecryptor(columnKeyBytes), columnOrdinal);
+              getDataModuleDecryptor(columnKeyBytes), getThriftModuleDecryptor(columnKeyBytes), columnOrdinal, keyMetadata);
         }
       }
     }
@@ -285,7 +295,7 @@ public class InternalFileDecryptor {
     if (null == footerKey) {
       throw new IOException("Footer key unavailable");
     }
-    return new AesEncryptor(AesEncryptor.Mode.GCM, footerKey, null);
+    return new AesEncryptor(AesEncryptor.AesMode.GCM, footerKey, null);
   }
 
   public boolean checkFooterIntegrity() {
@@ -316,4 +326,5 @@ public class InternalFileDecryptor {
     return wipedOut;
   }
 }
+
 

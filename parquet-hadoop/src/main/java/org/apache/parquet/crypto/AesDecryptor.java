@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
@@ -34,19 +33,17 @@ import static org.apache.parquet.crypto.AesEncryptor.CHUNK_LENGTH;
 import static org.apache.parquet.crypto.AesEncryptor.SIZE_LENGTH;
 
 import org.apache.parquet.ShouldNeverHappenException;
-import org.apache.parquet.crypto.AesEncryptor.Mode;
+import org.apache.parquet.crypto.AesEncryptor.AesMode;
 import org.apache.parquet.format.BlockCipher;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.GeneralSecurityException;
-import java.util.Arrays;
 import java.util.LinkedList;
-
 
 public class AesDecryptor implements BlockCipher.Decryptor{
 
-  private final Mode aesMode;
+  private final boolean gcmMode;
   private SecretKey aesKey;
   private final int tagLength;
   private Cipher aesCipher;
@@ -55,30 +52,31 @@ public class AesDecryptor implements BlockCipher.Decryptor{
   private boolean wipedOut;
 
 
-  public AesDecryptor(Mode mode, byte[] keyBytes, LinkedList<AesDecryptor> allDecryptors) 
+  public AesDecryptor(AesMode mode, byte[] keyBytes, LinkedList<AesDecryptor> allDecryptors) 
       throws IllegalArgumentException, IOException {
     if (null == keyBytes) {
       throw new IllegalArgumentException("Null key bytes");
     }
-    this.aesMode = mode;
     aesKey = new EncryptionKey(keyBytes);
-    if (Mode.GCM == mode) {
+
+    if (AesMode.GCM == mode) {
+      gcmMode = true;
       tagLength = GCM_TAG_LENGTH;
       try {
-        aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
+        aesCipher = Cipher.getInstance(AesMode.GCM.getCipherName());
       } catch (GeneralSecurityException e) {
         throw new IOException("Failed to create GCM cipher", e);
       }
       ctrIV = null;
     } else {
+      gcmMode = false;
       tagLength = 0;
       try {
-        aesCipher = Cipher.getInstance("AES/CTR/NoPadding");
+        aesCipher = Cipher.getInstance(AesMode.CTR.getCipherName());
       } catch (GeneralSecurityException e) {
         throw new IOException("Failed to create CTR cipher", e);
       }
       ctrIV = new byte[CTR_IV_LENGTH];
-      Arrays.fill(ctrIV, (byte) 0);
       ctrIV[CTR_IV_LENGTH - 1] = (byte) 1;
     }
 
@@ -101,23 +99,24 @@ public class AesDecryptor implements BlockCipher.Decryptor{
       throw new IOException("AES decryptor is wiped out");
     }
 
+    int plainTextLength = cipherTextLength - tagLength - NONCE_LENGTH;
+    if (plainTextLength < 1) {
+      throw new IOException("Wrong input length " + plainTextLength);
+    }
+
     // Get the nonce from ciphertext
-    if (Mode.GCM == aesMode) {
+    if (gcmMode) {
       System.arraycopy(ciphertext, cipherTextOffset, nonce, 0, NONCE_LENGTH);
     } else {
       System.arraycopy(ciphertext, cipherTextOffset, ctrIV, 0, NONCE_LENGTH);
     }
 
-    int plainTextLength = cipherTextLength - tagLength - NONCE_LENGTH;
-    if (plainTextLength < 1) {
-      throw new IOException("Wrong input length " + plainTextLength);
-    }
     byte[] plainText = new byte[plainTextLength];
     int inputLength = cipherTextLength - NONCE_LENGTH;
     int inputOffset = cipherTextOffset + NONCE_LENGTH;
     int outputOffset = 0;
     try {
-      if (Mode.GCM == aesMode) {
+      if (gcmMode) {
         GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, nonce);
         aesCipher.init(Cipher.DECRYPT_MODE, aesKey, spec);
         if (null != AAD) aesCipher.updateAAD(AAD);
@@ -155,11 +154,12 @@ public class AesDecryptor implements BlockCipher.Decryptor{
       gotBytes += n;
     }
 
-    int ciphertextLength =
+    final int ciphertextLength =
         ((lengthBuffer[3] & 0xff) << 24) |
         ((lengthBuffer[2] & 0xff) << 16) |
         ((lengthBuffer[1] & 0xff) <<  8) |
         ((lengthBuffer[0] & 0xff));
+
     if (ciphertextLength < 1) {
       throw new IOException("Wrong length of encrypted metadata: " + ciphertextLength);
     }
