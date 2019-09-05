@@ -21,7 +21,12 @@ package org.apache.parquet.benchmarks;
 import org.apache.hadoop.fs.Path;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -31,7 +36,9 @@ import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
 
 import java.io.IOException;
 
+@State(Scope.Benchmark)
 public class ReadBenchmarks {
+
   private void read(Path parquetFile, int nRows, Blackhole blackhole) throws IOException
   {
     ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), parquetFile).withConf(configuration).build();
@@ -47,6 +54,15 @@ public class ReadBenchmarks {
       blackhole.consume(group.getInt96("int96_field", 0));
     }
     reader.close();
+  }
+
+  /**
+   * This needs to be done exactly once.  To avoid needlessly regenerating the files for reading, they aren't cleaned
+   * as part of the benchmark.  If the files exist, a message will be printed and they will not be regenerated.
+   */
+  @Setup(Level.Trial)
+  public void generateFilesForRead() {
+    new DataGenerator().generateAll();
   }
 
   @Benchmark @BenchmarkMode(Mode.SingleShotTime)

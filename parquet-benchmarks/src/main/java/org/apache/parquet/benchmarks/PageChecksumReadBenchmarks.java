@@ -51,14 +51,13 @@ public class PageChecksumReadBenchmarks {
 
   private PageChecksumDataGenerator pageChecksumDataGenerator = new PageChecksumDataGenerator();
 
+  /**
+   * This needs to be done exactly once.  To avoid needlessly regenerating the files for reading, they aren't cleaned
+   * as part of the benchmark.  If the files exist, a message will be printed and they will not be regenerated.
+   */
   @Setup(Level.Trial)
   public void setup() {
     pageChecksumDataGenerator.generateAll();
-  }
-
-  @Setup(Level.Trial)
-  public void cleanup() {
-    pageChecksumDataGenerator.cleanup();
   }
 
   private void readFile(Path file, int nRows, boolean verifyChecksums, Blackhole blackhole)

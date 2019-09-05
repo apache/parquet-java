@@ -57,7 +57,7 @@ public class PageChecksumWriteBenchmarks {
   private PageChecksumDataGenerator pageChecksumDataGenerator = new PageChecksumDataGenerator();
 
   @Setup(Level.Iteration)
-  public void cleanup() {
+  public void setup() {
     pageChecksumDataGenerator.cleanup();
   }
 

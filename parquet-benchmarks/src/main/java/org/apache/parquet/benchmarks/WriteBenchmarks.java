@@ -41,7 +41,7 @@ public class WriteBenchmarks {
   private DataGenerator dataGenerator = new DataGenerator();
 
   @Setup(Level.Iteration)
-  public void cleanup() {
+  public void setup() {
     //clean existing test data at the beginning of each iteration
     dataGenerator.cleanup();
   }
