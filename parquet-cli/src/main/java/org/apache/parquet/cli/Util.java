@@ -19,11 +19,13 @@
 
 package org.apache.parquet.cli;
 
+import com.google.common.base.Ascii;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
-import org.apache.commons.codec.binary.Hex;
+import com.google.common.hash.HashCode;
+
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
@@ -126,20 +128,13 @@ public class Util {
   }
 
   public static String humanReadable(byte[] bytes, int len) {
+    Preconditions.checkArgument(len >= 5, "Display length must be minimum 5");
     if (bytes == null || bytes.length == 0) {
       return "null";
     }
 
-    StringBuilder sb = new StringBuilder();
-    String asString = Hex.encodeHexString(bytes);
-    sb.append("0x");
-    if (asString.length() > len - 2) {
-      sb.append(asString.substring(0, (len - 5) / 2)).append("...");
-    } else {
-      sb.append(asString);
-    }
-
-    return sb.toString();
+    final String asString = HashCode.fromBytes(bytes).toString();
+    return "0x" + Ascii.truncate(asString, len - 2, "...");
   }
 
   public static String shortCodec(CompressionCodecName codec) {
