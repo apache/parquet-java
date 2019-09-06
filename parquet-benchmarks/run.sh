@@ -74,7 +74,7 @@ elif [ "$BENCHMARK" == "build" ]; then
 elif [ "$BENCHMARK" == "clean" ]; then
 
   # Shortcut utility to clean any state left behind from any previous run.
-  java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator cleanup  java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.PageChecksumReadBenchmarks -bm ss "$@"
+  java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator cleanup
 
 else
 
