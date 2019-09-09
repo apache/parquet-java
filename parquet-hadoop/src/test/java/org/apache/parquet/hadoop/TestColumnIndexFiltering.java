@@ -385,7 +385,9 @@ public class TestColumnIndexFiltering {
 
     @Override
     public boolean keep(Long value) {
-      return value != null && value % divisor == 0;
+      // Deliberately not checking for null to verify the handling of NPE
+      // Implementors shall always checks the value for null and return accordingly
+      return value % divisor == 0;
     }
 
     @Override

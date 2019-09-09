@@ -26,11 +26,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.CRC32;
 
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.ConcatenatingByteArrayCollector;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
@@ -74,16 +76,22 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private Statistics totalStatistics;
     private final ByteBufferAllocator allocator;
 
+    private final CRC32 crc;
+    boolean pageWriteChecksumEnabled;
+
     private ColumnChunkPageWriter(ColumnDescriptor path,
                                   BytesCompressor compressor,
                                   ByteBufferAllocator allocator,
-                                  int columnIndexTruncateLength) {
+                                  int columnIndexTruncateLength,
+                                  boolean pageWriteChecksumEnabled) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
       this.buf = new ConcatenatingByteArrayCollector();
       this.columnIndexBuilder = ColumnIndexBuilder.getBuilder(path.getPrimitiveType(), columnIndexTruncateLength);
       this.offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
+      this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
+      this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
     }
 
     @Override
@@ -119,7 +127,20 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
                 + compressedSize);
       }
       tempOutputStream.reset();
-      parquetMetadataConverter.writeDataPageV1Header(
+      if (pageWriteChecksumEnabled) {
+        crc.reset();
+        crc.update(compressedBytes.toByteArray());
+        parquetMetadataConverter.writeDataPageV1Header(
+          (int)uncompressedSize,
+          (int)compressedSize,
+          valueCount,
+          rlEncoding,
+          dlEncoding,
+          valuesEncoding,
+          (int) crc.getValue(),
+          tempOutputStream);
+      } else {
+        parquetMetadataConverter.writeDataPageV1Header(
           (int)uncompressedSize,
           (int)compressedSize,
           valueCount,
@@ -127,6 +148,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           dlEncoding,
           valuesEncoding,
           tempOutputStream);
+      }
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
@@ -273,10 +295,16 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   private final MessageType schema;
 
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
-      int columnIndexTruncateLength) {
+                                   int columnIndexTruncateLength) {
+    this(compressor, schema, allocator, columnIndexTruncateLength,
+      ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+  }
+
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
+      int columnIndexTruncateLength, boolean pageWriteChecksumEnabled) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength));
+      writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled));
     }
   }
 

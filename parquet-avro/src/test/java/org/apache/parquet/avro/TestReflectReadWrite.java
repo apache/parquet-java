@@ -30,6 +30,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.reflect.ReflectData;
+import org.apache.avro.reflect.Stringable;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -101,6 +102,7 @@ public class TestReflectReadWrite {
         schema.getField("mystringarray").schema(), Lists.newArrayList(new Utf8("a"), new Utf8("b"))));
     record.put("mylist", new GenericData.Array<Utf8>(
         schema.getField("mylist").schema(), Lists.newArrayList(new Utf8("a"), new Utf8("b"), new Utf8("c"))));
+    record.put("mystringable", new StringableObj("blah blah"));
     return record;
   }
 
@@ -124,6 +126,7 @@ public class TestReflectReadWrite {
     object.myintarray = new int[] { 1, 2 };
     object.mystringarray = new String[] { "a", "b" };
     object.mylist = Lists.newArrayList("a", "b", "c");
+    object.mystringable = new StringableObj("blah blah");
     return object;
   }
 
@@ -154,6 +157,21 @@ public class TestReflectReadWrite {
     A, B
   }
 
+  public static class StringableObj {
+    private String value;
+    public StringableObj(String value) {
+      this.value = value;
+    }
+    @Override
+    public String toString() {
+      return this.value;
+    }
+    @Override
+    public boolean equals(Object other) {
+      return other instanceof StringableObj && this.value.equals(((StringableObj)other).value);
+    }
+  }
+
   public static class Pojo {
     public boolean myboolean;
     public byte mybyte;
@@ -171,6 +189,8 @@ public class TestReflectReadWrite {
     private int[] myintarray;
     private String[] mystringarray;
     private List<String> mylist;
+    @Stringable
+    private StringableObj mystringable;
 
     @Override
     public boolean equals(Object o) {
@@ -190,7 +210,8 @@ public class TestReflectReadWrite {
           && Arrays.equals(myshortarray, that.myshortarray)
           && Arrays.equals(myintarray, that.myintarray)
           && Arrays.equals(mystringarray, that.mystringarray)
-          && mylist.equals(that.mylist);
+          && mylist.equals(that.mylist)
+          && mystringable.equals(that.mystringable);
     }
 
     @Override
@@ -211,6 +232,7 @@ public class TestReflectReadWrite {
           ", myintarray=" + Arrays.toString(myintarray) +
           ", mystringarray=" + Arrays.toString(mystringarray) +
           ", mylist=" + mylist +
+          ", mystringable=" + mystringable.toString() +
           '}';
     }
   }

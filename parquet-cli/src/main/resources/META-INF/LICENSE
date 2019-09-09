@@ -267,11 +267,10 @@ License: http://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product depends on Apache Commons and includes commons-codec,
-commons-pool, and commons-compress in this binary artifact.
+This product depends on Apache Commons and includes commons-pool, and
+commons-compress in this binary artifact.
 
 Copyright: 2002-2015 The Apache Software Foundation.
-Home page: https://commons.apache.org/proper/commons-codec/
 Home page: https://commons.apache.org/proper/commons-pool/
 License: http://www.apache.org/licenses/LICENSE-2.0
 

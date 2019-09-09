@@ -1,8 +1,6 @@
 language: java
-dist: xenial
-
 before_install:
-  - ./dev/travis-before_install.sh
+  - bash dev/travis-before_install.sh
 
 jdk:
   - openjdk8
@@ -13,4 +11,4 @@ env:
   - HADOOP_PROFILE=default TEST_CODECS=gzip,snappy
 
 install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
-script: mvn verify javadoc:javadoc -P $HADOOP_PROFILE
+script: mvn verify --batch-mode javadoc:javadoc -P $HADOOP_PROFILE
