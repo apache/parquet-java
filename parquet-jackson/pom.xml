@@ -41,7 +41,7 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>${jackson.version}</version>
+      <version>${jackson-databind.version}</version>
     </dependency>
   </dependencies>
 
@@ -66,7 +66,7 @@
             </goals>
             <configuration combine.self="override">
               <minimizeJar>false</minimizeJar>
-              <createSourcesJar>${shade.createSourcesJar}</createSourcesJar> 
+              <createSourcesJar>${shade.createSourcesJar}</createSourcesJar>
               <artifactSet>
                 <includes>
                   <include>${jackson.groupId}:*</include>
@@ -91,7 +91,7 @@
         </executions>
       </plugin>
     </plugins>
-  </build> 
+  </build>
   <profiles>
     <profile>
       <id>sonatype-oss-release</id>
