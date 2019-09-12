@@ -34,14 +34,11 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
-import org.apache.parquet.hadoop.ColumnIndexValidator;
-import org.apache.parquet.hadoop.ColumnIndexValidator.ContractViolation;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
@@ -52,7 +49,6 @@ import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.apache.parquet.statistics.RandomValues.RandomBinaryBase;
 import org.apache.parquet.statistics.RandomValues.RandomValueGenerator;
-import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -61,7 +57,6 @@ import org.junit.rules.TemporaryFolder;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -74,8 +69,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 
 public class TestStatistics {
-  private static final int KILOBYTE = 1 << 17;
-  private static final long RANDOM_SEED = System.currentTimeMillis();
+  private static final int MEGABYTE = 1 << 20;
+  private static final long RANDOM_SEED = 1441990701846L; //System.currentTimeMillis();
 
   public static class DataGenerationContext {
     public static abstract class WriteContext {
@@ -302,6 +297,11 @@ public class TestStatistics {
           stats.comparator().getClass());
 
       if (stats.isEmpty()) {
+        // stats are empty if num nulls = 0 and there are no non-null values
+        // this happens if stats are not written (e.g., when stats are too big)
+        System.err.println(String.format(
+            "No stats written for page=%s col=%s",
+            page, Arrays.toString(desc.getPath())));
         return;
       }
 
@@ -317,6 +317,12 @@ public class TestStatistics {
       }
 
       Assert.assertEquals(numNulls, stats.getNumNulls());
+
+      System.err.println(String.format(
+          "Validated stats min=%s max=%s nulls=%d for page=%s col=%s",
+          stats.minAsString(),
+          stats.maxAsString(), stats.getNumNulls(), page,
+          Arrays.toString(desc.getPath())));
     }
   }
 
@@ -357,8 +363,8 @@ public class TestStatistics {
           new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
           new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
           new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
-          wrapSorted(new RandomValues.UnconstrainedIntGenerator(random.nextLong()), recordCount, true),
-          wrapSorted(new RandomValues.UnconstrainedLongGenerator(random.nextLong()), recordCount, false),
+          new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
+          new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
           new RandomValues.FixedGenerator(random.nextLong(), fixedLength),
           new RandomValues.BinaryGenerator(random.nextLong()),
           new RandomValues.StringGenerator(random.nextLong()),
@@ -372,27 +378,6 @@ public class TestStatistics {
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.FixedGenerator(random.nextLong(), 12)
       );
-    }
-
-    private static <T extends Comparable<T>> RandomValueGenerator<T> wrapSorted(RandomValueGenerator<T> generator,
-        int recordCount, boolean ascending) {
-      List<T> values = new ArrayList<>(recordCount);
-      for (int i = 0; i < recordCount; ++i) {
-        values.add(generator.nextValue());
-      }
-      if (ascending) {
-        values.sort(null);
-      } else {
-        values.sort((a, b) -> -a.compareTo(b));
-      }
-      return new RandomValueGenerator<T>(RANDOM_SEED) {
-        private int i;
-
-        @Override
-        public T nextValue() {
-          return values.get(i++);
-        }
-      };
     }
 
     private static MessageType buildSchema(long seed) {
@@ -491,23 +476,18 @@ public class TestStatistics {
       Configuration configuration = new Configuration();
       ParquetMetadata metadata = ParquetFileReader.readFooter(configuration,
           super.fsPath, ParquetMetadataConverter.NO_FILTER);
-      try (ParquetFileReader reader = new ParquetFileReader(configuration,
+      ParquetFileReader reader = new ParquetFileReader(configuration,
         metadata.getFileMetaData(),
         super.fsPath,
         metadata.getBlocks(),
-        metadata.getFileMetaData().getSchema().getColumns())) {
+        metadata.getFileMetaData().getSchema().getColumns());
 
-        PageStatsValidator validator = new PageStatsValidator();
+      PageStatsValidator validator = new PageStatsValidator();
 
-        PageReadStore pageReadStore;
-        while ((pageReadStore = reader.readNextRowGroup()) != null) {
-          validator.validate(metadata.getFileMetaData().getSchema(), pageReadStore);
-        }
+      PageReadStore pageReadStore;
+      while ((pageReadStore = reader.readNextRowGroup()) != null) {
+        validator.validate(metadata.getFileMetaData().getSchema(), pageReadStore);
       }
-
-      List<ContractViolation> violations = ColumnIndexValidator
-          .checkContractViolations(HadoopInputFile.fromPath(fsPath, configuration));
-      assertTrue(violations.toString(), violations.isEmpty());
     }
   }
 
@@ -523,8 +503,8 @@ public class TestStatistics {
 
     Random random = new Random(RANDOM_SEED);
 
-    int blockSize =(random.nextInt(54) + 10) * KILOBYTE;
-    int pageSize = (random.nextInt(10) + 1) * KILOBYTE;
+    int blockSize =(random.nextInt(54) + 10) * MEGABYTE;
+    int pageSize = (random.nextInt(10) + 1) * MEGABYTE;
 
     List<DataContext> contexts = Arrays.asList(
         new DataContext(random.nextLong(), file, blockSize,
