@@ -26,6 +26,8 @@ import static org.apache.parquet.hadoop.ColumnIndexValidator.Contract.MIN_ASCEND
 import static org.apache.parquet.hadoop.ColumnIndexValidator.Contract.MIN_DESCENDING;
 import static org.apache.parquet.hadoop.ColumnIndexValidator.Contract.MIN_LTEQ_VALUE;
 import static org.apache.parquet.hadoop.ColumnIndexValidator.Contract.NULL_COUNT_CORRECT;
+import static org.apache.parquet.hadoop.ColumnIndexValidator.Contract.NULL_PAGE_HAS_NO_MAX;
+import static org.apache.parquet.hadoop.ColumnIndexValidator.Contract.NULL_PAGE_HAS_NO_MIN;
 import static org.apache.parquet.hadoop.ColumnIndexValidator.Contract.NULL_PAGE_HAS_NO_VALUES;
 
 import java.io.IOException;
@@ -73,6 +75,10 @@ public class ColumnIndexValidator {
             + "Null count in the index: %s\n"),
     NULL_PAGE_HAS_NO_VALUES("Only pages consisting entirely of NULL-s can be marked as a null page in the index.\n"
         + "Actual non-null value in the page: %s"),
+    NULL_PAGE_HAS_NO_MIN("A null page shall not have a min value in the index\n"
+        + "Min value in the index: %s\n"),
+    NULL_PAGE_HAS_NO_MAX("A null page shall not have a max value in the index\n"
+        + "Max value in the index: %s\n"),
     MIN_ASCENDING(
         "According to the ASCENDING boundary order, the min value for a page must be greater than or equal to the min value of the previous page.\n"
             + "Min value for the page: %s\n"
@@ -443,10 +449,18 @@ public class ColumnIndexValidator {
       this.maxDefinitionLevel = columnReader.getDescriptor().getMaxDefinitionLevel();
       this.violations = violations;
       this.statValueBuilder = getBuilder(type);
-      this.minValue = statValueBuilder.build(minValue);
-      this.maxValue = statValueBuilder.build(maxValue);
+      this.minValue = isNullPage ? null : statValueBuilder.build(minValue);
+      this.maxValue = isNullPage ? null : statValueBuilder.build(maxValue);
 
-      if (!isNullPage && prevMinValue != null) {
+      if (isNullPage) {
+        // By specification null pages have empty byte arrays as min/max values
+        validateContract(!minValue.hasRemaining(),
+            NULL_PAGE_HAS_NO_MIN,
+            () -> statValueBuilder.build(minValue).toString());
+        validateContract(!maxValue.hasRemaining(),
+            NULL_PAGE_HAS_NO_MAX,
+            () -> statValueBuilder.build(maxValue).toString());
+      } else if (prevMinValue != null) {
         validateBoundaryOrder(statValueBuilder.build(prevMinValue), statValueBuilder.build(prevMaxValue),
             boundaryOrder);
       }
@@ -472,11 +486,17 @@ public class ColumnIndexValidator {
 
     void validateContract(boolean contractCondition,
         Contract type,
-        Supplier<String> valueFromIndex,
-        Supplier<String> valueFromPage) {
+        Supplier<String> value1) {
+      validateContract(contractCondition, type, value1, () -> "N/A");
+    }
+
+    void validateContract(boolean contractCondition,
+        Contract type,
+        Supplier<String> value1,
+        Supplier<String> value2) {
       if (!contractCondition && !pageViolations.contains(type)) {
         violations.add(
-            new ContractViolation(type, valueFromIndex.get(), valueFromPage.get(), rowGroupNumber,
+            new ContractViolation(type, value1.get(), value2.get(), rowGroupNumber,
                 columnNumber, columnPath, pageNumber));
         pageViolations.add(type);
       }
@@ -485,8 +505,7 @@ public class ColumnIndexValidator {
     private void validateValue() {
       validateContract(!isNullPage,
           NULL_PAGE_HAS_NO_VALUES,
-          () -> statValueBuilder.stringifyValue(columnReader),
-          null);
+          () -> statValueBuilder.stringifyValue(columnReader));
       validateContract(minValue.compareToValue(columnReader) <= 0,
           MIN_LTEQ_VALUE,
           () -> statValueBuilder.stringifyValue(columnReader),
