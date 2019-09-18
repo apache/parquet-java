@@ -366,9 +366,9 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       // the column isn't in this file so all values are null.
       // lets run the udp with null value to see if it keeps null or not.
       if (inverted) {
-        return udp.keep(null);
+        return udp.acceptsNullValue();
       } else {
-        return !udp.keep(null);
+        return !udp.acceptsNullValue();
       }
     }
 
@@ -382,9 +382,9 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     if (isAllNulls(columnChunk)) {
       // lets run the udp with null value to see if it keeps null or not.
       if (inverted) {
-        return udp.keep(null);
+        return udp.acceptsNullValue();
       } else {
-        return !udp.keep(null);
+        return !udp.acceptsNullValue();
       }
     }
 

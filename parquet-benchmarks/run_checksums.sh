@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -18,13 +17,12 @@
 # under the License.
 #
 
+# !/usr/bin/env bash
+
 SCRIPT_PATH=$( cd "$(dirname "$0")" ; pwd -P )
 
-echo "Starting WRITE benchmarks"
-java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*Write* "$@"
-echo "Generating test data"
-java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator generate
-echo "Data generated, starting READ benchmarks"
-java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*Read* "$@"
-echo "Cleaning up generated data"
-java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator cleanup
+echo "Page level CRC checksum benchmarks"
+echo "Running write benchmarks"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*PageChecksumWriteBenchmarks -bm ss "$@"
+echo "Running read benchmarks"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*PageChecksumReadBenchmarks -bm ss "$@"

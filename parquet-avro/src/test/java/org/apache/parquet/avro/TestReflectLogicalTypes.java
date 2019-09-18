@@ -425,7 +425,7 @@ public class TestReflectLogicalTypes {
         read(REFLECT, nullableUuidStringSchema, test));
   }
 
-  @Test(expected = ClassCastException.class)
+  @Test
   public void testWriteUUIDMissingLogicalType() throws IOException {
     Schema uuidSchema = SchemaBuilder.record(RecordWithUUID.class.getName())
         .fields().requiredString("uuid").endRecord();
@@ -439,6 +439,11 @@ public class TestReflectLogicalTypes {
     RecordWithUUID r2 = new RecordWithUUID();
     r2.uuid = u2;
 
+    List<RecordWithStringUUID> expected = Arrays.asList(
+        new RecordWithStringUUID(), new RecordWithStringUUID());
+    expected.get(0).uuid = u1.toString();
+    expected.get(1).uuid = u2.toString();
+
     // write without using REFLECT, which has the logical type
     File test = write(uuidSchema, r1, r2);
 
@@ -447,9 +452,14 @@ public class TestReflectLogicalTypes {
         .record(RecordWithStringUUID.class.getName())
         .fields().requiredString("uuid").endRecord();
 
-    // this fails with an AppendWriteException wrapping ClassCastException
-    // because the UUID isn't converted to a CharSequence expected internally
-    read(ReflectData.get(), uuidStringSchema, test);
+    Assert.assertEquals("Should read uuid as String without UUID conversion",
+        expected,
+        read(REFLECT, uuidStringSchema, test));
+
+    Assert.assertEquals("Should read uuid as String without UUID logical type",
+        expected,
+        read(ReflectData.get(), uuidStringSchema, test)
+        );
   }
 
   @Test
