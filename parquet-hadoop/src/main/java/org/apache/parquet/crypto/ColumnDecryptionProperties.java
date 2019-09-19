@@ -54,17 +54,12 @@ public class ColumnDecryptionProperties {
 
   /**
    * Convenience builder for regular (not nested) columns.
-   * @param name
-   * @param encrypt
+   * @param name Column name
    */
   public static Builder builder(String name) {
     return builder(ColumnPath.get(name));
   }
 
-  /**
-   * 
-   * @param path
-   */
   public static Builder builder(ColumnPath path) {
     return new Builder(path);
   }
@@ -90,9 +85,6 @@ public class ColumnDecryptionProperties {
      * @param columnKey Key length must be either 16, 24 or 32 bytes.
      */
     public Builder withKey(byte[] columnKey) {
-      if (null == columnKey) {
-        throw new IllegalArgumentException("Setting null key on column: " + columnPath);
-      }
       if (null != this.keyBytes) {
         throw new IllegalArgumentException("Key already set on column: " + columnPath);
       }

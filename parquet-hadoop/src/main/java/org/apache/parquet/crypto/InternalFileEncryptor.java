@@ -43,7 +43,7 @@ public class InternalFileEncryptor {
   private BlockCipher.Encryptor aesGcmEncryptorWithFooterKey;
   private BlockCipher.Encryptor aesCtrEncryptorWithFooterKey;
   private boolean fileCryptoMetaDataCreated;
-  private LinkedList<AesEncryptor> allEncryptors;
+  private LinkedList<AesCipher> allEncryptors;
   private boolean wipedOut;
 
   public InternalFileEncryptor(FileEncryptionProperties fileEncryptionProperties) throws IOException {
@@ -52,7 +52,7 @@ public class InternalFileEncryptor {
     }
     fileEncryptionProperties.setUtilized();
     this.fileEncryptionProperties = fileEncryptionProperties;
-    allEncryptors = new LinkedList<AesEncryptor>();
+    allEncryptors = new LinkedList<AesCipher>();
     algorithm = fileEncryptionProperties.getAlgorithm();
     footerKey = fileEncryptionProperties.getFooterKey();
     encryptFooter =  fileEncryptionProperties.encryptedFooter();
@@ -62,15 +62,20 @@ public class InternalFileEncryptor {
     fileCryptoMetaDataCreated = false;
   }
 
+  private BlockCipher.Encryptor createEncryptor(AesMode mode, byte[] key) throws IllegalArgumentException, IOException {
+    BlockCipher.Encryptor encryptor = ModuleCipherFactory.getEncryptor(mode, key);
+    allEncryptors.add((AesCipher)encryptor);
+    return encryptor;
+  }
 
   private BlockCipher.Encryptor getThriftModuleEncryptor(byte[] columnKey) throws IOException {
     if (null == columnKey) { // Encryptor with footer key
       if (null == aesGcmEncryptorWithFooterKey) {
-        aesGcmEncryptorWithFooterKey = new AesEncryptor(AesEncryptor.AesMode.GCM, footerKey, allEncryptors);
+        aesGcmEncryptorWithFooterKey = createEncryptor(AesMode.GCM, footerKey);
       }
       return aesGcmEncryptorWithFooterKey;
     } else { // Encryptor with column key
-      return new AesEncryptor(AesEncryptor.AesMode.GCM, columnKey, allEncryptors);
+      return createEncryptor(AesMode.GCM, columnKey);
     }
   }
 
@@ -81,29 +86,24 @@ public class InternalFileEncryptor {
     // AES_GCM_CTR_V1
     if (null == columnKey) { // Encryptor with footer key
       if (null == aesCtrEncryptorWithFooterKey) {
-        aesCtrEncryptorWithFooterKey = new AesEncryptor(AesEncryptor.AesMode.CTR, footerKey, allEncryptors);
+        aesCtrEncryptorWithFooterKey = createEncryptor(AesMode.CTR, footerKey);
       }
       return aesCtrEncryptorWithFooterKey;
     } else { // Encryptor with column key
-      return new AesEncryptor(AesEncryptor.AesMode.CTR, columnKey, allEncryptors);
+      return createEncryptor(AesMode.CTR, columnKey);
     }
   }
 
-  /**
-   * 
-   * @param columnPath
-   * @param createIfNull Use true for pages, false for metadata. 
-   * @return
-   * @throws IOException
-   */
-  public InternalColumnEncryptionSetup getColumnSetup(ColumnPath columnPath, boolean createIfNull, short ordinal) throws IOException {
+  public InternalColumnEncryptionSetup getColumnSetup(ColumnPath columnPath, 
+      boolean createIfNull, short ordinal) throws IOException {
     if (wipedOut) {
       throw new IOException("File encryptor is wiped out");
     }
     InternalColumnEncryptionSetup internalColumnProperties = columnMap.get(columnPath);
     if (null != internalColumnProperties) {
       if (ordinal != internalColumnProperties.getOrdinal()) {
-        throw new IOException("Column ordinal doesnt match " + columnPath + ": " + ordinal + ", "+internalColumnProperties.getOrdinal());
+        throw new IOException("Column ordinal doesnt match " + columnPath + 
+            ": " + ordinal + ", "+internalColumnProperties.getOrdinal());
       }
       return internalColumnProperties;
     }
@@ -124,7 +124,8 @@ public class InternalFileEncryptor {
             getDataModuleEncryptor(null), getThriftModuleEncryptor(null));
       } else {
         internalColumnProperties = new InternalColumnEncryptionSetup(columnProperties, ordinal,
-            getDataModuleEncryptor(columnProperties.getKeyBytes()), getThriftModuleEncryptor(columnProperties.getKeyBytes()));
+            getDataModuleEncryptor(columnProperties.getKeyBytes()), 
+            getThriftModuleEncryptor(columnProperties.getKeyBytes()));
       }
     } else { // unencrypted column
       internalColumnProperties = new InternalColumnEncryptionSetup(columnProperties, ordinal, null, null);
@@ -160,11 +161,9 @@ public class InternalFileEncryptor {
     return !columnSetup.isEncryptedWithFooterKey();
   }
 
-
   public boolean isFooterEncrypted() {
     return encryptFooter;
   }
-
 
   public EncryptionAlgorithm getEncryptionAlgorithm() {
     return algorithm;
@@ -174,7 +173,6 @@ public class InternalFileEncryptor {
     return this.fileAAD;
   }
 
-
   public byte[] getFooterSigningKeyMetaData()  throws IOException {
     if (encryptFooter) {
       throw new IOException("Requesting signing footer key metadata in file with encrypted footer");
@@ -182,22 +180,20 @@ public class InternalFileEncryptor {
     return footerKeyMetadata;
   }
 
-
-  public BlockCipher.Encryptor getSignedFooterEncryptor() throws IOException  {
+  public AesGcmEncryptor getSignedFooterEncryptor() throws IOException  {
     if (encryptFooter) {
       throw new IOException("Requesting signed footer encryptor in file with encrypted footer");
     }
     if (wipedOut) {
       throw new IOException("File encryptor is wiped out");
     }
-    return new AesEncryptor(AesEncryptor.AesMode.GCM, footerKey, allEncryptors);
+    return (AesGcmEncryptor) createEncryptor(AesMode.GCM, footerKey);
   }
 
-
-  public void wipeOutEncryptionKeys() throws IOException {
+  public void wipeOutEncryptionKeys() {
     wipedOut = true;
     fileEncryptionProperties.wipeOutEncryptionKeys();
-    for (AesEncryptor encryptor : allEncryptors) {
+    for (AesCipher encryptor : allEncryptors) {
       encryptor.wipeOut();
     }
   }

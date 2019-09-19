@@ -84,7 +84,7 @@ public class ColumnEncryptionProperties {
    * Builder for encrypted columns.
    * To make sure column path is not misspelled or misplaced, 
    * file writer will verify this column is in file schema.
-   * @param path
+   * @param path identifies column to be encrypted
    */
   public static Builder builder(ColumnPath path) {
     return builder(path, true);
@@ -130,7 +130,7 @@ public class ColumnEncryptionProperties {
     /**
      * Set a key retrieval metadata.
      * use either withKeyMetaData or withKeyID, not both
-     * @param keyMetadata
+     * @param keyMetaData arbitrary byte array with encryption key metadata
      */
     public Builder withKeyMetaData(byte[] keyMetaData) {
       if (null == keyMetaData) {

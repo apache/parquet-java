@@ -25,7 +25,9 @@ import java.util.Arrays;
 import javax.crypto.SecretKey;
 import javax.security.auth.DestroyFailedException;
 
-// Standard Java encryption key classes' destroy implementation is broken (known bug) 
+// Standard Java encryption key classes' destroy method is not implemented 
+// (known gap - currently left for users to fill)
+// https://bugs.openjdk.java.net/browse/JDK-8160206
 public class EncryptionKey implements SecretKey, KeySpec {
 
   private static final long serialVersionUID = -6356998586122608817L;

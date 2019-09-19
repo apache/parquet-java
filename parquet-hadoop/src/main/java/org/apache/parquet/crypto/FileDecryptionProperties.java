@@ -113,9 +113,7 @@ public class FileDecryptionProperties {
      * Its also possible to set a key retriever on this property object. Upon file decryption, 
      * availability of explicit keys is checked before invocation of the retriever callback.
      * If an explicit key is available for a footer or a column, its key metadata will
-     * be ignored. 
-     * @param columnProperties
-     * @return
+     * be ignored.
      */
     public Builder withColumnKeys(Map<ColumnPath, ColumnDecryptionProperties> columnProperties) {
       if (null == columnProperties) {

@@ -30,7 +30,7 @@ import java.util.Map;
 import org.apache.parquet.format.EncryptionAlgorithm;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
-import static org.apache.parquet.crypto.AesEncryptor.AAD_FILE_UNIQUE_LENGTH;
+import static org.apache.parquet.crypto.AesCipher.AAD_FILE_UNIQUE_LENGTH;
 
 public class FileEncryptionProperties {
 
@@ -76,7 +76,7 @@ public class FileEncryptionProperties {
     if (null == aadPrefix) {
       this.fileAAD = aadFileUnique;
     } else {
-      this.fileAAD = AesEncryptor.concatByteArrays(aadPrefix, aadFileUnique);
+      this.fileAAD = AesCipher.concatByteArrays(aadPrefix, aadFileUnique);
       if (!storeAadPrefixInFile) supplyAadPrefix = true;
     }
 
