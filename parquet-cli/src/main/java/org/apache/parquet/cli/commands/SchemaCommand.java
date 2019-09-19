@@ -26,7 +26,6 @@ import com.google.common.collect.Lists;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Formats;
 import org.apache.avro.file.SeekableInput;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
@@ -81,13 +80,8 @@ public class SchemaCommand extends BaseCommand {
 
       if (outputPath != null) {
         Path outPath = qualifiedPath(outputPath);
-        FileSystem outFS = outPath.getFileSystem(getConf());
-        if (overwrite && outFS.exists(outPath)) {
-          console.debug("Deleting output file {} (already exists)", outPath);
-          outFS.delete(outPath);
-        }
-
-        try (OutputStream out = create(outputPath)) {
+        try (OutputStream out = overwrite ?
+          create(outputPath) : createWithNoOverwrite(outputPath)) {
           out.write(getSchema(source).getBytes(StandardCharsets.UTF_8));
         }
       } else {

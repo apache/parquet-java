@@ -140,15 +140,37 @@ public abstract class BaseCommand implements Command, Configurable {
     return create(filename, false);
   }
 
+  /**
+   * Creates a file and returns an open {@link FSDataOutputStream}.
+   *
+   * If the file does not have a file system scheme, this uses the default FS.
+   *
+   * This will neither produce checksum files nor overwrite a file that already
+   * exists.
+   *
+   * @param filename The filename to create
+   * @return An open FSDataOutputStream
+   * @throws IOException if there is an error creating the file
+   */
+  public FSDataOutputStream createWithNoOverwrite(String filename)
+    throws IOException {
+    return create(filename, true, false);
+  }
+
   private FSDataOutputStream create(String filename, boolean noChecksum)
       throws IOException {
+    return create(filename, noChecksum, true);
+  }
+
+  private FSDataOutputStream create(String filename, boolean noChecksum, boolean overwrite)
+    throws IOException {
     Path filePath = qualifiedPath(filename);
     // even though it was qualified using the default FS, it may not be in it
     FileSystem fs = filePath.getFileSystem(getConf());
     if (noChecksum && fs instanceof ChecksumFileSystem) {
       fs = ((ChecksumFileSystem) fs).getRawFileSystem();
     }
-    return fs.create(filePath, true /* overwrite */);
+    return fs.create(filePath, overwrite);
   }
 
   /**

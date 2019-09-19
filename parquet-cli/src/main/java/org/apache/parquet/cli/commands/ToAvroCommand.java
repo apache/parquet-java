@@ -29,8 +29,6 @@ import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.io.DatumWriter;
-import org.apache.hadoop.fs.FileAlreadyExistsException;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Codecs;
@@ -38,6 +36,7 @@ import org.apache.parquet.cli.util.Schemas;
 import org.slf4j.Logger;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 
 import static org.apache.avro.generic.GenericData.Record;
@@ -94,13 +93,6 @@ public class ToAvroCommand extends BaseCommand {
       schema = getAvroSchema(source);
     }
     Schema projection = filterSchema(schema, columns);
-
-    Path outPath = qualifiedPath(outputPath);
-    FileSystem outFS = outPath.getFileSystem(getConf());
-    if (!overwrite && outFS.exists(outPath)) {
-      throw new FileAlreadyExistsException("Output file " + outputPath + " already exists");
-    }
-
     Iterable<Record> reader = openDataFile(source, projection);
     boolean threw = true;
     long count = 0;
@@ -108,11 +100,14 @@ public class ToAvroCommand extends BaseCommand {
       DatumWriter<Record> datumWriter = new GenericDatumWriter<>(schema);
       DataFileWriter<Record> w = new DataFileWriter<>(datumWriter);
       w.setCodec(codecFactory);
-
-      try (DataFileWriter<Record> writer = w.create(projection, create(outputPath))) {
-        for (Record record : reader) {
-          writer.append(record);
-          count += 1;
+      Path outPath = qualifiedPath(outputPath);
+      try (OutputStream os = overwrite ?
+        create(outputPath) : createWithNoOverwrite(outputPath)) {
+        try (DataFileWriter<Record> writer = w.create(projection, os)) {
+          for (Record record : reader) {
+            writer.append(record);
+            count += 1;
+          }
         }
       }
       threw = false;
