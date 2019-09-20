@@ -24,3 +24,4 @@ git clone https://github.com/apache/parquet-format.git
 cd parquet-format
 mvn install -DskipTests
 cd ..
+rm -rf parquet-format
