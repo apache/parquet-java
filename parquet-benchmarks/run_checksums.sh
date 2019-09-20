@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -14,14 +15,14 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+#
 
-################################################################################
-# This is a branch-specific script that gets invoked at the end of
-# travis-before_install.sh. It is run for the bloom-filter branch only.
-################################################################################
+# !/usr/bin/env bash
 
-git clone https://github.com/apache/parquet-format.git
-cd parquet-format
-mvn install -DskipTests -q
-cd ..
-rm -rf parquet-format
+SCRIPT_PATH=$( cd "$(dirname "$0")" ; pwd -P )
+
+echo "Page level CRC checksum benchmarks"
+echo "Running write benchmarks"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*PageChecksumWriteBenchmarks -bm ss "$@"
+echo "Running read benchmarks"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*PageChecksumReadBenchmarks -bm ss "$@"

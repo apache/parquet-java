@@ -278,7 +278,8 @@ public class ParquetWriter<T> implements Closeable {
     MessageType schema = writeContext.getSchema();
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(
-        file, schema, mode, rowGroupSize, maxPaddingSize, encodingProps.getColumnIndexTruncateLength());
+      file, schema, mode, rowGroupSize, maxPaddingSize,
+      encodingProps.getColumnIndexTruncateLength(), encodingProps.getPageWriteChecksumEnabled());
     fileWriter.start();
 
     this.codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());
@@ -512,6 +513,27 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withWriterVersion(WriterVersion version) {
       encodingPropsBuilder.withWriterVersion(version);
+      return self();
+    }
+
+    /**
+     * Enables writing page level checksums for the constructed writer.
+     *
+     * @return this builder for method chaining.
+     */
+    public SELF enablePageWriteChecksum() {
+      encodingPropsBuilder.withPageWriteChecksumEnabled(true);
+      return self();
+    }
+
+    /**
+     * Enables writing page level checksums for the constructed writer.
+     *
+     * @param enablePageWriteChecksum whether page checksums should be written out
+     * @return this builder for method chaining.
+     */
+    public SELF withPageWriteChecksumEnabled(boolean enablePageWriteChecksum) {
+      encodingPropsBuilder.withPageWriteChecksumEnabled(enablePageWriteChecksum);
       return self();
     }
 

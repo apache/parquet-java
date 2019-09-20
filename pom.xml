@@ -73,9 +73,9 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
-    <jackson.groupId>org.codehaus.jackson</jackson.groupId>
-    <jackson.version>1.9.13</jackson.version>
-    <jackson.package>org.codehaus.jackson</jackson.package>
+    <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
+    <jackson.package>com.fasterxml.jackson</jackson.package>
+    <jackson.version>2.9.9</jackson.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.7.3</hadoop.version>
     <hadoop1.version>1.2.1</hadoop1.version>
@@ -94,19 +94,17 @@
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
     <thrift.version>0.12.0</thrift.version>
     <format.thrift.version>0.12.0</format.thrift.version>
-    <fastutil.version>7.0.13</fastutil.version>
+    <fastutil.version>8.2.3</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
-    <avro.version>1.8.2</avro.version>
+    <avro.version>1.9.0</avro.version>
     <guava.version>27.0.1-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
-    <jackson2.version>2.9.8</jackson2.version>
     <jcommander.version>1.35</jcommander.version>
-    <commons-codec.version>1.10</commons-codec.version>
   </properties>
 
   <modules>
@@ -304,7 +302,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.2.1</version>
           <executions>
             <execution>
               <phase>package</phase>

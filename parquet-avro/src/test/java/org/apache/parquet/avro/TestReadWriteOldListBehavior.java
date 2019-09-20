@@ -94,11 +94,12 @@ public class TestReadWriteOldListBehavior {
       writer.write(record);
     }
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
-    GenericRecord nextRecord = reader.read();
+    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+      GenericRecord nextRecord = reader.read();
 
-    assertNotNull(nextRecord);
-    assertEquals(emptyArray, nextRecord.get("myarray"));
+      assertNotNull(nextRecord);
+      assertEquals(emptyArray, nextRecord.get("myarray"));
+    }
   }
 
   @Test
@@ -119,11 +120,12 @@ public class TestReadWriteOldListBehavior {
       writer.write(record);
     }
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
-    GenericRecord nextRecord = reader.read();
+    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+      GenericRecord nextRecord = reader.read();
 
-    assertNotNull(nextRecord);
-    assertEquals(emptyMap, nextRecord.get("mymap"));
+      assertNotNull(nextRecord);
+      assertEquals(emptyMap, nextRecord.get("mymap"));
+    }
   }
 
   @Test
@@ -148,11 +150,12 @@ public class TestReadWriteOldListBehavior {
       writer.write(record);
     }
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
-    GenericRecord nextRecord = reader.read();
+    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+      GenericRecord nextRecord = reader.read();
 
-    assertNotNull(nextRecord);
-    assertEquals(map, nextRecord.get("mymap"));
+      assertNotNull(nextRecord);
+      assertEquals(map, nextRecord.get("mymap"));
+    }
   }
 
   @Test(expected=RuntimeException.class)
@@ -197,11 +200,12 @@ public class TestReadWriteOldListBehavior {
       writer.write(record);
     }
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
-    GenericRecord nextRecord = reader.read();
+    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+      GenericRecord nextRecord = reader.read();
 
-    assertNotNull(nextRecord);
-    assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
+      assertNotNull(nextRecord);
+      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
+    }
   }
 
   @Test
@@ -252,30 +256,31 @@ public class TestReadWriteOldListBehavior {
       writer.write(record);
     }
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
-    GenericRecord nextRecord = reader.read();
+    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+      GenericRecord nextRecord = reader.read();
 
-    Object expectedEnumSymbol = compat ? "a" :
+      Object expectedEnumSymbol = compat ? "a" :
         new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
 
-    assertNotNull(nextRecord);
-    assertEquals(null, nextRecord.get("mynull"));
-    assertEquals(true, nextRecord.get("myboolean"));
-    assertEquals(1, nextRecord.get("myint"));
-    assertEquals(2L, nextRecord.get("mylong"));
-    assertEquals(3.1f, nextRecord.get("myfloat"));
-    assertEquals(4.1, nextRecord.get("mydouble"));
-    assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
-    assertEquals(str("hello"), nextRecord.get("mystring"));
-    assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
-    assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-    assertEquals(integerArray, nextRecord.get("myarray"));
-    assertEquals(emptyArray, nextRecord.get("myemptyarray"));
-    assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-    assertEquals(integerArray, nextRecord.get("myarrayofoptional"));
-    assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
-    assertEquals(emptyMap, nextRecord.get("myemptymap"));
-    assertEquals(genericFixed, nextRecord.get("myfixed"));
+      assertNotNull(nextRecord);
+      assertEquals(null, nextRecord.get("mynull"));
+      assertEquals(true, nextRecord.get("myboolean"));
+      assertEquals(1, nextRecord.get("myint"));
+      assertEquals(2L, nextRecord.get("mylong"));
+      assertEquals(3.1f, nextRecord.get("myfloat"));
+      assertEquals(4.1, nextRecord.get("mydouble"));
+      assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
+      assertEquals(str("hello"), nextRecord.get("mystring"));
+      assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
+      assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
+      assertEquals(integerArray, nextRecord.get("myarray"));
+      assertEquals(emptyArray, nextRecord.get("myemptyarray"));
+      assertEquals(integerArray, nextRecord.get("myoptionalarray"));
+      assertEquals(integerArray, nextRecord.get("myarrayofoptional"));
+      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
+      assertEquals(emptyMap, nextRecord.get("myemptymap"));
+      assertEquals(genericFixed, nextRecord.get("myfixed"));
+    }
   }
 
   @Test
@@ -305,7 +310,7 @@ public class TestReadWriteOldListBehavior {
     Schema arrayOfOptionalIntegers = Schema.createArray(
         optional(Schema.create(Schema.Type.INT)));
     GenericData.Array<Integer> genericIntegerArrayWithNulls =
-        new GenericData.Array<Integer>(
+        new GenericData.Array<>(
             arrayOfOptionalIntegers,
             Arrays.asList(1, null, 2, null, 3));
 
@@ -329,17 +334,12 @@ public class TestReadWriteOldListBehavior {
         .set("myfixed", genericFixed)
         .build();
 
-    final AvroParquetWriter<GenericRecord> writer =
-        new AvroParquetWriter<GenericRecord>(file, schema);
-
-    try {
+    try (AvroParquetWriter<GenericRecord> writer = new AvroParquetWriter<>(file, schema)) {
       writer.write(record);
       fail("Should not succeed writing an array with null values");
     } catch (Exception e) {
       Assert.assertTrue("Error message should provide context and help",
-          e.getMessage().contains("parquet.avro.write-old-list-structure"));
-    } finally {
-      writer.close();
+        e.getMessage().contains("parquet.avro.write-old-list-structure"));
     }
   }
 
@@ -554,25 +554,25 @@ public class TestReadWriteOldListBehavior {
                 elementBuilder.set("element", 3).build()
             ));
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
-    GenericRecord nextRecord = reader.read();
-    assertNotNull(nextRecord);
-    assertEquals(true, nextRecord.get("myboolean"));
-    assertEquals(1, nextRecord.get("myint"));
-    assertEquals(2L, nextRecord.get("mylong"));
-    assertEquals(3.1f, nextRecord.get("myfloat"));
-    assertEquals(4.1, nextRecord.get("mydouble"));
-    assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
-    assertEquals(str("hello"), nextRecord.get("mystring"));
-    assertEquals(str("a"), nextRecord.get("myenum"));
-    assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-    assertEquals(integerArray, nextRecord.get("myarray"));
-    assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-    assertEquals(genericRecordArrayWithNullIntegers, nextRecord.get("myarrayofoptional"));
-    assertEquals(genericRecordArray, nextRecord.get("myrecordarray"));
-    assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
-    assertEquals(genericFixed, nextRecord.get("myfixed"));
-
+    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+      GenericRecord nextRecord = reader.read();
+      assertNotNull(nextRecord);
+      assertEquals(true, nextRecord.get("myboolean"));
+      assertEquals(1, nextRecord.get("myint"));
+      assertEquals(2L, nextRecord.get("mylong"));
+      assertEquals(3.1f, nextRecord.get("myfloat"));
+      assertEquals(4.1, nextRecord.get("mydouble"));
+      assertEquals(ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)), nextRecord.get("mybytes"));
+      assertEquals(str("hello"), nextRecord.get("mystring"));
+      assertEquals(str("a"), nextRecord.get("myenum"));
+      assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
+      assertEquals(integerArray, nextRecord.get("myarray"));
+      assertEquals(integerArray, nextRecord.get("myoptionalarray"));
+      assertEquals(genericRecordArrayWithNullIntegers, nextRecord.get("myarrayofoptional"));
+      assertEquals(genericRecordArray, nextRecord.get("myrecordarray"));
+      assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
+      assertEquals(genericFixed, nextRecord.get("myfixed"));
+    }
   }
 
   /**

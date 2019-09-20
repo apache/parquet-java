@@ -35,8 +35,6 @@ import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.map.JsonMappingException;
 import org.junit.Test;
 
 public class TestSummary {
@@ -107,7 +105,7 @@ public class TestSummary {
 
   }
 
-  private void validate(String result, int factor) throws JsonParseException, JsonMappingException, IOException {
+  private void validate(String result, int factor) throws IOException {
     TupleSummaryData s = SummaryData.fromJSON(result, TupleSummaryData.class);
 //          System.out.println(SummaryData.toPrettyJSON(s));
     assertEquals(9 * factor, s.getCount());
