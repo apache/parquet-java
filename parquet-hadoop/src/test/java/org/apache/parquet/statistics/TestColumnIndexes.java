@@ -67,7 +67,9 @@ import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -259,17 +261,9 @@ public class TestColumnIndexes {
   }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestColumnIndexes.class);
-  private static Path tmp;
 
-  @BeforeClass
-  public static void init() throws IOException {
-    tmp = new Path(Files.createTempDir().getAbsolutePath());
-  }
-
-  @AfterClass
-  public static void cleanup() throws IOException {
-    tmp.getFileSystem(new Configuration()).delete(tmp, true);
-  }
+  @Rule
+  public TemporaryFolder tmp = new TemporaryFolder();
 
   @Parameters
   public static Collection<WriteContext> getContexts() {
@@ -291,7 +285,7 @@ public class TestColumnIndexes {
 
     Path file = null;
     try {
-      file = context.write(tmp);
+      file = context.write(new Path(tmp.getRoot().getAbsolutePath()));
       LOGGER.info("Parquet file \"{}\" is successfully created for the context: {}", file, context);
 
       List<ContractViolation> violations = ColumnIndexValidator
