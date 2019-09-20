@@ -390,9 +390,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     // The column is missing, thus all null. Check if the predicate keeps null.
     if (meta == null) {
       if (inverted) {
-        return udp.keep(null);
+        return udp.acceptsNullValue();
       } else {
-        return !udp.keep(null);
+        return !udp.acceptsNullValue();
       }
     }
 

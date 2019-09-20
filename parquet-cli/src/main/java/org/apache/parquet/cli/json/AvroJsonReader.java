@@ -19,17 +19,15 @@
 
 package org.apache.parquet.cli.json;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.base.Function;
-import com.google.common.collect.Iterators;
-import org.apache.parquet.cli.util.RuntimeIOException;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
-import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
+
+import com.google.common.collect.Iterators;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.parquet.cli.util.RuntimeIOException;
 
 public class AvroJsonReader<E> implements Iterator<E>, Iterable<E>, Closeable {
 
@@ -38,19 +36,13 @@ public class AvroJsonReader<E> implements Iterator<E>, Iterable<E>, Closeable {
   private final InputStream stream;
   private Iterator<E> iterator;
 
+  @SuppressWarnings("unchecked")
   public AvroJsonReader(InputStream stream, Schema schema) {
     this.stream = stream;
     this.schema = schema;
     this.model = GenericData.get();
     this.iterator = Iterators.transform(AvroJson.parser(stream),
-        new Function<JsonNode, E>() {
-          @Override
-          @SuppressWarnings("unchecked")
-          public E apply(@Nullable JsonNode node) {
-            return (E) AvroJson.convertToAvro(
-                model, node, AvroJsonReader.this.schema);
-          }
-        });
+      node -> (E) AvroJson.convertToAvro(model, node, AvroJsonReader.this.schema));
   }
 
   @Override

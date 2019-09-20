@@ -65,12 +65,12 @@
     </dependency>
     <dependency>
       <groupId>${jackson.groupId}</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
+      <artifactId>jackson-core</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>${jackson.groupId}</groupId>
-      <artifactId>jackson-core-asl</artifactId>
+      <artifactId>jackson-databind</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
@@ -84,6 +84,11 @@
       <groupId>commons-pool</groupId>
       <artifactId>commons-pool</artifactId>
       <version>1.6</version>
+    </dependency>
+    <dependency>
+      <groupId>it.unimi.dsi</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>${fastutil.version}</version>
     </dependency>
     <dependency>
       <groupId>com.github.rdblue</groupId>

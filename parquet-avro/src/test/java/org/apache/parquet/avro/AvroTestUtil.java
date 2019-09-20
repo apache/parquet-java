@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.apache.avro.JsonProperties;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -31,7 +33,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.codehaus.jackson.node.NullNode;
 import org.junit.Assert;
 import org.junit.rules.TemporaryFolder;
 
@@ -52,7 +53,7 @@ public class AvroTestUtil {
   }
 
   public static Schema.Field optionalField(String name, Schema schema) {
-    return new Schema.Field(name, optional(schema), null, NullNode.getInstance());
+    return new Schema.Field(name, optional(schema), null, JsonProperties.NULL_VALUE);
   }
 
   public static Schema array(Schema element) {
@@ -85,19 +86,16 @@ public class AvroTestUtil {
     Configuration conf = new Configuration(false);
     AvroReadSupport.setRequestedProjection(conf, schema);
     AvroReadSupport.setAvroReadSchema(conf, schema);
-    ParquetReader<D> fileReader = AvroParquetReader
-        .<D>builder(new Path(file.toString()))
-        .withDataModel(model) // reflect disables compatibility
-        .withConf(conf)
-        .build();
 
-    try {
+    try (ParquetReader<D> fileReader = AvroParquetReader
+      .<D>builder(new Path(file.toString()))
+      .withDataModel(model) // reflect disables compatibility
+      .withConf(conf)
+      .build()) {
       D datum;
       while ((datum = fileReader.read()) != null) {
         data.add(datum);
       }
-    } finally {
-      fileReader.close();
     }
 
     return data;
@@ -107,18 +105,15 @@ public class AvroTestUtil {
   public static <D> File write(TemporaryFolder temp, GenericData model, Schema schema, D... data) throws IOException {
     File file = temp.newFile();
     Assert.assertTrue(file.delete());
-    ParquetWriter<D> writer = AvroParquetWriter
-        .<D>builder(new Path(file.toString()))
-        .withDataModel(model)
-        .withSchema(schema)
-        .build();
 
-    try {
+    try (ParquetWriter<D> writer = AvroParquetWriter
+      .<D>builder(new Path(file.toString()))
+      .withDataModel(model)
+      .withSchema(schema)
+      .build()) {
       for (D datum : data) {
         writer.write(datum);
       }
-    } finally {
-      writer.close();
     }
 
     return file;

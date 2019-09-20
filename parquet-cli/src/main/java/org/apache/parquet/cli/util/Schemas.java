@@ -36,7 +36,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroSchemaConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.codehaus.jackson.node.NullNode;
+import com.fasterxml.jackson.databind.node.NullNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;

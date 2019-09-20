@@ -54,16 +54,20 @@
       <version>${opencsv.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-jackson</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>${jackson2.version}</version>
+      <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.beust</groupId>
       <artifactId>jcommander</artifactId>
       <version>${jcommander.version}</version>
     </dependency>
-
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
@@ -74,12 +78,6 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>${commons-codec.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>

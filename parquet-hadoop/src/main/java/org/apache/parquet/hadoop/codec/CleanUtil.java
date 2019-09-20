@@ -30,41 +30,83 @@ import org.slf4j.LoggerFactory;
  * A Helper class which use reflections to clean up DirectBuffer. It's implemented for
  * better compatibility with both java8 and java9+, because the Cleaner class is moved to
  * another place since java9+.
+ *
+ * Strongly inspired by:
+ * https://github.com/apache/tomcat/blob/master/java/org/apache/tomcat/util/buf/ByteBufferUtils.java
  */
-public class CleanUtil {
+public class CleanUtil
+{
   private static final Logger logger = LoggerFactory.getLogger(CleanUtil.class);
-  private static final Field CLEANER_FIELD;
-  private static final Method CLEAN_METHOD;
+
+  private static final Object unsafe;
+  private static final Method cleanerMethod;
+  private static final Method cleanMethod;
+  private static final Method invokeCleanerMethod;
+
+  private static final int majorVersion =
+    Integer.parseInt(System.getProperty("java.version").split("\\D+")[0]);
 
   static {
-    ByteBuffer buf = null;
-    Field cleanerField = null;
-    Method cleanMethod = null;
-    try {
-      buf = ByteBuffer.allocateDirect(1);
-      cleanerField = buf.getClass().getDeclaredField("cleaner");
-      cleanerField.setAccessible(true);
-      Object cleaner = cleanerField.get(buf);
-      cleanMethod = cleaner.getClass().getDeclaredMethod("clean");
-    } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException e) {
-      logger.warn("Initialization failed for cleanerField or cleanMethod", e);
-    } finally {
-      clean(buf);
+    final ByteBuffer tempBuffer = ByteBuffer.allocateDirect(0);
+    Method cleanerMethodLocal = null;
+    Method cleanMethodLocal = null;
+    Object unsafeLocal = null;
+    Method invokeCleanerMethodLocal = null;
+    if (majorVersion >= 9) {
+      try {
+        final Class<?> clazz = Class.forName("sun.misc.Unsafe");
+        final Field theUnsafe = clazz.getDeclaredField("theUnsafe");
+        theUnsafe.setAccessible(true);
+        unsafeLocal = theUnsafe.get(null);
+        invokeCleanerMethodLocal = clazz.getMethod("invokeCleaner", ByteBuffer.class);
+        invokeCleanerMethodLocal.invoke(unsafeLocal, tempBuffer);
+      } catch (IllegalAccessException | IllegalArgumentException
+        | InvocationTargetException | NoSuchMethodException | SecurityException
+        | ClassNotFoundException | NoSuchFieldException e) {
+        logger.warn("Cannot use direct ByteBuffer cleaner, memory leaking may occur", e);
+        unsafeLocal = null;
+        invokeCleanerMethodLocal = null;
+      }
+    } else {
+      try {
+        cleanerMethodLocal = tempBuffer.getClass().getMethod("cleaner");
+        cleanerMethodLocal.setAccessible(true);
+        final Object cleanerObject = cleanerMethodLocal.invoke(tempBuffer);
+        cleanMethodLocal = cleanerObject.getClass().getMethod("clean");
+        cleanMethodLocal.invoke(cleanerObject);
+      } catch (NoSuchMethodException | SecurityException | IllegalAccessException |
+        IllegalArgumentException | InvocationTargetException e) {
+        logger.warn("Cannot use direct ByteBuffer cleaner, memory leaking may occur", e);
+        cleanerMethodLocal = null;
+        cleanMethodLocal = null;
+      }
     }
-    CLEANER_FIELD = cleanerField;
-    CLEAN_METHOD = cleanMethod;
+    cleanerMethod = cleanerMethodLocal;
+    cleanMethod = cleanMethodLocal;
+    unsafe = unsafeLocal;
+    invokeCleanerMethod = invokeCleanerMethodLocal;
   }
 
-  public static void clean(ByteBuffer buffer) {
-    if (CLEANER_FIELD == null || CLEAN_METHOD == null) {
-      return;
-    }
-    try {
-      Object cleaner = CLEANER_FIELD.get(buffer);
-      CLEAN_METHOD.invoke(cleaner);
-    } catch (IllegalAccessException | InvocationTargetException | NullPointerException e) {
-      // Ignore clean failure
-      logger.warn("Clean failed for buffer " + buffer.getClass().getSimpleName(), e);
+  private CleanUtil() {
+    // Hide the default constructor since this is a utility class.
+  }
+
+  public static void cleanDirectBuffer(ByteBuffer buf) {
+    if (cleanMethod != null) {
+      try {
+        cleanMethod.invoke(cleanerMethod.invoke(buf));
+      } catch (IllegalAccessException | IllegalArgumentException
+        | InvocationTargetException | SecurityException e) {
+        logger.warn("Error while cleaning up the DirectBuffer", e);
+      }
+    } else if (invokeCleanerMethod != null) {
+      try {
+        invokeCleanerMethod.invoke(unsafe, buf);
+      } catch (IllegalAccessException | IllegalArgumentException
+        | InvocationTargetException | SecurityException e) {
+        logger.warn("Error while cleaning up the DirectBuffer", e);
+      }
     }
   }
+
 }

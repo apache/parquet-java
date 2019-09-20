@@ -47,12 +47,6 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>1.10</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
       <version>${project.version}</version>
