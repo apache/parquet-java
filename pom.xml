@@ -76,6 +76,7 @@
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <jackson.version>2.9.9</jackson.version>
+    <jackson-databind.version>2.9.9.3</jackson-databind.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.7.3</hadoop.version>
     <hadoop1.version>1.2.1</hadoop1.version>
