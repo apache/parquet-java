@@ -540,6 +540,8 @@ public class ParquetFileReader implements Closeable {
       throw new RuntimeException("corrupted file: the footer index is not within the file: " + footerIndex);
     }
     f.seek(footerIndex);
+    // Read all the footer bytes in one time to avoid multiple read operations,
+    // since it can be pretty time consuming for a single read operation in HDFS.
     ByteBuffer footerBytesBuffer = ByteBuffer.allocate(footerLength);
     f.readFully(footerBytesBuffer);
     LOG.debug("Finished to read all footer bytes.");
