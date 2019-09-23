@@ -23,8 +23,11 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -148,6 +151,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String COLUMN_INDEX_TRUNCATE_LENGTH = "parquet.columnindex.truncate.length";
   public static final String BLOOM_FILTER_COLUMN_NAMES = "parquet.bloom.filter.column.names";
   public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.expected.ndv";
+  public static final String BLOOM_FILTER_MAX_BYTES = "parquet.bloom.filter.max.bytes";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
 
@@ -213,6 +217,20 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static boolean getEnableDictionary(JobContext jobContext) {
     return getEnableDictionary(getConfiguration(jobContext));
+  }
+
+  public static int getBloomFilterMaxBytes(Configuration conf) {
+    return conf.getInt(BLOOM_FILTER_MAX_BYTES,
+      ParquetProperties.DEFAULT_MAX_BLOOM_FILTER_BYTES);
+  }
+
+  public static Set getBloomFilterColumns(Configuration conf) {
+    String columnNames = conf.get(BLOOM_FILTER_COLUMN_NAMES);
+    if (columnNames != null) {
+      return new HashSet<>(Arrays.asList(columnNames.split(",")));
+    } else {
+      return new HashSet();
+    }
   }
 
   public static Map<String, Long> getBloomFilterColumnExpectedNDVs(Configuration conf) {
@@ -443,7 +461,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
         .withDictionaryEncoding(getEnableDictionary(conf))
-        .withBloomFilterInfo(getBloomFilterColumnExpectedNDVs(conf))
+        .withBloomFilterColumnNames(getBloomFilterColumns(conf))
+        .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
+        .withBloomFilterColumnNdvs(getBloomFilterColumnExpectedNDVs(conf))
         .withWriterVersion(getWriterVersion(conf))
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
@@ -469,7 +489,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Min row count for page size check is: {}", props.getMinRowCountForPageSizeCheck());
       LOG.info("Max row count for page size check is: {}", props.getMaxRowCountForPageSizeCheck());
       LOG.info("Truncate length for column indexes is: {}", props.getColumnIndexTruncateLength());
-      LOG.info("Bloom filter enabled column names are: {}", props.getBloomFilterColumnExpectedNDVs().keySet());
+      LOG.info("Max Bloom filter size for a column is {}", props.getMaxBloomFilterBytes());
+      LOG.info("Bloom filter enabled column names are: {}", props.getBloomFilterColumns());
       LOG.info("Bloom filter enabled column expected number of distinct values are: {}",
         props.getBloomFilterColumnExpectedNDVs().values());
       LOG.info("Page row count limit to {}", props.getPageRowCountLimit());

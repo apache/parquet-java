@@ -20,6 +20,8 @@ package org.apache.parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -534,6 +536,21 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withPageWriteChecksumEnabled(boolean enablePageWriteChecksum) {
       encodingPropsBuilder.withPageWriteChecksumEnabled(enablePageWriteChecksum);
+      return self();
+    }
+
+    /**
+     * Enables bloom filter column names for the constructed writer.
+     *
+     * @return this builder for method chaining.
+     */
+    public SELF withBloomFilterColumnNames(String columnNames) {
+      if (columnNames != null) {
+        encodingPropsBuilder.withBloomFilterColumnNames(
+          new HashSet<>(Arrays.asList(columnNames.split(",")))
+        );
+      }
+
       return self();
     }
 

@@ -16,20 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.page;
 
-import org.apache.parquet.column.ColumnDescriptor;
+package org.apache.parquet.column.values.bloomfilter;
+
+import net.openhft.hashing.LongHashFunction;
+
+import java.nio.ByteBuffer;
 
 /**
- * contains all the writers for the columns in the corresponding row group
+ * The implementation of HashFunction interface. The XxHash uses XXH64 version xxHash
+ * with a seed of 0.
  */
-public interface PageWriteStore {
+public class XxHash implements HashFunction {
+  @Override
+  public long hashBytes(byte[] input) {
+    return LongHashFunction.xx(0).hashBytes(input);
+  }
 
-  /**
-   *
-   * @param path the descriptor for the column
-   * @return the corresponding page writer
-   */
-  PageWriter getPageWriter(ColumnDescriptor path);
-
+  @Override
+  public long hashByteBuffer(ByteBuffer input) {
+    return LongHashFunction.xx(0).hashBytes(input);
+  }
 }
