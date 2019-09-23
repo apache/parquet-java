@@ -19,6 +19,8 @@
 package org.apache.parquet.hadoop;
 
 import static java.util.Arrays.asList;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -40,12 +42,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import net.openhft.hashing.LongHashFunction;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -165,5 +169,45 @@ public class TestParquetWriter {
 
     Assert.assertFalse("Should not create a file when schema is rejected",
         file.exists());
+  }
+
+
+  @Test
+  public void testParquetFileWithBloomFilter() throws IOException {
+    MessageType schema = Types.buildMessage().
+      required(BINARY).as(stringType()).named("name").named("msg");
+
+    String[] testNames = {"hello", "parquet", "bloom", "filter"};
+
+    final int recordCount = testNames.length;
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+      .withPageRowCountLimit(10)
+      .withConf(conf)
+      .withDictionaryEncoding(false)
+      .withBloomFilterColumnNames("name")
+      .build()) {
+      for (int i = 0; i < recordCount; ++i) {
+        writer.write(factory.newGroup().append("name", testNames[i]));
+      }
+    }
+
+    ParquetMetadata footer = readFooter(conf, path, NO_FILTER);
+    ParquetFileReader reader = new ParquetFileReader(
+      conf, footer.getFileMetaData(), path, footer.getBlocks(), schema.getColumns());
+
+    BloomFilter bloomFilter = reader.getBloomFilterDataReader(footer.getBlocks().get(0))
+      .readBloomFilter(footer.getBlocks().get(0).getColumns().get(0));
+
+    for (String name: testNames) {
+      assertTrue(bloomFilter.findHash(
+        LongHashFunction.xx(0).hashBytes(Binary.fromString(name).toByteBuffer())));
+    }
   }
 }

@@ -93,6 +93,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
+
       mcolumns.put(path, createColumnWriter(path, pageWriter, null, props));
     }
     this.columns = unmodifiableMap(mcolumns);

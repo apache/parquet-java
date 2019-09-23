@@ -29,6 +29,7 @@ import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
@@ -181,12 +182,13 @@ public class ParquetProperties {
   }
 
   public ColumnWriteStore newColumnWriteStore(MessageType schema,
-                                              PageWriteStore pageStore) {
+                                              PageWriteStore pageStore,
+                                              BloomFilterWriteStore bloomFilterWriterStore) {
     switch (writerVersion) {
     case PARQUET_1_0:
-      return new ColumnWriteStoreV1(schema, pageStore, this);
+      return new ColumnWriteStoreV1(schema, pageStore, bloomFilterWriterStore, this);
     case PARQUET_2_0:
-      return new ColumnWriteStoreV2(schema, pageStore, this);
+      return new ColumnWriteStoreV2(schema, pageStore, bloomFilterWriterStore, this);
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);
     }
@@ -247,7 +249,7 @@ public class ParquetProperties {
     private int columnIndexTruncateLength = DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
     private Map<String, Long> bloomFilterColumnExpectedNDVs = new HashMap<>();
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
-    private Set<String> bloomFilterColumns = new HashSet();
+    private Set<String> bloomFilterColumns = new HashSet<>();
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
 
     private Builder() {
@@ -363,6 +365,17 @@ public class ParquetProperties {
      */
     public Builder withMaxBloomFilterBytes(int maxBloomFilterBytes) {
       this.maxBloomFilterBytes = maxBloomFilterBytes;
+      return this;
+    }
+
+    /**
+     * Set Bloom filter column names.
+     *
+     * @param columns the columns which has bloom filter enabled.
+     * @return this builder for method chaining
+     */
+    public Builder withBloomFilterColumnNames(Set<String> columns) {
+      this.bloomFilterColumns = columns;
       return this;
     }
 

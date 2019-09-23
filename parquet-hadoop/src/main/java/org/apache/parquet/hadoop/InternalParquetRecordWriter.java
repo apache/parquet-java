@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
@@ -64,6 +65,7 @@ class InternalParquetRecordWriter<T> {
 
   private ColumnWriteStore columnStore;
   private ColumnChunkPageWriteStore pageStore;
+  private BloomFilterWriteStore bloomFilterWriteStore;
   private RecordConsumer recordConsumer;
 
   /**
@@ -101,9 +103,12 @@ class InternalParquetRecordWriter<T> {
   }
 
   private void initStore() {
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator(),
-        props.getColumnIndexTruncateLength());
-    columnStore = props.newColumnWriteStore(schema, pageStore);
+    ColumnChunkPageWriteStore columnChunkPageWriteStore = new ColumnChunkPageWriteStore(compressor,
+        schema, props.getAllocator(), props.getColumnIndexTruncateLength());
+    pageStore = columnChunkPageWriteStore;
+    bloomFilterWriteStore = columnChunkPageWriteStore;
+
+    columnStore = props.newColumnWriteStore(schema, pageStore, bloomFilterWriteStore);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);
     writeSupport.prepareForWrite(recordConsumer);

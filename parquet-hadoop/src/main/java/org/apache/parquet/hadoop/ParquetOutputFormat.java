@@ -23,6 +23,7 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -224,13 +225,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static Set getBloomFilterColumns(Configuration conf) {
     String columnNames = conf.get(BLOOM_FILTER_COLUMN_NAMES);
-    Set<String> columnSet = new HashSet<>();
-
-    for (String column : columnNames.split(",")) {
-      columnSet.add(column);
+    if (columnNames != null) {
+      return new HashSet<>(Arrays.asList(columnNames.split(",")));
+    } else {
+      return new HashSet();
     }
-
-    return columnSet;
   }
 
   public static Map<String, Long> getBloomFilterColumnExpectedNDVs(Configuration conf) {
@@ -434,6 +433,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
         .withDictionaryEncoding(getEnableDictionary(conf))
+        .withBloomFilterColumnNames(getBloomFilterColumns(conf))
         .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
         .withBloomFilterColumnNdvs(getBloomFilterColumnExpectedNDVs(conf))
         .withWriterVersion(getWriterVersion(conf))
@@ -461,7 +461,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Max row count for page size check is: {}", props.getMaxRowCountForPageSizeCheck());
       LOG.info("Truncate length for column indexes is: {}", props.getColumnIndexTruncateLength());
       LOG.info("Max Bloom filter size for a column is {}", props.getMaxBloomFilterBytes());
-      LOG.info("Bloom filter enabled column names are: {}", props.getBloomFilterColumnExpectedNDVs().keySet());
+      LOG.info("Bloom filter enabled column names are: {}", props.getBloomFilterColumns());
       LOG.info("Bloom filter enabled column expected number of distinct values are: {}",
         props.getBloomFilterColumnExpectedNDVs().values());
       LOG.info("Page row count limit to {}", props.getPageRowCountLimit());

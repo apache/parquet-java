@@ -31,5 +31,4 @@ public interface PageWriteStore {
    * @return the corresponding page writer
    */
   PageWriter getPageWriter(ColumnDescriptor path);
-
 }
