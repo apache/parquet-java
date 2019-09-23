@@ -79,7 +79,6 @@ public class SchemaCommand extends BaseCommand {
       String source = targets.get(0);
 
       if (outputPath != null) {
-        Path outPath = qualifiedPath(outputPath);
         try (OutputStream out = overwrite ?
           create(outputPath) : createWithNoOverwrite(outputPath)) {
           out.write(getSchema(source).getBytes(StandardCharsets.UTF_8));

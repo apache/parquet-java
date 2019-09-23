@@ -100,7 +100,6 @@ public class ToAvroCommand extends BaseCommand {
       DatumWriter<Record> datumWriter = new GenericDatumWriter<>(schema);
       DataFileWriter<Record> w = new DataFileWriter<>(datumWriter);
       w.setCodec(codecFactory);
-      Path outPath = qualifiedPath(outputPath);
       try (OutputStream os = overwrite ?
         create(outputPath) : createWithNoOverwrite(outputPath)) {
         try (DataFileWriter<Record> writer = w.create(projection, os)) {
