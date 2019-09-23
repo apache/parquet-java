@@ -19,19 +19,26 @@
 # This script gets invoked by .travis.yml in the before_install step
 ################################################################################
 
+export THIFT_VERSION=0.12.0
+
+
+
 set -e
+
 date
+
 sudo apt-get update -qq
 sudo apt-get install -qq build-essential pv autoconf automake libtool curl make \
    g++ unzip libboost-dev libboost-test-dev libboost-program-options-dev \
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
-wget -nv http://archive.apache.org/dist/thrift/0.9.3/thrift-0.9.3.tar.gz
-tar zxf thrift-0.9.3.tar.gz
-cd thrift-0.9.3
+wget -nv https://archive.apache.org/dist/thrift/${THIFT_VERSION}/thrift-${THIFT_VERSION}.tar.gz
+tar zxf thrift-${THIFT_VERSION}.tar.gz
+cd thrift-${THIFT_VERSION}
 chmod +x ./configure
-./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php --without-nodejs
+./configure --disable-gen-erl --disable-gen-hs --without-c-glib --without-erlang --without-go --without-haskell --without-java --without-nodejs --without-php --without-python --without-ruby
+
 sudo make install
 cd ..
 branch_specific_script="dev/travis-before_install-${TRAVIS_BRANCH}.sh"
@@ -40,3 +47,4 @@ then
   . "$branch_specific_script"
 fi
 date
+
