@@ -71,7 +71,7 @@
     <dependency>
       <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>${jackson.version}</version>
+      <version>${jackson-databind.version}</version>
     </dependency>
     <dependency>
       <groupId>org.xerial.snappy</groupId>
@@ -84,6 +84,11 @@
       <groupId>commons-pool</groupId>
       <artifactId>commons-pool</artifactId>
       <version>1.6</version>
+    </dependency>
+    <dependency>
+      <groupId>it.unimi.dsi</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>${fastutil.version}</version>
     </dependency>
     <dependency>
       <groupId>com.github.rdblue</groupId>

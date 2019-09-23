@@ -27,14 +27,23 @@ import java.util.Arrays;
 public class AvroFileTest extends ParquetFileTest {
 
   protected File toAvro(File inputFile) throws IOException {
+    return toAvro(inputFile, "GZIP");
+  }
+
+  protected File toAvro(File inputFile, String compressionCodecName) throws IOException {
     File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
-    return toAvro(inputFile, outputFile, false);
+    return toAvro(inputFile, outputFile, false, compressionCodecName);
   }
 
   protected File toAvro(File inputFile, File outputFile, boolean overwrite) throws IOException {
+    return toAvro(inputFile, outputFile, overwrite, "GZIP");
+  }
+
+  protected File toAvro(File inputFile, File outputFile, boolean overwrite, String compressionCodecName) throws IOException {
     ToAvroCommand command = new ToAvroCommand(createLogger());
     command.targets = Arrays.asList(inputFile.getAbsolutePath());
     command.outputPath = outputFile.getAbsolutePath();
+    command.compressionCodecName = compressionCodecName;
     command.overwrite = overwrite;
     command.setConf(new Configuration());
     int exitCode = command.run();

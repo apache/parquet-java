@@ -34,6 +34,29 @@ public class ToAvroCommandTest extends AvroFileTest {
   }
 
   @Test
+  public void testToAvroCommandWithGzipCompression() throws IOException {
+    File avroFile = toAvro(parquetFile(), "GZIP");
+    Assert.assertTrue(avroFile.exists());
+  }
+
+  @Test
+  public void testToAvroCommandWithSnappyCompression() throws IOException {
+    File avroFile = toAvro(parquetFile(), "SNAPPY");
+    Assert.assertTrue(avroFile.exists());
+  }
+
+  @Test
+  public void testToAvroCommandWithZstdCompression() throws IOException {
+    File avroFile = toAvro(parquetFile(), "ZSTD");
+    Assert.assertTrue(avroFile.exists());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testToAvroCommandWithInvalidCompression() throws IOException {
+    toAvro(parquetFile(), "FOO");
+  }
+
+  @Test
   public void testToAvroCommandOverwriteExistentFile() throws IOException {
     File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
     FileUtils.touch(outputFile);

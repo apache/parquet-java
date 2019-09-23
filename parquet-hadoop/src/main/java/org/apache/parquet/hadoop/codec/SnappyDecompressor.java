@@ -63,7 +63,7 @@ public class SnappyDecompressor implements Decompressor {
       if (decompressedSize > outputBuffer.capacity()) {
         ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(decompressedSize);
-        CleanUtil.clean(oldBuffer);
+        CleanUtil.cleanDirectBuffer(oldBuffer);
       }
 
       // Reset the previous outputBuffer (i.e. set position to 0)
@@ -101,12 +101,12 @@ public class SnappyDecompressor implements Decompressor {
     SnappyUtil.validateBuffer(buffer, off, len);
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
-      ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
+      final ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
       inputBuffer.rewind();
       newBuffer.put(inputBuffer);
-      ByteBuffer oldBuffer = inputBuffer;
+      final ByteBuffer oldBuffer = inputBuffer;
       inputBuffer = newBuffer;
-      CleanUtil.clean(oldBuffer);
+      CleanUtil.cleanDirectBuffer(oldBuffer);
     } else {
       inputBuffer.limit(inputBuffer.position() + len);
     }
@@ -115,8 +115,8 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public void end() {
-    CleanUtil.clean(inputBuffer);
-    CleanUtil.clean(outputBuffer);
+    CleanUtil.cleanDirectBuffer(inputBuffer);
+    CleanUtil.cleanDirectBuffer(outputBuffer);
   }
 
   @Override
