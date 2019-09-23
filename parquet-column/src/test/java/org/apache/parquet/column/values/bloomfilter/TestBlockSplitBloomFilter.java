@@ -37,11 +37,11 @@ import static org.junit.Assert.assertTrue;
 
 public class TestBlockSplitBloomFilter {
   @Test
-  public void testConstructor () throws IOException {
+  public void testConstructor () {
     BloomFilter bloomFilter1 = new BlockSplitBloomFilter(0);
-    assertEquals(bloomFilter1.getBitsetSize(), BlockSplitBloomFilter.MINIMUM_BYTES);
-    BloomFilter bloomFilter2 = new BlockSplitBloomFilter(BlockSplitBloomFilter.MAXIMUM_BYTES + 1);
-    assertEquals(bloomFilter2.getBitsetSize(), BlockSplitBloomFilter.MAXIMUM_BYTES);
+    assertEquals(bloomFilter1.getBitsetSize(), BlockSplitBloomFilter.DEFAULT_MINIMUM_BYTES);
+    BloomFilter bloomFilter2 = new BlockSplitBloomFilter(BlockSplitBloomFilter.DEFAULT_MAXIMUM_BYTES + 1);
+    assertEquals(bloomFilter2.getBitsetSize(), BlockSplitBloomFilter.DEFAULT_MAXIMUM_BYTES);
     BloomFilter bloomFilter3 = new BlockSplitBloomFilter(1000);
     assertEquals(bloomFilter3.getBitsetSize(), 1024);
   }
@@ -55,7 +55,7 @@ public class TestBlockSplitBloomFilter {
    */
   @Test
   public void testBasic () throws IOException {
-    final String testStrings[] = {"hello", "parquet", "bloom", "filter"};
+    final String[] testStrings = {"hello", "parquet", "bloom", "filter"};
     BloomFilter bloomFilter = new BlockSplitBloomFilter(1024);
 
     for(int i = 0; i < testStrings.length; i++) {
@@ -75,17 +75,21 @@ public class TestBlockSplitBloomFilter {
 
     fileInputStream.read(value);
     int hash = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
-    assertEquals(hash, BloomFilter.HashStrategy.MURMUR3_X64_128.ordinal());
+    assertEquals(hash, BloomFilter.HashStrategy.XXH64.ordinal());
 
     fileInputStream.read(value);
     int algorithm = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
     assertEquals(algorithm, BloomFilter.Algorithm.BLOCK.ordinal());
 
+    fileInputStream.read(value);
+    int compression = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    assertEquals(compression, BloomFilter.Compression.UNCOMPRESSED.ordinal());
+
     byte[] bitset = new byte[length];
     fileInputStream.read(bitset);
     bloomFilter = new BlockSplitBloomFilter(bitset);
-    for(int i = 0; i < testStrings.length; i++) {
-      assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(testStrings[i]))));
+    for (String testString : testStrings) {
+      assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(testString))));
     }
   }
 

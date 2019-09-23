@@ -68,9 +68,9 @@
        </plugin>
       <!-- thrift -->
       <plugin>
-        <groupId>org.apache.thrift.tools</groupId>
-        <artifactId>maven-thrift-plugin</artifactId>
-        <version>0.1.11</version>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>thrift-maven-plugin</artifactId>
+        <version>${thrift-maven-plugin.version}</version>
         <configuration>
           <thriftSourceRoot>${parquet.thrift.path}</thriftSourceRoot>
           <thriftExecutable>${format.thrift.executable}</thriftExecutable>

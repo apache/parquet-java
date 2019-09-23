@@ -31,7 +31,7 @@ import java.io.OutputStream;
 public interface BloomFilter {
   // Bloom filter Hash strategy.
   enum HashStrategy {
-    MURMUR3_X64_128(0);
+    XXH64(0);
     HashStrategy(int value) {
       this.value = value;
     }
@@ -42,6 +42,15 @@ public interface BloomFilter {
   enum Algorithm {
     BLOCK(0);
     Algorithm(int value) {
+      this.value = value;
+    }
+    int value;
+  }
+
+  // Bloom filter compression.
+  enum Compression {
+    UNCOMPRESSED(0);
+    Compression(int value) {
       this.value = value;
     }
     int value;

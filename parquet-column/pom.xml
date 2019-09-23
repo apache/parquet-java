@@ -64,7 +64,11 @@
       <artifactId>fastutil</artifactId>
       <version>${fastutil.version}</version>
     </dependency>
-
+    <dependency>
+      <groupId>net.openhft</groupId>
+      <artifactId>zero-allocation-hashing</artifactId>
+      <version>0.9</version>
+    </dependency>
     <dependency>
       <groupId>com.carrotsearch</groupId>
       <artifactId>junit-benchmarks</artifactId>

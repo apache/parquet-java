@@ -222,14 +222,14 @@ public class TestParquetFileWriter {
   }
 
   @Test
-  public void testBloomWriteRead() throws Exception {
+  public void testBloomFilterWriteRead() throws Exception {
     MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
     File testFile = temp.newFile();
     testFile.delete();
     Path path = new Path(testFile.toURI());
     Configuration configuration = new Configuration();
-    configuration.set("parquet.bloomFilter.filter.column.names", "foo");
-    String colPath[] = {"foo"};
+    configuration.set("parquet.bloom.filter.column.names", "foo");
+    String[] colPath = {"foo"};
     ColumnDescriptor col = schema.getColumnDescription(colPath);
     BinaryStatistics stats1 = new BinaryStatistics();
     ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
@@ -239,19 +239,19 @@ public class TestParquetFileWriter {
     w.writeDataPage(2, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.writeDataPage(3, 4, BytesInput.from(BYTES1),stats1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
-    BloomFilter bloomData = new BlockSplitBloomFilter(0);
-    bloomData.insertHash(bloomData.hash(Binary.fromString("hello")));
-    bloomData.insertHash(bloomData.hash(Binary.fromString("world")));
-    w.writeBloomFilter(bloomData);
+    BloomFilter blockSplitBloomFilter = new BlockSplitBloomFilter(0);
+    blockSplitBloomFilter.insertHash(blockSplitBloomFilter.hash(Binary.fromString("hello")));
+    blockSplitBloomFilter.insertHash(blockSplitBloomFilter.hash(Binary.fromString("world")));
+    w.writeBloomFilter(blockSplitBloomFilter);
     w.endBlock();
-    w.end(new HashMap<String, String>());
+    w.end(new HashMap<>());
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
     ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
       Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(colPath)));
     BloomFilterReader bloomFilterReader = r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
     BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(readFooter.getBlocks().get(0).getColumns().get(0));
-    assertTrue(bloomFilter.findHash(bloomData.hash(Binary.fromString("hello"))));
-    assertTrue(bloomFilter.findHash(bloomData.hash(Binary.fromString("world"))));
+    assertTrue(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("hello"))));
+    assertTrue(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("world"))));
   }
 
   @Test
