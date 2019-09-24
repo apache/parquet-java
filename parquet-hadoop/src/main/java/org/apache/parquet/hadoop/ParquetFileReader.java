@@ -30,6 +30,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADAT
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.Closeable;
+import java.io.InputStream;
 import java.io.IOException;
 import java.io.SequenceInputStream;
 import java.nio.ByteBuffer;
@@ -542,7 +543,14 @@ public class ParquetFileReader implements Closeable {
       throw new RuntimeException("corrupted file: the footer index is not within the file: " + footerIndex);
     }
     f.seek(footerIndex);
-    return converter.readParquetMetadata(f, options.getMetadataFilter());
+    // Read all the footer bytes in one time to avoid multiple read operations,
+    // since it can be pretty time consuming for a single read operation in HDFS.
+    ByteBuffer footerBytesBuffer = ByteBuffer.allocate(footerLength);
+    f.readFully(footerBytesBuffer);
+    LOG.debug("Finished to read all footer bytes.");
+    footerBytesBuffer.flip();
+    InputStream footerBytesStream = ByteBufferInputStream.wrap(footerBytesBuffer);
+    return converter.readParquetMetadata(footerBytesStream, options.getMetadataFilter());
   }
 
   /**
