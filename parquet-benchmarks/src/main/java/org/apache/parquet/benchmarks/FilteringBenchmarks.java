@@ -87,7 +87,7 @@ import it.unimi.dsi.fastutil.longs.LongList;
 @Warmup(iterations = 10, batchSize = 1)
 @Measurement(iterations = 50, batchSize = 1)
 @OutputTimeUnit(MILLISECONDS)
-public class  FilteringBenchmarks {
+public class FilteringBenchmarks {
   private static final int RECORD_COUNT = 2_000_000;
   private static final Logger LOGGER = LoggerFactory.getLogger(FilteringBenchmarks.class);
 

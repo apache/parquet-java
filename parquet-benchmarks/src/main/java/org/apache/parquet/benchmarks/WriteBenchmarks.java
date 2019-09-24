@@ -46,7 +46,8 @@ public class WriteBenchmarks {
     dataGenerator.cleanup();
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsDefaultBlockAndPageSizeUncompressed()
           throws IOException
   {
@@ -60,7 +61,8 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsBS256MPS4MUncompressed()
           throws IOException
   {
@@ -74,7 +76,8 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsBS256MPS8MUncompressed()
           throws IOException
   {
@@ -88,7 +91,8 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsBS512MPS4MUncompressed()
           throws IOException
   {
@@ -102,7 +106,8 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsBS512MPS8MUncompressed()
           throws IOException
   {
@@ -131,7 +136,8 @@ public class WriteBenchmarks {
 //            ONE_MILLION);
 //  }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsDefaultBlockAndPageSizeSNAPPY()
           throws IOException
   {
@@ -145,7 +151,8 @@ public class WriteBenchmarks {
                                ONE_MILLION);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsDefaultBlockAndPageSizeGZIP()
           throws IOException
   {

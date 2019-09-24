@@ -81,96 +81,114 @@ public class PageChecksumReadBenchmarks {
 
   // 100k rows, uncompressed, GZIP, Snappy
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read100KRowsUncompressedWithoutVerification(Blackhole blackhole) throws IOException {
     readFile(file_100K_CHECKSUMS_UNCOMPRESSED, 100 * ONE_K, false, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read100KRowsUncompressedWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_100K_CHECKSUMS_UNCOMPRESSED, 100 * ONE_K, true, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read100KRowsGzipWithoutVerification(Blackhole blackhole) throws IOException {
     readFile(file_100K_CHECKSUMS_GZIP, 100 * ONE_K, false, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read100KRowsGzipWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_100K_CHECKSUMS_GZIP, 100 * ONE_K, true, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read100KRowsSnappyWithoutVerification(Blackhole blackhole) throws IOException {
     readFile(file_100K_CHECKSUMS_SNAPPY, 100 * ONE_K, false, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read100KRowsSnappyWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_100K_CHECKSUMS_SNAPPY, 100 * ONE_K, true, blackhole);
   }
 
   // 1M rows, uncompressed, GZIP, Snappy
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsUncompressedWithoutVerification(Blackhole blackhole) throws IOException {
     readFile(file_1M_CHECKSUMS_UNCOMPRESSED, ONE_MILLION, false, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsUncompressedWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_1M_CHECKSUMS_UNCOMPRESSED, ONE_MILLION, true, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsGzipWithoutVerification(Blackhole blackhole) throws IOException {
     readFile(file_1M_CHECKSUMS_GZIP, ONE_MILLION, false, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsGzipWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_1M_CHECKSUMS_GZIP, ONE_MILLION, true, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsSnappyWithoutVerification(Blackhole blackhole) throws IOException {
     readFile(file_1M_CHECKSUMS_SNAPPY, ONE_MILLION, false, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsSnappyWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_1M_CHECKSUMS_SNAPPY, ONE_MILLION, true, blackhole);
   }
 
   // 10M rows, uncompressed, GZIP, Snappy
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read10MRowsUncompressedWithoutVerification(Blackhole blackhole) throws IOException {
     readFile(file_10M_CHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, false, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read10MRowsUncompressedWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_10M_CHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, true, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read10MRowsGzipWithoutVerification(Blackhole blackhole) throws IOException {
     readFile(file_10M_CHECKSUMS_GZIP, 10 * ONE_MILLION, false, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read10MRowsGzipWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_10M_CHECKSUMS_GZIP, 10 * ONE_MILLION, true, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read10MRowsSnappyWithoutVerification(Blackhole blackhole) throws IOException {
     readFile(file_10M_CHECKSUMS_SNAPPY, 10 * ONE_MILLION, false, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read10MRowsSnappyWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_10M_CHECKSUMS_SNAPPY, 10 * ONE_MILLION, true, blackhole);
   }

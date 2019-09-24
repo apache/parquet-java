@@ -65,35 +65,40 @@ public class ReadBenchmarks {
     new DataGenerator().generateAll();
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsDefaultBlockAndPageSizeUncompressed(Blackhole blackhole)
           throws IOException
   {
     read(file_1M, ONE_MILLION, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsBS256MPS4MUncompressed(Blackhole blackhole)
           throws IOException
   {
     read(file_1M_BS256M_PS4M, ONE_MILLION, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsBS256MPS8MUncompressed(Blackhole blackhole)
           throws IOException
   {
     read(file_1M_BS256M_PS8M, ONE_MILLION, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsBS512MPS4MUncompressed(Blackhole blackhole)
           throws IOException
   {
     read(file_1M_BS512M_PS4M, ONE_MILLION, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsBS512MPS8MUncompressed(Blackhole blackhole)
           throws IOException
   {
@@ -108,14 +113,16 @@ public class ReadBenchmarks {
 //    read(parquetFile_1M_LZO, ONE_MILLION, blackhole);
 //  }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsDefaultBlockAndPageSizeSNAPPY(Blackhole blackhole)
           throws IOException
   {
     read(file_1M_SNAPPY, ONE_MILLION, blackhole);
   }
 
-  @Benchmark @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
   public void read1MRowsDefaultBlockAndPageSizeGZIP(Blackhole blackhole)
           throws IOException
   {
