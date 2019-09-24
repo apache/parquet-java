@@ -25,6 +25,8 @@ public class BenchmarkFiles {
   public static final Configuration configuration = new Configuration();
 
   public static final String TARGET_DIR = "target/tests/ParquetBenchmarks";
+  public static final Path targetDir = new Path(TARGET_DIR );
+
   public static final Path file_1M = new Path(TARGET_DIR + "/PARQUET-1M");
 
   //different block and page sizes
