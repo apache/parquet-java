@@ -549,8 +549,9 @@ public class ParquetFileReader implements Closeable {
     f.readFully(footerBytesBuffer);
     LOG.debug("Finished to read all footer bytes.");
     footerBytesBuffer.flip();
-    InputStream footerBytesStream = ByteBufferInputStream.wrap(footerBytesBuffer);
-    return converter.readParquetMetadata(footerBytesStream, options.getMetadataFilter());
+    try (InputStream footerBytesStream = ByteBufferInputStream.wrap(footerBytesBuffer)) {
+      return converter.readParquetMetadata(footerBytesStream, options.getMetadataFilter());
+    }
   }
 
   /**
@@ -1474,10 +1475,11 @@ public class ParquetFileReader implements Closeable {
 
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
-      ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
-      for (int i = 0; i < chunks.size(); i++) {
-        ChunkDescriptor descriptor = chunks.get(i);
-        builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
+      try (ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers)) {
+        for (int i = 0; i < chunks.size(); i++) {
+          ChunkDescriptor descriptor = chunks.get(i);
+          builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
+        }
       }
     }
 
