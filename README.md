@@ -39,7 +39,7 @@ wget -nv http://archive.apache.org/dist/thrift/0.12.0/thrift-0.12.0.tar.gz
 tar xzf thrift-0.12.0.tar.gz
 cd thrift-0.12.0
 chmod +x ./configure
-./configure --disable-gen-erl --disable-gen-hs --without-c-glib --without-erlang --without-go --without-haskell --without-java --without-nodejs --without-php --without-python --without-ruby
+./configure --disable-libs
 sudo make install
 ```
 
