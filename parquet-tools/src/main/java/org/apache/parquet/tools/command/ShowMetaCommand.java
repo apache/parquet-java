@@ -76,6 +76,7 @@ public class ShowMetaCommand extends ArgsOnlyCommand {
     boolean showOriginalTypes = options.hasOption('o');
 
     Configuration conf = new Configuration();
+    conf.setBoolean("parquet.strings.signed-min-max.enabled", true);
     Path inputPath = new Path(input);
     FileStatus inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath);
     List<Footer> footers = ParquetFileReader.readFooters(conf, inputFileStatus, false);

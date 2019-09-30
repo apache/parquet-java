@@ -25,6 +25,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.commons.lang.StringUtils;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -72,8 +73,10 @@ public class ParquetMetadataCommand extends BaseCommand {
         "Cannot process multiple Parquet files.");
 
     String source = targets.get(0);
+    Configuration conf = getConf();
+    conf.setBoolean("parquet.strings.signed-min-max.enabled", true);
     ParquetMetadata footer = ParquetFileReader.readFooter(
-        getConf(), qualifiedPath(source), ParquetMetadataConverter.NO_FILTER);
+        conf, qualifiedPath(source), ParquetMetadataConverter.NO_FILTER);
 
     console.info("\nFile path:  {}", source);
     console.info("Created by: {}", footer.getFileMetaData().getCreatedBy());
