@@ -33,7 +33,7 @@ wget -nv https://archive.apache.org/dist/thrift/${THIFT_VERSION}/thrift-${THIFT_
 tar zxf thrift-${THIFT_VERSION}.tar.gz
 cd thrift-${THIFT_VERSION}
 chmod +x ./configure
-./configure --disable-gen-erl --disable-gen-hs --without-c-glib --without-erlang --without-go --without-haskell --without-java --without-nodejs --without-php --without-python --without-ruby
+./configure --disable-libs
 sudo make install
 cd ..
 branch_specific_script="dev/travis-before_install-${TRAVIS_BRANCH}.sh"
