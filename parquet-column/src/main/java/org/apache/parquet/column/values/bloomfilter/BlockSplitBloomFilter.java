@@ -233,7 +233,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
   public void insertHash(long hash) {
     long numBlocks = bitset.length / BYTES_PER_BLOCK;
     long lowHash = hash >>> 32;
-    int blockIndex = (int)(lowHash * numBlocks >> 32);
+    int blockIndex = (int)((lowHash * numBlocks) >> 32);
     int key = (int)hash;
 
     // Calculate mask for bucket.
@@ -249,7 +249,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
   public boolean findHash(long hash) {
     long numBlocks = bitset.length / BYTES_PER_BLOCK;
     long lowHash = hash >>> 32;
-    int blockIndex = (int)(lowHash * numBlocks >> 32);
+    int blockIndex = (int)((lowHash * numBlocks) >> 32);
     int key = (int)hash;
 
     // Calculate mask for the tiny Bloom filter.
