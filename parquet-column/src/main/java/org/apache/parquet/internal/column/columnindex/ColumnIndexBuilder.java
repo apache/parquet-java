@@ -291,7 +291,7 @@ public abstract class ColumnIndexBuilder {
     public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> PrimitiveIterator.OfInt visit(
         UserDefined<T, U> udp) {
       final UserDefinedPredicate<T> predicate = udp.getUserDefinedPredicate();
-      final boolean acceptNulls = predicate.keep(null);
+      final boolean acceptNulls = predicate.acceptsNullValue();
 
       if (acceptNulls && nullCounts == null) {
         // Nulls match so if we don't have null related statistics we have to return all pages
@@ -321,7 +321,7 @@ public abstract class ColumnIndexBuilder {
     public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> PrimitiveIterator.OfInt visit(
         LogicalNotUserDefined<T, U> udp) {
       final UserDefinedPredicate<T> inversePredicate = udp.getUserDefined().getUserDefinedPredicate();
-      final boolean acceptNulls = !inversePredicate.keep(null);
+      final boolean acceptNulls = !inversePredicate.acceptsNullValue();
 
       if (acceptNulls && nullCounts == null) {
         // Nulls match so if we don't have null related statistics we have to return all pages

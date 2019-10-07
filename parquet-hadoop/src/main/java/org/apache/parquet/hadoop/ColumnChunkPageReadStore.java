@@ -99,8 +99,9 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         public DataPage visit(DataPageV1 dataPageV1) {
           try {
             BytesInput decompressed = decompressor.decompress(dataPageV1.getBytes(), dataPageV1.getUncompressedSize());
+            final DataPageV1 decompressedPage;
             if (offsetIndex == null) {
-              return new DataPageV1(
+              decompressedPage = new DataPageV1(
                   decompressed,
                   dataPageV1.getValueCount(),
                   dataPageV1.getUncompressedSize(),
@@ -110,7 +111,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV1.getValueEncoding());
             } else {
               long firstRowIndex = offsetIndex.getFirstRowIndex(currentPageIndex);
-              return new DataPageV1(
+              decompressedPage = new DataPageV1(
                   decompressed,
                   dataPageV1.getValueCount(),
                   dataPageV1.getUncompressedSize(),
@@ -121,6 +122,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   dataPageV1.getDlEncoding(),
                   dataPageV1.getValueEncoding());
             }
+            if (dataPageV1.getCrc().isPresent()) {
+              decompressedPage.setCrc(dataPageV1.getCrc().getAsInt());
+            }
+            return decompressedPage;
           } catch (IOException e) {
             throw new ParquetDecodingException("could not decompress page", e);
           }
@@ -185,10 +190,14 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         return null;
       }
       try {
-        return new DictionaryPage(
-            decompressor.decompress(compressedDictionaryPage.getBytes(), compressedDictionaryPage.getUncompressedSize()),
-            compressedDictionaryPage.getDictionarySize(),
-            compressedDictionaryPage.getEncoding());
+        DictionaryPage decompressedPage = new DictionaryPage(
+          decompressor.decompress(compressedDictionaryPage.getBytes(), compressedDictionaryPage.getUncompressedSize()),
+          compressedDictionaryPage.getDictionarySize(),
+          compressedDictionaryPage.getEncoding());
+        if (compressedDictionaryPage.getCrc().isPresent()) {
+          decompressedPage.setCrc(compressedDictionaryPage.getCrc().getAsInt());
+        }
+        return decompressedPage;
       } catch (IOException e) {
         throw new ParquetDecodingException("Could not decompress dictionary page", e);
       }

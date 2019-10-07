@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.zip.CRC32;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -141,6 +142,9 @@ public class ParquetFileWriter {
   // set when end is called
   private ParquetMetadata footer = null;
 
+  private final CRC32 crc;
+  private boolean pageWriteChecksumEnabled;
+
   /**
    * Captures the order in which methods should be called
    */
@@ -200,7 +204,7 @@ public class ParquetFileWriter {
    */
   @Deprecated
   public ParquetFileWriter(Configuration configuration, MessageType schema,
-      Path file) throws IOException {
+                           Path file) throws IOException {
     this(HadoopOutputFile.fromPath(file, configuration),
         schema, Mode.CREATE, DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT);
   }
@@ -253,7 +257,8 @@ public class ParquetFileWriter {
                            long rowGroupSize, int maxPaddingSize)
       throws IOException {
     this(file, schema, mode, rowGroupSize, maxPaddingSize,
-        ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH);
+        ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
+        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
   /**
    * @param file OutputFile to create or overwrite
@@ -262,10 +267,12 @@ public class ParquetFileWriter {
    * @param rowGroupSize the row group size
    * @param maxPaddingSize the maximum padding
    * @param columnIndexTruncateLength the length which the min/max values in column indexes tried to be truncated to
+   * @param pageWriteChecksumEnabled whether to write out page level checksums
    * @throws IOException if the file can not be created
    */
   public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
-                           long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength)
+                           long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength,
+                           boolean pageWriteChecksumEnabled)
       throws IOException {
     TypeUtil.checkValidWriteSchema(schema);
 
@@ -287,6 +294,8 @@ public class ParquetFileWriter {
 
     this.encodingStatsBuilder = new EncodingStats.Builder();
     this.columnIndexTruncateLength = columnIndexTruncateLength;
+    this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
+    this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
   }
 
   /**
@@ -311,6 +320,8 @@ public class ParquetFileWriter {
     this.encodingStatsBuilder = new EncodingStats.Builder();
     // no truncation is needed for testing
     this.columnIndexTruncateLength = Integer.MAX_VALUE;
+    this.pageWriteChecksumEnabled = ParquetOutputFormat.getPageWriteChecksumEnabled(configuration);
+    this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
   }
   /**
    * start the file
@@ -380,12 +391,24 @@ public class ParquetFileWriter {
     currentChunkDictionaryPageOffset = out.getPos();
     int uncompressedSize = dictionaryPage.getUncompressedSize();
     int compressedPageSize = (int)dictionaryPage.getBytes().size(); // TODO: fix casts
-    metadataConverter.writeDictionaryPageHeader(
+    if (pageWriteChecksumEnabled) {
+      crc.reset();
+      crc.update(dictionaryPage.getBytes().toByteArray());
+      metadataConverter.writeDictionaryPageHeader(
+        uncompressedSize,
+        compressedPageSize,
+        dictionaryPage.getDictionarySize(),
+        dictionaryPage.getEncoding(),
+        (int) crc.getValue(),
+        out);
+    } else {
+      metadataConverter.writeDictionaryPageHeader(
         uncompressedSize,
         compressedPageSize,
         dictionaryPage.getDictionarySize(),
         dictionaryPage.getEncoding(),
         out);
+    }
     long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
     this.uncompressedLength += uncompressedSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
@@ -505,13 +528,26 @@ public class ParquetFileWriter {
     }
     LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
     int compressedPageSize = (int) bytes.size();
-    metadataConverter.writeDataPageV1Header(
+    if (pageWriteChecksumEnabled) {
+      crc.reset();
+      crc.update(bytes.toByteArray());
+      metadataConverter.writeDataPageV1Header(
+        uncompressedPageSize, compressedPageSize,
+        valueCount,
+        rlEncoding,
+        dlEncoding,
+        valuesEncoding,
+        (int) crc.getValue(),
+        out);
+    } else {
+      metadataConverter.writeDataPageV1Header(
         uncompressedPageSize, compressedPageSize,
         valueCount,
         rlEncoding,
         dlEncoding,
         valuesEncoding,
         out);
+    }
     long headerSize = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedPageSize + headerSize;
     this.compressedLength += compressedPageSize + headerSize;
@@ -777,13 +813,7 @@ public class ParquetFileWriter {
   }
 
   // Buffers for the copy function.
-  private static final ThreadLocal<byte[]> COPY_BUFFER =
-      new ThreadLocal<byte[]>() {
-        @Override
-        protected byte[] initialValue() {
-          return new byte[8192];
-        }
-      };
+  private static final ThreadLocal<byte[]> COPY_BUFFER = ThreadLocal.withInitial(() -> new byte[8192]);
 
   /**
    * Copy from a FS input stream to an output stream. Thread-safe

@@ -72,7 +72,7 @@
       <artifactId>parquet-column</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
-      <scope>tests</scope>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>

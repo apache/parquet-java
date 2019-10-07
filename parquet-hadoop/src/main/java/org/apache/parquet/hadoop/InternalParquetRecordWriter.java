@@ -102,7 +102,7 @@ class InternalParquetRecordWriter<T> {
 
   private void initStore() {
     pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator(),
-        props.getColumnIndexTruncateLength());
+        props.getColumnIndexTruncateLength(), props.getPageWriteChecksumEnabled());
     columnStore = props.newColumnWriteStore(schema, pageStore);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);

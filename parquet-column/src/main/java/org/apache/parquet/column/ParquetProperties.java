@@ -50,6 +50,8 @@ public class ParquetProperties {
   public static final int DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH = 64;
   public static final int DEFAULT_PAGE_ROW_COUNT_LIMIT = 20_000;
 
+  public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
+
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
   private static final int MIN_SLAB_SIZE = 64;
@@ -87,10 +89,12 @@ public class ParquetProperties {
   private final ValuesWriterFactory valuesWriterFactory;
   private final int columnIndexTruncateLength;
   private final int pageRowCountLimit;
+  private final boolean pageWriteChecksumEnabled;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
-                            ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, int pageRowCountLimit) {
+                            ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, int pageRowCountLimit,
+                            boolean pageWriteChecksumEnabled) {
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
@@ -105,6 +109,7 @@ public class ParquetProperties {
     this.valuesWriterFactory = writerFactory;
     this.columnIndexTruncateLength = columnIndexMinMaxTruncateLength;
     this.pageRowCountLimit = pageRowCountLimit;
+    this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -201,6 +206,10 @@ public class ParquetProperties {
     return pageRowCountLimit;
   }
 
+  public boolean getPageWriteChecksumEnabled() {
+    return pageWriteChecksumEnabled;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -221,6 +230,7 @@ public class ParquetProperties {
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
     private int columnIndexTruncateLength = DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
+    private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
 
     private Builder() {
     }
@@ -236,6 +246,7 @@ public class ParquetProperties {
       this.valuesWriterFactory = toCopy.valuesWriterFactory;
       this.allocator = toCopy.allocator;
       this.pageRowCountLimit = toCopy.pageRowCountLimit;
+      this.pageWriteChecksumEnabled = toCopy.pageWriteChecksumEnabled;
     }
 
     /**
@@ -330,11 +341,17 @@ public class ParquetProperties {
       return this;
     }
 
+    public Builder withPageWriteChecksumEnabled(boolean val) {
+      this.pageWriteChecksumEnabled = val;
+      return this;
+    }
+
     public ParquetProperties build() {
       ParquetProperties properties =
         new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength, pageRowCountLimit);
+          estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength,
+          pageRowCountLimit, pageWriteChecksumEnabled);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently
       // creation of ValuesWriters is invoked from within ParquetProperties. In the future
       // we'd like to decouple that and won't need to pass an object to properties and then pass the

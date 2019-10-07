@@ -24,14 +24,11 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.conf.Configuration;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Serialization utils copied from:
@@ -40,7 +37,6 @@ import org.slf4j.LoggerFactory;
  * TODO: Refactor elephant-bird so that we can depend on utils like this without extra baggage.
  */
 public final class SerializationUtil {
-  private static final Logger LOG = LoggerFactory.getLogger(SerializationUtil.class);
 
   private SerializationUtil() { }
 
@@ -58,7 +54,9 @@ public final class SerializationUtil {
             ObjectOutputStream oos = new ObjectOutputStream(gos)) {
         oos.writeObject(obj);
       }
-      conf.set(key, new String(Base64.encodeBase64(baos.toByteArray()), StandardCharsets.UTF_8));
+      conf.set(key,
+          new String(Base64.getMimeEncoder().encode(baos.toByteArray()),
+              StandardCharsets.UTF_8));
     }
   }
 
@@ -79,7 +77,8 @@ public final class SerializationUtil {
       return null;
     }
 
-    byte[] bytes = Base64.decodeBase64(b64.getBytes(StandardCharsets.UTF_8));
+    byte[] bytes =
+        Base64.getMimeDecoder().decode(b64.getBytes(StandardCharsets.UTF_8));
 
     try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
            GZIPInputStream gis = new GZIPInputStream(bais);
@@ -88,7 +87,7 @@ public final class SerializationUtil {
     } catch (ClassNotFoundException e) {
       throw new IOException("Could not read object from config with key " + key, e);
     } catch (ClassCastException e) {
-      throw new IOException("Couldn't cast object read from config with key " + key, e);
+      throw new IOException("Could not cast object read from config with key " + key, e);
     }
   }
 }

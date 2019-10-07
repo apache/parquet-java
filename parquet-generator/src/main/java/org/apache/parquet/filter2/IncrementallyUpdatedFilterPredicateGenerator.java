@@ -248,7 +248,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "      valueInspector = new ValueInspector() {\n" +
         "        @Override\n" +
         "        public void updateNull() {\n" +
-        "          setResult(" + (invert ? "!" : "") + "udp.keep(null));\n" +
+        "          setResult(" + (invert ? "!" : "") + "udp.acceptsNullValue());\n" +
         "        }\n" +
         "\n" +
         "        @SuppressWarnings(\"unchecked\")\n" +

@@ -31,20 +31,10 @@ public class TestDynConstructors {
     final DynConstructors.Builder builder = new DynConstructors.Builder();
 
     TestUtils.assertThrows("Checked build should throw NoSuchMethodException",
-        NoSuchMethodException.class, new Callable() {
-          @Override
-          public Object call() throws NoSuchMethodException {
-            return builder.buildChecked();
-          }
-        });
+        NoSuchMethodException.class, (Callable) builder::buildChecked);
 
     TestUtils.assertThrows("Normal build should throw RuntimeException",
-        RuntimeException.class, new Runnable() {
-          @Override
-          public void run() {
-            builder.build();
-          }
-        });
+        RuntimeException.class, (Runnable) builder::build);
   }
 
   @Test
@@ -53,20 +43,10 @@ public class TestDynConstructors {
         .impl("not.a.RealClass");
 
     TestUtils.assertThrows("Checked build should throw NoSuchMethodException",
-        NoSuchMethodException.class, new Callable() {
-          @Override
-          public Object call() throws NoSuchMethodException {
-            return builder.buildChecked();
-          }
-        });
+        NoSuchMethodException.class, (Callable) builder::buildChecked);
 
     TestUtils.assertThrows("Normal build should throw RuntimeException",
-        RuntimeException.class, new Runnable() {
-          @Override
-          public void run() {
-            builder.build();
-          }
-        });
+        RuntimeException.class, (Callable) builder::build);
   }
 
   @Test
@@ -75,20 +55,10 @@ public class TestDynConstructors {
         .impl(Concatenator.class, String.class, String.class);
 
     TestUtils.assertThrows("Checked build should throw NoSuchMethodException",
-        NoSuchMethodException.class, new Callable() {
-          @Override
-          public Object call() throws NoSuchMethodException {
-            return builder.buildChecked();
-          }
-        });
+        NoSuchMethodException.class, (Callable) builder::buildChecked);
 
     TestUtils.assertThrows("Normal build should throw RuntimeException",
-        RuntimeException.class, new Runnable() {
-          @Override
-          public void run() {
-            builder.build();
-          }
-        });
+        RuntimeException.class, (Callable) builder::build);
   }
 
   @Test
@@ -104,20 +74,10 @@ public class TestDynConstructors {
         "a-b", dashCat.concat("a", "b"));
 
     TestUtils.assertThrows("Should complain about extra arguments",
-        IllegalArgumentException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return sepCtor.newInstanceChecked("/", "-");
-          }
-        });
+        IllegalArgumentException.class, () -> sepCtor.newInstanceChecked("/", "-"));
 
     TestUtils.assertThrows("Should complain about extra arguments",
-        IllegalArgumentException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return sepCtor.newInstance("/", "-");
-          }
-        });
+        IllegalArgumentException.class, () -> sepCtor.newInstance("/", "-"));
 
     DynConstructors.Ctor<Concatenator> defaultCtor = new DynConstructors.Builder()
         .impl("not.a.RealClass", String.class)
@@ -139,20 +99,10 @@ public class TestDynConstructors {
         .buildChecked();
 
     TestUtils.assertThrows("Should re-throw the exception",
-        SomeCheckedException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return sepCtor.newInstanceChecked(exc);
-          }
-        });
+        SomeCheckedException.class, () -> sepCtor.newInstanceChecked(exc));
 
     TestUtils.assertThrows("Should wrap the exception in RuntimeException",
-        RuntimeException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return sepCtor.newInstance(exc);
-          }
-        });
+        RuntimeException.class, () -> sepCtor.newInstance(exc));
   }
 
   @Test
@@ -167,14 +117,9 @@ public class TestDynConstructors {
   @Test
   public void testHiddenMethod() throws Exception {
     TestUtils.assertThrows("Should fail to find hidden method",
-        NoSuchMethodException.class, new Callable() {
-          @Override
-          public Object call() throws NoSuchMethodException {
-            return new DynMethods.Builder("setSeparator")
-                .impl(Concatenator.class, char.class)
-                .buildChecked();
-          }
-        });
+        NoSuchMethodException.class, () -> new DynMethods.Builder("setSeparator")
+            .impl(Concatenator.class, char.class)
+            .buildChecked());
 
     final DynConstructors.Ctor<Concatenator> sepCtor = new DynConstructors.Builder()
         .hiddenImpl(Concatenator.class.getName(), char.class)
@@ -197,12 +142,7 @@ public class TestDynConstructors {
     Assert.assertTrue("Should always be static", ctor.isStatic());
 
     TestUtils.assertThrows("Should complain that method is static",
-        IllegalStateException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return ctor.bind(null);
-          }
-        });
+        IllegalStateException.class, () -> ctor.bind(null));
   }
 
   @Test
@@ -212,20 +152,10 @@ public class TestDynConstructors {
         .buildChecked();
 
     TestUtils.assertThrows("Should complain that target must be null",
-        IllegalArgumentException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return ctor.invokeChecked("a");
-          }
-        });
+        IllegalArgumentException.class, () -> ctor.invokeChecked("a"));
 
     TestUtils.assertThrows("Should complain that target must be null",
-        IllegalArgumentException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            return ctor.invoke("a");
-          }
-        });
+        IllegalArgumentException.class, () -> ctor.invoke("a"));
 
     Assert.assertNotNull("Should allow invokeChecked(null, ...)",
         ctor.invokeChecked(null));

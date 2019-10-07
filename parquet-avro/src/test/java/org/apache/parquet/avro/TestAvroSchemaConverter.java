@@ -603,12 +603,7 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIME_MICROS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
   }
 
@@ -633,12 +628,7 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIME_MICROS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
   }
 
@@ -663,12 +653,7 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIME_MICROS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
   }
 
@@ -693,12 +678,7 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIMESTAMP_MILLIS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
   }
 
@@ -723,12 +703,7 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIMESTAMP_MICROS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
   }
 
