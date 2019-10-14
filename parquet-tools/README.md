@@ -43,7 +43,7 @@ cd parquet-tools && mvn clean package
 The resulting jar is target/parquet-tools-<Version>.jar, you can copy it to the place where you
 want to use it
 
-#Run from hadoop
+### Run from hadoop
 
 See Commands Usage for command to use
 
@@ -51,7 +51,7 @@ See Commands Usage for command to use
 hadoop jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
 ```
 
-#Run locally
+### Run locally
 
 See Commands Usage for command to use
 
