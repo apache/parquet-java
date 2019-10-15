@@ -61,9 +61,9 @@ public class ScroogeBinaryTest {
     reader.close();
 
     Assert.assertEquals("String should match after serialization round trip",
-        "test", record.s);
+        "test", record.s());
     Assert.assertEquals("ByteBuffer should match after serialization round trip",
-        ByteBuffer.wrap(new byte[] {-123, 20, 33}), record.b);
+        ByteBuffer.wrap(new byte[] {-123, 20, 33}), record.b());
   }
 
   @Test
