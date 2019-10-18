@@ -36,7 +36,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  * To read a parquet file into thrift objects
  * @param <T> the thrift type
  */
-public class ThriftParquetReader<T> extends ParquetReader<T> {
+public class ThriftParquetReader<T extends TBase<?, ?>> extends ParquetReader<T> {
 
   /**
    * @param file the file to read
@@ -84,11 +84,11 @@ public class ThriftParquetReader<T> extends ParquetReader<T> {
     super(conf, file, new ThriftReadSupport<T>());
   }
 
-  public static <T> Builder<T> build(Path file) {
+  public static <T extends TBase<?, ?>> Builder<T> build(Path file) {
     return new Builder<T>(file);
   }
 
-  public static class Builder<T> {
+  public static class Builder<T extends TBase<?, ?>> {
     private final Path file;
     private Configuration conf;
     private Filter filter;
