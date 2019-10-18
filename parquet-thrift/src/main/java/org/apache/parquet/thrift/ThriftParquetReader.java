@@ -1,4 +1,4 @@
-/*
+/* 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * 
  *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -36,7 +36,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  * To read a parquet file into thrift objects
  * @param <T> the thrift type
  */
-public class ThriftParquetReader<T extends TBase<?, ?>> extends ParquetReader<T> {
+public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> {
 
   /**
    * @param file the file to read
@@ -84,11 +84,11 @@ public class ThriftParquetReader<T extends TBase<?, ?>> extends ParquetReader<T>
     super(conf, file, new ThriftReadSupport<T>());
   }
 
-  public static <T extends TBase<?, ?>> Builder<T> build(Path file) {
+  public static <T extends TBase<?,?>> Builder<T> build(Path file) {
     return new Builder<T>(file);
   }
 
-  public static class Builder<T extends TBase<?, ?>> {
+  public static class Builder<T extends TBase<?,?>> {
     private final Path file;
     private Configuration conf;
     private Filter filter;
