@@ -278,15 +278,15 @@ public class TestParquetMetadataConverter {
     assertEquals(ConvertedType.TIMESTAMP_MILLIS, parquetMetadataConverter.convertToConvertedType(timestampType(true, MILLIS)));
     assertEquals(ConvertedType.TIMESTAMP_MICROS, parquetMetadataConverter.convertToConvertedType(timestampType(true, MICROS)));
     assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(true, NANOS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(false, MILLIS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(false, MICROS)));
+    assertEquals(ConvertedType.TIMESTAMP_MILLIS, parquetMetadataConverter.convertToConvertedType(timestampType(false, MILLIS)));
+    assertEquals(ConvertedType.TIMESTAMP_MICROS, parquetMetadataConverter.convertToConvertedType(timestampType(false, MICROS)));
     assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(false, NANOS)));
 
     assertEquals(ConvertedType.TIME_MILLIS, parquetMetadataConverter.convertToConvertedType(timeType(true, MILLIS)));
     assertEquals(ConvertedType.TIME_MICROS, parquetMetadataConverter.convertToConvertedType(timeType(true, MICROS)));
     assertNull(parquetMetadataConverter.convertToConvertedType(timeType(true, NANOS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timeType(false, MILLIS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timeType(false, MICROS)));
+    assertEquals(ConvertedType.TIME_MILLIS, parquetMetadataConverter.convertToConvertedType(timeType(false, MILLIS)));
+    assertEquals(ConvertedType.TIME_MICROS, parquetMetadataConverter.convertToConvertedType(timeType(false, MICROS)));
     assertNull(parquetMetadataConverter.convertToConvertedType(timeType(false, NANOS)));
 
     assertEquals(ConvertedType.DATE, parquetMetadataConverter.convertToConvertedType(dateType()));
