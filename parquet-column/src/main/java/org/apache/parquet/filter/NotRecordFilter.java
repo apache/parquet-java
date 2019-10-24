@@ -20,6 +20,9 @@ package org.apache.parquet.filter;
 
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+
+import java.util.Set;
 
 /**
  * Provides ability to negate the result of a filter.
@@ -39,6 +42,11 @@ public final class NotRecordFilter implements RecordFilter {
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {
         return new NotRecordFilter( filter.bind(readers) );
+      }
+
+      @Override
+      public void collectColumnPaths(Set<ColumnPath> columnPathSet) {
+        filter.collectColumnPaths(columnPathSet);
       }
     };
   }

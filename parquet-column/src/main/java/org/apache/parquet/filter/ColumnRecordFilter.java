@@ -19,7 +19,11 @@
 package org.apache.parquet.filter;
 
 import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+
 import java.util.Arrays;
+import java.util.Set;
+
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
@@ -53,6 +57,11 @@ public final class ColumnRecordFilter implements RecordFilter {
           }
         }
         throw new IllegalArgumentException( "Column " + columnPath + " does not exist.");
+      }
+
+      @Override
+      public void collectColumnPaths(Set<ColumnPath> columnPathSet) {
+        columnPathSet.add(ColumnPath.get(filterPath));
       }
     };
   }

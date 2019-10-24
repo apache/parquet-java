@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 import org.apache.avro.Schema;
 import org.apache.avro.reflect.Nullable;
 import org.apache.avro.reflect.ReflectData;
@@ -42,6 +44,7 @@ import org.apache.parquet.filter.ColumnPredicates;
 import org.apache.parquet.filter.ColumnRecordFilter;
 import org.apache.parquet.filter.RecordFilter;
 import org.apache.parquet.filter.UnboundRecordFilter;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -326,6 +329,11 @@ public class TestReflectInputOutputFormat {
     @Override
     public RecordFilter bind(Iterable<ColumnReader> readers) {
       return filter.bind(readers);
+    }
+
+    @Override
+    public void collectColumnPaths(Set<ColumnPath> columnPathSet) {
+      // do nothing
     }
   }
 

@@ -19,6 +19,9 @@
 package org.apache.parquet.filter;
 
 import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+
+import java.util.Set;
 
 /**
  * Filter which will only materialize a page worth of results.
@@ -40,6 +43,11 @@ public final class PagedRecordFilter implements RecordFilter {
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {
         return new PagedRecordFilter( startPos, pageSize );
+      }
+
+      @Override
+      public void collectColumnPaths(Set<ColumnPath> columnPathSet) {
+        // do nothing here
       }
     };
   }

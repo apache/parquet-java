@@ -20,6 +20,9 @@ package org.apache.parquet.filter;
 
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+
+import java.util.Set;
 
 /**
  * Provides ability to chain two filters together.
@@ -42,6 +45,12 @@ public final class OrRecordFilter implements RecordFilter {
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {
         return new OrRecordFilter( filter1.bind(readers), filter2.bind( readers) );
+      }
+
+      @Override
+      public void collectColumnPaths(Set<ColumnPath> columnPathSet) {
+        filter1.collectColumnPaths(columnPathSet);
+        filter2.collectColumnPaths(columnPathSet);
       }
     };
   }
