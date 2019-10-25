@@ -157,16 +157,13 @@ public class TestParquetWriter {
     file.delete();
 
     TestUtils.assertThrows("Should reject a schema with an empty group",
-        InvalidSchemaException.class, new Callable<Void>() {
-          @Override
-          public Void call() throws IOException {
-            ExampleParquetWriter.builder(new Path(file.toString()))
-                .withType(Types.buildMessage()
-                    .addField(new GroupType(REQUIRED, "invalid_group"))
-                    .named("invalid_message"))
-                .build();
-            return null;
-          }
+        InvalidSchemaException.class, (Callable<Void>) () -> {
+          ExampleParquetWriter.builder(new Path(file.toString()))
+              .withType(Types.buildMessage()
+                  .addField(new GroupType(REQUIRED, "invalid_group"))
+                  .named("invalid_message"))
+              .build();
+          return null;
         });
 
     Assert.assertFalse("Should not create a file when schema is rejected",

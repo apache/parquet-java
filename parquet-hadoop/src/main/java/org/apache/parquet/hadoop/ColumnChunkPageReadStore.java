@@ -19,12 +19,14 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
+import java.util.Queue;
+
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
@@ -61,7 +63,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
     private final BytesInputDecompressor decompressor;
     private final long valueCount;
-    private final List<DataPage> compressedPages;
+    private final Queue<DataPage> compressedPages;
     private final DictionaryPage compressedDictionaryPage;
     // null means no page synchronization is required; firstRowIndex will not be returned by the pages
     private final OffsetIndex offsetIndex;
@@ -71,7 +73,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
         DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount) {
       this.decompressor = decompressor;
-      this.compressedPages = new LinkedList<DataPage>(compressedPages);
+      this.compressedPages = new ArrayDeque<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
       long count = 0;
       for (DataPage p : compressedPages) {
@@ -89,10 +91,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
     @Override
     public DataPage readPage() {
-      if (compressedPages.isEmpty()) {
+      final DataPage compressedPage = compressedPages.poll();
+      if (compressedPage == null) {
         return null;
       }
-      DataPage compressedPage = compressedPages.remove(0);
       final int currentPageIndex = pageIndex++;
       return compressedPage.accept(new DataPage.Visitor<DataPage>() {
         @Override

@@ -34,7 +34,6 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.apache.parquet.DirectWriterTest;
-import org.apache.parquet.io.api.RecordConsumer;
 
 import static org.apache.parquet.avro.AvroTestUtil.array;
 import static org.apache.parquet.avro.AvroTestUtil.field;
@@ -64,20 +63,17 @@ public class TestArrayCompatibility extends DirectWriterTest {
         "message UnannotatedListOfPrimitives {" +
             "  repeated int32 list_of_ints;" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("list_of_ints", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("list_of_ints", 0);
 
-            rc.addInteger(34);
-            rc.addInteger(35);
-            rc.addInteger(36);
+        rc.addInteger(34);
+        rc.addInteger(35);
+        rc.addInteger(36);
 
-            rc.endField("list_of_ints", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("list_of_ints", 0);
+        rc.endMessage();
+      });
 
     Schema expectedSchema = record("OldPrimitiveInList",
         field("list_of_ints", array(primitive(Schema.Type.INT))));
@@ -100,34 +96,31 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    required float y;" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("list_of_points", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("list_of_points", 0);
 
-            rc.startGroup();
-            rc.startField("x", 0);
-            rc.addFloat(1.0f);
-            rc.endField("x", 0);
-            rc.startField("y", 1);
-            rc.addFloat(1.0f);
-            rc.endField("y", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("x", 0);
+        rc.addFloat(1.0f);
+        rc.endField("x", 0);
+        rc.startField("y", 1);
+        rc.addFloat(1.0f);
+        rc.endField("y", 1);
+        rc.endGroup();
 
-            rc.startGroup();
-            rc.startField("x", 0);
-            rc.addFloat(2.0f);
-            rc.endField("x", 0);
-            rc.startField("y", 1);
-            rc.addFloat(2.0f);
-            rc.endField("y", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("x", 0);
+        rc.addFloat(2.0f);
+        rc.endField("x", 0);
+        rc.startField("y", 1);
+        rc.addFloat(2.0f);
+        rc.endField("y", 1);
+        rc.endGroup();
 
-            rc.endField("list_of_points", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("list_of_points", 0);
+        rc.endMessage();
+      });
 
     Schema point = record("?",
         field("x", primitive(Schema.Type.FLOAT)),
@@ -153,26 +146,23 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    repeated int32 array;" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("list_of_ints", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("list_of_ints", 0);
 
-            rc.startGroup();
-            rc.startField("array", 0);
+        rc.startGroup();
+        rc.startField("array", 0);
 
-            rc.addInteger(34);
-            rc.addInteger(35);
-            rc.addInteger(36);
+        rc.addInteger(34);
+        rc.addInteger(35);
+        rc.addInteger(36);
 
-            rc.endField("array", 0);
-            rc.endGroup();
+        rc.endField("array", 0);
+        rc.endGroup();
 
-            rc.endField("list_of_ints", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("list_of_ints", 0);
+        rc.endMessage();
+      });
 
     Schema expectedSchema = record("RepeatedPrimitiveInList",
         field("list_of_ints", array(Schema.create(Schema.Type.INT))));
@@ -197,40 +187,37 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("locations", 0);
 
-            rc.startGroup();
-            rc.startField("element", 0);
+        rc.startGroup();
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(0.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(0.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(180.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(180.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup();
+        rc.endField("element", 0);
+        rc.endGroup();
 
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("locations", 0);
+        rc.endMessage();
+      });
 
     Schema location = record("element",
         field("latitude", primitive(Schema.Type.DOUBLE)),
@@ -259,34 +246,31 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("single_element_groups", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("single_element_groups", 0);
 
-            rc.startGroup();
-            rc.startField("single_element_group", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("single_element_group", 0); // start writing array contents
 
-            rc.startGroup();
-            rc.startField("count", 0);
-            rc.addLong(1234L);
-            rc.endField("count", 0);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("count", 0);
+        rc.addLong(1234L);
+        rc.endField("count", 0);
+        rc.endGroup();
 
-            rc.startGroup();
-            rc.startField("count", 0);
-            rc.addLong(2345L);
-            rc.endField("count", 0);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("count", 0);
+        rc.addLong(2345L);
+        rc.endField("count", 0);
+        rc.endGroup();
 
-            rc.endField("single_element_group", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("single_element_group", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("single_element_groups", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("single_element_groups", 0);
+        rc.endMessage();
+      });
 
     // can't tell from storage whether this should be a list of single-field
     // records or if the single_field_group layer is synthetic.
@@ -335,34 +319,31 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("single_element_groups", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("single_element_groups", 0);
 
-            rc.startGroup();
-            rc.startField("single_element_group", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("single_element_group", 0); // start writing array contents
 
-            rc.startGroup();
-            rc.startField("count", 0);
-            rc.addLong(1234L);
-            rc.endField("count", 0);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("count", 0);
+        rc.addLong(1234L);
+        rc.endField("count", 0);
+        rc.endGroup();
 
-            rc.startGroup();
-            rc.startField("count", 0);
-            rc.addLong(2345L);
-            rc.endField("count", 0);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("count", 0);
+        rc.addLong(2345L);
+        rc.endField("count", 0);
+        rc.endGroup();
 
-            rc.endField("single_element_group", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("single_element_group", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("single_element_groups", 0);
-            rc.endMessage();
-          }
-        },
+        rc.endField("single_element_groups", 0);
+        rc.endMessage();
+      },
         metadata);
 
     GenericRecord expectedRecord = instance(expectedSchema,
@@ -388,58 +369,55 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("locations", 0);
 
-            rc.startGroup();
-            rc.startField("list", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("list", 0); // start writing array contents
 
-            // write a non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(0.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(0.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            // write a null element (element field is omitted)
-            rc.startGroup(); // array level
-            rc.endGroup(); // array level
+        // write a null element (element field is omitted)
+        rc.startGroup(); // array level
+        rc.endGroup(); // array level
 
-            // write a second non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a second non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(180.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(180.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            rc.endField("list", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("list", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("locations", 0);
+        rc.endMessage();
+      });
 
     Schema location = record("element",
         field("latitude", primitive(Schema.Type.DOUBLE)),
@@ -484,54 +462,51 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("locations", 0);
 
-            rc.startGroup();
-            rc.startField("list", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("list", 0); // start writing array contents
 
-            // write a non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(180.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(180.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            // write a second non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a second non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(0.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(0.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            rc.endField("list", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("list", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("locations", 0);
+        rc.endMessage();
+      });
 
     Schema location = record("element",
         field("latitude", primitive(Schema.Type.DOUBLE)),
@@ -574,54 +549,51 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("locations", 0);
 
-            rc.startGroup();
-            rc.startField("array", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("array", 0); // start writing array contents
 
-            // write a non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(180.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(180.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            // write a second non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a second non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(0.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(0.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            rc.endField("array", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("array", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("locations", 0);
+        rc.endMessage();
+      });
 
     Schema location = record("element",
         field("latitude", primitive(Schema.Type.DOUBLE)),
@@ -656,54 +628,51 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("locations", 0);
 
-            rc.startGroup();
-            rc.startField("array", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("array", 0); // start writing array contents
 
-            // write a non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(180.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(180.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            // write a second non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a second non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(0.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(0.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            rc.endField("array", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("array", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("locations", 0);
+        rc.endMessage();
+      });
 
     Schema location = record("element",
         field("latitude", primitive(Schema.Type.DOUBLE)),
@@ -742,48 +711,45 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("locations", 0);
 
-            rc.startGroup();
-            rc.startField("array", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("array", 0); // start writing array contents
 
-            rc.startGroup();
-            rc.startField("array", 0); // start writing inner array contents
+        rc.startGroup();
+        rc.startField("array", 0); // start writing inner array contents
 
-            // write [34, 35, 36]
-            rc.addInteger(34);
-            rc.addInteger(35);
-            rc.addInteger(36);
+        // write [34, 35, 36]
+        rc.addInteger(34);
+        rc.addInteger(35);
+        rc.addInteger(36);
 
-            rc.endField("array", 0); // finished writing inner array contents
-            rc.endGroup();
+        rc.endField("array", 0); // finished writing inner array contents
+        rc.endGroup();
 
-            // write an empty list
-            rc.startGroup();
-            rc.endGroup();
+        // write an empty list
+        rc.startGroup();
+        rc.endGroup();
 
-            rc.startGroup();
-            rc.startField("array", 0); // start writing inner array contents
+        rc.startGroup();
+        rc.startField("array", 0); // start writing inner array contents
 
-            // write [32, 33, 34]
-            rc.addInteger(32);
-            rc.addInteger(33);
-            rc.addInteger(34);
+        // write [32, 33, 34]
+        rc.addInteger(32);
+        rc.addInteger(33);
+        rc.addInteger(34);
 
-            rc.endField("array", 0); // finished writing inner array contents
-            rc.endGroup();
+        rc.endField("array", 0); // finished writing inner array contents
+        rc.endGroup();
 
-            rc.endField("array", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("array", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("locations", 0);
+        rc.endMessage();
+      });
 
     Schema listOfLists = array(array(primitive(Schema.Type.INT)));
     Schema oldSchema = record("AvroCompatListInList",
@@ -810,48 +776,45 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("locations", 0);
 
-            rc.startGroup();
-            rc.startField("listOfLists_tuple", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("listOfLists_tuple", 0); // start writing array contents
 
-            rc.startGroup();
-            rc.startField("listOfLists_tuple_tuple", 0); // start writing inner array contents
+        rc.startGroup();
+        rc.startField("listOfLists_tuple_tuple", 0); // start writing inner array contents
 
-            // write [34, 35, 36]
-            rc.addInteger(34);
-            rc.addInteger(35);
-            rc.addInteger(36);
+        // write [34, 35, 36]
+        rc.addInteger(34);
+        rc.addInteger(35);
+        rc.addInteger(36);
 
-            rc.endField("listOfLists_tuple_tuple", 0); // finished writing inner array contents
-            rc.endGroup();
+        rc.endField("listOfLists_tuple_tuple", 0); // finished writing inner array contents
+        rc.endGroup();
 
-            // write an empty list
-            rc.startGroup();
-            rc.endGroup();
+        // write an empty list
+        rc.startGroup();
+        rc.endGroup();
 
-            rc.startGroup();
-            rc.startField("listOfLists_tuple_tuple", 0); // start writing inner array contents
+        rc.startGroup();
+        rc.startField("listOfLists_tuple_tuple", 0); // start writing inner array contents
 
-            // write [32, 33, 34]
-            rc.addInteger(32);
-            rc.addInteger(33);
-            rc.addInteger(34);
+        // write [32, 33, 34]
+        rc.addInteger(32);
+        rc.addInteger(33);
+        rc.addInteger(34);
 
-            rc.endField("listOfLists_tuple_tuple", 0); // finished writing inner array contents
-            rc.endGroup();
+        rc.endField("listOfLists_tuple_tuple", 0); // finished writing inner array contents
+        rc.endGroup();
 
-            rc.endField("listOfLists_tuple", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("listOfLists_tuple", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("locations", 0);
+        rc.endMessage();
+      });
 
     Schema listOfLists = array(array(primitive(Schema.Type.INT)));
     Schema oldSchema = record("ThriftCompatListInList",
@@ -881,54 +844,51 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("locations", 0);
 
-            rc.startGroup();
-            rc.startField("locations_tuple", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("locations_tuple", 0); // start writing array contents
 
-            // write a non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(180.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(180.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            // write a second non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a second non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(0.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(0.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            rc.endField("locations_tuple", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("locations_tuple", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("locations", 0);
+        rc.endMessage();
+      });
 
     Schema location = record("element",
         field("latitude", primitive(Schema.Type.DOUBLE)),
@@ -963,54 +923,51 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("locations", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("locations", 0);
 
-            rc.startGroup();
-            rc.startField("bag", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("bag", 0); // start writing array contents
 
-            // write a non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(180.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(180.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            // write a second non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a second non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            rc.startGroup();
-            rc.startField("latitude", 0);
-            rc.addDouble(0.0);
-            rc.endField("latitude", 0);
-            rc.startField("longitude", 1);
-            rc.addDouble(0.0);
-            rc.endField("longitude", 1);
-            rc.endGroup();
+        rc.startGroup();
+        rc.startField("latitude", 0);
+        rc.addDouble(0.0);
+        rc.endField("latitude", 0);
+        rc.startField("longitude", 1);
+        rc.addDouble(0.0);
+        rc.endField("longitude", 1);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            rc.endField("bag", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("bag", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("locations", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("locations", 0);
+        rc.endMessage();
+      });
 
     Schema location = record("element",
         field("latitude", primitive(Schema.Type.DOUBLE)),
@@ -1053,50 +1010,47 @@ public class TestArrayCompatibility extends DirectWriterTest {
             "    }" +
             "  }" +
             "}",
-        new DirectWriter() {
-          @Override
-          public void write(RecordConsumer rc) {
-            rc.startMessage();
-            rc.startField("list_of_structs", 0);
+      rc -> {
+        rc.startMessage();
+        rc.startField("list_of_structs", 0);
 
-            rc.startGroup();
-            rc.startField("list", 0); // start writing array contents
+        rc.startGroup();
+        rc.startField("list", 0); // start writing array contents
 
-            // write a non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            // the inner element field
-            rc.startGroup();
-            rc.startField("element", 0);
-            rc.addFloat(33.0F);
-            rc.endField("element", 0);
-            rc.endGroup();
+        // the inner element field
+        rc.startGroup();
+        rc.startField("element", 0);
+        rc.addFloat(33.0F);
+        rc.endField("element", 0);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            // write a second non-null element
-            rc.startGroup(); // array level
-            rc.startField("element", 0);
+        // write a second non-null element
+        rc.startGroup(); // array level
+        rc.startField("element", 0);
 
-            // the inner element field
-            rc.startGroup();
-            rc.startField("element", 0);
-            rc.addFloat(34.0F);
-            rc.endField("element", 0);
-            rc.endGroup();
+        // the inner element field
+        rc.startGroup();
+        rc.startField("element", 0);
+        rc.addFloat(34.0F);
+        rc.endField("element", 0);
+        rc.endGroup();
 
-            rc.endField("element", 0);
-            rc.endGroup(); // array level
+        rc.endField("element", 0);
+        rc.endGroup(); // array level
 
-            rc.endField("list", 0); // finished writing array contents
-            rc.endGroup();
+        rc.endField("list", 0); // finished writing array contents
+        rc.endGroup();
 
-            rc.endField("list_of_structs", 0);
-            rc.endMessage();
-          }
-        });
+        rc.endField("list_of_structs", 0);
+        rc.endMessage();
+      });
 
     Schema structWithElementField = record("element",
         field("element", primitive(Schema.Type.FLOAT)));

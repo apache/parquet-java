@@ -555,9 +555,6 @@ public abstract class LogicalTypeAnnotation {
     @Override
     @InterfaceAudience.Private
     public OriginalType toOriginalType() {
-      if (!isAdjustedToUTC) {
-        return null;
-      }
       switch (unit) {
         case MILLIS:
           return OriginalType.TIME_MILLIS;
@@ -637,9 +634,6 @@ public abstract class LogicalTypeAnnotation {
     @Override
     @InterfaceAudience.Private
     public OriginalType toOriginalType() {
-      if (!isAdjustedToUTC) {
-        return null;
-      }
       switch (unit) {
         case MILLIS:
           return OriginalType.TIMESTAMP_MILLIS;
