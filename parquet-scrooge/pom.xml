@@ -38,7 +38,7 @@
       <url>https://conjars.org/repo</url>
     </repository>
   </repositories>
-  
+
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -88,7 +88,7 @@
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>scrooge-core_${scala.binary.version}</artifactId>
-      <version>4.7.0</version>
+      <version>${scrooge.verion}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -193,7 +193,7 @@
         <plugin>
             <groupId>com.twitter</groupId>
             <artifactId>scrooge-maven-plugin</artifactId>
-            <version>3.17.0</version>
+            <version>${scrooge.verion}</version>
             <configuration>
                 <outputDirectory>${project.build.directory}/generated-test-sources/scrooge</outputDirectory>
                 <thriftNamespaceMappings>
@@ -202,19 +202,17 @@
                         <to>org.apache.parquet.scrooge.test</to>
                     </thriftNamespaceMapping>
                     <thriftNamespaceMapping>
-                        <from>org.apache.parquet.thrift.test.compat</from>
-                        <to>org.apache.parquet.scrooge.test.compat</to>
+                      <from>org.apache.parquet.thrift.test.compat</from>
+                      <to>org.apache.parquet.scrooge.test.compat</to>
+                    </thriftNamespaceMapping>
+                    <thriftNamespaceMapping>
+                      <from>org.apache.parquet.thrift.test.binary</from>
+                      <to>org.apache.parquet.scrooge.test.binary</to>
                     </thriftNamespaceMapping>
                 </thriftNamespaceMappings>
+                <buildExtractedThrift>false</buildExtractedThrift>
             </configuration>
             <executions>
-                <execution>
-                    <id>thrift-sources</id>
-                    <phase>generate-sources</phase>
-                    <goals>
-                        <goal>compile</goal>
-                    </goals>
-                </execution>
                 <execution>
                     <id>thrift-test-sources</id>
                     <phase>generate-test-sources</phase>
