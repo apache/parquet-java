@@ -35,7 +35,7 @@ struct Address {
 
 struct Phone {
   1: string mobile
-  2: string work
+  2: required string work
 }
 
 struct TestPerson {
