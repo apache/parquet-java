@@ -103,6 +103,17 @@ public class BinaryStatistics extends Statistics<Binary> {
     return !hasNonNullValue() || ((min.length() + max.length()) < size);
   }
 
+  public boolean isSmallerThanWithTruncation(long size, int truncationLength) {
+    if (!hasNonNullValue()) {
+      return true;
+    }
+
+    int minTruncateLength = Math.min(min.length(), truncationLength);
+    int maxTruncateLength = Math.min(max.length(), truncationLength);
+
+    return minTruncateLength + maxTruncateLength < size;
+  }
+
   /**
    * @param min_value a min binary
    * @param max_value a max binary

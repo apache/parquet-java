@@ -85,7 +85,7 @@ import org.slf4j.LoggerFactory;
 public class ParquetFileWriter {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileWriter.class);
 
-  private static ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
+  private final ParquetMetadataConverter metadataConverter;
 
   public static final String PARQUET_METADATA_FILE = "_metadata";
   public static final String MAGIC_STR = "PAR1";
@@ -258,8 +258,10 @@ public class ParquetFileWriter {
       throws IOException {
     this(file, schema, mode, rowGroupSize, maxPaddingSize,
         ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
+      ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
         ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
+
   /**
    * @param file OutputFile to create or overwrite
    * @param schema the schema of the data
@@ -267,13 +269,14 @@ public class ParquetFileWriter {
    * @param rowGroupSize the row group size
    * @param maxPaddingSize the maximum padding
    * @param columnIndexTruncateLength the length which the min/max values in column indexes tried to be truncated to
+   * @param statisticsTruncateLength the length which the min/max values in row groups tried to be truncated to
    * @param pageWriteChecksumEnabled whether to write out page level checksums
    * @throws IOException if the file can not be created
    */
   public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
                            long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength,
-                           boolean pageWriteChecksumEnabled)
-      throws IOException {
+                           int statisticsTruncateLength, boolean pageWriteChecksumEnabled)
+    throws IOException {
     TypeUtil.checkValidWriteSchema(schema);
 
     this.schema = schema;
@@ -296,6 +299,8 @@ public class ParquetFileWriter {
     this.columnIndexTruncateLength = columnIndexTruncateLength;
     this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
     this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
+
+    this.metadataConverter = new ParquetMetadataConverter(statisticsTruncateLength);
   }
 
   /**
@@ -322,6 +327,7 @@ public class ParquetFileWriter {
     this.columnIndexTruncateLength = Integer.MAX_VALUE;
     this.pageWriteChecksumEnabled = ParquetOutputFormat.getPageWriteChecksumEnabled(configuration);
     this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
+    this.metadataConverter = new ParquetMetadataConverter(ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
   }
   /**
    * start the file
@@ -904,6 +910,7 @@ public class ParquetFileWriter {
 
   private static void serializeFooter(ParquetMetadata footer, PositionOutputStream out) throws IOException {
     long footerIndex = out.getPos();
+    ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
     org.apache.parquet.format.FileMetaData parquetMetadata = metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
     writeFileMetaData(parquetMetadata, out);
     LOG.debug("{}: footer length = {}" , out.getPos(), (out.getPos() - footerIndex));

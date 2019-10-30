@@ -44,6 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.format.BsonType;
 import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.DateType;
@@ -91,10 +93,12 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
@@ -120,11 +124,15 @@ public class ParquetMetadataConverter {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetMetadataConverter.class);
   private static final LogicalTypeConverterVisitor LOGICAL_TYPE_ANNOTATION_VISITOR = new LogicalTypeConverterVisitor();
   private static final ConvertedTypeConverterVisitor CONVERTED_TYPE_CONVERTER_VISITOR = new ConvertedTypeConverterVisitor();
-
+  private final int statisticsTruncateLength;
   private final boolean useSignedStringMinMax;
 
   public ParquetMetadataConverter() {
     this(false);
+  }
+
+  public ParquetMetadataConverter(int statisticsTruncateLength) {
+    this(false, statisticsTruncateLength);
   }
 
   /**
@@ -141,7 +149,15 @@ public class ParquetMetadataConverter {
   }
 
   private ParquetMetadataConverter(boolean useSignedStringMinMax) {
+    this(useSignedStringMinMax, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
+  }
+
+  private ParquetMetadataConverter(boolean useSignedStringMinMax, int statisticsTruncateLength) {
+    if (statisticsTruncateLength <= 0) {
+      throw new IllegalArgumentException("Truncate length should be greater than 0");
+    }
     this.useSignedStringMinMax = useSignedStringMinMax;
+    this.statisticsTruncateLength = statisticsTruncateLength;
   }
 
   // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
@@ -464,7 +480,7 @@ public class ParquetMetadataConverter {
           columnMetaData.getFirstDataPageOffset());
       columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
       if (!columnMetaData.getStatistics().isEmpty()) {
-        columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
+        columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics(), this.statisticsTruncateLength));
       }
       if (columnMetaData.getEncodingStats() != null) {
         columnChunk.meta_data.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
@@ -582,18 +598,31 @@ public class ParquetMetadataConverter {
   }
 
   public static Statistics toParquetStatistics(
-      org.apache.parquet.column.statistics.Statistics stats) {
+    org.apache.parquet.column.statistics.Statistics stats) {
+    return toParquetStatistics(stats, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
+  }
+
+  public static Statistics toParquetStatistics(
+      org.apache.parquet.column.statistics.Statistics stats, int truncateLength) {
     Statistics formatStats = new Statistics();
     // Don't write stats larger than the max size rather than truncating. The
     // rationale is that some engines may use the minimum value in the page as
     // the true minimum for aggregations and there is no way to mark that a
     // value has been truncated and is a lower bound and not in the page.
-    if (!stats.isEmpty() && stats.isSmallerThan(MAX_STATS_SIZE)) {
+    if (!stats.isEmpty() && withinLimit(stats, truncateLength)) {
       formatStats.setNull_count(stats.getNumNulls());
       if (stats.hasNonNullValue()) {
-        byte[] min = stats.getMinBytes();
-        byte[] max = stats.getMaxBytes();
+        byte[] min;
+        byte[] max;
 
+        if (stats instanceof BinaryStatistics && truncateLength != Integer.MAX_VALUE) {
+          BinaryTruncator truncator = BinaryTruncator.getTruncator(stats.type());
+          min = tuncateMin(truncator, truncateLength, stats.getMinBytes());
+          max = tuncateMax(truncator, truncateLength, stats.getMaxBytes());
+        } else {
+          min = stats.getMinBytes();
+          max = stats.getMaxBytes();
+        }
         // Fill the former min-max statistics only if the comparison logic is
         // signed so the logic of V1 and V2 stats are the same (which is
         // trivially true for equal min-max values)
@@ -609,6 +638,27 @@ public class ParquetMetadataConverter {
       }
     }
     return formatStats;
+  }
+
+  private static boolean withinLimit(org.apache.parquet.column.statistics.Statistics stats, int truncateLength) {
+    if (stats.isSmallerThan(MAX_STATS_SIZE)) {
+      return true;
+    }
+
+    if (!(stats instanceof BinaryStatistics)) {
+      return false;
+    }
+
+    BinaryStatistics binaryStatistics = (BinaryStatistics) stats;
+    return binaryStatistics.isSmallerThanWithTruncation(MAX_STATS_SIZE, truncateLength);
+  }
+
+  private static byte[] tuncateMin(BinaryTruncator truncator, int truncateLength, byte[] input) {
+    return truncator.truncateMin(Binary.fromConstantByteArray(input), truncateLength).getBytes();
+  }
+
+  private static byte[] tuncateMax(BinaryTruncator truncator, int truncateLength, byte[] input) {
+    return truncator.truncateMax(Binary.fromConstantByteArray(input), truncateLength).getBytes();
   }
 
   private static boolean isMinMaxStatsSupported(PrimitiveType type) {

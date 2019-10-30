@@ -144,6 +144,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
   public static final String COLUMN_INDEX_TRUNCATE_LENGTH = "parquet.columnindex.truncate.length";
+  public static final String STATISTICS_TRUNCATE_LENGTH = "parquet.statistics.truncate.length";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
 
@@ -327,6 +328,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(COLUMN_INDEX_TRUNCATE_LENGTH, ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH);
   }
 
+  public static void setStatisticsTruncateLength(JobContext jobContext, int length) {
+    setStatisticsTruncateLength(getConfiguration(jobContext), length);
+  }
+
+  private static void setStatisticsTruncateLength(Configuration conf, int length) {
+    conf.setInt(STATISTICS_TRUNCATE_LENGTH, length);
+  }
+
+  private static int getStatisticsTruncateLength(Configuration conf) {
+    return conf.getInt(STATISTICS_TRUNCATE_LENGTH, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
+  }
+
   public static void setPageRowCountLimit(JobContext jobContext, int rowCount) {
     setPageRowCountLimit(getConfiguration(jobContext), rowCount);
   }
@@ -421,6 +434,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
         .withColumnIndexTruncateLength(getColumnIndexTruncateLength(conf))
+        .withStatisticsTruncateLength(getStatisticsTruncateLength(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
         .build();
@@ -441,6 +455,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Min row count for page size check is: {}", props.getMinRowCountForPageSizeCheck());
       LOG.info("Max row count for page size check is: {}", props.getMaxRowCountForPageSizeCheck());
       LOG.info("Truncate length for column indexes is: {}", props.getColumnIndexTruncateLength());
+      LOG.info("Truncate length for statistics min/max  is: {}", props.getStatisticsTruncateLength());
       LOG.info("Page row count limit to {}", props.getPageRowCountLimit());
       LOG.info("Writing page checksums is: {}", props.getPageWriteChecksumEnabled() ? "on" : "off");
     }
@@ -448,7 +463,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
         init.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
-        props.getPageWriteChecksumEnabled());
+        props.getStatisticsTruncateLength(), props.getPageWriteChecksumEnabled());
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
