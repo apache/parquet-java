@@ -20,20 +20,22 @@
 
 set -e
 
-if [ -z "$2" ]; then
+if [ -z "$3" ]; then
     cat <<EOF
-Usage: $0 <release-version> <rc-num>
-Example: $0 1.11.0 7
+Usage: $0 <release-version> <rc-num> <new-development-version-without-SNAPSHOT-suffix>
+Example: $0 1.11.0 7 1.12.0
 EOF
   exit 1
 fi
 
-release_version="$1"
-new_development_version="$release_version-SNAPSHOT"
+release_version=$1
+release_tag="apache-parquet-$release_version"
+rc_tag="$release_tag-rc$2"
+new_development_version="$3-SNAPSHOT"
 
-tag="apache-parquet-$release_version-rc$2"
+git tag -am 'Release Apache Parquet $release_version' $release_tag $rc_tag
+mvn --batch-mode release:update-versions -DdevelopmentVersion=$new_development_version
+git commit -am 'Prepare for next development iteration'
 
-mvn release:clean
-mvn release:prepare -Dtag="$tag" "-DreleaseVersion=$release_version" -DdevelopmentVersion="$new_development_version"
-
-echo "Finish staging binary artifacts by running: mvn release:perform"
+echo
+echo "Verify the release tag and the current development version then push the changes by running: git push --follow-tags"
