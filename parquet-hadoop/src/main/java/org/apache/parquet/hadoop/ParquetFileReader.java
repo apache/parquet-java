@@ -30,6 +30,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADAT
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.Closeable;
+import java.io.InputStream;
 import java.io.IOException;
 import java.io.SequenceInputStream;
 import java.nio.ByteBuffer;
@@ -159,30 +160,27 @@ public class ParquetFileReader implements Closeable {
     // read corresponding summary files if they exist
     List<Callable<Map<Path, Footer>>> summaries = new ArrayList<Callable<Map<Path, Footer>>>();
     for (final Path path : parents) {
-      summaries.add(new Callable<Map<Path, Footer>>() {
-        @Override
-        public Map<Path, Footer> call() throws Exception {
-          ParquetMetadata mergedMetadata = readSummaryMetadata(configuration, path, skipRowGroups);
-          if (mergedMetadata != null) {
-            final List<Footer> footers;
-            if (skipRowGroups) {
-              footers = new ArrayList<Footer>();
-              for (FileStatus f : partFiles) {
-                footers.add(new Footer(f.getPath(), mergedMetadata));
-              }
-            } else {
-              footers = footersFromSummaryFile(path, mergedMetadata);
+      summaries.add(() -> {
+        ParquetMetadata mergedMetadata = readSummaryMetadata(configuration, path, skipRowGroups);
+        if (mergedMetadata != null) {
+          final List<Footer> footers;
+          if (skipRowGroups) {
+            footers = new ArrayList<Footer>();
+            for (FileStatus f : partFiles) {
+              footers.add(new Footer(f.getPath(), mergedMetadata));
             }
-            Map<Path, Footer> map = new HashMap<Path, Footer>();
-            for (Footer footer : footers) {
-              // the folder may have been moved
-              footer = new Footer(new Path(path, footer.getFile().getName()), footer.getParquetMetadata());
-              map.put(footer.getFile(), footer);
-            }
-            return map;
           } else {
-            return Collections.emptyMap();
+            footers = footersFromSummaryFile(path, mergedMetadata);
           }
+          Map<Path, Footer> map = new HashMap<Path, Footer>();
+          for (Footer footer : footers) {
+            // the folder may have been moved
+            footer = new Footer(new Path(path, footer.getFile().getName()), footer.getParquetMetadata());
+            map.put(footer.getFile(), footer);
+          }
+          return map;
+        } else {
+          return Collections.emptyMap();
         }
       });
     }
@@ -267,14 +265,11 @@ public class ParquetFileReader implements Closeable {
   public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles, final boolean skipRowGroups) throws IOException {
     List<Callable<Footer>> footers = new ArrayList<Callable<Footer>>();
     for (final FileStatus currentFile : partFiles) {
-      footers.add(new Callable<Footer>() {
-        @Override
-        public Footer call() throws Exception {
-          try {
-            return new Footer(currentFile.getPath(), readFooter(configuration, currentFile, filter(skipRowGroups)));
-          } catch (IOException e) {
-            throw new IOException("Could not read footer for file " + currentFile, e);
-          }
+      footers.add(() -> {
+        try {
+          return new Footer(currentFile.getPath(), readFooter(configuration, currentFile, filter(skipRowGroups)));
+        } catch (IOException e) {
+          throw new IOException("Could not read footer for file " + currentFile, e);
         }
       });
     }
@@ -520,11 +515,10 @@ public class ParquetFileReader implements Closeable {
 
   private static final ParquetMetadata readFooter(InputFile file, ParquetReadOptions options, SeekableInputStream f, ParquetMetadataConverter converter) throws IOException {
     long fileLen = file.getLength();
-    String filePath = file.toString();
     LOG.debug("File length {}", fileLen);
     int FOOTER_LENGTH_SIZE = 4;
     if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
-      throw new RuntimeException(filePath + " is not a Parquet file (too small length: " + fileLen + ")");
+      throw new RuntimeException(file.toString() + " is not a Parquet file (too small length: " + fileLen + ")");
     }
     long footerLengthIndex = fileLen - FOOTER_LENGTH_SIZE - MAGIC.length;
     LOG.debug("reading footer index at {}", footerLengthIndex);
@@ -534,7 +528,7 @@ public class ParquetFileReader implements Closeable {
     byte[] magic = new byte[MAGIC.length];
     f.readFully(magic);
     if (!Arrays.equals(MAGIC, magic)) {
-      throw new RuntimeException(filePath + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+      throw new RuntimeException(file.toString() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
     }
     long footerIndex = footerLengthIndex - footerLength;
     LOG.debug("read footer length: {}, footer index: {}", footerLength, footerIndex);
@@ -542,7 +536,14 @@ public class ParquetFileReader implements Closeable {
       throw new RuntimeException("corrupted file: the footer index is not within the file: " + footerIndex);
     }
     f.seek(footerIndex);
-    return converter.readParquetMetadata(f, options.getMetadataFilter());
+    // Read all the footer bytes in one time to avoid multiple read operations,
+    // since it can be pretty time consuming for a single read operation in HDFS.
+    ByteBuffer footerBytesBuffer = ByteBuffer.allocate(footerLength);
+    f.readFully(footerBytesBuffer);
+    LOG.debug("Finished to read all footer bytes.");
+    footerBytesBuffer.flip();
+    InputStream footerBytesStream = ByteBufferInputStream.wrap(footerBytesBuffer);
+    return converter.readParquetMetadata(footerBytesStream, options.getMetadataFilter());
   }
 
   /**

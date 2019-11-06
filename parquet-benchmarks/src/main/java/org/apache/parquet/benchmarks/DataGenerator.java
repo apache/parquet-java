@@ -115,14 +115,7 @@ public class DataGenerator {
 
   public void cleanup()
   {
-    deleteIfExists(configuration, file_1M);
-    deleteIfExists(configuration, file_1M_BS256M_PS4M);
-    deleteIfExists(configuration, file_1M_BS256M_PS8M);
-    deleteIfExists(configuration, file_1M_BS512M_PS4M);
-    deleteIfExists(configuration, file_1M_BS512M_PS8M);
-//    deleteIfExists(configuration, parquetFile_1M_LZO);
-    deleteIfExists(configuration, file_1M_SNAPPY);
-    deleteIfExists(configuration, file_1M_GZIP);
+    deleteIfExists(configuration, targetDir);
   }
 
   public static void main(String[] args) {

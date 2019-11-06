@@ -134,12 +134,7 @@ public class TestMemoryManager {
     Assert.assertTrue("Pool should not hold 3 full row groups",
         poolSize < (3 * rowGroupSize));
 
-    Runnable callback = new Runnable() {
-      @Override
-      public void run() {
-        counter++;
-      }
-    };
+    Runnable callback = () -> counter++;
 
     // first-time registration should succeed
     ParquetOutputFormat.getMemoryManager()

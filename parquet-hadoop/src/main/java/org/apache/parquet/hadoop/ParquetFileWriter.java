@@ -813,13 +813,7 @@ public class ParquetFileWriter {
   }
 
   // Buffers for the copy function.
-  private static final ThreadLocal<byte[]> COPY_BUFFER =
-      new ThreadLocal<byte[]>() {
-        @Override
-        protected byte[] initialValue() {
-          return new byte[8192];
-        }
-      };
+  private static final ThreadLocal<byte[]> COPY_BUFFER = ThreadLocal.withInitial(() -> new byte[8192]);
 
   /**
    * Copy from a FS input stream to an output stream. Thread-safe

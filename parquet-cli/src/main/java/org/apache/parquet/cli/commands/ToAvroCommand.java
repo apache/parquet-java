@@ -86,27 +86,28 @@ public class ToAvroCommand extends BaseCommand {
 
     CodecFactory codecFactory = Codecs.avroCodec(compressionCodecName);
 
-    Schema schema;
+    final Schema schema;
     if (avroSchemaFile != null) {
       schema = Schemas.fromAvsc(open(avroSchemaFile));
     } else {
       schema = getAvroSchema(source);
     }
-    Schema projection = filterSchema(schema, columns);
+
+    final Schema projection = filterSchema(schema, columns);
     Iterable<Record> reader = openDataFile(source, projection);
     boolean threw = true;
     long count = 0;
-    try {
-      DatumWriter<Record> datumWriter = new GenericDatumWriter<>(schema);
-      DataFileWriter<Record> w = new DataFileWriter<>(datumWriter);
-      w.setCodec(codecFactory);
+
+    DatumWriter<Record> datumWriter = new GenericDatumWriter<>(schema);
+    try (DataFileWriter<Record> fileWriter = new DataFileWriter<>(datumWriter)) {
+      fileWriter.setCodec(codecFactory);
       try (OutputStream os = overwrite ?
-        create(outputPath) : createWithNoOverwrite(outputPath)) {
-        try (DataFileWriter<Record> writer = w.create(projection, os)) {
+          create(outputPath) : createWithNoOverwrite(outputPath)) {
+        try (DataFileWriter<Record> writer = fileWriter.create(projection, os)) {
           for (Record record : reader) {
             writer.append(record);
             count += 1;
-          }
+	  }
         }
       }
       threw = false;

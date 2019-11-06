@@ -64,7 +64,9 @@ public class AvroJson {
   private static final JsonFactory FACTORY = new JsonFactory(MAPPER);
 
   public static Iterator<JsonNode> parser(final InputStream stream) {
-    try(JsonParser parser = FACTORY.createParser(stream)) {
+    try {
+      // Don't close the parser until the iterator has been consumed
+      JsonParser parser = FACTORY.createParser(stream);
       return parser.readValuesAs(JsonNode.class);
     } catch (IOException e) {
       throw new RuntimeIOException("Cannot read from stream", e);

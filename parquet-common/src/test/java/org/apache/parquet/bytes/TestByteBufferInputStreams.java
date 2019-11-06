@@ -176,12 +176,7 @@ public abstract class TestByteBufferInputStreams {
     }
 
     assertThrows("Should throw EOFException at end of stream",
-        EOFException.class, new Callable<Integer>() {
-          @Override
-          public Integer call() throws IOException {
-            return stream.read();
-          }
-        });
+        EOFException.class, (Callable<Integer>) stream::read);
 
     checkOriginalData();
   }
@@ -233,12 +228,7 @@ public abstract class TestByteBufferInputStreams {
     Assert.assertEquals("Should consume all buffers", length, stream.position());
 
     assertThrows("Should throw EOFException when empty",
-        EOFException.class, new Callable<List<ByteBuffer>>() {
-          @Override
-          public List<ByteBuffer> call() throws Exception {
-            return stream.sliceBuffers(length);
-          }
-        });
+        EOFException.class, (Callable<List<ByteBuffer>>) () -> stream.sliceBuffers(length));
 
     ByteBufferInputStream copy = ByteBufferInputStream.wrap(buffers);
     for (int i = 0; i < length; i += 1) {
@@ -365,12 +355,9 @@ public abstract class TestByteBufferInputStreams {
 
     final int length = stream2.available();
     assertThrows("Should throw when out of bytes",
-        EOFException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            stream2.skipFully(length + 10);
-            return null;
-          }
+        EOFException.class, () -> {
+          stream2.skipFully(length + 10);
+          return null;
         });
   }
 
@@ -499,12 +486,9 @@ public abstract class TestByteBufferInputStreams {
     final ByteBufferInputStream stream = newStream();
 
     assertThrows("Should throw an error for reset() without mark()",
-        IOException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            stream.reset();
-            return null;
-          }
+        IOException.class, () -> {
+          stream.reset();
+          return null;
         });
   }
 
@@ -549,12 +533,9 @@ public abstract class TestByteBufferInputStreams {
     Assert.assertEquals("Should read 6 bytes", 6, stream.read(new byte[6]));
 
     assertThrows("Should throw an error for reset() after limit",
-        IOException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            stream.reset();
-            return null;
-          }
+        IOException.class, () -> {
+          stream.reset();
+          return null;
         });
   }
 
@@ -568,12 +549,9 @@ public abstract class TestByteBufferInputStreams {
     stream.reset();
 
     assertThrows("Should throw an error for double reset()",
-        IOException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            stream.reset();
-            return null;
-          }
+        IOException.class, () -> {
+          stream.reset();
+          return null;
         });
   }
 

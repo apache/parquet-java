@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -24,16 +25,15 @@ export THIFT_VERSION=0.12.0
 set -e
 date
 sudo apt-get update -qq
-sudo apt-get install -qq build-essential pv autoconf automake libtool curl make \
+sudo apt-get install -qq --no-install-recommends build-essential pv autoconf automake libtool curl make \
    g++ unzip libboost-dev libboost-test-dev libboost-program-options-dev \
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
-wget -nv https://archive.apache.org/dist/thrift/${THIFT_VERSION}/thrift-${THIFT_VERSION}.tar.gz
-tar zxf thrift-${THIFT_VERSION}.tar.gz
+wget -qO- https://archive.apache.org/dist/thrift/0.12.0/thrift-0.12.0.tar.gz | tar zxf -
 cd thrift-${THIFT_VERSION}
 chmod +x ./configure
-./configure --disable-gen-erl --disable-gen-hs --without-c-glib --without-erlang --without-go --without-haskell --without-java --without-nodejs --without-php --without-python --without-ruby
+./configure --disable-libs
 sudo make install
 cd ..
 branch_specific_script="dev/travis-before_install-${TRAVIS_BRANCH}.sh"
