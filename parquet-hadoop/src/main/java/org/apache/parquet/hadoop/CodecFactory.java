@@ -89,7 +89,7 @@ public class CodecFactory implements CompressionCodecFactory {
 
   class HeapBytesDecompressor extends BytesDecompressor {
 
-    private final CompressionCodec codec;
+    final CompressionCodec codec;
     private final Decompressor decompressor;
 
     HeapBytesDecompressor(CompressionCodecName codecName) {
