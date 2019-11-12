@@ -20,8 +20,13 @@
 
 set -e
 
-if [ -z "$2" ]; then
+[[ $# != 2 ]] && err="Incorrect number of arguments: $#"
+[[ -z $err ]] && ! [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && err="Invalid release version: \"$1\""
+[[ -z $err ]] && ! [[ $2 =~ ^[0-9]+$ ]] && err="Invalid rc number: \"$2\""
+
+if [[ -n $err ]]; then
     cat <<EOF
+$err
 Usage: $0 <release-version> <rc-num>
 Example: $0 1.11.0 7
 EOF
