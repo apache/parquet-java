@@ -63,6 +63,13 @@
       <groupId>com.twitter.elephantbird</groupId>
       <artifactId>elephant-bird-core</artifactId>
       <version>${elephant-bird.version}</version>
+      <exclusions>
+        <!-- hadoop-lzo is not required for parquet build/tests and there are issues downloading it -->
+        <exclusion>
+          <groupId>com.hadoop.gplcompression</groupId>
+          <artifactId>hadoop-lzo</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.twitter.elephantbird</groupId>
