@@ -53,6 +53,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,9 +67,11 @@ import java.util.TreeSet;
 
 import com.google.common.collect.Sets;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.UTF8;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.DoubleStatistics;
@@ -113,6 +117,11 @@ import org.apache.parquet.schema.Types;
 import com.google.common.collect.Lists;
 
 public class TestParquetMetadataConverter {
+  private static SecureRandom random = new SecureRandom();
+  private static final String CHAR_LOWER = "abcdefghijklmnopqrstuvwxyz";
+  private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();
+  private static final String NUMBER = "0123456789";
+  private static final String DATA_FOR_RANDOM_STRING = CHAR_LOWER + CHAR_UPPER + NUMBER;
 
   @Test
   public void testPageHeader() throws IOException {
@@ -578,6 +587,63 @@ public class TestParquetMetadataConverter {
         ParquetMetadataConverter.SortOrder.SIGNED);
 
     Assert.assertTrue(roundTripStats.isEmpty());
+  }
+
+  @Test
+  public void testBinaryStatsWithTruncation() {
+    int defaultTruncLen = ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH;
+    int[] validLengths = {1, 2, 16, 64, defaultTruncLen - 1};
+    for (int len : validLengths) {
+      testBinaryStatsWithTruncation(len, 60, 70);
+      testBinaryStatsWithTruncation(len, (int) ParquetMetadataConverter.MAX_STATS_SIZE, 190);
+      testBinaryStatsWithTruncation(len, 280, (int) ParquetMetadataConverter.MAX_STATS_SIZE);
+      testBinaryStatsWithTruncation(len, (int) ParquetMetadataConverter.MAX_STATS_SIZE, (int) ParquetMetadataConverter.MAX_STATS_SIZE);
+    }
+
+    int[] invalidLengths = {-1, 0,  Integer.MAX_VALUE + 1};
+    for (int len : invalidLengths) {
+      try {
+        testBinaryStatsWithTruncation(len, 80, 20);
+        Assert.fail("Expected IllegalArgumentException but didn't happen");
+      } catch (IllegalArgumentException e) {
+        // expected, nothing to do
+      }
+    }
+  }
+
+  // The number of minLen and maxLen shouldn't matter because the comparision is controlled by prefix
+  private void testBinaryStatsWithTruncation(int truncateLen, int minLen, int maxLen) {
+    BinaryStatistics stats = new BinaryStatistics();
+    byte[] min = generateRandomString("a", minLen).getBytes();
+    byte[] max = generateRandomString("b", maxLen).getBytes();
+    stats.updateStats(Binary.fromConstantByteArray(min));
+    stats.updateStats(Binary.fromConstantByteArray(max));
+    ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter(truncateLen);
+    org.apache.parquet.format.Statistics formatStats = metadataConverter.toParquetStatistics(stats);
+
+    if (minLen + maxLen >= ParquetMetadataConverter.MAX_STATS_SIZE) {
+      assertNull(formatStats.getMin_value());
+      assertNull(formatStats.getMax_value());
+    } else {
+      String minString = new String(min, Charset.forName("UTF-8"));
+      String minStatString = new String(formatStats.getMin_value(), Charset.forName("UTF-8"));
+      assertTrue(minStatString.compareTo(minString) <= 0);
+      String maxString = new String(max, Charset.forName("UTF-8"));
+      String maxStatString = new String(formatStats.getMax_value(), Charset.forName("UTF-8"));
+      assertTrue(maxStatString.compareTo(maxString) >= 0);
+    }
+  }
+
+  private static String generateRandomString(String prefix, int length) {
+    assertTrue(prefix.length() <= length);
+    StringBuilder sb = new StringBuilder(length);
+    sb.append(prefix);
+    for (int i = 0; i < length - prefix.length(); i++) {
+      int rndCharAt = random.nextInt(DATA_FOR_RANDOM_STRING.length());
+      char rndChar = DATA_FOR_RANDOM_STRING.charAt(rndCharAt);
+      sb.append(rndChar);
+    }
+    return sb.toString();
   }
 
   @Test
