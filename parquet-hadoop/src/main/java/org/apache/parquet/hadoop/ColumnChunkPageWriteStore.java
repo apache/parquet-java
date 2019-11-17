@@ -81,6 +81,19 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     private ColumnChunkPageWriter(ColumnDescriptor path,
                                   BytesCompressor compressor,
+                                  ByteBufferAllocator allocator) {
+      this(path, compressor, allocator, Integer.MAX_VALUE, ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+    }
+
+    private ColumnChunkPageWriter(ColumnDescriptor path,
+                                  BytesCompressor compressor,
+                                  ByteBufferAllocator allocator,
+                                  int columnIndexTruncateLength) {
+      this(path, compressor, allocator, columnIndexTruncateLength, ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+    }
+
+    private ColumnChunkPageWriter(ColumnDescriptor path,
+                                  BytesCompressor compressor,
                                   ByteBufferAllocator allocator,
                                   int columnIndexTruncateLength,
                                   boolean pageWriteChecksumEnabled) {
