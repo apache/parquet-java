@@ -22,6 +22,7 @@ import com.google.protobuf.*;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.twitter.elephantbird.util.Protobufs;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -279,20 +280,39 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     private void writeAllFields(MessageOrBuilder pb) {
-      //returns changed fields with values. Map is ordered by id.
-      Map<FieldDescriptor, Object> changedPbFields = pb.getAllFields();
+      Descriptor descriptor = pb.getDescriptorForType();
 
-      for (Map.Entry<FieldDescriptor, Object> entry : changedPbFields.entrySet()) {
-        FieldDescriptor fieldDescriptor = entry.getKey();
+      if (descriptor.isExtendable()) {
+        //returns changed fields with values. Map is ordered by id.
+        Map<FieldDescriptor, Object> changedPbFields = pb.getAllFields();
 
-        if(fieldDescriptor.isExtension()) {
-          // Field index of an extension field might overlap with a base field.
-          throw new UnsupportedOperationException(
-                  "Cannot convert Protobuf message with extension field(s)");
+        for (Map.Entry<FieldDescriptor, Object> entry : changedPbFields.entrySet()) {
+          FieldDescriptor fieldDescriptor = entry.getKey();
+
+          if (fieldDescriptor.isExtension()) {
+            // Field index of an extension field might overlap with a base field.
+            throw new UnsupportedOperationException(
+              "Cannot convert Protobuf message with extension field(s)");
+          }
+
+          int fieldIndex = fieldDescriptor.getIndex();
+          fieldWriters[fieldIndex].writeField(entry.getValue());
         }
-
-        int fieldIndex = fieldDescriptor.getIndex();
-        fieldWriters[fieldIndex].writeField(entry.getValue());
+      } else {
+        for (FieldDescriptor fieldDescriptor : descriptor.getFields()) {
+          // Don't write out repeated fields if empty or fields that were not set explicitly
+          Object fd = pb.getField(fieldDescriptor);
+          if (fieldDescriptor.isRepeated()) {
+            final List value = (List) fd;
+            if (value.isEmpty()) {
+              continue;
+            }
+          } else if (!pb.hasField(fieldDescriptor)) {
+            continue;
+          }
+          int fieldIndex = fieldDescriptor.getIndex();
+          fieldWriters[fieldIndex].writeField(fd);
+        }
       }
     }
   }
