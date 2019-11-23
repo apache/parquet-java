@@ -32,6 +32,7 @@
   <properties>
     <elephant-bird.version>4.4</elephant-bird.version>
     <protobuf.version>3.5.1</protobuf.version>
+    <truth-proto-extension.version>1.0</truth-proto-extension.version>
   </properties>
 
 
@@ -43,6 +44,12 @@
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
       <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.truth.extensions</groupId>
+      <artifactId>truth-proto-extension</artifactId>
+      <version>${truth-proto-extension.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
