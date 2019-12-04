@@ -24,6 +24,9 @@ import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
+
+import java.util.Objects;
+
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
@@ -326,14 +329,12 @@ public class ParquetProperties {
     }
 
     public Builder withAllocator(ByteBufferAllocator allocator) {
-      Preconditions.checkNotNull(allocator, "ByteBufferAllocator");
-      this.allocator = allocator;
+      this.allocator = Objects.requireNonNull(allocator, "ByteBufferAllocator cannot be null");
       return this;
     }
 
     public Builder withValuesWriterFactory(ValuesWriterFactory factory) {
-      Preconditions.checkNotNull(factory, "ValuesWriterFactory");
-      this.valuesWriterFactory = factory;
+      this.valuesWriterFactory = Objects.requireNonNull(factory, "ValuesWriterFactory cannot be null");
       return this;
     }
 

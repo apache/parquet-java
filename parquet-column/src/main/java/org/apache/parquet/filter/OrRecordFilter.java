@@ -18,7 +18,8 @@
  */
 package org.apache.parquet.filter;
 
-import org.apache.parquet.Preconditions;
+import java.util.Objects;
+
 import org.apache.parquet.column.ColumnReader;
 
 /**
@@ -36,8 +37,8 @@ public final class OrRecordFilter implements RecordFilter {
    * @return an or record filter
    */
   public static final UnboundRecordFilter or( final UnboundRecordFilter filter1, final UnboundRecordFilter filter2 ) {
-    Preconditions.checkNotNull( filter1, "filter1" );
-    Preconditions.checkNotNull( filter2, "filter2" );
+	  Objects.requireNonNull(filter1, "filter1 cannot be null");
+	  Objects.requireNonNull(filter2, "filter2 cannot be null");
     return new UnboundRecordFilter() {
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {

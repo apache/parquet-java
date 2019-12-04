@@ -23,7 +23,7 @@ import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicat
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Visitor;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
+import java.util.Objects;
 
 /**
  * Resets all the {@link ValueInspector}s in a {@link IncrementallyUpdatedFilterPredicate}.
@@ -32,8 +32,7 @@ public final class IncrementallyUpdatedFilterPredicateResetter implements Visito
   private static final IncrementallyUpdatedFilterPredicateResetter INSTANCE = new IncrementallyUpdatedFilterPredicateResetter();
 
   public static void reset(IncrementallyUpdatedFilterPredicate pred) {
-    checkNotNull(pred, "pred");
-    pred.accept(INSTANCE);
+    Objects.requireNonNull(pred, "pred cannot be null").accept(INSTANCE);
   }
 
   private IncrementallyUpdatedFilterPredicateResetter() { }

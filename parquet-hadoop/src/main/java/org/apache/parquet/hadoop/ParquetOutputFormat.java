@@ -18,11 +18,11 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -502,7 +502,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (writeSupport != null) return writeSupport;
     Class<?> writeSupportClass = getWriteSupportClass(configuration);
     try {
-      return (WriteSupport<T>)checkNotNull(writeSupportClass, "writeSupportClass").newInstance();
+      return (WriteSupport<T>)Objects.requireNonNull(writeSupportClass, "writeSupportClass").newInstance();
     } catch (InstantiationException e) {
       throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
     } catch (IllegalAccessException e) {

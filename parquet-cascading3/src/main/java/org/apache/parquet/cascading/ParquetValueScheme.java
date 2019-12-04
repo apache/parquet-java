@@ -20,6 +20,7 @@ package org.apache.parquet.cascading;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Objects;
 
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
@@ -37,8 +38,6 @@ import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.mapred.Container;
 import org.apache.parquet.hadoop.thrift.ParquetThriftInputFormat;
 import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * A Cascading Scheme that returns a simple Tuple with a single value, the "value" object
@@ -87,20 +86,20 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     }
 
     public Config<T> withFilterPredicate(FilterPredicate f) {
-      return new Config<T>(this.klass, checkNotNull(f, "filterPredicate"), this.deprecatedProjectionString, this.strictProjectionString);
+      return new Config<T>(this.klass, Objects.requireNonNull(f, "filterPredicate"), this.deprecatedProjectionString, this.strictProjectionString);
     }
 
     @Deprecated
     public Config<T> withProjectionString(String p) {
-      return new Config<T>(this.klass, this.filterPredicate, checkNotNull(p, "projectionString"), this.strictProjectionString);
+      return new Config<T>(this.klass, this.filterPredicate, Objects.requireNonNull(p, "projectionString"), this.strictProjectionString);
     }
 
     public Config<T> withStrictProjectionString(String p) {
-      return new Config<T>(this.klass, this.filterPredicate, this.deprecatedProjectionString, checkNotNull(p, "projectionString"));
+      return new Config<T>(this.klass, this.filterPredicate, this.deprecatedProjectionString, Objects.requireNonNull(p, "projectionString"));
     }
 
     public Config<T> withRecordClass(Class<T> klass) {
-      return new Config<T>(checkNotNull(klass, "recordClass"), this.filterPredicate, this.deprecatedProjectionString, this.strictProjectionString);
+      return new Config<T>(Objects.requireNonNull(klass, "recordClass"), this.filterPredicate, this.deprecatedProjectionString, this.strictProjectionString);
     }
   }
 

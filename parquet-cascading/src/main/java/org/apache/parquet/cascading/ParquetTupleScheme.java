@@ -45,8 +45,6 @@ import org.apache.parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import org.apache.parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 import org.apache.parquet.schema.MessageType;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-
 /**
   * A Cascading Scheme that converts Parquet groups into Cascading tuples.
   * If you provide it with sourceFields, it will selectively materialize only the columns for those fields.

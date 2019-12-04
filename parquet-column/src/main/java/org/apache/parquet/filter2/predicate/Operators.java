@@ -20,11 +20,10 @@ package org.apache.parquet.filter2.predicate;
 
 import java.io.Serializable;
 import java.util.Locale;
+import java.util.Objects;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * These are the operators in a filter predicate expression tree.
@@ -38,10 +37,8 @@ public final class Operators {
     private final Class<T> columnType;
 
     protected Column(ColumnPath columnPath, Class<T> columnType) {
-      checkNotNull(columnPath, "columnPath");
-      checkNotNull(columnType, "columnType");
-      this.columnPath = columnPath;
-      this.columnType = columnType;
+      this.columnPath = Objects.requireNonNull(columnPath, "columnPath cannot be null");;
+      this.columnType = Objects.requireNonNull(columnType, "columnType cannot be null");;
     }
 
     public Class<T> getColumnType() {
@@ -124,7 +121,7 @@ public final class Operators {
     private final String toString;
 
     protected ColumnFilterPredicate(Column<T> column, T value) {
-      this.column = checkNotNull(column, "column");
+      this.column = Objects.requireNonNull(column, "column cannot be null");
 
       // Eq and NotEq allow value to be null, Lt, Gt, LtEq, GtEq however do not, so they guard against
       // null in their own constructors.
@@ -201,7 +198,7 @@ public final class Operators {
 
     // value cannot be null
     Lt(Column<T> column, T value) {
-      super(column, checkNotNull(value, "value"));
+      super(column, Objects.requireNonNull(value, "value cannot be null"));
     }
 
     @Override
@@ -214,7 +211,7 @@ public final class Operators {
 
     // value cannot be null
     LtEq(Column<T> column, T value) {
-      super(column, checkNotNull(value, "value"));
+      super(column, Objects.requireNonNull(value, "value cannot be null"));
     }
 
     @Override
@@ -228,7 +225,7 @@ public final class Operators {
 
     // value cannot be null
     Gt(Column<T> column, T value) {
-      super(column, checkNotNull(value, "value"));
+      super(column, Objects.requireNonNull(value, "value cannot be null"));
     }
 
     @Override
@@ -241,7 +238,7 @@ public final class Operators {
 
     // value cannot be null
     GtEq(Column<T> column, T value) {
-      super(column, checkNotNull(value, "value"));
+      super(column, Objects.requireNonNull(value, "value cannot be null"));
     }
 
     @Override
@@ -257,8 +254,8 @@ public final class Operators {
     private final String toString;
 
     protected BinaryLogicalFilterPredicate(FilterPredicate left, FilterPredicate right) {
-      this.left = checkNotNull(left, "left");
-      this.right = checkNotNull(right, "right");
+      this.left = Objects.requireNonNull(left, "left cannot be null");
+      this.right = Objects.requireNonNull(right, "right cannot be null");
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + left + ", " + right + ")";
     }
@@ -327,7 +324,7 @@ public final class Operators {
     private final String toString;
 
     Not(FilterPredicate predicate) {
-      this.predicate = checkNotNull(predicate, "predicate");
+      this.predicate = Objects.requireNonNull(predicate, "predicate cannot be null");
       this.toString = "not(" + predicate + ")";
     }
 
@@ -363,7 +360,7 @@ public final class Operators {
     protected final Column<T> column;
 
     UserDefined(Column<T> column) {
-      this.column = checkNotNull(column, "column");
+      this.column = Objects.requireNonNull(column, "column cannot be null");
     }
 
     public Column<T> getColumn() {
@@ -386,7 +383,7 @@ public final class Operators {
 
     UserDefinedByClass(Column<T> column, Class<U> udpClass) {
       super(column);
-      this.udpClass = checkNotNull(udpClass, "udpClass");
+      this.udpClass = Objects.requireNonNull(udpClass, "udpClass cannot be null");
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
 
@@ -442,7 +439,7 @@ public final class Operators {
 
     UserDefinedByInstance(Column<T> column, U udpInstance) {
       super(column);
-      this.udpInstance = checkNotNull(udpInstance, "udpInstance");
+      this.udpInstance = Objects.requireNonNull(udpInstance, "udpInstance cannot be null");
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpInstance + ")";
     }
@@ -486,7 +483,7 @@ public final class Operators {
     private final String toString;
 
     LogicalNotUserDefined(UserDefined<T, U> userDefined) {
-      this.udp = checkNotNull(userDefined, "userDefined");
+      this.udp = Objects.requireNonNull(userDefined, "userDefined cannot be null");
       this.toString = "inverted(" + udp + ")";
     }
 

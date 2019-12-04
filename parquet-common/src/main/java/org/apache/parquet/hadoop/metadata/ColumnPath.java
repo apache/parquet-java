@@ -21,10 +21,9 @@ package org.apache.parquet.hadoop.metadata;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Objects;
 
 import org.apache.parquet.Strings;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 public final class ColumnPath implements Iterable<String>, Serializable {
 
@@ -40,7 +39,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   };
 
   public static ColumnPath fromDotString(String path) {
-    checkNotNull(path, "path");
+    Objects.requireNonNull(path, "path cannot be null");
     return get(path.split("\\."));
   }
 

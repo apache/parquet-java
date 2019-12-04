@@ -18,6 +18,8 @@
  */
 package org.apache.parquet;
 
+import java.util.Objects;
+
 /**
  * Utility for parameter validation
  */
@@ -30,6 +32,7 @@ public final class Preconditions {
    * @param <T> the type of the object
    * @return the validated o
    * @throws NullPointerException if o is null
+   * @deprecated Use JDK {@link Objects#requireNonNull(Object, String)}
    */
   public static <T> T checkNotNull(T o, String name) throws NullPointerException {
     if (o == null) {

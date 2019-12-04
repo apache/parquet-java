@@ -19,11 +19,11 @@
 package org.apache.parquet.hadoop.metadata;
 
 import static java.util.Collections.unmodifiableMap;
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -49,8 +49,8 @@ public class GlobalMetaData implements Serializable {
    */
   public GlobalMetaData(MessageType schema, Map<String, Set<String>> keyValueMetaData, Set<String> createdBy) {
     super();
-    this.schema = checkNotNull(schema, "schema");
-    this.keyValueMetaData = unmodifiableMap(checkNotNull(keyValueMetaData, "keyValueMetaData"));
+    this.schema = Objects.requireNonNull(schema, "schema cannot be null");
+    this.keyValueMetaData = unmodifiableMap(Objects.requireNonNull(keyValueMetaData, "keyValueMetaData"));
     this.createdBy = createdBy;
   }
 

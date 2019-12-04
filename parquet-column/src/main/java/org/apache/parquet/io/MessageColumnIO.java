@@ -24,6 +24,7 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
@@ -49,8 +50,6 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * Message level of the IO structure
@@ -98,9 +97,9 @@ public class MessageColumnIO extends GroupColumnIO {
   public <T> RecordReader<T> getRecordReader(final PageReadStore columns,
                                              final RecordMaterializer<T> recordMaterializer,
                                              final Filter filter) {
-    checkNotNull(columns, "columns");
-    checkNotNull(recordMaterializer, "recordMaterializer");
-    checkNotNull(filter, "filter");
+    Objects.requireNonNull(columns, "columns cannot be null");
+    Objects.requireNonNull(recordMaterializer, "recordMaterializer cannot be null");
+    Objects.requireNonNull(filter, "filter cannot be null");
 
     if (leaves.isEmpty()) {
       return new EmptyRecordReader<T>(recordMaterializer);

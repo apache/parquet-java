@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.column.page.mem;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-
 import java.util.Iterator;
+import java.util.Objects;
 
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DataPage;
@@ -39,9 +38,8 @@ public class MemPageReader implements PageReader {
 
   public MemPageReader(long totalValueCount, Iterator<DataPage> pages, DictionaryPage dictionaryPage) {
     super();
-    checkNotNull(pages, "pages");
+    this.pages = Objects.requireNonNull(pages, "pages cannot be null");
     this.totalValueCount = totalValueCount;
-    this.pages = pages;
     this.dictionaryPage = dictionaryPage;
   }
 

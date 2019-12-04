@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.glob;
 
+import java.util.Objects;
 import java.util.regex.Pattern;
-
-import org.apache.parquet.Preconditions;
 
 /**
  * Holds a String with wildcards ('*'), and can answer whether a given string matches this WildcardPath.
@@ -47,8 +46,8 @@ public class WildcardPath {
   private final Pattern pattern;
 
   public WildcardPath(String parentGlobPath, String wildcardPath, char delim) {
-    this.parentGlobPath = Preconditions.checkNotNull(parentGlobPath, "parentGlobPath");
-    this.originalPattern = Preconditions.checkNotNull(wildcardPath, "wildcardPath");
+    this.parentGlobPath = Objects.requireNonNull(parentGlobPath, "parentGlobPath cannot be null");
+    this.originalPattern = Objects.requireNonNull(wildcardPath, "wildcardPath cannot be null");
     this.pattern = Pattern.compile(buildRegex(wildcardPath, delim));
   }
 

@@ -21,6 +21,7 @@ package org.apache.parquet.schema;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.parquet.Preconditions;
@@ -235,8 +236,7 @@ public class Types {
     protected final THIS repetition(Type.Repetition repetition) {
       Preconditions.checkArgument(!repetitionAlreadySet,
           "Repetition has already been set");
-      Preconditions.checkNotNull(repetition, "Repetition cannot be null");
-      this.repetition = repetition;
+      this.repetition = Objects.requireNonNull(repetition, "Repetition cannot be null");
       this.repetitionAlreadySet = true;
       return self();
     }
@@ -308,8 +308,8 @@ public class Types {
      * @return the parent {@code GroupBuilder} or the constructed {@code Type}
      */
     public P named(String name) {
-      Preconditions.checkNotNull(name, "Name is required");
-      Preconditions.checkNotNull(repetition, "Repetition is required");
+      Objects.requireNonNull(name, "Name is required");
+      Objects.requireNonNull(repetition, "Repetition is required");
 
       Type type = build(name);
       if (parent != null) {
@@ -1316,7 +1316,7 @@ public class Types {
     protected Type build(String name) {
       Preconditions.checkState(logicalTypeAnnotation == null,
           "LIST is already the logical type and can't be changed");
-      Preconditions.checkNotNull(elementType, "List element type");
+      Objects.requireNonNull(elementType, "List element type");
 
       GroupBuilder<GroupType> builder = buildGroup(repetition).as(OriginalType.LIST);
       if (id != null) {
@@ -1415,7 +1415,7 @@ public class Types {
      */
     @Override
     public MessageType named(String name) {
-      Preconditions.checkNotNull(name, "Name is required");
+      Objects.requireNonNull(name, "Name is required");
       return new MessageType(name, fields);
     }
   }

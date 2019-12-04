@@ -21,6 +21,7 @@ package org.apache.parquet.filter2.statisticslevel;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -39,8 +40,6 @@ import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * Applies a {@link org.apache.parquet.filter2.predicate.FilterPredicate} to statistics about a group of
@@ -67,8 +66,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
-    checkNotNull(pred, "pred");
-    checkNotNull(columns, "columns");
+    Objects.requireNonNull(pred, "pred cannot be null");
+    Objects.requireNonNull(columns, "columns cannot be null");
     return pred.accept(new StatisticsFilter(columns));
   }
 
