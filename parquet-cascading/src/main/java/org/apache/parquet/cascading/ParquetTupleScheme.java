@@ -20,6 +20,7 @@
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
@@ -73,12 +74,12 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
   }
 
   public ParquetTupleScheme(FilterPredicate filterPredicate) {
-    this.filterPredicate = checkNotNull(filterPredicate, "filterPredicate");
+    this.filterPredicate = Objects.requireNonNull(filterPredicate, "filterPredicate cannot be null");
   }
 
   public ParquetTupleScheme(FilterPredicate filterPredicate, Fields sourceFields) {
     super(sourceFields);
-    this.filterPredicate = checkNotNull(filterPredicate, "filterPredicate");
+    this.filterPredicate = Objects.requireNonNull(filterPredicate, "filterPredicate cannot be null");
   }
 
   /**
