@@ -23,7 +23,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet-hive-binding</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.11.0-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
