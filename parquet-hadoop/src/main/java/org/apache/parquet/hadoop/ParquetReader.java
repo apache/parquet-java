@@ -115,9 +115,9 @@ public class ParquetReader<T> implements Closeable {
         readSupport);
   }
 
-  private ParquetReader(List<InputFile> files,
-                        ParquetReadOptions options,
-                        ReadSupport<T> readSupport) throws IOException {
+  public ParquetReader(List<InputFile> files,
+                       ParquetReadOptions options,
+                       ReadSupport<T> readSupport) throws IOException {
     this.readSupport = readSupport;
     this.options = options;
     this.filesIterator = files.iterator();
