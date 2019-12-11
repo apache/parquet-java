@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.pool.BasePoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
@@ -82,11 +83,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
    */
   DirectCodecFactory(Configuration config, ByteBufferAllocator allocator, int pageSize) {
     super(config, pageSize);
-    Preconditions.checkNotNull(allocator, "allocator");
+
+    this.allocator = Objects.requireNonNull(allocator, "allocator");
     Preconditions.checkState(allocator.isDirect(),
         "A %s requires a direct buffer allocator be provided.",
         getClass().getSimpleName());
-    this.allocator = allocator;
   }
 
   private ByteBuffer ensure(ByteBuffer buffer, int size) {
