@@ -80,9 +80,7 @@ public class AvroJson {
   public static <T> T parse(String json, Class<T> returnType) {
     try {
       return MAPPER.readValue(json, returnType);
-    } catch (JsonParseException e) {
-      throw new IllegalArgumentException("Invalid JSON", e);
-    } catch (JsonMappingException e) {
+    } catch (JsonParseException | JsonMappingException e) {
       throw new IllegalArgumentException("Invalid JSON", e);
     } catch (IOException e) {
       throw new RuntimeIOException("Cannot initialize JSON parser", e);
@@ -96,9 +94,7 @@ public class AvroJson {
   public static <T> T parse(InputStream json, Class<T> returnType) {
     try {
       return MAPPER.readValue(json, returnType);
-    } catch (JsonParseException e) {
-      throw new IllegalArgumentException("Invalid JSON stream", e);
-    } catch (JsonMappingException e) {
+    } catch (JsonParseException | JsonMappingException e) {
       throw new IllegalArgumentException("Invalid JSON stream", e);
     } catch (IOException e) {
       throw new RuntimeIOException("Cannot initialize JSON parser", e);

@@ -142,10 +142,9 @@ public class TupleConverter extends GroupConverter {
       default:
         throw new TupleConversionException("unsupported pig type: " + pigField);
       }
-    } catch (FrontendException e) {
-      throw new TupleConversionException("error while preparing converter for:\n" + pigField + "\n" + type, e);
-    } catch (RuntimeException e) {
-      throw new TupleConversionException("error while preparing converter for:\n" + pigField + "\n" + type, e);
+    } catch (FrontendException | RuntimeException e) {
+      throw new TupleConversionException(
+          "error while preparing converter for:\n" + pigField + "\n" + type, e);
     }
   }
 
