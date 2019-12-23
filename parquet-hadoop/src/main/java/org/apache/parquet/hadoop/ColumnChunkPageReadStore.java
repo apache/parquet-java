@@ -227,10 +227,11 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
   @Override
   public PageReader getPageReader(ColumnDescriptor path) {
-    if (!readers.containsKey(path)) {
+    final PageReader pageReader = readers.get(path);
+    if (pageReader == null) {
       throw new IllegalArgumentException(path + " is not in the store: " + readers.keySet() + " " + rowCount);
     }
-    return readers.get(path);
+    return pageReader;
   }
 
   @Override
