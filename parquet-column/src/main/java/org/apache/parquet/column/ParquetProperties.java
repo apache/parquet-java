@@ -231,7 +231,9 @@ public class ParquetProperties {
     return bloomFilterExpectedDistinctNumbers;
   }
 
-  public Set<String> getBloomFilterColumns() {return bloomFilterColumns;}
+  public Set<String> getBloomFilterColumns() {
+    return bloomFilterColumns;
+  }
 
   public int getMaxBloomFilterBytes() {
     return maxBloomFilterBytes;
