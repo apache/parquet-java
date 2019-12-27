@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import org.apache.parquet.Strings;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -50,7 +51,7 @@ class DictionaryPageReader implements DictionaryPageReadStore {
 
   private final ParquetFileReader reader;
   private final Map<String, ColumnChunkMetaData> columns;
-  private final Map<String, Optional<DictionaryPage>> cache;
+  private final Map<String, Optional<DictionaryPage>> dictionaryPageCache;
   private ColumnChunkPageReadStore rowGroup = null;
 
   /**
@@ -65,7 +66,7 @@ class DictionaryPageReader implements DictionaryPageReadStore {
   DictionaryPageReader(ParquetFileReader reader, BlockMetaData block) {
     this.reader = Objects.requireNonNull(reader);
     this.columns = new HashMap<>();
-    this.cache = new ConcurrentHashMap<>();
+    this.dictionaryPageCache = new ConcurrentHashMap<>();
 
     for (ColumnChunkMetaData column : block.getColumns()) {
       columns.put(column.getPath().toDotString(), column);
@@ -91,14 +92,14 @@ class DictionaryPageReader implements DictionaryPageReadStore {
       return rowGroup.readDictionaryPage(descriptor);
     }
 
-    String dotPath = String.join(".", descriptor.getPath());
+    String dotPath = Strings.join(descriptor.getPath(), ".");
     ColumnChunkMetaData column = columns.get(dotPath);
     if (column == null) {
       throw new ParquetDecodingException(
           "Failed to load dictionary, unknown column: " + dotPath);
     }
 
-    return cache.computeIfAbsent(dotPath, key -> {
+    return dictionaryPageCache.computeIfAbsent(dotPath, key -> {
       try {
         final DictionaryPage dict =
             hasDictionaryPage(column) ? reader.readDictionary(column) : null;
