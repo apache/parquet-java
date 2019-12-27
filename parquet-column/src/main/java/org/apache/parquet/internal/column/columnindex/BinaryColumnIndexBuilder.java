@@ -112,8 +112,8 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
   @Override
   ColumnIndexBase<Binary> createColumnIndex(PrimitiveType type) {
     BinaryColumnIndex columnIndex = new BinaryColumnIndex(type);
-    columnIndex.minValues = minValues.toArray(new Binary[minValues.size()]);
-    columnIndex.maxValues = maxValues.toArray(new Binary[maxValues.size()]);
+    columnIndex.minValues = minValues.toArray(new Binary[0]);
+    columnIndex.maxValues = maxValues.toArray(new Binary[0]);
     return columnIndex;
   }
 
