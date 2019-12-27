@@ -35,8 +35,20 @@ import org.apache.parquet.io.InvalidRecordException;
  */
 public class GroupType extends Type {
 
-  private final List<Type> fields;
+  private List<Type> fields = null;
   private final Map<String, Integer> indexByName;
+
+  /**
+   * Constructor to delay the field assignment.
+   * This is useful in case fields are added from diferent places in the code, e.g. first add a primary key and then add all columns.
+   *  
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
+   * @param fields the contained fields
+   */
+  public GroupType(Repetition repetition, String name) {
+    this(repetition, name, null, null, null);
+  }
 
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
@@ -107,11 +119,41 @@ public class GroupType extends Type {
    */
   GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, ID id) {
     super(name, repetition, originalType, id);
-    this.fields = fields;
     this.indexByName = new HashMap<String, Integer>();
-    for (int i = 0; i < fields.size(); i++) {
-      indexByName.put(fields.get(i).getName(), i);
-    }
+    addFields(fields);
+  }
+  
+  /**
+   * This method either assigns the provided fields List as the fields of this GroupType or it copies them.
+   * 
+   * @param fields
+   */
+  public void addFields(List<Type> fields) {
+	  if (fields != null) {
+		  if (this.fields == null) {
+			  this.fields = fields;
+			  for (int i = 0; i < fields.size(); i++) {
+				  indexByName.put(fields.get(i).getName(), i);
+			  }
+		  } else {
+			  for (Type f : fields) {
+				  addField(f);
+			  }
+		  }
+	  }
+  }
+  
+  /**
+   * Add an additional field to an already existing list of fields or establishes a new list.
+   * 
+   * @param field
+   */
+  public void addField(Type field) {
+	  if (fields == null) {
+		  fields = new ArrayList<Type>();
+	  }
+	  fields.add(field);
+	  indexByName.put(field.getName(), fields.size()-1);
   }
 
   GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, List<Type> fields, ID id) {
@@ -418,3 +460,4 @@ public class GroupType extends Type {
     return newFields;
   }
 }
+
