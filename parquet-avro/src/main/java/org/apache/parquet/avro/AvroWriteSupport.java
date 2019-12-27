@@ -551,15 +551,16 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
           }
         } catch (NullPointerException e) {
           // find the null element and throw a better error message
-          final int idx = Arrays.asList(array).indexOf(null);
+          final int idx =
+              Arrays.asList(array.toArray(new Object[0])).indexOf(null);
           if (idx < 0) {
             // no element was null, throw the original exception
             throw e;
           }
-            throw new NullPointerException(
-                "Array contains a null element at " + idx + ". " +
-                "Set parquet.avro.write-old-list-structure=false to turn " +
-                "on support for arrays with null elements.");
+          throw new NullPointerException(
+              "Array contains a null element at " + idx + ". "
+                  + "Set parquet.avro.write-old-list-structure=false to turn "
+                  + "on support for arrays with null elements.");
         }
         recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
