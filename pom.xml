@@ -79,7 +79,6 @@
     <jackson-databind.version>2.9.10</jackson-databind.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.7.3</hadoop.version>
-    <hadoop1.version>1.2.1</hadoop1.version>
     <cascading.version>2.7.1</cascading.version>
     <cascading3.version>3.1.2</cascading3.version>
     <parquet.format.version>2.7.0</parquet.format.version>
@@ -148,13 +147,6 @@
       <groupId>org.easymock</groupId>
       <artifactId>easymock</artifactId>
       <version>3.4</version>
-      <scope>test</scope>
-    </dependency>
-    <!-- hadoop-1 requires the old httpclient for testing -->
-    <dependency>
-      <groupId>commons-httpclient</groupId>
-      <artifactId>commons-httpclient</artifactId>
-      <version>3.1</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -579,21 +571,6 @@
       </build>
     </profile>
 
-    <profile>
-      <id>hadoop-1</id>
-      <activation>
-        <property>
-          <name>hadoop.profile</name>
-          <value>hadoop1</value>
-        </property>
-      </activation>
-      <properties>
-        <!-- test hadoop-1 with the same jars that were produced for default profile -->
-        <maven.main.skip>true</maven.main.skip>
-        <hadoop.version>${hadoop1.version}</hadoop.version>
-        <pig.classifier />
-      </properties>
-    </profile>
     <profile>
       <id>thrift9</id>
       <properties>
