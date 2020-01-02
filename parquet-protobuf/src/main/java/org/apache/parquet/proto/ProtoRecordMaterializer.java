@@ -28,8 +28,9 @@ class ProtoRecordMaterializer<T extends MessageOrBuilder> extends RecordMaterial
 
   private final ProtoRecordConverter<T> root;
 
-  public ProtoRecordMaterializer(MessageType requestedSchema, Class<? extends Message> protobufClass) {
+  public ProtoRecordMaterializer(MessageType requestedSchema, Class<? extends Message> protobufClass, boolean buildBefore) {
     this.root = new ProtoRecordConverter<T>(protobufClass, requestedSchema);
+    root.setBuildBefore(buildBefore);
   }
 
   @Override

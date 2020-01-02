@@ -39,6 +39,7 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
   public static final String PB_CLASS = "parquet.proto.class";
   public static final String PB_DESCRIPTOR = "parquet.proto.descriptor";
+  public static final String PB_BUILD_BEFORE = "parquet.proto.ProtoRecordConverter.buildBefore";
 
   public static void setRequestedProjection(Configuration configuration, String requestedProjection) {
     configuration.set(PB_REQUESTED_PROJECTION, requestedProjection);
@@ -55,6 +56,10 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
    */
   public static void setProtobufClass(Configuration configuration, String protobufClass) {
     configuration.set(PB_CLASS, protobufClass);
+  }
+
+  public static void setProtoRecordConverterBuildBefore(Configuration configuration, boolean buildBefore) {
+    configuration.set(PB_BUILD_BEFORE, String.valueOf(buildBefore));
   }
 
   @Override
@@ -90,7 +95,10 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
     MessageType requestedSchema = readContext.getRequestedSchema();
     Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);
-    return new ProtoRecordMaterializer(requestedSchema, protobufClass);
+
+    String buildBefore = configuration.get(PB_BUILD_BEFORE);
+
+    return new ProtoRecordMaterializer(requestedSchema, protobufClass, Boolean.parseBoolean(buildBefore));
   }
 
 

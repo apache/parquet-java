@@ -53,6 +53,11 @@
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-protobuf</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
       <version>${project.version}</version>
     </dependency>
