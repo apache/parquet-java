@@ -9,7 +9,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.10.1-SNAPSHOT</version>
+  <version>1.12.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -19,7 +19,7 @@
   <scm>
     <connection>scm:git:git@github.com:apache/parquet-mr.git</connection>
     <url>scm:git:git@github.com:apache/parquet-mr.git</url>
-    <developerConnection>scm:git:https://github.com/apache/parquet-mr.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:apache/parquet-mr.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 
@@ -73,40 +73,41 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
-    <jackson.groupId>org.codehaus.jackson</jackson.groupId>
-    <jackson.version>1.9.13</jackson.version>
-    <jackson.package>org.codehaus.jackson</jackson.package>
+    <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
+    <jackson.package>com.fasterxml.jackson</jackson.package>
+    <jackson.version>2.9.10</jackson.version>
+    <jackson-databind.version>2.9.10</jackson-databind.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.7.3</hadoop.version>
-    <hadoop1.version>1.2.1</hadoop1.version>
     <cascading.version>2.7.1</cascading.version>
     <cascading3.version>3.1.2</cascading3.version>
-    <parquet.format.version>2.4.0</parquet.format.version>
+    <parquet.format.version>2.7.0</parquet.format.version>
     <previous.version>1.7.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>thrift</format.thrift.executable>
-    <scala.version>2.10.6</scala.version>
+    <scala.version>2.12.8</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
-    <scala.binary.version>2.10</scala.binary.version>
+    <scala.binary.version>2.12</scala.binary.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
+    <scrooge.verion>19.10.0</scrooge.verion>
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.9.3</thrift.version>
-    <format.thrift.version>0.9.3</format.thrift.version>
-    <fastutil.version>7.0.13</fastutil.version>
+    <thrift.version>0.12.0</thrift.version>
+    <format.thrift.version>0.12.0</format.thrift.version>
+    <fastutil.version>8.2.3</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
-    <avro.version>1.8.2</avro.version>
-    <guava.version>20.0</guava.version>
+    <avro.version>1.9.1</avro.version>
+    <guava.version>27.0.1-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
+    <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
-    <jackson2.version>2.3.1</jackson2.version>
-    <jcommander.version>1.35</jcommander.version>
-    <commons-codec.version>1.10</commons-codec.version>
+    <jcommander.version>1.72</jcommander.version>
+    <zstd-jni.version>1.4.0-1</zstd-jni.version>
   </properties>
 
   <modules>
@@ -148,13 +149,6 @@
       <version>3.4</version>
       <scope>test</scope>
     </dependency>
-    <!-- hadoop-1 requires the old httpclient for testing -->
-    <dependency>
-      <groupId>commons-httpclient</groupId>
-      <artifactId>commons-httpclient</artifactId>
-      <version>3.1</version>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
 
   <reporting>
@@ -162,7 +156,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.9</version>
+        <version>${maven-javadoc-plugin.version}</version>
         <reportSets>
           <reportSet><!-- by default, id = "default" -->
             <reports><!-- select non-aggregate reports -->
@@ -182,6 +176,7 @@
           <sourceFileExcludes>
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
+          <source>8</source>
         </configuration>
       </plugin>
       <plugin>
@@ -221,13 +216,13 @@
             </execution>
           </executions>
         </plugin>
-        
+
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-resources-plugin</artifactId>
           <version>2.7</version>
         </plugin>
-              
+
         <plugin>
           <artifactId>maven-enforcer-plugin</artifactId>
           <version>1.3.1</version>
@@ -304,7 +299,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.2.1</version>
           <executions>
             <execution>
               <phase>package</phase>
@@ -365,6 +360,17 @@
     </pluginManagement>
     <plugins>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>${maven-javadoc-plugin.version}</version>
+        <configuration>
+          <sourceFileExcludes>
+            <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
+          </sourceFileExcludes>
+          <source>8</source>
+        </configuration>
+      </plugin>
+      <plugin>
         <groupId>com.mycila.maven-license-plugin</groupId>
         <artifactId>maven-license-plugin</artifactId>
         <version>1.10.b1</version>
@@ -381,7 +387,7 @@
           </execution>
         </executions-->
       </plugin>
-      
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
@@ -396,8 +402,8 @@
             <skip>true</skip>
           </configuration>
       </plugin>
-      
-            
+
+
       <plugin>
         <!-- Override source and target from the ASF parent -->
         <groupId>org.apache.maven.plugins</groupId>
@@ -470,6 +476,7 @@
         <configuration>
           <consoleOutput>true</consoleOutput>
           <excludes>
+            <exclude>.github/PULL_REQUEST_TEMPLATE.md</exclude>
             <exclude>**/*.parquet</exclude>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.json</exclude>
@@ -564,21 +571,6 @@
       </build>
     </profile>
 
-    <profile>
-      <id>hadoop-1</id>
-      <activation>
-        <property>
-          <name>hadoop.profile</name>
-          <value>hadoop1</value>
-        </property>
-      </activation>
-      <properties>
-        <!-- test hadoop-1 with the same jars that were produced for default profile -->
-        <maven.main.skip>true</maven.main.skip>
-        <hadoop.version>${hadoop1.version}</hadoop.version>
-        <pig.classifier />
-      </properties>
-    </profile>
     <profile>
       <id>thrift9</id>
       <properties>

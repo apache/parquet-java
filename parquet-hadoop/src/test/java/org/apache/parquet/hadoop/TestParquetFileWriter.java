@@ -24,6 +24,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
@@ -41,7 +42,11 @@ import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.format.Statistics;
 import org.apache.parquet.hadoop.metadata.*;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
+import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
+import org.apache.parquet.internal.column.columnindex.ColumnIndex;
+import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -51,6 +56,8 @@ import org.apache.parquet.schema.Types;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static org.apache.parquet.CorruptStatistics.shouldIgnoreStatistics;
@@ -58,6 +65,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.*;
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.PLAIN;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.MAX_STATS_SIZE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.Type.Repetition.*;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
@@ -217,6 +225,8 @@ public class TestParquetFileWriter {
 
     Path path = new Path(testFile.toURI());
     Configuration conf = new Configuration();
+    // Disable writing out checksums as hardcoded byte offsets in assertions below expect it
+    conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
 
     // uses the test constructor
     ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 120, 60);
@@ -322,6 +332,8 @@ public class TestParquetFileWriter {
 
     Path path = new Path(testFile.toURI());
     Configuration conf = new Configuration();
+    // Disable writing out checksums as hardcoded byte offsets in assertions below expect it
+    conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
 
     // uses the test constructor
     ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 100, 50);
@@ -766,4 +778,142 @@ public class TestParquetFileWriter {
     ParquetFileWriter.writeMetadataFile(conf, relativeRoot, footers, JobSummaryLevel.ALL);
   }
 
+  @Test
+  public void testColumnIndexWriteRead() throws Exception {
+    File testFile = temp.newFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+
+    ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
+    w.start();
+    w.startBlock(4);
+    w.startColumn(C1, 7, CODEC);
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(C2, 8, CODEC);
+    w.writeDataPage(8, 4, BytesInput.from(BYTES4), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+    w.startBlock(4);
+    w.startColumn(C1, 5, CODEC);
+    long c1p1Starts = w.getPos();
+    w.writeDataPage(2, 4, BytesInput.from(BYTES1), statsC1(null, Binary.fromString("aaa")), 1, BIT_PACKED, BIT_PACKED,
+        PLAIN);
+    long c1p2Starts = w.getPos();
+    w.writeDataPage(3, 4, BytesInput.from(BYTES1), statsC1(Binary.fromString("bbb"), Binary.fromString("ccc")), 3,
+        BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c1Ends = w.getPos();
+    w.startColumn(C2, 6, CODEC);
+    long c2p1Starts = w.getPos();
+    w.writeDataPage(2, 4, BytesInput.from(BYTES2), statsC2(117l, 100l), 1, BIT_PACKED, BIT_PACKED, PLAIN);
+    long c2p2Starts = w.getPos();
+    w.writeDataPage(3, 4, BytesInput.from(BYTES2), statsC2(null, null, null), 2, BIT_PACKED, BIT_PACKED, PLAIN);
+    long c2p3Starts = w.getPos();
+    w.writeDataPage(1, 4, BytesInput.from(BYTES2), statsC2(0l), 1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c2Ends = w.getPos();
+    w.endBlock();
+    w.startBlock(4);
+    w.startColumn(C1, 7, CODEC);
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3),
+        // Creating huge stats so the column index will reach the limit and won't be written
+        statsC1(
+            Binary.fromConstantByteArray(new byte[(int) MAX_STATS_SIZE]),
+            Binary.fromConstantByteArray(new byte[1])),
+        4, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(C2, 8, CODEC);
+    w.writeDataPage(8, 4, BytesInput.from(BYTES4), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+    w.end(new HashMap<String, String>());
+
+    try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(path, configuration),
+        ParquetReadOptions.builder().build())) {
+      ParquetMetadata footer = reader.getFooter();
+      assertEquals(3, footer.getBlocks().size());
+      BlockMetaData blockMeta = footer.getBlocks().get(1);
+      assertEquals(2, blockMeta.getColumns().size());
+
+      ColumnIndex columnIndex = reader.readColumnIndex(blockMeta.getColumns().get(0));
+      assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
+      assertTrue(Arrays.asList(1l, 0l).equals(columnIndex.getNullCounts()));
+      assertTrue(Arrays.asList(false, false).equals(columnIndex.getNullPages()));
+      List<ByteBuffer> minValues = columnIndex.getMinValues();
+      assertEquals(2, minValues.size());
+      List<ByteBuffer> maxValues = columnIndex.getMaxValues();
+      assertEquals(2, maxValues.size());
+      assertEquals("aaa", new String(minValues.get(0).array(), StandardCharsets.UTF_8));
+      assertEquals("aaa", new String(maxValues.get(0).array(), StandardCharsets.UTF_8));
+      assertEquals("bbb", new String(minValues.get(1).array(), StandardCharsets.UTF_8));
+      assertEquals("ccc", new String(maxValues.get(1).array(), StandardCharsets.UTF_8));
+
+      columnIndex = reader.readColumnIndex(blockMeta.getColumns().get(1));
+      assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
+      assertTrue(Arrays.asList(0l, 3l, 0l).equals(columnIndex.getNullCounts()));
+      assertTrue(Arrays.asList(false, true, false).equals(columnIndex.getNullPages()));
+      minValues = columnIndex.getMinValues();
+      assertEquals(3, minValues.size());
+      maxValues = columnIndex.getMaxValues();
+      assertEquals(3, maxValues.size());
+      assertEquals(100, BytesUtils.bytesToLong(minValues.get(0).array()));
+      assertEquals(117, BytesUtils.bytesToLong(maxValues.get(0).array()));
+      assertEquals(0, minValues.get(1).array().length);
+      assertEquals(0, maxValues.get(1).array().length);
+      assertEquals(0, BytesUtils.bytesToLong(minValues.get(2).array()));
+      assertEquals(0, BytesUtils.bytesToLong(maxValues.get(2).array()));
+
+      OffsetIndex offsetIndex = reader.readOffsetIndex(blockMeta.getColumns().get(0));
+      assertEquals(2, offsetIndex.getPageCount());
+      assertEquals(c1p1Starts, offsetIndex.getOffset(0));
+      assertEquals(c1p2Starts, offsetIndex.getOffset(1));
+      assertEquals(c1p2Starts - c1p1Starts, offsetIndex.getCompressedPageSize(0));
+      assertEquals(c1Ends - c1p2Starts, offsetIndex.getCompressedPageSize(1));
+      assertEquals(0, offsetIndex.getFirstRowIndex(0));
+      assertEquals(1, offsetIndex.getFirstRowIndex(1));
+
+      offsetIndex = reader.readOffsetIndex(blockMeta.getColumns().get(1));
+      assertEquals(3, offsetIndex.getPageCount());
+      assertEquals(c2p1Starts, offsetIndex.getOffset(0));
+      assertEquals(c2p2Starts, offsetIndex.getOffset(1));
+      assertEquals(c2p3Starts, offsetIndex.getOffset(2));
+      assertEquals(c2p2Starts - c2p1Starts, offsetIndex.getCompressedPageSize(0));
+      assertEquals(c2p3Starts - c2p2Starts, offsetIndex.getCompressedPageSize(1));
+      assertEquals(c2Ends - c2p3Starts, offsetIndex.getCompressedPageSize(2));
+      assertEquals(0, offsetIndex.getFirstRowIndex(0));
+      assertEquals(1, offsetIndex.getFirstRowIndex(1));
+      assertEquals(3, offsetIndex.getFirstRowIndex(2));
+
+      assertNull(reader.readColumnIndex(footer.getBlocks().get(2).getColumns().get(0)));
+    }
+  }
+
+  private org.apache.parquet.column.statistics.Statistics<?> statsC1(Binary... values) {
+    org.apache.parquet.column.statistics.Statistics<?> stats = org.apache.parquet.column.statistics.Statistics
+        .createStats(C1.getPrimitiveType());
+    for (Binary value : values) {
+      if (value == null) {
+        stats.incrementNumNulls();
+      } else {
+        stats.updateStats(value);
+      }
+    }
+    return stats;
+  }
+
+  private org.apache.parquet.column.statistics.Statistics<?> statsC2(Long... values) {
+    org.apache.parquet.column.statistics.Statistics<?> stats = org.apache.parquet.column.statistics.Statistics
+        .createStats(C2.getPrimitiveType());
+    for (Long value : values) {
+      if (value == null) {
+        stats.incrementNumNulls();
+      } else {
+        stats.updateStats(value);
+      }
+    }
+    return stats;
+  }
 }

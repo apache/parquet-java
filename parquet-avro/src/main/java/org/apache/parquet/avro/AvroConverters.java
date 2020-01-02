@@ -76,9 +76,13 @@ public class AvroConverters {
       }
     }
 
+    public T prepareDictionaryValue(T value) {
+      return value;
+    }
+
     @Override
     public void addValueFromDictionary(int dictionaryId) {
-      parent.add(dict[dictionaryId]);
+      parent.add(prepareDictionaryValue(dict[dictionaryId]));
     }
   }
 
@@ -220,6 +224,11 @@ public class AvroConverters {
     public ByteBuffer convert(Binary binary) {
       return ByteBuffer.wrap(binary.getBytes());
     }
+
+    @Override
+    public ByteBuffer prepareDictionaryValue(ByteBuffer value) {
+      return value.duplicate();
+    }
   }
 
   static final class FieldStringConverter extends BinaryConverter<String> {
@@ -264,13 +273,8 @@ public class AvroConverters {
     public Object convert(Binary binary) {
       try {
         return ctor.newInstance(binary.toStringUsingUTF8());
-      } catch (InstantiationException e) {
-        throw new ParquetDecodingException(
-            "Cannot convert binary to " + stringableName, e);
-      } catch (IllegalAccessException e) {
-        throw new ParquetDecodingException(
-            "Cannot convert binary to " + stringableName, e);
-      } catch (InvocationTargetException e) {
+      } catch (InstantiationException | IllegalAccessException
+          | InvocationTargetException e) {
         throw new ParquetDecodingException(
             "Cannot convert binary to " + stringableName, e);
       }

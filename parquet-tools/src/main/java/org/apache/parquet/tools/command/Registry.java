@@ -34,6 +34,7 @@ public final class Registry {
     registry.put("merge", MergeCommand.class);
     registry.put("rowcount", RowCountCommand.class);
     registry.put("size", SizeCommand.class);
+    registry.put("column-index", ColumnIndexCommand.class);
   }
 
   public static Map<String,Command> allCommands() {

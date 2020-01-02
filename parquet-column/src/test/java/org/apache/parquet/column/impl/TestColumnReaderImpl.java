@@ -65,10 +65,10 @@ public class TestColumnReaderImpl {
     for (int i = 0; i < rows; i++) {
       columnWriterV2.write(Binary.fromString("bar" + i % 10), 0, 0);
       if ((i + 1) % 1000 == 0) {
-        columnWriterV2.writePage(i);
+        columnWriterV2.writePage();
       }
     }
-    columnWriterV2.writePage(rows);
+    columnWriterV2.writePage();
     columnWriterV2.finalizeColumnChunk();
     List<DataPage> pages = pageWriter.getPages();
     int valueCount = 0;
@@ -103,10 +103,10 @@ public class TestColumnReaderImpl {
     for (int i = 0; i < rows; i++) {
       columnWriterV2.writeNull(0, 0);
       if ((i + 1) % 1000 == 0) {
-        columnWriterV2.writePage(i);
+        columnWriterV2.writePage();
       }
     }
-    columnWriterV2.writePage(rows);
+    columnWriterV2.writePage();
     columnWriterV2.finalizeColumnChunk();
     List<DataPage> pages = pageWriter.getPages();
     int valueCount = 0;

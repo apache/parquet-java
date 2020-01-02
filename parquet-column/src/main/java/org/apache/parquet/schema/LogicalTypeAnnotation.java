@@ -19,6 +19,7 @@
 package org.apache.parquet.schema;
 
 import org.apache.parquet.Preconditions;
+import org.apache.yetus.audience.InterfaceAudience;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -32,6 +33,16 @@ import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.UNDEFINED;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MICROS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MILLIS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_NANOS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 
 public abstract class LogicalTypeAnnotation {
   enum LogicalTypeToken {
@@ -135,6 +146,7 @@ public abstract class LogicalTypeAnnotation {
    *
    * @return the OriginalType representation of the new logical type, or null if there's none
    */
+  @InterfaceAudience.Private
   public abstract OriginalType toOriginalType();
 
   /**
@@ -169,6 +181,7 @@ public abstract class LogicalTypeAnnotation {
   /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
    */
+  @InterfaceAudience.Private
   public static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
     if (originalType == null) {
       return null;
@@ -280,6 +293,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.UTF8;
     }
@@ -318,6 +332,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.MAP;
     }
@@ -351,6 +366,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.LIST;
     }
@@ -384,6 +400,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.ENUM;
     }
@@ -435,6 +452,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.DECIMAL;
     }
@@ -487,6 +505,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.DATE;
     }
@@ -520,7 +539,8 @@ public abstract class LogicalTypeAnnotation {
 
   public enum TimeUnit {
     MILLIS,
-    MICROS
+    MICROS,
+    NANOS
   }
 
   public static class TimeLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -533,6 +553,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -540,7 +561,7 @@ public abstract class LogicalTypeAnnotation {
         case MICROS:
           return OriginalType.TIME_MICROS;
         default:
-          throw new RuntimeException("Unknown original type for " + unit);
+          return null;
       }
     }
 
@@ -589,7 +610,15 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
-      return PrimitiveStringifier.TIME_STRINGIFIER;
+      switch (unit) {
+        case MICROS:
+        case MILLIS:
+          return isAdjustedToUTC ? TIME_UTC_STRINGIFIER : TIME_STRINGIFIER;
+        case NANOS:
+          return isAdjustedToUTC ? TIME_NANOS_UTC_STRINGIFIER : TIME_NANOS_STRINGIFIER;
+        default:
+          return super.valueStringifier(primitiveType);
+      }
     }
   }
 
@@ -603,6 +632,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -610,7 +640,7 @@ public abstract class LogicalTypeAnnotation {
         case MICROS:
           return OriginalType.TIMESTAMP_MICROS;
         default:
-          throw new RuntimeException("Unknown original type for " + unit);
+          return null;
       }
     }
 
@@ -661,9 +691,11 @@ public abstract class LogicalTypeAnnotation {
     PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       switch (unit) {
         case MICROS:
-          return PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
+          return isAdjustedToUTC ? TIMESTAMP_MICROS_UTC_STRINGIFIER : TIMESTAMP_MICROS_STRINGIFIER;
         case MILLIS:
-          return PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+          return isAdjustedToUTC ? TIMESTAMP_MILLIS_UTC_STRINGIFIER : TIMESTAMP_MILLIS_STRINGIFIER;
+        case NANOS:
+          return isAdjustedToUTC ? TIMESTAMP_NANOS_UTC_STRINGIFIER : TIMESTAMP_NANOS_STRINGIFIER;
         default:
           return super.valueStringifier(primitiveType);
       }
@@ -686,6 +718,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (bitWidth) {
         case 8:
@@ -697,7 +730,7 @@ public abstract class LogicalTypeAnnotation {
         case 64:
           return isSigned ? OriginalType.INT_64 : OriginalType.UINT_64;
         default:
-          throw new RuntimeException("Unknown original type " + toOriginalType());
+          return null;
       }
     }
 
@@ -757,6 +790,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.JSON;
     }
@@ -795,6 +829,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.BSON;
     }
@@ -840,6 +875,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.INTERVAL;
     }
@@ -890,6 +926,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.MAP_KEY_VALUE;
     }

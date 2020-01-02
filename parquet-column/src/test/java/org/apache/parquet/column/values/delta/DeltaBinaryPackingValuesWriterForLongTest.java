@@ -212,6 +212,23 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
   }
 
   @Test
+  public void shouldSkipN() throws IOException {
+    long[] data = new long[5 * blockSize + 1];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = i * 32;
+    }
+    writeData(data);
+    reader = new DeltaBinaryPackingValuesReader();
+    reader.initFromPage(100, writer.getBytes().toInputStream());
+    int skipCount;
+    for (int i = 0; i < data.length; i += skipCount + 1) {
+      skipCount = (data.length - i) / 2;
+      assertEquals(i * 32, reader.readLong());
+      reader.skip(skipCount);
+    }
+  }
+
+  @Test
   public void shouldReset() throws IOException {
     shouldReadWriteWhenDataIsNotAlignedWithBlock();
     long[] data = new long[5 * blockSize];

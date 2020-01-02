@@ -18,158 +18,20 @@
  */
 package org.apache.parquet.column.impl;
 
-import static java.lang.Math.max;
-import static java.lang.Math.min;
-import static java.util.Collections.unmodifiableMap;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.ColumnWriteStore;
-import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.schema.MessageType;
 
-public class ColumnWriteStoreV2 implements ColumnWriteStore {
+public class ColumnWriteStoreV2 extends ColumnWriteStoreBase {
 
-  // will flush even if size bellow the threshold by this much to facilitate page alignment
-  private static final float THRESHOLD_TOLERANCE_RATIO = 0.1f; // 10 %
-
-  private final Map<ColumnDescriptor, ColumnWriterV2> columns;
-  private final Collection<ColumnWriterV2> writers;
-  private final ParquetProperties props;
-  private final long thresholdTolerance;
-  private long rowCount;
-  private long rowCountForNextSizeCheck;
-
-  public ColumnWriteStoreV2(
-      MessageType schema,
-      PageWriteStore pageWriteStore,
-      ParquetProperties props) {
-    this.props = props;
-    this.thresholdTolerance = (long)(props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
-    Map<ColumnDescriptor, ColumnWriterV2> mcolumns = new TreeMap<ColumnDescriptor, ColumnWriterV2>();
-    for (ColumnDescriptor path : schema.getColumns()) {
-      PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      mcolumns.put(path, new ColumnWriterV2(path, pageWriter, props));
-    }
-    this.columns = unmodifiableMap(mcolumns);
-    this.writers = this.columns.values();
-
-    this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
-  }
-
-  public ColumnWriter getColumnWriter(ColumnDescriptor path) {
-    return columns.get(path);
-  }
-
-  public Set<ColumnDescriptor> getColumnDescriptors() {
-    return columns.keySet();
+  public ColumnWriteStoreV2(MessageType schema, PageWriteStore pageWriteStore, ParquetProperties props) {
+    super(schema, pageWriteStore, props);
   }
 
   @Override
-  public String toString() {
-      StringBuilder sb = new StringBuilder();
-      for (Entry<ColumnDescriptor, ColumnWriterV2> entry : columns.entrySet()) {
-        sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
-        sb.append(entry.getValue().getTotalBufferedSize()).append(" bytes");
-        sb.append("\n");
-      }
-      return sb.toString();
+  ColumnWriterBase createColumnWriter(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
+    return new ColumnWriterV2(path, pageWriter, props);
   }
-
-  @Override
-  public long getAllocatedSize() {
-    long total = 0;
-    for (ColumnWriterV2 memColumn : columns.values()) {
-      total += memColumn.allocatedSize();
-    }
-    return total;
-  }
-
-  @Override
-  public long getBufferedSize() {
-    long total = 0;
-    for (ColumnWriterV2 memColumn : columns.values()) {
-      total += memColumn.getTotalBufferedSize();
-    }
-    return total;
-  }
-
-  @Override
-  public void flush() {
-    for (ColumnWriterV2 memColumn : columns.values()) {
-      long rows = rowCount - memColumn.getRowsWrittenSoFar();
-      if (rows > 0) {
-        memColumn.writePage(rowCount);
-      }
-      memColumn.finalizeColumnChunk();
-    }
-  }
-
-  public String memUsageString() {
-    StringBuilder b = new StringBuilder("Store {\n");
-    for (ColumnWriterV2 memColumn : columns.values()) {
-      b.append(memColumn.memUsageString(" "));
-    }
-    b.append("}\n");
-    return b.toString();
-  }
-
-  @Override
-  public void close() {
-    flush(); // calling flush() here to keep it consistent with the behavior before merging with master
-    for (ColumnWriterV2 memColumn : columns.values()) {
-      memColumn.close();
-    }
-  }
-
-  @Override
-  public void endRecord() {
-    ++ rowCount;
-    if (rowCount >= rowCountForNextSizeCheck) {
-      sizeCheck();
-    }
-  }
-
-  private void sizeCheck() {
-    long minRecordToWait = Long.MAX_VALUE;
-    for (ColumnWriterV2 writer : writers) {
-      long usedMem = writer.getCurrentPageBufferedSize();
-      long rows = rowCount - writer.getRowsWrittenSoFar();
-      long remainingMem = props.getPageSizeThreshold() - usedMem;
-      if (remainingMem <= thresholdTolerance) {
-        writer.writePage(rowCount);
-        remainingMem = props.getPageSizeThreshold();
-      }
-      long rowsToFillPage =
-          usedMem == 0 ?
-              props.getMaxRowCountForPageSizeCheck()
-              : (long)((float)rows) / usedMem * remainingMem;
-      if (rowsToFillPage < minRecordToWait) {
-        minRecordToWait = rowsToFillPage;
-      }
-    }
-    if (minRecordToWait == Long.MAX_VALUE) {
-      minRecordToWait = props.getMinRowCountForPageSizeCheck();
-    }
-
-    if(props.estimateNextSizeCheck()) {
-      // will check again halfway if between min and max
-      rowCountForNextSizeCheck = rowCount +
-          min(
-              max(minRecordToWait / 2, props.getMinRowCountForPageSizeCheck()),
-              props.getMaxRowCountForPageSizeCheck());
-    } else {
-      rowCountForNextSizeCheck = rowCount + props.getMinRowCountForPageSizeCheck();
-    }
-  }
-
 }

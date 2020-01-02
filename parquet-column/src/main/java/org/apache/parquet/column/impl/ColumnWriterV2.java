@@ -20,294 +20,69 @@ package org.apache.parquet.column.impl;
 
 import java.io.IOException;
 
-import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
+import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
-import org.apache.parquet.io.api.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
  */
-final class ColumnWriterV2 implements ColumnWriter {
-  private static final Logger LOG = LoggerFactory.getLogger(ColumnWriterV2.class);
+final class ColumnWriterV2 extends ColumnWriterBase {
 
-  // By default: Debugging disabled this way (using the "if (DEBUG)" IN the methods) to allow
-  // the java compiler (not the JIT) to remove the unused statements during build time.
-  private static final boolean DEBUG = false;
-
-  private final ColumnDescriptor path;
-  private final PageWriter pageWriter;
-  private RunLengthBitPackingHybridEncoder repetitionLevelColumn;
-  private RunLengthBitPackingHybridEncoder definitionLevelColumn;
-  private ValuesWriter dataColumn;
-  private int valueCount;
-
-  private Statistics<?> statistics;
-  private long rowsWrittenSoFar = 0;
-
-  public ColumnWriterV2(
-      ColumnDescriptor path,
-      PageWriter pageWriter,
-      ParquetProperties props) {
-    this.path = path;
-    this.pageWriter = pageWriter;
-    resetStatistics();
-
-    this.repetitionLevelColumn = props.newRepetitionLevelEncoder(path);
-    this.definitionLevelColumn = props.newDefinitionLevelEncoder(path);
-    this.dataColumn = props.newValuesWriter(path);
-  }
-
-  private void log(Object value, int r, int d) {
-    LOG.debug("{} {} r:{} d:{}", path, value, r, d);
-  }
-
-  private void resetStatistics() {
-    this.statistics = Statistics.createStats(path.getPrimitiveType());
-  }
-
-  private void definitionLevel(int definitionLevel) {
-    try {
-      definitionLevelColumn.writeInt(definitionLevel);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("illegal definition level " + definitionLevel + " for column " + path, e);
+  // Extending the original implementation to not to write the size of the data as the original writer would
+  private static class RLEWriterForV2 extends RunLengthBitPackingHybridValuesWriter {
+    public RLEWriterForV2(RunLengthBitPackingHybridEncoder encoder) {
+      super(encoder);
     }
-  }
 
-  private void repetitionLevel(int repetitionLevel) {
-    try {
-      repetitionLevelColumn.writeInt(repetitionLevel);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("illegal repetition level " + repetitionLevel + " for column " + path, e);
-    }
-  }
-
-  /**
-   * writes the current null value
-   * @param repetitionLevel
-   * @param definitionLevel
-   */
-  public void writeNull(int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(null, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    statistics.incrementNumNulls();
-    ++ valueCount;
-  }
-
-  @Override
-  public void close() {
-    // Close the Values writers.
-    repetitionLevelColumn.close();
-    definitionLevelColumn.close();
-    dataColumn.close();
-  }
-
-  @Override
-  public long getBufferedSizeInMemory() {
-    return repetitionLevelColumn.getBufferedSize()
-      + definitionLevelColumn.getBufferedSize()
-      + dataColumn.getBufferedSize()
-      + pageWriter.getMemSize();
-  }
-
-  /**
-   * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
-   */
-  public void write(double value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeDouble(value);
-    statistics.updateStats(value);
-    ++ valueCount;
-  }
-
-  /**
-   * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
-   */
-  public void write(float value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeFloat(value);
-    statistics.updateStats(value);
-    ++ valueCount;
-  }
-
-  /**
-   * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
-   */
-  public void write(Binary value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeBytes(value);
-    statistics.updateStats(value);
-    ++ valueCount;
-  }
-
-  /**
-   * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
-   */
-  public void write(boolean value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeBoolean(value);
-    statistics.updateStats(value);
-    ++ valueCount;
-  }
-
-  /**
-   * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
-   */
-  public void write(int value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeInteger(value);
-    statistics.updateStats(value);
-    ++ valueCount;
-  }
-
-  /**
-   * writes the current value
-   * @param value
-   * @param repetitionLevel
-   * @param definitionLevel
-   */
-  public void write(long value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeLong(value);
-    statistics.updateStats(value);
-    ++ valueCount;
-  }
-
-  /**
-   * Finalizes the Column chunk. Possibly adding extra pages if needed (dictionary, ...)
-   * Is called right after writePage
-   */
-  public void finalizeColumnChunk() {
-    final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
-    if (dictionaryPage != null) {
-      if (DEBUG) LOG.debug("write dictionary");
+    @Override
+    public BytesInput getBytes() {
       try {
-        pageWriter.writeDictionaryPage(dictionaryPage);
+        return encoder.toBytes();
       } catch (IOException e) {
-        throw new ParquetEncodingException("could not write dictionary page for " + path, e);
+        throw new ParquetEncodingException(e);
       }
-      dataColumn.resetDictionary();
     }
   }
 
-  /**
-   * used to decide when to write a page
-   * @return the number of bytes of memory used to buffer the current data
-   */
-  public long getCurrentPageBufferedSize() {
-    return repetitionLevelColumn.getBufferedSize()
-        + definitionLevelColumn.getBufferedSize()
-        + dataColumn.getBufferedSize();
+  private static final ValuesWriter NULL_WRITER = new DevNullValuesWriter();
+
+  ColumnWriterV2(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
+    super(path, pageWriter, props);
   }
 
-  /**
-   * used to decide when to write a page or row group
-   * @return the number of bytes of memory used to buffer the current data and the previously written pages
-   */
-  public long getTotalBufferedSize() {
-    return repetitionLevelColumn.getBufferedSize()
-        + definitionLevelColumn.getBufferedSize()
-        + dataColumn.getBufferedSize()
-        + pageWriter.getMemSize();
+  @Override
+  ValuesWriter createRLWriter(ParquetProperties props, ColumnDescriptor path) {
+    return path.getMaxRepetitionLevel() == 0 ? NULL_WRITER : new RLEWriterForV2(props.newRepetitionLevelEncoder(path));
   }
 
-  /**
-   * @return actual memory used
-   */
-  public long allocatedSize() {
-    return repetitionLevelColumn.getAllocatedSize()
-    + definitionLevelColumn.getAllocatedSize()
-    + dataColumn.getAllocatedSize()
-    + pageWriter.allocatedSize();
+  @Override
+  ValuesWriter createDLWriter(ParquetProperties props, ColumnDescriptor path) {
+    return path.getMaxDefinitionLevel() == 0 ? NULL_WRITER : new RLEWriterForV2(props.newDefinitionLevelEncoder(path));
   }
 
-  /**
-   * @param indent a prefix to format lines
-   * @return a formatted string showing how memory is used
-   */
-  public String memUsageString(String indent) {
-    StringBuilder b = new StringBuilder(indent).append(path).append(" {\n");
-    b.append(indent).append(" r:").append(repetitionLevelColumn.getAllocatedSize()).append(" bytes\n");
-    b.append(indent).append(" d:").append(definitionLevelColumn.getAllocatedSize()).append(" bytes\n");
-    b.append(dataColumn.memUsageString(indent + "  data:")).append("\n");
-    b.append(pageWriter.memUsageString(indent + "  pages:")).append("\n");
-    b.append(indent).append(String.format("  total: %,d/%,d", getTotalBufferedSize(), allocatedSize())).append("\n");
-    b.append(indent).append("}\n");
-    return b.toString();
-  }
-
-  public long getRowsWrittenSoFar() {
-    return this.rowsWrittenSoFar;
-  }
-
-  /**
-   * writes the current data to a new page in the page store
-   * @param rowCount how many rows have been written so far
-   */
-  public void writePage(long rowCount) {
-    int pageRowCount = Ints.checkedCast(rowCount - rowsWrittenSoFar);
-    this.rowsWrittenSoFar = rowCount;
-    if (DEBUG) LOG.debug("write page");
-    try {
-      // TODO: rework this API. Those must be called *in that order*
-      BytesInput bytes = dataColumn.getBytes();
-      Encoding encoding = dataColumn.getEncoding();
-      pageWriter.writePageV2(
-          pageRowCount,
-          Ints.checkedCast(statistics.getNumNulls()),
-          valueCount,
-          path.getMaxRepetitionLevel() == 0 ? BytesInput.empty() : repetitionLevelColumn.toBytes(),
-          path.getMaxDefinitionLevel() == 0 ? BytesInput.empty() : definitionLevelColumn.toBytes(),
-          encoding,
-          bytes,
-          statistics
-          );
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write page for " + path, e);
-    }
-    repetitionLevelColumn.reset();
-    definitionLevelColumn.reset();
-    dataColumn.reset();
-    valueCount = 0;
-    resetStatistics();
+  @Override
+  void writePage(int rowCount, int valueCount, Statistics<?> statistics, ValuesWriter repetitionLevels,
+      ValuesWriter definitionLevels, ValuesWriter values) throws IOException {
+    // TODO: rework this API. The bytes shall be retrieved before the encoding (encoding might be different otherwise)
+    BytesInput bytes = values.getBytes();
+    Encoding encoding = values.getEncoding();
+    pageWriter.writePageV2(
+        rowCount,
+        Math.toIntExact(statistics.getNumNulls()),
+        valueCount,
+        repetitionLevels.getBytes(),
+        definitionLevels.getBytes(),
+        encoding,
+        bytes,
+        statistics);
   }
 }

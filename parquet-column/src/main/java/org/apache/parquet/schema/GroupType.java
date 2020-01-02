@@ -171,10 +171,11 @@ public class GroupType extends Type {
    * @return the index of the field with that name
    */
   public int getFieldIndex(String name) {
-    if (!indexByName.containsKey(name)) {
+    Integer i = indexByName.get(name);
+    if (i == null) {
       throw new InvalidRecordException(name + " not found in " + this);
     }
-    return indexByName.get(name);
+    return i.intValue();
   }
 
   /**
@@ -400,9 +401,6 @@ public class GroupType extends Type {
       Type merged;
       if (toMerge.containsField(type.getName())) {
         Type fieldToMerge = toMerge.getType(type.getName());
-        if (fieldToMerge.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
-          throw new IncompatibleSchemaModificationException("repetition constraint is more restrictive: can not merge type " + fieldToMerge + " into " + type);
-        }
         if (type.getLogicalTypeAnnotation() != null && !type.getLogicalTypeAnnotation().equals(fieldToMerge.getLogicalTypeAnnotation())) {
           throw new IncompatibleSchemaModificationException("cannot merge logical type " + fieldToMerge.getLogicalTypeAnnotation() + " into " + type.getLogicalTypeAnnotation());
         }

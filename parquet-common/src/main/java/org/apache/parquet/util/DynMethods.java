@@ -386,10 +386,8 @@ public class DynMethods {
         Method hidden = targetClass.getDeclaredMethod(methodName, argClasses);
         AccessController.doPrivileged(new MakeAccessible(hidden));
         this.method = new UnboundMethod(hidden, name);
-      } catch (SecurityException e) {
-        // unusable
-      } catch (NoSuchMethodException e) {
-        // not the right implementation
+      } catch (SecurityException | NoSuchMethodException e) {
+        // unusable or not the right implementation
       }
       return this;
     }

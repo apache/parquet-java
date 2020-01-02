@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.format.converter;
 
+import static java.util.Optional.empty;
+
+import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
@@ -41,6 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.format.BsonType;
 import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.DateType;
@@ -53,6 +58,7 @@ import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.MicroSeconds;
 import org.apache.parquet.format.MilliSeconds;
+import org.apache.parquet.format.NanoSeconds;
 import org.apache.parquet.format.NullType;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.format.StringType;
@@ -60,7 +66,9 @@ import org.apache.parquet.format.TimeType;
 import org.apache.parquet.format.TimeUnit;
 import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.format.BoundaryOrder;
 import org.apache.parquet.format.ColumnChunk;
+import org.apache.parquet.format.ColumnIndex;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.ColumnOrder;
 import org.apache.parquet.format.ConvertedType;
@@ -71,7 +79,9 @@ import org.apache.parquet.format.Encoding;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
 import org.apache.parquet.format.KeyValue;
+import org.apache.parquet.format.OffsetIndex;
 import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.PageLocation;
 import org.apache.parquet.format.PageType;
 import org.apache.parquet.format.RowGroup;
 import org.apache.parquet.format.SchemaElement;
@@ -83,7 +93,12 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
+import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
+import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
+import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
@@ -109,11 +124,15 @@ public class ParquetMetadataConverter {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetMetadataConverter.class);
   private static final LogicalTypeConverterVisitor LOGICAL_TYPE_ANNOTATION_VISITOR = new LogicalTypeConverterVisitor();
   private static final ConvertedTypeConverterVisitor CONVERTED_TYPE_CONVERTER_VISITOR = new ConvertedTypeConverterVisitor();
-
+  private final int statisticsTruncateLength;
   private final boolean useSignedStringMinMax;
 
   public ParquetMetadataConverter() {
     this(false);
+  }
+
+  public ParquetMetadataConverter(int statisticsTruncateLength) {
+    this(false, statisticsTruncateLength);
   }
 
   /**
@@ -130,7 +149,15 @@ public class ParquetMetadataConverter {
   }
 
   private ParquetMetadataConverter(boolean useSignedStringMinMax) {
+    this(useSignedStringMinMax, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
+  }
+
+  private ParquetMetadataConverter(boolean useSignedStringMinMax, int statisticsTruncateLength) {
+    if (statisticsTruncateLength <= 0) {
+      throw new IllegalArgumentException("Truncate length should be greater than 0");
+    }
     this.useSignedStringMinMax = useSignedStringMinMax;
+    this.statisticsTruncateLength = statisticsTruncateLength;
   }
 
   // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
@@ -249,7 +276,7 @@ public class ParquetMetadataConverter {
   }
 
   ConvertedType convertToConvertedType(LogicalTypeAnnotation logicalTypeAnnotation) {
-    return logicalTypeAnnotation.accept(CONVERTED_TYPE_CONVERTER_VISITOR).get();
+    return logicalTypeAnnotation.accept(CONVERTED_TYPE_CONVERTER_VISITOR).orElse(null);
   }
 
   static org.apache.parquet.format.TimeUnit convertUnit(LogicalTypeAnnotation.TimeUnit unit) {
@@ -258,6 +285,8 @@ public class ParquetMetadataConverter {
         return org.apache.parquet.format.TimeUnit.MICROS(new MicroSeconds());
       case MILLIS:
         return org.apache.parquet.format.TimeUnit.MILLIS(new MilliSeconds());
+      case NANOS:
+        return TimeUnit.NANOS(new NanoSeconds());
       default:
         throw new RuntimeException("Unknown time unit " + unit);
     }
@@ -301,6 +330,8 @@ public class ParquetMetadataConverter {
           return of(ConvertedType.TIME_MILLIS);
         case MICROS:
           return of(ConvertedType.TIME_MICROS);
+        case NANOS:
+          return empty();
         default:
           throw new RuntimeException("Unknown converted type for " + timeLogicalType.toOriginalType());
       }
@@ -313,6 +344,8 @@ public class ParquetMetadataConverter {
           return of(ConvertedType.TIMESTAMP_MICROS);
         case MILLIS:
           return of(ConvertedType.TIMESTAMP_MILLIS);
+        case NANOS:
+          return empty();
         default:
           throw new RuntimeException("Unknown converted type for " + timestampLogicalType.toOriginalType());
       }
@@ -441,13 +474,24 @@ public class ParquetMetadataConverter {
           columnMetaData.getFirstDataPageOffset());
       columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
       if (!columnMetaData.getStatistics().isEmpty()) {
-        columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
+        columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics(), this.statisticsTruncateLength));
       }
       if (columnMetaData.getEncodingStats() != null) {
         columnChunk.meta_data.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
       }
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
+
+      IndexReference columnIndexRef = columnMetaData.getColumnIndexReference();
+      if (columnIndexRef != null) {
+        columnChunk.setColumn_index_offset(columnIndexRef.getOffset());
+        columnChunk.setColumn_index_length(columnIndexRef.getLength());
+      }
+      IndexReference offsetIndexRef = columnMetaData.getOffsetIndexReference();
+      if (offsetIndexRef != null) {
+        columnChunk.setOffset_index_offset(offsetIndexRef.getOffset());
+        columnChunk.setOffset_index_length(offsetIndexRef.getLength());
+      }
 
       parquetColumns.add(columnChunk);
     }
@@ -548,18 +592,31 @@ public class ParquetMetadataConverter {
   }
 
   public static Statistics toParquetStatistics(
-      org.apache.parquet.column.statistics.Statistics stats) {
+    org.apache.parquet.column.statistics.Statistics stats) {
+    return toParquetStatistics(stats, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
+  }
+
+  public static Statistics toParquetStatistics(
+      org.apache.parquet.column.statistics.Statistics stats, int truncateLength) {
     Statistics formatStats = new Statistics();
     // Don't write stats larger than the max size rather than truncating. The
     // rationale is that some engines may use the minimum value in the page as
     // the true minimum for aggregations and there is no way to mark that a
     // value has been truncated and is a lower bound and not in the page.
-    if (!stats.isEmpty() && stats.isSmallerThan(MAX_STATS_SIZE)) {
+    if (!stats.isEmpty() && withinLimit(stats, truncateLength)) {
       formatStats.setNull_count(stats.getNumNulls());
       if (stats.hasNonNullValue()) {
-        byte[] min = stats.getMinBytes();
-        byte[] max = stats.getMaxBytes();
+        byte[] min;
+        byte[] max;
 
+        if (stats instanceof BinaryStatistics && truncateLength != Integer.MAX_VALUE) {
+          BinaryTruncator truncator = BinaryTruncator.getTruncator(stats.type());
+          min = tuncateMin(truncator, truncateLength, stats.getMinBytes());
+          max = tuncateMax(truncator, truncateLength, stats.getMaxBytes());
+        } else {
+          min = stats.getMinBytes();
+          max = stats.getMaxBytes();
+        }
         // Fill the former min-max statistics only if the comparison logic is
         // signed so the logic of V1 and V2 stats are the same (which is
         // trivially true for equal min-max values)
@@ -575,6 +632,27 @@ public class ParquetMetadataConverter {
       }
     }
     return formatStats;
+  }
+
+  private static boolean withinLimit(org.apache.parquet.column.statistics.Statistics stats, int truncateLength) {
+    if (stats.isSmallerThan(MAX_STATS_SIZE)) {
+      return true;
+    }
+
+    if (!(stats instanceof BinaryStatistics)) {
+      return false;
+    }
+
+    BinaryStatistics binaryStatistics = (BinaryStatistics) stats;
+    return binaryStatistics.isSmallerThanWithTruncation(MAX_STATS_SIZE, truncateLength);
+  }
+
+  private static byte[] tuncateMin(BinaryTruncator truncator, int truncateLength, byte[] input) {
+    return truncator.truncateMin(Binary.fromConstantByteArray(input), truncateLength).getBytes();
+  }
+
+  private static byte[] tuncateMax(BinaryTruncator truncator, int truncateLength, byte[] input) {
+    return truncator.truncateMax(Binary.fromConstantByteArray(input), truncateLength).getBytes();
   }
 
   private static boolean isMinMaxStatsSupported(PrimitiveType type) {
@@ -936,6 +1014,8 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.TimeUnit.MICROS;
       case MILLIS:
         return LogicalTypeAnnotation.TimeUnit.MILLIS;
+      case NANOS:
+        return LogicalTypeAnnotation.TimeUnit.NANOS;
       default:
         throw new RuntimeException("Unknown time unit " + unit);
     }
@@ -1158,6 +1238,8 @@ public class ParquetMetadataConverter {
               metaData.num_values,
               metaData.total_compressed_size,
               metaData.total_uncompressed_size);
+          column.setColumnIndexReference(toColumnIndexReference(columnChunk));
+          column.setOffsetIndexReference(toOffsetIndexReference(columnChunk));
           // TODO
           // index_page_offset
           // key_value_metadata
@@ -1177,6 +1259,20 @@ public class ParquetMetadataConverter {
     return new ParquetMetadata(
         new org.apache.parquet.hadoop.metadata.FileMetaData(messageType, keyValueMetaData, parquetMetadata.getCreated_by()),
         blocks);
+  }
+
+  private static IndexReference toColumnIndexReference(ColumnChunk columnChunk) {
+    if (columnChunk.isSetColumn_index_offset() && columnChunk.isSetColumn_index_length()) {
+      return new IndexReference(columnChunk.getColumn_index_offset(), columnChunk.getColumn_index_length());
+    }
+    return null;
+  }
+
+  private static IndexReference toOffsetIndexReference(ColumnChunk columnChunk) {
+    if (columnChunk.isSetOffset_index_offset() && columnChunk.isSetOffset_index_length()) {
+      return new IndexReference(columnChunk.getOffset_index_offset(), columnChunk.getOffset_index_length());
+    }
+    return null;
   }
 
   private static ColumnPath getPath(ColumnMetaData metaData) {
@@ -1244,8 +1340,10 @@ public class ParquetMetadataConverter {
         OriginalType newOriginalType = (schemaElement.isSetLogicalType() && getLogicalTypeAnnotation(schemaElement.logicalType) != null) ?
            getLogicalTypeAnnotation(schemaElement.logicalType).toOriginalType() : null;
         if (!originalType.equals(newOriginalType)) {
-          LOG.warn("Converted type and logical type metadata mismatch (convertedType: {}, logical type: {}). Using value in converted type.",
-            schemaElement.converted_type, schemaElement.logicalType);
+          if (newOriginalType != null) {
+            LOG.warn("Converted type and logical type metadata mismatch (convertedType: {}, logical type: {}). Using value in converted type.",
+              schemaElement.converted_type, schemaElement.logicalType);
+          }
           childBuilder.as(originalType);
         }
       }
@@ -1288,12 +1386,13 @@ public class ParquetMetadataConverter {
     writePageHeader(newDataPageHeader(uncompressedSize,
                                       compressedSize,
                                       valueCount,
-                                      new org.apache.parquet.column.statistics.BooleanStatistics(),
                                       rlEncoding,
                                       dlEncoding,
                                       valuesEncoding), to);
   }
 
+  // Statistics are no longer saved in page headers
+  @Deprecated
   public void writeDataPageHeader(
       int uncompressedSize,
       int compressedSize,
@@ -1304,31 +1403,45 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
     writePageHeader(
-        newDataPageHeader(uncompressedSize, compressedSize, valueCount, statistics,
+        newDataPageHeader(uncompressedSize, compressedSize, valueCount,
             rlEncoding, dlEncoding, valuesEncoding),
         to);
   }
 
   private PageHeader newDataPageHeader(
+    int uncompressedSize, int compressedSize,
+    int valueCount,
+    org.apache.parquet.column.Encoding rlEncoding,
+    org.apache.parquet.column.Encoding dlEncoding,
+    org.apache.parquet.column.Encoding valuesEncoding) {
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedSize, compressedSize);
+    pageHeader.setData_page_header(new DataPageHeader(
+      valueCount,
+      getEncoding(valuesEncoding),
+      getEncoding(dlEncoding),
+      getEncoding(rlEncoding)));
+    return pageHeader;
+  }
+
+  private PageHeader newDataPageHeader(
       int uncompressedSize, int compressedSize,
       int valueCount,
-      org.apache.parquet.column.statistics.Statistics statistics,
       org.apache.parquet.column.Encoding rlEncoding,
       org.apache.parquet.column.Encoding dlEncoding,
-      org.apache.parquet.column.Encoding valuesEncoding) {
+      org.apache.parquet.column.Encoding valuesEncoding,
+      int crc) {
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedSize, compressedSize);
-    // TODO: pageHeader.crc = ...;
+    pageHeader.setCrc(crc);
     pageHeader.setData_page_header(new DataPageHeader(
         valueCount,
         getEncoding(valuesEncoding),
         getEncoding(dlEncoding),
         getEncoding(rlEncoding)));
-    if (!statistics.isEmpty()) {
-      pageHeader.getData_page_header().setStatistics(toParquetStatistics(statistics));
-    }
     return pageHeader;
   }
 
+  // Statistics are no longer saved in page headers
+  @Deprecated
   public void writeDataPageV2Header(
       int uncompressedSize, int compressedSize,
       int valueCount, int nullCount, int rowCount,
@@ -1340,7 +1453,54 @@ public class ParquetMetadataConverter {
         newDataPageV2Header(
             uncompressedSize, compressedSize,
             valueCount, nullCount, rowCount,
-            statistics,
+            dataEncoding,
+            rlByteLength, dlByteLength), to);
+  }
+
+  public void writeDataPageV1Header(
+    int uncompressedSize,
+    int compressedSize,
+    int valueCount,
+    org.apache.parquet.column.Encoding rlEncoding,
+    org.apache.parquet.column.Encoding dlEncoding,
+    org.apache.parquet.column.Encoding valuesEncoding,
+    OutputStream to) throws IOException {
+    writePageHeader(newDataPageHeader(uncompressedSize,
+      compressedSize,
+      valueCount,
+      rlEncoding,
+      dlEncoding,
+      valuesEncoding), to);
+  }
+
+  public void writeDataPageV1Header(
+      int uncompressedSize,
+      int compressedSize,
+      int valueCount,
+      org.apache.parquet.column.Encoding rlEncoding,
+      org.apache.parquet.column.Encoding dlEncoding,
+      org.apache.parquet.column.Encoding valuesEncoding,
+      int crc,
+      OutputStream to) throws IOException {
+    writePageHeader(newDataPageHeader(uncompressedSize,
+                                      compressedSize,
+                                      valueCount,
+                                      rlEncoding,
+                                      dlEncoding,
+                                      valuesEncoding,
+                                      crc), to);
+  }
+
+  public void writeDataPageV2Header(
+      int uncompressedSize, int compressedSize,
+      int valueCount, int nullCount, int rowCount,
+      org.apache.parquet.column.Encoding dataEncoding,
+      int rlByteLength, int dlByteLength,
+      OutputStream to) throws IOException {
+    writePageHeader(
+        newDataPageV2Header(
+            uncompressedSize, compressedSize,
+            valueCount, nullCount, rowCount,
             dataEncoding,
             rlByteLength, dlByteLength), to);
   }
@@ -1348,7 +1508,6 @@ public class ParquetMetadataConverter {
   private PageHeader newDataPageV2Header(
       int uncompressedSize, int compressedSize,
       int valueCount, int nullCount, int rowCount,
-      org.apache.parquet.column.statistics.Statistics<?> statistics,
       org.apache.parquet.column.Encoding dataEncoding,
       int rlByteLength, int dlByteLength) {
     // TODO: pageHeader.crc = ...;
@@ -1356,21 +1515,100 @@ public class ParquetMetadataConverter {
         valueCount, nullCount, rowCount,
         getEncoding(dataEncoding),
         dlByteLength, rlByteLength);
-    if (!statistics.isEmpty()) {
-      dataPageHeaderV2.setStatistics(
-          toParquetStatistics(statistics));
-    }
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
     pageHeader.setData_page_header_v2(dataPageHeaderV2);
     return pageHeader;
   }
 
   public void writeDictionaryPageHeader(
-      int uncompressedSize, int compressedSize, int valueCount,
-      org.apache.parquet.column.Encoding valuesEncoding, OutputStream to) throws IOException {
+    int uncompressedSize, int compressedSize, int valueCount,
+    org.apache.parquet.column.Encoding valuesEncoding, OutputStream to) throws IOException {
     PageHeader pageHeader = new PageHeader(PageType.DICTIONARY_PAGE, uncompressedSize, compressedSize);
     pageHeader.setDictionary_page_header(new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding)));
     writePageHeader(pageHeader, to);
   }
 
+  public void writeDictionaryPageHeader(
+      int uncompressedSize, int compressedSize, int valueCount,
+      org.apache.parquet.column.Encoding valuesEncoding, int crc, OutputStream to) throws IOException {
+    PageHeader pageHeader = new PageHeader(PageType.DICTIONARY_PAGE, uncompressedSize, compressedSize);
+    pageHeader.setCrc(crc);
+    pageHeader.setDictionary_page_header(new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding)));
+    writePageHeader(pageHeader, to);
+  }
+
+  private static BoundaryOrder toParquetBoundaryOrder(
+      org.apache.parquet.internal.column.columnindex.BoundaryOrder boundaryOrder) {
+    switch (boundaryOrder) {
+      case ASCENDING:
+        return BoundaryOrder.ASCENDING;
+      case DESCENDING:
+        return BoundaryOrder.DESCENDING;
+      case UNORDERED:
+        return BoundaryOrder.UNORDERED;
+      default:
+        throw new IllegalArgumentException("Unsupported boundary order: " + boundaryOrder);
+    }
+  }
+
+  private static org.apache.parquet.internal.column.columnindex.BoundaryOrder fromParquetBoundaryOrder(
+      BoundaryOrder boundaryOrder) {
+    switch (boundaryOrder) {
+      case ASCENDING:
+        return org.apache.parquet.internal.column.columnindex.BoundaryOrder.ASCENDING;
+      case DESCENDING:
+        return org.apache.parquet.internal.column.columnindex.BoundaryOrder.DESCENDING;
+      case UNORDERED:
+        return org.apache.parquet.internal.column.columnindex.BoundaryOrder.UNORDERED;
+      default:
+        throw new IllegalArgumentException("Unsupported boundary order: " + boundaryOrder);
+    }
+  }
+
+  public static ColumnIndex toParquetColumnIndex(PrimitiveType type,
+      org.apache.parquet.internal.column.columnindex.ColumnIndex columnIndex) {
+    if (!isMinMaxStatsSupported(type) || columnIndex == null) {
+      return null;
+    }
+    ColumnIndex parquetColumnIndex = new ColumnIndex(
+        columnIndex.getNullPages(),
+        columnIndex.getMinValues(),
+        columnIndex.getMaxValues(),
+        toParquetBoundaryOrder(columnIndex.getBoundaryOrder()));
+    parquetColumnIndex.setNull_counts(columnIndex.getNullCounts());
+    return parquetColumnIndex;
+  }
+
+  public static org.apache.parquet.internal.column.columnindex.ColumnIndex fromParquetColumnIndex(PrimitiveType type,
+      ColumnIndex parquetColumnIndex) {
+    if (!isMinMaxStatsSupported(type)) {
+      return null;
+    }
+    return ColumnIndexBuilder.build(type,
+        fromParquetBoundaryOrder(parquetColumnIndex.getBoundary_order()),
+        parquetColumnIndex.getNull_pages(),
+        parquetColumnIndex.getNull_counts(),
+        parquetColumnIndex.getMin_values(),
+        parquetColumnIndex.getMax_values());
+  }
+
+  public static OffsetIndex toParquetOffsetIndex(org.apache.parquet.internal.column.columnindex.OffsetIndex offsetIndex) {
+    List<PageLocation> pageLocations = new ArrayList<>(offsetIndex.getPageCount());
+    for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
+      pageLocations.add(new PageLocation(
+          offsetIndex.getOffset(i),
+          offsetIndex.getCompressedPageSize(i),
+          offsetIndex.getFirstRowIndex(i)));
+    }
+    return new OffsetIndex(pageLocations);
+  }
+
+  public static org.apache.parquet.internal.column.columnindex.OffsetIndex fromParquetOffsetIndex(
+      OffsetIndex parquetOffsetIndex) {
+    OffsetIndexBuilder builder = OffsetIndexBuilder.getBuilder();
+    for (PageLocation pageLocation : parquetOffsetIndex.getPage_locations()) {
+      builder.add(pageLocation.getOffset(), pageLocation.getCompressed_page_size(), pageLocation.getFirst_row_index());
+    }
+    return builder.build();
+  }
 }

@@ -65,6 +65,9 @@ public abstract class ValuesReader {
    */
   @Deprecated
   public void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException {
+    if (offset < 0) {
+      throw new IllegalArgumentException("Illegal offset: " + offset);
+    }
     actualOffset = offset;
     ByteBuffer pageWithOffset = page.duplicate();
     pageWithOffset.position(offset);
@@ -103,7 +106,14 @@ public abstract class ValuesReader {
    *
    * @throws IOException if there is an exception while reading from the input stream
    */
-  public abstract void initFromPage(int valueCount, ByteBufferInputStream in) throws IOException;
+  public void initFromPage(int valueCount, ByteBufferInputStream in) throws IOException {
+    if (actualOffset != -1) {
+      throw new UnsupportedOperationException(
+          "Either initFromPage(int, ByteBuffer, int) or initFromPage(int, ByteBufferInputStream) must be implemented in "
+              + getClass().getName());
+    }
+    initFromPage(valueCount, in.slice(valueCount), 0);
+  }
 
   /**
    * Called to return offset of the next section
@@ -179,5 +189,17 @@ public abstract class ValuesReader {
    * Skips the next value in the page
    */
   abstract public void skip();
+
+  /**
+   * Skips the next n values in the page
+   *
+   * @param n
+   *          the number of values to be skipped
+   */
+  public void skip(int n) {
+    for (int i = 0; i < n; ++i) {
+      skip();
+    }
+  }
 }
 

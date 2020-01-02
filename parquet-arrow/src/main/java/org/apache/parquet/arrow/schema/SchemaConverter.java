@@ -23,6 +23,7 @@ import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
@@ -85,10 +86,19 @@ import org.apache.parquet.schema.Types.GroupBuilder;
  */
 public class SchemaConverter {
 
+  // Indicates if Int96 should be converted to Arrow Timestamp
+  private final boolean convertInt96ToArrowTimestamp;
+
   /**
    * For when we'll need this to be configurable
    */
   public SchemaConverter() {
+    this(false);
+  }
+
+  // TODO(PARQUET-1511): pass the parameters in a configuration object
+  public SchemaConverter(final boolean convertInt96ToArrowTimestamp) {
+    this.convertInt96ToArrowTimestamp = convertInt96ToArrowTimestamp;
   }
 
   /**
@@ -246,6 +256,8 @@ public class SchemaConverter {
           return primitive(INT32, timeType(false, MILLIS));
         } else if (bitWidth == 64 && timeUnit == TimeUnit.MICROSECOND) {
           return primitive(INT64, timeType(false, MICROS));
+        } else if (bitWidth == 64 && timeUnit == TimeUnit.NANOSECOND) {
+          return primitive(INT64, timeType(false, NANOS));
         }
         throw new UnsupportedOperationException("Unsupported type " + type);
       }
@@ -257,6 +269,8 @@ public class SchemaConverter {
           return primitive(INT64, timestampType(isUtcNormalized(type), MILLIS));
         } else if (timeUnit == TimeUnit.MICROSECOND) {
           return primitive(INT64, timestampType(isUtcNormalized(type), MICROS));
+        } else if (timeUnit == TimeUnit.NANOSECOND) {
+          return primitive(INT64, timestampType(isUtcNormalized(type), NANOS));
         }
         throw new UnsupportedOperationException("Unsupported type " + type);
       }
@@ -460,6 +474,8 @@ public class SchemaConverter {
           public Optional<TypeMapping> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
             if (timeLogicalType.getUnit() == MICROS) {
               return of(field(new ArrowType.Time(TimeUnit.MICROSECOND, 64)));
+            }  else if (timeLogicalType.getUnit() == NANOS) {
+              return of(field(new ArrowType.Time(TimeUnit.NANOSECOND, 64)));
             }
             return empty();
           }
@@ -471,6 +487,8 @@ public class SchemaConverter {
                 return of(field(new ArrowType.Timestamp(TimeUnit.MICROSECOND, getTimeZone(timestampLogicalType))));
               case MILLIS:
                 return of(field(new ArrowType.Timestamp(TimeUnit.MILLISECOND, getTimeZone(timestampLogicalType))));
+              case NANOS:
+                return of(field(new ArrowType.Timestamp(TimeUnit.NANOSECOND, getTimeZone(timestampLogicalType))));
             }
             return empty();
           }
@@ -483,13 +501,26 @@ public class SchemaConverter {
 
       @Override
       public TypeMapping convertINT96(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        // Possibly timestamp
-        return field(new ArrowType.Binary());
+        if (convertInt96ToArrowTimestamp) {
+          return field(new ArrowType.Timestamp(TimeUnit.NANOSECOND, null));
+        } else {
+          return field(new ArrowType.Binary());
+        }
       }
 
       @Override
       public TypeMapping convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        return field(new ArrowType.Binary());
+        LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+        if (logicalTypeAnnotation == null) {
+          return field(new ArrowType.Binary());
+        }
+
+        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<TypeMapping>() {
+          @Override
+          public Optional<TypeMapping> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+            return of(decimal(decimalLogicalType.getPrecision(), decimalLogicalType.getScale()));
+          }
+        }).orElseThrow(() -> new IllegalArgumentException("illegal type " + type));
       }
 
       @Override

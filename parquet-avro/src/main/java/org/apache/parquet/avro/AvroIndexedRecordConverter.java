@@ -104,7 +104,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       if (field.schema().getType() == Schema.Type.NULL) {
         continue; // skip null since Parquet does not write nulls
       }
-      if (field.defaultValue() == null || model.getDefaultValue(field) == null) {
+      if (field.defaultVal() == null || model.getDefaultValue(field) == null) {
         continue; // field has no default
       }
       recordDefaults.put(field, model.getDefaultValue(field));

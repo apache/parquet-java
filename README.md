@@ -28,33 +28,26 @@ You can find some details about the format and intended use cases in our [Hadoop
 
 ## Building
 
-Parquet-MR uses Maven to build and depends on both the thrift and protoc compilers.
-
-### Install Protobuf
-
-To build and install the protobuf compiler, run:
-
-```
-wget https://github.com/google/protobuf/archive/v3.5.1.tar.gz -O protobuf-3.5.1.tar.gz
-tar xzf protobuf-3.5.1.tar.gz
-cd protobuf-3.5.1
-./configure
-make
-sudo make install
-sudo ldconfig
-```
+Parquet-MR uses Maven to build and depends on the thrift compiler (protoc is now managed by maven plugin).
 
 ### Install Thrift
 
 To build and install the thrift compiler, run:
 
 ```
-wget -nv http://archive.apache.org/dist/thrift/0.9.3/thrift-0.9.3.tar.gz
-tar xzf thrift-0.9.3.tar.gz
-cd thrift-0.9.3
+wget -nv http://archive.apache.org/dist/thrift/0.12.0/thrift-0.12.0.tar.gz
+tar xzf thrift-0.12.0.tar.gz
+cd thrift-0.12.0
 chmod +x ./configure
-./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang --without-php --without-nodejs
+./configure --disable-libs
 sudo make install
+```
+
+If you're on OSX and use homebrew, you can instead install Thrift 0.12.0 with `brew` and ensure that it comes first in your `PATH`.
+
+```
+brew install thrift@0.12
+export PATH="/usr/local/opt/thrift@0.12.0/bin:$PATH"
 ```
 
 ### Build Parquet with Maven
@@ -71,7 +64,7 @@ Parquet is a very active project, and new features are being added quickly. Here
 
 
 * Type-specific encoding
-* Hive integration
+* Hive integration (deprecated)
 * Pig integration
 * Cascading integration
 * Crunch integration
@@ -133,6 +126,8 @@ If the data was stored using Pig, things will "just work". If the data was store
 ## Hive integration
 
 Hive integration is provided via the [parquet-hive](https://github.com/apache/parquet-mr/tree/master/parquet-hive) sub-project.
+
+Hive integration is now deprecated within the Parquet project. It is now maintained by Apache Hive.
 
 ## Build
 

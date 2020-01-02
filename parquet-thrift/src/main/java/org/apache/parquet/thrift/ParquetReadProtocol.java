@@ -20,9 +20,9 @@ package org.apache.parquet.thrift;
 
 
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
-import java.util.LinkedList;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -43,7 +43,7 @@ class ParquetReadProtocol extends ParquetProtocol {
     super("read");
   }
 
-  private Deque<TProtocol> events = new  LinkedList<TProtocol>();
+  private Deque<TProtocol> events = new ArrayDeque<TProtocol>();
 
   public void add(TProtocol p) {
     events.addLast(p);

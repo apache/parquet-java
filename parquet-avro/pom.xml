@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.10.1-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -161,6 +161,31 @@
           </execution>
         </executions>
       </plugin>
+
+      <!-- Configuration to shade fastutil only instead of using the default configuration which shades jackson as well. -->
+      <!-- We shall not shade jackson here otherwise we may corrupt Avro API calls. (Avro API contains jackson classes.) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <configuration combine.self="override">
+              <artifactSet>
+                <includes>
+                  <include>it.unimi.dsi:fastutil</include>
+                </includes>
+              </artifactSet>
+              <relocations>
+                <relocation>
+                  <pattern>it.unimi.dsi</pattern>
+                  <shadedPattern>${shade.prefix}.it.unimi.dsi</shadedPattern>
+                </relocation>
+              </relocations>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
     </plugins>
   </build>
 

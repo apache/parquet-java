@@ -32,6 +32,7 @@ import org.apache.parquet.cli.commands.ConvertCSVCommand;
 import org.apache.parquet.cli.commands.ConvertCommand;
 import org.apache.parquet.cli.commands.ParquetMetadataCommand;
 import org.apache.parquet.cli.commands.SchemaCommand;
+import org.apache.parquet.cli.commands.ShowColumnIndexCommand;
 import org.apache.parquet.cli.commands.ShowDictionaryCommand;
 import org.apache.parquet.cli.commands.ShowPagesCommand;
 import org.apache.parquet.cli.commands.ToAvroCommand;
@@ -87,6 +88,7 @@ public class Main extends Configured implements Tool {
     jc.addCommand("to-avro", new ToAvroCommand(console));
     jc.addCommand("cat", new CatCommand(console, 0));
     jc.addCommand("head", new CatCommand(console, 10));
+    jc.addCommand("column-index", new ShowColumnIndexCommand(console));
   }
 
   @Override

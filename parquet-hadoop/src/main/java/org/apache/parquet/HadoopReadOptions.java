@@ -28,10 +28,12 @@ import org.apache.parquet.hadoop.util.HadoopCodecs;
 
 import java.util.Map;
 
+import static org.apache.parquet.hadoop.ParquetInputFormat.COLUMN_INDEX_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
+import static org.apache.parquet.hadoop.ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STATS_FILTERING_ENABLED;
-import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
 import static org.apache.parquet.hadoop.UnmaterializableRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY;
 
 public class HadoopReadOptions extends ParquetReadOptions {
@@ -43,6 +45,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
                             boolean useStatsFilter,
                             boolean useDictionaryFilter,
                             boolean useRecordFilter,
+                            boolean useColumnIndexFilter,
+                            boolean usePageChecksumVerification,
                             FilterCompat.Filter recordFilter,
                             MetadataFilter metadataFilter,
                             CompressionCodecFactory codecFactory,
@@ -51,8 +55,9 @@ public class HadoopReadOptions extends ParquetReadOptions {
                             Map<String, String> properties,
                             Configuration conf) {
     super(
-        useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter, recordFilter,
-        metadataFilter, codecFactory, allocator, maxAllocationSize, properties
+        useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter, useColumnIndexFilter,
+        usePageChecksumVerification, recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize,
+        properties
     );
     this.conf = conf;
   }
@@ -83,6 +88,9 @@ public class HadoopReadOptions extends ParquetReadOptions {
       useDictionaryFilter(conf.getBoolean(DICTIONARY_FILTERING_ENABLED, true));
       useStatsFilter(conf.getBoolean(STATS_FILTERING_ENABLED, true));
       useRecordFilter(conf.getBoolean(RECORD_FILTERING_ENABLED, true));
+      useColumnIndexFilter(conf.getBoolean(COLUMN_INDEX_FILTERING_ENABLED, true));
+      usePageChecksumVerification(conf.getBoolean(PAGE_VERIFY_CHECKSUM_ENABLED,
+        usePageChecksumVerification));
       withCodecFactory(HadoopCodecs.newFactory(conf, 0));
       withRecordFilter(getFilter(conf));
       withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
@@ -95,9 +103,9 @@ public class HadoopReadOptions extends ParquetReadOptions {
     @Override
     public ParquetReadOptions build() {
       return new HadoopReadOptions(
-          useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-          recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, properties,
-          conf);
+        useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
+        useColumnIndexFilter, usePageChecksumVerification, recordFilter, metadataFilter,
+        codecFactory, allocator, maxAllocationSize, properties, conf);
     }
   }
 }

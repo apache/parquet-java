@@ -20,7 +20,6 @@ package org.apache.parquet.hadoop;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
-import static java.lang.String.format;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.IOException;
@@ -102,7 +101,8 @@ class InternalParquetRecordWriter<T> {
   }
 
   private void initStore() {
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator());
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator(),
+        props.getColumnIndexTruncateLength(), props.getPageWriteChecksumEnabled());
     columnStore = props.newColumnWriteStore(schema, pageStore);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);

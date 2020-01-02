@@ -54,7 +54,7 @@ public class ProtoSchemaConverter {
   }
 
   /**
-   * Instanciate a schema converter to get the parquet schema corresponding to protobuf classes.
+   * Instantiate a schema converter to get the parquet schema corresponding to protobuf classes.
    * @param parquetSpecsCompliant   If set to false, the parquet schema generated will be using the old
    *                                schema style (prior to PARQUET-968) to provide backward-compatibility
    *                                but which does not use LIST and MAP wrappers around collections as required

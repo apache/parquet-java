@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.column.impl;
 
+import java.util.Optional;
+import java.util.PrimitiveIterator;
+
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
@@ -62,9 +65,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     ParsedVersion version;
     try {
       version = VersionParser.parse(createdBy);
-    } catch (RuntimeException e) {
-      version = null;
-    } catch (VersionParseException e) {
+    } catch (RuntimeException | VersionParseException e) {
       version = null;
     }
     this.writerVersion = version;
@@ -72,10 +73,17 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
 
   @Override
   public ColumnReader getColumnReader(ColumnDescriptor path) {
-    return newMemColumnReader(path, pageReadStore.getPageReader(path));
+    PrimitiveConverter converter = getPrimitiveConverter(path);
+    PageReader pageReader = pageReadStore.getPageReader(path);
+    Optional<PrimitiveIterator.OfLong> rowIndexes = pageReadStore.getRowIndexes();
+    if (rowIndexes.isPresent()) {
+      return new SynchronizingColumnReader(path, pageReader, converter, writerVersion, rowIndexes.get());
+    } else {
+      return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
+    }
   }
 
-  public ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+  private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
     PrimitiveConverter converter = getPrimitiveConverter(path);
     return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
   }

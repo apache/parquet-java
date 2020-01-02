@@ -18,6 +18,10 @@
  */
 package org.apache.parquet.schema;
 
+/**
+ * @deprecated use {@link LogicalTypeAnnotation} to represent logical types instead
+ */
+@Deprecated
 public enum OriginalType {
   MAP,
   LIST,

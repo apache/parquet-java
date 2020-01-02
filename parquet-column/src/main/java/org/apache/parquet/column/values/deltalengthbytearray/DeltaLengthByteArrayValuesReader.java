@@ -20,8 +20,6 @@ package org.apache.parquet.column.values.deltalengthbytearray;
 
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
@@ -64,7 +62,15 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
 
   @Override
   public void skip() {
-    int length = lengthReader.readInteger();
+    skip(1);
+  }
+
+  @Override
+  public void skip(int n) {
+    int length = 0;
+    for (int i = 0; i < n; ++i) {
+      length += lengthReader.readInteger();
+    }
     try {
       in.skipFully(length);
     } catch (IOException e) {

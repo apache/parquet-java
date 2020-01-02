@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.plain;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -51,8 +50,13 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
 
   @Override
   public void skip() {
+    skip(1);
+  }
+
+  @Override
+  public void skip(int n) {
     try {
-      in.skipFully(length);
+      in.skipFully(n * length);
     } catch (IOException | RuntimeException e) {
       throw new ParquetDecodingException("could not skip bytes at offset " + in.position(), e);
     }

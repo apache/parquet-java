@@ -575,6 +575,7 @@ public final class PrimitiveType extends Type {
   /**
    * @return the decimal type metadata
    */
+  @Deprecated
   public DecimalMetadata getDecimalMetadata() {
     return decimalMeta;
   }
@@ -749,7 +750,8 @@ public final class PrimitiveType extends Type {
       }
     }
 
-    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive, toMerge.getRepetition());
+    Repetition repetition = Repetition.leastRestrictive(this.getRepetition(), toMerge.getRepetition());
+    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive, repetition);
 
     if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitive) {
       builder.length(length);
