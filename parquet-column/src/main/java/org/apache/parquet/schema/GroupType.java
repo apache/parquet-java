@@ -171,10 +171,11 @@ public class GroupType extends Type {
    * @return the index of the field with that name
    */
   public int getFieldIndex(String name) {
-    if (!indexByName.containsKey(name)) {
+    Integer i = indexByName.get(name);
+    if (i == null) {
       throw new InvalidRecordException(name + " not found in " + this);
     }
-    return indexByName.get(name);
+    return i.intValue();
   }
 
   /**
