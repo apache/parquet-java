@@ -58,10 +58,6 @@ public abstract class SummaryData {
     StringWriter stringWriter = new StringWriter();
     try {
       mapper.writeValue(stringWriter, summaryData);
-    } catch (JsonGenerationException e) {
-      throw new RuntimeException(e);
-    } catch (JsonMappingException e) {
-      throw new RuntimeException(e);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -71,10 +67,6 @@ public abstract class SummaryData {
   public static <T extends SummaryData> T fromJSON(String json, Class<T> clazz) {
     try {
       return objectMapper.readValue(new StringReader(json), clazz);
-    } catch (JsonParseException e) {
-      throw new RuntimeException(e);
-    } catch (JsonMappingException e) {
-      throw new RuntimeException(e);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

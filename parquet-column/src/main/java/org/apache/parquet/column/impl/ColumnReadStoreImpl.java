@@ -65,9 +65,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     ParsedVersion version;
     try {
       version = VersionParser.parse(createdBy);
-    } catch (RuntimeException e) {
-      version = null;
-    } catch (VersionParseException e) {
+    } catch (RuntimeException | VersionParseException e) {
       version = null;
     }
     this.writerVersion = version;
