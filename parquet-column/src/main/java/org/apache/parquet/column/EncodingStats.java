@@ -58,12 +58,12 @@ public class EncodingStats {
   }
 
   public int getNumDictionaryPagesEncodedAs(Encoding enc) {
-    Number pageCount = dictStats.get(enc);
+    final Number pageCount = dictStats.get(enc);
     return (pageCount == null) ? 0 : pageCount.intValue();
   }
 
   public int getNumDataPagesEncodedAs(Encoding enc) {
-    Number pageCount = dataStats.get(enc);
+    final Number pageCount = dataStats.get(enc);
     return (pageCount == null) ? 0 : pageCount.intValue();
   }
 

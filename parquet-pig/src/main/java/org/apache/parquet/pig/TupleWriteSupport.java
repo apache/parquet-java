@@ -97,9 +97,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
       recordConsumer.startMessage();
       writeTuple(rootSchema, rootPigSchema, t);
       recordConsumer.endMessage();
-    } catch (ExecException e) {
-      throw new RuntimeException(e);
-    } catch (FrontendException e) {
+    } catch (ExecException | FrontendException e) {
       throw new RuntimeException(e);
     }
   }

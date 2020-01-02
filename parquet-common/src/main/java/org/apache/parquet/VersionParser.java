@@ -53,10 +53,7 @@ public class VersionParser {
       try {
         sv = SemanticVersion.parse(version);
         hasSemver = true;
-      } catch (RuntimeException e) {
-        sv = null;
-        hasSemver = false;
-      } catch (SemanticVersionParseException e) {
+      } catch (RuntimeException | SemanticVersionParseException e) {
         sv = null;
         hasSemver = false;
       }

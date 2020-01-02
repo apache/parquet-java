@@ -65,10 +65,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       tempClass = Class.forName("org.apache.hadoop.io.compress.DirectDecompressionCodec");
       tempCreateMethod = tempClass.getMethod("createDirectDecompressor");
       tempDecompressMethod = tempClass.getMethod("decompress", ByteBuffer.class, ByteBuffer.class);
-    } catch (ClassNotFoundException e) {
+    } catch (ClassNotFoundException | NoSuchMethodException e) {
       // do nothing, the class will just be assigned null
-    } catch (NoSuchMethodException e) {
-      // do nothing, the method will just be assigned null
     }
     DIRECT_DECOMPRESSION_CODEC_CLASS = tempClass;
     CREATE_DIRECT_DECOMPRESSOR_METHOD = tempCreateMethod;
@@ -212,9 +210,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       output.clear();
       try {
         DECOMPRESS_METHOD.invoke(decompressor, (ByteBuffer) input.limit(compressedSize), (ByteBuffer) output.limit(uncompressedSize));
-      } catch (IllegalAccessException e) {
-        throw new DirectCodecPool.ParquetCompressionCodecException(e);
-      } catch (InvocationTargetException e) {
+      } catch (IllegalAccessException | InvocationTargetException e) {
         throw new DirectCodecPool.ParquetCompressionCodecException(e);
       }
       output.position(uncompressedSize);

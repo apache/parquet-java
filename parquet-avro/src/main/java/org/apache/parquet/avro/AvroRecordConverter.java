@@ -381,9 +381,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
 
       try {
         return (Class<T>) getClassMethod.invoke(schema);
-      } catch (IllegalAccessException e) {
-        return null;
-      } catch (InvocationTargetException e) {
+      } catch (IllegalAccessException | InvocationTargetException e) {
         return null;
       }
     }
