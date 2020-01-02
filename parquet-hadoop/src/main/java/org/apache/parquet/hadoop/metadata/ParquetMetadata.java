@@ -69,10 +69,6 @@ public class ParquetMetadata {
       } else {
         objectMapper.writeValue(stringWriter, parquetMetaData);
       }
-    } catch (JsonGenerationException e) {
-      throw new RuntimeException(e);
-    } catch (JsonMappingException e) {
-      throw new RuntimeException(e);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -87,10 +83,6 @@ public class ParquetMetadata {
   public static ParquetMetadata fromJSON(String json) {
     try {
       return objectMapper.readValue(new StringReader(json), ParquetMetadata.class);
-    } catch (JsonParseException e) {
-      throw new RuntimeException(e);
-    } catch (JsonMappingException e) {
-      throw new RuntimeException(e);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

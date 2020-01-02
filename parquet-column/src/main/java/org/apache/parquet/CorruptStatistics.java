@@ -94,17 +94,7 @@ public class CorruptStatistics {
 
       // this file was created after the fix
       return false;
-    } catch (RuntimeException e) {
-      // couldn't parse the created_by field, log what went wrong, don't trust the stats,
-      // but don't make this fatal.
-      warnParseErrorOnce(createdBy, e);
-      return true;
-    } catch (SemanticVersionParseException e) {
-      // couldn't parse the created_by field, log what went wrong, don't trust the stats,
-      // but don't make this fatal.
-      warnParseErrorOnce(createdBy, e);
-      return true;
-    } catch (VersionParseException e) {
+    } catch (RuntimeException | SemanticVersionParseException | VersionParseException e) {
       // couldn't parse the created_by field, log what went wrong, don't trust the stats,
       // but don't make this fatal.
       warnParseErrorOnce(createdBy, e);

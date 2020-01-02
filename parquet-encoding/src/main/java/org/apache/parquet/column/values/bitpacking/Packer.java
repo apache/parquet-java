@@ -76,15 +76,8 @@ public enum Packer {
   private static Object getStaticField(String className, String fieldName) {
     try {
       return Class.forName(className).getField(fieldName).get(null);
-    } catch (IllegalArgumentException e) {
-      throw new RuntimeException(e);
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException(e);
-    } catch (NoSuchFieldException e) {
-      throw new RuntimeException(e);
-    } catch (SecurityException e) {
-      throw new RuntimeException(e);
-    } catch (ClassNotFoundException e) {
+    } catch (IllegalArgumentException | IllegalAccessException
+        | NoSuchFieldException | SecurityException | ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
   }

@@ -183,9 +183,7 @@ class TBaseStructConsumer<T extends TBase<T, ? extends TFieldIdEnum>> extends St
   protected T newObject() {
     try {
       return c.newInstance();
-    } catch (InstantiationException e) {
-      throw new RuntimeException(c.getName(), e);
-    } catch (IllegalAccessException e) {
+    } catch (InstantiationException | IllegalAccessException e) {
       throw new RuntimeException(c.getName(), e);
     }
   }
