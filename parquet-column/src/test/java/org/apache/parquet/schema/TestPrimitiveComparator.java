@@ -23,6 +23,8 @@ import org.junit.Test;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
@@ -247,6 +249,23 @@ public class TestPrimitiveComparator {
             ByteBuffer.wrap(new BigInteger("9999999999999999999999999999999999999998").toByteArray())),
         Binary.fromConstantByteBuffer(
             ByteBuffer.wrap(new BigInteger("9999999999999999999999999999999999999999").toByteArray())));
+  }
+
+  @Test
+  public void testBinaryAsSignedIntegerComparatorWithEquals() {
+    List<Binary> valuesToCompare = new ArrayList<>();
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, -108 })));
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, 0, 0, -108 })));
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, -108 })));
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, 0, -108 })));
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, -108 })));
+
+    for (Binary v1 : valuesToCompare) {
+      for (Binary v2 : valuesToCompare) {
+        assertEquals(String.format("Wrong result of comparison %s and %s", v1, v2),
+            0, BINARY_AS_SIGNED_INTEGER_COMPARATOR.compare(v1, v2));
+      }
+    }
   }
 
   private <T> void testObjectComparator(PrimitiveComparator<T> comparator, T... valuesInAscendingOrder) {

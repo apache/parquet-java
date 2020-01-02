@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.ObjectStreamException;
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -31,11 +30,8 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.PrimitiveComparator;
-
-import static org.apache.parquet.bytes.BytesUtils.UTF8;
 
 abstract public class Binary implements Comparable<Binary>, Serializable {
 
@@ -133,11 +129,10 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public String toStringUsingUTF8() {
-      return UTF8.decode(ByteBuffer.wrap(value, offset, length)).toString();
-      // TODO: figure out why the following line was much slower
-      // rdb: new String(...) is slower because it instantiates a new Decoder,
-      //      while Charset#decode uses a thread-local decoder cache
-      // return new String(value, offset, length, BytesUtils.UTF8);
+      // Charset#decode uses a thread-local decoder cache and is faster than
+      // new String(...) which instantiates a new Decoder per invocation
+      return StandardCharsets.UTF_8
+          .decode(ByteBuffer.wrap(value, offset, length)).toString();
     }
 
     @Override
@@ -220,11 +215,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     private static ByteBuffer encodeUTF8(String value) {
-      try {
-        return ByteBuffer.wrap(value.getBytes("UTF-8"));
-      } catch (UnsupportedEncodingException e) {
-        throw new ParquetEncodingException("UTF-8 not supported.", e);
-      }
+      return ByteBuffer.wrap(value.getBytes(StandardCharsets.UTF_8));
     }
   }
 
@@ -241,12 +232,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     private static final ThreadLocal<CharsetEncoder> ENCODER =
-      new ThreadLocal<CharsetEncoder>() {
-        @Override
-        protected CharsetEncoder initialValue() {
-          return StandardCharsets.UTF_8.newEncoder();
-        }
-      };
+      ThreadLocal.withInitial(StandardCharsets.UTF_8::newEncoder);
 
     private static ByteBuffer encodeUTF8(CharSequence value) {
       try {
@@ -284,7 +270,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public String toStringUsingUTF8() {
-      return UTF8.decode(ByteBuffer.wrap(value)).toString();
+      return StandardCharsets.UTF_8.decode(ByteBuffer.wrap(value)).toString();
     }
 
     @Override
@@ -393,11 +379,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     public String toStringUsingUTF8() {
       String ret;
       if (value.hasArray()) {
-        try {
-          ret = new String(value.array(), value.arrayOffset() + offset, length, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          throw new ParquetDecodingException("UTF-8 not supported");
-        }
+        ret = new String(value.array(), value.arrayOffset() + offset, length,
+            StandardCharsets.UTF_8);
       } else {
         int limit = value.limit();
         value.limit(offset+length);
@@ -406,7 +389,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         // no corresponding interface to read a subset of a buffer, would have to slice it
         // which creates another ByteBuffer object or do what is done here to adjust the
         // limit/offset and set them back after
-        ret = UTF8.decode(value).toString();
+        ret = StandardCharsets.UTF_8.decode(value).toString();
         value.limit(limit);
         value.position(position);
       }

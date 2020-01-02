@@ -19,6 +19,7 @@
 package org.apache.parquet.parser;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
@@ -271,7 +272,9 @@ public class TestParquetParser {
         "  required int64 timestamp (TIMESTAMP_MILLIS);" +
         "  required FIXED_LEN_BYTE_ARRAY(12) interval (INTERVAL);" +
         "  required int32 newTime (TIME(MILLIS,true));" +
+        "  required int64 nanoTime (TIME(NANOS,true));" +
         "  required int64 newTimestamp (TIMESTAMP(MILLIS,false));" +
+        "  required int64 nanoTimestamp (TIMESTAMP(NANOS,false));" +
         "}\n";
 
     MessageType parsed = MessageTypeParser.parseMessageType(message);
@@ -281,7 +284,9 @@ public class TestParquetParser {
         .required(INT64).as(TIMESTAMP_MILLIS).named("timestamp")
         .required(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("interval")
         .required(INT32).as(timeType(true, MILLIS)).named("newTime")
+        .required(INT64).as(timeType(true, NANOS)).named("nanoTime")
         .required(INT64).as(timestampType(false, MILLIS)).named("newTimestamp")
+        .required(INT64).as(timestampType(false, NANOS)).named("nanoTimestamp")
       .named("TimeMessage");
 
     assertEquals(expected, parsed);

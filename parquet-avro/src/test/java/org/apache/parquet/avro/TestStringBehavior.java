@@ -83,40 +83,29 @@ public class TestStringBehavior {
     file.deleteOnExit();
 
     parquetFile = new Path(file.getPath());
-    ParquetWriter<GenericRecord> parquet = AvroParquetWriter
+    try(ParquetWriter<GenericRecord> parquet = AvroParquetWriter
         .<GenericRecord>builder(parquetFile)
         .withDataModel(GenericData.get())
         .withSchema(SCHEMA)
-        .build();
-
-    try {
+        .build()) {
       parquet.write(record);
-    } finally {
-      parquet.close();
     }
 
     avroFile = temp.newFile("avro");
     avroFile.delete();
     avroFile.deleteOnExit();
-    DataFileWriter<GenericRecord> avro = new DataFileWriter<GenericRecord>(
-        new GenericDatumWriter<GenericRecord>(SCHEMA)).create(SCHEMA, avroFile);
-
-    try {
+    try(DataFileWriter<GenericRecord> avro = new DataFileWriter<GenericRecord>(
+      new GenericDatumWriter<>(SCHEMA)).create(SCHEMA, avroFile)) {
       avro.append(record);
-    } finally {
-      avro.close();
     }
   }
 
   @Test
   public void testGeneric() throws IOException {
     GenericRecord avroRecord;
-    DataFileReader<GenericRecord> avro = new DataFileReader<GenericRecord>(
-        avroFile, new GenericDatumReader<GenericRecord>(SCHEMA));
-    try {
+    try(DataFileReader<GenericRecord> avro = new DataFileReader<>(
+      avroFile, new GenericDatumReader<>(SCHEMA))) {
       avroRecord = avro.next();
-    } finally {
-      avro.close();
     }
 
     GenericRecord parquetRecord;
@@ -124,14 +113,11 @@ public class TestStringBehavior {
     conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
     AvroReadSupport.setAvroDataSupplier(conf, GenericDataSupplier.class);
     AvroReadSupport.setAvroReadSchema(conf, SCHEMA);
-    ParquetReader<GenericRecord> parquet = AvroParquetReader
+    try(ParquetReader<GenericRecord> parquet = AvroParquetReader
         .<GenericRecord>builder(parquetFile)
         .withConf(conf)
-        .build();
-    try {
+        .build()) {
       parquetRecord = parquet.read();
-    } finally {
-      parquet.close();
     }
 
     Assert.assertEquals("Avro default string class should be Utf8",
@@ -169,14 +155,10 @@ public class TestStringBehavior {
   @Test
   public void testSpecific() throws IOException {
     org.apache.parquet.avro.StringBehaviorTest avroRecord;
-    DataFileReader<org.apache.parquet.avro.StringBehaviorTest> avro =
-        new DataFileReader<org.apache.parquet.avro.StringBehaviorTest>(avroFile,
-            new SpecificDatumReader<org.apache.parquet.avro.StringBehaviorTest>(
-                org.apache.parquet.avro.StringBehaviorTest.getClassSchema()));
-    try {
+    try(DataFileReader<org.apache.parquet.avro.StringBehaviorTest> avro =
+          new DataFileReader<>(avroFile, new SpecificDatumReader<>(
+            org.apache.parquet.avro.StringBehaviorTest.getClassSchema()))) {
       avroRecord = avro.next();
-    } finally {
-      avro.close();
     }
 
     org.apache.parquet.avro.StringBehaviorTest parquetRecord;
@@ -185,15 +167,12 @@ public class TestStringBehavior {
     AvroReadSupport.setAvroDataSupplier(conf, SpecificDataSupplier.class);
     AvroReadSupport.setAvroReadSchema(conf,
         org.apache.parquet.avro.StringBehaviorTest.getClassSchema());
-    ParquetReader<org.apache.parquet.avro.StringBehaviorTest> parquet =
+    try(ParquetReader<org.apache.parquet.avro.StringBehaviorTest> parquet =
         AvroParquetReader
             .<org.apache.parquet.avro.StringBehaviorTest>builder(parquetFile)
             .withConf(conf)
-            .build();
-    try {
+            .build()) {
       parquetRecord = parquet.read();
-    } finally {
-      parquet.close();
     }
 
     Assert.assertEquals("Avro default string class should be String",
@@ -235,12 +214,9 @@ public class TestStringBehavior {
         .getSchema(ReflectRecord.class);
 
     ReflectRecord avroRecord;
-    DataFileReader<ReflectRecord> avro = new DataFileReader<ReflectRecord>(
-        avroFile, new ReflectDatumReader<ReflectRecord>(reflectSchema));
-    try {
+    try(DataFileReader<ReflectRecord> avro = new DataFileReader<>(
+      avroFile, new ReflectDatumReader<>(reflectSchema))) {
       avroRecord = avro.next();
-    } finally {
-      avro.close();
     }
 
     ReflectRecord parquetRecord;
@@ -248,14 +224,11 @@ public class TestStringBehavior {
     conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
     AvroReadSupport.setAvroDataSupplier(conf, ReflectDataSupplier.class);
     AvroReadSupport.setAvroReadSchema(conf, reflectSchema);
-    ParquetReader<ReflectRecord> parquet = AvroParquetReader
+    try(ParquetReader<ReflectRecord> parquet = AvroParquetReader
         .<ReflectRecord>builder(parquetFile)
         .withConf(conf)
-        .build();
-    try {
+        .build()) {
       parquetRecord = parquet.read();
-    } finally {
-      parquet.close();
     }
 
     Assert.assertEquals("Avro default string class should be String",
@@ -297,13 +270,10 @@ public class TestStringBehavior {
         .getSchema(ReflectRecordJavaClass.class);
     System.err.println("Schema: " + reflectSchema.toString(true));
     ReflectRecordJavaClass avroRecord;
-    DataFileReader<ReflectRecordJavaClass> avro =
-        new DataFileReader<ReflectRecordJavaClass>(avroFile,
-            new ReflectDatumReader<ReflectRecordJavaClass>(reflectSchema));
-    try {
+    try(DataFileReader<ReflectRecordJavaClass> avro =
+          new DataFileReader<>(avroFile,
+            new ReflectDatumReader<>(reflectSchema))) {
       avroRecord = avro.next();
-    } finally {
-      avro.close();
     }
 
     ReflectRecordJavaClass parquetRecord;
@@ -312,14 +282,11 @@ public class TestStringBehavior {
     AvroReadSupport.setAvroDataSupplier(conf, ReflectDataSupplier.class);
     AvroReadSupport.setAvroReadSchema(conf, reflectSchema);
     AvroReadSupport.setRequestedProjection(conf, reflectSchema);
-    ParquetReader<ReflectRecordJavaClass> parquet = AvroParquetReader
+    try(ParquetReader<ReflectRecordJavaClass> parquet = AvroParquetReader
         .<ReflectRecordJavaClass>builder(parquetFile)
         .withConf(conf)
-        .build();
-    try {
+        .build()) {
       parquetRecord = parquet.read();
-    } finally {
-      parquet.close();
     }
 
     // Avro uses String even if CharSequence is set

@@ -83,12 +83,9 @@ public class TestHadoop2ByteBufferReads {
     final MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     TestUtils.assertThrows("Should throw EOFException",
-        EOFException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            H2SeekableInputStream.readFully(reader, readBuffer);
-            return null;
-          }
+        EOFException.class, () -> {
+          H2SeekableInputStream.readFully(reader, readBuffer);
+          return null;
         });
 
     // NOTE: This behavior differs from readFullyHeapBuffer because direct uses
@@ -257,12 +254,9 @@ public class TestHadoop2ByteBufferReads {
     final MockBufferReader reader = new MockBufferReader(hadoopStream);
 
     TestUtils.assertThrows("Should throw EOFException",
-        EOFException.class, new Callable() {
-          @Override
-          public Object call() throws Exception {
-            H2SeekableInputStream.readFully(reader, readBuffer);
-            return null;
-          }
+        EOFException.class, () -> {
+          H2SeekableInputStream.readFully(reader, readBuffer);
+          return null;
         });
 
     // NOTE: This behavior differs from readFullyHeapBuffer because direct uses

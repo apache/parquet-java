@@ -19,13 +19,30 @@
 package org.apache.parquet.schema;
 
 import org.apache.parquet.Preconditions;
+import org.apache.yetus.audience.InterfaceAudience;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 
+import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
+import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER;
+import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.UNDEFINED;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MICROS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MILLIS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MILLIS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_NANOS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_NANOS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
+import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 
 public abstract class LogicalTypeAnnotation {
   enum LogicalTypeToken {
@@ -129,6 +146,7 @@ public abstract class LogicalTypeAnnotation {
    *
    * @return the OriginalType representation of the new logical type, or null if there's none
    */
+  @InterfaceAudience.Private
   public abstract OriginalType toOriginalType();
 
   /**
@@ -144,6 +162,10 @@ public abstract class LogicalTypeAnnotation {
     return "";
   }
 
+  boolean isValidColumnOrder(ColumnOrder columnOrder) {
+    return columnOrder.getColumnOrderName() == UNDEFINED || columnOrder.getColumnOrderName() == TYPE_DEFINED_ORDER;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
@@ -152,9 +174,14 @@ public abstract class LogicalTypeAnnotation {
     return sb.toString();
   }
 
+  PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+    throw new UnsupportedOperationException("Stringifier is not supported for the logical type: " + this);
+  }
+
   /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
    */
+  @InterfaceAudience.Private
   public static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
     if (originalType == null) {
       return null;
@@ -266,6 +293,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.UTF8;
     }
@@ -290,6 +318,11 @@ public abstract class LogicalTypeAnnotation {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.UTF8_STRINGIFIER;
+    }
   }
 
   public static class MapLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -299,6 +332,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.MAP;
     }
@@ -332,6 +366,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.LIST;
     }
@@ -365,6 +400,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.ENUM;
     }
@@ -389,15 +425,22 @@ public abstract class LogicalTypeAnnotation {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.UTF8_STRINGIFIER;
+    }
   }
 
   public static class DecimalLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final PrimitiveStringifier stringifier;
     private final int scale;
     private final int precision;
 
     private DecimalLogicalTypeAnnotation(int scale, int precision) {
       this.scale = scale;
       this.precision = precision;
+      stringifier = PrimitiveStringifier.createDecimalStringifier(scale);
     }
 
     public int getPrecision() {
@@ -409,6 +452,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.DECIMAL;
     }
@@ -447,6 +491,11 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       return Objects.hash(scale, precision);
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return stringifier;
+    }
   }
 
   public static class DateLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -456,6 +505,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.DATE;
     }
@@ -480,11 +530,17 @@ public abstract class LogicalTypeAnnotation {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.DATE_STRINGIFIER;
+    }
   }
 
   public enum TimeUnit {
     MILLIS,
-    MICROS
+    MICROS,
+    NANOS
   }
 
   public static class TimeLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -497,6 +553,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -504,7 +561,7 @@ public abstract class LogicalTypeAnnotation {
         case MICROS:
           return OriginalType.TIME_MICROS;
         default:
-          throw new RuntimeException("Unknown original type for " + unit);
+          return null;
       }
     }
 
@@ -550,6 +607,19 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       return Objects.hash(isAdjustedToUTC, unit);
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      switch (unit) {
+        case MICROS:
+        case MILLIS:
+          return isAdjustedToUTC ? TIME_UTC_STRINGIFIER : TIME_STRINGIFIER;
+        case NANOS:
+          return isAdjustedToUTC ? TIME_NANOS_UTC_STRINGIFIER : TIME_NANOS_STRINGIFIER;
+        default:
+          return super.valueStringifier(primitiveType);
+      }
+    }
   }
 
   public static class TimestampLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -562,6 +632,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -569,7 +640,7 @@ public abstract class LogicalTypeAnnotation {
         case MICROS:
           return OriginalType.TIMESTAMP_MICROS;
         default:
-          throw new RuntimeException("Unknown original type for " + unit);
+          return null;
       }
     }
 
@@ -615,19 +686,39 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       return Objects.hash(isAdjustedToUTC, unit);
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      switch (unit) {
+        case MICROS:
+          return isAdjustedToUTC ? TIMESTAMP_MICROS_UTC_STRINGIFIER : TIMESTAMP_MICROS_STRINGIFIER;
+        case MILLIS:
+          return isAdjustedToUTC ? TIMESTAMP_MILLIS_UTC_STRINGIFIER : TIMESTAMP_MILLIS_STRINGIFIER;
+        case NANOS:
+          return isAdjustedToUTC ? TIMESTAMP_NANOS_UTC_STRINGIFIER : TIMESTAMP_NANOS_STRINGIFIER;
+        default:
+          return super.valueStringifier(primitiveType);
+      }
+    }
   }
 
   public static class IntLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final Set<Integer> VALID_BIT_WIDTH = Collections.unmodifiableSet(
+      new HashSet<>(asList(8, 16, 32, 64)));
+
     private final int bitWidth;
     private final boolean isSigned;
 
-
     private IntLogicalTypeAnnotation(int bitWidth, boolean isSigned) {
+      if (!VALID_BIT_WIDTH.contains(bitWidth)) {
+        throw new IllegalArgumentException("Invalid integer bit width: " + bitWidth);
+      }
       this.bitWidth = bitWidth;
       this.isSigned = isSigned;
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (bitWidth) {
         case 8:
@@ -639,7 +730,7 @@ public abstract class LogicalTypeAnnotation {
         case 64:
           return isSigned ? OriginalType.INT_64 : OriginalType.UINT_64;
         default:
-          throw new RuntimeException("Unknown original type " + toOriginalType());
+          return null;
       }
     }
 
@@ -685,6 +776,11 @@ public abstract class LogicalTypeAnnotation {
     public int hashCode() {
       return Objects.hash(bitWidth, isSigned);
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return isSigned ? PrimitiveStringifier.DEFAULT_STRINGIFIER : PrimitiveStringifier.UNSIGNED_STRINGIFIER;
+    }
   }
 
   public static class JsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -694,6 +790,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.JSON;
     }
@@ -718,6 +815,11 @@ public abstract class LogicalTypeAnnotation {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.UTF8_STRINGIFIER;
+    }
   }
 
   public static class BsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -727,6 +829,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.BSON;
     }
@@ -751,6 +854,11 @@ public abstract class LogicalTypeAnnotation {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.DEFAULT_STRINGIFIER;
+    }
   }
 
   // This logical type annotation is implemented to support backward compatibility with ConvertedType.
@@ -767,6 +875,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.INTERVAL;
     }
@@ -791,6 +900,16 @@ public abstract class LogicalTypeAnnotation {
       // This type doesn't have any parameters, thus using class hashcode
       return getClass().hashCode();
     }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.INTERVAL_STRINGIFIER;
+    }
+
+    @Override
+    boolean isValidColumnOrder(ColumnOrder columnOrder) {
+      return columnOrder.getColumnOrderName() == UNDEFINED;
+    }
   }
 
   // This logical type annotation is implemented to support backward compatibility with ConvertedType.
@@ -807,6 +926,7 @@ public abstract class LogicalTypeAnnotation {
     }
 
     @Override
+    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.MAP_KEY_VALUE;
     }
@@ -845,55 +965,55 @@ public abstract class LogicalTypeAnnotation {
    * or {@link Optional#orElseThrow(Supplier)} to throw exception if omitting a type is not allowed.
    */
   public interface LogicalTypeAnnotationVisitor<T> {
-    default Optional<T> visit(StringLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(StringLogicalTypeAnnotation stringLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(MapLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapLogicalTypeAnnotation mapLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(ListLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(EnumLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(EnumLogicalTypeAnnotation enumLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DecimalLogicalTypeAnnotation decimalLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(DateLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(DateLogicalTypeAnnotation dateLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimeLogicalTypeAnnotation timeLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(TimestampLogicalTypeAnnotation timestampLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(IntLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntLogicalTypeAnnotation intLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(JsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(JsonLogicalTypeAnnotation jsonLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(BsonLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(BsonLogicalTypeAnnotation bsonLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(IntervalLogicalTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(IntervalLogicalTypeAnnotation intervalLogicalType) {
       return empty();
     }
 
-    default Optional<T> visit(MapKeyValueTypeAnnotation logicalTypeAnnotation) {
+    default Optional<T> visit(MapKeyValueTypeAnnotation mapKeyValueLogicalType) {
       return empty();
     }
   }

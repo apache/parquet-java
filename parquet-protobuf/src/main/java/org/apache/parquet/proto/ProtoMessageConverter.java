@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -31,15 +31,17 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
-import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Type;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import static java.util.Optional.of;
 
 /**
  * Converts Protocol Buffer message (both top level and inner) to parquet.
@@ -128,13 +130,22 @@ class ProtoMessageConverter extends GroupConverter {
       };
     }
 
-    if (OriginalType.LIST == parquetType.getOriginalType()) {
-      return new ListConverter(parentBuilder, fieldDescriptor, parquetType);
+    LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
+    if (logicalTypeAnnotation == null) {
+      return newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType);
     }
-    if (OriginalType.MAP == parquetType.getOriginalType()) {
-      return new MapConverter(parentBuilder, fieldDescriptor, parquetType);
-    }
-    return newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType);
+
+    return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Converter>() {
+      @Override
+      public Optional<Converter> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
+        return of(new ListConverter(parentBuilder, fieldDescriptor, parquetType));
+      }
+
+      @Override
+      public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
+        return of(new MapConverter(parentBuilder, fieldDescriptor, parquetType));
+      }
+    }).orElseGet(() -> newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType));
   }
 
   private Converter newScalarConverter(ParentValueContainer pvc, Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
@@ -376,9 +387,9 @@ class ProtoMessageConverter extends GroupConverter {
     private final Converter converter;
 
     public ListConverter(Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
-      OriginalType originalType = parquetType.getOriginalType();
-      if (originalType != OriginalType.LIST || parquetType.isPrimitive()) {
-        throw new ParquetDecodingException("Expected LIST wrapper. Found: " + originalType + " instead.");
+      LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
+      if (!(logicalTypeAnnotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) || parquetType.isPrimitive()) {
+        throw new ParquetDecodingException("Expected LIST wrapper. Found: " + logicalTypeAnnotation + " instead.");
       }
 
       GroupType rootWrapperType = parquetType.asGroupType();
@@ -435,9 +446,9 @@ class ProtoMessageConverter extends GroupConverter {
     private final Converter converter;
 
     public MapConverter(Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
-      OriginalType originalType = parquetType.getOriginalType();
-      if (originalType != OriginalType.MAP) {
-        throw new ParquetDecodingException("Expected MAP wrapper. Found: " + originalType + " instead.");
+      LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
+      if (!(logicalTypeAnnotation instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation)) {
+        throw new ParquetDecodingException("Expected MAP wrapper. Found: " + logicalTypeAnnotation + " instead.");
       }
 
       Type parquetSchema;

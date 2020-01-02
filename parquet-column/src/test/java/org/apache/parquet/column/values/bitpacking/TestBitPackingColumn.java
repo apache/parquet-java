@@ -183,6 +183,22 @@ public class TestBitPackingColumn {
       }
       LOG.debug("result: {}", TestBitPacking.toString(result));
       assertArrayEquals(type + " result: " + TestBitPacking.toString(result), vals, result);
+
+      // Test skipping
+      r.initFromPage(vals.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(bytes)));
+      for (int i = 0; i < vals.length; i += 2) {
+        assertEquals(vals[i], r.readInteger());
+        r.skip();
+      }
+
+      // Test n-skipping
+      r.initFromPage(vals.length, ByteBufferInputStream.wrap(ByteBuffer.wrap(bytes)));
+      int skipCount;
+      for (int i = 0; i < vals.length; i += skipCount + 1) {
+        skipCount = (vals.length - i) / 2;
+        assertEquals(vals[i], r.readInteger());
+        r.skip(skipCount);
+      }
     }
   }
 

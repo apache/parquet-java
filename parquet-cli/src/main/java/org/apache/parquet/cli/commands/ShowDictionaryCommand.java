@@ -30,8 +30,8 @@ import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
 import java.io.IOException;
@@ -81,7 +81,7 @@ public class ShowDictionaryCommand extends BaseCommand {
       for (int i = 0; i <= dict.getMaxId(); i += 1) {
         switch(type.getPrimitiveTypeName()) {
           case BINARY:
-            if (type.getOriginalType() == OriginalType.UTF8) {
+            if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
               console.info("{}: {}", String.format("%6d", i),
                   Util.humanReadable(dict.decodeToBinary(i).toStringUsingUTF8(), 70));
             } else {

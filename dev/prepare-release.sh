@@ -18,16 +18,27 @@
 # under the License.
 #
 
-if [ -z "$1" ]; then
-  echo "Usage: $0 <version>"
-  exit
+set -e
+
+[[ $# != 2 ]] && err="Incorrect number of arguments: $#"
+[[ -z $err ]] && ! [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && err="Invalid release version: \"$1\""
+[[ -z $err ]] && ! [[ $2 =~ ^[0-9]+$ ]] && err="Invalid rc number: \"$2\""
+
+if [[ -n $err ]]; then
+    cat <<EOF
+$err
+Usage: $0 <release-version> <rc-num>
+Example: $0 1.11.0 7
+EOF
+  exit 1
 fi
 
-version=$1
+release_version="$1"
+new_development_version="$release_version-SNAPSHOT"
 
-tag=apache-parquet-$version
+tag="apache-parquet-$release_version-rc$2"
 
 mvn release:clean
-mvn release:prepare -Dtag=$tag -DreleaseVersion=$version
+mvn release:prepare -Dtag="$tag" "-DreleaseVersion=$release_version" -DdevelopmentVersion="$new_development_version"
 
 echo "Finish staging binary artifacts by running: mvn release:perform"

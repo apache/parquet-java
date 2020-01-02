@@ -41,7 +41,10 @@ public interface ColumnReader {
 
   /**
    * @return the totalCount of values to be consumed
+   * @deprecated will be removed in 2.0.0; Total values might not be able to be counted before reading the values (e.g.
+   *             in case of column index based filtering)
    */
+  @Deprecated
   long getTotalValueCount();
 
   /**

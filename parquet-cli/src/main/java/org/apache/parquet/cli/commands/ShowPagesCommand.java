@@ -193,7 +193,7 @@ public class ShowPagesCommand extends BaseCommand {
       int count = page.getValueCount();
       String numNulls = page.getStatistics().isNumNullsSet() ? Long.toString(page.getStatistics().getNumNulls()) : "";
       float perValue = ((float) totalSize) / count;
-      String minMax = minMaxAsString(page.getStatistics(), type.getOriginalType());
+      String minMax = minMaxAsString(page.getStatistics());
       return String.format("%3d-%-3d  %-5s %s %-2s %-7d %-10s %-10s %-8s %-7s %s",
           rowGroupNum, pageNum, "data", shortCodec, enc, count, humanReadable(perValue),
           humanReadable(totalSize), "", numNulls, minMax);
@@ -207,7 +207,7 @@ public class ShowPagesCommand extends BaseCommand {
       int numRows = page.getRowCount();
       int numNulls = page.getNullCount();
       float perValue = ((float) totalSize) / count;
-      String minMax = minMaxAsString(page.getStatistics(), type.getOriginalType());
+      String minMax = minMaxAsString(page.getStatistics());
       String compression = (page.isCompressed() ? shortCodec : "_");
       return String.format("%3d-%-3d  %-5s %s %-2s %-7d %-10s %-10s %-8d %-7s %s",
           rowGroupNum, pageNum, "data", compression, enc, count, humanReadable(perValue),

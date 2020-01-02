@@ -23,11 +23,12 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
 
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+
 
 /**
  * Meta Data block stored in the footer of the file
@@ -40,7 +41,7 @@ public class ParquetMetadata {
   // Enable FAIL_ON_EMPTY_BEANS on objectmapper. Without this feature parquet-casdacing tests fail,
   // because LogicalTypeAnnotation implementations are classes without any property.
   static {
-    objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+    objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
   }
 
   /**
@@ -68,10 +69,6 @@ public class ParquetMetadata {
       } else {
         objectMapper.writeValue(stringWriter, parquetMetaData);
       }
-    } catch (JsonGenerationException e) {
-      throw new RuntimeException(e);
-    } catch (JsonMappingException e) {
-      throw new RuntimeException(e);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -86,10 +83,6 @@ public class ParquetMetadata {
   public static ParquetMetadata fromJSON(String json) {
     try {
       return objectMapper.readValue(new StringReader(json), ParquetMetadata.class);
-    } catch (JsonParseException e) {
-      throw new RuntimeException(e);
-    } catch (JsonMappingException e) {
-      throw new RuntimeException(e);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

@@ -27,8 +27,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.junit.Assert;
@@ -97,6 +97,47 @@ public class TestDictionary {
     checkRepeated(COUNT, bytes2, cr, "b");
     BinaryPlainValuesReader cr2 = new BinaryPlainValuesReader();
     checkDistinct(COUNT, bytes3, cr2, "c");
+  }
+
+  @Test
+  public void testSkipInBinaryDictionary() throws Exception {
+    ValuesWriter cw = newPlainBinaryDictionaryValuesWriter(1000, 10000);
+    writeRepeated(100, cw, "a");
+    writeDistinct(100, cw, "b");
+    assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
+
+    // Test skip and skip-n with dictionary encoding
+    ByteBufferInputStream stream = cw.getBytes().toInputStream();
+    DictionaryValuesReader cr = initDicReader(cw, BINARY);
+    cr.initFromPage(200, stream);
+    for (int i = 0; i < 100; i += 2) {
+      assertEquals(Binary.fromString("a" + i % 10), cr.readBytes());
+      cr.skip();
+    }
+    int skipCount;
+    for (int i = 0; i < 100; i += skipCount + 1) {
+      skipCount = (100 - i) / 2;
+      assertEquals(Binary.fromString("b" + i), cr.readBytes());
+      cr.skip(skipCount);
+    }
+
+    // Ensure fallback
+    writeDistinct(1000, cw, "c");
+    assertEquals(PLAIN, cw.getEncoding());
+
+    // Test skip and skip-n with plain encoding (after fallback)
+    ValuesReader plainReader = new BinaryPlainValuesReader();
+    plainReader.initFromPage(1200, cw.getBytes().toInputStream());
+    plainReader.skip(200);
+    for (int i = 0; i < 100; i += 2) {
+      assertEquals("c" + i, plainReader.readBytes().toStringUsingUTF8());
+      plainReader.skip();
+    }
+    for (int i = 100; i < 1000; i += skipCount + 1) {
+      skipCount = (1000 - i) / 2;
+      assertEquals(Binary.fromString("c" + i), plainReader.readBytes());
+      plainReader.skip(skipCount);
+    }
   }
 
   @Test
@@ -234,6 +275,22 @@ public class TestDictionary {
     for (long i = 0; i < 100; i++) {
       assertEquals(i, reader.readLong());
     }
+
+    // Test skip with plain encoding
+    reader.initFromPage(100, cw.getBytes().toInputStream());
+    for (int i = 0; i < 100; i += 2) {
+      assertEquals(i, reader.readLong());
+      reader.skip();
+    }
+
+    // Test skip-n with plain encoding
+    reader.initFromPage(100, cw.getBytes().toInputStream());
+    int skipCount;
+    for (int i = 0; i < 100; i += skipCount + 1) {
+      skipCount = (100 - i) / 2;
+      assertEquals(i, reader.readLong());
+      reader.skip(skipCount);
+    }
   }
 
   @Test
@@ -304,6 +361,22 @@ public class TestDictionary {
 
     for (double i = 0; i < 100; i++) {
       assertEquals(i, reader.readDouble(), 0.00001);
+    }
+
+    // Test skip with plain encoding
+    reader.initFromPage(100, cw.getBytes().toInputStream());
+    for (int i = 0; i < 100; i += 2) {
+      assertEquals(i, reader.readDouble(), 0.0);
+      reader.skip();
+    }
+
+    // Test skip-n with plain encoding
+    reader.initFromPage(100, cw.getBytes().toInputStream());
+    int skipCount;
+    for (int i = 0; i < 100; i += skipCount + 1) {
+      skipCount = (100 - i) / 2;
+      assertEquals(i, reader.readDouble(), 0.0);
+      reader.skip(skipCount);
     }
   }
 
@@ -376,6 +449,22 @@ public class TestDictionary {
     for (int i = 0; i < 100; i++) {
       assertEquals(i, reader.readInteger());
     }
+
+    // Test skip with plain encoding
+    reader.initFromPage(100, cw.getBytes().toInputStream());
+    for (int i = 0; i < 100; i += 2) {
+      assertEquals(i, reader.readInteger());
+      reader.skip();
+    }
+
+    // Test skip-n with plain encoding
+    reader.initFromPage(100, cw.getBytes().toInputStream());
+    int skipCount;
+    for (int i = 0; i < 100; i += skipCount + 1) {
+      skipCount = (100 - i) / 2;
+      assertEquals(i, reader.readInteger());
+      reader.skip(skipCount);
+    }
   }
 
   @Test
@@ -446,6 +535,22 @@ public class TestDictionary {
 
     for (float i = 0; i < 100; i++) {
       assertEquals(i, reader.readFloat(), 0.00001);
+    }
+
+    // Test skip with plain encoding
+    reader.initFromPage(100, cw.getBytes().toInputStream());
+    for (int i = 0; i < 100; i += 2) {
+      assertEquals(i, reader.readFloat(), 0.0f);
+      reader.skip();
+    }
+
+    // Test skip-n with plain encoding
+    reader.initFromPage(100, cw.getBytes().toInputStream());
+    int skipCount;
+    for (int i = 0; i < 100; i += skipCount + 1) {
+      skipCount = (100 - i) / 2;
+      assertEquals(i, reader.readFloat(), 0.0f);
+      reader.skip(skipCount);
     }
   }
 
@@ -522,9 +627,8 @@ public class TestDictionary {
     }
   }
 
-  private void writeRepeatedWithReuse(int COUNT, ValuesWriter cw,
-                                      String prefix) throws UnsupportedEncodingException {
-    Binary reused = Binary.fromReusedByteArray((prefix + "0").getBytes("UTF-8"));
+  private void writeRepeatedWithReuse(int COUNT, ValuesWriter cw, String prefix) {
+    Binary reused = Binary.fromReusedByteArray((prefix + "0").getBytes(StandardCharsets.UTF_8));
     for (int i = 0; i < COUNT; i++) {
       Binary content = Binary.fromString(prefix + i % 10);
       System.arraycopy(content.getBytesUnsafe(), 0, reused.getBytesUnsafe(), 0, reused.length());

@@ -29,6 +29,7 @@ import org.apache.parquet.filter2.predicate.Operators.*;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,8 +40,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntFunction;
 
-import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 
@@ -86,26 +87,36 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     Dictionary dict = page.getEncoding().initDictionary(col, page);
 
-    Set dictSet = new HashSet<T>();
-
-    for (int i=0; i<=dict.getMaxId(); i++) {
-      switch(meta.getType()) {
-        case BINARY: dictSet.add(dict.decodeToBinary(i));
-          break;
-        case INT32: dictSet.add(dict.decodeToInt(i));
-          break;
-        case INT64: dictSet.add(dict.decodeToLong(i));
-          break;
-        case FLOAT: dictSet.add(dict.decodeToFloat(i));
-          break;
-        case DOUBLE: dictSet.add(dict.decodeToDouble(i));
-          break;
-        default:
-          LOG.warn("Unknown dictionary type{}", meta.getType());
-      }
+    IntFunction<Object> dictValueProvider;
+    PrimitiveTypeName type = meta.getPrimitiveType().getPrimitiveTypeName();
+    switch (type) {
+    case FIXED_LEN_BYTE_ARRAY: // Same as BINARY
+    case BINARY:
+      dictValueProvider = dict::decodeToBinary;
+      break;
+    case INT32:
+      dictValueProvider = dict::decodeToInt;
+      break;
+    case INT64:
+      dictValueProvider = dict::decodeToLong;
+      break;
+    case FLOAT:
+      dictValueProvider = dict::decodeToFloat;
+      break;
+    case DOUBLE:
+      dictValueProvider = dict::decodeToDouble;
+      break;
+    default:
+      LOG.warn("Unsupported dictionary type: {}", type);
+      return null;
     }
 
-    return (Set<T>) dictSet;
+    Set<T> dictSet = new HashSet<>();
+    for (int i = 0; i <= dict.getMaxId(); i++) {
+      dictSet.add((T) dictValueProvider.apply(i));
+    }
+    
+    return dictSet;
   }
 
   @Override
@@ -178,7 +189,10 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-      if (dictSet != null && dictSet.size() == 1 && dictSet.contains(value)) {
+      boolean mayContainNull = (meta.getStatistics() == null
+          || !meta.getStatistics().isNumNullsSet()
+          || meta.getStatistics().getNumNulls() > 0);
+      if (dictSet != null && dictSet.size() == 1 && dictSet.contains(value) && !mayContainNull) {
         return BLOCK_CANNOT_MATCH;
       }
     } catch (IOException e) {
@@ -376,9 +390,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     // The column is missing, thus all null. Check if the predicate keeps null.
     if (meta == null) {
       if (inverted) {
-        return udp.keep(null);
+        return udp.acceptsNullValue();
       } else {
-        return !udp.keep(null);
+        return !udp.acceptsNullValue();
       }
     }
 

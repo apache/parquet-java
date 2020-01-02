@@ -18,16 +18,24 @@
  */
 package org.apache.parquet.column.page;
 
+import java.util.Optional;
+
 /**
  * one data page in a chunk
  */
 abstract public class DataPage extends Page {
 
   private final int valueCount;
+  private final long firstRowIndex;
 
   DataPage(int compressedSize, int uncompressedSize, int valueCount) {
+    this(compressedSize, uncompressedSize, valueCount, -1);
+  }
+
+  DataPage(int compressedSize, int uncompressedSize, int valueCount, long firstRowIndex) {
     super(compressedSize, uncompressedSize);
     this.valueCount = valueCount;
+    this.firstRowIndex = firstRowIndex;
   }
 
   /**
@@ -36,6 +44,20 @@ abstract public class DataPage extends Page {
   public int getValueCount() {
     return valueCount;
   }
+
+  /**
+   * @return the index of the first row in this page if the related data is available (the optional column-index
+   *         contains this value)
+   */
+  public Optional<Long> getFirstRowIndex() {
+    return firstRowIndex < 0 ? Optional.empty() : Optional.of(firstRowIndex);
+  }
+
+  /**
+   * @return the number of rows in this page if the related data is available (in case of pageV1 the optional
+   *         column-index contains this value)
+   */
+  public abstract Optional<Integer> getIndexRowCount();
 
   public abstract <T> T accept(Visitor<T> visitor);
 

@@ -91,6 +91,14 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   }
 
   @Override
+  public void skip(int n) {
+    // checkRead() is invoked before incrementing valuesRead so increase valuesRead size in 2 steps
+    valuesRead += n - 1;
+    checkRead();
+    ++valuesRead;
+  }
+
+  @Override
   public int readInteger() {
     // TODO: probably implement it separately
     return (int) readLong();

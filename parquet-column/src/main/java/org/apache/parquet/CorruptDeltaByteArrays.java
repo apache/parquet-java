@@ -84,10 +84,7 @@ public class CorruptDeltaByteArrays {
     try {
       return requiresSequentialReads(VersionParser.parse(createdBy), encoding);
 
-    } catch (RuntimeException e) {
-      warnParseError(createdBy, e);
-      return true;
-    } catch (VersionParser.VersionParseException e) {
+    } catch (RuntimeException | VersionParser.VersionParseException e) {
       warnParseError(createdBy, e);
       return true;
     }

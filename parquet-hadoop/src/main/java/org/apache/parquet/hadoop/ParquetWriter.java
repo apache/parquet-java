@@ -278,7 +278,9 @@ public class ParquetWriter<T> implements Closeable {
     MessageType schema = writeContext.getSchema();
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(
-        file, schema, mode, rowGroupSize, maxPaddingSize);
+      file, schema, mode, rowGroupSize, maxPaddingSize,
+      encodingProps.getColumnIndexTruncateLength(), encodingProps.getStatisticsTruncateLength(),
+      encodingProps.getPageWriteChecksumEnabled());
     fileWriter.start();
 
     this.codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());
@@ -426,6 +428,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets the Parquet format page row count limit used by the constructed writer.
+     *
+     * @param rowCount limit for the number of rows stored in a page
+     * @return this builder for method chaining
+     */
+    public SELF withPageRowCountLimit(int rowCount) {
+      encodingPropsBuilder.withPageRowCountLimit(rowCount);
+      return self();
+    }
+
+    /**
      * Set the Parquet format dictionary page size used by the constructed
      * writer.
      *
@@ -501,6 +514,27 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withWriterVersion(WriterVersion version) {
       encodingPropsBuilder.withWriterVersion(version);
+      return self();
+    }
+
+    /**
+     * Enables writing page level checksums for the constructed writer.
+     *
+     * @return this builder for method chaining.
+     */
+    public SELF enablePageWriteChecksum() {
+      encodingPropsBuilder.withPageWriteChecksumEnabled(true);
+      return self();
+    }
+
+    /**
+     * Enables writing page level checksums for the constructed writer.
+     *
+     * @param enablePageWriteChecksum whether page checksums should be written out
+     * @return this builder for method chaining.
+     */
+    public SELF withPageWriteChecksumEnabled(boolean enablePageWriteChecksum) {
+      encodingPropsBuilder.withPageWriteChecksumEnabled(enablePageWriteChecksum);
       return self();
     }
 

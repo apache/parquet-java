@@ -117,17 +117,17 @@ public class TestInputOutputFormat {
       waitForJob(job);
     }
 
-    final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")));
-    String lineOut = null;
-    int lineNumber = 0;
-    while ((lineOut = out.readLine()) != null) {
-      lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
-      GenericRecord a = nextRecord(lineNumber == 4 ? null : lineNumber);
-      assertEquals("line " + lineNumber, a.toString(), lineOut);
-      ++ lineNumber;
+    try(final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")))) {
+      String lineOut;
+      int lineNumber = 0;
+      while ((lineOut = out.readLine()) != null) {
+        lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
+        GenericRecord a = nextRecord(lineNumber == 4 ? null : lineNumber);
+        assertEquals("line " + lineNumber, a.toString(), lineOut);
+        ++lineNumber;
+      }
+      assertNull("line " + lineNumber, out.readLine());
     }
-    assertNull("line " + lineNumber, out.readLine());
-    out.close();
   }
 
   private void waitForJob(Job job) throws Exception {

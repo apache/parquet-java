@@ -23,7 +23,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.Types;
 import org.apache.pig.LoadPushDown.RequiredField;
 import org.apache.pig.LoadPushDown.RequiredFieldList;
 import org.apache.pig.data.DataType;
@@ -38,7 +41,6 @@ import org.apache.pig.parser.ParserException;
 import org.apache.parquet.schema.ConversionPatterns;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
@@ -46,6 +48,9 @@ import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static java.util.Optional.of;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 
 
 /**
@@ -205,7 +210,7 @@ public class PigSchemaConverter {
       throws FrontendException {
     final PrimitiveTypeName parquetPrimitiveTypeName =
         parquetType.asPrimitiveType().getPrimitiveTypeName();
-    final OriginalType originalType = parquetType.getOriginalType();
+    final LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
     return parquetPrimitiveTypeName.convert(
         new PrimitiveTypeNameConverter<Schema.FieldSchema, FrontendException>() {
       @Override
@@ -242,7 +247,7 @@ public class PigSchemaConverter {
       @Override
       public FieldSchema convertFIXED_LEN_BYTE_ARRAY(
         PrimitiveTypeName primitiveTypeName) throws FrontendException {
-        if (originalType == OriginalType.DECIMAL) {
+        if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
           return new FieldSchema(fieldName, null, DataType.BIGDECIMAL);
         } else {
           return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
@@ -258,7 +263,7 @@ public class PigSchemaConverter {
       @Override
       public FieldSchema convertBINARY(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
-        if (originalType != null && originalType == OriginalType.UTF8) {
+        if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
           return new FieldSchema(fieldName, null, DataType.CHARARRAY);
         } else {
           return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
@@ -267,47 +272,71 @@ public class PigSchemaConverter {
     });
   }
 
+  /*
+   * RuntimeException class to workaround throwing checked FrontendException in logical type visitors.
+   * Wrap the FrontendException inside the visitor in an inner catch block, and rethrow it outside of the visitor
+   */
+  private static final class FrontendExceptionWrapper extends RuntimeException {
+    final FrontendException frontendException;
+
+    FrontendExceptionWrapper(FrontendException frontendException) {
+      this.frontendException = frontendException;
+    }
+  }
+
   private FieldSchema getComplexFieldSchema(String fieldName, Type parquetType)
       throws FrontendException {
     GroupType parquetGroupType = parquetType.asGroupType();
-    OriginalType originalType = parquetGroupType.getOriginalType();
-    if (originalType !=  null) {
-      switch(originalType) {
-      case MAP:
-        // verify that its a map
-        if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
-          throw new SchemaConversionException("Invalid map type " + parquetGroupType);
-        }
-        GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
-        if (!mapKeyValType.isRepetition(Repetition.REPEATED) ||
-            (mapKeyValType.getOriginalType() != null && !mapKeyValType.getOriginalType().equals(OriginalType.MAP_KEY_VALUE)) ||
-            mapKeyValType.getFieldCount()!=2) {
-          throw new SchemaConversionException("Invalid map type " + parquetGroupType);
-        }
-        // if value is not primitive wrap it in a tuple
-        Type valueType = mapKeyValType.getType(1);
-        Schema s = convertField(valueType);
-        s.getField(0).alias = null;
-        return new FieldSchema(fieldName, s, DataType.MAP);
-      case LIST:
-        Type type = parquetGroupType.getType(0);
-        if (parquetGroupType.getFieldCount()!= 1 || type.isPrimitive()) {
-          // an array is effectively a bag
-          Schema primitiveSchema = new Schema(getSimpleFieldSchema(parquetGroupType.getFieldName(0), type));
-          Schema tupleSchema = new Schema(new FieldSchema(ARRAY_VALUE_NAME, primitiveSchema, DataType.TUPLE));
-          return new FieldSchema(fieldName, tupleSchema, DataType.BAG);
-        }
-        GroupType tupleType = parquetGroupType.getType(0).asGroupType();
-        if (!tupleType.isRepetition(Repetition.REPEATED)) {
-          throw new SchemaConversionException("Invalid list type " + parquetGroupType);
-        }
-        Schema tupleSchema = new Schema(new FieldSchema(tupleType.getName(), convertFields(tupleType.getFields()), DataType.TUPLE));
-        return new FieldSchema(fieldName, tupleSchema, DataType.BAG);
-      case MAP_KEY_VALUE:
-      case ENUM:
-      case UTF8:
-      default:
-        throw new SchemaConversionException("Unexpected original type for " + parquetType + ": " + originalType);
+    LogicalTypeAnnotation logicalTypeAnnotation = parquetGroupType.getLogicalTypeAnnotation();
+    if (logicalTypeAnnotation !=  null) {
+      try {
+        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<FieldSchema>() {
+          @Override
+          public Optional<FieldSchema> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
+            try {
+              // verify that its a map
+              if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
+                throw new SchemaConversionException("Invalid map type " + parquetGroupType);
+              }
+              GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
+              if (!mapKeyValType.isRepetition(Repetition.REPEATED) ||
+                (mapKeyValType.getLogicalTypeAnnotation() != null && !mapKeyValType.getLogicalTypeAnnotation().equals(LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance())) ||
+                mapKeyValType.getFieldCount() != 2) {
+                throw new SchemaConversionException("Invalid map type " + parquetGroupType);
+              }
+              // if value is not primitive wrap it in a tuple
+              Type valueType = mapKeyValType.getType(1);
+              Schema s = convertField(valueType);
+              s.getField(0).alias = null;
+              return of(new FieldSchema(fieldName, s, DataType.MAP));
+            } catch (FrontendException e) {
+              throw new FrontendExceptionWrapper(e);
+            }
+          }
+
+          @Override
+          public Optional<FieldSchema> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
+            try {
+              Type type = parquetGroupType.getType(0);
+              if (parquetGroupType.getFieldCount() != 1 || type.isPrimitive()) {
+                // an array is effectively a bag
+                Schema primitiveSchema = new Schema(getSimpleFieldSchema(parquetGroupType.getFieldName(0), type));
+                Schema tupleSchema = new Schema(new FieldSchema(ARRAY_VALUE_NAME, primitiveSchema, DataType.TUPLE));
+                return of(new FieldSchema(fieldName, tupleSchema, DataType.BAG));
+              }
+              GroupType tupleType = parquetGroupType.getType(0).asGroupType();
+              if (!tupleType.isRepetition(Repetition.REPEATED)) {
+                throw new SchemaConversionException("Invalid list type " + parquetGroupType);
+              }
+              Schema tupleSchema = new Schema(new FieldSchema(tupleType.getName(), convertFields(tupleType.getFields()), DataType.TUPLE));
+              return of(new FieldSchema(fieldName, tupleSchema, DataType.BAG));
+            } catch (FrontendException e) {
+              throw new FrontendExceptionWrapper(e);
+            }
+          }
+        }).orElseThrow(() -> new SchemaConversionException("Unexpected original type for " + parquetType + ": " + logicalTypeAnnotation));
+      } catch (FrontendExceptionWrapper e) {
+        throw e.frontendException;
       }
     } else {
       // if original type is not set, we assume it to be tuple
@@ -359,7 +388,7 @@ public class PigSchemaConverter {
       case DataType.BOOLEAN:
         return primitive(name, PrimitiveTypeName.BOOLEAN);
       case DataType.CHARARRAY:
-        return primitive(name, PrimitiveTypeName.BINARY, OriginalType.UTF8);
+        return primitive(name, PrimitiveTypeName.BINARY, stringType());
       case DataType.INTEGER:
         return primitive(name, PrimitiveTypeName.INT32);
       case DataType.LONG:
@@ -403,12 +432,12 @@ public class PigSchemaConverter {
     return fieldAlias == null ? defaultName : fieldAlias;
   }
 
-  private Type primitive(String name, PrimitiveTypeName primitive, OriginalType originalType) {
-    return new PrimitiveType(Repetition.OPTIONAL, primitive, name, originalType);
+  private Type primitive(String name, PrimitiveTypeName primitive, LogicalTypeAnnotation logicalTypeAnnotation) {
+    return Types.primitive(primitive, Repetition.OPTIONAL).as(logicalTypeAnnotation).named(name);
   }
 
   private PrimitiveType primitive(String name, PrimitiveTypeName primitive) {
-    return new PrimitiveType(Repetition.OPTIONAL, primitive, name, null);
+    return Types.primitive(primitive, Repetition.OPTIONAL).named(name);
   }
 
   /**
@@ -511,7 +540,8 @@ public class PigSchemaConverter {
     }
     Type nested = bagType.getType(0);
     FieldSchema innerField = bagFieldSchema.schema.getField(0);
-    if (nested.isPrimitive() || nested.getOriginalType() == OriginalType.MAP || nested.getOriginalType() == OriginalType.LIST) {
+    if (nested.isPrimitive() || nested.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation
+      || nested.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
       // Bags always contain tuples => we skip the extra tuple that was inserted in that case.
       innerField = innerField.schema.getField(0);
     }

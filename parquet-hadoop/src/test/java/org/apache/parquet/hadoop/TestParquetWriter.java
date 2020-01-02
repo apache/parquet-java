@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import static java.util.Arrays.asList;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
 import static org.apache.parquet.column.Encoding.PLAIN;
@@ -32,20 +33,24 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.example.ExampleInputFormat;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -54,6 +59,7 @@ import org.junit.Test;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
@@ -151,19 +157,51 @@ public class TestParquetWriter {
     file.delete();
 
     TestUtils.assertThrows("Should reject a schema with an empty group",
-        InvalidSchemaException.class, new Callable<Void>() {
-          @Override
-          public Void call() throws IOException {
-            ExampleParquetWriter.builder(new Path(file.toString()))
-                .withType(Types.buildMessage()
-                    .addField(new GroupType(REQUIRED, "invalid_group"))
-                    .named("invalid_message"))
-                .build();
-            return null;
-          }
+        InvalidSchemaException.class, (Callable<Void>) () -> {
+          ExampleParquetWriter.builder(new Path(file.toString()))
+              .withType(Types.buildMessage()
+                  .addField(new GroupType(REQUIRED, "invalid_group"))
+                  .named("invalid_message"))
+              .build();
+          return null;
         });
 
     Assert.assertFalse("Should not create a file when schema is rejected",
         file.exists());
+  }
+
+  // Testing the issue of PARQUET-1531 where writing null nested rows leads to empty pages if the page row count limit
+  // is reached.
+  @Test
+  public void testNullValuesWithPageRowLimit() throws IOException {
+    MessageType schema = Types.buildMessage().optionalList().optionalElement(BINARY).as(stringType()).named("str_list")
+        .named("msg");
+    final int recordCount = 100;
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Group listNull = factory.newGroup();
+
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withPageRowCountLimit(10)
+        .withConf(conf)
+        .build()) {
+      for (int i = 0; i < recordCount; ++i) {
+        writer.write(listNull);
+      }
+    }
+
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).build()) {
+      int readRecordCount = 0;
+      for (Group group = reader.read(); group != null; group = reader.read()) {
+        assertEquals(listNull.toString(), group.toString());
+        ++readRecordCount;
+      }
+      assertEquals("Number of written records should be equal to the read one", recordCount, readRecordCount);
+    }
   }
 }

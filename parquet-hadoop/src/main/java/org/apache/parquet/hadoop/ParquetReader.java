@@ -270,6 +270,26 @@ public class ParquetReader<T> implements Closeable {
       return this;
     }
 
+    public Builder<T> useColumnIndexFilter(boolean useColumnIndexFilter) {
+      optionsBuilder.useColumnIndexFilter(useColumnIndexFilter);
+      return this;
+    }
+
+    public Builder<T> useColumnIndexFilter() {
+      optionsBuilder.useColumnIndexFilter();
+      return this;
+    }
+
+    public Builder<T> usePageChecksumVerification(boolean usePageChecksumVerification) {
+      optionsBuilder.usePageChecksumVerification(usePageChecksumVerification);
+      return this;
+    }
+
+    public Builder<T> usePageChecksumVerification() {
+      optionsBuilder.usePageChecksumVerification();
+      return this;
+    }
+
     public Builder<T> withFileRange(long start, long end) {
       optionsBuilder.withRange(start, end);
       return this;

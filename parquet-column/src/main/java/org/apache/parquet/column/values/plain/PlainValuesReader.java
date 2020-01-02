@@ -41,14 +41,26 @@ abstract public class PlainValuesReader extends ValuesReader {
     this.in = new LittleEndianDataInputStream(stream.remainingStream());
   }
 
+  @Override
+  public void skip() {
+    skip(1);
+  }
+
+  void skipBytesFully(int n) throws IOException {
+    int skipped = 0;
+    while (skipped < n) {
+      skipped += in.skipBytes(n - skipped);
+    }
+  }
+
   public static class DoublePlainValuesReader extends PlainValuesReader {
 
     @Override
-    public void skip() {
+    public void skip(int n) {
       try {
-        in.skipBytes(8);
+        skipBytesFully(n * 8);
       } catch (IOException e) {
-        throw new ParquetDecodingException("could not skip double", e);
+        throw new ParquetDecodingException("could not skip " + n + " double values", e);
       }
     }
 
@@ -65,11 +77,11 @@ abstract public class PlainValuesReader extends ValuesReader {
   public static class FloatPlainValuesReader extends PlainValuesReader {
 
     @Override
-    public void skip() {
+    public void skip(int n) {
       try {
-        in.skipBytes(4);
+        skipBytesFully(n * 4);
       } catch (IOException e) {
-        throw new ParquetDecodingException("could not skip float", e);
+        throw new ParquetDecodingException("could not skip " + n + " floats", e);
       }
     }
 
@@ -86,11 +98,11 @@ abstract public class PlainValuesReader extends ValuesReader {
   public static class IntegerPlainValuesReader extends PlainValuesReader {
 
     @Override
-    public void skip() {
+    public void skip(int n) {
       try {
-        in.skipBytes(4);
+        in.skipBytes(n * 4);
       } catch (IOException e) {
-        throw new ParquetDecodingException("could not skip int", e);
+        throw new ParquetDecodingException("could not skip " + n + " ints", e);
       }
     }
 
@@ -107,11 +119,11 @@ abstract public class PlainValuesReader extends ValuesReader {
   public static class LongPlainValuesReader extends PlainValuesReader {
 
     @Override
-    public void skip() {
+    public void skip(int n) {
       try {
-        in.skipBytes(8);
+        in.skipBytes(n * 8);
       } catch (IOException e) {
-        throw new ParquetDecodingException("could not skip long", e);
+        throw new ParquetDecodingException("could not skip " + n + " longs", e);
       }
     }
 

@@ -20,7 +20,6 @@ package org.apache.parquet.hadoop;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
-import static java.lang.String.format;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.IOException;
@@ -102,7 +101,8 @@ class InternalParquetRecordWriter<T> {
   }
 
   private void initStore() {
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator());
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, props.getAllocator(),
+        props.getColumnIndexTruncateLength(), props.getPageWriteChecksumEnabled());
     columnStore = props.newColumnWriteStore(schema, pageStore);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);
@@ -144,7 +144,7 @@ class InternalParquetRecordWriter<T> {
       // flush the row group if it is within ~2 records of the limit
       // it is much better to be slightly under size than to be over at all
       if (memSize > (nextRowGroupSize - 2 * recordSize)) {
-        LOG.info("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
+        LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
         flushRowGroupToStore();
         initStore();
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
@@ -162,7 +162,7 @@ class InternalParquetRecordWriter<T> {
   private void flushRowGroupToStore()
       throws IOException {
     recordConsumer.flush();
-    LOG.info("Flushing mem columnStore to file. allocated memory: {}", columnStore.getAllocatedSize());
+    LOG.debug("Flushing mem columnStore to file. allocated memory: {}", columnStore.getAllocatedSize());
     if (columnStore.getAllocatedSize() > (3 * rowGroupSizeThreshold)) {
       LOG.warn("Too much memory used: {}", columnStore.memUsageString());
     }

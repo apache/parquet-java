@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.10.1-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -35,7 +35,7 @@
   <repositories>
     <repository>
      <id>conjars.org</id>
-      <url>http://conjars.org/repo</url>
+      <url>https://conjars.org/repo</url>
     </repository>
   </repositories>
 
@@ -65,6 +65,12 @@
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
       <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.thrift</groupId>
@@ -101,24 +107,6 @@
 
   <build>
     <plugins>
-        <!-- TEMPORARY UNTIL AFTER previous.version &gt;= 1.8.2
-
-        (enforcer checks against the API in 1.7.0, this module did not exist back then, therefore it can't succeed)
-        -->
-      <plugin>
-        <artifactId>maven-enforcer-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>none</phase>
-          </execution>
-        </executions>
-        <configuration>
-          <skip>true</skip>
-        </configuration>
-      </plugin>
-
-        <!-- /TEMPORARY -->
-
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>

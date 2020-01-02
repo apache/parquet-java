@@ -34,7 +34,7 @@ public class SnappyDecompressor implements Decompressor {
   private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
 
   private boolean finished;
-  
+
   /**
    * Fills specified buffer with uncompressed data. Returns actual number
    * of bytes of uncompressed data. A return value of 0 indicates that
@@ -61,7 +61,9 @@ public class SnappyDecompressor implements Decompressor {
       // There is compressed input, decompress it now.
       int decompressedSize = Snappy.uncompressedLength(inputBuffer);
       if (decompressedSize > outputBuffer.capacity()) {
+        ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(decompressedSize);
+        CleanUtil.cleanDirectBuffer(oldBuffer);
       }
 
       // Reset the previous outputBuffer (i.e. set position to 0)
@@ -99,10 +101,12 @@ public class SnappyDecompressor implements Decompressor {
     SnappyUtil.validateBuffer(buffer, off, len);
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
-      ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
+      final ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
       inputBuffer.rewind();
       newBuffer.put(inputBuffer);
-      inputBuffer = newBuffer;      
+      final ByteBuffer oldBuffer = inputBuffer;
+      inputBuffer = newBuffer;
+      CleanUtil.cleanDirectBuffer(oldBuffer);
     } else {
       inputBuffer.limit(inputBuffer.position() + len);
     }
@@ -111,7 +115,8 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public void end() {
-    // No-op		
+    CleanUtil.cleanDirectBuffer(inputBuffer);
+    CleanUtil.cleanDirectBuffer(outputBuffer);
   }
 
   @Override

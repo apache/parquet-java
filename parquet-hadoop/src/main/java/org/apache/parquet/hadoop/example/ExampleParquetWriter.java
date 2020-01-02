@@ -25,6 +25,7 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.MessageType;
 import java.io.IOException;
 import java.util.HashMap;
@@ -44,6 +45,17 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
    * @return a {@link Builder} to create a {@link ParquetWriter}
    */
   public static Builder builder(Path file) {
+    return new Builder(file);
+  }
+
+  /**
+   * Creates a Builder for configuring ParquetWriter with the example object
+   * model. THIS IS AN EXAMPLE ONLY AND NOT INTENDED FOR USE.
+   *
+   * @param file the output file to create
+   * @return a {@link Builder} to create a {@link ParquetWriter}
+   */
+  public static Builder builder(OutputFile file) {
     return new Builder(file);
   }
 
@@ -75,6 +87,10 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
     private Map<String, String> extraMetaData = new HashMap<String, String>();
 
     private Builder(Path file) {
+      super(file);
+    }
+
+    private Builder(OutputFile file) {
       super(file);
     }
 

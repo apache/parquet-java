@@ -60,12 +60,13 @@ import java.util.Set;
 
 public class AvroJson {
 
-  private static final JsonFactory FACTORY = new JsonFactory();
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final JsonFactory FACTORY = new JsonFactory(MAPPER);
 
   public static Iterator<JsonNode> parser(final InputStream stream) {
     try {
+      // Don't close the parser until the iterator has been consumed
       JsonParser parser = FACTORY.createParser(stream);
-      parser.setCodec(new ObjectMapper());
       return parser.readValuesAs(JsonNode.class);
     } catch (IOException e) {
       throw new RuntimeIOException("Cannot read from stream", e);
@@ -77,12 +78,9 @@ public class AvroJson {
   }
 
   public static <T> T parse(String json, Class<T> returnType) {
-    ObjectMapper mapper = new ObjectMapper();
     try {
-      return mapper.readValue(json, returnType);
-    } catch (JsonParseException e) {
-      throw new IllegalArgumentException("Invalid JSON", e);
-    } catch (JsonMappingException e) {
+      return MAPPER.readValue(json, returnType);
+    } catch (JsonParseException | JsonMappingException e) {
       throw new IllegalArgumentException("Invalid JSON", e);
     } catch (IOException e) {
       throw new RuntimeIOException("Cannot initialize JSON parser", e);
@@ -94,12 +92,9 @@ public class AvroJson {
   }
 
   public static <T> T parse(InputStream json, Class<T> returnType) {
-    ObjectMapper mapper = new ObjectMapper();
     try {
-      return mapper.readValue(json, returnType);
-    } catch (JsonParseException e) {
-      throw new IllegalArgumentException("Invalid JSON stream", e);
-    } catch (JsonMappingException e) {
+      return MAPPER.readValue(json, returnType);
+    } catch (JsonParseException | JsonMappingException e) {
       throw new IllegalArgumentException("Invalid JSON stream", e);
     } catch (IOException e) {
       throw new RuntimeIOException("Cannot initialize JSON parser", e);
@@ -309,7 +304,7 @@ public class AvroJson {
           // check that each field is present or has a default
           boolean missingField = false;
           for (Schema.Field field : schema.getFields()) {
-            if (!datum.has(field.name()) && field.defaultValue() == null) {
+            if (!datum.has(field.name()) && field.defaultVal() == null) {
               missingField = true;
               break;
             }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -38,6 +38,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
+import static java.util.Optional.ofNullable;
 
 /**
  * Implementation of {@link WriteSupport} for writing Protocol Buffers.
@@ -216,15 +219,21 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     private GroupType getGroupType(Type type) {
-      if (type.getOriginalType() == OriginalType.LIST) {
-        return type.asGroupType().getType("list").asGroupType().getType("element").asGroupType();
+      LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+      if (logicalTypeAnnotation == null) {
+        return type.asGroupType();
       }
+      return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<GroupType>() {
+        @Override
+        public Optional<GroupType> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
+          return ofNullable(type.asGroupType().getType("list").asGroupType().getType("element").asGroupType());
+        }
 
-      if (type.getOriginalType() == OriginalType.MAP) {
-        return type.asGroupType().getType("key_value").asGroupType().getType("value").asGroupType();
-      }
-
-      return type.asGroupType();
+        @Override
+        public Optional<GroupType> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
+          return ofNullable(type.asGroupType().getType("key_value").asGroupType().getType("value").asGroupType());
+        }
+      }).orElse(type.asGroupType());
     }
 
     private MapWriter createMapWriter(FieldDescriptor fieldDescriptor, Type type) {

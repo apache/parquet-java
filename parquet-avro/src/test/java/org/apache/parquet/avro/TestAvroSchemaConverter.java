@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,6 +20,7 @@ package org.apache.parquet.avro;
 
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
+import org.apache.avro.JsonProperties;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
@@ -28,7 +29,6 @@ import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.codehaus.jackson.node.NullNode;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -37,6 +37,10 @@ import java.util.Collections;
 
 import static org.apache.avro.Schema.Type.INT;
 import static org.apache.avro.Schema.Type.LONG;
+import static org.apache.parquet.avro.AvroTestUtil.field;
+import static org.apache.parquet.avro.AvroTestUtil.optionalField;
+import static org.apache.parquet.avro.AvroTestUtil.primitive;
+import static org.apache.parquet.avro.AvroTestUtil.record;
 import static org.apache.parquet.schema.OriginalType.DATE;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MICROS;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
@@ -292,8 +296,8 @@ public class TestAvroSchemaConverter {
   public void testOptionalFields() throws Exception {
     Schema schema = Schema.createRecord("record1", null, null, false);
     Schema optionalInt = optional(Schema.create(INT));
-    schema.setFields(Arrays.asList(
-        new Schema.Field("myint", optionalInt, null, NullNode.getInstance())
+    schema.setFields(Collections.singletonList(
+      new Schema.Field("myint", optionalInt, null, JsonProperties.NULL_VALUE)
     ));
     testRoundTripConversion(
         schema,
@@ -347,7 +351,7 @@ public class TestAvroSchemaConverter {
         Schema.create(INT),
         Schema.create(Schema.Type.FLOAT)));
     schema.setFields(Arrays.asList(
-        new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())));
+        new Schema.Field("myunion", multipleTypes, null, JsonProperties.NULL_VALUE)));
 
     // Avro union is modelled using optional data members of the different
     // types. This does not translate back into an Avro union
@@ -366,8 +370,8 @@ public class TestAvroSchemaConverter {
     Schema innerRecord = Schema.createRecord("element", null, null, false);
     Schema optionalString = optional(Schema.create(Schema.Type.STRING));
     innerRecord.setFields(Lists.newArrayList(
-        new Schema.Field("s1", optionalString, null, NullNode.getInstance()),
-        new Schema.Field("s2", optionalString, null, NullNode.getInstance())
+        new Schema.Field("s1", optionalString, null, JsonProperties.NULL_VALUE),
+        new Schema.Field("s2", optionalString, null, JsonProperties.NULL_VALUE)
     ));
     Schema schema = Schema.createRecord("HasArray", null, null, false);
     schema.setFields(Lists.newArrayList(
@@ -393,8 +397,8 @@ public class TestAvroSchemaConverter {
     Schema innerRecord = Schema.createRecord("InnerRecord", null, null, false);
     Schema optionalString = optional(Schema.create(Schema.Type.STRING));
     innerRecord.setFields(Lists.newArrayList(
-        new Schema.Field("s1", optionalString, null, NullNode.getInstance()),
-        new Schema.Field("s2", optionalString, null, NullNode.getInstance())
+        new Schema.Field("s1", optionalString, null, JsonProperties.NULL_VALUE),
+        new Schema.Field("s2", optionalString, null, JsonProperties.NULL_VALUE)
     ));
     Schema schema = Schema.createRecord("HasArray", null, null, false);
     schema.setFields(Lists.newArrayList(
@@ -420,7 +424,7 @@ public class TestAvroSchemaConverter {
         Schema.create(INT))));
     Schema schema = Schema.createRecord("AvroCompatListInList", null, null, false);
     schema.setFields(Lists.newArrayList(
-        new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
+        new Schema.Field("listOfLists", listOfLists, null, JsonProperties.NULL_VALUE)
     ));
     System.err.println("Avro schema: " + schema.toString(true));
 
@@ -449,7 +453,7 @@ public class TestAvroSchemaConverter {
         Schema.create(INT))));
     Schema schema = Schema.createRecord("ThriftCompatListInList", null, null, false);
     schema.setFields(Lists.newArrayList(
-        new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
+        new Schema.Field("listOfLists", listOfLists, null, JsonProperties.NULL_VALUE)
     ));
     System.err.println("Avro schema: " + schema.toString(true));
 
@@ -482,7 +486,7 @@ public class TestAvroSchemaConverter {
         Schema.create(INT))));
     Schema schema = Schema.createRecord("UnknownTwoLevelListInList", null, null, false);
     schema.setFields(Lists.newArrayList(
-        new Schema.Field("listOfLists", listOfLists, null, NullNode.getInstance())
+        new Schema.Field("listOfLists", listOfLists, null, JsonProperties.NULL_VALUE)
     ));
     System.err.println("Avro schema: " + schema.toString(true));
 
@@ -599,12 +603,7 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIME_MICROS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
   }
 
@@ -616,7 +615,7 @@ public class TestAvroSchemaConverter {
 
     testRoundTripConversion(expected,
         "message myrecord {\n" +
-            "  required int32 time (TIME_MILLIS);\n" +
+            "  required int32 time (TIME(MILLIS,true));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
@@ -629,12 +628,7 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIME_MICROS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
   }
 
@@ -646,7 +640,7 @@ public class TestAvroSchemaConverter {
 
     testRoundTripConversion(expected,
         "message myrecord {\n" +
-            "  required int64 time (TIME_MICROS);\n" +
+            "  required int64 time (TIME(MICROS,true));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
@@ -659,12 +653,7 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIME_MICROS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
   }
 
@@ -676,7 +665,7 @@ public class TestAvroSchemaConverter {
 
     testRoundTripConversion(expected,
         "message myrecord {\n" +
-            "  required int64 timestamp (TIMESTAMP_MILLIS);\n" +
+            "  required int64 timestamp (TIMESTAMP(MILLIS,true));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
@@ -689,12 +678,7 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIMESTAMP_MILLIS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
   }
 
@@ -706,7 +690,7 @@ public class TestAvroSchemaConverter {
 
     testRoundTripConversion(expected,
         "message myrecord {\n" +
-            "  required int64 timestamp (TIMESTAMP_MICROS);\n" +
+            "  required int64 timestamp (TIMESTAMP(MICROS,true));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
@@ -719,13 +703,67 @@ public class TestAvroSchemaConverter {
       }
 
       assertThrows("Should not allow TIMESTAMP_MICROS with " + primitive,
-          IllegalArgumentException.class, new Runnable() {
-            @Override
-            public void run() {
-              new AvroSchemaConverter().convert(message(type));
-            }
-          });
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
     }
+  }
+
+  @Test
+  public void testReuseNameInNestedStructure() throws Exception {
+    Schema innerA1 = record("a1", "a12",
+      field("a4", primitive(Schema.Type.FLOAT)));
+
+    Schema outerA1 = record("a1",
+      field("a2", primitive(Schema.Type.FLOAT)),
+      optionalField("a1", innerA1));
+    Schema schema = record("Message",
+      optionalField("a1", outerA1));
+
+    String parquetSchema = "message Message {\n" +
+        "      optional group a1 {\n" +
+        "        required float a2;\n" +
+        "        optional group a1 {\n" +
+        "          required float a4;\n"+
+        "         }\n" +
+        "      }\n" +
+        "}\n";
+
+    testParquetToAvroConversion(schema, parquetSchema);
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema, parquetSchema);
+  }
+
+  @Test
+  public void testReuseNameInNestedStructureAtSameLevel() throws Exception {
+    Schema a2 = record("a2",
+      field("a4", primitive(Schema.Type.FLOAT)));
+    Schema a22 = record("a2", "a22",
+      field("a4", primitive(Schema.Type.FLOAT)),
+      field("a5", primitive(Schema.Type.FLOAT)));
+
+    Schema a1 = record("a1",
+      optionalField("a2", a2));
+    Schema a3 = record("a3",
+      optionalField("a2", a22));
+
+    Schema schema = record("Message",
+      optionalField("a1", a1),
+      optionalField("a3", a3));
+
+    String parquetSchema = "message Message {\n" +
+      "      optional group a1 {\n" +
+      "        optional group a2 {\n" +
+      "          required float a4;\n"+
+      "         }\n" +
+      "      }\n" +
+      "      optional group a3 {\n" +
+      "        optional group a2 {\n" +
+      "          required float a4;\n"+
+      "          required float a5;\n"+
+      "         }\n" +
+      "      }\n" +
+      "}\n";
+
+    testParquetToAvroConversion(schema, parquetSchema);
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema, parquetSchema);
   }
 
   public static Schema optional(Schema original) {

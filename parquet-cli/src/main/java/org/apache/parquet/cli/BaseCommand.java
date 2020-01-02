@@ -20,7 +20,6 @@
 package org.apache.parquet.cli;
 
 import com.beust.jcommander.internal.Lists;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Resources;
@@ -51,17 +50,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
 public abstract class BaseCommand implements Command, Configurable {
-
-  @VisibleForTesting
-  static final Charset UTF8 = Charset.forName("utf8");
 
   private static final String RESOURCE_URI_SCHEME = "resource";
   private static final String STDIN_AS_SOURCE = "stdin";
@@ -103,7 +100,7 @@ public abstract class BaseCommand implements Command, Configurable {
     } else {
       FSDataOutputStream outgoing = create(filename);
       try {
-        outgoing.write(content.getBytes(UTF8));
+        outgoing.write(content.getBytes(StandardCharsets.UTF_8));
       } finally {
         outgoing.close();
       }
@@ -179,12 +176,13 @@ public abstract class BaseCommand implements Command, Configurable {
    * @throws IOException if there is an error creating a qualified URI
    */
   public URI qualifiedURI(String filename) throws IOException {
-    URI fileURI = URI.create(filename);
-    if (RESOURCE_URI_SCHEME.equals(fileURI.getScheme())) {
-      return fileURI;
-    } else {
-      return qualifiedPath(filename).toUri();
-    }
+    try {
+      URI fileURI = new URI(filename);
+      if (RESOURCE_URI_SCHEME.equals(fileURI.getScheme())) {
+        return fileURI;
+      }
+    } catch (URISyntaxException ignore) {}
+    return qualifiedPath(filename).toUri();
   }
 
   /**
@@ -228,7 +226,9 @@ public abstract class BaseCommand implements Command, Configurable {
 
   @Override
   public Configuration getConf() {
-    return conf;
+    // In case conf is null, we'll return an empty configuration
+    // this can be on a local development machine
+    return null != conf ? conf : new Configuration();
   }
 
   /**
@@ -396,5 +396,4 @@ public abstract class BaseCommand implements Command, Configurable {
           "Could not determine file format of %s.", source));
     }
   }
-
 }
