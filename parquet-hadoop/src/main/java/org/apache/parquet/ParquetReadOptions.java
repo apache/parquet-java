@@ -29,6 +29,7 @@ import org.apache.parquet.hadoop.util.HadoopCodecs;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
@@ -134,11 +135,9 @@ public class ParquetReadOptions {
   }
 
   public boolean isEnabled(String property, boolean defaultValue) {
-    if (properties.containsKey(property)) {
-      return Boolean.valueOf(properties.get(property));
-    } else {
-      return defaultValue;
-    }
+    Optional<String> propValue = Optional.ofNullable(properties.get(property));
+    return propValue.isPresent() ? Boolean.valueOf(propValue.get())
+        : defaultValue;
   }
 
   public static Builder builder() {
