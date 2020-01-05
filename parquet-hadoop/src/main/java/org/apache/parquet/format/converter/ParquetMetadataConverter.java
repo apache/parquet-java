@@ -1276,7 +1276,7 @@ public class ParquetMetadataConverter {
   }
 
   private static ColumnPath getPath(ColumnMetaData metaData) {
-    String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
+    String[] path = metaData.path_in_schema.toArray(new String[0]);
     return ColumnPath.get(path);
   }
 

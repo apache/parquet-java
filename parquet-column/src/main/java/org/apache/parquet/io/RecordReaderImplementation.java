@@ -249,7 +249,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordRootConverter = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
-    PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
+    PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[0]);
     columnReaders = new ColumnReader[leaves.length];
     int[][] nextColumnIdxForRepLevel = new int[leaves.length][];
     int[][] levelToClose = new int[leaves.length][];
