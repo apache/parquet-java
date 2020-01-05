@@ -100,7 +100,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public boolean isSmallerThan(long size) {
-    return !hasNonNullValue() || ((min.length() + max.length()) < size);
+    return !hasNonNullValue() || (size - min.length() - max.length() > 0L);
   }
 
   public boolean isSmallerThanWithTruncation(long size, int truncationLength) {
@@ -111,7 +111,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     int minTruncateLength = Math.min(min.length(), truncationLength);
     int maxTruncateLength = Math.min(max.length(), truncationLength);
 
-    return minTruncateLength + maxTruncateLength < size;
+    return size - minTruncateLength - maxTruncateLength > 0L;
   }
 
   /**
