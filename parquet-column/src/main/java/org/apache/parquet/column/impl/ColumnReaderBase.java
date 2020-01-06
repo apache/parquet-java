@@ -165,9 +165,11 @@ abstract class ColumnReaderBase implements ColumnReader {
   private void bindToDictionary(final Dictionary dictionary) {
     binding =
         new Binding() {
+          @Override
           void read() {
             dictionaryId = dataColumn.readValueDictionaryId();
           }
+          @Override
           public void skip() {
             dataColumn.skip();
           }
@@ -175,27 +177,35 @@ abstract class ColumnReaderBase implements ColumnReader {
           void skip(int n) {
             dataColumn.skip(n);
           }
+          @Override
           public int getDictionaryId() {
             return dictionaryId;
           }
+          @Override
           void writeValue() {
             converter.addValueFromDictionary(dictionaryId);
           }
+          @Override
           public int getInteger() {
             return dictionary.decodeToInt(dictionaryId);
           }
+          @Override
           public boolean getBoolean() {
             return dictionary.decodeToBoolean(dictionaryId);
           }
+          @Override
           public long getLong() {
             return dictionary.decodeToLong(dictionaryId);
           }
+          @Override
           public Binary getBinary() {
             return dictionary.decodeToBinary(dictionaryId);
           }
+          @Override
           public float getFloat() {
             return dictionary.decodeToFloat(dictionaryId);
           }
+          @Override
           public double getDouble() {
             return dictionary.decodeToDouble(dictionaryId);
           }
@@ -208,9 +218,11 @@ abstract class ColumnReaderBase implements ColumnReader {
       public Binding convertFLOAT(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           float current;
+          @Override
           void read() {
             current = dataColumn.readFloat();
           }
+          @Override
           public void skip() {
             current = 0;
             dataColumn.skip();
@@ -220,9 +232,11 @@ abstract class ColumnReaderBase implements ColumnReader {
             current = 0;
             dataColumn.skip(n);
           }
+          @Override
           public float getFloat() {
             return current;
           }
+          @Override
           void writeValue() {
             converter.addFloat(current);
           }
@@ -232,9 +246,11 @@ abstract class ColumnReaderBase implements ColumnReader {
       public Binding convertDOUBLE(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           double current;
+          @Override
           void read() {
             current = dataColumn.readDouble();
           }
+          @Override
           public void skip() {
             current = 0;
             dataColumn.skip();
@@ -244,9 +260,11 @@ abstract class ColumnReaderBase implements ColumnReader {
             current = 0;
             dataColumn.skip(n);
           }
+          @Override
           public double getDouble() {
             return current;
           }
+          @Override
           void writeValue() {
             converter.addDouble(current);
           }
@@ -256,9 +274,11 @@ abstract class ColumnReaderBase implements ColumnReader {
       public Binding convertINT32(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           int current;
+          @Override
           void read() {
             current = dataColumn.readInteger();
           }
+          @Override
           public void skip() {
             current = 0;
             dataColumn.skip();
@@ -272,6 +292,7 @@ abstract class ColumnReaderBase implements ColumnReader {
           public int getInteger() {
             return current;
           }
+          @Override
           void writeValue() {
             converter.addInt(current);
           }
@@ -281,9 +302,11 @@ abstract class ColumnReaderBase implements ColumnReader {
       public Binding convertINT64(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           long current;
+          @Override
           void read() {
             current = dataColumn.readLong();
           }
+          @Override
           public void skip() {
             current = 0;
             dataColumn.skip();
@@ -297,6 +320,7 @@ abstract class ColumnReaderBase implements ColumnReader {
           public long getLong() {
             return current;
           }
+          @Override
           void writeValue() {
             converter.addLong(current);
           }
@@ -315,9 +339,11 @@ abstract class ColumnReaderBase implements ColumnReader {
       public Binding convertBOOLEAN(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           boolean current;
+          @Override
           void read() {
             current = dataColumn.readBoolean();
           }
+          @Override
           public void skip() {
             current = false;
             dataColumn.skip();
@@ -331,6 +357,7 @@ abstract class ColumnReaderBase implements ColumnReader {
           public boolean getBoolean() {
             return current;
           }
+          @Override
           void writeValue() {
             converter.addBoolean(current);
           }
@@ -340,9 +367,11 @@ abstract class ColumnReaderBase implements ColumnReader {
       public Binding convertBINARY(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           Binary current;
+          @Override
           void read() {
             current = dataColumn.readBytes();
           }
+          @Override
           public void skip() {
             current = null;
             dataColumn.skip();
@@ -356,6 +385,7 @@ abstract class ColumnReaderBase implements ColumnReader {
           public Binary getBinary() {
             return current;
           }
+          @Override
           void writeValue() {
             converter.addBinary(current);
           }

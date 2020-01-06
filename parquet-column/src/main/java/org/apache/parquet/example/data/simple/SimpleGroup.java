@@ -38,7 +38,7 @@ public class SimpleGroup extends Group {
     this.schema = schema;
     this.data = new List[schema.getFields().size()];
     for (int i = 0; i < schema.getFieldCount(); i++) {
-       this.data[i] = new ArrayList<Object>();
+       this.data[i] = new ArrayList<>();
     }
   }
 

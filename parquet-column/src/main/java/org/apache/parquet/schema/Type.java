@@ -20,7 +20,6 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.parquet.io.InvalidRecordException;
@@ -302,7 +301,7 @@ abstract public class Type {
         && eqOrBothNull(repetition, other.repetition)
         && eqOrBothNull(id, other.id)
         && eqOrBothNull(logicalTypeAnnotation, other.logicalTypeAnnotation);
-  };
+  }
 
   @Override
   public boolean equals(Object other) {

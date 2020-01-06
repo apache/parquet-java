@@ -107,6 +107,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
   abstract ColumnWriterBase createColumnWriter(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props);
 
+  @Override
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
     return columnWriterProvider.getColumnWriter(path);
   }
@@ -155,6 +156,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     }
   }
 
+  @Override
   public String memUsageString() {
     StringBuilder b = new StringBuilder("Store {\n");
     for (ColumnWriterBase memColumn : columns.values()) {
@@ -205,7 +207,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       long rowsToFillPage =
           usedMem == 0 ?
               props.getMaxRowCountForPageSizeCheck()
-              : (long) ((float) rows) / usedMem * remainingMem;
+              : (long) (rows) / usedMem * remainingMem;
       if (rowsToFillPage < minRecordToWait) {
         minRecordToWait = rowsToFillPage;
       }

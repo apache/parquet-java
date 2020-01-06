@@ -25,7 +25,6 @@ public abstract class BenchMarkTest {
 
   protected void runWriteTest(ValuesWriter writer){
     int pageCount = 10;
-    double avg = 0.0;
     for (int i = 0; i < pageCount ; i++) {
       writer.reset();
       long startTime = System.nanoTime();
@@ -34,7 +33,6 @@ public abstract class BenchMarkTest {
       }
       long endTime = System.nanoTime();
       long duration = endTime - startTime;
-      avg += (double) duration / pageCount;
     }
 
     System.out.println("size is "+writer.getBytes().size());

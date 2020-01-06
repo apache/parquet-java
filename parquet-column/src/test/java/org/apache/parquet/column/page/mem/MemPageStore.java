@@ -37,7 +37,7 @@ import java.util.Map;
 public class MemPageStore implements PageReadStore, PageWriteStore {
   private static final Logger LOG = LoggerFactory.getLogger(MemPageStore.class);
 
-  private Map<ColumnDescriptor, MemPageWriter> pageWriters = new HashMap<ColumnDescriptor, MemPageWriter>();
+  private Map<ColumnDescriptor, MemPageWriter> pageWriters = new HashMap<>();
 
   private long rowCount;
 
@@ -62,7 +62,7 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
     if (pageWriter == null) {
       throw new UnknownColumnException(descriptor);
     }
-    List<DataPage> pages = new ArrayList<DataPage>(pageWriter.getPages());
+    List<DataPage> pages = new ArrayList<>(pageWriter.getPages());
     LOG.debug("initialize page reader with {} values and {} pages", pageWriter.getTotalValueCount(), pages.size());
     return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage());
   }

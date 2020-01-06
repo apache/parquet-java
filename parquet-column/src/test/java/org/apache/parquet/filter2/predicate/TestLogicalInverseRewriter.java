@@ -58,7 +58,7 @@ public class TestLogicalInverseRewriter {
           and(gt(doubleColumn, 12.0),
               or(
                   or(eq(intColumn, 7), notEq(intColumn, 17)),
-                  new LogicalNotUserDefined<Integer, DummyUdp>(userDefined(intColumn, DummyUdp.class)))),
+                  new LogicalNotUserDefined<>(userDefined(intColumn, DummyUdp.class)))),
           or(gt(doubleColumn, 100.0), lt(intColumn, 77)));
 
   private static void assertNoOp(FilterPredicate p) {
@@ -85,7 +85,7 @@ public class TestLogicalInverseRewriter {
     assertEquals(gt(intColumn, 17), rewrite(not(ltEq(intColumn, 17))));
     assertEquals(ltEq(intColumn, 17), rewrite(not(gt(intColumn, 17))));
     assertEquals(lt(intColumn, 17), rewrite(not(gtEq(intColumn, 17))));
-    assertEquals(new LogicalNotUserDefined<Integer, DummyUdp>(ud), rewrite(not(ud)));
+    assertEquals(new LogicalNotUserDefined<>(ud), rewrite(not(ud)));
 
     FilterPredicate notedAnd = not(and(eq(intColumn, 17), eq(doubleColumn, 12.0)));
     FilterPredicate distributedAnd = or(notEq(intColumn, 17), notEq(doubleColumn, 12.0));
