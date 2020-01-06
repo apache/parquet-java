@@ -20,6 +20,8 @@
 package org.apache.parquet;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.parquet.glob.GlobExpander;
@@ -27,6 +29,58 @@ import org.apache.parquet.glob.WildcardPath;
 
 public final class Strings {
   private Strings() { }
+
+  /**
+   * Join an Iterable of Strings into a single string with a delimiter.
+   * For example, join(Arrays.asList("foo","","bar","x"), "|") would return
+   * "foo||bar|x"
+   *
+   * @param s an iterable of strings
+   * @param on the delimiter
+   * @return a single joined string
+   * @deprecated Use {@link String#join(CharSequence, Iterable)}
+   */
+  @Deprecated
+  public static String join(Iterable<String> s, String on) {
+    return join(s.iterator(), on);
+  }
+
+  /**
+   * Join an Iterator of Strings into a single string with a delimiter.
+   * For example, join(Arrays.asList("foo","","bar","x"), "|") would return
+   * "foo||bar|x"
+   *
+   * @param iter an iterator of strings
+   * @param on the delimiter
+   * @return a single joined string
+   * @deprecated Use {@link String#join(CharSequence, Iterable)}
+   */
+  @Deprecated
+  public static String join(Iterator<String> iter, String on) {
+    StringBuilder sb = new StringBuilder();
+    while (iter.hasNext()) {
+      sb.append(iter.next());
+      if (iter.hasNext()) {
+        sb.append(on);
+      }
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Join an Array of Strings into a single string with a delimiter.
+   * For example, join(new String[] {"foo","","bar","x"}, "|") would return
+   * "foo||bar|x"
+   *
+   * @param s an iterable of strings
+   * @param on the delimiter
+   * @return a single joined string
+   * @deprecated Use {@link String#join(CharSequence, Iterable)}
+   */
+  @Deprecated
+  public static String join(String[] s, String on) {
+    return join(Arrays.asList(s), on);
+  }
 
   /**
    * Returns true if s.isEmpty() or s == null
