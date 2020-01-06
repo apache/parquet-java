@@ -28,7 +28,7 @@ public class GetClassLoader implements PrivilegedAction<ClassLoader> {
   private final URL[] urls;
 
   public GetClassLoader(List<URL> urls) {
-    this.urls = urls.toArray(new URL[urls.size()]);
+    this.urls = urls.toArray(new URL[0]);
   }
 
   @Override

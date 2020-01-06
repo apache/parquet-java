@@ -95,3 +95,7 @@ struct StructWithExtraField {
   3: required Phone extraPhone,
   6: required Phone phone
 }
+
+struct TestLogicalType {
+  1: required i16 test_i16
+}

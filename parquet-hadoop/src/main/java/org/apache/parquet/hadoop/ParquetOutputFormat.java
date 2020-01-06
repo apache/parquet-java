@@ -502,10 +502,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (writeSupport != null) return writeSupport;
     Class<?> writeSupportClass = getWriteSupportClass(configuration);
     try {
-      return (WriteSupport<T>)Objects.requireNonNull(writeSupportClass, "writeSupportClass").newInstance();
-    } catch (InstantiationException e) {
-      throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
-    } catch (IllegalAccessException e) {
+      return (WriteSupport<T>) Objects
+          .requireNonNull(writeSupportClass, "writeSupportClass").newInstance();
+    } catch (InstantiationException | IllegalAccessException e) {
       throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
     }
   }

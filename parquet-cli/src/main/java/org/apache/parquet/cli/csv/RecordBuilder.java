@@ -39,7 +39,7 @@ class RecordBuilder<E> {
     this.recordClass = recordClass;
 
     // initialize the index and field arrays
-    fields = schema.getFields().toArray(new Schema.Field[schema.getFields().size()]);
+    fields = schema.getFields().toArray(new Schema.Field[0]);
     indexes = new int[fields.length];
 
     if (header != null) {

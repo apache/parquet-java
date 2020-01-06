@@ -399,9 +399,7 @@ public final class Operators {
     public U getUserDefinedPredicate() {
       try {
         return udpClass.newInstance();
-      } catch (InstantiationException e) {
-        throw new RuntimeException(String.format(INSTANTIATION_ERROR_MESSAGE, udpClass), e);
-      } catch (IllegalAccessException e) {
+      } catch (InstantiationException | IllegalAccessException e) {
         throw new RuntimeException(String.format(INSTANTIATION_ERROR_MESSAGE, udpClass), e);
       }
     }

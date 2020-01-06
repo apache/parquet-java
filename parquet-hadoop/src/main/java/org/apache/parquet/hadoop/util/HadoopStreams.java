@@ -54,10 +54,7 @@ public class HadoopStreams {
         byteBufferReadableClass.isInstance(stream.getWrappedStream())) {
       try {
         return h2SeekableConstructor.newInstance(stream);
-      } catch (InstantiationException e) {
-        LOG.warn("Could not instantiate H2SeekableInputStream, falling back to byte array reads", e);
-        return new H1SeekableInputStream(stream);
-      } catch (IllegalAccessException e) {
+      } catch (InstantiationException | IllegalAccessException e) {
         LOG.warn("Could not instantiate H2SeekableInputStream, falling back to byte array reads", e);
         return new H1SeekableInputStream(stream);
       } catch (InvocationTargetException e) {
@@ -72,9 +69,7 @@ public class HadoopStreams {
   private static Class<?> getReadableClass() {
     try {
       return Class.forName("org.apache.hadoop.fs.ByteBufferReadable");
-    } catch (ClassNotFoundException e) {
-      return null;
-    } catch (NoClassDefFoundError e) {
+    } catch (ClassNotFoundException | NoClassDefFoundError e) {
       return null;
     }
   }
@@ -84,9 +79,7 @@ public class HadoopStreams {
     try {
       return (Class<SeekableInputStream>) Class.forName(
           "org.apache.parquet.hadoop.util.H2SeekableInputStream");
-    } catch (ClassNotFoundException e) {
-      return null;
-    } catch (NoClassDefFoundError e) {
+    } catch (ClassNotFoundException | NoClassDefFoundError e) {
       return null;
     }
   }

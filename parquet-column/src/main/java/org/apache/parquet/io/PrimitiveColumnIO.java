@@ -52,7 +52,7 @@ public class PrimitiveColumnIO extends ColumnIO {
         type,
         getRepetitionLevel(),
         getDefinitionLevel());
-    this.path = path.toArray(new ColumnIO[path.size()]);
+    this.path = path.toArray(new ColumnIO[0]);
   }
 
   @Override

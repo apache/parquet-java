@@ -57,19 +57,13 @@ public class EncodingStats {
   }
 
   public int getNumDictionaryPagesEncodedAs(Encoding enc) {
-    if (dictStats.containsKey(enc)) {
-      return dictStats.get(enc);
-    } else {
-      return 0;
-    }
+    final Integer i = dictStats.get(enc);
+    return (i == null) ? 0 : i.intValue();
   }
 
   public int getNumDataPagesEncodedAs(Encoding enc) {
-    if (dataStats.containsKey(enc)) {
-      return dataStats.get(enc);
-    } else {
-      return 0;
-    }
+    final Integer i = dataStats.get(enc);
+    return (i == null) ? 0 : i.intValue();
   }
 
   public boolean hasDictionaryPages() {

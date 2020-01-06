@@ -92,9 +92,7 @@ public class MemoryManager {
    * @param writer the writer that has been closed
    */
   synchronized void removeWriter(InternalParquetRecordWriter writer) {
-    if (writerList.containsKey(writer)) {
-      writerList.remove(writer);
-    }
+    writerList.remove(writer);
     if (!writerList.isEmpty()) {
       updateAllocation();
     }

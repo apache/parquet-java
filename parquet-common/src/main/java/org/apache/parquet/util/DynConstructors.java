@@ -47,9 +47,7 @@ public class DynConstructors {
     public C newInstanceChecked(Object... args) throws Exception {
       try {
         return ctor.newInstance(args);
-      } catch (InstantiationException e) {
-        throw e;
-      } catch (IllegalAccessException e) {
+      } catch (InstantiationException | IllegalAccessException e) {
         throw e;
       } catch (InvocationTargetException e) {
         throwIfInstance(e.getCause(), Exception.class);
@@ -136,13 +134,11 @@ public class DynConstructors {
       try {
         Class<?> targetClass = Class.forName(className, true, loader);
         impl(targetClass, types);
-      } catch (NoClassDefFoundError e) {
+      } catch (NoClassDefFoundError | ClassNotFoundException e) {
         // cannot load this implementation
         problems.put(className, e);
-      } catch (ClassNotFoundException e) {
-        // not the right implementation
-        problems.put(className, e);
       }
+
       return this;
     }
 
@@ -176,11 +172,8 @@ public class DynConstructors {
       try {
         Class targetClass = Class.forName(className, true, loader);
         hiddenImpl(targetClass, types);
-      } catch (NoClassDefFoundError e) {
+      } catch (NoClassDefFoundError | ClassNotFoundException e) {
         // cannot load this implementation
-        problems.put(className, e);
-      } catch (ClassNotFoundException e) {
-        // not the right implementation
         problems.put(className, e);
       }
       return this;
@@ -196,11 +189,8 @@ public class DynConstructors {
         Constructor<T> hidden = targetClass.getDeclaredConstructor(types);
         AccessController.doPrivileged(new MakeAccessible(hidden));
         ctor = new Ctor<T>(hidden, targetClass);
-      } catch (SecurityException e) {
-        // unusable
-        problems.put(methodName(targetClass, types), e);
-      } catch (NoSuchMethodException e) {
-        // not the right implementation
+      } catch (NoSuchMethodException | SecurityException e) {
+        // unusable or not the right implementation
         problems.put(methodName(targetClass, types), e);
       }
       return this;
