@@ -20,7 +20,6 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.parquet.io.InvalidRecordException;

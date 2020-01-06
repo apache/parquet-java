@@ -38,7 +38,6 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
 
-import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
