@@ -21,8 +21,6 @@ package org.apache.parquet.internal.column.columnindex;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.junit.Test;
 
 /**
