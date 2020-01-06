@@ -40,8 +40,8 @@ public final class AndRecordFilter implements RecordFilter {
    * @return an unbound and filter
    */
   public static final UnboundRecordFilter and( final UnboundRecordFilter filter1, final UnboundRecordFilter filter2 ) {
-	Objects.requireNonNull(filter1, "filter1 cannot be null");
-	Objects.requireNonNull(filter2, "filter2 cannot be null");
+    Objects.requireNonNull(filter1, "filter1 cannot be null");
+    Objects.requireNonNull(filter2, "filter2 cannot be null");
     return new UnboundRecordFilter() {
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {
