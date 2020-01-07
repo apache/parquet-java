@@ -35,6 +35,7 @@ new_development_version="$3-SNAPSHOT"
 
 git tag -am "Release Apache Parquet $release_version" "$release_tag" "$rc_tag"
 mvn --batch-mode release:update-versions -DdevelopmentVersion="$new_development_version"
+mvn -pl . versions:set-property -Dproperty=previous.version -DnewVersion="$release_version"
 git commit -am 'Prepare for next development iteration'
 
 echo

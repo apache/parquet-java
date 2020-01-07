@@ -95,11 +95,6 @@
 
   <build>
     <plugins>
-      <!-- This module disables semver checks because it is not a public API.
-      <plugin>
-        <artifactId>maven-enforcer-plugin</artifactId>
-      </plugin>
-      -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
