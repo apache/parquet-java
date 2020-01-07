@@ -224,12 +224,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       ParquetProperties.DEFAULT_MAX_BLOOM_FILTER_BYTES);
   }
 
-  public static Set getBloomFilterColumns(Configuration conf) {
+  public static Set<String> getBloomFilterColumns(Configuration conf) {
     String columnNames = conf.get(BLOOM_FILTER_COLUMN_NAMES);
     if (columnNames != null) {
       return new HashSet<>(Arrays.asList(columnNames.split(",")));
     } else {
-      return new HashSet();
+      return new HashSet<>();
     }
   }
 
