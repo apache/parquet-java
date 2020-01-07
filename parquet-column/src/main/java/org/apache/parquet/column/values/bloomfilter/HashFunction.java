@@ -16,20 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.page;
+package org.apache.parquet.column.values.bloomfilter;
 
-import org.apache.parquet.column.ColumnDescriptor;
+import java.nio.ByteBuffer;
 
 /**
- * contains all the writers for the columns in the corresponding row group
+ * A interface contains a set of hash functions used by Bloom filter.
  */
-public interface PageWriteStore {
+public interface HashFunction {
 
   /**
-   *
-   * @param path the descriptor for the column
-   * @return the corresponding page writer
+   * compute the hash value for a byte array.
+   * @param input the input byte array
+   * @return a result of long value.
    */
-  PageWriter getPageWriter(ColumnDescriptor path);
+  long hashBytes(byte[] input);
 
+  /**
+   * compute the hash value for a ByteBuffer.
+   * @param input the input ByteBuffer
+   * @return a result of long value.
+   */
+  long hashByteBuffer(ByteBuffer input);
 }

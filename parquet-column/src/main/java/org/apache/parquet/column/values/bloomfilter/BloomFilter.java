@@ -29,9 +29,15 @@ import java.io.OutputStream;
  * a hash strategy and a Bloom filter algorithm.
  */
 public interface BloomFilter {
-  // Bloom filter Hash strategy.
+  /* Bloom filter Hash strategy.
+   *
+   * xxHash is an extremely fast hash algorithm, running at RAM speed limits. It successfully
+   * completes the SMHasher test suite which evaluates collision, dispersion and randomness qualities
+   * of hash functions. It shows good performance advantage from its benchmark result.
+   * (see https://github.com/Cyan4973/xxHash).
+   */
   enum HashStrategy {
-    MURMUR3_X64_128(0);
+    XXH64(0);
     HashStrategy(int value) {
       this.value = value;
     }
@@ -42,6 +48,15 @@ public interface BloomFilter {
   enum Algorithm {
     BLOCK(0);
     Algorithm(int value) {
+      this.value = value;
+    }
+    int value;
+  }
+
+  // Bloom filter compression.
+  enum Compression {
+    UNCOMPRESSED(0);
+    Compression(int value) {
       this.value = value;
     }
     int value;
