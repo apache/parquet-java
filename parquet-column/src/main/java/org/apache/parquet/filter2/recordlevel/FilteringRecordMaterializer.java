@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.filter2.recordlevel;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -97,5 +98,18 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   @Override
   public GroupConverter getRootConverter() {
     return rootConverter;
+  }
+
+  // The following two methods are kept for backward compatibility
+  public static List<Integer> getIndexFieldPathList(PrimitiveColumnIO c) {
+    return intArrayToList(c.getIndexFieldPath());
+  }
+
+  public static List<Integer> intArrayToList(int[] arr) {
+    List<Integer> list = new ArrayList<>(arr.length);
+    for (int i : arr) {
+      list.add(i);
+    }
+    return list;
   }
 }
