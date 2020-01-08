@@ -101,10 +101,12 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   }
 
   // The following two methods are kept for backward compatibility
+  @Deprecated
   public static List<Integer> getIndexFieldPathList(PrimitiveColumnIO c) {
     return intArrayToList(c.getIndexFieldPath());
   }
 
+  @Deprecated
   public static List<Integer> intArrayToList(int[] arr) {
     List<Integer> list = new ArrayList<>(arr.length);
     for (int i : arr) {
