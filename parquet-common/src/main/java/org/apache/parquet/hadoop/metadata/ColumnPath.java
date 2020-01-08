@@ -22,8 +22,6 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import org.apache.parquet.Strings;
-
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 public final class ColumnPath implements Iterable<String>, Serializable {
@@ -68,7 +66,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   }
 
   public String toDotString() {
-    return Strings.join(p, ".");
+    return String.join(".", p);
   }
 
   @Override
