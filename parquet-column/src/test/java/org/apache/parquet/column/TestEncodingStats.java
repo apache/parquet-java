@@ -39,9 +39,9 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.DELTA_BYTE_ARRAY);
     EncodingStats stats1 = builder.build();
 
-    Map<Encoding, Integer> expectedDictStats1 = new HashMap<Encoding, Integer>();
+    Map<Encoding, Integer> expectedDictStats1 = new HashMap<>();
     expectedDictStats1.put(Encoding.PLAIN, 1);
-    Map<Encoding, Integer> expectedDataStats1 = new HashMap<Encoding, Integer>();
+    Map<Encoding, Integer> expectedDataStats1 = new HashMap<>();
     expectedDataStats1.put(Encoding.RLE_DICTIONARY, 3);
     expectedDataStats1.put(Encoding.DELTA_BYTE_ARRAY, 2);
 
@@ -52,8 +52,8 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.PLAIN);
     EncodingStats stats2 = builder.build();
 
-    Map<Encoding, Integer> expectedDictStats2 = new HashMap<Encoding, Integer>();
-    Map<Encoding, Integer> expectedDataStats2 = new HashMap<Encoding, Integer>();
+    Map<Encoding, Integer> expectedDictStats2 = new HashMap<>();
+    Map<Encoding, Integer> expectedDataStats2 = new HashMap<>();
     expectedDataStats2.put(Encoding.PLAIN, 4);
 
     assertEquals("Dictionary stats should be correct", expectedDictStats2, stats2.dictStats);

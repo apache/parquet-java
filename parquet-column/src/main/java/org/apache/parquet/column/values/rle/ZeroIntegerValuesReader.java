@@ -29,6 +29,7 @@ import org.apache.parquet.column.values.ValuesReader;
  */
 public class ZeroIntegerValuesReader extends ValuesReader {
   
+  @Override
   public int readInteger() {
     return 0;
   }

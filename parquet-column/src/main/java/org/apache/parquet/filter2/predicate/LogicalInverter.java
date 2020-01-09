@@ -53,32 +53,32 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Eq<T> eq) {
-    return new NotEq<T>(eq.getColumn(), eq.getValue());
+    return new NotEq<>(eq.getColumn(), eq.getValue());
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(NotEq<T> notEq) {
-    return new Eq<T>(notEq.getColumn(), notEq.getValue());
+    return new Eq<>(notEq.getColumn(), notEq.getValue());
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Lt<T> lt) {
-    return new GtEq<T>(lt.getColumn(), lt.getValue());
+    return new GtEq<>(lt.getColumn(), lt.getValue());
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(LtEq<T> ltEq) {
-    return new Gt<T>(ltEq.getColumn(), ltEq.getValue());
+    return new Gt<>(ltEq.getColumn(), ltEq.getValue());
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Gt<T> gt) {
-    return new LtEq<T>(gt.getColumn(), gt.getValue());
+    return new LtEq<>(gt.getColumn(), gt.getValue());
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(GtEq<T> gtEq) {
-    return new Lt<T>(gtEq.getColumn(), gtEq.getValue());
+    return new Lt<>(gtEq.getColumn(), gtEq.getValue());
   }
 
   @Override
@@ -98,7 +98,7 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
 
   @Override
   public <T extends Comparable<T>,  U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
-    return new LogicalNotUserDefined<T, U>(udp);
+    return new LogicalNotUserDefined<>(udp);
   }
 
   @Override

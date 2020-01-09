@@ -33,8 +33,8 @@ public class ConverterConsumer extends RecordConsumer {
   private final GroupConverter root;
   private final MessageType schema;
 
-  private Deque<GroupConverter> path = new ArrayDeque<GroupConverter>();
-  private Deque<Type> typePath = new ArrayDeque<Type>();
+  private Deque<GroupConverter> path = new ArrayDeque<>();
+  private Deque<Type> typePath = new ArrayDeque<>();
   private GroupConverter current;
   private PrimitiveConverter currentPrimitive;
   private Type currentType;

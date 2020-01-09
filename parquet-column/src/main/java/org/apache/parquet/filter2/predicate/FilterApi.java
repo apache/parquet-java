@@ -104,7 +104,7 @@ public final class FilterApi {
    * @return an equals predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> Eq<T> eq(C column, T value) {
-    return new Eq<T>(column, value);
+    return new Eq<>(column, value);
   }
 
   /**
@@ -129,7 +129,7 @@ public final class FilterApi {
    * @return a not-equals predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> NotEq<T> notEq(C column, T value) {
-    return new NotEq<T>(column, value);
+    return new NotEq<>(column, value);
   }
 
   /**
@@ -147,7 +147,7 @@ public final class FilterApi {
    * @return a less-than predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> Lt<T> lt(C column, T value) {
-    return new Lt<T>(column, value);
+    return new Lt<>(column, value);
   }
 
   /**
@@ -165,7 +165,7 @@ public final class FilterApi {
    * @return a less-than-or-equal predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> LtEq<T> ltEq(C column, T value) {
-    return new LtEq<T>(column, value);
+    return new LtEq<>(column, value);
   }
 
   /**
@@ -183,7 +183,7 @@ public final class FilterApi {
    * @return a greater-than predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> Gt<T> gt(C column, T value) {
-    return new Gt<T>(column, value);
+    return new Gt<>(column, value);
   }
 
   /**
@@ -201,7 +201,7 @@ public final class FilterApi {
    * @return a greater-than-or-equal predicate for the given column and value
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> GtEq<T> gtEq(C column, T value) {
-    return new GtEq<T>(column, value);
+    return new GtEq<>(column, value);
   }
 
   /**
@@ -218,7 +218,7 @@ public final class FilterApi {
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T>>
     UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz) {
-    return new UserDefinedByClass<T, U>(column, clazz);
+    return new UserDefinedByClass<>(column, clazz);
   }
   
   /**
@@ -234,7 +234,7 @@ public final class FilterApi {
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable>
     UserDefined<T, U> userDefined(Column<T> column, U udp) {
-    return new UserDefinedByInstance<T, U>(column, udp);
+    return new UserDefinedByInstance<>(column, udp);
   }
 
   /**

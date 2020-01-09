@@ -37,8 +37,8 @@ import org.slf4j.LoggerFactory;
 public class GroupColumnIO extends ColumnIO {
   private static final Logger LOG = LoggerFactory.getLogger(GroupColumnIO.class);
 
-  private final Map<String, ColumnIO> childrenByName = new HashMap<String, ColumnIO>();
-  private final List<ColumnIO> children = new ArrayList<ColumnIO>();
+  private final Map<String, ColumnIO> childrenByName = new HashMap<>();
+  private final List<ColumnIO> children = new ArrayList<>();
   private int childrenSize = 0;
 
   GroupColumnIO(GroupType groupType, GroupColumnIO parent, int index) {
@@ -61,12 +61,12 @@ public class GroupColumnIO extends ColumnIO {
       newIndexFieldPath[indexFieldPath.length] = child.getIndex();
       List<ColumnIO> newRepetition;
       if (child.getType().isRepetition(REPEATED)) {
-        newRepetition = new ArrayList<ColumnIO>(repetition);
+        newRepetition = new ArrayList<>(repetition);
         newRepetition.add(child);
       } else {
         newRepetition = repetition;
       }
-      List<ColumnIO> newPath = new ArrayList<ColumnIO>(path);
+      List<ColumnIO> newPath = new ArrayList<>(path);
       newPath.add(child);
       child.setLevels(
           // the type repetition level increases whenever there's a possible repetition
@@ -84,17 +84,19 @@ public class GroupColumnIO extends ColumnIO {
 
   @Override
   List<String[]> getColumnNames() {
-    ArrayList<String[]> result = new ArrayList<String[]>();
+    ArrayList<String[]> result = new ArrayList<>();
     for (ColumnIO c : children) {
       result.addAll(c.getColumnNames());
     }
     return result;
   }
 
+  @Override
   PrimitiveColumnIO getLast() {
     return children.get(children.size()-1).getLast();
   }
 
+  @Override
   PrimitiveColumnIO getFirst() {
     return children.get(0).getFirst();
   }
