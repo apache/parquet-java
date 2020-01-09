@@ -19,10 +19,12 @@
 package org.apache.parquet.filter2.recordlevel;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
@@ -61,30 +63,19 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     this.delegate = checkNotNull(delegate, "delegate");
 
     // keep track of which path of indices leads to which primitive column
-    Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<List<Integer>, PrimitiveColumnIO>();
+    Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<>();
 
     for (PrimitiveColumnIO c : columnIOs) {
-      columnIOsByIndexFieldPath.put(getIndexFieldPathList(c), c);
+      List<Integer> indexFieldPath = Arrays.stream(c.getIndexFieldPath())
+          .boxed().collect(Collectors.toList());
+      columnIOsByIndexFieldPath.put(indexFieldPath, c);
     }
 
     // create a proxy for the delegate's root converter
     this.rootConverter = new FilteringGroupConverter(
-        delegate.getRootConverter(), Collections.<Integer>emptyList(), valueInspectorsByColumn, columnIOsByIndexFieldPath);
+        delegate.getRootConverter(), Collections.emptyList(),
+        valueInspectorsByColumn, columnIOsByIndexFieldPath);
   }
-
-  public static List<Integer> getIndexFieldPathList(PrimitiveColumnIO c) {
-    return intArrayToList(c.getIndexFieldPath());
-  }
-
-  public static List<Integer> intArrayToList(int[] arr) {
-    List<Integer> list = new ArrayList<Integer>(arr.length);
-    for (int i : arr) {
-      list.add(i);
-    }
-    return list;
-  }
-
-
 
   @Override
   public T getCurrentRecord() {
@@ -95,12 +86,8 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     // reset the stateful predicate no matter what
     IncrementallyUpdatedFilterPredicateResetter.reset(filterPredicate);
 
-    if (keep) {
-      return delegate.getCurrentRecord();
-    } else {
-      // signals a skip
-      return null;
-    }
+    // null - signals a skip
+    return (keep) ? delegate.getCurrentRecord() : null;
   }
 
   @Override
@@ -111,5 +98,20 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   @Override
   public GroupConverter getRootConverter() {
     return rootConverter;
+  }
+
+  // The following two methods are kept for backward compatibility
+  @Deprecated
+  public static List<Integer> getIndexFieldPathList(PrimitiveColumnIO c) {
+    return intArrayToList(c.getIndexFieldPath());
+  }
+
+  @Deprecated
+  public static List<Integer> intArrayToList(int[] arr) {
+    List<Integer> list = new ArrayList<>(arr.length);
+    for (int i : arr) {
+      list.add(i);
+    }
+    return list;
   }
 }

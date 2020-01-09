@@ -48,7 +48,6 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.parquet.Strings;
 import org.apache.parquet.filter2.predicate.FilterApi;
 import org.junit.Before;
 import org.junit.Test;
@@ -307,7 +306,7 @@ public class TestInputOutputFormat {
 
     sbFound.deleteCharAt(sbFound.length() - 1);
 
-    assertEquals(Strings.join(expected, "\n"), sbFound.toString());
+    assertEquals(String.join("\n", expected), sbFound.toString());
   }
 
   @Test

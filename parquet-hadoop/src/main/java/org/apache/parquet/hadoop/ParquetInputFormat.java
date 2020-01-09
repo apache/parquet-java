@@ -195,10 +195,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       }
 
       return unboundRecordFilter;
-    } catch (InstantiationException e) {
-      throw new BadConfigurationException("could not instantiate unbound record filter class", e);
-    } catch (IllegalAccessException e) {
-      throw new BadConfigurationException("could not instantiate unbound record filter class", e);
+    } catch (InstantiationException | IllegalAccessException e) {
+      throw new BadConfigurationException(
+          "could not instantiate unbound record filter class", e);
     }
   }
 
@@ -312,9 +311,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       Class<? extends ReadSupport<T>> readSupportClass){
     try {
       return readSupportClass.newInstance();
-    } catch (InstantiationException e) {
-      throw new BadConfigurationException("could not instantiate read support class", e);
-    } catch (IllegalAccessException e) {
+    } catch (InstantiationException | IllegalAccessException e) {
       throw new BadConfigurationException("could not instantiate read support class", e);
     }
   }

@@ -106,9 +106,7 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
     if (this.protocolFactory == null) {
       try {
         this.protocolFactory = getTProtocolFactoryClass(configuration).newInstance();
-      } catch (InstantiationException e) {
-        throw new RuntimeException(e);
-      } catch (IllegalAccessException e) {
+      } catch (InstantiationException | IllegalAccessException e) {
         throw new RuntimeException(e);
       }
     }

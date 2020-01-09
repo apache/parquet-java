@@ -149,6 +149,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
   public static final String COLUMN_INDEX_TRUNCATE_LENGTH = "parquet.columnindex.truncate.length";
+  public static final String STATISTICS_TRUNCATE_LENGTH = "parquet.statistics.truncate.length";
   public static final String BLOOM_FILTER_COLUMN_NAMES = "parquet.bloom.filter.column.names";
   public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.expected.ndv";
   public static final String BLOOM_FILTER_MAX_BYTES = "parquet.bloom.filter.max.bytes";
@@ -372,6 +373,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(COLUMN_INDEX_TRUNCATE_LENGTH, ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH);
   }
 
+  public static void setStatisticsTruncateLength(JobContext jobContext, int length) {
+    setStatisticsTruncateLength(getConfiguration(jobContext), length);
+  }
+
+  private static void setStatisticsTruncateLength(Configuration conf, int length) {
+    conf.setInt(STATISTICS_TRUNCATE_LENGTH, length);
+  }
+
+  private static int getStatisticsTruncateLength(Configuration conf) {
+    return conf.getInt(STATISTICS_TRUNCATE_LENGTH, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
+  }
+
   public static void setPageRowCountLimit(JobContext jobContext, int rowCount) {
     setPageRowCountLimit(getConfiguration(jobContext), rowCount);
   }
@@ -461,14 +474,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
         .withDictionaryEncoding(getEnableDictionary(conf))
-        .withBloomFilterColumnNames(getBloomFilterColumns(conf))
-        .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
-        .withBloomFilterColumnNdvs(getBloomFilterColumnExpectedNDVs(conf))
         .withWriterVersion(getWriterVersion(conf))
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
         .withColumnIndexTruncateLength(getColumnIndexTruncateLength(conf))
+        .withStatisticsTruncateLength(getStatisticsTruncateLength(conf))
+        .withBloomFilterColumnNames(getBloomFilterColumns(conf))
+        .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
+        .withBloomFilterColumnNdvs(getBloomFilterColumnExpectedNDVs(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
         .build();
@@ -489,8 +503,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Min row count for page size check is: {}", props.getMinRowCountForPageSizeCheck());
       LOG.info("Max row count for page size check is: {}", props.getMaxRowCountForPageSizeCheck());
       LOG.info("Truncate length for column indexes is: {}", props.getColumnIndexTruncateLength());
-      LOG.info("Max Bloom filter size for a column is {}", props.getMaxBloomFilterBytes());
+      LOG.info("Truncate length for statistics min/max  is: {}", props.getStatisticsTruncateLength());
       LOG.info("Bloom filter enabled column names are: {}", props.getBloomFilterColumns());
+      LOG.info("Max Bloom filter size for a column is {}", props.getMaxBloomFilterBytes());
       LOG.info("Bloom filter enabled column expected number of distinct values are: {}",
         props.getBloomFilterColumnExpectedNDVs().values());
       LOG.info("Page row count limit to {}", props.getPageRowCountLimit());
@@ -500,7 +515,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
         init.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
-        props.getPageWriteChecksumEnabled());
+        props.getStatisticsTruncateLength(), props.getPageWriteChecksumEnabled());
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
@@ -540,9 +555,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     Class<?> writeSupportClass = getWriteSupportClass(configuration);
     try {
       return (WriteSupport<T>)checkNotNull(writeSupportClass, "writeSupportClass").newInstance();
-    } catch (InstantiationException e) {
-      throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
-    } catch (IllegalAccessException e) {
+    } catch (InstantiationException | IllegalAccessException e) {
       throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
     }
   }

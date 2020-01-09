@@ -264,18 +264,14 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
         Constructor<ThriftRecordConverter<T>> constructor =
             converterClass.getConstructor(Class.class, MessageType.class, StructType.class, Configuration.class);
         return constructor.newInstance(thriftClass, requestedSchema, descriptor, conf);
-      } catch (IllegalAccessException e) {
+      } catch (IllegalAccessException | NoSuchMethodException e) {
         // try the other constructor pattern
-      } catch (NoSuchMethodException e) {
-        // try to find the other constructor pattern
       }
 
       Constructor<ThriftRecordConverter<T>> constructor =
           converterClass.getConstructor(Class.class, MessageType.class, StructType.class);
       return constructor.newInstance(thriftClass, requestedSchema, descriptor);
-    } catch (InstantiationException e) {
-      throw new RuntimeException("Failed to construct Thrift converter class: " + converterClassName, e);
-    } catch (InvocationTargetException e) {
+    } catch (InstantiationException | InvocationTargetException e) {
       throw new RuntimeException("Failed to construct Thrift converter class: " + converterClassName, e);
     } catch (IllegalAccessException e) {
       throw new RuntimeException("Cannot access constructor for Thrift converter class: " + converterClassName, e);

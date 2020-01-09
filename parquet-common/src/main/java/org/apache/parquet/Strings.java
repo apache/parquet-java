@@ -38,7 +38,9 @@ public final class Strings {
    * @param s an iterable of strings
    * @param on the delimiter
    * @return a single joined string
+   * @deprecated Use {@link String#join(CharSequence, Iterable)}
    */
+  @Deprecated
   public static String join(Iterable<String> s, String on) {
     return join(s.iterator(), on);
   }
@@ -51,7 +53,9 @@ public final class Strings {
    * @param iter an iterator of strings
    * @param on the delimiter
    * @return a single joined string
+   * @deprecated Use {@link String#join(CharSequence, Iterable)}
    */
+  @Deprecated
   public static String join(Iterator<String> iter, String on) {
     StringBuilder sb = new StringBuilder();
     while (iter.hasNext()) {
@@ -71,7 +75,9 @@ public final class Strings {
    * @param s an iterable of strings
    * @param on the delimiter
    * @return a single joined string
+   * @deprecated Use {@link String#join(CharSequence, Iterable)}
    */
+  @Deprecated
   public static String join(String[] s, String on) {
     return join(Arrays.asList(s), on);
   }

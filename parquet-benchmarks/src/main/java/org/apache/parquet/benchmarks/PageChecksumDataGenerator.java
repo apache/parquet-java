@@ -40,7 +40,7 @@ import static org.apache.parquet.benchmarks.BenchmarkUtils.deleteIfExists;
 import static org.apache.parquet.benchmarks.BenchmarkUtils.exists;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.*;
 
-public class PageChecksumDataGenerator {
+public class PageChecksumDataGenerator extends DataGenerator {
 
   private final MessageType SCHEMA = MessageTypeParser.parseMessageType(
     "message m {" +
@@ -102,26 +102,5 @@ public class PageChecksumDataGenerator {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  public void cleanup() {
-    deleteIfExists(configuration, file_100K_NOCHECKSUMS_UNCOMPRESSED);
-    deleteIfExists(configuration, file_100K_CHECKSUMS_UNCOMPRESSED);
-    deleteIfExists(configuration, file_100K_NOCHECKSUMS_GZIP);
-    deleteIfExists(configuration, file_100K_CHECKSUMS_GZIP);
-    deleteIfExists(configuration, file_100K_NOCHECKSUMS_SNAPPY);
-    deleteIfExists(configuration, file_100K_CHECKSUMS_SNAPPY);
-    deleteIfExists(configuration, file_1M_NOCHECKSUMS_UNCOMPRESSED);
-    deleteIfExists(configuration, file_1M_CHECKSUMS_UNCOMPRESSED);
-    deleteIfExists(configuration, file_1M_NOCHECKSUMS_GZIP);
-    deleteIfExists(configuration, file_1M_CHECKSUMS_GZIP);
-    deleteIfExists(configuration, file_1M_NOCHECKSUMS_SNAPPY);
-    deleteIfExists(configuration, file_1M_CHECKSUMS_SNAPPY);
-    deleteIfExists(configuration, file_10M_NOCHECKSUMS_UNCOMPRESSED);
-    deleteIfExists(configuration, file_10M_CHECKSUMS_UNCOMPRESSED);
-    deleteIfExists(configuration, file_10M_NOCHECKSUMS_GZIP);
-    deleteIfExists(configuration, file_10M_CHECKSUMS_GZIP);
-    deleteIfExists(configuration, file_10M_NOCHECKSUMS_SNAPPY);
-    deleteIfExists(configuration, file_10M_CHECKSUMS_SNAPPY);
   }
 }

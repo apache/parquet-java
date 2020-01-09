@@ -96,11 +96,8 @@ public class FilteringGroupConverter extends GroupConverter {
 
   private ValueInspector[] getValueInspectors(ColumnPath columnPath) {
     List<ValueInspector> inspectorsList = valueInspectorsByColumn.get(columnPath);
-    if (inspectorsList == null) {
-      return new ValueInspector[] {};
-    } else {
-      return inspectorsList.toArray(new ValueInspector[inspectorsList.size()]);
-    }
+    return inspectorsList == null ? new ValueInspector[0]
+        : inspectorsList.toArray(new ValueInspector[0]);
   }
 
   @Override

@@ -34,7 +34,6 @@ import org.apache.parquet.thrift.struct.ThriftType.I16Type;
 import org.apache.parquet.thrift.struct.ThriftType.I32Type;
 import org.apache.parquet.thrift.struct.ThriftType.I64Type;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
-import org.apache.parquet.Strings;
 
 /**
  * A checker for thrift struct to enforce its backward compatibility, returns compatibility report based on following rules:
@@ -81,8 +80,7 @@ class CompatibilityReport {
   }
 
   public String prettyMessages() {
-
-    return Strings.join(messages, "\n");
+    return String.join("\n", messages);
   }
 
   @Override

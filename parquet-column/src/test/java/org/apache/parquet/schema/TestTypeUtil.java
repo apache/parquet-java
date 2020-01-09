@@ -37,13 +37,10 @@ public class TestTypeUtil {
 
     TestTypeBuilders.assertThrows("Should complain about empty MessageType",
         InvalidSchemaException.class,
-        new Callable<Void>() {
-          @Override
-          public Void call() throws Exception {
-            TypeUtil.checkValidWriteSchema(new MessageType("invalid_schema"));
-            return null;
-          }
-        });
+      (Callable<Void>) () -> {
+        TypeUtil.checkValidWriteSchema(new MessageType("invalid_schema"));
+        return null;
+      });
   }
 
   @Test
@@ -55,14 +52,11 @@ public class TestTypeUtil {
 
     TestTypeBuilders.assertThrows("Should complain about empty GroupType",
         InvalidSchemaException.class,
-        new Callable<Void>() {
-          @Override
-          public Void call() throws Exception {
-            TypeUtil.checkValidWriteSchema(
-                new GroupType(REPEATED, "invalid_group"));
-            return null;
-          }
-        });
+      (Callable<Void>) () -> {
+        TypeUtil.checkValidWriteSchema(
+            new GroupType(REPEATED, "invalid_group"));
+        return null;
+      });
   }
 
   @Test
@@ -76,14 +70,11 @@ public class TestTypeUtil {
 
     TestTypeBuilders.assertThrows("Should complain about empty GroupType",
         InvalidSchemaException.class,
-        new Callable<Void>() {
-          @Override
-          public Void call() throws Exception {
-            TypeUtil.checkValidWriteSchema(Types.buildMessage()
-                .addField(new GroupType(REPEATED, "invalid_group"))
-                .named("invalid_message"));
-            return null;
-          }
-        });
+      (Callable<Void>) () -> {
+        TypeUtil.checkValidWriteSchema(Types.buildMessage()
+            .addField(new GroupType(REPEATED, "invalid_group"))
+            .named("invalid_message"));
+        return null;
+      });
   }
 }

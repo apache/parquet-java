@@ -34,7 +34,7 @@ import org.apache.parquet.schema.PrimitiveType;
 /**
  * Class for truncating min/max values for binary types.
  */
-abstract class BinaryTruncator {
+public abstract class BinaryTruncator {
   enum Validity {
     VALID, MALFORMED, UNMAPPABLE;
   }
@@ -69,12 +69,12 @@ abstract class BinaryTruncator {
 
   private static final BinaryTruncator NO_OP_TRUNCATOR = new BinaryTruncator() {
     @Override
-    Binary truncateMin(Binary minValue, int length) {
+    public Binary truncateMin(Binary minValue, int length) {
       return minValue;
     }
 
     @Override
-    Binary truncateMax(Binary maxValue, int length) {
+    public Binary truncateMax(Binary maxValue, int length) {
       return maxValue;
     }
   };
@@ -83,7 +83,7 @@ abstract class BinaryTruncator {
     private final CharsetValidator validator = new CharsetValidator(StandardCharsets.UTF_8);
 
     @Override
-    Binary truncateMin(Binary minValue, int length) {
+    public Binary truncateMin(Binary minValue, int length) {
       if (minValue.length() <= length) {
         return minValue;
       }
@@ -98,7 +98,7 @@ abstract class BinaryTruncator {
     }
 
     @Override
-    Binary truncateMax(Binary maxValue, int length) {
+    public Binary truncateMax(Binary maxValue, int length) {
       if (maxValue.length() <= length) {
         return maxValue;
       }
@@ -176,7 +176,7 @@ abstract class BinaryTruncator {
     }
   };
 
-  static BinaryTruncator getTruncator(PrimitiveType type) {
+  public static BinaryTruncator getTruncator(PrimitiveType type) {
     if (type == null) {
       return NO_OP_TRUNCATOR;
     }
@@ -215,7 +215,7 @@ abstract class BinaryTruncator {
     }
   }
 
-  abstract Binary truncateMin(Binary minValue, int length);
+  public abstract Binary truncateMin(Binary minValue, int length);
 
-  abstract Binary truncateMax(Binary maxValue, int length);
+  public abstract Binary truncateMax(Binary maxValue, int length);
 }
