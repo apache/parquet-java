@@ -32,8 +32,9 @@ import org.apache.parquet.io.api.Binary;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotEquals;
 
 public class TestBlockSplitBloomFilter {
   @Test
@@ -110,7 +111,6 @@ public class TestBlockSplitBloomFilter {
     bloomFilterThree.insertHash(bloomFilterThree.hash(Binary.fromString("parquet")));
 
     assertNotEquals(bloomFilterTwo, bloomFilterThree);
-
   }
 
   @Test
