@@ -148,5 +148,4 @@ public interface BloomFilter {
    * @return hash result
    */
   long hash(Object value);
-
 }
