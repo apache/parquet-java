@@ -59,7 +59,7 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
     @Override
     @SuppressWarnings("unchecked")
     <T extends Comparable<T>> Statistics<T> createStats(int arrayIndex) {
-      return (Statistics<T>) new Statistics<Binary>(minValues[arrayIndex], maxValues[arrayIndex], comparator);
+      return (Statistics<T>) new Statistics<>(minValues[arrayIndex], maxValues[arrayIndex], comparator);
     }
 
     @Override
@@ -112,8 +112,8 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
   @Override
   ColumnIndexBase<Binary> createColumnIndex(PrimitiveType type) {
     BinaryColumnIndex columnIndex = new BinaryColumnIndex(type);
-    columnIndex.minValues = minValues.toArray(new Binary[minValues.size()]);
-    columnIndex.maxValues = maxValues.toArray(new Binary[maxValues.size()]);
+    columnIndex.minValues = minValues.toArray(new Binary[0]);
+    columnIndex.maxValues = maxValues.toArray(new Binary[0]);
     return columnIndex;
   }
 

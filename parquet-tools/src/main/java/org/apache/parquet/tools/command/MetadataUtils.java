@@ -188,7 +188,7 @@ class MetadataUtils {
 
     if (container != null) {
       cpath.add(type.getName());
-      String[] paths = cpath.toArray(new String[cpath.size()]);
+      String[] paths = cpath.toArray(new String[0]);
       cpath.remove(cpath.size() - 1);
 
       ColumnDescriptor desc = container.getColumnDescription(paths);

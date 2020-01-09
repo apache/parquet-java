@@ -82,7 +82,7 @@ public class EncodingStats {
     }
 
     // this modifies the set, so copy it
-    Set<Encoding> encodings = new HashSet<Encoding>(dataStats.keySet());
+    Set<Encoding> encodings = new HashSet<>(dataStats.keySet());
     if (!encodings.remove(RLE_DICTIONARY) &&
         !encodings.remove(PLAIN_DICTIONARY)) {
       return true; // not dictionary encoded

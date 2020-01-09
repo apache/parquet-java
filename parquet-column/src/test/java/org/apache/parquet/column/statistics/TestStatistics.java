@@ -394,8 +394,8 @@ public class TestStatistics {
     byte[] boolMaxBytes = statsBoth.getMaxBytes();
     byte[] boolMinBytes = statsBoth.getMinBytes();
 
-    assertEquals((int)(boolMaxBytes[0] & 255), 1);
-    assertEquals((int)(boolMinBytes[0] & 255), 0);
+    assertEquals(boolMaxBytes[0] & 255, 1);
+    assertEquals(boolMinBytes[0] & 255, 0);
 
     BooleanStatistics statsFromBytes = new BooleanStatistics();
     statsFromBytes.setMinMaxFromBytes(boolMinBytes, boolMaxBytes);

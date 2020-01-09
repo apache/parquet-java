@@ -108,7 +108,7 @@ public class GroupType extends Type {
   GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, ID id) {
     super(name, repetition, originalType, id);
     this.fields = fields;
-    this.indexByName = new HashMap<String, Integer>();
+    this.indexByName = new HashMap<>();
     for (int i = 0; i < fields.size(); i++) {
       indexByName.put(fields.get(i).getName(), i);
     }
@@ -117,7 +117,7 @@ public class GroupType extends Type {
   GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, List<Type> fields, ID id) {
     super(name, repetition, logicalTypeAnnotation, id);
     this.fields = fields;
-    this.indexByName = new HashMap<String, Integer>();
+    this.indexByName = new HashMap<>();
     for (int i = 0; i < fields.size(); i++) {
       indexByName.put(fields.get(i).getName(), i);
     }
@@ -322,7 +322,7 @@ public class GroupType extends Type {
 
   @Override
   protected List<String[]> getPaths(int depth) {
-    List<String[]> result = new ArrayList<String[]>();
+    List<String[]> result = new ArrayList<>();
     for (Type field : fields) {
       List<String[]> paths = field.getPaths(depth + 1);
       for (String[] path : paths) {
@@ -352,14 +352,14 @@ public class GroupType extends Type {
 
   @Override
   <T> T convert(List<GroupType> path, TypeConverter<T> converter) {
-    List<GroupType> childrenPath = new ArrayList<GroupType>(path);
+    List<GroupType> childrenPath = new ArrayList<>(path);
     childrenPath.add(this);
     final List<T> children = convertChildren(childrenPath, converter);
     return converter.convertGroupType(path, this, children);
   }
 
   protected <T> List<T> convertChildren(List<GroupType> path, TypeConverter<T> converter) {
-    List<T> children = new ArrayList<T>(fields.size());
+    List<T> children = new ArrayList<>(fields.size());
     for (Type field : fields) {
       children.add(field.convert(path, converter));
     }
@@ -395,7 +395,7 @@ public class GroupType extends Type {
    * @return the merged list
    */
   List<Type> mergeFields(GroupType toMerge, boolean strict) {
-    List<Type> newFields = new ArrayList<Type>();
+    List<Type> newFields = new ArrayList<>();
     // merge existing fields
     for (Type type : this.getFields()) {
       Type merged;

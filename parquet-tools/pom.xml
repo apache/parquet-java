@@ -81,7 +81,6 @@
 
   <build>
     <plugins>
-      <!--We do not turn on semver checking for parquet-tools, since it's not considered as an API-->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>

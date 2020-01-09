@@ -19,10 +19,7 @@
 package org.apache.parquet.column.values.deltastrings;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.values.RequiresPreviousReader;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
@@ -90,6 +87,7 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
    * new page we need to recover the previous page's last value to use it (if needed) to
    * read the first value.
    */
+  @Override
   public void setPreviousReader(ValuesReader reader) {
     if (reader != null) {
       this.previous = ((DeltaByteArrayReader) reader).previous;

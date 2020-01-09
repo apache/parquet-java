@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import org.apache.parquet.Strings;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
@@ -92,7 +91,7 @@ class DictionaryPageReader implements DictionaryPageReadStore {
       return rowGroup.readDictionaryPage(descriptor);
     }
 
-    String dotPath = Strings.join(descriptor.getPath(), ".");
+    String dotPath = String.join(".", descriptor.getPath());
     ColumnChunkMetaData column = columns.get(dotPath);
     if (column == null) {
       throw new ParquetDecodingException(

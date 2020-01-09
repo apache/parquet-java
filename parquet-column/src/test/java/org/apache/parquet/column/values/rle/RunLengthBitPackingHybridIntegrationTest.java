@@ -39,35 +39,23 @@ public class RunLengthBitPackingHybridIntegrationTest {
     long modValue = 1L << bitWidth;
 
     RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, 1000, 64000, new DirectByteBufferAllocator());
-    int numValues = 0;
-
     for (int i = 0; i < 100; i++) {
       encoder.writeInt((int) (i % modValue));
     }
-    numValues += 100;
-
     for (int i = 0; i < 100; i++) {
       encoder.writeInt((int) (77 % modValue));
     }
-    numValues += 100;
-
     for (int i = 0; i < 100; i++) {
       encoder.writeInt((int) (88 % modValue));
     }
-    numValues += 100;
-
     for (int i = 0; i < 1000; i++) {
       encoder.writeInt((int) (i % modValue));
       encoder.writeInt((int) (i % modValue));
       encoder.writeInt((int) (i % modValue));
     }
-    numValues += 3000;
-
     for (int i = 0; i < 1000; i++) {
       encoder.writeInt((int) (17 % modValue));
     }
-    numValues += 1000;
-
     ByteBuffer encodedBytes = encoder.toBytes().toByteBuffer();
     ByteBufferInputStream in = ByteBufferInputStream.wrap(encodedBytes);
 

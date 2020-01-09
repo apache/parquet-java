@@ -98,7 +98,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   protected ByteBufferAllocator allocator;
   /* Track the list of writers used so they can be appropriately closed when necessary
      (currently used for off-heap memory which is not garbage collected) */
-  private List<RunLengthBitPackingHybridEncoder> encoders = new ArrayList<RunLengthBitPackingHybridEncoder>();
+  private List<RunLengthBitPackingHybridEncoder> encoders = new ArrayList<>();
 
   protected DictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
     this.allocator = allocator;
@@ -235,7 +235,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   public static class PlainBinaryDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
-    protected Object2IntMap<Binary> binaryDictionaryContent = new Object2IntLinkedOpenHashMap<Binary>();
+    protected Object2IntMap<Binary> binaryDictionaryContent = new Object2IntLinkedOpenHashMap<>();
 
     public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);

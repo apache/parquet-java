@@ -36,7 +36,7 @@ public class ColumnIOFactory {
 
     private MessageColumnIO columnIO;
     private GroupColumnIO current;
-    private List<PrimitiveColumnIO> leaves = new ArrayList<PrimitiveColumnIO>();
+    private List<PrimitiveColumnIO> leaves = new ArrayList<>();
     private final boolean validating;
     private final MessageType requestedSchema;
     private final String createdBy;

@@ -42,10 +42,10 @@ public class ValidatingRecordConsumer extends RecordConsumer {
 
   private final RecordConsumer delegate;
 
-  private Deque<Type> types = new ArrayDeque<Type>();
-  private Deque<Integer> fields = new ArrayDeque<Integer>();
-  private Deque<Integer> previousField = new ArrayDeque<Integer>();
-  private Deque<Integer> fieldValueCount = new ArrayDeque<Integer>();
+  private Deque<Type> types = new ArrayDeque<>();
+  private Deque<Integer> fields = new ArrayDeque<>();
+  private Deque<Integer> previousField = new ArrayDeque<>();
+  private Deque<Integer> fieldValueCount = new ArrayDeque<>();
 
   /**
    *
@@ -60,6 +60,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void startMessage() {
     previousField.push(-1);
     delegate.startMessage();
@@ -68,6 +69,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void endMessage() {
     delegate.endMessage();
     validateMissingFields(types.peek().asGroupType().getFieldCount());
@@ -77,6 +79,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void startField(String field, int index) {
     if (index <= previousField.peek()) {
       throw new InvalidRecordException("fields must be added in order " + field + " index " + index + " is before previous field " + previousField.peek());
@@ -99,6 +102,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void endField(String field, int index) {
     delegate.endField(field, index);
     fieldValueCount.pop();
@@ -108,6 +112,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void startGroup() {
     previousField.push(-1);
     types.push(types.peek().asGroupType().getType(fields.peek()));
@@ -117,6 +122,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void endGroup() {
     delegate.endGroup();
     validateMissingFields(types.peek().asGroupType().getFieldCount());
@@ -187,6 +193,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void addInteger(int value) {
     validate(INT32);
     delegate.addInteger(value);
@@ -195,6 +202,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void addLong(long value) {
     validate(INT64);
     delegate.addLong(value);
@@ -203,6 +211,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void addBoolean(boolean value) {
     validate(BOOLEAN);
     delegate.addBoolean(value);
@@ -211,6 +220,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void addBinary(Binary value) {
     validate(BINARY, INT96, FIXED_LEN_BYTE_ARRAY);
     delegate.addBinary(value);
@@ -219,6 +229,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void addFloat(float value) {
     validate(FLOAT);
     delegate.addFloat(value);
@@ -227,6 +238,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
+  @Override
   public void addDouble(double value) {
     validate(DOUBLE);
     delegate.addDouble(value);
