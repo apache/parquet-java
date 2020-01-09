@@ -309,7 +309,7 @@ public class TestRunLengthBitPackingHybridEncoder {
     int[] unpacked = new int[8];
     byte[] next8Values = new byte[bitWidth];
 
-    List<Integer> values = new ArrayList<Integer>(numValues);
+    List<Integer> values = new ArrayList<>(numValues);
 
     while(values.size() < numValues) {
       for (int i = 0; i < bitWidth; i++) {

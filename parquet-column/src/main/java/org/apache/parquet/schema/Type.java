@@ -301,7 +301,7 @@ abstract public class Type {
         && eqOrBothNull(repetition, other.repetition)
         && eqOrBothNull(id, other.id)
         && eqOrBothNull(logicalTypeAnnotation, other.logicalTypeAnnotation);
-  };
+  }
 
   @Override
   public boolean equals(Object other) {

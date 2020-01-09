@@ -167,7 +167,7 @@ public class TestMemColumn {
       assertEquals("r row " + i, r, columnReader.getCurrentRepetitionLevel());
       assertEquals("d row " + i, d, columnReader.getCurrentDefinitionLevel());
       if (d == 2) {
-        assertEquals("data row " + i, (long)i, columnReader.getLong());
+        assertEquals("data row " + i, i, columnReader.getLong());
       }
       columnReader.consume();
       ++ i;

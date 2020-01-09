@@ -73,6 +73,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
    * might not be correct. The {@link java.util.Comparator} implementation for the related type available at
    * {@link org.apache.parquet.schema.PrimitiveType#comparator} should be used instead.
    */
+  @Override
   @Deprecated
   abstract public int compareTo(Binary other);
 

@@ -56,7 +56,7 @@ public class TestFiltered {
     public boolean functionToApply(long input) {
       return input > 15;
     }
-  };
+  }
 
   /* Class that implements applyFunction filter for string. Checks for string ending in 'A'. */
   public class StringEndsWithAPredicate implements PredicateFunction<String> {
@@ -64,10 +64,10 @@ public class TestFiltered {
     public boolean functionToApply(String input) {
       return input.endsWith("A");
     }
-  };
+  }
 
   private List<Group> readAll(RecordReader<Group> reader) {
-    List<Group> result = new ArrayList<Group>();
+    List<Group> result = new ArrayList<>();
     Group g;
     while ((g = reader.read()) != null) {
       result.add(g);

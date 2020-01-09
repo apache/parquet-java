@@ -204,18 +204,22 @@ public class TestBitPackingColumn {
 
   private static enum PACKING_TYPE {
     BYTE_BASED_MANUAL {
+      @Override
       public ValuesReader getReader(final int bound) {
         return new BitPackingValuesReader(bound);
       }
+      @Override
       public ValuesWriter getWriter(final int bound) {
         return new BitPackingValuesWriter(bound, 32*1024, 64*1024, new DirectByteBufferAllocator());
       }
     }
     ,
     BYTE_BASED_GENERATED {
+      @Override
       public ValuesReader getReader(final int bound) {
         return new ByteBitPackingValuesReader(bound, BIG_ENDIAN);
       }
+      @Override
       public ValuesWriter getWriter(final int bound) {
         return new ByteBitPackingValuesWriter(bound, BIG_ENDIAN);
       }

@@ -41,21 +41,21 @@ public class ValidTypeMap {
   private ValidTypeMap() { }
 
   // classToParquetType and parquetTypeToClass are used as a bi-directional map
-  private static final Map<Class<?>, Set<PrimitiveTypeName>> classToParquetType = new HashMap<Class<?>, Set<PrimitiveTypeName>>();
-  private static final Map<PrimitiveTypeName, Set<Class<?>>> parquetTypeToClass = new HashMap<PrimitiveTypeName, Set<Class<?>>>();
+  private static final Map<Class<?>, Set<PrimitiveTypeName>> classToParquetType = new HashMap<>();
+  private static final Map<PrimitiveTypeName, Set<Class<?>>> parquetTypeToClass = new HashMap<>();
 
   // set up the mapping in both directions
   private static void add(Class<?> c, PrimitiveTypeName p) {
     Set<PrimitiveTypeName> descriptors = classToParquetType.get(c);
     if (descriptors == null) {
-      descriptors = new HashSet<PrimitiveTypeName>();
+      descriptors = new HashSet<>();
       classToParquetType.put(c, descriptors);
     }
     descriptors.add(p);
 
     Set<Class<?>> classes = parquetTypeToClass.get(p);
     if (classes == null) {
-      classes = new HashSet<Class<?>>();
+      classes = new HashSet<>();
       parquetTypeToClass.put(p, classes);
     }
     classes.add(c);

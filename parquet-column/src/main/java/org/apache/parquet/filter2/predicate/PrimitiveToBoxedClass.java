@@ -28,7 +28,7 @@ import static org.apache.parquet.Preconditions.checkArgument;
  * {@code Class<int>} to {@code Class<Integer>}
  */
 public class PrimitiveToBoxedClass {
-  private static final Map<Class<?>, Class<?>> primitiveToBoxed = new HashMap<Class<?>, Class<?>>();
+  private static final Map<Class<?>, Class<?>> primitiveToBoxed = new HashMap<>();
 
   static {
     primitiveToBoxed.put(boolean.class, Boolean.class);

@@ -41,7 +41,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.Strings;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -763,7 +762,7 @@ public class ParquetFileWriter {
     if (!dropColumns && !columnsToCopy.isEmpty()) {
       throw new IllegalArgumentException(String.format(
           "Columns cannot be copied (missing from target schema): %s",
-          Strings.join(columnsToCopy.keySet(), ", ")));
+          String.join(", ", columnsToCopy.keySet())));
     }
 
     // copy the data for all chunks

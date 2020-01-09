@@ -81,7 +81,7 @@ public class EncodingStats {
     }
 
     // this modifies the set, so copy it
-    Set<Encoding> encodings = new HashSet<Encoding>(dataStats.keySet());
+    Set<Encoding> encodings = new HashSet<>(dataStats.keySet());
     if (!encodings.remove(RLE_DICTIONARY) &&
         !encodings.remove(PLAIN_DICTIONARY)) {
       return true; // not dictionary encoded
@@ -103,8 +103,8 @@ public class EncodingStats {
    * Used to build {@link EncodingStats} from metadata or to accumulate stats as pages are written.
    */
   public static class Builder {
-    private final Map<Encoding, Integer> dictStats = new LinkedHashMap<Encoding, Integer>();
-    private final Map<Encoding, Integer> dataStats = new LinkedHashMap<Encoding, Integer>();
+    private final Map<Encoding, Integer> dictStats = new LinkedHashMap<>();
+    private final Map<Encoding, Integer> dataStats = new LinkedHashMap<>();
     private boolean usesV2Pages = false;
 
     public Builder clear() {
@@ -148,8 +148,8 @@ public class EncodingStats {
 
     public EncodingStats build() {
       return new EncodingStats(
-          Collections.unmodifiableMap(new LinkedHashMap<Encoding, Integer>(dictStats)),
-          Collections.unmodifiableMap(new LinkedHashMap<Encoding, Integer>(dataStats)),
+          Collections.unmodifiableMap(new LinkedHashMap<>(dictStats)),
+          Collections.unmodifiableMap(new LinkedHashMap<>(dataStats)),
           usesV2Pages);
     }
   }

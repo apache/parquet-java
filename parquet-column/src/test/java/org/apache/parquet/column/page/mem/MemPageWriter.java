@@ -39,7 +39,7 @@ import static org.apache.parquet.bytes.BytesInput.copy;
 public class MemPageWriter implements PageWriter {
   private static final Logger LOG = LoggerFactory.getLogger(MemPageWriter.class);
 
-  private final List<DataPage> pages = new ArrayList<DataPage>();
+  private final List<DataPage> pages = new ArrayList<>();
   private DictionaryPage dictionaryPage;
   private long memSize = 0;
   private long totalValueCount = 0;

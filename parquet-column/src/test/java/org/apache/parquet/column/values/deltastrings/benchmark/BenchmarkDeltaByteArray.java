@@ -61,7 +61,7 @@ public class BenchmarkDeltaByteArray {
 
     Utils.writeData(writer, values);
     ByteBufferInputStream data = writer.getBytes().toInputStream();
-    Binary[] bin = Utils.readData(reader, data, values.length);
+    Utils.readData(reader, data, values.length);
     System.out.println("size " + data.position());
   }
 
@@ -73,7 +73,7 @@ public class BenchmarkDeltaByteArray {
 
     Utils.writeData(writer, values);
     ByteBufferInputStream data = writer.getBytes().toInputStream();
-    Binary[] bin = Utils.readData(reader, data, values.length);
+    Utils.readData(reader, data, values.length);
     System.out.println("size " + data.position());
   }
 
@@ -85,7 +85,7 @@ public class BenchmarkDeltaByteArray {
 
     Utils.writeData(writer, sortedVals);
     ByteBufferInputStream data = writer.getBytes().toInputStream();
-    Binary[] bin = Utils.readData(reader, data, values.length);
+    Utils.readData(reader, data, values.length);
     System.out.println("size " + data.position());
   }
 
@@ -97,7 +97,7 @@ public class BenchmarkDeltaByteArray {
 
     Utils.writeData(writer, sortedVals);
     ByteBufferInputStream data = writer.getBytes().toInputStream();
-    Binary[] bin = Utils.readData(reader, data, values.length);
+    Utils.readData(reader, data, values.length);
     System.out.println("size " + data.position());
   }
 }
