@@ -91,27 +91,50 @@ public class RowRanges {
     }
   }
 
-  static final RowRanges EMPTY = new RowRanges();
+  static final RowRanges EMPTY = new RowRanges(0);
 
-  /*
-   * Creates a new RowRanges object with the single range [0, rowCount - 1].
-   */
-  static RowRanges createSingle(long rowCount) {
-    RowRanges ranges = new RowRanges();
-    ranges.add(new Range(0, rowCount - 1));
-    return ranges;
+  private final List<Range> ranges;
+
+  private RowRanges() {
+    this.ranges = new ArrayList<>();
   }
 
-  /*
-   * Creates a new RowRanges object with the following ranges.
+  private RowRanges(int initialCapacity) {
+    this.ranges = new ArrayList<>(initialCapacity);
+  }
+
+  private RowRanges(final Range range) {
+    this.ranges = Collections.singletonList(range);
+  }
+
+  /**
+   * Creates an immutable RowRanges object with the single range [0, rowCount -
+   * 1].
+   *
+   * @param rowCount a single row count
+   * @return an immutable RowRanges
+   */
+  static RowRanges createSingle(long rowCount) {
+    return new RowRanges(new Range(0L, rowCount - 1L));
+  }
+
+  /**
+   * Creates a mutable RowRanges object with the following ranges:
+   * <pre>
    * [firstRowIndex[0], lastRowIndex[0]],
    * [firstRowIndex[1], lastRowIndex[1]],
    * ...,
    * [firstRowIndex[n], lastRowIndex[n]]
+   * </pre>
    * (See OffsetIndex.getFirstRowIndex and OffsetIndex.getLastRowIndex for details.)
    *
    * The union of the ranges are calculated so the result ranges always contain the disjunct ranges. See union for
    * details.
+   *
+   * @param rowCount row count
+   * @param pageIndexes pageIndexes
+   * @param offsetIndex offsetIndex
+   * @return a mutable RowRanges
    */
   static RowRanges create(long rowCount, PrimitiveIterator.OfInt pageIndexes, OffsetIndex offsetIndex) {
     RowRanges ranges = new RowRanges();
@@ -190,11 +213,6 @@ public class RowRanges {
     }
 
     return result;
-  }
-
-  private final List<Range> ranges = new ArrayList<>();
-
-  private RowRanges() {
   }
 
   /*
