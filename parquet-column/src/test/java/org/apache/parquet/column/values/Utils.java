@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Random;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;

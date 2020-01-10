@@ -205,7 +205,7 @@ public class TestCorruptDeltaByteArrays {
     BytesInput rd = BytesInput.from(rdValues.getBytes().toByteArray());
     DeltaByteArrayWriter writer = getDeltaByteArrayWriter();
     String lastValue = null;
-    List<String> values = new ArrayList<String>();
+    List<String> values = new ArrayList<>();
     for (int i = 0; i < 10; i += 1) {
       lastValue = str(i);
       writer.writeBytes(Binary.fromString(lastValue));
@@ -236,7 +236,7 @@ public class TestCorruptDeltaByteArrays {
         writer.getEncoding());
     pages.addRowCount(10);
 
-    final List<String> actualValues = new ArrayList<String>();
+    final List<String> actualValues = new ArrayList<>();
     PrimitiveConverter converter = new PrimitiveConverter() {
       @Override
       public void addBinary(Binary value) {

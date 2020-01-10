@@ -70,6 +70,7 @@ public class MessageColumnIO extends GroupColumnIO {
     this.createdBy = createdBy;
   }
 
+  @Override
   public List<String[]> getColumnNames() {
     return super.getColumnNames();
   }
@@ -102,7 +103,7 @@ public class MessageColumnIO extends GroupColumnIO {
     Objects.requireNonNull(filter, "filter cannot be null");
 
     if (leaves.isEmpty()) {
-      return new EmptyRecordReader<T>(recordMaterializer);
+      return new EmptyRecordReader<>(recordMaterializer);
     }
 
     return filter.accept(new Visitor<RecordReader<T>>() {
@@ -118,7 +119,7 @@ public class MessageColumnIO extends GroupColumnIO {
             builder.getValueInspectorsByColumn(),
             streamingPredicate);
 
-        return new RecordReaderImplementation<T>(
+        return new RecordReaderImplementation<>(
             MessageColumnIO.this,
             filteringRecordMaterializer,
             validating,
@@ -127,7 +128,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
       @Override
       public RecordReader<T> visit(UnboundRecordFilterCompat unboundRecordFilterCompat) {
-        return new FilteredRecordReader<T>(
+        return new FilteredRecordReader<>(
             MessageColumnIO.this,
             recordMaterializer,
             validating,
@@ -139,7 +140,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
       @Override
       public RecordReader<T> visit(NoOpFilter noOpFilter) {
-        return new RecordReaderImplementation<T>(
+        return new RecordReaderImplementation<>(
             MessageColumnIO.this,
             recordMaterializer,
             validating,
@@ -216,14 +217,14 @@ public class MessageColumnIO extends GroupColumnIO {
      * Maintain a map of groups and all the leaf nodes underneath it. It's used to optimize writing null for a group node.
      * Instead of using recursion calls, all the leaves can be called directly without traversing the sub tree of the group node
      */
-    private Map<GroupColumnIO, List<ColumnWriter>> groupToLeafWriter = new HashMap<GroupColumnIO, List<ColumnWriter>>();
+    private Map<GroupColumnIO, List<ColumnWriter>> groupToLeafWriter = new HashMap<>();
 
 
     /*
      * Cache nulls for each group node. It only stores the repetition level, since the definition level
      * should always be the definition level of the group node.
      */
-    private Map<GroupColumnIO, IntArrayList> groupNullCache = new HashMap<GroupColumnIO, IntArrayList>();
+    private Map<GroupColumnIO, IntArrayList> groupNullCache = new HashMap<>();
     private final ColumnWriteStore columns;
     private boolean emptyField = true;
 
@@ -238,7 +239,7 @@ public class MessageColumnIO extends GroupColumnIO {
     private List<ColumnWriter> getLeafWriters(GroupColumnIO group) {
       List<ColumnWriter> writers = groupToLeafWriter.get(group);
       if (writers == null) {
-        writers = new ArrayList<ColumnWriter>();
+        writers = new ArrayList<>();
         groupToLeafWriter.put(group, writers);
       }
       return writers;

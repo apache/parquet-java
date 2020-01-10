@@ -23,8 +23,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
 
-import org.apache.parquet.Strings;
-
 public final class ColumnPath implements Iterable<String>, Serializable {
 
   private static Canonicalizer<ColumnPath> paths = new Canonicalizer<ColumnPath>() {
@@ -67,7 +65,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   }
 
   public String toDotString() {
-    return Strings.join(p, ".");
+    return String.join(".", p);
   }
 
   @Override

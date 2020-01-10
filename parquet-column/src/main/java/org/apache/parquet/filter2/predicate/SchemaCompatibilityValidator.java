@@ -64,11 +64,11 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   // A map of column name to the type the user supplied for this column.
   // Used to validate that the user did not provide different types for the same
   // column.
-  private final Map<ColumnPath, Class<?>> columnTypesEncountered = new HashMap<ColumnPath, Class<?>>();
+  private final Map<ColumnPath, Class<?>> columnTypesEncountered = new HashMap<>();
 
   // the columns (keyed by path) according to the file's schema. This is the source of truth, and
   // we are validating that what the user provided agrees with these.
-  private final Map<ColumnPath, ColumnDescriptor> columnsAccordingToSchema = new HashMap<ColumnPath, ColumnDescriptor>();
+  private final Map<ColumnPath, ColumnDescriptor> columnsAccordingToSchema = new HashMap<>();
 
   private SchemaCompatibilityValidator(MessageType schema) {
 

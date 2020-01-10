@@ -59,7 +59,7 @@ public class TestLogicalInverter {
           and(gt(doubleColumn, 12.0),
               or(
                   or(eq(intColumn, 7), notEq(intColumn, 17)),
-                  new LogicalNotUserDefined<Integer, DummyUdp>(userDefined(intColumn, DummyUdp.class)))),
+                  new LogicalNotUserDefined<>(userDefined(intColumn, DummyUdp.class)))),
           and(ltEq(doubleColumn, 100.0), eq(intColumn, 77)));
 
   @Test
@@ -82,9 +82,9 @@ public class TestLogicalInverter {
     assertEquals(eq(intColumn, 17), invert(not(eq(intColumn, 17))));
 
     UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
-    assertEquals(new LogicalNotUserDefined<Integer, DummyUdp>(ud), invert(ud));
+    assertEquals(new LogicalNotUserDefined<>(ud), invert(ud));
     assertEquals(ud, invert(not(ud)));
-    assertEquals(ud, invert(new LogicalNotUserDefined<Integer, DummyUdp>(ud)));
+    assertEquals(ud, invert(new LogicalNotUserDefined<>(ud)));
   }
 
   @Test

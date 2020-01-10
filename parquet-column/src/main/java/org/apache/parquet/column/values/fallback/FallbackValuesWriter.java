@@ -28,7 +28,7 @@ import org.apache.parquet.io.api.Binary;
 public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> extends ValuesWriter {
 
   public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(I initialWriter, F fallBackWriter) {
-    return new FallbackValuesWriter<I, F>(initialWriter, fallBackWriter);
+    return new FallbackValuesWriter<>(initialWriter, fallBackWriter);
   }
 
   /** writer to start with */
@@ -103,6 +103,7 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     fallBackWriter.close();
   }
 
+  @Override
   public DictionaryPage toDictPageAndClose() {
     if (initialUsedAndHadDictionary) {
       return initialWriter.toDictPageAndClose();
@@ -111,6 +112,7 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     }
   }
 
+  @Override
   public void resetDictionary() {
     if (initialUsedAndHadDictionary) {
       initialWriter.resetDictionary();
@@ -156,12 +158,14 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   // passthrough writing the value
 
+  @Override
   public void writeByte(int value) {
     rawDataByteSize += 1;
     currentWriter.writeByte(value);
     checkFallback();
   }
 
+  @Override
   public void writeBytes(Binary v) {
     //for rawdata, length(4 bytes int) is stored, followed by the binary content itself
     rawDataByteSize += v.length() + 4;
@@ -169,24 +173,28 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     checkFallback();
   }
 
+  @Override
   public void writeInteger(int v) {
     rawDataByteSize += 4;
     currentWriter.writeInteger(v);
     checkFallback();
   }
 
+  @Override
   public void writeLong(long v) {
     rawDataByteSize += 8;
     currentWriter.writeLong(v);
     checkFallback();
   }
 
+  @Override
   public void writeFloat(float v) {
     rawDataByteSize += 4;
     currentWriter.writeFloat(v);
     checkFallback();
   }
 
+  @Override
   public void writeDouble(double v) {
     rawDataByteSize += 8;
     currentWriter.writeDouble(v);

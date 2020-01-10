@@ -79,7 +79,7 @@ public class TestColumnReaderImpl {
     }
     assertEquals(rows, rowCount);
     assertEquals(rows, valueCount);
-    MemPageReader pageReader = new MemPageReader((long)rows, pages.iterator(), pageWriter.getDictionaryPage());
+    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage());
     ValidatingConverter converter = new ValidatingConverter();
     ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
     for (int i = 0; i < rows; i++) {
@@ -117,7 +117,7 @@ public class TestColumnReaderImpl {
     }
     assertEquals(rows, rowCount);
     assertEquals(rows, valueCount);
-    MemPageReader pageReader = new MemPageReader((long)rows, pages.iterator(), pageWriter.getDictionaryPage());
+    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage());
     ValidatingConverter converter = new ValidatingConverter();
     ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
     for (int i = 0; i < rows; i++) {

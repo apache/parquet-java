@@ -19,13 +19,10 @@
 package org.apache.parquet.column.values.delta;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
-import org.apache.parquet.column.values.bitpacking.BytePackerForLong;
-import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetEncodingException;
 
 import java.io.IOException;

@@ -73,7 +73,7 @@ public class FilteringGroupConverter extends GroupConverter {
 
     // determine the indexFieldPath for the converter proxy we're about to make, which is
     // this converter's path + the requested fieldIndex
-    List<Integer> newIndexFieldPath = new ArrayList<Integer>(indexFieldPath.size() + 1);
+    List<Integer> newIndexFieldPath = new ArrayList<>(indexFieldPath.size() + 1);
     newIndexFieldPath.addAll(indexFieldPath);
     newIndexFieldPath.add(fieldIndex);
 

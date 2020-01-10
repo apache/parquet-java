@@ -92,7 +92,7 @@ public class IntList {
     }
   }
 
-  private List<int[]> slabs = new ArrayList<int[]>();
+  private List<int[]> slabs = new ArrayList<>();
 
   // Lazy initialize currentSlab only when needed to save on memory in cases where items might
   // not be added
