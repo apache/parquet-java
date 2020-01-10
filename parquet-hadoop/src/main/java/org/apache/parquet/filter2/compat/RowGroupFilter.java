@@ -59,12 +59,12 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
    */
   @Deprecated
   public static List<BlockMetaData> filterRowGroups(Filter filter, List<BlockMetaData> blocks, MessageType schema) {
-	  Objects.requireNonNull(filter, "filter");
+	  Objects.requireNonNull(filter, "filter cannot be null");
     return filter.accept(new RowGroupFilter(blocks, schema));
   }
 
   public static List<BlockMetaData> filterRowGroups(List<FilterLevel> levels, Filter filter, List<BlockMetaData> blocks, ParquetFileReader reader) {
-    Objects.requireNonNull(filter, "filter");
+    Objects.requireNonNull(filter, "filter cannot be null");
     return filter.accept(new RowGroupFilter(levels, blocks, reader));
   }
 

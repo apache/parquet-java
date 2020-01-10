@@ -78,11 +78,13 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
    * See docs on CodecFactory#createDirectCodecFactory which is how this class is
    * exposed publicly and is just a pass-through factory method for this constructor
    * to hide the rest of this class from public access.
+   *
+   * @throws NullPointerException if allocator is {@code null}
    */
   DirectCodecFactory(Configuration config, ByteBufferAllocator allocator, int pageSize) {
     super(config, pageSize);
 
-    this.allocator = Objects.requireNonNull(allocator, "allocator");
+    this.allocator = Objects.requireNonNull(allocator, "allocator cannot be null");
     Preconditions.checkState(allocator.isDirect(),
         "A %s requires a direct buffer allocator be provided.",
         getClass().getSimpleName());

@@ -77,7 +77,8 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
   private final boolean keepOneOfEachUnion;
 
   private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection, boolean keepOneOfEachUnion) {
-    this.fieldProjectionFilter = Objects.requireNonNull(fieldProjectionFilter, "fieldProjectionFilter");
+    this.fieldProjectionFilter = Objects.requireNonNull(fieldProjectionFilter,
+        "fieldProjectionFilter cannot be null");
     this.doProjection = doProjection;
     this.keepOneOfEachUnion = keepOneOfEachUnion;
   }

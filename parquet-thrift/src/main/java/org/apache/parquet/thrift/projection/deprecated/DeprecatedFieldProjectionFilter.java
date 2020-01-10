@@ -59,7 +59,7 @@ public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
   }
 
   public DeprecatedFieldProjectionFilter(String filterDescStr) {
-    Objects.requireNonNull(filterDescStr, "filterDescStr");
+    Objects.requireNonNull(filterDescStr, "filterDescStr cannot be null");
 
     filterPatterns = new LinkedList<PathGlobPatternStatus>();
 

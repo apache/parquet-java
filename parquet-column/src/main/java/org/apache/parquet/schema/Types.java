@@ -1322,7 +1322,7 @@ public class Types {
     protected Type build(String name) {
       Preconditions.checkState(logicalTypeAnnotation == null,
           "LIST is already the logical type and can't be changed");
-      Objects.requireNonNull(elementType, "List element type");
+      Objects.requireNonNull(elementType, "List element type cannot be null");
 
       GroupBuilder<GroupType> builder = buildGroup(repetition).as(OriginalType.LIST);
       if (id != null) {

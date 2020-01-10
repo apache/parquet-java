@@ -46,11 +46,14 @@ public class GlobalMetaData implements Serializable {
    * @param schema the union of the schemas for all the files
    * @param keyValueMetaData the merged app specific metadata
    * @param createdBy the description of the library that created the file
+   *
+   * @throws NullPointerException if schema or keyValueMetaData is {@code null}
    */
   public GlobalMetaData(MessageType schema, Map<String, Set<String>> keyValueMetaData, Set<String> createdBy) {
     super();
     this.schema = Objects.requireNonNull(schema, "schema cannot be null");
-    this.keyValueMetaData = unmodifiableMap(Objects.requireNonNull(keyValueMetaData, "keyValueMetaData"));
+    this.keyValueMetaData = unmodifiableMap(Objects
+        .requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
     this.createdBy = createdBy;
   }
 

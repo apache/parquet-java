@@ -181,7 +181,7 @@ public class ParquetReader<T> implements Closeable {
 
     @Deprecated
     private Builder(ReadSupport<T> readSupport, Path path) {
-      this.readSupport = Objects.requireNonNull(readSupport, "readSupport");
+      this.readSupport = Objects.requireNonNull(readSupport, "readSupport cannot be null");
       this.file = null;
       this.path = Objects.requireNonNull(path, "path cannot be null");
       this.conf = new Configuration();

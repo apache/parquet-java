@@ -34,6 +34,7 @@ public final class Preconditions {
    * @throws NullPointerException if o is null
    * @deprecated Use JDK {@link Objects#requireNonNull(Object, String)}
    */
+  @Deprecated
   public static <T> T checkNotNull(T o, String name) throws NullPointerException {
     if (o == null) {
       throw new NullPointerException(name + " should not be null");
