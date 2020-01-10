@@ -84,6 +84,10 @@ public enum BoundaryOrder {
     @Override
     OfInt gt(ColumnIndexBase<?>.ValueComparator comparator) {
       int length = comparator.arrayLength();
+      if (length == 0) {
+        // No matching rows if the column index contains null pages only
+        return IndexIterator.EMPTY;
+      }
       int left = 0;
       int right = length;
       do {
@@ -100,6 +104,10 @@ public enum BoundaryOrder {
     @Override
     OfInt gtEq(ColumnIndexBase<?>.ValueComparator comparator) {
       int length = comparator.arrayLength();
+      if (length == 0) {
+        // No matching rows if the column index contains null pages only
+        return IndexIterator.EMPTY;
+      }
       int left = 0;
       int right = length;
       do {
@@ -116,6 +124,10 @@ public enum BoundaryOrder {
     @Override
     OfInt lt(ColumnIndexBase<?>.ValueComparator comparator) {
       int length = comparator.arrayLength();
+      if (length == 0) {
+        // No matching rows if the column index contains null pages only
+        return IndexIterator.EMPTY;
+      }
       int left = -1;
       int right = length - 1;
       do {
@@ -132,6 +144,10 @@ public enum BoundaryOrder {
     @Override
     OfInt ltEq(ColumnIndexBase<?>.ValueComparator comparator) {
       int length = comparator.arrayLength();
+      if (length == 0) {
+        // No matching rows if the column index contains null pages only
+        return IndexIterator.EMPTY;
+      }
       int left = -1;
       int right = length - 1;
       do {
@@ -207,6 +223,10 @@ public enum BoundaryOrder {
     @Override
     OfInt gt(ColumnIndexBase<?>.ValueComparator comparator) {
       int length = comparator.arrayLength();
+      if (length == 0) {
+        // No matching rows if the column index contains null pages only
+        return IndexIterator.EMPTY;
+      }
       int left = -1;
       int right = length - 1;
       do {
@@ -223,6 +243,10 @@ public enum BoundaryOrder {
     @Override
     OfInt gtEq(ColumnIndexBase<?>.ValueComparator comparator) {
       int length = comparator.arrayLength();
+      if (length == 0) {
+        // No matching rows if the column index contains null pages only
+        return IndexIterator.EMPTY;
+      }
       int left = -1;
       int right = length - 1;
       do {
@@ -239,6 +263,10 @@ public enum BoundaryOrder {
     @Override
     OfInt lt(ColumnIndexBase<?>.ValueComparator comparator) {
       int length = comparator.arrayLength();
+      if (length == 0) {
+        // No matching rows if the column index contains null pages only
+        return IndexIterator.EMPTY;
+      }
       int left = 0;
       int right = length;
       do {
@@ -255,6 +283,10 @@ public enum BoundaryOrder {
     @Override
     OfInt ltEq(ColumnIndexBase<?>.ValueComparator comparator) {
       int length = comparator.arrayLength();
+      if (length == 0) {
+        // No matching rows if the column index contains null pages only
+        return IndexIterator.EMPTY;
+      }
       int left = 0;
       int right = length;
       do {
