@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
@@ -36,12 +37,12 @@ import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
  * convenience methods for those checks, like {@link #hasNonDictionaryEncodedPages()}.
  */
 public class EncodingStats {
-  final Map<Encoding, Integer> dictStats;
-  final Map<Encoding, Integer> dataStats;
+  final Map<Encoding, Number> dictStats;
+  final Map<Encoding, Number> dataStats;
   private final boolean usesV2Pages;
 
-  private EncodingStats(Map<Encoding, Integer> dictStats,
-                        Map<Encoding, Integer> dataStats,
+  private EncodingStats(Map<Encoding, Number> dictStats,
+                        Map<Encoding, Number> dataStats,
                         boolean usesV2Pages) {
     this.dictStats = dictStats;
     this.dataStats = dataStats;
@@ -57,13 +58,13 @@ public class EncodingStats {
   }
 
   public int getNumDictionaryPagesEncodedAs(Encoding enc) {
-    final Integer i = dictStats.get(enc);
-    return (i == null) ? 0 : i.intValue();
+    final Number pageCount = dictStats.get(enc);
+    return (pageCount == null) ? 0 : pageCount.intValue();
   }
 
   public int getNumDataPagesEncodedAs(Encoding enc) {
-    final Integer i = dataStats.get(enc);
-    return (i == null) ? 0 : i.intValue();
+    final Number pageCount = dataStats.get(enc);
+    return (pageCount == null) ? 0 : pageCount.intValue();
   }
 
   public boolean hasDictionaryPages() {
@@ -103,8 +104,8 @@ public class EncodingStats {
    * Used to build {@link EncodingStats} from metadata or to accumulate stats as pages are written.
    */
   public static class Builder {
-    private final Map<Encoding, Integer> dictStats = new LinkedHashMap<>();
-    private final Map<Encoding, Integer> dataStats = new LinkedHashMap<>();
+    private final Map<Encoding, AtomicInteger> dictStats = new LinkedHashMap<>();
+    private final Map<Encoding, AtomicInteger> dataStats = new LinkedHashMap<>();
     private boolean usesV2Pages = false;
 
     public Builder clear() {
@@ -124,8 +125,8 @@ public class EncodingStats {
     }
 
     public Builder addDictEncoding(Encoding encoding, int numPages) {
-      Integer pages = dictStats.get(encoding);
-      dictStats.put(encoding, numPages + (pages != null ? pages : 0));
+      dictStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0))
+          .addAndGet(numPages);
       return this;
     }
 
@@ -141,8 +142,8 @@ public class EncodingStats {
     }
 
     public Builder addDataEncoding(Encoding encoding, int numPages) {
-      Integer pages = dataStats.get(encoding);
-      dataStats.put(encoding, numPages + (pages != null ? pages : 0));
+      dataStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0))
+      .addAndGet(numPages);
       return this;
     }
 
