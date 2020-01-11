@@ -402,7 +402,7 @@ abstract class ColumnReaderBase implements ColumnReader {
    * @param writerVersion writer version string from the Parquet file being read
    */
   ColumnReaderBase(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter, ParsedVersion writerVersion) {
-    this.path = Objects.requireNonNull(path, "path canot be null");
+    this.path = Objects.requireNonNull(path, "path cannot be null");
     this.pageReader = Objects.requireNonNull(pageReader, "pageReader cannot be null");
     this.converter = Objects.requireNonNull(converter, "converter cannot be null");
     this.writerVersion = writerVersion;
