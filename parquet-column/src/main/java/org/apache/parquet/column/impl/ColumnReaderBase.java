@@ -404,7 +404,7 @@ abstract class ColumnReaderBase implements ColumnReader {
   ColumnReaderBase(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter, ParsedVersion writerVersion) {
     this.path = Objects.requireNonNull(path, "path canot be null");
     this.pageReader = Objects.requireNonNull(pageReader, "pageReader canot be null");
-    this.converter = Objects.requireNonNull(converter, "converter canot be null");
+    this.converter = Objects.requireNonNull(converter, "converter cannot be null");
     this.writerVersion = writerVersion;
     this.maxDefinitionLevel = path.getMaxDefinitionLevel();
     DictionaryPage dictionaryPage = pageReader.readDictionaryPage();
