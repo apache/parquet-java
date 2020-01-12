@@ -38,6 +38,8 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is based on org.apache.avro.TestCircularReferences
@@ -49,6 +51,8 @@ import org.junit.rules.TemporaryFolder;
  * referenceable logical type.
  */
 public class TestCircularReferences {
+
+  private static final Logger LOG = LoggerFactory.getLogger(TestCircularReferences.class);
 
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
@@ -343,7 +347,7 @@ public class TestCircularReferences {
 
     Schema schema = idRef.addToSchema(parentSchema);
 
-    System.out.println("Schema: " + schema.toString(true));
+    LOG.debug("Schema: {}", schema.toString(true));
 
     Record parent = new Record(schema);
     parent.put("id", 1L);
