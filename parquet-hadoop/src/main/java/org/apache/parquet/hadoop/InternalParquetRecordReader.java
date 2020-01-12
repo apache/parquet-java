@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -255,11 +254,9 @@ class InternalParquetRecordReader<T> {
   }
 
   private static <K, V> Map<K, Set<V>> toSetMultiMap(Map<K, V> map) {
-    Map<K, Set<V>> setMultiMap = new HashMap<K, Set<V>>();
+    Map<K, Set<V>> setMultiMap = new HashMap<>();
     for (Map.Entry<K, V> entry : map.entrySet()) {
-      Set<V> set = new HashSet<V>();
-      set.add(entry.getValue());
-      setMultiMap.put(entry.getKey(), Collections.unmodifiableSet(set));
+      setMultiMap.put(entry.getKey(), Collections.singleton(entry.getValue()));
     }
     return Collections.unmodifiableMap(setMultiMap);
   }
