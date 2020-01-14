@@ -51,7 +51,7 @@ class InternalParquetRecordWriter<T> {
   private final Map<String, String> extraMetaData;
   private final long rowGroupSize;
   private long rowGroupSizeThreshold;
-  private long nextRowGroupSize;
+  private volatile long nextRowGroupSize;
   private final BytesCompressor compressor;
   private final boolean validating;
   private final ParquetProperties props;
@@ -186,8 +186,9 @@ class InternalParquetRecordWriter<T> {
     return rowGroupSizeThreshold;
   }
 
-  void setRowGroupSizeThreshold(long rowGroupSizeThreshold) {
+  void updateRowGroupSizeThreshold(long rowGroupSizeThreshold) {
     this.rowGroupSizeThreshold = rowGroupSizeThreshold;
+    this.nextRowGroupSize = Math.min(this.rowGroupSizeThreshold, this.nextRowGroupSize);
   }
 
   MessageType getSchema() {
