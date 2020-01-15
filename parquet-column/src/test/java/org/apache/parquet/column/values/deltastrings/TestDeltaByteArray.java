@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.deltastrings;
 
 import java.io.IOException;
+
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.junit.Test;
 import org.junit.Assert;
