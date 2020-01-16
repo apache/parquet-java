@@ -199,6 +199,10 @@ public class PhoneBookWriter {
     public String toString() {
       return "User [id=" + id + ", name=" + name + ", phoneNumbers=" + phoneNumbers + ", location=" + location + "]";
     }
+
+    public User cloneWithName(String name) {
+      return new User(id, name, phoneNumbers, location);
+    }
   }
 
   public static SimpleGroup groupFromUser(User user) {
@@ -257,6 +261,10 @@ public class PhoneBookWriter {
   }
 
   private static boolean isNull(Group group, String field) {
+    // Use null value if the field is not in the group schema
+    if (!group.getType().containsField(field)) {
+      return true;
+    }
     int repetition = group.getFieldRepetitionCount(field);
     if (repetition == 0) {
       return true;
