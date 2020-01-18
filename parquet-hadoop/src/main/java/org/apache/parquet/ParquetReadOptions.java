@@ -243,8 +243,8 @@ public class ParquetReadOptions {
       return this;
     }
 
-    public Builder useDirectByteBufferAllocator(boolean val) {
-      if (val) {
+    public Builder useDirectByteBufferAllocator(boolean useDirectByteBuffer) {
+      if (useDirectByteBuffer) {
         this.allocator = new DirectByteBufferAllocator();
       }
       return this;
