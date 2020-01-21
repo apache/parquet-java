@@ -34,6 +34,7 @@
 
   <properties>
     <elephant-bird.version>4.4</elephant-bird.version>
+    <main.basedir>${project.parent.basedir}</main.basedir>
   </properties>
 
   <dependencies>

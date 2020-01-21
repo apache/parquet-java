@@ -32,6 +32,10 @@
   <name>Apache Parquet Scala</name>
   <url>https://parquet.apache.org</url>
 
+  <properties>
+    <main.basedir>${project.parent.basedir}</main.basedir>
+  </properties>
+
   <repositories>
     <repository>
       <id>scala-tools.org</id>
@@ -46,13 +50,13 @@
       <url>https://scala-tools.org/repo-releases</url>
     </pluginRepository>
   </pluginRepositories>
-    
+
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
       <version>${project.version}</version>
-    </dependency>  
+    </dependency>
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>

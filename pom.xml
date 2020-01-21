@@ -72,6 +72,7 @@
     <maven.compiler.target>${targetJavaVersion}</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
+    <main.basedir>${project.basedir}</main.basedir>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
@@ -207,6 +208,32 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>1.27.0</version>
+          <configuration>
+            <java>
+              <eclipse>
+                <!-- Parquet uses Sun's java code style conventions with 2 spaces, this is a modified version of
+                     the eclipse formatter -->
+                <file>${main.basedir}/dev/eclipse-java-formatter.xml</file>
+                <version>4.7.1</version>
+              </eclipse>
+              <removeUnusedImports/>
+            </java>
+          </configuration>
+          <executions>
+            <execution>
+              <!-- Runs in compile phase to fail fast in case of formatting issues.-->
+              <id>spotless-check</id>
+              <phase>compile</phase>
+              <goals>
+                <goal>check</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
         <plugin>
           <!-- Disable the source artifact from ASF parent -->
           <artifactId>maven-assembly-plugin</artifactId>

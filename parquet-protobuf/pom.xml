@@ -32,6 +32,7 @@
   <properties>
     <elephant-bird.version>4.4</elephant-bird.version>
     <protobuf.version>3.5.1</protobuf.version>
+    <main.basedir>${project.parent.basedir}</main.basedir>
   </properties>
 
 

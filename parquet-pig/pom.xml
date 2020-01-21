@@ -33,6 +33,7 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
+    <main.basedir>${project.parent.basedir}</main.basedir>
   </properties>
 
   <dependencies>

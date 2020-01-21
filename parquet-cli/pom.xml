@@ -32,6 +32,10 @@
   <name>Apache Parquet Command-line</name>
   <url>https://parquet.apache.org</url>
 
+  <properties>
+    <main.basedir>${project.parent.basedir}</main.basedir>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>

@@ -32,6 +32,10 @@
   <name>Apache Parquet Cascading (for Cascading 3.0 onwards)</name>
   <url>https://parquet.apache.org</url>
 
+  <properties>
+    <main.basedir>${project.parent.basedir}</main.basedir>
+  </properties>
+
   <repositories>
     <repository>
      <id>conjars.org</id>

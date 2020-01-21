@@ -30,6 +30,10 @@
   <name>Apache Parquet Hive Binding Factory</name>
   <packaging>jar</packaging>
 
+  <properties>
+    <main.basedir>${project.parent.parent.parent.basedir}</main.basedir>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>

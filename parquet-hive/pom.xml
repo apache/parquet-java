@@ -32,17 +32,9 @@
   <name>Apache Parquet Hive</name>
   <url>https://parquet.apache.org</url>
 
-  <developers>
-    <developer>
-      <name>Mickaël Lacour</name>
-      <email>m.lacour@criteo.com</email>
-    </developer>
-
-    <developer>
-      <name>Rémy Pecqueur</name>
-      <email>r.pecqueur@criteo.com</email>
-    </developer>
-  </developers>
+  <properties>
+    <main.basedir>${project.parent.basedir}</main.basedir>
+  </properties>
 
   <modules>
     <module>parquet-hive-binding</module>

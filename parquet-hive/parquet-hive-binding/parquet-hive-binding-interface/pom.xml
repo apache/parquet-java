@@ -26,6 +26,11 @@
 
   <modelVersion>4.0.0</modelVersion>
 
+  <properties>
+    <arrow.version>0.10.0</arrow.version>
+    <main.basedir>${project.parent.parent.parent.basedir}</main.basedir>
+  </properties>
+
   <artifactId>parquet-hive-binding-interface</artifactId>
   <name>Apache Parquet Hive Binding Interface</name>
   <packaging>jar</packaging>

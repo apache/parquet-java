@@ -36,6 +36,7 @@
 
   <properties>
     <parquet.thrift.path>${project.build.directory}/parquet-format-thrift</parquet.thrift.path>
+    <main.basedir>${project.parent.basedir}</main.basedir>
   </properties>
 
   <build>

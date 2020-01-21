@@ -26,6 +26,10 @@
 
   <modelVersion>4.0.0</modelVersion>
 
+  <properties>
+    <main.basedir>${project.parent.parent.basedir}</main.basedir>
+  </properties>
+
   <artifactId>parquet-hive-binding</artifactId>
   <name>Apache Parquet Hive Binding Parent</name>
   <packaging>pom</packaging>
