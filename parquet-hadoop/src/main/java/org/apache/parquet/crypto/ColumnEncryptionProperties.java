@@ -74,18 +74,24 @@ public class ColumnEncryptionProperties {
    * Convenience builder for regular (not nested) columns.
    * To make sure column name is not misspelled or misplaced, 
    * file writer will verify that column is in file schema.
+   *
+   * @param name Flat column name
+   * @return Builder
    */
-  public static Builder builder(String columnName) {
-    return builder(ColumnPath.get(columnName), true);
+  public static Builder builder(String name) {
+    return builder(ColumnPath.get(name), true);
   }
 
   /**
    * Builder for encrypted columns.
    * To make sure column path is not misspelled or misplaced, 
    * file writer will verify this column is in file schema.
+   * 
+   * @param path Column path
+   * @return Builder
    */
-  public static Builder builder(ColumnPath columnPath) {
-    return builder(columnPath, true);
+  public static Builder builder(ColumnPath path) {
+    return builder(path, true);
   }
 
 
@@ -111,6 +117,7 @@ public class ColumnEncryptionProperties {
      * be encrypted with the footer key.
      * The key is cloned, and will be wiped out (array values set to 0) upon completion of file writing.
      * Caller is responsible for wiping out the input key array. 
+     * 
      * @param columnKey Key length must be either 16, 24 or 32 bytes.
      * @return Builder
      */
@@ -128,7 +135,8 @@ public class ColumnEncryptionProperties {
 
     /**
      * Set a key retrieval metadata.
-     * use either withKeyMetaData or withKeyID, not both
+     * use either withKeyMetaData or withKeyID, not both.
+     * 
      * @param keyMetaData arbitrary byte array with encryption key metadata
      * @return Builder
      */
@@ -145,7 +153,8 @@ public class ColumnEncryptionProperties {
 
     /**
      * Set a key retrieval metadata (converted from String).
-     * use either withKeyMetaData or withKeyID, not both
+     * use either withKeyMetaData or withKeyID, not both.
+     * 
      * @param keyId will be converted to metadata (UTF-8 array).
      * @return Builder
      */

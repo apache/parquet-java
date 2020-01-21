@@ -54,13 +54,16 @@ public class ColumnDecryptionProperties {
 
   /**
    * Convenience builder for regular (not nested) columns.
+   * 
+   * @param name Flat column name
+   * @return Builder
    */
-  public static Builder builder(String columnName) {
-    return builder(ColumnPath.get(columnName));
+  public static Builder builder(String name) {
+    return builder(ColumnPath.get(name));
   }
 
-  public static Builder builder(ColumnPath columnPath) {
-    return new Builder(columnPath);
+  public static Builder builder(ColumnPath path) {
+    return new Builder(path);
   }
 
   public static class Builder {

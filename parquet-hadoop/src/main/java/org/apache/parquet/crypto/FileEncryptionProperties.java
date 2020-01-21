@@ -141,6 +141,8 @@ public class FileEncryptionProperties {
     /**
      * Create files with plaintext footer.
      * If not called, the files will be created with encrypted footer (default).
+     * 
+     * @return Builder
      */
     public Builder withPlaintextFooter() {
       this.encryptedFooter = false;
@@ -150,6 +152,9 @@ public class FileEncryptionProperties {
     /**
      * Set encryption algorithm.
      * If not called, files will be encrypted with AES_GCM_V1 (default).
+     * 
+     * @param parquetCipher Encryption algorithm
+     * @return Builder
      */
     public Builder withAlgorithm(ParquetCipher parquetCipher) {
       this.parquetCipher = parquetCipher;
@@ -159,6 +164,7 @@ public class FileEncryptionProperties {
     /**
      * Set a key retrieval metadata (converted from String).
      * Use either withFooterKeyMetaData or withFooterKeyID, not both.
+     * 
      * @param keyID will be converted to metadata (UTF-8 array).
      * @return Builder
      */
@@ -172,6 +178,9 @@ public class FileEncryptionProperties {
     /**
      * Set a key retrieval metadata.
      * Use either withFooterKeyMetaData or withFooterKeyID, not both.
+     * 
+     * @param footerKeyMetadata Key metadata
+     * @return Builder
      */
     public Builder withFooterKeyMetadata(byte[] footerKeyMetadata) {
       if (null == footerKeyMetadata) {
@@ -186,6 +195,9 @@ public class FileEncryptionProperties {
 
     /**
      * Set the file AAD Prefix.
+     * 
+     * @param aadPrefixBytes AAD Prefix
+     * @return Builder
      */
     public Builder withAADPrefix(byte[] aadPrefixBytes) {
       if (null == aadPrefixBytes) {
@@ -202,6 +214,8 @@ public class FileEncryptionProperties {
     /**
      * Skip storing AAD Prefix in file metadata.
      * If not called, and if AAD Prefix is set, it will be stored.
+     * 
+     * @return Builder
      */
     public Builder withoutAADPrefixStorage() {
       if (null == this.aadPrefix) {
@@ -215,6 +229,9 @@ public class FileEncryptionProperties {
      * Set the list of encrypted columns and their properties (keys etc).
      * If not called, all columns will be encrypted with the footer key. 
      * If called, the file columns not in the list will be left unencrypted.
+     * 
+     * @param encryptedColumns Columns to be encrypted
+     * @return Builder
      */
     public Builder withEncryptedColumns(Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns)  {
       if (null == encryptedColumns) {
@@ -304,6 +321,9 @@ public class FileEncryptionProperties {
    * This method allows to clone identical properties for another file, 
    * with an option to update the aadPrefix (if newAadPrefix is null, 
    * aadPrefix will not change) 
+   * 
+   * @param newAadPrefix AAD prefix
+   * @return Builder
    */
   public FileEncryptionProperties deepClone(byte[] newAadPrefix) {
 

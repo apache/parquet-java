@@ -26,8 +26,10 @@ public interface AADPrefixVerifier {
 
   /**
    * Verifies identity (AAD Prefix) of individual file, or of file collection in a data set.
-   * Throws exception if an AAD prefix is wrong.
    * Must be thread-safe.
+   * 
+   * @param aadPrefix AAD Prefix
+   * @throws IOException Throw exception if AAD prefix is wrong.
    */
   public void verify(byte[] aadPrefix) throws IOException;
 }

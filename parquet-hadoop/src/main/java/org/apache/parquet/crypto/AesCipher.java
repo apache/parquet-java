@@ -82,9 +82,7 @@ public class AesCipher {
     return createModuleAAD(aadPrefixBytes, ModuleType.Footer, (short) -1, (short) -1, (short) -1);
   }
 
-  /**
-   * Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
-   */
+  // Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
   public static void quickUpdatePageAAD(byte[] pageAAD, short newPageOrdinal) {
     byte[] pageOrdinalBytes = shortToBytesLE(newPageOrdinal);
     int length = pageAAD.length;
