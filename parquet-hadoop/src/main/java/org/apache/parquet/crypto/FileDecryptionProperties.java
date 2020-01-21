@@ -94,7 +94,8 @@ public class FileDecryptionProperties {
      * Upon completion of file reading, the cloned encryption keys in the properties will 
      * be wiped out (array values set to 0).
      * Caller is responsible for wiping out the input key array. 
-     * @param footerKey Key length must be either 16, 24 or 32 bytes. 
+     * @param footerKey Key length must be either 16, 24 or 32 bytes.
+     * @return Builder 
      */
     public Builder withFooterKey(byte[] footerKey) {
       if (null == footerKey) {
@@ -139,7 +140,6 @@ public class FileDecryptionProperties {
      * availability of explicit keys is checked before invocation of the retriever callback.
      * If an explicit key is available for a footer or a column, its key metadata will
      * be ignored. 
-     * @param keyRetriever
      */
     public Builder withKeyRetriever(DecryptionKeyRetriever keyRetriever) {
       if (null == keyRetriever) {
@@ -158,7 +158,6 @@ public class FileDecryptionProperties {
      * be thrown in the following situations:
      * - footer signing key is not available (not passed, or not found by key retriever)
      * - footer content doesn't match the signature
-     * @return
      */
     public Builder withoutFooterSignatureVerification() {
       this.checkPlaintextFooterIntegrity = false;
@@ -171,7 +170,6 @@ public class FileDecryptionProperties {
      * A must when a prefix is used for file encryption, but not stored in file.
      * If AAD prefix is stored in file, it will be compared to the explicitly supplied value 
      * and an exception will be thrown if they differ.
-     * @param aadPrefixBytes
      */
     public Builder withAADPrefix(byte[] aadPrefixBytes) {
       if (null == aadPrefixBytes) {
@@ -186,8 +184,6 @@ public class FileDecryptionProperties {
 
     /**
      * Set callback for verification of AAD Prefixes stored in file.
-     * @param aadPrefixVerifier
-     * @return
      */
     public Builder withAADPrefixVerifier(AADPrefixVerifier aadPrefixVerifier) {
       if (null == aadPrefixVerifier) {
@@ -205,7 +201,6 @@ public class FileDecryptionProperties {
      * - in order to detect files that were not encrypted by mistake. 
      * However, the default behavior can be overriden by calling this method.
      * The caller should use then a different method to ensure encryption of files with sensitive data.
-     * @return
      */
     public Builder withPlaintextFilesAllowed() {
       this.plaintextFilesAllowed  = true;

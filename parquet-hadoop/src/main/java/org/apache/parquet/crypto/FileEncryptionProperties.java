@@ -115,6 +115,7 @@ public class FileEncryptionProperties {
    * @param keyBytes Encryption key for file footer and some (or all) columns. 
    * Key length must be either 16, 24 or 32 bytes.
    * If null, footer won't be encrypted. At least one column must be encrypted then.
+   * @return Builder
    */
   public static Builder builder(byte[] footerKey) {
     return new Builder(footerKey);
@@ -140,7 +141,6 @@ public class FileEncryptionProperties {
     /**
      * Create files with plaintext footer.
      * If not called, the files will be created with encrypted footer (default).
-     * @return
      */
     public Builder withPlaintextFooter() {
       this.encryptedFooter = false;
@@ -150,8 +150,6 @@ public class FileEncryptionProperties {
     /**
      * Set encryption algorithm.
      * If not called, files will be encrypted with AES_GCM_V1 (default).
-     * @param parquetCipher
-     * @return
      */
     public Builder withAlgorithm(ParquetCipher parquetCipher) {
       this.parquetCipher = parquetCipher;
@@ -162,7 +160,7 @@ public class FileEncryptionProperties {
      * Set a key retrieval metadata (converted from String).
      * Use either withFooterKeyMetaData or withFooterKeyID, not both.
      * @param keyID will be converted to metadata (UTF-8 array).
-     * @return
+     * @return Builder
      */
     public Builder withFooterKeyID(String keyID) {
       if (null == keyID) {
@@ -174,8 +172,6 @@ public class FileEncryptionProperties {
     /**
      * Set a key retrieval metadata.
      * Use either withFooterKeyMetaData or withFooterKeyID, not both.
-     * @param footerKeyMetadata
-     * @return
      */
     public Builder withFooterKeyMetadata(byte[] footerKeyMetadata) {
       if (null == footerKeyMetadata) {
@@ -190,7 +186,6 @@ public class FileEncryptionProperties {
 
     /**
      * Set the file AAD Prefix.
-     * @param aadPrefixBytes
      */
     public Builder withAADPrefix(byte[] aadPrefixBytes) {
       if (null == aadPrefixBytes) {
@@ -220,8 +215,6 @@ public class FileEncryptionProperties {
      * Set the list of encrypted columns and their properties (keys etc).
      * If not called, all columns will be encrypted with the footer key. 
      * If called, the file columns not in the list will be left unencrypted.
-     * @param encryptedColumns
-     * @return
      */
     public Builder withEncryptedColumns(Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns)  {
       if (null == encryptedColumns) {

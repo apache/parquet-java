@@ -84,8 +84,6 @@ public class AesCipher {
 
   /**
    * Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
-   * @param pageAAD
-   * @param newPageOrdinal
    */
   public static void quickUpdatePageAAD(byte[] pageAAD, short newPageOrdinal) {
     byte[] pageOrdinalBytes = shortToBytesLE(newPageOrdinal);

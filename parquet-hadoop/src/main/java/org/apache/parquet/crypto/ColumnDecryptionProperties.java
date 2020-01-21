@@ -54,14 +54,13 @@ public class ColumnDecryptionProperties {
 
   /**
    * Convenience builder for regular (not nested) columns.
-   * @param name Column name
    */
-  public static Builder builder(String name) {
-    return builder(ColumnPath.get(name));
+  public static Builder builder(String columnName) {
+    return builder(ColumnPath.get(columnName));
   }
 
-  public static Builder builder(ColumnPath path) {
-    return new Builder(path);
+  public static Builder builder(ColumnPath columnPath) {
+    return new Builder(columnPath);
   }
 
   public static class Builder {
@@ -83,6 +82,7 @@ public class ColumnDecryptionProperties {
      * Caller is responsible for wiping out the input key array. 
      * 
      * @param columnKey Key length must be either 16, 24 or 32 bytes.
+     * @return Builder
      */
     public Builder withKey(byte[] columnKey) {
       if (null != this.keyBytes) {
