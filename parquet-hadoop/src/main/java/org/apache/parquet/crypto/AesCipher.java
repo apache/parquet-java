@@ -53,6 +53,18 @@ public class AesCipher {
     if (null == keyBytes) {
       throw new IllegalArgumentException("Null key bytes");
     }
+    
+    boolean allZeroKey = true;
+    for (byte kb : keyBytes) {
+      if (kb != 0) {
+        allZeroKey = false;
+        break;
+      }
+    }
+    
+    if (allZeroKey) {
+      throw new IllegalArgumentException("All key bytes are zero");
+    }
 
     aesKey = new EncryptionKey(keyBytes);
     randomGenerator = new SecureRandom();
@@ -85,8 +97,7 @@ public class AesCipher {
   // Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
   public static void quickUpdatePageAAD(byte[] pageAAD, short newPageOrdinal) {
     byte[] pageOrdinalBytes = shortToBytesLE(newPageOrdinal);
-    int length = pageAAD.length;
-    System.arraycopy(pageOrdinalBytes, 0, pageAAD, length-2, 2);
+    System.arraycopy(pageOrdinalBytes, 0, pageAAD, pageAAD.length - 2, 2);
   }
 
   static byte[] concatByteArrays(byte[]... arrays) {
@@ -97,9 +108,8 @@ public class AesCipher {
     byte[] output = new byte[totalLength];
     int offset = 0;
     for (byte[] array : arrays) {
-      int arrayLength = array.length;
-      System.arraycopy(array, 0, output, offset, arrayLength);
-      offset += arrayLength;
+      System.arraycopy(array, 0, output, offset, array.length);
+      offset += array.length;
     }
     return output;
   }
@@ -107,17 +117,17 @@ public class AesCipher {
   private static byte[] shortToBytesLE(short input) {
     byte[] output  = new byte[2];
     output[1] = (byte)(0xff & (input >> 8));
-    output[0] = (byte)(0xff & (input));
+    output[0] = (byte)(0xff & input);
     return output;
   }
 
   public void wipeOut() {
-    wipedOut = true;
     try {
       aesKey.destroy();
     } catch (DestroyFailedException e) {
       throw new ShouldNeverHappenException(e);
     }
+    wipedOut = true;
     cipher = null; // dereference for GC
   }
 }

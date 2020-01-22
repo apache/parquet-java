@@ -112,7 +112,7 @@ public class FileEncryptionProperties {
    * be wiped out (array values set to 0).
    * Caller is responsible for wiping out the input key array. 
    * 
-   * @param keyBytes Encryption key for file footer and some (or all) columns. 
+   * @param footerKey Encryption key for file footer and some (or all) columns. 
    * Key length must be either 16, 24 or 32 bytes.
    * If null, footer won't be encrypted. At least one column must be encrypted then.
    * @return Builder

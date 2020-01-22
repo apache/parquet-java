@@ -97,7 +97,7 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
     final int ciphertextLength =
         ((lengthBuffer[3] & 0xff) << 24) |
         ((lengthBuffer[2] & 0xff) << 16) |
-        ((lengthBuffer[1] & 0xff) <<  8) |
+        ((lengthBuffer[1] & 0xff) << 8)  |
         ((lengthBuffer[0] & 0xff));
 
     if (ciphertextLength < 1) {
