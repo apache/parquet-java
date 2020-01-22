@@ -17,6 +17,7 @@
  * under the License.
  */
 package org.apache.parquet.hadoop.thrift;
+
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.thrift.TBase;
 
@@ -26,13 +27,13 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 /**
  * @param <T> the thrift class use for serialization
  */
-public class ParquetThriftOutputFormat<T extends TBase<?,?>> extends ParquetOutputFormat<T> {
+public class ParquetThriftOutputFormat<T extends TBase<?, ?>> extends ParquetOutputFormat<T> {
 
-  public static void setThriftClass(Job job, Class<? extends TBase<?,?>> thriftClass) {
+  public static void setThriftClass(Job job, Class<? extends TBase<?, ?>> thriftClass) {
     ThriftWriteSupport.setThriftClass(ContextUtil.getConfiguration(job), thriftClass);
   }
 
-  public static Class<? extends TBase<?,?>> getThriftClass(Job job) {
+  public static Class<? extends TBase<?, ?>> getThriftClass(Job job) {
     return ThriftWriteSupport.getThriftClass(ContextUtil.getConfiguration(job));
   }
 

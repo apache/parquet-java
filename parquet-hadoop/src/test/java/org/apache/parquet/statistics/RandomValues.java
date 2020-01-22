@@ -43,20 +43,38 @@ public class RandomValues {
       return (random.nextInt(10) == 0);
     }
 
-    public int randomInt() { return random.nextInt(); }
+    public int randomInt() {
+      return random.nextInt();
+    }
+
     public int randomPositiveInt(int maximum) {
       // Maximum may be a random number (which may be negative).
       return random.nextInt(Math.abs(maximum) + 1);
     }
 
-    public long randomLong() { return random.nextLong(); }
-    public long randomLong(long maximum) { return randomLong() % maximum; }
+    public long randomLong() {
+      return random.nextLong();
+    }
 
-    public float randomFloat() { return random.nextFloat(); }
-    public float randomFloat(float maximum) { return random.nextFloat() % maximum; }
+    public long randomLong(long maximum) {
+      return randomLong() % maximum;
+    }
 
-    public double randomDouble() { return random.nextDouble(); }
-    public double randomDouble(double maximum) { return random.nextDouble() % maximum; }
+    public float randomFloat() {
+      return random.nextFloat();
+    }
+
+    public float randomFloat(float maximum) {
+      return random.nextFloat() % maximum;
+    }
+
+    public double randomDouble() {
+      return random.nextDouble();
+    }
+
+    public double randomDouble(double maximum) {
+      return random.nextDouble() % maximum;
+    }
 
     public BigInteger randomInt96() {
       return new BigInteger(95, random);
@@ -64,7 +82,8 @@ public class RandomValues {
 
     public BigInteger randomInt96(BigInteger maximum) {
       BigInteger result;
-      while ((result = randomInt96()).compareTo(maximum) > 0);
+      while ((result = randomInt96()).compareTo(maximum) > 0)
+        ;
       return result;
     }
 
@@ -273,6 +292,7 @@ public class RandomValues {
 
   public static class StringGenerator extends RandomBinaryBase<String> {
     private static final int MAX_STRING_LENGTH = 16;
+
     public StringGenerator(long seed) {
       super(seed, MAX_STRING_LENGTH);
     }
@@ -288,8 +308,10 @@ public class RandomValues {
       return asReusedBinary(nextValue().getBytes());
     }
   }
+
   public static class BinaryGenerator extends RandomBinaryBase<Binary> {
     private static final int MAX_STRING_LENGTH = 16;
+
     public BinaryGenerator(long seed) {
       super(seed, MAX_STRING_LENGTH);
     }
@@ -346,8 +368,13 @@ public class RandomValues {
       }
     }
 
-    public T minimum() { return this.minimum; }
-    public T maximum() { return this.maximum; }
+    public T minimum() {
+      return this.minimum;
+    }
+
+    public T maximum() {
+      return this.maximum;
+    }
   }
 
   public static Supplier<Binary> binaryStringGenerator(long seed) {
@@ -360,8 +387,8 @@ public class RandomValues {
     return generator::nextBinaryValue;
   }
 
-  public static <T extends Comparable<T>> Supplier<T> wrapSorted(Supplier<T> supplier,
-      int recordCount, boolean ascending) {
+  public static <T extends Comparable<T>> Supplier<T> wrapSorted(Supplier<T> supplier, int recordCount,
+      boolean ascending) {
     return wrapSorted(supplier, recordCount, ascending, (a, b) -> a.compareTo(b));
   }
 

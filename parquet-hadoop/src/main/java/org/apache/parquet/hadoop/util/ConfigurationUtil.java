@@ -28,16 +28,17 @@ public class ConfigurationUtil {
     if (className == null) {
       return null;
     }
-    
+
     try {
-      final Class<?> foundClass = configuration.getClassByName(className);	
+      final Class<?> foundClass = configuration.getClassByName(className);
       if (!assignableFrom.isAssignableFrom(foundClass)) {
-        throw new BadConfigurationException("class " + className + " set in job conf at "
-                + configName + " is not a subclass of " + assignableFrom.getCanonicalName());
+        throw new BadConfigurationException("class " + className + " set in job conf at " + configName
+            + " is not a subclass of " + assignableFrom.getCanonicalName());
       }
       return foundClass;
     } catch (ClassNotFoundException e) {
-      throw new BadConfigurationException("could not instantiate class " + className + " set in job conf at " + configName, e);
+      throw new BadConfigurationException(
+          "could not instantiate class " + className + " set in job conf at " + configName, e);
     }
   }
 

@@ -115,7 +115,8 @@ public class PlainValuesWriter extends ValuesWriter {
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page", e);
     }
-    if (LOG.isDebugEnabled()) LOG.debug("writing a buffer of size {}", arrayOut.size());
+    if (LOG.isDebugEnabled())
+      LOG.debug("writing a buffer of size {}", arrayOut.size());
     return BytesInput.from(arrayOut);
   }
 

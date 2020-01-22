@@ -51,15 +51,12 @@ public abstract class ParquetFileTest extends FileTest {
   }
 
   private static MessageType createSchema() {
-    return new MessageType("schema",
-      new PrimitiveType(REQUIRED, PrimitiveTypeName.INT32, INT32_FIELD),
-      new PrimitiveType(REQUIRED, PrimitiveTypeName.INT64, INT64_FIELD),
-      new PrimitiveType(REQUIRED, PrimitiveTypeName.FLOAT, FLOAT_FIELD),
-      new PrimitiveType(REQUIRED, PrimitiveTypeName.DOUBLE, DOUBLE_FIELD),
-      new PrimitiveType(REQUIRED, PrimitiveTypeName.BINARY, BINARY_FIELD),
-      new PrimitiveType(REQUIRED, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
-        12, FIXED_LEN_BYTE_ARRAY_FIELD)
-    );
+    return new MessageType("schema", new PrimitiveType(REQUIRED, PrimitiveTypeName.INT32, INT32_FIELD),
+        new PrimitiveType(REQUIRED, PrimitiveTypeName.INT64, INT64_FIELD),
+        new PrimitiveType(REQUIRED, PrimitiveTypeName.FLOAT, FLOAT_FIELD),
+        new PrimitiveType(REQUIRED, PrimitiveTypeName.DOUBLE, DOUBLE_FIELD),
+        new PrimitiveType(REQUIRED, PrimitiveTypeName.BINARY, BINARY_FIELD),
+        new PrimitiveType(REQUIRED, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, 12, FIXED_LEN_BYTE_ARRAY_FIELD));
   }
 
   private void createTestParquetFile() throws IOException {
@@ -71,30 +68,17 @@ public abstract class ParquetFileTest extends FileTest {
     SimpleGroupFactory fact = new SimpleGroupFactory(schema);
     GroupWriteSupport.setSchema(schema, conf);
 
-    try (
-      ParquetWriter<Group> writer = new ParquetWriter<>(
-        fsPath,
-        new GroupWriteSupport(),
-        CompressionCodecName.UNCOMPRESSED,
-        1024,
-        1024,
-        512,
-        true,
-        false,
-        ParquetProperties.WriterVersion.PARQUET_2_0,
+    try (ParquetWriter<Group> writer = new ParquetWriter<>(fsPath, new GroupWriteSupport(),
+        CompressionCodecName.UNCOMPRESSED, 1024, 1024, 512, true, false, ParquetProperties.WriterVersion.PARQUET_2_0,
         conf)) {
       for (int i = 0; i < 10; i++) {
         final byte[] bytes = new byte[12];
         ThreadLocalRandom.current().nextBytes(bytes);
 
-        writer.write(fact.newGroup()
-         .append(INT32_FIELD, 32 + i)
-         .append(INT64_FIELD, 64L + i)
-         .append(FLOAT_FIELD, 1.0f + i)
-         .append(DOUBLE_FIELD, 2.0d + i)
-         .append(BINARY_FIELD, Binary.fromString(COLORS[i % COLORS.length]))
-         .append(FIXED_LEN_BYTE_ARRAY_FIELD,
-           Binary.fromConstantByteArray(bytes)));
+        writer.write(
+            fact.newGroup().append(INT32_FIELD, 32 + i).append(INT64_FIELD, 64L + i).append(FLOAT_FIELD, 1.0f + i)
+                .append(DOUBLE_FIELD, 2.0d + i).append(BINARY_FIELD, Binary.fromString(COLORS[i % COLORS.length]))
+                .append(FIXED_LEN_BYTE_ARRAY_FIELD, Binary.fromConstantByteArray(bytes)));
       }
     }
   }

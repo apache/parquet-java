@@ -34,6 +34,7 @@ public class ScroogeRecordConverter<T extends ThriftStruct> extends ThriftRecord
 
   /**
    * This is for compatibility only.
+   * 
    * @param thriftClass a thrift class
    * @param parquetSchema a parquet schema
    * @param thriftType a thrift type descriptor
@@ -44,13 +45,15 @@ public class ScroogeRecordConverter<T extends ThriftStruct> extends ThriftRecord
     this(thriftClass, parquetSchema, thriftType, null);
   }
 
-  public ScroogeRecordConverter(final Class<T> thriftClass, MessageType parquetSchema, StructType thriftType, Configuration conf) {
+  public ScroogeRecordConverter(final Class<T> thriftClass, MessageType parquetSchema, StructType thriftType,
+      Configuration conf) {
     super(new ThriftReader<T>() {
       @SuppressWarnings("unchecked")
       ThriftStructCodec<T> codec = (ThriftStructCodec<T>) getCodec(thriftClass);
+
       @Override
       public T readOneRecord(TProtocol protocol) throws TException {
-          return codec.decode(protocol);
+        return codec.decode(protocol);
       }
     }, thriftClass.getSimpleName(), parquetSchema, thriftType, conf);
   }
@@ -62,7 +65,8 @@ public class ScroogeRecordConverter<T extends ThriftStruct> extends ThriftRecord
       Object companionObject = companionClass.getField("MODULE$").get(null);
       return (ThriftStructCodec<?>) companionObject;
     } catch (Exception t) {
-      if (t instanceof InterruptedException) Thread.currentThread().interrupt();
+      if (t instanceof InterruptedException)
+        Thread.currentThread().interrupt();
       throw new RuntimeException("Unable to create ThriftStructCodec", t);
     }
   }

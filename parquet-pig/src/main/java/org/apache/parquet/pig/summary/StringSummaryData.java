@@ -24,10 +24,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.apache.parquet.pig.summary.EnumStat.EnumValueCount;
-
 
 /**
  * Summary data for a String

@@ -37,7 +37,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-@Parameters(commandDescription="Print the Avro schema for a file")
+@Parameters(commandDescription = "Print the Avro schema for a file")
 public class SchemaCommand extends BaseCommand {
 
   public SchemaCommand(Logger console) {
@@ -47,31 +47,22 @@ public class SchemaCommand extends BaseCommand {
   @Parameter(description = "<parquet path>")
   List<String> targets;
 
-  @Parameter(
-      names={"-o", "--output"},
-      description="Output file path")
+  @Parameter(names = { "-o", "--output" }, description = "Output file path")
   String outputPath = null;
 
-  @Parameter(
-      names={"--overwrite"},
-      description="Overwrite the output file if it exists")
+  @Parameter(names = { "--overwrite" }, description = "Overwrite the output file if it exists")
   boolean overwrite = false;
 
-  @Parameter(
-      names={"--parquet"},
-      description="Print a Parquet schema, without converting to Avro",
-      hidden=true)
+  @Parameter(names = { "--parquet" }, description = "Print a Parquet schema, without converting to Avro", hidden = true)
   boolean parquetSchema = false;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(targets != null && targets.size() == 1,
-        "Parquet file is required.");
+    Preconditions.checkArgument(targets != null && targets.size() == 1, "Parquet file is required.");
 
     if (targets.size() > 1) {
-      Preconditions.checkArgument(outputPath == null,
-          "Cannot output multiple schemas to file " + outputPath);
+      Preconditions.checkArgument(outputPath == null, "Cannot output multiple schemas to file " + outputPath);
       for (String source : targets) {
         console.info("{}: {}", source, getSchema(source));
       }
@@ -100,14 +91,9 @@ public class SchemaCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
-        "# Print the Avro schema for a Parquet file",
-        "sample.parquet",
-        "# Print the Avro schema for an Avro file",
-        "sample.avro",
-        "# Print the Avro schema for a JSON file",
-        "sample.json"
-    );
+    return Lists.newArrayList("# Print the Avro schema for a Parquet file", "sample.parquet",
+        "# Print the Avro schema for an Avro file", "sample.avro", "# Print the Avro schema for a JSON file",
+        "sample.json");
   }
 
   private String getSchema(String source) throws IOException {
@@ -125,13 +111,12 @@ public class SchemaCommand extends BaseCommand {
       in.seek(0);
 
       switch (format) {
-        case PARQUET:
-          return new ParquetFileReader(
-              getConf(), qualifiedPath(source), ParquetMetadataConverter.NO_FILTER)
-              .getFileMetaData().getSchema().toString();
-        default:
-          throw new IllegalArgumentException(String.format(
-              "Could not get a Parquet schema for format %s: %s", format, source));
+      case PARQUET:
+        return new ParquetFileReader(getConf(), qualifiedPath(source), ParquetMetadataConverter.NO_FILTER)
+            .getFileMetaData().getSchema().toString();
+      default:
+        throw new IllegalArgumentException(
+            String.format("Could not get a Parquet schema for format %s: %s", format, source));
       }
     }
   }

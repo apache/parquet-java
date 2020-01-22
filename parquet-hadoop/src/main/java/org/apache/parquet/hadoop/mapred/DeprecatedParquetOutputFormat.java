@@ -35,7 +35,7 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.FileOutputFormat<Void, V> {
 
-  public static void setWriteSupportClass(Configuration configuration,  Class<?> writeSupportClass) {
+  public static void setWriteSupportClass(Configuration configuration, Class<?> writeSupportClass) {
     configuration.set(ParquetOutputFormat.WRITE_SUPPORT_CLASS, writeSupportClass.getName());
   }
 
@@ -72,8 +72,8 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
   protected ParquetOutputFormat<V> realOutputFormat = new ParquetOutputFormat<V>();
 
   @Override
-  public RecordWriter<Void, V> getRecordWriter(FileSystem fs,
-      JobConf conf, String name, Progressable progress) throws IOException {
+  public RecordWriter<Void, V> getRecordWriter(FileSystem fs, JobConf conf, String name, Progressable progress)
+      throws IOException {
     return new RecordWriterWrapper(realOutputFormat, fs, conf, name, progress);
   }
 
@@ -81,8 +81,8 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
 
     private ParquetRecordWriter<V> realWriter;
 
-    public RecordWriterWrapper(ParquetOutputFormat<V> realOutputFormat,
-        FileSystem fs, JobConf conf, String name, Progressable progress) throws IOException {
+    public RecordWriterWrapper(ParquetOutputFormat<V> realOutputFormat, FileSystem fs, JobConf conf, String name,
+        Progressable progress) throws IOException {
 
       CompressionCodecName codec = getCodec(conf);
       String extension = codec.getExtension() + ".parquet";

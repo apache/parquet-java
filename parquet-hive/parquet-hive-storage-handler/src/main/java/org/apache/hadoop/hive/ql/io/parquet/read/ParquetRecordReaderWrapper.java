@@ -47,7 +47,7 @@ import org.apache.parquet.schema.MessageTypeParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ParquetRecordReaderWrapper  implements RecordReader<Void, ArrayWritable> {
+public class ParquetRecordReaderWrapper implements RecordReader<Void, ArrayWritable> {
   public static final Logger LOG = LoggerFactory.getLogger(ParquetRecordReaderWrapper.class);
 
   private final long splitLen; // for getPos()
@@ -62,23 +62,14 @@ public class ParquetRecordReaderWrapper  implements RecordReader<Void, ArrayWrit
 
   private final HiveBinding hiveBinding;
 
-  public ParquetRecordReaderWrapper(
-      final ParquetInputFormat<ArrayWritable> newInputFormat,
-      final InputSplit oldSplit,
-      final JobConf oldJobConf,
-      final Reporter reporter)
-          throws IOException, InterruptedException {
-    this(newInputFormat, oldSplit, oldJobConf, reporter,
-        (new HiveBindingFactory()).create());
+  public ParquetRecordReaderWrapper(final ParquetInputFormat<ArrayWritable> newInputFormat, final InputSplit oldSplit,
+      final JobConf oldJobConf, final Reporter reporter) throws IOException, InterruptedException {
+    this(newInputFormat, oldSplit, oldJobConf, reporter, (new HiveBindingFactory()).create());
   }
 
-  public ParquetRecordReaderWrapper(
-      final ParquetInputFormat<ArrayWritable> newInputFormat,
-      final InputSplit oldSplit,
-      final JobConf oldJobConf,
-      final Reporter reporter,
-      final HiveBinding hiveBinding)
-          throws IOException, InterruptedException {
+  public ParquetRecordReaderWrapper(final ParquetInputFormat<ArrayWritable> newInputFormat, final InputSplit oldSplit,
+      final JobConf oldJobConf, final Reporter reporter, final HiveBinding hiveBinding)
+      throws IOException, InterruptedException {
     this.splitLen = oldSplit.getLength();
     this.hiveBinding = hiveBinding;
 
@@ -172,11 +163,11 @@ public class ParquetRecordReaderWrapper  implements RecordReader<Void, ArrayWrit
           System.arraycopy(arrCurrent, 0, arrValue, 0, arrCurrent.length);
         } else {
           if (arrValue.length != arrCurrent.length) {
-            throw new IOException("DeprecatedParquetHiveInput : size of object differs. Value" +
-              " size :  " + arrValue.length + ", Current Object size : " + arrCurrent.length);
+            throw new IOException("DeprecatedParquetHiveInput : size of object differs. Value" + " size :  "
+                + arrValue.length + ", Current Object size : " + arrCurrent.length);
           } else {
-            throw new IOException("DeprecatedParquetHiveInput can not support RecordReaders that" +
-              " don't return same key & value & value is null");
+            throw new IOException("DeprecatedParquetHiveInput can not support RecordReaders that"
+                + " don't return same key & value & value is null");
           }
         }
       }
@@ -192,12 +183,10 @@ public class ParquetRecordReaderWrapper  implements RecordReader<Void, ArrayWrit
    * @param oldSplit The split given by Hive
    * @param conf The JobConf of the Hive job
    * @return a ParquetInputSplit corresponding to the oldSplit
-   * @throws IOException if the config cannot be enhanced or if the footer cannot be read from the file
+   * @throws IOException if the config cannot be enhanced or if the footer cannot
+   * be read from the file
    */
-  protected ParquetInputSplit getSplit(
-      final InputSplit oldSplit,
-      final JobConf conf
-      ) throws IOException {
+  protected ParquetInputSplit getSplit(final InputSplit oldSplit, final JobConf conf) throws IOException {
     if (oldSplit instanceof FileSplit) {
       FileSplit fileSplit = (FileSplit) oldSplit;
       final long splitStart = fileSplit.getStart();
@@ -207,20 +196,14 @@ public class ParquetRecordReaderWrapper  implements RecordReader<Void, ArrayWrit
 
       final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath, SKIP_ROW_GROUPS);
       final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
-      final ReadContext readContext =
-          new DataWritableReadSupport()
-            .init(cloneJob, fileMetaData.getKeyValueMetaData(), fileMetaData.getSchema());
+      final ReadContext readContext = new DataWritableReadSupport().init(cloneJob, fileMetaData.getKeyValueMetaData(),
+          fileMetaData.getSchema());
 
-      schemaSize = MessageTypeParser.parseMessageType(
-            readContext.getReadSupportMetadata().get(DataWritableReadSupport.HIVE_SCHEMA_KEY)
-          ).getFieldCount();
-       return new ParquetInputSplit(
-                finalPath,
-                splitStart,
-                splitStart + splitLength,
-                splitLength,
-                fileSplit.getLocations(),
-                null);
+      schemaSize = MessageTypeParser
+          .parseMessageType(readContext.getReadSupportMetadata().get(DataWritableReadSupport.HIVE_SCHEMA_KEY))
+          .getFieldCount();
+      return new ParquetInputSplit(finalPath, splitStart, splitStart + splitLength, splitLength,
+          fileSplit.getLocations(), null);
     } else {
       throw new IllegalArgumentException("Unknown split type: " + oldSplit);
     }

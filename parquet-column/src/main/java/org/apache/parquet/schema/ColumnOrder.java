@@ -29,12 +29,14 @@ public class ColumnOrder {
    */
   public enum ColumnOrderName {
     /**
-     * Representing the case when the defined column order is undefined (e.g. the file is written by a later API and the
-     * current one does not support the related column order). No statistics will be written/read in this case.
+     * Representing the case when the defined column order is undefined (e.g. the
+     * file is written by a later API and the current one does not support the
+     * related column order). No statistics will be written/read in this case.
      */
     UNDEFINED,
     /**
-     * Type defined order meaning that the comparison order of the elements are based on its type.
+     * Type defined order meaning that the comparison order of the elements are
+     * based on its type.
      */
     TYPE_DEFINED_ORDER
   }

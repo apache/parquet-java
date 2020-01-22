@@ -28,11 +28,12 @@ import org.apache.parquet.glob.GlobExpander;
 import org.apache.parquet.glob.WildcardPath;
 
 public final class Strings {
-  private Strings() { }
+  private Strings() {
+  }
 
   /**
-   * Join an Iterable of Strings into a single string with a delimiter.
-   * For example, join(Arrays.asList("foo","","bar","x"), "|") would return
+   * Join an Iterable of Strings into a single string with a delimiter. For
+   * example, join(Arrays.asList("foo","","bar","x"), "|") would return
    * "foo||bar|x"
    *
    * @param s an iterable of strings
@@ -46,8 +47,8 @@ public final class Strings {
   }
 
   /**
-   * Join an Iterator of Strings into a single string with a delimiter.
-   * For example, join(Arrays.asList("foo","","bar","x"), "|") would return
+   * Join an Iterator of Strings into a single string with a delimiter. For
+   * example, join(Arrays.asList("foo","","bar","x"), "|") would return
    * "foo||bar|x"
    *
    * @param iter an iterator of strings
@@ -68,9 +69,8 @@ public final class Strings {
   }
 
   /**
-   * Join an Array of Strings into a single string with a delimiter.
-   * For example, join(new String[] {"foo","","bar","x"}, "|") would return
-   * "foo||bar|x"
+   * Join an Array of Strings into a single string with a delimiter. For example,
+   * join(new String[] {"foo","","bar","x"}, "|") would return "foo||bar|x"
    *
    * @param s an iterable of strings
    * @param on the delimiter
@@ -93,30 +93,31 @@ public final class Strings {
   }
 
   /**
-   * Expands a string with braces ("{}") into all of its possible permutations.
-   * We call anything inside of {} braces a "one-of" group.
+   * Expands a string with braces ("{}") into all of its possible permutations. We
+   * call anything inside of {} braces a "one-of" group.
    *
    * The only special characters in this glob syntax are '}', '{' and ','
    *
-   * The top-level pattern must not contain any commas, but a "one-of" group separates
-   * its elements with commas, and a one-of group may contain sub one-of groups.
+   * The top-level pattern must not contain any commas, but a "one-of" group
+   * separates its elements with commas, and a one-of group may contain sub one-of
+   * groups.
    *
-   * For example:
-   * start{a,b,c}end -&gt; startaend, startbend, startcend
-   * start{a,{b,c},d} -&gt; startaend, startbend, startcend, startdend
-   * {a,b,c} -&gt; a, b, c
-   * start{a, b{x,y}} -&gt; starta, startbx, startby
+   * For example: start{a,b,c}end -&gt; startaend, startbend, startcend
+   * start{a,{b,c},d} -&gt; startaend, startbend, startcend, startdend {a,b,c}
+   * -&gt; a, b, c start{a, b{x,y}} -&gt; starta, startbx, startby
    *
    * @param globPattern a string in the format described above
-   * @return a list of all the strings that would satisfy globPattern, including duplicates
+   * @return a list of all the strings that would satisfy globPattern, including
+   * duplicates
    */
   public static List<String> expandGlob(String globPattern) {
     return GlobExpander.expand(globPattern);
   }
 
   /**
-   * Expands a string according to {@link #expandGlob(String)}, and then constructs a {@link WildcardPath}
-   * for each expanded result which can be used to match strings as described in {@link WildcardPath}.
+   * Expands a string according to {@link #expandGlob(String)}, and then
+   * constructs a {@link WildcardPath} for each expanded result which can be used
+   * to match strings as described in {@link WildcardPath}.
    *
    * @param globPattern a String to be passed to {@link #expandGlob(String)}
    * @param delim the delimeter used by {@link WildcardPath}

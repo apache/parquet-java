@@ -94,8 +94,7 @@ class RecordBuilder<E> {
   private void fillIndexed(IndexedRecord record, String[] data) {
     for (int i = 0; i < indexes.length; i += 1) {
       int index = indexes[i];
-      record.put(i,
-          makeValue(index < data.length ? data[index] : null, fields[i]));
+      record.put(i, makeValue(index < data.length ? data[index] : null, fields[i]));
     }
   }
 
@@ -119,16 +118,13 @@ class RecordBuilder<E> {
       }
     } catch (RecordException e) {
       // add the field name to the error message
-      throw new RecordException(String.format(
-          "Cannot convert field %s", field.name()), e);
+      throw new RecordException(String.format("Cannot convert field %s", field.name()), e);
     } catch (NumberFormatException e) {
-      throw new RecordException(String.format(
-          "Field %s: value not a %s: '%s'",
-          field.name(), field.schema(), string), e);
+      throw new RecordException(String.format("Field %s: value not a %s: '%s'", field.name(), field.schema(), string),
+          e);
     } catch (AvroRuntimeException e) {
-      throw new RecordException(String.format(
-          "Field %s: cannot make %s value: '%s'",
-          field.name(), field.schema(), string), e);
+      throw new RecordException(
+          String.format("Field %s: cannot make %s value: '%s'", field.name(), field.schema(), string), e);
     }
   }
 
@@ -149,44 +145,43 @@ class RecordBuilder<E> {
 
     try {
       switch (schema.getType()) {
-        case BOOLEAN:
-          return Boolean.valueOf(string);
-        case STRING:
+      case BOOLEAN:
+        return Boolean.valueOf(string);
+      case STRING:
+        return string;
+      case FLOAT:
+        return Float.valueOf(string);
+      case DOUBLE:
+        return Double.valueOf(string);
+      case INT:
+        return Integer.valueOf(string);
+      case LONG:
+        return Long.valueOf(string);
+      case ENUM:
+        // TODO: translate to enum class
+        if (schema.hasEnumSymbol(string)) {
           return string;
-        case FLOAT:
-          return Float.valueOf(string);
-        case DOUBLE:
-          return Double.valueOf(string);
-        case INT:
-          return Integer.valueOf(string);
-        case LONG:
-          return Long.valueOf(string);
-        case ENUM:
-          // TODO: translate to enum class
-          if (schema.hasEnumSymbol(string)) {
-            return string;
-          } else {
-            try {
-              return schema.getEnumSymbols().get(Integer.parseInt(string));
-            } catch (IndexOutOfBoundsException ex) {
-              return null;
-            }
+        } else {
+          try {
+            return schema.getEnumSymbols().get(Integer.parseInt(string));
+          } catch (IndexOutOfBoundsException ex) {
+            return null;
           }
-        case UNION:
-          Object value = null;
-          for (Schema possible : schema.getTypes()) {
-            value = makeValue(string, possible);
-            if (value != null) {
-              return value;
-            }
+        }
+      case UNION:
+        Object value = null;
+        for (Schema possible : schema.getTypes()) {
+          value = makeValue(string, possible);
+          if (value != null) {
+            return value;
           }
-          return null;
-        case NULL:
-          return null;
-        default:
-          // FIXED, BYTES, MAP, ARRAY, RECORD are not supported
-          throw new RecordException(
-              "Unsupported field type:" + schema.getType());
+        }
+        return null;
+      case NULL:
+        return null;
+      default:
+        // FIXED, BYTES, MAP, ARRAY, RECORD are not supported
+        throw new RecordException("Unsupported field type:" + schema.getType());
       }
     } catch (NumberFormatException e) {
       // empty string is considered null for numeric types

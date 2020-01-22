@@ -63,7 +63,7 @@ public class ProtoRecordConverterTest {
     List<TestProtobuf.SchemaConverterAllDatatypes> result;
     result = testData(dataBuilt);
 
-    //data are fully checked in testData function. Lets do one more check.
+    // data are fully checked in testData function. Lets do one more check.
     SchemaConverterAllDatatypes o = result.get(0);
     assertEquals("Good Will Hunting", o.getOptionalString());
 
@@ -115,7 +115,7 @@ public class ProtoRecordConverterTest {
     List<TestProto3.SchemaConverterAllDatatypes> result;
     result = testData(dataBuilt);
 
-    //data are fully checked in testData function. Lets do one more check.
+    // data are fully checked in testData function. Lets do one more check.
     TestProto3.SchemaConverterAllDatatypes o = result.get(0);
     assertEquals("Good Will Hunting", o.getOptionalString());
 
@@ -145,31 +145,49 @@ public class ProtoRecordConverterTest {
     for (int i = 0; i < count; i++) {
       SchemaConverterAllDatatypes.Builder d = SchemaConverterAllDatatypes.newBuilder();
 
-      if (i % 2 != 0) d.setOptionalBool(true);
-      if (i % 3 != 0) d.setOptionalBytes(ByteString.copyFrom("someText " + i, "UTF-8"));
-      if (i % 4 != 0) d.setOptionalDouble(0.577 * i);
-      if (i % 5 != 0) d.setOptionalFloat(3.1415f * i);
-      if (i % 6 != 0) d.setOptionalEnum(SchemaConverterAllDatatypes.TestEnum.FIRST);
-      if (i % 7 != 0) d.setOptionalFixed32(1000 * i * 1);
-      if (i % 8 != 0) d.setOptionalFixed64(1000 * i * 1000 * 2);
-      if (i % 9 != 0) d.setOptionalInt32(1000 * i * 3);
-      if (i % 2 != 1) d.setOptionalSFixed32(1000 * i * 5);
-      if (i % 3 != 1) d.setOptionalSFixed64(1000 * i * 1000 * 6);
-      if (i % 4 != 1) d.setOptionalSInt32(1000 * i * 56);
-      if (i % 5 != 1) d.setOptionalSInt64(1000 * i * 1000 * 7);
-      if (i % 6 != 1) d.setOptionalString("Good Will Hunting " + i);
-      if (i % 7 != 1) d.setOptionalUInt32(1000 * i * 8);
-      if (i % 8 != 1) d.setOptionalUInt64(1000 * i * 1000 * 9);
-      if (i % 9 != 1) d.getOptionalMessageBuilder().setSomeId(1984 * i);
-      if (i % 2 != 1) d.getPbGroupBuilder().setGroupInt(1492 * i);
-      if (i % 3 != 1) d.setOptionalInt64(1000 * i * 1000 * 4);
+      if (i % 2 != 0)
+        d.setOptionalBool(true);
+      if (i % 3 != 0)
+        d.setOptionalBytes(ByteString.copyFrom("someText " + i, "UTF-8"));
+      if (i % 4 != 0)
+        d.setOptionalDouble(0.577 * i);
+      if (i % 5 != 0)
+        d.setOptionalFloat(3.1415f * i);
+      if (i % 6 != 0)
+        d.setOptionalEnum(SchemaConverterAllDatatypes.TestEnum.FIRST);
+      if (i % 7 != 0)
+        d.setOptionalFixed32(1000 * i * 1);
+      if (i % 8 != 0)
+        d.setOptionalFixed64(1000 * i * 1000 * 2);
+      if (i % 9 != 0)
+        d.setOptionalInt32(1000 * i * 3);
+      if (i % 2 != 1)
+        d.setOptionalSFixed32(1000 * i * 5);
+      if (i % 3 != 1)
+        d.setOptionalSFixed64(1000 * i * 1000 * 6);
+      if (i % 4 != 1)
+        d.setOptionalSInt32(1000 * i * 56);
+      if (i % 5 != 1)
+        d.setOptionalSInt64(1000 * i * 1000 * 7);
+      if (i % 6 != 1)
+        d.setOptionalString("Good Will Hunting " + i);
+      if (i % 7 != 1)
+        d.setOptionalUInt32(1000 * i * 8);
+      if (i % 8 != 1)
+        d.setOptionalUInt64(1000 * i * 1000 * 9);
+      if (i % 9 != 1)
+        d.getOptionalMessageBuilder().setSomeId(1984 * i);
+      if (i % 2 != 1)
+        d.getPbGroupBuilder().setGroupInt(1492 * i);
+      if (i % 3 != 1)
+        d.setOptionalInt64(1000 * i * 1000 * 4);
       input[i] = d.build();
     }
 
     List<TestProtobuf.SchemaConverterAllDatatypes> result;
     result = testData(input);
 
-    //data are fully checked in testData function. Lets do one more check.
+    // data are fully checked in testData function. Lets do one more check.
     assertEquals("Good Will Hunting 0", result.get(0).getOptionalString());
     assertEquals("Good Will Hunting 90", result.get(90).getOptionalString());
   }
@@ -182,30 +200,47 @@ public class ProtoRecordConverterTest {
     for (int i = 0; i < count; i++) {
       TestProto3.SchemaConverterAllDatatypes.Builder d = TestProto3.SchemaConverterAllDatatypes.newBuilder();
 
-      if (i % 2 != 0) d.setOptionalBool(true);
-      if (i % 3 != 0) d.setOptionalBytes(ByteString.copyFrom("someText " + i, "UTF-8"));
-      if (i % 4 != 0) d.setOptionalDouble(0.577 * i);
-      if (i % 5 != 0) d.setOptionalFloat(3.1415f * i);
-      if (i % 6 != 0) d.setOptionalEnum(TestProto3.SchemaConverterAllDatatypes.TestEnum.FIRST);
-      if (i % 7 != 0) d.setOptionalFixed32(1000 * i * 1);
-      if (i % 8 != 0) d.setOptionalFixed64(1000 * i * 1000 * 2);
-      if (i % 9 != 0) d.setOptionalInt32(1000 * i * 3);
-      if (i % 2 != 1) d.setOptionalSFixed32(1000 * i * 5);
-      if (i % 3 != 1) d.setOptionalSFixed64(1000 * i * 1000 * 6);
-      if (i % 4 != 1) d.setOptionalSInt32(1000 * i * 56);
-      if (i % 5 != 1) d.setOptionalSInt64(1000 * i * 1000 * 7);
-      if (i % 6 != 1) d.setOptionalString("Good Will Hunting " + i);
-      if (i % 7 != 1) d.setOptionalUInt32(1000 * i * 8);
-      if (i % 8 != 1) d.setOptionalUInt64(1000 * i * 1000 * 9);
-      if (i % 9 != 1) d.getOptionalMessageBuilder().setSomeId(1984 * i);
-      if (i % 3 != 1) d.setOptionalInt64(1000 * i * 1000 * 4);
+      if (i % 2 != 0)
+        d.setOptionalBool(true);
+      if (i % 3 != 0)
+        d.setOptionalBytes(ByteString.copyFrom("someText " + i, "UTF-8"));
+      if (i % 4 != 0)
+        d.setOptionalDouble(0.577 * i);
+      if (i % 5 != 0)
+        d.setOptionalFloat(3.1415f * i);
+      if (i % 6 != 0)
+        d.setOptionalEnum(TestProto3.SchemaConverterAllDatatypes.TestEnum.FIRST);
+      if (i % 7 != 0)
+        d.setOptionalFixed32(1000 * i * 1);
+      if (i % 8 != 0)
+        d.setOptionalFixed64(1000 * i * 1000 * 2);
+      if (i % 9 != 0)
+        d.setOptionalInt32(1000 * i * 3);
+      if (i % 2 != 1)
+        d.setOptionalSFixed32(1000 * i * 5);
+      if (i % 3 != 1)
+        d.setOptionalSFixed64(1000 * i * 1000 * 6);
+      if (i % 4 != 1)
+        d.setOptionalSInt32(1000 * i * 56);
+      if (i % 5 != 1)
+        d.setOptionalSInt64(1000 * i * 1000 * 7);
+      if (i % 6 != 1)
+        d.setOptionalString("Good Will Hunting " + i);
+      if (i % 7 != 1)
+        d.setOptionalUInt32(1000 * i * 8);
+      if (i % 8 != 1)
+        d.setOptionalUInt64(1000 * i * 1000 * 9);
+      if (i % 9 != 1)
+        d.getOptionalMessageBuilder().setSomeId(1984 * i);
+      if (i % 3 != 1)
+        d.setOptionalInt64(1000 * i * 1000 * 4);
       input[i] = d.build();
     }
 
     List<TestProto3.SchemaConverterAllDatatypes> result;
     result = testData(input);
 
-    //data are fully checked in testData function. Lets do one more check.
+    // data are fully checked in testData function. Lets do one more check.
     assertEquals("Good Will Hunting 0", result.get(0).getOptionalString());
     assertEquals("Good Will Hunting 90", result.get(90).getOptionalString());
   }

@@ -65,9 +65,7 @@ public class AvroTestUtil {
   }
 
   public static Schema optional(Schema original) {
-    return Schema.createUnion(Lists.newArrayList(
-        Schema.create(Schema.Type.NULL),
-        original));
+    return Schema.createUnion(Lists.newArrayList(Schema.create(Schema.Type.NULL), original));
   }
 
   public static GenericRecord instance(Schema schema, Object... pairs) {
@@ -87,11 +85,10 @@ public class AvroTestUtil {
     AvroReadSupport.setRequestedProjection(conf, schema);
     AvroReadSupport.setAvroReadSchema(conf, schema);
 
-    try (ParquetReader<D> fileReader = AvroParquetReader
-      .<D>builder(new Path(file.toString()))
-      .withDataModel(model) // reflect disables compatibility
-      .withConf(conf)
-      .build()) {
+    try (ParquetReader<D> fileReader = AvroParquetReader.<D>builder(new Path(file.toString())).withDataModel(model) // reflect
+                                                                                                                    // disables
+                                                                                                                    // compatibility
+        .withConf(conf).build()) {
       D datum;
       while ((datum = fileReader.read()) != null) {
         data.add(datum);
@@ -106,11 +103,8 @@ public class AvroTestUtil {
     File file = temp.newFile();
     Assert.assertTrue(file.delete());
 
-    try (ParquetWriter<D> writer = AvroParquetWriter
-      .<D>builder(new Path(file.toString()))
-      .withDataModel(model)
-      .withSchema(schema)
-      .build()) {
+    try (ParquetWriter<D> writer = AvroParquetWriter.<D>builder(new Path(file.toString())).withDataModel(model)
+        .withSchema(schema).build()) {
       for (D datum : data) {
         writer.write(datum);
       }

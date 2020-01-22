@@ -29,8 +29,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 /**
- * Summary data for a Tuple
- * fields are in the same order as the input tuple
+ * Summary data for a Tuple fields are in the same order as the input tuple
  */
 public class TupleSummaryData extends SummaryData {
   private static final Logger LOG = Logger.getLogger(TupleSummaryData.class.getName());
@@ -93,6 +92,4 @@ public class TupleSummaryData extends SummaryData {
     this.size = size;
   }
 
-
 }
-

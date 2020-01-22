@@ -34,17 +34,14 @@ import org.apache.parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
 import java.util.List;
 
 public class ShowMetaCommand extends ArgsOnlyCommand {
-  public static final String[] USAGE = new String[] {
-    "<input>",
-    "where <input> is the parquet file to print to stdout"
-  };
+  public static final String[] USAGE = new String[] { "<input>",
+      "where <input> is the parquet file to print to stdout" };
 
   public static final Options OPTIONS;
   static {
     OPTIONS = new Options();
     Option originalType = OptionBuilder.withLongOpt("originalType")
-      .withDescription("Print logical types in OriginalType representation.")
-      .create('o');
+        .withDescription("Print logical types in OriginalType representation.").create('o');
     OPTIONS.addOption(originalType);
   }
 
@@ -80,14 +77,11 @@ public class ShowMetaCommand extends ArgsOnlyCommand {
     FileStatus inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath);
     List<Footer> footers = ParquetFileReader.readFooters(conf, inputFileStatus, false);
 
-    PrettyPrintWriter out = PrettyPrintWriter.stdoutPrettyPrinter()
-                                             .withAutoColumn()
-                                             .withWhitespaceHandler(WhiteSpaceHandler.COLLAPSE_WHITESPACE)
-                                             .withColumnPadding(1)
-                                             .build();
+    PrettyPrintWriter out = PrettyPrintWriter.stdoutPrettyPrinter().withAutoColumn()
+        .withWhitespaceHandler(WhiteSpaceHandler.COLLAPSE_WHITESPACE).withColumnPadding(1).build();
 
-    for(Footer f: footers) {
-      out.format("file: %s%n" , f.getFile());
+    for (Footer f : footers) {
+      out.format("file: %s%n", f.getFile());
       MetadataUtils.showDetails(out, f.getParquetMetadata(), showOriginalTypes);
       out.flushColumns();
     }

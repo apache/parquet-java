@@ -22,16 +22,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * An append-only integer list
- * avoids autoboxing and buffer resizing
+ * An append-only integer list avoids autoboxing and buffer resizing
  */
 public class IntList {
 
   static final int MAX_SLAB_SIZE = 64 * 1024;
   static final int INITIAL_SLAB_SIZE = 4 * 1024;
 
-  // Double slab size till we reach the max slab size. At that point we just add slabs of size
-  // MAX_SLAB_SIZE. This ensures we don't allocate very large slabs from the start if we don't have
+  // Double slab size till we reach the max slab size. At that point we just add
+  // slabs of size
+  // MAX_SLAB_SIZE. This ensures we don't allocate very large slabs from the start
+  // if we don't have
   // too much data.
   private int currentSlabSize = INITIAL_SLAB_SIZE;
 
@@ -43,8 +44,8 @@ public class IntList {
   }
 
   /**
-   * to iterate on the content of the list
-   * not an actual iterator to avoid autoboxing
+   * to iterate on the content of the list not an actual iterator to avoid
+   * autoboxing
    */
   public static class IntIterator {
 
@@ -56,8 +57,9 @@ public class IntList {
     private int currentCol;
 
     /**
-     * slabs will be iterated in order up to the provided count
-     * as the last slab may not be full
+     * slabs will be iterated in order up to the provided count as the last slab may
+     * not be full
+     * 
      * @param slabs contain the ints
      * @param count count of ints
      */
@@ -94,7 +96,8 @@ public class IntList {
 
   private List<int[]> slabs = new ArrayList<>();
 
-  // Lazy initialize currentSlab only when needed to save on memory in cases where items might
+  // Lazy initialize currentSlab only when needed to save on memory in cases where
+  // items might
   // not be added
   private int[] currentSlab;
   private int currentSlabPos;
@@ -127,11 +130,12 @@ public class IntList {
     }
 
     currentSlab[currentSlabPos] = i;
-    ++ currentSlabPos;
+    ++currentSlabPos;
   }
 
   /**
    * (not an actual Iterable)
+   * 
    * @return an IntIterator on the content
    */
   public IntIterator iterator() {
@@ -149,7 +153,7 @@ public class IntList {
    */
   public int size() {
     int size = currentSlabPos;
-    for (int [] slab : slabs) {
+    for (int[] slab : slabs) {
       size += slab.length;
     }
 

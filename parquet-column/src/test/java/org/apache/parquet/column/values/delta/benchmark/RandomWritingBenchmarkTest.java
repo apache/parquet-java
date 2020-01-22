@@ -36,15 +36,15 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-writing-random")
-public class RandomWritingBenchmarkTest extends BenchMarkTest{
-  public static int blockSize=128;
-  public static int miniBlockNum=4;
+public class RandomWritingBenchmarkTest extends BenchMarkTest {
+  public static int blockSize = 128;
+  public static int miniBlockNum = 4;
   @Rule
   public org.junit.rules.TestRule benchmarkRun = new BenchmarkRule();
 
   @BeforeClass
   public static void prepare() {
-    Random random=new Random();
+    Random random = new Random();
     data = new int[10000 * blockSize];
     for (int i = 0; i < data.length; i++) {
       data[i] = random.nextInt(100) - 200;
@@ -53,24 +53,24 @@ public class RandomWritingBenchmarkTest extends BenchMarkTest{
 
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
-  public void writeDeltaPackingTest(){
-    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriterForInteger(
-        blockSize, miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
+  public void writeDeltaPackingTest() {
+    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriterForInteger(blockSize, miniBlockNum, 100,
+        20000, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }
 
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
-  public void writeRLETest(){
+  public void writeRLETest() {
     ValuesWriter writer = new RunLengthBitPackingHybridValuesWriter(32, 100, 20000, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }
 
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
-  public void writeDeltaPackingTest2(){
-    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriterForInteger(
-        blockSize, miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
+  public void writeDeltaPackingTest2() {
+    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriterForInteger(blockSize, miniBlockNum, 100,
+        20000, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }
 }

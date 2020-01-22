@@ -34,16 +34,16 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
   private long recordsRead = 0;
 
   /**
-   * @param root          the root of the schema
+   * @param root the root of the schema
    * @param validating
    * @param columnStore
    * @param unboundFilter Filter records, pass in NULL_FILTER to leave unfiltered.
    */
   public FilteredRecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating,
-                              ColumnReadStoreImpl columnStore, UnboundRecordFilter unboundFilter, long recordCount) {
+      ColumnReadStoreImpl columnStore, UnboundRecordFilter unboundFilter, long recordCount) {
     super(root, recordMaterializer, validating, columnStore);
     this.recordCount = recordCount;
-    if ( unboundFilter != null ) {
+    if (unboundFilter != null) {
       recordFilter = unboundFilter.bind(getColumnReaders());
     } else {
       recordFilter = null;
@@ -59,11 +59,12 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
     if (recordsRead == recordCount) {
       return null;
     }
-    ++ recordsRead;
+    ++recordsRead;
     return super.read();
   }
 
-  // FilteredRecordReader skips forwards itself, it never asks the layer above to do the skipping for it.
+  // FilteredRecordReader skips forwards itself, it never asks the layer above to
+  // do the skipping for it.
   // This is different from how filtering is handled in the filter2 API
   @Override
   public boolean shouldSkipCurrentRecord() {
@@ -71,8 +72,8 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
   }
 
   /**
-   * Skips forwards until the filter finds the first match. Returns false
-   * if none found.
+   * Skips forwards until the filter finds the first match. Returns false if none
+   * found.
    */
   private void skipToMatch() {
     while (recordsRead < recordCount && !recordFilter.isMatch()) {
@@ -91,7 +92,7 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
         int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
         currentState = currentState.getNextState(nextR);
       } while (currentState != null);
-      ++ recordsRead;
+      ++recordsRead;
     }
   }
 }

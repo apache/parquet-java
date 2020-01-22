@@ -20,7 +20,6 @@ package org.apache.parquet.pig;
 
 import java.io.File;
 
-
 /**
  * Uses directly loader and storer to bypass the scheduling overhead
  */
@@ -42,6 +41,5 @@ public class PerfTestReadAllCols {
     }
     System.out.println(results);
   }
-
 
 }

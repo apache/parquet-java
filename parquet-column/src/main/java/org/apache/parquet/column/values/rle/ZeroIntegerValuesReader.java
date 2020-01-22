@@ -24,11 +24,11 @@ import org.apache.parquet.column.values.ValuesReader;
 
 /**
  * ColumnReader which does not read any actual data, but rather simply produces
- * an endless stream of constant values.
- * Mainly used to read definition levels when the only possible value is 0
+ * an endless stream of constant values. Mainly used to read definition levels
+ * when the only possible value is 0
  */
 public class ZeroIntegerValuesReader extends ValuesReader {
-  
+
   @Override
   public int readInteger() {
     return 0;

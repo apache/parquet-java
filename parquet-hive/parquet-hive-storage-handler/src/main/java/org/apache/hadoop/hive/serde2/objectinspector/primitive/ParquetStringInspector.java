@@ -24,7 +24,8 @@ import org.apache.hadoop.io.Text;
 import org.apache.parquet.io.api.Binary;
 
 /**
- * The ParquetStringInspector inspects a BinaryWritable to give a Text or String.
+ * The ParquetStringInspector inspects a BinaryWritable to give a Text or
+ * String.
  *
  */
 public class ParquetStringInspector extends JavaStringObjectInspector implements SettableStringObjectInspector {
@@ -77,8 +78,7 @@ public class ParquetStringInspector extends JavaStringObjectInspector implements
 
   @Override
   public Object set(final Object o, final Text text) {
-    return new BinaryWritable(text == null ? null : Binary.fromReusedByteArray(text.getBytes
-        ()));
+    return new BinaryWritable(text == null ? null : Binary.fromReusedByteArray(text.getBytes()));
   }
 
   @Override

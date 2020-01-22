@@ -25,11 +25,8 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 
 /**
- * Represents a standard 3 levels Parquet list
- * (can be null, can contain nulls)
- * - optional list
- * - repeated content
- * - optional element
+ * Represents a standard 3 levels Parquet list (can be null, can contain nulls)
+ * - optional list - repeated content - optional element
  */
 class List3Levels {
   private final GroupType list;
@@ -38,6 +35,7 @@ class List3Levels {
 
   /**
    * Will validate the structure of the list
+   * 
    * @param list the Parquet List
    */
   public List3Levels(GroupType list) {
@@ -46,7 +44,8 @@ class List3Levels {
     }
     this.list = list;
     Type repeatedField = list.getFields().get(0);
-    if (repeatedField.isPrimitive() || !repeatedField.isRepetition(REPEATED) || repeatedField.asGroupType().getFields().size() != 1) {
+    if (repeatedField.isPrimitive() || !repeatedField.isRepetition(REPEATED)
+        || repeatedField.asGroupType().getFields().size() != 1) {
       throw new IllegalArgumentException("invalid list type: " + list);
     }
     this.repeated = repeatedField.asGroupType();

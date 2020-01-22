@@ -41,7 +41,8 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
    * @param file a file path
    * @param <T> the Java type of records to read from the file
    * @return an Avro reader builder
-   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)}
+   * instead.
    */
   @Deprecated
   public static <T> Builder<T> builder(Path file) {
@@ -55,7 +56,8 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
   /**
    * @param file a file path
    * @throws IOException if there is an error while reading
-   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)}
+   * instead.
    */
   @Deprecated
   public AvroParquetReader(Path file) throws IOException {
@@ -66,7 +68,8 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
    * @param file a file path
    * @param unboundRecordFilter an unbound record filter (from the old filter API)
    * @throws IOException if there is an error while reading
-   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)}
+   * instead.
    */
   @Deprecated
   public AvroParquetReader(Path file, UnboundRecordFilter unboundRecordFilter) throws IOException {
@@ -77,7 +80,8 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
    * @param conf a configuration
    * @param file a file path
    * @throws IOException if there is an error while reading
-   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)}
+   * instead.
    */
   @Deprecated
   public AvroParquetReader(Configuration conf, Path file) throws IOException {
@@ -89,7 +93,8 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
    * @param file a file path
    * @param unboundRecordFilter an unbound record filter (from the old filter API)
    * @throws IOException if there is an error while reading
-   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
+   * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)}
+   * instead.
    */
   @Deprecated
   public AvroParquetReader(Configuration conf, Path file, UnboundRecordFilter unboundRecordFilter) throws IOException {
@@ -115,8 +120,7 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
       this.model = model;
 
       // only generic and specific are supported by AvroIndexedRecordConverter
-      if (model.getClass() != GenericData.class &&
-          model.getClass() != SpecificData.class) {
+      if (model.getClass() != GenericData.class && model.getClass() != SpecificData.class) {
         isReflect = true;
       }
 

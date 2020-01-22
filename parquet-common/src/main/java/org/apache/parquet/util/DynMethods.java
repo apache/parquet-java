@@ -46,8 +46,7 @@ public class DynMethods {
     UnboundMethod(Method method, String name) {
       this.method = method;
       this.name = name;
-      this.argLength = (method == null || method.isVarArgs()) ? -1 :
-          method.getParameterTypes().length;
+      this.argLength = (method == null || method.isVarArgs()) ? -1 : method.getParameterTypes().length;
     }
 
     @SuppressWarnings("unchecked")
@@ -84,12 +83,9 @@ public class DynMethods {
      * @throws IllegalArgumentException if the receiver's class is incompatible
      */
     public BoundMethod bind(Object receiver) {
-      Preconditions.checkState(!isStatic(),
-          "Cannot bind static method " + method.toGenericString());
-      Preconditions.checkArgument(
-          method.getDeclaringClass().isAssignableFrom(receiver.getClass()),
-          "Cannot bind " + method.toGenericString() + " to instance of " +
-              receiver.getClass());
+      Preconditions.checkState(!isStatic(), "Cannot bind static method " + method.toGenericString());
+      Preconditions.checkArgument(method.getDeclaringClass().isAssignableFrom(receiver.getClass()),
+          "Cannot bind " + method.toGenericString() + " to instance of " + receiver.getClass());
 
       return new BoundMethod(this, receiver);
     }
@@ -120,8 +116,7 @@ public class DynMethods {
     }
 
     public String toString() {
-      return "DynMethods.UnboundMethod(name=" + name +" method=" +
-          method.toGenericString() + ")";
+      return "DynMethods.UnboundMethod(name=" + name + " method=" + method.toGenericString() + ")";
     }
 
     /**
@@ -277,8 +272,7 @@ public class DynMethods {
       }
 
       try {
-        this.method = new UnboundMethod(
-            targetClass.getMethod(methodName, argClasses), name);
+        this.method = new UnboundMethod(targetClass.getMethod(methodName, argClasses), name);
       } catch (NoSuchMethodException e) {
         // not the right implementation
       }
@@ -306,9 +300,7 @@ public class DynMethods {
       }
 
       try {
-        this.method = new DynConstructors.Builder()
-            .impl(targetClass, argClasses)
-            .buildChecked();
+        this.method = new DynConstructors.Builder().impl(targetClass, argClasses).buildChecked();
       } catch (NoSuchMethodException e) {
         // not the right implementation
       }
@@ -322,9 +314,7 @@ public class DynMethods {
       }
 
       try {
-        this.method = new DynConstructors.Builder()
-            .impl(className, argClasses)
-            .buildChecked();
+        this.method = new DynConstructors.Builder().impl(className, argClasses).buildChecked();
       } catch (NoSuchMethodException e) {
         // not the right implementation
       }

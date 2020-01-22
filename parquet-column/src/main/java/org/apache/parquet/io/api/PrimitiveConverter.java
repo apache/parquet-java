@@ -37,6 +37,7 @@ abstract public class PrimitiveConverter extends Converter {
 
   /**
    * if it returns true we will attempt to use dictionary based conversion instead
+   * 
    * @return if dictionary is supported
    */
   public boolean hasDictionarySupport() {
@@ -46,17 +47,20 @@ abstract public class PrimitiveConverter extends Converter {
   /**
    * Set the dictionary to use if the data was encoded using dictionary encoding
    * and the converter hasDictionarySupport().
+   * 
    * @param dictionary the dictionary to use for conversion
    */
   public void setDictionary(Dictionary dictionary) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /* runtime calls  */
+  /* runtime calls */
 
   /**
-   * add a value based on the dictionary set with setDictionary()
-   * Will be used if the Converter has dictionary support and the data was encoded using a dictionary
+   * add a value based on the dictionary set with setDictionary() Will be used if
+   * the Converter has dictionary support and the data was encoded using a
+   * dictionary
+   * 
    * @param dictionaryId the id in the dictionary of the value to add
    */
   public void addValueFromDictionary(int dictionaryId) {

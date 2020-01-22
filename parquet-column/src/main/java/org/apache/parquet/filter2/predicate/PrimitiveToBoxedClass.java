@@ -24,8 +24,8 @@ import java.util.Map;
 import static org.apache.parquet.Preconditions.checkArgument;
 
 /**
- * Converts a {@code Class<primitive>} to it's corresponding {@code Class<Boxed>}, eg
- * {@code Class<int>} to {@code Class<Integer>}
+ * Converts a {@code Class<primitive>} to it's corresponding
+ * {@code Class<Boxed>}, eg {@code Class<int>} to {@code Class<Integer>}
  */
 public class PrimitiveToBoxedClass {
   private static final Map<Class<?>, Class<?>> primitiveToBoxed = new HashMap<>();
@@ -46,5 +46,6 @@ public class PrimitiveToBoxedClass {
     return primitiveToBoxed.get(c);
   }
 
-  private PrimitiveToBoxedClass() { }
+  private PrimitiveToBoxedClass() {
+  }
 }

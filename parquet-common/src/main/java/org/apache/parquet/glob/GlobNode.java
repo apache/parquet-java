@@ -32,15 +32,17 @@ interface GlobNode {
 
   static interface Visitor<T> {
     T visit(Atom atom);
+
     T visit(OneOf oneOf);
+
     T visit(GlobNodeSequence seq);
   }
 
   /**
-   * An Atom is just a String, it's a concrete String that is either part
-   * of the top-level pattern, or one of the choices in a OneOf clause, or an
-   * element in a GlobNodeSequence. In this sense it's the base case or leaf node
-   * of a GlobNode tree.
+   * An Atom is just a String, it's a concrete String that is either part of the
+   * top-level pattern, or one of the choices in a OneOf clause, or an element in
+   * a GlobNodeSequence. In this sense it's the base case or leaf node of a
+   * GlobNode tree.
    *
    * For example, in pre{x,y{a,b}}post pre, x, y, z, b, and post are all Atoms.
    */
@@ -57,7 +59,8 @@ interface GlobNode {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
+      if (this == o)
+        return true;
       return o != null && getClass() == o.getClass() && s.equals(((Atom) o).s);
     }
 
@@ -78,10 +81,9 @@ interface GlobNode {
   }
 
   /**
-   * A OneOf represents a {} clause in a glob pattern, which means
-   * "one of the elements of this set must be satisfied", for example:
-   * in pre{x,y} {x,y} is a OneOf, and in  or pre{x, {a,b}}post both {x, {a,b}}
-   * and {a,b} are OneOfs.
+   * A OneOf represents a {} clause in a glob pattern, which means "one of the
+   * elements of this set must be satisfied", for example: in pre{x,y} {x,y} is a
+   * OneOf, and in or pre{x, {a,b}}post both {x, {a,b}} and {a,b} are OneOfs.
    */
   static class OneOf implements GlobNode {
     private final List<GlobNode> children;
@@ -96,7 +98,8 @@ interface GlobNode {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
+      if (this == o)
+        return true;
       return o != null && getClass() == o.getClass() && children.equals(((OneOf) o).children);
     }
 
@@ -117,10 +120,11 @@ interface GlobNode {
   }
 
   /**
-   * A GlobNodeSequence is an ordered collection of GlobNodes that must be satisfied in order,
-   * and represents structures like pre{x,y}post or {x,y}{a,b}. In {test, pre{x,y}post}, pre{x,y}post is a
-   * GlobNodeSequence. Unlike a OneOf, GlobNodeSequence's children have an ordering that is meaningful and
-   * the requirements of its children must each be satisfied.
+   * A GlobNodeSequence is an ordered collection of GlobNodes that must be
+   * satisfied in order, and represents structures like pre{x,y}post or
+   * {x,y}{a,b}. In {test, pre{x,y}post}, pre{x,y}post is a GlobNodeSequence.
+   * Unlike a OneOf, GlobNodeSequence's children have an ordering that is
+   * meaningful and the requirements of its children must each be satisfied.
    */
   static class GlobNodeSequence implements GlobNode {
     private final List<GlobNode> children;
@@ -135,7 +139,8 @@ interface GlobNode {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
+      if (this == o)
+        return true;
       return o != null && getClass() == o.getClass() && children.equals(((OneOf) o).children);
     }
 

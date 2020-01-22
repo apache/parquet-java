@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.pig;
 
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,13 +51,14 @@ import org.slf4j.LoggerFactory;
 import static java.util.Optional.of;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 
-
 /**
  * Converts a Pig Schema into a Parquet schema
  *
- * Bags are converted into an optional group containing one repeated group field to preserve distinction between empty bag and null.
- * Map are converted into an optional group containing one repeated group field of (key, value).
- * anonymous fields are named field_{index}. (in most cases pig already gives them an alias val_{int}, so this rarely happens)
+ * Bags are converted into an optional group containing one repeated group field
+ * to preserve distinction between empty bag and null. Map are converted into an
+ * optional group containing one repeated group field of (key, value). anonymous
+ * fields are named field_{index}. (in most cases pig already gives them an
+ * alias val_{int}, so this rarely happens)
  */
 public class PigSchemaConverter {
   private static final Logger LOG = LoggerFactory.getLogger(PigSchemaConverter.class);
@@ -71,10 +71,11 @@ public class PigSchemaConverter {
 
   /**
    *
-   * @param columnIndexAccess toggle between name and index based access (default: false)
+   * @param columnIndexAccess toggle between name and index based access (default:
+   * false)
    */
   public PigSchemaConverter(boolean columnIndexAccess) {
-    this.columnAccess = columnIndexAccess?new ColumnIndexAccess():new ColumnNameAccess();
+    this.columnAccess = columnIndexAccess ? new ColumnIndexAccess() : new ColumnNameAccess();
   }
 
   /**
@@ -95,18 +96,19 @@ public class PigSchemaConverter {
 
   class ColumnIndexAccess implements ColumnAccess {
     @Override
-    public List<Type> filterTupleSchema(GroupType schemaToFilter, Schema pigSchema, RequiredFieldList requiredFieldsList) {
+    public List<Type> filterTupleSchema(GroupType schemaToFilter, Schema pigSchema,
+        RequiredFieldList requiredFieldsList) {
       List<Type> newFields = new ArrayList<Type>();
-      List<Pair<FieldSchema,Integer>> indexedFields = new ArrayList<Pair<FieldSchema,Integer>>();
+      List<Pair<FieldSchema, Integer>> indexedFields = new ArrayList<Pair<FieldSchema, Integer>>();
 
       try {
-        if(requiredFieldsList == null) {
+        if (requiredFieldsList == null) {
           int index = 0;
-          for(FieldSchema fs : pigSchema.getFields()) {
+          for (FieldSchema fs : pigSchema.getFields()) {
             indexedFields.add(new Pair<FieldSchema, Integer>(fs, index++));
           }
         } else {
-          for(RequiredField rf : requiredFieldsList.getFields()) {
+          for (RequiredField rf : requiredFieldsList.getFields()) {
             indexedFields.add(new Pair<FieldSchema, Integer>(pigSchema.getField(rf.getAlias()), rf.getIndex()));
           }
         }
@@ -119,7 +121,7 @@ public class PigSchemaConverter {
           }
         }
       } catch (FrontendException e) {
-          throw new RuntimeException("Failed to filter requested fields", e);
+        throw new RuntimeException("Failed to filter requested fields", e);
       }
       return newFields;
     }
@@ -127,12 +129,13 @@ public class PigSchemaConverter {
 
   class ColumnNameAccess implements ColumnAccess {
     @Override
-    public List<Type> filterTupleSchema(GroupType schemaToFilter, Schema requestedPigSchema, RequiredFieldList requiredFieldsList) {
+    public List<Type> filterTupleSchema(GroupType schemaToFilter, Schema requestedPigSchema,
+        RequiredFieldList requiredFieldsList) {
       List<FieldSchema> fields = requestedPigSchema.getFields();
       List<Type> newFields = new ArrayList<Type>();
       for (int i = 0; i < fields.size(); i++) {
         FieldSchema fieldSchema = fields.get(i);
-        String name = name(fieldSchema.alias, "field_"+i);
+        String name = name(fieldSchema.alias, "field_" + i);
         if (schemaToFilter.containsField(name)) {
           newFields.add(filter(schemaToFilter.getType(name), fieldSchema));
         }
@@ -151,8 +154,8 @@ public class PigSchemaConverter {
   }
 
   public static RequiredFieldList deserializeRequiredFieldList(String requiredFieldString) {
-    if(requiredFieldString == null) {
-        return null;
+    if (requiredFieldString == null) {
+      return null;
     }
 
     try {
@@ -172,6 +175,7 @@ public class PigSchemaConverter {
 
   /**
    * converts a parquet schema into a pig schema
+   * 
    * @param parquetSchema the parquet schema to convert to Pig schema
    * @return the resulting schema
    */
@@ -190,7 +194,7 @@ public class PigSchemaConverter {
   private Schema convertFields(List<Type> parquetFields) {
     List<FieldSchema> fields = new ArrayList<Schema.FieldSchema>();
     for (Type parquetType : parquetFields) {
-      try{
+      try {
         FieldSchema innerfieldSchema = getFieldSchema(parquetType);
         if (parquetType.isRepetition(Repetition.REPEATED)) {
           Schema bagSchema = new Schema(Arrays.asList(innerfieldSchema));
@@ -198,55 +202,45 @@ public class PigSchemaConverter {
         } else {
           fields.add(innerfieldSchema);
         }
-      }
-      catch (FrontendException fe) {
-        throw new SchemaConversionException("can't convert "+ parquetType, fe);
+      } catch (FrontendException fe) {
+        throw new SchemaConversionException("can't convert " + parquetType, fe);
       }
     }
     return new Schema(fields);
   }
 
-  private FieldSchema getSimpleFieldSchema(final String fieldName, Type parquetType)
-      throws FrontendException {
-    final PrimitiveTypeName parquetPrimitiveTypeName =
-        parquetType.asPrimitiveType().getPrimitiveTypeName();
+  private FieldSchema getSimpleFieldSchema(final String fieldName, Type parquetType) throws FrontendException {
+    final PrimitiveTypeName parquetPrimitiveTypeName = parquetType.asPrimitiveType().getPrimitiveTypeName();
     final LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
-    return parquetPrimitiveTypeName.convert(
-        new PrimitiveTypeNameConverter<Schema.FieldSchema, FrontendException>() {
+    return parquetPrimitiveTypeName.convert(new PrimitiveTypeNameConverter<Schema.FieldSchema, FrontendException>() {
       @Override
-      public FieldSchema convertFLOAT(PrimitiveTypeName primitiveTypeName)
-          throws FrontendException {
+      public FieldSchema convertFLOAT(PrimitiveTypeName primitiveTypeName) throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.FLOAT);
       }
 
       @Override
-      public FieldSchema convertDOUBLE(PrimitiveTypeName primitiveTypeName)
-          throws FrontendException {
+      public FieldSchema convertDOUBLE(PrimitiveTypeName primitiveTypeName) throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.DOUBLE);
       }
 
       @Override
-      public FieldSchema convertINT32(PrimitiveTypeName primitiveTypeName)
-          throws FrontendException {
+      public FieldSchema convertINT32(PrimitiveTypeName primitiveTypeName) throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.INTEGER);
       }
 
       @Override
-      public FieldSchema convertINT64(PrimitiveTypeName primitiveTypeName)
-          throws FrontendException {
+      public FieldSchema convertINT64(PrimitiveTypeName primitiveTypeName) throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.LONG);
       }
 
       @Override
-      public FieldSchema convertINT96(PrimitiveTypeName primitiveTypeName)
-          throws FrontendException {
+      public FieldSchema convertINT96(PrimitiveTypeName primitiveTypeName) throws FrontendException {
         LOG.warn("Converting type " + primitiveTypeName + " to bytearray");
         return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
       }
 
       @Override
-      public FieldSchema convertFIXED_LEN_BYTE_ARRAY(
-        PrimitiveTypeName primitiveTypeName) throws FrontendException {
+      public FieldSchema convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName) throws FrontendException {
         if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
           return new FieldSchema(fieldName, null, DataType.BIGDECIMAL);
         } else {
@@ -255,14 +249,12 @@ public class PigSchemaConverter {
       }
 
       @Override
-      public FieldSchema convertBOOLEAN(PrimitiveTypeName primitiveTypeName)
-          throws FrontendException {
+      public FieldSchema convertBOOLEAN(PrimitiveTypeName primitiveTypeName) throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.BOOLEAN);
       }
 
       @Override
-      public FieldSchema convertBINARY(PrimitiveTypeName primitiveTypeName)
-          throws FrontendException {
+      public FieldSchema convertBINARY(PrimitiveTypeName primitiveTypeName) throws FrontendException {
         if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
           return new FieldSchema(fieldName, null, DataType.CHARARRAY);
         } else {
@@ -273,8 +265,9 @@ public class PigSchemaConverter {
   }
 
   /*
-   * RuntimeException class to workaround throwing checked FrontendException in logical type visitors.
-   * Wrap the FrontendException inside the visitor in an inner catch block, and rethrow it outside of the visitor
+   * RuntimeException class to workaround throwing checked FrontendException in
+   * logical type visitors. Wrap the FrontendException inside the visitor in an
+   * inner catch block, and rethrow it outside of the visitor
    */
   private static final class FrontendExceptionWrapper extends RuntimeException {
     final FrontendException frontendException;
@@ -284,11 +277,10 @@ public class PigSchemaConverter {
     }
   }
 
-  private FieldSchema getComplexFieldSchema(String fieldName, Type parquetType)
-      throws FrontendException {
+  private FieldSchema getComplexFieldSchema(String fieldName, Type parquetType) throws FrontendException {
     GroupType parquetGroupType = parquetType.asGroupType();
     LogicalTypeAnnotation logicalTypeAnnotation = parquetGroupType.getLogicalTypeAnnotation();
-    if (logicalTypeAnnotation !=  null) {
+    if (logicalTypeAnnotation != null) {
       try {
         return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<FieldSchema>() {
           @Override
@@ -299,9 +291,10 @@ public class PigSchemaConverter {
                 throw new SchemaConversionException("Invalid map type " + parquetGroupType);
               }
               GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
-              if (!mapKeyValType.isRepetition(Repetition.REPEATED) ||
-                (mapKeyValType.getLogicalTypeAnnotation() != null && !mapKeyValType.getLogicalTypeAnnotation().equals(LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance())) ||
-                mapKeyValType.getFieldCount() != 2) {
+              if (!mapKeyValType.isRepetition(Repetition.REPEATED)
+                  || (mapKeyValType.getLogicalTypeAnnotation() != null && !mapKeyValType.getLogicalTypeAnnotation()
+                      .equals(LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance()))
+                  || mapKeyValType.getFieldCount() != 2) {
                 throw new SchemaConversionException("Invalid map type " + parquetGroupType);
               }
               // if value is not primitive wrap it in a tuple
@@ -328,13 +321,15 @@ public class PigSchemaConverter {
               if (!tupleType.isRepetition(Repetition.REPEATED)) {
                 throw new SchemaConversionException("Invalid list type " + parquetGroupType);
               }
-              Schema tupleSchema = new Schema(new FieldSchema(tupleType.getName(), convertFields(tupleType.getFields()), DataType.TUPLE));
+              Schema tupleSchema = new Schema(
+                  new FieldSchema(tupleType.getName(), convertFields(tupleType.getFields()), DataType.TUPLE));
               return of(new FieldSchema(fieldName, tupleSchema, DataType.BAG));
             } catch (FrontendException e) {
               throw new FrontendExceptionWrapper(e);
             }
           }
-        }).orElseThrow(() -> new SchemaConversionException("Unexpected original type for " + parquetType + ": " + logicalTypeAnnotation));
+        }).orElseThrow(() -> new SchemaConversionException(
+            "Unexpected original type for " + parquetType + ": " + logicalTypeAnnotation));
       } catch (FrontendExceptionWrapper e) {
         throw e.frontendException;
       }
@@ -402,15 +397,16 @@ public class PigSchemaConverter {
       case DataType.BYTEARRAY:
         return primitive(name, PrimitiveTypeName.BINARY);
       default:
-        throw new SchemaConversionException("Unknown type " + fieldSchema.type + " " + DataType.findTypeName(fieldSchema.type));
+        throw new SchemaConversionException(
+            "Unknown type " + fieldSchema.type + " " + DataType.findTypeName(fieldSchema.type));
       }
     } catch (FrontendException e) {
-      throw new SchemaConversionException("can't convert "+fieldSchema, e);
+      throw new SchemaConversionException("can't convert " + fieldSchema, e);
     }
   }
 
   private Type convert(FieldSchema fieldSchema, int index) {
-    return convert(fieldSchema, "field_"+index);
+    return convert(fieldSchema, "field_" + index);
   }
 
   /**
@@ -422,9 +418,7 @@ public class PigSchemaConverter {
    */
   private GroupType convertBag(String name, FieldSchema fieldSchema) throws FrontendException {
     FieldSchema innerField = fieldSchema.schema.getField(0);
-    return ConversionPatterns.listType(
-        Repetition.OPTIONAL,
-        name,
+    return ConversionPatterns.listType(Repetition.OPTIONAL, name,
         convertTuple(name(innerField.alias, "bag"), innerField, Repetition.REPEATED));
   }
 
@@ -450,7 +444,8 @@ public class PigSchemaConverter {
   private GroupType convertMap(String alias, FieldSchema fieldSchema) {
     Schema innerSchema = fieldSchema.schema;
     if (innerSchema == null || innerSchema.size() != 1) {
-      throw new SchemaConversionException("Invalid map Schema, schema should contain exactly one field: " + fieldSchema);
+      throw new SchemaConversionException(
+          "Invalid map Schema, schema should contain exactly one field: " + fieldSchema);
     }
     FieldSchema innerField = null;
     try {
@@ -469,6 +464,7 @@ public class PigSchemaConverter {
 
   /**
    * filters a Parquet schema based on a pig schema for projection
+   * 
    * @param schemaToFilter the schema to be filter
    * @param requestedPigSchema the pig schema to filter it with
    * @return the resulting filtered schema
@@ -479,16 +475,20 @@ public class PigSchemaConverter {
 
   /**
    * filters a Parquet schema based on a pig schema for projection
+   * 
    * @param schemaToFilter the schema to be filter
    * @param requestedPigSchema the pig schema to filter it with
    * @param requiredFieldList projected required fields
    * @return the resulting filtered schema
    */
-  public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema, RequiredFieldList requiredFieldList) {
+  public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema,
+      RequiredFieldList requiredFieldList) {
     try {
-      if (LOG.isDebugEnabled()) LOG.debug("filtering schema:\n" + schemaToFilter + "\nwith requested pig schema:\n " + requestedPigSchema);
+      if (LOG.isDebugEnabled())
+        LOG.debug("filtering schema:\n" + schemaToFilter + "\nwith requested pig schema:\n " + requestedPigSchema);
       List<Type> result = columnAccess.filterTupleSchema(schemaToFilter, requestedPigSchema, requiredFieldList);
-      if (LOG.isDebugEnabled()) LOG.debug("schema:\n" + schemaToFilter + "\nfiltered to:\n" + result);
+      if (LOG.isDebugEnabled())
+        LOG.debug("schema:\n" + schemaToFilter + "\nfiltered to:\n" + result);
       return new MessageType(schemaToFilter.getName(), result);
     } catch (RuntimeException e) {
       throw new RuntimeException("can't filter " + schemaToFilter + " with " + requestedPigSchema, e);
@@ -496,7 +496,8 @@ public class PigSchemaConverter {
   }
 
   private Type filter(Type type, FieldSchema fieldSchema) {
-    if (LOG.isDebugEnabled()) LOG.debug("filtering type:\n" + type + "\nwith:\n " + fieldSchema);
+    if (LOG.isDebugEnabled())
+      LOG.debug("filtering type:\n" + type + "\nwith:\n " + fieldSchema);
     try {
       switch (fieldSchema.type) {
       case DataType.BAG:
@@ -516,12 +517,14 @@ public class PigSchemaConverter {
   }
 
   private Type filterTuple(GroupType tupleType, FieldSchema tupleFieldSchema) throws FrontendException {
-    if (LOG.isDebugEnabled()) LOG.debug("filtering TUPLE schema:\n" + tupleType + "\nwith:\n " + tupleFieldSchema);
+    if (LOG.isDebugEnabled())
+      LOG.debug("filtering TUPLE schema:\n" + tupleType + "\nwith:\n " + tupleFieldSchema);
     return tupleType.withNewFields(columnAccess.filterTupleSchema(tupleType, tupleFieldSchema.schema, null));
   }
 
   private Type filterMap(GroupType mapType, FieldSchema mapFieldSchema) throws FrontendException {
-    if (LOG.isDebugEnabled()) LOG.debug("filtering MAP schema:\n" + mapType + "\nwith:\n " + mapFieldSchema);
+    if (LOG.isDebugEnabled())
+      LOG.debug("filtering MAP schema:\n" + mapType + "\nwith:\n " + mapFieldSchema);
     if (mapType.getFieldCount() != 1) {
       throw new RuntimeException("not unwrapping the right type, this should be a Map: " + mapType);
     }
@@ -534,15 +537,18 @@ public class PigSchemaConverter {
   }
 
   private Type filterBag(GroupType bagType, FieldSchema bagFieldSchema) throws FrontendException {
-    if (LOG.isDebugEnabled()) LOG.debug("filtering BAG schema:\n" + bagType + "\nwith:\n " + bagFieldSchema);
+    if (LOG.isDebugEnabled())
+      LOG.debug("filtering BAG schema:\n" + bagType + "\nwith:\n " + bagFieldSchema);
     if (bagType.getFieldCount() != 1) {
       throw new RuntimeException("not unwrapping the right type, this should be a Bag: " + bagType);
     }
     Type nested = bagType.getType(0);
     FieldSchema innerField = bagFieldSchema.schema.getField(0);
-    if (nested.isPrimitive() || nested.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation
-      || nested.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
-      // Bags always contain tuples => we skip the extra tuple that was inserted in that case.
+    if (nested.isPrimitive()
+        || nested.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation
+        || nested.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
+      // Bags always contain tuples => we skip the extra tuple that was inserted in
+      // that case.
       innerField = innerField.schema.getField(0);
     }
     return bagType.withNewFields(filter(nested, innerField));

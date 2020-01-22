@@ -63,38 +63,29 @@ public class ColumnIndexValidator {
   public enum Contract {
     MIN_LTEQ_VALUE(
         "The min value stored in the index for the page must be less than or equal to all values in the page.\n"
-            + "Actual value in the page: %s\n"
-            + "Min value in the index: %s\n"),
+            + "Actual value in the page: %s\n" + "Min value in the index: %s\n"),
     MAX_GTEQ_VALUE(
         "The max value stored in the index for the page must be greater than or equal to all values in the page.\n"
-            + "Actual value in the page: %s\n"
-            + "Max value in the index: %s\n"),
+            + "Actual value in the page: %s\n" + "Max value in the index: %s\n"),
     NULL_COUNT_CORRECT(
         "The null count stored in the index for the page must be equal to the number of nulls in the page.\n"
-            + "Actual null count: %s\n"
-            + "Null count in the index: %s\n"),
+            + "Actual null count: %s\n" + "Null count in the index: %s\n"),
     NULL_PAGE_HAS_NO_VALUES("Only pages consisting entirely of NULL-s can be marked as a null page in the index.\n"
         + "Actual non-null value in the page: %s"),
-    NULL_PAGE_HAS_NO_MIN("A null page shall not have a min value in the index\n"
-        + "Min value in the index: %s\n"),
-    NULL_PAGE_HAS_NO_MAX("A null page shall not have a max value in the index\n"
-        + "Max value in the index: %s\n"),
+    NULL_PAGE_HAS_NO_MIN("A null page shall not have a min value in the index\n" + "Min value in the index: %s\n"),
+    NULL_PAGE_HAS_NO_MAX("A null page shall not have a max value in the index\n" + "Max value in the index: %s\n"),
     MIN_ASCENDING(
         "According to the ASCENDING boundary order, the min value for a page must be greater than or equal to the min value of the previous page.\n"
-            + "Min value for the page: %s\n"
-            + "Min value for the previous page: %s\n"),
+            + "Min value for the page: %s\n" + "Min value for the previous page: %s\n"),
     MAX_ASCENDING(
         "According to the ASCENDING boundary order, the max value for a page must be greater than or equal to the max value of the previous page.\n"
-            + "Max value for the page: %s\n"
-            + "Max value for the previous page: %s\n"),
+            + "Max value for the page: %s\n" + "Max value for the previous page: %s\n"),
     MIN_DESCENDING(
         "According to the DESCENDING boundary order, the min value for a page must be less than or equal to the min value of the previous page.\n"
-            + "Min value for the page: %s\n"
-            + "Min value for the previous page: %s\n"),
+            + "Min value for the page: %s\n" + "Min value for the previous page: %s\n"),
     MAX_DESCENDING(
         "According to the DESCENDING boundary order, the max value for a page must be less than or equal to the max value of the previous page.\n"
-            + "Max value for the page: %s\n"
-            + "Max value for the previous page: %s\n");
+            + "Max value for the page: %s\n" + "Max value for the previous page: %s\n");
 
     public final String description;
 
@@ -128,9 +119,7 @@ public class ColumnIndexValidator {
       return String.format(
           "Contract violation\nLocation: row group %d, column %d (\"%s\"), page %d\nViolated contract: "
               + violatedContract.description,
-          rowGroupNumber, columnNumber, columnPath.toDotString(), pageNumber,
-          referenceValue,
-          offendingValue);
+          rowGroupNumber, columnNumber, columnPath.toDotString(), pageNumber, referenceValue, offendingValue);
     }
   }
 
@@ -423,20 +412,9 @@ public class ColumnIndexValidator {
     private final StatValue maxValue;
     private final StatValue.Builder statValueBuilder;
 
-    PageValidator(
-        PrimitiveType type,
-        int rowGroupNumber,
-        int columnNumber,
-        ColumnPath columnPath,
-        int pageNumber,
-        List<ContractViolation> violations,
-        ColumnReader columnReader,
-        ByteBuffer minValue,
-        ByteBuffer maxValue,
-        ByteBuffer prevMinValue,
-        ByteBuffer prevMaxValue,
-        BoundaryOrder boundaryOrder,
-        long nullCount,
+    PageValidator(PrimitiveType type, int rowGroupNumber, int columnNumber, ColumnPath columnPath, int pageNumber,
+        List<ContractViolation> violations, ColumnReader columnReader, ByteBuffer minValue, ByteBuffer maxValue,
+        ByteBuffer prevMinValue, ByteBuffer prevMaxValue, BoundaryOrder boundaryOrder, long nullCount,
         boolean isNullPage) {
       this.columnReader = columnReader;
       this.rowGroupNumber = rowGroupNumber;
@@ -454,11 +432,9 @@ public class ColumnIndexValidator {
 
       if (isNullPage) {
         // By specification null pages have empty byte arrays as min/max values
-        validateContract(!minValue.hasRemaining(),
-            NULL_PAGE_HAS_NO_MIN,
+        validateContract(!minValue.hasRemaining(), NULL_PAGE_HAS_NO_MIN,
             () -> statValueBuilder.build(minValue).toString());
-        validateContract(!maxValue.hasRemaining(),
-            NULL_PAGE_HAS_NO_MAX,
+        validateContract(!maxValue.hasRemaining(), NULL_PAGE_HAS_NO_MAX,
             () -> statValueBuilder.build(maxValue).toString());
       } else if (prevMinValue != null) {
         validateBoundaryOrder(statValueBuilder.build(prevMinValue), statValueBuilder.build(prevMaxValue),
@@ -478,64 +454,42 @@ public class ColumnIndexValidator {
     }
 
     void finishPage() {
-      validateContract(nullCountInIndex == nullCountActual,
-          NULL_COUNT_CORRECT,
-          () -> Long.toString(nullCountActual),
+      validateContract(nullCountInIndex == nullCountActual, NULL_COUNT_CORRECT, () -> Long.toString(nullCountActual),
           () -> Long.toString(nullCountInIndex));
     }
 
-    void validateContract(boolean contractCondition,
-        Contract type,
-        Supplier<String> value1) {
+    void validateContract(boolean contractCondition, Contract type, Supplier<String> value1) {
       validateContract(contractCondition, type, value1, () -> "N/A");
     }
 
-    void validateContract(boolean contractCondition,
-        Contract type,
-        Supplier<String> value1,
-        Supplier<String> value2) {
+    void validateContract(boolean contractCondition, Contract type, Supplier<String> value1, Supplier<String> value2) {
       if (!contractCondition && !pageViolations.contains(type)) {
-        violations.add(
-            new ContractViolation(type, value1.get(), value2.get(), rowGroupNumber,
-                columnNumber, columnPath, pageNumber));
+        violations.add(new ContractViolation(type, value1.get(), value2.get(), rowGroupNumber, columnNumber, columnPath,
+            pageNumber));
         pageViolations.add(type);
       }
     }
 
     private void validateValue() {
-      validateContract(!isNullPage,
-          NULL_PAGE_HAS_NO_VALUES,
-          () -> statValueBuilder.stringifyValue(columnReader));
-      validateContract(minValue.compareToValue(columnReader) <= 0,
-          MIN_LTEQ_VALUE,
-          () -> statValueBuilder.stringifyValue(columnReader),
-          minValue::toString);
-      validateContract(maxValue.compareToValue(columnReader) >= 0,
-          MAX_GTEQ_VALUE,
-          () -> statValueBuilder.stringifyValue(columnReader),
-          maxValue::toString);
+      validateContract(!isNullPage, NULL_PAGE_HAS_NO_VALUES, () -> statValueBuilder.stringifyValue(columnReader));
+      validateContract(minValue.compareToValue(columnReader) <= 0, MIN_LTEQ_VALUE,
+          () -> statValueBuilder.stringifyValue(columnReader), minValue::toString);
+      validateContract(maxValue.compareToValue(columnReader) >= 0, MAX_GTEQ_VALUE,
+          () -> statValueBuilder.stringifyValue(columnReader), maxValue::toString);
     }
 
     private void validateBoundaryOrder(StatValue prevMinValue, StatValue prevMaxValue, BoundaryOrder boundaryOrder) {
       switch (boundaryOrder) {
       case ASCENDING:
-        validateContract(minValue.compareTo(prevMinValue) >= 0,
-            MIN_ASCENDING,
-            minValue::toString,
+        validateContract(minValue.compareTo(prevMinValue) >= 0, MIN_ASCENDING, minValue::toString,
             prevMinValue::toString);
-        validateContract(maxValue.compareTo(prevMaxValue) >= 0,
-            MAX_ASCENDING,
-            maxValue::toString,
+        validateContract(maxValue.compareTo(prevMaxValue) >= 0, MAX_ASCENDING, maxValue::toString,
             prevMaxValue::toString);
         break;
       case DESCENDING:
-        validateContract(minValue.compareTo(prevMinValue) <= 0,
-            MIN_DESCENDING,
-            minValue::toString,
+        validateContract(minValue.compareTo(prevMinValue) <= 0, MIN_DESCENDING, minValue::toString,
             prevMinValue::toString);
-        validateContract(maxValue.compareTo(prevMaxValue) <= 0,
-            MAX_DESCENDING,
-            maxValue::toString,
+        validateContract(maxValue.compareTo(prevMaxValue) <= 0, MAX_DESCENDING, maxValue::toString,
             prevMaxValue::toString);
         break;
       case UNORDERED:
@@ -581,17 +535,9 @@ public class ColumnIndexValidator {
             boolean isNullPage = nullPages.get(pageNumber);
             ByteBuffer minValue = minValues.get(pageNumber);
             ByteBuffer maxValue = maxValues.get(pageNumber);
-            PageValidator pageValidator = new PageValidator(
-                column.getPrimitiveType(),
-                rowGroupNumber, columnNumber, columnPath, pageNumber,
-                violations, columnReader,
-                minValue,
-                maxValue,
-                prevMinValue,
-                prevMaxValue,
-                boundaryOrder,
-                nullCounts.get(pageNumber),
-                isNullPage);
+            PageValidator pageValidator = new PageValidator(column.getPrimitiveType(), rowGroupNumber, columnNumber,
+                columnPath, pageNumber, violations, columnReader, minValue, maxValue, prevMinValue, prevMaxValue,
+                boundaryOrder, nullCounts.get(pageNumber), isNullPage);
             if (!isNullPage) {
               prevMinValue = minValue;
               prevMaxValue = maxValue;

@@ -217,115 +217,61 @@ public class TestColumnIndexFilter {
    */
   private static final long TOTAL_ROW_COUNT = 30;
   private static final ColumnIndex COLUMN1_CI = new CIBuilder(optional(INT32).named("column1"), ASCENDING)
-      .addPage(0, 1, 1)
-      .addPage(1, 2, 6)
-      .addPage(0, 7, 7)
-      .addPage(1, 7, 10)
-      .addPage(0, 11, 17)
-      .addPage(0, 18, 23)
-      .addPage(0, 24, 26)
-      .build();
-  private static final OffsetIndex COLUMN1_OI = new OIBuilder()
-      .addPage(1)
-      .addPage(6)
-      .addPage(2)
-      .addPage(5)
-      .addPage(7)
-      .addPage(6)
-      .addPage(3)
-      .build();
-  private static final ColumnIndex COLUMN2_CI = new CIBuilder(optional(BINARY).as(stringType()).named("column2"), DESCENDING)
-      .addPage(0, "Zulu", "Zulu")
-      .addPage(0, "Whiskey", "Yankee")
-      .addPage(1, "Tango", "Victor")
-      .addNullPage(3)
-      .addPage(0, "Oscar", "Sierra")
-      .addPage(0, "Juliett", "November")
-      .addPage(0, "Bravo", "India")
-      .addPage(0, "Alfa", "Alfa")
-      .build();
-  private static final OffsetIndex COLUMN2_OI = new OIBuilder()
-      .addPage(1)
-      .addPage(3)
-      .addPage(4)
-      .addPage(3)
-      .addPage(5)
-      .addPage(5)
-      .addPage(8)
-      .addPage(1)
-      .build();
+      .addPage(0, 1, 1).addPage(1, 2, 6).addPage(0, 7, 7).addPage(1, 7, 10).addPage(0, 11, 17).addPage(0, 18, 23)
+      .addPage(0, 24, 26).build();
+  private static final OffsetIndex COLUMN1_OI = new OIBuilder().addPage(1).addPage(6).addPage(2).addPage(5).addPage(7)
+      .addPage(6).addPage(3).build();
+  private static final ColumnIndex COLUMN2_CI = new CIBuilder(optional(BINARY).as(stringType()).named("column2"),
+      DESCENDING).addPage(0, "Zulu", "Zulu").addPage(0, "Whiskey", "Yankee").addPage(1, "Tango", "Victor")
+          .addNullPage(3).addPage(0, "Oscar", "Sierra").addPage(0, "Juliett", "November").addPage(0, "Bravo", "India")
+          .addPage(0, "Alfa", "Alfa").build();
+  private static final OffsetIndex COLUMN2_OI = new OIBuilder().addPage(1).addPage(3).addPage(4).addPage(3).addPage(5)
+      .addPage(5).addPage(8).addPage(1).build();
   private static final ColumnIndex COLUMN3_CI = new CIBuilder(optional(DOUBLE).named("column3"), UNORDERED)
-      .addPage(0, 2.03, 2.03)
-      .addPage(0, 0.56, 8.71)
-      .addPage(2, 3.14, 3.50)
-      .addPage(0, 2.71, 9.99)
-      .addPage(3, 0.36, 5.32)
-      .addPage(0, 4.17, 7.95)
-      .addNullPage(4)
-      .build();
-  private static final OffsetIndex COLUMN3_OI = new OIBuilder()
-      .addPage(1)
-      .addPage(5)
-      .addPage(4)
-      .addPage(6)
-      .addPage(7)
-      .addPage(3)
-      .addPage(4)
-      .build();
+      .addPage(0, 2.03, 2.03).addPage(0, 0.56, 8.71).addPage(2, 3.14, 3.50).addPage(0, 2.71, 9.99)
+      .addPage(3, 0.36, 5.32).addPage(0, 4.17, 7.95).addNullPage(4).build();
+  private static final OffsetIndex COLUMN3_OI = new OIBuilder().addPage(1).addPage(5).addPage(4).addPage(6).addPage(7)
+      .addPage(3).addPage(4).build();
   private static final ColumnIndex COLUMN4_CI = null;
-  private static final OffsetIndex COLUMN4_OI = new OIBuilder()
-      .addPage(1)
-      .addPage(3)
-      .addPage(2)
-      .addPage(1)
-      .addPage(5)
-      .addPage(4)
-      .addPage(5)
-      .addPage(7)
-      .addPage(2)
-      .build();
+  private static final OffsetIndex COLUMN4_OI = new OIBuilder().addPage(1).addPage(3).addPage(2).addPage(1).addPage(5)
+      .addPage(4).addPage(5).addPage(7).addPage(2).build();
   private static final ColumnIndex COLUMN5_CI = new CIBuilder(optional(INT64).named("column5"), ASCENDING)
-      .addNullPage(1)
-      .addNullPage(29)
-      .build();
-  private static final OffsetIndex COLUMN5_OI = new OIBuilder()
-      .addPage(1)
-      .addPage(29)
-      .build();
+      .addNullPage(1).addNullPage(29).build();
+  private static final OffsetIndex COLUMN5_OI = new OIBuilder().addPage(1).addPage(29).build();
   private static final ColumnIndexStore STORE = new ColumnIndexStore() {
     @Override
     public ColumnIndex getColumnIndex(ColumnPath column) {
       switch (column.toDotString()) {
-        case "column1":
-          return COLUMN1_CI;
-        case "column2":
-          return COLUMN2_CI;
-        case "column3":
-          return COLUMN3_CI;
-        case "column4":
-          return COLUMN4_CI;
-        case "column5":
-          return COLUMN5_CI;
-        default:
-          return null;
+      case "column1":
+        return COLUMN1_CI;
+      case "column2":
+        return COLUMN2_CI;
+      case "column3":
+        return COLUMN3_CI;
+      case "column4":
+        return COLUMN4_CI;
+      case "column5":
+        return COLUMN5_CI;
+      default:
+        return null;
       }
     }
 
     @Override
     public OffsetIndex getOffsetIndex(ColumnPath column) {
       switch (column.toDotString()) {
-        case "column1":
-          return COLUMN1_OI;
-        case "column2":
-          return COLUMN2_OI;
-        case "column3":
-          return COLUMN3_OI;
-        case "column4":
-          return COLUMN4_OI;
-        case "column5":
-          return COLUMN5_OI;
-        default:
-          throw new MissingOffsetIndexException(column);
+      case "column1":
+        return COLUMN1_OI;
+      case "column2":
+        return COLUMN2_OI;
+      case "column3":
+        return COLUMN3_OI;
+      case "column4":
+        return COLUMN4_OI;
+      case "column5":
+        return COLUMN5_OI;
+      default:
+        throw new MissingOffsetIndexException(column);
       }
     }
   };
@@ -356,76 +302,39 @@ public class TestColumnIndexFilter {
   public void testFiltering() {
     Set<ColumnPath> paths = paths("column1", "column2", "column3", "column4");
 
-    assertAllRows(
-        calculateRowRanges(FilterCompat.get(
-            userDefined(intColumn("column1"), AnyInt.class)), STORE, paths, TOTAL_ROW_COUNT),
-        TOTAL_ROW_COUNT);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                eq(intColumn("column1"), null),
-                eq(binaryColumn("column2"), null)),
-            and(
-                eq(doubleColumn("column3"), null),
-                eq(booleanColumn("column4"), null)))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        6, 9);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                notEq(intColumn("column1"), null),
-                notEq(binaryColumn("column2"), null)),
-            and(
-                notEq(doubleColumn("column3"), null),
-                notEq(booleanColumn("column4"), null)))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        or(
-            and(
-                lt(intColumn("column1"), 20),
-                gtEq(binaryColumn("column2"), fromString("Quebec"))),
-            and(
-                gt(doubleColumn("column3"), 5.32),
-                ltEq(binaryColumn("column4"), fromString("XYZ"))))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 23, 24, 25);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                gtEq(intColumn("column1"), 7),
-                gt(binaryColumn("column2"), fromString("India"))),
-            and(
-                eq(doubleColumn("column3"), null),
-                notEq(binaryColumn("column4"), null)))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        7, 16, 17, 18, 19, 20);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            or(
-                invert(userDefined(intColumn("column1"), AnyInt.class)),
-                eq(binaryColumn("column2"), fromString("Echo"))),
-            eq(doubleColumn("column3"), 6.0))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        23, 24, 25);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            userDefined(intColumn("column1"), IntegerIsDivisableWith3.class),
-            and(
-                userDefined(binaryColumn("column2"), BinaryUtf8StartsWithB.class),
+    assertAllRows(calculateRowRanges(FilterCompat.get(userDefined(intColumn("column1"), AnyInt.class)), STORE, paths,
+        TOTAL_ROW_COUNT), TOTAL_ROW_COUNT);
+    assertRows(calculateRowRanges(
+        FilterCompat.get(and(and(eq(intColumn("column1"), null), eq(binaryColumn("column2"), null)),
+            and(eq(doubleColumn("column3"), null), eq(booleanColumn("column4"), null)))),
+        STORE, paths, TOTAL_ROW_COUNT), 6, 9);
+    assertRows(calculateRowRanges(
+        FilterCompat.get(and(and(notEq(intColumn("column1"), null), notEq(binaryColumn("column2"), null)),
+            and(notEq(doubleColumn("column3"), null), notEq(booleanColumn("column4"), null)))),
+        STORE, paths, TOTAL_ROW_COUNT), 0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25);
+    assertRows(calculateRowRanges(
+        FilterCompat.get(or(and(lt(intColumn("column1"), 20), gtEq(binaryColumn("column2"), fromString("Quebec"))),
+            and(gt(doubleColumn("column3"), 5.32), ltEq(binaryColumn("column4"), fromString("XYZ"))))),
+        STORE, paths, TOTAL_ROW_COUNT), 0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 23, 24, 25);
+    assertRows(calculateRowRanges(
+        FilterCompat.get(and(and(gtEq(intColumn("column1"), 7), gt(binaryColumn("column2"), fromString("India"))),
+            and(eq(doubleColumn("column3"), null), notEq(binaryColumn("column4"), null)))),
+        STORE, paths, TOTAL_ROW_COUNT), 7, 16, 17, 18, 19, 20);
+    assertRows(calculateRowRanges(
+        FilterCompat.get(and(or(invert(userDefined(intColumn("column1"), AnyInt.class)),
+            eq(binaryColumn("column2"), fromString("Echo"))), eq(doubleColumn("column3"), 6.0))),
+        STORE, paths, TOTAL_ROW_COUNT), 23, 24, 25);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(and(userDefined(intColumn("column1"), IntegerIsDivisableWith3.class),
+            and(userDefined(binaryColumn("column2"), BinaryUtf8StartsWithB.class),
                 userDefined(doubleColumn("column3"), DoubleIsInteger.class)))),
-        STORE, paths, TOTAL_ROW_COUNT),
+            STORE, paths, TOTAL_ROW_COUNT),
         21, 22, 23, 24, 25);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                gtEq(intColumn("column1"), 7),
-                lt(intColumn("column1"), 11)),
-            and(
-                gt(binaryColumn("column2"), fromString("Romeo")),
-                ltEq(binaryColumn("column2"), fromString("Tango"))))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        7, 11, 12, 13);
+    assertRows(calculateRowRanges(
+        FilterCompat.get(and(and(gtEq(intColumn("column1"), 7), lt(intColumn("column1"), 11)),
+            and(gt(binaryColumn("column2"), fromString("Romeo")), ltEq(binaryColumn("column2"), fromString("Tango"))))),
+        STORE, paths, TOTAL_ROW_COUNT), 7, 11, 12, 13);
   }
 
   @Test
@@ -433,46 +342,27 @@ public class TestColumnIndexFilter {
     Set<ColumnPath> paths = paths("column1", "column2", "column3", "column4");
 
     // Missing column filter is always true
-    assertAllRows(calculateRowRanges(FilterCompat.get(
-        notEq(intColumn("missing_column"), 0)),
-        STORE, paths, TOTAL_ROW_COUNT),
+    assertAllRows(
+        calculateRowRanges(FilterCompat.get(notEq(intColumn("missing_column"), 0)), STORE, paths, TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                gtEq(intColumn("column1"), 7),
-                lt(intColumn("column1"), 11)),
-            eq(binaryColumn("missing_column"), null))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        7, 8, 9, 10, 11, 12, 13);
+    assertRows(calculateRowRanges(FilterCompat.get(and(and(gtEq(intColumn("column1"), 7), lt(intColumn("column1"), 11)),
+        eq(binaryColumn("missing_column"), null))), STORE, paths, TOTAL_ROW_COUNT), 7, 8, 9, 10, 11, 12, 13);
 
     // Missing column filter is always false
-    assertRows(calculateRowRanges(FilterCompat.get(
-        or(
-            and(
-                gtEq(intColumn("column1"), 7),
-                lt(intColumn("column1"), 11)),
-            notEq(binaryColumn("missing_column"), null))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        7, 8, 9, 10, 11, 12, 13);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        gt(intColumn("missing_column"), 0)),
-        STORE, paths, TOTAL_ROW_COUNT));
+    assertRows(calculateRowRanges(FilterCompat.get(or(and(gtEq(intColumn("column1"), 7), lt(intColumn("column1"), 11)),
+        notEq(binaryColumn("missing_column"), null))), STORE, paths, TOTAL_ROW_COUNT), 7, 8, 9, 10, 11, 12, 13);
+    assertRows(calculateRowRanges(FilterCompat.get(gt(intColumn("missing_column"), 0)), STORE, paths, TOTAL_ROW_COUNT));
   }
 
   @Test
   public void testFilteringWithMissingOffsetIndex() {
     Set<ColumnPath> paths = paths("column1", "column2", "column3", "column4", "column_wo_oi");
 
-    assertAllRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                gtEq(intColumn("column1"), 7),
-                lt(intColumn("column1"), 11)),
-            and(
-                gt(binaryColumn("column2"), fromString("Romeo")),
+    assertAllRows(
+        calculateRowRanges(FilterCompat.get(and(and(gtEq(intColumn("column1"), 7), lt(intColumn("column1"), 11)),
+            and(gt(binaryColumn("column2"), fromString("Romeo")),
                 ltEq(binaryColumn("column_wo_oi"), fromString("Tango"))))),
-        STORE, paths, TOTAL_ROW_COUNT),
+            STORE, paths, TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
   }
 
@@ -480,21 +370,17 @@ public class TestColumnIndexFilter {
   public void testFilteringWithAllNullPages() {
     Set<ColumnPath> paths = paths("column1", "column5");
 
-    assertAllRows(calculateRowRanges(FilterCompat.get(
-        notEq(longColumn("column5"), 1234567L)),
-        STORE, paths, TOTAL_ROW_COUNT),
+    assertAllRows(
+        calculateRowRanges(FilterCompat.get(notEq(longColumn("column5"), 1234567L)), STORE, paths, TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
-    assertAllRows(calculateRowRanges(FilterCompat.get(
-        or(gtEq(intColumn("column1"), 10),
-            notEq(longColumn("column5"), 1234567L))),
-        STORE, paths, TOTAL_ROW_COUNT),
+    assertAllRows(
+        calculateRowRanges(FilterCompat.get(or(gtEq(intColumn("column1"), 10), notEq(longColumn("column5"), 1234567L))),
+            STORE, paths, TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        eq(longColumn("column5"), 1234567L)),
-        STORE, paths, TOTAL_ROW_COUNT));
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(lt(intColumn("column1"), 20),
-            gtEq(longColumn("column5"), 1234567L))),
-        STORE, paths, TOTAL_ROW_COUNT));
+    assertRows(
+        calculateRowRanges(FilterCompat.get(eq(longColumn("column5"), 1234567L)), STORE, paths, TOTAL_ROW_COUNT));
+    assertRows(
+        calculateRowRanges(FilterCompat.get(and(lt(intColumn("column1"), 20), gtEq(longColumn("column5"), 1234567L))),
+            STORE, paths, TOTAL_ROW_COUNT));
   }
 }

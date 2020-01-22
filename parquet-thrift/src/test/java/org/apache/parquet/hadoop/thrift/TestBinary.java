@@ -49,38 +49,33 @@ public class TestBinary {
 
   @Test
   public void testBinary() throws IOException {
-    StringAndBinary expected = new StringAndBinary("test",
-        ByteBuffer.wrap(new byte[] { -123, 20, 33 }));
+    StringAndBinary expected = new StringAndBinary("test", ByteBuffer.wrap(new byte[] { -123, 20, 33 }));
     File temp = tempDir.newFile(UUID.randomUUID().toString());
     temp.deleteOnExit();
     temp.delete();
 
     Path path = new Path(temp.getPath());
 
-    ThriftParquetWriter<StringAndBinary> writer =
-        new ThriftParquetWriter<StringAndBinary>(
-            path, StringAndBinary.class, CompressionCodecName.SNAPPY);
+    ThriftParquetWriter<StringAndBinary> writer = new ThriftParquetWriter<StringAndBinary>(path, StringAndBinary.class,
+        CompressionCodecName.SNAPPY);
     writer.write(expected);
     writer.close();
 
-    ParquetReader<StringAndBinary> reader = ThriftParquetReader.<StringAndBinary>
-        build(path)
-        .withThriftClass(StringAndBinary.class)
-        .build();
-
+    ParquetReader<StringAndBinary> reader = ThriftParquetReader.<StringAndBinary>build(path)
+        .withThriftClass(StringAndBinary.class).build();
 
     StringAndBinary record = reader.read();
     reader.close();
 
     assertSchema(ParquetFileReader.readFooter(new Configuration(), path));
-    assertEquals("Should match after serialization round trip",
-        expected, record);
+    assertEquals("Should match after serialization round trip", expected, record);
   }
 
   private void assertSchema(ParquetMetadata parquetMetadata) {
     List<Type> fields = parquetMetadata.getFileMetaData().getSchema().getFields();
     assertEquals(2, fields.size());
-    assertEquals(Types.required(PrimitiveType.PrimitiveTypeName.BINARY).as(OriginalType.UTF8).id(1).named("s"), fields.get(0));
+    assertEquals(Types.required(PrimitiveType.PrimitiveTypeName.BINARY).as(OriginalType.UTF8).id(1).named("s"),
+        fields.get(0));
     assertEquals(Types.required(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("b"), fields.get(1));
   }
 }

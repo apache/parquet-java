@@ -65,14 +65,15 @@ public class ByteBasedBitPackingEncoder {
   }
 
   /**
-   * writes an int using the requested number of bits.
-   * accepts only values less than 2^bitWidth
+   * writes an int using the requested number of bits. accepts only values less
+   * than 2^bitWidth
+   * 
    * @param value the value to write
    * @throws IOException if there is an exception while writing
    */
   public void writeInt(int value) throws IOException {
     input[inputSize] = value;
-    ++ inputSize;
+    ++inputSize;
     if (inputSize == VALUES_WRITTEN_AT_A_TIME) {
       pack();
       if (packedPosition == slabSize) {

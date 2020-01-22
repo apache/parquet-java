@@ -71,17 +71,14 @@ public class ShowColumnIndexCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
-        "# Show only column indexes for column 'col' from a Parquet file",
+    return Lists.newArrayList("# Show only column indexes for column 'col' from a Parquet file",
         "-c col -i sample.parquet");
   }
 
   @Override
   public int run() throws IOException {
-    Preconditions.checkArgument(files != null && files.size() >= 1,
-        "A Parquet file is required.");
-    Preconditions.checkArgument(files.size() == 1,
-        "Cannot process multiple Parquet files.");
+    Preconditions.checkArgument(files != null && files.size() >= 1, "A Parquet file is required.");
+    Preconditions.checkArgument(files.size() == 1, "Cannot process multiple Parquet files.");
 
     InputFile in = HadoopInputFile.fromPath(qualifiedPath(files.get(0)), getConf());
     if (!showColumnIndex && !showOffsetIndex) {

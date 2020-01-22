@@ -23,19 +23,19 @@ import org.apache.parquet.column.values.ValuesWriter;
 public abstract class BenchMarkTest {
   public static int[] data;
 
-  protected void runWriteTest(ValuesWriter writer){
+  protected void runWriteTest(ValuesWriter writer) {
     int pageCount = 10;
-    for (int i = 0; i < pageCount ; i++) {
+    for (int i = 0; i < pageCount; i++) {
       writer.reset();
       long startTime = System.nanoTime();
-      for(int item:data){
+      for (int item : data) {
         writer.writeInteger(item);
       }
       long endTime = System.nanoTime();
       long duration = endTime - startTime;
     }
 
-    System.out.println("size is "+writer.getBytes().size());
+    System.out.println("size is " + writer.getBytes().size());
   }
 
 }

@@ -23,9 +23,9 @@ package org.apache.parquet.column.page;
  */
 public interface PageReader {
 
- /**
-  * @return the dictionary page in that chunk or null if none
-  */
+  /**
+   * @return the dictionary page in that chunk or null if none
+   */
   DictionaryPage readDictionaryPage();
 
   /**

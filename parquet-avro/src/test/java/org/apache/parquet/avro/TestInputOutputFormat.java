@@ -49,10 +49,9 @@ public class TestInputOutputFormat {
   private static Schema avroSchema;
   static {
     avroSchema = Schema.createRecord("record1", null, null, false);
-    avroSchema.setFields(
-        Arrays.asList(new Schema.Field("a",
-            Schema.createUnion(Arrays.asList(Schema.create(Schema.Type.INT), Schema.create(Schema.Type.NULL))),
-            null, null)));
+    avroSchema.setFields(Arrays.asList(new Schema.Field("a",
+        Schema.createUnion(Arrays.asList(Schema.create(Schema.Type.INT), Schema.create(Schema.Type.NULL))), null,
+        null)));
   }
 
   public static GenericRecord nextRecord(Integer i) {
@@ -61,7 +60,7 @@ public class TestInputOutputFormat {
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, GenericRecord> {
 
-    public void run(Context context) throws IOException ,InterruptedException {
+    public void run(Context context) throws IOException, InterruptedException {
       for (int i = 0; i < 10; i++) {
         GenericRecord a;
         a = TestInputOutputFormat.nextRecord(i == 4 ? null : i);
@@ -71,7 +70,7 @@ public class TestInputOutputFormat {
   }
 
   public static class MyMapper2 extends Mapper<Void, GenericRecord, LongWritable, Text> {
-    protected void map(Void key, GenericRecord value, Context context) throws IOException ,InterruptedException {
+    protected void map(Void key, GenericRecord value, Context context) throws IOException, InterruptedException {
       context.write(null, new Text(value.toString()));
     }
 
@@ -117,7 +116,8 @@ public class TestInputOutputFormat {
       waitForJob(job);
     }
 
-    try(final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")))) {
+    try (final BufferedReader out = new BufferedReader(
+        new FileReader(new File(outputPath.toString(), "part-m-00000")))) {
       String lineOut;
       int lineNumber = 0;
       while ((lineOut = out.readLine()) != null) {

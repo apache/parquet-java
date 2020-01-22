@@ -18,15 +18,15 @@
  */
 package org.apache.parquet.proto;
 
-
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import org.apache.parquet.schema.MessageType;
 
 /**
- * Converts data content of root message from Protocol Buffer message to parquet message.
- * It delegates conversion of inner fields to {@link ProtoMessageConverter} class using inheritance.
- * Schema is converted in {@link ProtoSchemaConverter} class.
+ * Converts data content of root message from Protocol Buffer message to parquet
+ * message. It delegates conversion of inner fields to
+ * {@link ProtoMessageConverter} class using inheritance. Schema is converted in
+ * {@link ProtoSchemaConverter} class.
  *
  * @param <T> the Java class of protobuf messages created by this converter
  */
@@ -44,7 +44,6 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
       throw new RuntimeException("Should never happen");
     }
   }
-
 
   public ProtoRecordConverter(Class<? extends Message> protoclass, MessageType parquetSchema) {
     super(new SkipParentValueContainer(), protoclass, parquetSchema);
@@ -76,7 +75,9 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
   }
 
   /***
-   * if buildBefore is true, Protocol Buffer builder is build to message before returning record.
+   * if buildBefore is true, Protocol Buffer builder is build to message before
+   * returning record.
+   * 
    * @param buildBefore whether to build before
    */
   public void setBuildBefore(boolean buildBefore) {

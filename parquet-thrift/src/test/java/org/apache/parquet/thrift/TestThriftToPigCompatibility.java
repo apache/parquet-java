@@ -75,7 +75,7 @@ public class TestThriftToPigCompatibility {
 
   @Test
   public void testMapInSet() throws Exception {
-    final Set<Map<String, String>> set = new HashSet<Map<String,String>>();
+    final Set<Map<String, String>> set = new HashSet<Map<String, String>>();
     final Map<String, String> map = new HashMap<String, String>();
     map.put("foo", "bar");
     set.add(map);
@@ -105,28 +105,18 @@ public class TestThriftToPigCompatibility {
     ArrayList<Person> persons = new ArrayList<Person>();
     final PhoneNumber phoneNumber = new PhoneNumber("555 999 9998");
     phoneNumber.type = PhoneType.HOME;
-    persons.add(
-        new Person(
-            new Name("Bob", "Roberts"),
-            1,
-            "bob@roberts.com",
-            Arrays.asList(new PhoneNumber("555 999 9999"), phoneNumber)));
-    persons.add(
-        new Person(
-            new Name("Dick", "Richardson"),
-            2,
-            "dick@richardson.com",
-            Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
+    persons.add(new Person(new Name("Bob", "Roberts"), 1, "bob@roberts.com",
+        Arrays.asList(new PhoneNumber("555 999 9999"), phoneNumber)));
+    persons.add(new Person(new Name("Dick", "Richardson"), 2, "dick@richardson.com",
+        Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
     AddressBook a = new AddressBook(persons);
     validateSameTupleAsEB(a);
   }
 
-
   @Test
   public void testOneOfEach() throws Exception {
-    OneOfEach a = new OneOfEach(
-        true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
-        ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
+    OneOfEach a = new OneOfEach(true, false, (byte) 8, (short) 16, (int) 32, (long) 64, (double) 1234, "string", "å",
+        false, ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
     validateSameTupleAsEB(a);
   }
 
@@ -140,15 +130,17 @@ public class TestThriftToPigCompatibility {
   }
 
   /**
-   * <ul> steps:
+   * <ul>
+   * steps:
    * <li>Writes using the thrift mapping
    * <li>Reads using the pig mapping
    * <li>Use Elephant bird to convert from thrift to pig
    * <li>Check that both transformations give the same result
+   * 
    * @param o the object to convert
    * @throws TException
    */
-  public static <T extends TBase<?,?>> void validateSameTupleAsEB(T o) throws TException {
+  public static <T extends TBase<?, ?>> void validateSameTupleAsEB(T o) throws TException {
     final ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     @SuppressWarnings("unchecked")
     final Class<T> class1 = (Class<T>) o.getClass();
@@ -160,7 +152,8 @@ public class TestThriftToPigCompatibility {
     final TupleRecordMaterializer tupleRecordConverter = new TupleRecordMaterializer(schema, pigSchema, true);
     RecordConsumer recordConsumer = new ConverterConsumer(tupleRecordConverter.getRootConverter(), schema);
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    ParquetWriteProtocol p = new ParquetWriteProtocol(new RecordConsumerLoggingWrapper(recordConsumer), columnIO, structType);
+    ParquetWriteProtocol p = new ParquetWriteProtocol(new RecordConsumerLoggingWrapper(recordConsumer), columnIO,
+        structType);
     o.write(p);
     final Tuple t = tupleRecordConverter.getCurrentRecord();
     final Tuple expected = thriftToPig.getPigTuple(o);

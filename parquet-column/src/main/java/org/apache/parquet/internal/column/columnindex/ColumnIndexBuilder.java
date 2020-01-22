@@ -63,8 +63,9 @@ public abstract class ColumnIndexBuilder {
 
   static abstract class ColumnIndexBase<C> implements ColumnIndex {
     /*
-     * A class containing the value to be compared to the min/max values. This way we only need to do the deboxing once
-     * per predicate execution instead for every comparison.
+     * A class containing the value to be compared to the min/max values. This way
+     * we only need to do the deboxing once per predicate execution instead for
+     * every comparison.
      */
     abstract class ValueComparator {
       abstract int compareValueToMin(int arrayIndex);
@@ -93,7 +94,8 @@ public abstract class ColumnIndexBuilder {
     final PrimitiveComparator<C> comparator;
     private boolean[] nullPages;
     private BoundaryOrder boundaryOrder;
-    // Storing the page index for each array index (min/max values are not stored for null-pages)
+    // Storing the page index for each array index (min/max values are not stored
+    // for null-pages)
     private int[] pageIndexes;
     // might be null
     private long[] nullCounts;
@@ -189,33 +191,38 @@ public abstract class ColumnIndexBuilder {
     }
 
     /*
-     * Returns the min value for arrayIndex as a ByteBuffer. (Min values are not stored for null-pages so arrayIndex
-     * might not equal to pageIndex.)
+     * Returns the min value for arrayIndex as a ByteBuffer. (Min values are not
+     * stored for null-pages so arrayIndex might not equal to pageIndex.)
      */
     abstract ByteBuffer getMinValueAsBytes(int arrayIndex);
 
     /*
-     * Returns the max value for arrayIndex as a ByteBuffer. (Max values are not stored for null-pages so arrayIndex
-     * might not equal to pageIndex.)
+     * Returns the max value for arrayIndex as a ByteBuffer. (Max values are not
+     * stored for null-pages so arrayIndex might not equal to pageIndex.)
      */
     abstract ByteBuffer getMaxValueAsBytes(int arrayIndex);
 
     /*
-     * Returns the min value for arrayIndex as a String. (Min values are not stored for null-pages so arrayIndex might
-     * not equal to pageIndex.)
+     * Returns the min value for arrayIndex as a String. (Min values are not stored
+     * for null-pages so arrayIndex might not equal to pageIndex.)
      */
     abstract String getMinValueAsString(int arrayIndex);
 
     /*
-     * Returns the max value for arrayIndex as a String. (Max values are not stored for null-pages so arrayIndex might
-     * not equal to pageIndex.)
+     * Returns the max value for arrayIndex as a String. (Max values are not stored
+     * for null-pages so arrayIndex might not equal to pageIndex.)
      */
     abstract String getMaxValueAsString(int arrayIndex);
 
-    /* Creates a Statistics object for filtering. Used for user defined predicates. */
+    /*
+     * Creates a Statistics object for filtering. Used for user defined predicates.
+     */
     abstract <T extends Comparable<T>> org.apache.parquet.filter2.predicate.Statistics<T> createStats(int arrayIndex);
 
-    /* Creates a ValueComparator object containing the specified value to be compared for min/max values */
+    /*
+     * Creates a ValueComparator object containing the specified value to be
+     * compared for min/max values
+     */
     abstract ValueComparator createValueComparator(Object value);
 
     @Override
@@ -238,7 +245,8 @@ public abstract class ColumnIndexBuilder {
       T value = eq.getValue();
       if (value == null) {
         if (nullCounts == null) {
-          // Searching for nulls so if we don't have null related statistics we have to return all pages
+          // Searching for nulls so if we don't have null related statistics we have to
+          // return all pages
           return IndexIterator.all(getPageCount());
         } else {
           return IndexIterator.filter(getPageCount(), pageIndex -> nullCounts[pageIndex] > 0);
@@ -275,7 +283,8 @@ public abstract class ColumnIndexBuilder {
       }
 
       if (nullCounts == null) {
-        // Nulls match so if we don't have null related statistics we have to return all pages
+        // Nulls match so if we don't have null related statistics we have to return all
+        // pages
         return IndexIterator.all(getPageCount());
       }
 
@@ -294,7 +303,8 @@ public abstract class ColumnIndexBuilder {
       final boolean acceptNulls = predicate.acceptsNullValue();
 
       if (acceptNulls && nullCounts == null) {
-        // Nulls match so if we don't have null related statistics we have to return all pages
+        // Nulls match so if we don't have null related statistics we have to return all
+        // pages
         return IndexIterator.all(getPageCount());
       }
 
@@ -324,7 +334,8 @@ public abstract class ColumnIndexBuilder {
       final boolean acceptNulls = !inversePredicate.acceptsNullValue();
 
       if (acceptNulls && nullCounts == null) {
-        // Nulls match so if we don't have null related statistics we have to return all pages
+        // Nulls match so if we don't have null related statistics we have to return all
+        // pages
         return IndexIterator.all(getPageCount());
       }
 
@@ -399,19 +410,19 @@ public abstract class ColumnIndexBuilder {
   private int nextPageIndex;
 
   /**
-   * @return a no-op builder that does not collect statistics objects and therefore returns {@code null} at
-   *         {@link #build()}.
+   * @return a no-op builder that does not collect statistics objects and
+   * therefore returns {@code null} at {@link #build()}.
    */
   public static ColumnIndexBuilder getNoOpBuilder() {
     return NO_OP_BUILDER;
   }
 
   /**
-   * @param type
-   *          the type this builder is to be created for
-   * @param truncateLength
-   *          the length to be used for truncating binary values if possible
-   * @return a {@link ColumnIndexBuilder} instance to be used for creating {@link ColumnIndex} objects
+   * @param type the type this builder is to be created for
+   * @param truncateLength the length to be used for truncating binary values if
+   * possible
+   * @return a {@link ColumnIndexBuilder} instance to be used for creating
+   * {@link ColumnIndex} objects
    */
   public static ColumnIndexBuilder getBuilder(PrimitiveType type, int truncateLength) {
     ColumnIndexBuilder builder = createNewBuilder(type, truncateLength);
@@ -421,48 +432,38 @@ public abstract class ColumnIndexBuilder {
 
   private static ColumnIndexBuilder createNewBuilder(PrimitiveType type, int truncateLength) {
     switch (type.getPrimitiveTypeName()) {
-      case BINARY:
-      case FIXED_LEN_BYTE_ARRAY:
-      case INT96:
-        return new BinaryColumnIndexBuilder(type, truncateLength);
-      case BOOLEAN:
-        return new BooleanColumnIndexBuilder();
-      case DOUBLE:
-        return new DoubleColumnIndexBuilder();
-      case FLOAT:
-        return new FloatColumnIndexBuilder();
-      case INT32:
-        return new IntColumnIndexBuilder();
-      case INT64:
-        return new LongColumnIndexBuilder();
-      default:
-        throw new IllegalArgumentException("Unsupported type for column index: " + type);
+    case BINARY:
+    case FIXED_LEN_BYTE_ARRAY:
+    case INT96:
+      return new BinaryColumnIndexBuilder(type, truncateLength);
+    case BOOLEAN:
+      return new BooleanColumnIndexBuilder();
+    case DOUBLE:
+      return new DoubleColumnIndexBuilder();
+    case FLOAT:
+      return new FloatColumnIndexBuilder();
+    case INT32:
+      return new IntColumnIndexBuilder();
+    case INT64:
+      return new LongColumnIndexBuilder();
+    default:
+      throw new IllegalArgumentException("Unsupported type for column index: " + type);
     }
   }
 
   /**
-   * @param type
-   *          the primitive type
-   * @param boundaryOrder
-   *          the boundary order of the min/max values
-   * @param nullPages
-   *          the null pages (one boolean value for each page that signifies whether the page consists of nulls
-   *          entirely)
-   * @param nullCounts
-   *          the number of null values for each page
-   * @param minValues
-   *          the min values for each page
-   * @param maxValues
-   *          the max values for each page
-   * @return the newly created {@link ColumnIndex} object based on the specified arguments
+   * @param type the primitive type
+   * @param boundaryOrder the boundary order of the min/max values
+   * @param nullPages the null pages (one boolean value for each page that
+   * signifies whether the page consists of nulls entirely)
+   * @param nullCounts the number of null values for each page
+   * @param minValues the min values for each page
+   * @param maxValues the max values for each page
+   * @return the newly created {@link ColumnIndex} object based on the specified
+   * arguments
    */
-  public static ColumnIndex build(
-      PrimitiveType type,
-      BoundaryOrder boundaryOrder,
-      List<Boolean> nullPages,
-      List<Long> nullCounts,
-      List<ByteBuffer> minValues,
-      List<ByteBuffer> maxValues) {
+  public static ColumnIndex build(PrimitiveType type, BoundaryOrder boundaryOrder, List<Boolean> nullPages,
+      List<Long> nullCounts, List<ByteBuffer> minValues, List<ByteBuffer> maxValues) {
 
     ColumnIndexBuilder builder = createNewBuilder(type, Integer.MAX_VALUE);
 
@@ -479,8 +480,7 @@ public abstract class ColumnIndexBuilder {
   /**
    * Adds the data from the specified statistics to this builder
    *
-   * @param stats
-   *          the statistics to be added
+   * @param stats the statistics to be added
    */
   public void add(Statistics<?> stats) {
     if (stats.hasNonNullValue()) {
@@ -531,7 +531,8 @@ public abstract class ColumnIndexBuilder {
   }
 
   /**
-   * @return the newly created column index or {@code null} if the {@link ColumnIndex} would be empty
+   * @return the newly created column index or {@code null} if the
+   * {@link ColumnIndex} would be empty
    */
   public ColumnIndex build() {
     ColumnIndexBase<?> columnIndex = build(type);
@@ -618,7 +619,8 @@ public abstract class ColumnIndexBuilder {
   }
 
   /**
-   * @return the sum of size in bytes of the min/max values added so far to this builder
+   * @return the sum of size in bytes of the min/max values added so far to this
+   * builder
    */
   public long getMinMaxSize() {
     return minMaxSize;

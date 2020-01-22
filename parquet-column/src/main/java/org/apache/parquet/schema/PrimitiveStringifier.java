@@ -39,9 +39,11 @@ import javax.naming.OperationNotSupportedException;
 import org.apache.parquet.io.api.Binary;
 
 /**
- * Class that provides string representations for the primitive values. These string values are to be used for
- * logging/debugging purposes. The method {@code stringify} is overloaded for each primitive types. The overloaded
- * methods not implemented for the related types throw {@link OperationNotSupportedException}.
+ * Class that provides string representations for the primitive values. These
+ * string values are to be used for logging/debugging purposes. The method
+ * {@code stringify} is overloaded for each primitive types. The overloaded
+ * methods not implemented for the related types throw
+ * {@link OperationNotSupportedException}.
  */
 public abstract class PrimitiveStringifier {
   private final String name;
@@ -56,11 +58,10 @@ public abstract class PrimitiveStringifier {
   }
 
   /**
-   * @param value
-   *          the value to be stringified
+   * @param value the value to be stringified
    * @return the string representation for {@code value}
-   * @throws UnsupportedOperationException
-   *           if value type is not supported by this stringifier
+   * @throws UnsupportedOperationException if value type is not supported by this
+   * stringifier
    */
   public String stringify(boolean value) {
     throw new UnsupportedOperationException(
@@ -68,61 +69,53 @@ public abstract class PrimitiveStringifier {
   }
 
   /**
-   * @param value
-   *          the value to be stringified
+   * @param value the value to be stringified
    * @return the string representation for {@code value}
-   * @throws UnsupportedOperationException
-   *           if value type is not supported by this stringifier
+   * @throws UnsupportedOperationException if value type is not supported by this
+   * stringifier
    */
   public String stringify(int value) {
     throw new UnsupportedOperationException("stringify(int) was called on a non-int stringifier: " + toString());
   }
 
   /**
-   * @param value
-   *          the value to be stringified
+   * @param value the value to be stringified
    * @return the string representation for {@code value}
-   * @throws UnsupportedOperationException
-   *           if value type is not supported by this stringifier
+   * @throws UnsupportedOperationException if value type is not supported by this
+   * stringifier
    */
   public String stringify(long value) {
     throw new UnsupportedOperationException("stringify(long) was called on a non-long stringifier: " + toString());
   }
 
   /**
-   * @param value
-   *          the value to be stringified
+   * @param value the value to be stringified
    * @return the string representation for {@code value}
-   * @throws UnsupportedOperationException
-   *           if value type is not supported by this stringifier
+   * @throws UnsupportedOperationException if value type is not supported by this
+   * stringifier
    */
   public String stringify(float value) {
-    throw new UnsupportedOperationException(
-        "stringify(float) was called on a non-float stringifier: " + toString());
+    throw new UnsupportedOperationException("stringify(float) was called on a non-float stringifier: " + toString());
   }
 
   /**
-   * @param value
-   *          the value to be stringified
+   * @param value the value to be stringified
    * @return the string representation for {@code value}
-   * @throws UnsupportedOperationException
-   *           if value type is not supported by this stringifier
+   * @throws UnsupportedOperationException if value type is not supported by this
+   * stringifier
    */
   public String stringify(double value) {
-    throw new UnsupportedOperationException(
-        "stringify(double) was called on a non-double stringifier: " + toString());
+    throw new UnsupportedOperationException("stringify(double) was called on a non-double stringifier: " + toString());
   }
 
   /**
-   * @param value
-   *          the value to be stringified
+   * @param value the value to be stringified
    * @return the string representation for {@code value}
-   * @throws UnsupportedOperationException
-   *           if value type is not supported by this stringifier
+   * @throws UnsupportedOperationException if value type is not supported by this
+   * stringifier
    */
   public String stringify(Binary value) {
-    throw new UnsupportedOperationException(
-        "stringify(Binary) was called on a non-Binary stringifier: " + toString());
+    throw new UnsupportedOperationException("stringify(Binary) was called on a non-Binary stringifier: " + toString());
   }
 
   private static final String BINARY_NULL = "null";
@@ -187,13 +180,15 @@ public abstract class PrimitiveStringifier {
   static final PrimitiveStringifier UNSIGNED_STRINGIFIER = new PrimitiveStringifier("UNSIGNED_STRINGIFIER") {
     private static final long INT_MASK = 0x00000000FFFFFFFFl;
 
-    // Implemented based on com.google.common.primitives.UnsignedInts.toString(int, int)
+    // Implemented based on com.google.common.primitives.UnsignedInts.toString(int,
+    // int)
     @Override
     public String stringify(int value) {
       return Long.toString(value & INT_MASK);
     }
 
-    // Implemented based on com.google.common.primitives.UnsignedLongs.toString(long, int)
+    // Implemented based on
+    // com.google.common.primitives.UnsignedLongs.toString(long, int)
     @Override
     public String stringify(long value) {
       if (value == 0) {
@@ -285,24 +280,24 @@ public abstract class PrimitiveStringifier {
     };
   };
 
-  static final PrimitiveStringifier TIMESTAMP_MILLIS_STRINGIFIER = new DateStringifier(
-      "TIMESTAMP_MILLIS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSS") {
+  static final PrimitiveStringifier TIMESTAMP_MILLIS_STRINGIFIER = new DateStringifier("TIMESTAMP_MILLIS_STRINGIFIER",
+      "yyyy-MM-dd'T'HH:mm:ss.SSS") {
     @Override
     Instant getInstant(long value) {
       return Instant.ofEpochMilli(value);
     }
   };
 
-  static final PrimitiveStringifier TIMESTAMP_MICROS_STRINGIFIER = new DateStringifier(
-      "TIMESTAMP_MICROS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSS") {
+  static final PrimitiveStringifier TIMESTAMP_MICROS_STRINGIFIER = new DateStringifier("TIMESTAMP_MICROS_STRINGIFIER",
+      "yyyy-MM-dd'T'HH:mm:ss.SSSSSS") {
     @Override
     Instant getInstant(long value) {
       return Instant.ofEpochSecond(MICROSECONDS.toSeconds(value), MICROSECONDS.toNanos(value % SECONDS.toMicros(1)));
     }
   };
 
-  static final PrimitiveStringifier TIMESTAMP_NANOS_STRINGIFIER = new DateStringifier(
-    "TIMESTAMP_NANOS_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS") {
+  static final PrimitiveStringifier TIMESTAMP_NANOS_STRINGIFIER = new DateStringifier("TIMESTAMP_NANOS_STRINGIFIER",
+      "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS") {
     @Override
     Instant getInstant(long value) {
       return Instant.ofEpochSecond(NANOSECONDS.toSeconds(value), NANOSECONDS.toNanos(value % SECONDS.toNanos(1)));
@@ -310,7 +305,7 @@ public abstract class PrimitiveStringifier {
   };
 
   static final PrimitiveStringifier TIMESTAMP_MILLIS_UTC_STRINGIFIER = new DateStringifier(
-    "TIMESTAMP_MILLIS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSZ") {
+      "TIMESTAMP_MILLIS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSZ") {
     @Override
     Instant getInstant(long value) {
       return Instant.ofEpochMilli(value);
@@ -318,7 +313,7 @@ public abstract class PrimitiveStringifier {
   };
 
   static final PrimitiveStringifier TIMESTAMP_MICROS_UTC_STRINGIFIER = new DateStringifier(
-    "TIMESTAMP_MICROS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ") {
+      "TIMESTAMP_MICROS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ") {
     @Override
     Instant getInstant(long value) {
       return Instant.ofEpochSecond(MICROSECONDS.toSeconds(value), MICROSECONDS.toNanos(value % SECONDS.toMicros(1)));
@@ -326,7 +321,7 @@ public abstract class PrimitiveStringifier {
   };
 
   static final PrimitiveStringifier TIMESTAMP_NANOS_UTC_STRINGIFIER = new DateStringifier(
-    "TIMESTAMP_NANOS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSZ") {
+      "TIMESTAMP_NANOS_UTC_STRINGIFIER", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSZ") {
     @Override
     Instant getInstant(long value) {
       return Instant.ofEpochSecond(NANOSECONDS.toSeconds(value), NANOSECONDS.toNanos(value % SECONDS.toNanos(1)));
@@ -345,11 +340,8 @@ public abstract class PrimitiveStringifier {
       String additionalFormat = (unit == MILLISECONDS ? "3d" : unit == MICROSECONDS ? "6d" : "9d");
       String timeZone = withZone ? "+0000" : "";
       String format = "%02d:%02d:%02d.%0" + additionalFormat + timeZone;
-      return String.format(format,
-        unit.toHours(duration),
-        convert(duration, unit, MINUTES, HOURS),
-        convert(duration, unit, SECONDS, MINUTES),
-        convert(duration, unit, unit, SECONDS));
+      return String.format(format, unit.toHours(duration), convert(duration, unit, MINUTES, HOURS),
+          convert(duration, unit, SECONDS, MINUTES), convert(duration, unit, unit, SECONDS));
     }
 
     protected long convert(long duration, TimeUnit from, TimeUnit to, TimeUnit higher) {
@@ -388,7 +380,8 @@ public abstract class PrimitiveStringifier {
     }
   };
 
-  static final PrimitiveStringifier TIME_NANOS_UTC_STRINGIFIER = new TimeStringifier("TIME_NANOS_UTC_STRINGIFIER", true) {
+  static final PrimitiveStringifier TIME_NANOS_UTC_STRINGIFIER = new TimeStringifier("TIME_NANOS_UTC_STRINGIFIER",
+      true) {
     @Override
     public String stringify(long nanos) {
       return toTimeString(nanos, NANOSECONDS);

@@ -31,28 +31,28 @@ public final class ColumnRecordFilter implements RecordFilter {
   private final ColumnPredicates.Predicate filterPredicate;
 
   /**
-   * Factory method for record filter which applies the supplied predicate to the specified column.
-   * Note that if searching for a repeated sub-attribute it will only ever match against the
-   * first instance of it in the object.
+   * Factory method for record filter which applies the supplied predicate to the
+   * specified column. Note that if searching for a repeated sub-attribute it will
+   * only ever match against the first instance of it in the object.
    *
    * @param columnPath Dot separated path specifier, e.g. "engine.capacity"
    * @param predicate Should call getBinary etc. and check the value
    * @return a column filter
    */
-  public static final UnboundRecordFilter column(final String columnPath,
-                                                 final ColumnPredicates.Predicate predicate) {
+  public static final UnboundRecordFilter column(final String columnPath, final ColumnPredicates.Predicate predicate) {
     checkNotNull(columnPath, "columnPath");
-    checkNotNull(predicate,  "predicate");
+    checkNotNull(predicate, "predicate");
     return new UnboundRecordFilter() {
       final String[] filterPath = columnPath.split("\\.");
+
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {
         for (ColumnReader reader : readers) {
-          if ( Arrays.equals( reader.getDescriptor().getPath(), filterPath)) {
+          if (Arrays.equals(reader.getDescriptor().getPath(), filterPath)) {
             return new ColumnRecordFilter(reader, predicate);
           }
         }
-        throw new IllegalArgumentException( "Column " + columnPath + " does not exist.");
+        throw new IllegalArgumentException("Column " + columnPath + " does not exist.");
       }
     };
   }
@@ -61,12 +61,13 @@ public final class ColumnRecordFilter implements RecordFilter {
    * Private constructor. Use column() instead.
    */
   private ColumnRecordFilter(ColumnReader filterOnColumn, ColumnPredicates.Predicate filterPredicate) {
-    this.filterOnColumn  = filterOnColumn;
+    this.filterOnColumn = filterOnColumn;
     this.filterPredicate = filterPredicate;
   }
 
   /**
-   * @return true if the current value for the column reader matches the predicate.
+   * @return true if the current value for the column reader matches the
+   * predicate.
    */
   @Override
   public boolean isMatch() {

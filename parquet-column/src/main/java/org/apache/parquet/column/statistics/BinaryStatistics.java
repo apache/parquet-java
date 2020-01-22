@@ -32,7 +32,8 @@ public class BinaryStatistics extends Statistics<Binary> {
   private Binary min;
 
   /**
-   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   * @deprecated will be removed in 2.0.0. Use
+   * {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
    */
   @Deprecated
   public BinaryStatistics() {
@@ -62,7 +63,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
-    BinaryStatistics binaryStats = (BinaryStatistics)stats;
+    BinaryStatistics binaryStats = (BinaryStatistics) stats;
     if (!this.hasNonNullValue()) {
       initializeStats(binaryStats.getMin(), binaryStats.getMax());
     } else {
@@ -71,8 +72,9 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   /**
-   * Sets min and max values, re-uses the byte[] passed in.
-   * Any changes made to byte[] will be reflected in min and max values as well.
+   * Sets min and max values, re-uses the byte[] passed in. Any changes made to
+   * byte[] will be reflected in min and max values as well.
+   * 
    * @param minBytes byte array to set the min value to
    * @param maxBytes byte array to set the max value to
    */
@@ -121,8 +123,12 @@ public class BinaryStatistics extends Statistics<Binary> {
    */
   @Deprecated
   public void updateStats(Binary min_value, Binary max_value) {
-    if (comparator().compare(min, min_value) > 0) { min = min_value.copy(); }
-    if (comparator().compare(max, max_value) < 0) { max = max_value.copy(); }
+    if (comparator().compare(min, min_value) > 0) {
+      min = min_value.copy();
+    }
+    if (comparator().compare(max, max_value) < 0) {
+      max = max_value.copy();
+    }
   }
 
   /**
@@ -132,9 +138,9 @@ public class BinaryStatistics extends Statistics<Binary> {
    */
   @Deprecated
   public void initializeStats(Binary min_value, Binary max_value) {
-      min = min_value.copy();
-      max = max_value.copy();
-      this.markAsNotEmpty();
+    min = min_value.copy();
+    max = max_value.copy();
+    this.markAsNotEmpty();
   }
 
   @Override

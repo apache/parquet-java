@@ -51,23 +51,23 @@ public abstract class SeekableInputStream extends InputStream {
    * <p>
    * This method is equivalent to {@code read(bytes, 0, bytes.length)}.
    * <p>
-   * This method will block until len bytes are available to copy into the
-   * array, or will throw {@link EOFException} if the stream ends before the
-   * array is full.
+   * This method will block until len bytes are available to copy into the array,
+   * or will throw {@link EOFException} if the stream ends before the array is
+   * full.
    *
    * @param bytes a byte array to fill with data from the stream
    * @throws IOException If the underlying stream throws IOException
    * @throws EOFException If the stream has fewer bytes left than are needed to
-   *                      fill the array, {@code bytes.length}
+   * fill the array, {@code bytes.length}
    */
   public abstract void readFully(byte[] bytes) throws IOException;
 
   /**
    * Read {@code len} bytes of data into an array, at position {@code start}.
    * <p>
-   * This method will block until len bytes are available to copy into the
-   * array, or will throw {@link EOFException} if the stream ends before the
-   * array is full.
+   * This method will block until len bytes are available to copy into the array,
+   * or will throw {@link EOFException} if the stream ends before the array is
+   * full.
    *
    * @param bytes a byte array to fill with data from the stream
    * @param start the starting position in the byte array for data
@@ -94,14 +94,14 @@ public abstract class SeekableInputStream extends InputStream {
   /**
    * Read {@code buf.remaining()} bytes of data into a {@link ByteBuffer}.
    * <p>
-   * This method will block until {@code buf.remaining()} bytes are available
-   * to copy into the buffer, or will throw {@link EOFException} if the stream
-   * ends before the buffer is full.
+   * This method will block until {@code buf.remaining()} bytes are available to
+   * copy into the buffer, or will throw {@link EOFException} if the stream ends
+   * before the buffer is full.
    *
    * @param buf a byte buffer to fill with data from the stream
    * @throws IOException If the underlying stream throws IOException
    * @throws EOFException If the stream has fewer bytes left than are needed to
-   *                      fill the buffer, {@code buf.remaining()}
+   * fill the buffer, {@code buf.remaining()}
    */
   public abstract void readFully(ByteBuffer buf) throws IOException;
 

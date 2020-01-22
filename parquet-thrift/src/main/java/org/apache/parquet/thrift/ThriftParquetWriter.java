@@ -33,20 +33,24 @@ import org.apache.parquet.hadoop.thrift.TBaseWriteSupport;
  *
  * @param <T> the type of the thrift class used to write data
  */
-public class ThriftParquetWriter<T extends TBase<?,?>> extends ParquetWriter<T> {
+public class ThriftParquetWriter<T extends TBase<?, ?>> extends ParquetWriter<T> {
 
-  public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName) throws IOException {
-    super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName, ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.DEFAULT_PAGE_SIZE);
+  public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName)
+      throws IOException {
+    super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName, ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.DEFAULT_PAGE_SIZE);
   }
 
-  public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating) throws IOException {
-    super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName, blockSize, pageSize, enableDictionary, validating);
+  public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize,
+      int pageSize, boolean enableDictionary, boolean validating) throws IOException {
+    super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName, blockSize, pageSize, enableDictionary,
+        validating);
   }
 
-  public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating, Configuration conf) throws IOException {
-    super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName,
-        blockSize, pageSize, pageSize, enableDictionary, validating,
-        DEFAULT_WRITER_VERSION, conf);
+  public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize,
+      int pageSize, boolean enableDictionary, boolean validating, Configuration conf) throws IOException {
+    super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName, blockSize, pageSize, pageSize,
+        enableDictionary, validating, DEFAULT_WRITER_VERSION, conf);
   }
 
 }

@@ -37,8 +37,9 @@ import org.apache.parquet.schema.MessageTypeParser;
 import java.io.IOException;
 
 /**
- * DeprecatedParquetInputFormat is used by cascading. It initializes the recordReader using an initialize method with
- * different parameters than ParquetInputFormat
+ * DeprecatedParquetInputFormat is used by cascading. It initializes the
+ * recordReader using an initialize method with different parameters than
+ * ParquetInputFormat
  */
 public class DeprecatedOutputFormatTest {
   final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
@@ -53,13 +54,11 @@ public class DeprecatedOutputFormatTest {
   public void setUp() {
     conf = new Configuration();
     jobConf = new JobConf();
-    writeSchema = "message example {\n" +
-            "required int32 line;\n" +
-            "required binary content;\n" +
-            "}";
+    writeSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
   }
 
-  private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
+  private void runMapReduceJob(CompressionCodecName codec)
+      throws IOException, ClassNotFoundException, InterruptedException {
 
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
@@ -83,7 +82,7 @@ public class DeprecatedOutputFormatTest {
   @Test
   public void testReadWrite() throws Exception {
     runMapReduceJob(CompressionCodecName.GZIP);
-    assert(mapRedJob.isSuccessful());
+    assert (mapRedJob.isSuccessful());
   }
 
   public static class DeprecatedMapper implements org.apache.hadoop.mapred.Mapper<LongWritable, Text, Void, Group> {
@@ -94,10 +93,9 @@ public class DeprecatedOutputFormatTest {
     }
 
     @Override
-    public void map(LongWritable key, Text value, OutputCollector<Void, Group> outputCollector, Reporter reporter) throws IOException {
-      Group group = factory.newGroup()
-              .append("line", (int) key.get())
-              .append("content", value.toString());
+    public void map(LongWritable key, Text value, OutputCollector<Void, Group> outputCollector, Reporter reporter)
+        throws IOException {
+      Group group = factory.newGroup().append("line", (int) key.get()).append("content", value.toString());
       outputCollector.collect(null, group);
     }
 

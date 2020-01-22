@@ -30,7 +30,8 @@ import org.apache.parquet.schema.Type;
 
 /**
  *
- * A MapWritableGroupConverter, real converter between hive and parquet types recursively for complex types.
+ * A MapWritableGroupConverter, real converter between hive and parquet types
+ * recursively for complex types.
  *
  */
 public class DataWritableGroupConverter extends HiveGroupConverter {
@@ -47,13 +48,12 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
     this.rootMap = new Writable[fieldCount];
   }
 
-  public DataWritableGroupConverter(final GroupType groupType, final HiveGroupConverter parent,
-      final int index) {
+  public DataWritableGroupConverter(final GroupType groupType, final HiveGroupConverter parent, final int index) {
     this(groupType, parent, index, groupType);
   }
 
-  public DataWritableGroupConverter(final GroupType selectedGroupType,
-      final HiveGroupConverter parent, final int index, final GroupType containingGroupType) {
+  public DataWritableGroupConverter(final GroupType selectedGroupType, final HiveGroupConverter parent, final int index,
+      final GroupType containingGroupType) {
     this.parent = parent;
     this.index = index;
     final int totalFieldCount = containingGroupType.getFieldCount();
@@ -66,11 +66,11 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
     for (int i = 0; i < selectedFieldCount; i++) {
       Type subtype = selectedFields.get(i);
       if (containingGroupType.getFields().contains(subtype)) {
-        converters[i] = getConverterFromDescription(subtype,
-            containingGroupType.getFieldIndex(subtype.getName()), this);
+        converters[i] = getConverterFromDescription(subtype, containingGroupType.getFieldIndex(subtype.getName()),
+            this);
       } else {
-        throw new IllegalStateException("Group type [" + containingGroupType +
-            "] does not contain requested field: " + subtype);
+        throw new IllegalStateException(
+            "Group type [" + containingGroupType + "] does not contain requested field: " + subtype);
       }
     }
   }
@@ -86,9 +86,8 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
     for (int i = 0; i < currentArr.length; i++) {
       final Object obj = currentArr[i];
       if (obj instanceof List) {
-        final List<?> objList = (List<?>)obj;
-        final ArrayWritable arr = new ArrayWritable(Writable.class,
-            objList.toArray(new Writable[objList.size()]));
+        final List<?> objList = (List<?>) obj;
+        final ArrayWritable arr = new ArrayWritable(Writable.class, objList.toArray(new Writable[objList.size()]));
         writableArr[i] = arr;
       } else {
         writableArr[i] = (Writable) obj;

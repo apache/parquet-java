@@ -25,9 +25,11 @@ import org.apache.parquet.column.values.RequiresFallback;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.api.Binary;
 
-public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> extends ValuesWriter {
+public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F extends ValuesWriter>
+    extends ValuesWriter {
 
-  public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(I initialWriter, F fallBackWriter) {
+  public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(
+      I initialWriter, F fallBackWriter) {
     return new FallbackValuesWriter<>(initialWriter, fallBackWriter);
   }
 
@@ -43,9 +45,11 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   private boolean initialUsedAndHadDictionary = false;
 
-  /* size of raw data, even if dictionary is used, it will not have effect on raw data size, it is used to decide
-   * if fall back to plain encoding is better by comparing rawDataByteSize with Encoded data size
-   * It's also used in getBufferedSize, so the page will be written based on raw data size
+  /*
+   * size of raw data, even if dictionary is used, it will not have effect on raw
+   * data size, it is used to decide if fall back to plain encoding is better by
+   * comparing rawDataByteSize with Encoded data size It's also used in
+   * getBufferedSize, so the page will be written based on raw data size
    */
   private long rawDataByteSize = 0;
 
@@ -63,7 +67,8 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   public long getBufferedSize() {
     // use raw data size to decide if we want to flush the page
     // so the actual size of the page written could be much more smaller
-    // due to dictionary encoding. This prevents page being too big when fallback happens.
+    // due to dictionary encoding. This prevents page being too big when fallback
+    // happens.
     return rawDataByteSize;
   }
 
@@ -132,16 +137,9 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   @Override
   public String memUsageString(String prefix) {
-    return String.format(
-        "%s FallbackValuesWriter{\n"
-          + "%s\n"
-          + "%s\n"
-        + "%s}\n",
-        prefix,
-        initialWriter.memUsageString(prefix + " initial:"),
-        fallBackWriter.memUsageString(prefix + " fallback:"),
-        prefix
-        );
+    return String.format("%s FallbackValuesWriter{\n" + "%s\n" + "%s\n" + "%s}\n", prefix,
+        initialWriter.memUsageString(prefix + " initial:"), fallBackWriter.memUsageString(prefix + " fallback:"),
+        prefix);
   }
 
   private void checkFallback() {
@@ -167,7 +165,8 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   @Override
   public void writeBytes(Binary v) {
-    //for rawdata, length(4 bytes int) is stored, followed by the binary content itself
+    // for rawdata, length(4 bytes int) is stored, followed by the binary content
+    // itself
     rawDataByteSize += v.length() + 4;
     currentWriter.writeBytes(v);
     checkFallback();

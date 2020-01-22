@@ -39,6 +39,7 @@ public class BooleanPlainValuesReader extends ValuesReader {
   /**
    *
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.values.ValuesReader#readBoolean()
    */
   @Override
@@ -48,6 +49,7 @@ public class BooleanPlainValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.values.ValuesReader#skip()
    */
   @Override
@@ -57,7 +59,9 @@ public class BooleanPlainValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, ByteBufferInputStream)
+   * 
+   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int,
+   * ByteBufferInputStream)
    */
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {

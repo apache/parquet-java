@@ -42,8 +42,8 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
   protected ParquetInputFormat<V> realInputFormat = new ParquetInputFormat<V>();
 
   @Override
-  public RecordReader<Void, Container<V>> getRecordReader(InputSplit split, JobConf job,
-                  Reporter reporter) throws IOException {
+  public RecordReader<Void, Container<V>> getRecordReader(InputSplit split, JobConf job, Reporter reporter)
+      throws IOException {
     return new RecordReaderWrapper<V>(split, job, reporter);
   }
 
@@ -80,14 +80,11 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
     private boolean firstRecord = false;
     private boolean eof = false;
 
-    public RecordReaderWrapper(
-        InputSplit oldSplit, JobConf oldJobConf, Reporter reporter)
-        throws IOException {
+    public RecordReaderWrapper(InputSplit oldSplit, JobConf oldJobConf, Reporter reporter) throws IOException {
       splitLen = oldSplit.getLength();
 
       try {
-        realReader = new ParquetRecordReader<V>(
-            ParquetInputFormat.<V>getReadSupportInstance(oldJobConf),
+        realReader = new ParquetRecordReader<V>(ParquetInputFormat.<V>getReadSupportInstance(oldJobConf),
             ParquetInputFormat.getFilter(oldJobConf));
 
         if (oldSplit instanceof ParquetInputSplitWrapper) {
@@ -157,7 +154,8 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
 
       try {
         if (realReader.nextKeyValue()) {
-          if (value != null) value.set(realReader.getCurrentValue());
+          if (value != null)
+            value.set(realReader.getCurrentValue());
           return true;
         }
       } catch (InterruptedException e) {
@@ -178,7 +176,8 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
     ParquetInputSplit realSplit;
 
     @SuppressWarnings("unused") // MapReduce instantiates this.
-    public ParquetInputSplitWrapper() {}
+    public ParquetInputSplitWrapper() {
+    }
 
     public ParquetInputSplitWrapper(ParquetInputSplit realSplit) {
       this.realSplit = realSplit;
@@ -186,12 +185,12 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
 
     @Override
     public long getLength() throws IOException {
-        return realSplit.getLength();
+      return realSplit.getLength();
     }
 
     @Override
     public String[] getLocations() throws IOException {
-        return realSplit.getLocations();
+      return realSplit.getLocations();
     }
 
     @Override

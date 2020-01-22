@@ -25,15 +25,16 @@ import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.CompressorStream;
 
 /**
- * CompressorStream class that should be used instead of the default hadoop CompressorStream
- * object. Hadoop's compressor adds blocking ontop of the compression codec. We don't want
- * that since our Pages already solve the need to add blocking.
+ * CompressorStream class that should be used instead of the default hadoop
+ * CompressorStream object. Hadoop's compressor adds blocking ontop of the
+ * compression codec. We don't want that since our Pages already solve the need
+ * to add blocking.
  */
 public class NonBlockedCompressorStream extends CompressorStream {
   public NonBlockedCompressorStream(OutputStream stream, Compressor compressor, int bufferSize) {
-	super(stream, compressor, bufferSize);
+    super(stream, compressor, bufferSize);
   }
-  
+
   @Override
   public void write(byte[] b, int off, int len) throws IOException {
     // Sanity checks
@@ -45,6 +46,6 @@ public class NonBlockedCompressorStream extends CompressorStream {
     } else if (len == 0) {
       return;
     }
-    compressor.setInput(b, off, len);    
+    compressor.setInput(b, off, len);
   }
 }

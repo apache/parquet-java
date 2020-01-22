@@ -54,7 +54,8 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   /**
    * @param configuration a configuration
    * @param requestedProjection the requested projection schema
-   * @see org.apache.parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job,
+   * org.apache.avro.Schema)
    */
   public static void setRequestedProjection(Configuration configuration, Schema requestedProjection) {
     configuration.set(AVRO_REQUESTED_PROJECTION, requestedProjection.toString());
@@ -63,14 +64,14 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   /**
    * @param configuration a configuration
    * @param avroReadSchema the read schema
-   * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job,
+   * org.apache.avro.Schema)
    */
   public static void setAvroReadSchema(Configuration configuration, Schema avroReadSchema) {
     configuration.set(AVRO_READ_SCHEMA, avroReadSchema.toString());
   }
 
-  public static void setAvroDataSupplier(Configuration configuration,
-      Class<? extends AvroDataSupplier> clazz) {
+  public static void setAvroDataSupplier(Configuration configuration, Class<? extends AvroDataSupplier> clazz) {
     configuration.set(AVRO_DATA_SUPPLIER, clazz.getName());
   }
 
@@ -84,9 +85,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   }
 
   @Override
-  public ReadContext init(Configuration configuration,
-                          Map<String, String> keyValueMetaData,
-                          MessageType fileSchema) {
+  public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
     MessageType projection = fileSchema;
     Map<String, String> metadata = new LinkedHashMap<String, String>();
 
@@ -109,8 +108,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   }
 
   @Override
-  public RecordMaterializer<T> prepareForRead(
-      Configuration configuration, Map<String, String> keyValueMetaData,
+  public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData,
       MessageType fileSchema, ReadContext readContext) {
     Map<String, String> metadata = readContext.getReadSupportMetadata();
     MessageType parquetSchema = readContext.getRequestedSchema();
@@ -139,18 +137,17 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   }
 
   @SuppressWarnings("unchecked")
-  private static <T> RecordMaterializer<T> newCompatMaterializer(
-      MessageType parquetSchema, Schema avroSchema, GenericData model) {
-    return (RecordMaterializer<T>) new AvroCompatRecordMaterializer(
-        parquetSchema, avroSchema, model);
+  private static <T> RecordMaterializer<T> newCompatMaterializer(MessageType parquetSchema, Schema avroSchema,
+      GenericData model) {
+    return (RecordMaterializer<T>) new AvroCompatRecordMaterializer(parquetSchema, avroSchema, model);
   }
 
   private GenericData getDataModel(Configuration conf) {
     if (model != null) {
       return model;
     }
-    Class<? extends AvroDataSupplier> suppClass = conf.getClass(
-        AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
+    Class<? extends AvroDataSupplier> suppClass = conf.getClass(AVRO_DATA_SUPPLIER, SpecificDataSupplier.class,
+        AvroDataSupplier.class);
     return ReflectionUtils.newInstance(suppClass, conf).get();
   }
 }

@@ -21,7 +21,6 @@ package org.apache.parquet.pig.convert;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,12 +53,14 @@ final class MapConverter extends GroupConverter {
   private Object currentKey;
   private Object currentValue;
 
-  MapConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent, boolean numbersDefaultToZero, boolean columnIndexAccess) throws FrontendException {
+  MapConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent,
+      boolean numbersDefaultToZero, boolean columnIndexAccess) throws FrontendException {
     if (parquetSchema.getFieldCount() != 1) {
       throw new IllegalArgumentException("maps have only one field. " + parquetSchema);
     }
     this.parent = parent;
-    keyValue = new MapKeyValueConverter(parquetSchema.getType(0).asGroupType(), pigSchema.schema.getField(0), numbersDefaultToZero, columnIndexAccess);
+    keyValue = new MapKeyValueConverter(parquetSchema.getType(0).asGroupType(), pigSchema.schema.getField(0),
+        numbersDefaultToZero, columnIndexAccess);
   }
 
   @Override
@@ -87,7 +88,7 @@ final class MapConverter extends GroupConverter {
    */
   private static final class BufferMap extends AbstractMap<String, Object> {
     private List<Entry<String, Object>> entries = new ArrayList<Entry<String, Object>>();
-    private Set<Entry<String, Object>> entrySet = new AbstractSet<Map.Entry<String,Object>>() {
+    private Set<Entry<String, Object>> entrySet = new AbstractSet<Map.Entry<String, Object>>() {
       @Override
       public Iterator<java.util.Map.Entry<String, Object>> iterator() {
         return entries.iterator();
@@ -125,21 +126,22 @@ final class MapConverter extends GroupConverter {
     private final Converter keyConverter;
     private final Converter valueConverter;
 
-    MapKeyValueConverter(GroupType parquetSchema, Schema.FieldSchema pigSchema, boolean numbersDefaultToZero, boolean columnIndexAccess) {
-      if (parquetSchema.getFieldCount() != 2
-          || !parquetSchema.getType(0).getName().equals("key")
+    MapKeyValueConverter(GroupType parquetSchema, Schema.FieldSchema pigSchema, boolean numbersDefaultToZero,
+        boolean columnIndexAccess) {
+      if (parquetSchema.getFieldCount() != 2 || !parquetSchema.getType(0).getName().equals("key")
           || !parquetSchema.getType(1).getName().equals("value")) {
         throw new IllegalArgumentException("schema does not match map key/value " + parquetSchema);
       }
       try {
-        keyConverter = TupleConverter.newConverter(new PigSchemaConverter().convertField(parquetSchema.getType(0)).getField(0), 
-            parquetSchema.getType(0), new ParentValueContainer() {
-        void add(Object value) {
-          currentKey = value;
-        }
-      }, numbersDefaultToZero, columnIndexAccess);
+        keyConverter = TupleConverter.newConverter(
+            new PigSchemaConverter().convertField(parquetSchema.getType(0)).getField(0), parquetSchema.getType(0),
+            new ParentValueContainer() {
+              void add(Object value) {
+                currentKey = value;
+              }
+            }, numbersDefaultToZero, columnIndexAccess);
       } catch (FrontendException fe) {
-        throw new SchemaConversionException("can't convert keytype "+ parquetSchema.getType(0), fe);
+        throw new SchemaConversionException("can't convert keytype " + parquetSchema.getType(0), fe);
       }
       valueConverter = TupleConverter.newConverter(pigSchema, parquetSchema.getType(1), new ParentValueContainer() {
         void add(Object value) {

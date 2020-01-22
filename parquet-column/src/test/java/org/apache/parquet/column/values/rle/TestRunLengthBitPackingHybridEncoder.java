@@ -38,10 +38,9 @@ public class TestRunLengthBitPackingHybridEncoder {
     return getRunLengthBitPackingHybridEncoder(3, 5, 10);
   }
 
-  private RunLengthBitPackingHybridEncoder getRunLengthBitPackingHybridEncoder(
-      int bitWidth, int initialCapacity, int pageSize) {
-    return new RunLengthBitPackingHybridEncoder(bitWidth, initialCapacity,
-        pageSize, new DirectByteBufferAllocator());
+  private RunLengthBitPackingHybridEncoder getRunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity,
+      int pageSize) {
+    return new RunLengthBitPackingHybridEncoder(bitWidth, initialCapacity, pageSize, new DirectByteBufferAllocator());
   }
 
   @Test
@@ -204,7 +203,7 @@ public class TestRunLengthBitPackingHybridEncoder {
   public void testPaddingZerosOnUnfinishedBitPackedRuns() throws Exception {
     RunLengthBitPackingHybridEncoder encoder = getRunLengthBitPackingHybridEncoder(5, 5, 10);
     for (int i = 0; i < 9; i++) {
-      encoder.writeInt(i+1);
+      encoder.writeInt(i + 1);
     }
 
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
@@ -277,7 +276,7 @@ public class TestRunLengthBitPackingHybridEncoder {
     // payload = 6, stored in 2 bytes
     assertEquals(6, BytesUtils.readIntLittleEndianOnTwoBytes(is));
 
-    // header = 8 << 1  = 16
+    // header = 8 << 1 = 16
     assertEquals(16, BytesUtils.readUnsignedVarInt(is));
     // payload = 5, stored in 2 bytes
     assertEquals(5, BytesUtils.readIntLittleEndianOnTwoBytes(is));
@@ -286,14 +285,13 @@ public class TestRunLengthBitPackingHybridEncoder {
     assertEquals(-1, is.read());
   }
 
-
   @Test
   public void testGroupBoundary() throws Exception {
-	byte[] bytes = new byte[2];
-	// Create an RLE byte stream that has 3 values (1 literal group) with
-	// bit width 2.
-	bytes[0] = (1 << 1 )| 1;
-	bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
+    byte[] bytes = new byte[2];
+    // Create an RLE byte stream that has 3 values (1 literal group) with
+    // bit width 2.
+    bytes[0] = (1 << 1) | 1;
+    bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
     ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
     RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, stream);
     assertEquals(decoder.readInt(), 1);
@@ -302,8 +300,7 @@ public class TestRunLengthBitPackingHybridEncoder {
     assertEquals(stream.available(), 0);
   }
 
-  private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is)
-    throws Exception {
+  private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is) throws Exception {
 
     BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     int[] unpacked = new int[8];
@@ -311,7 +308,7 @@ public class TestRunLengthBitPackingHybridEncoder {
 
     List<Integer> values = new ArrayList<>(numValues);
 
-    while(values.size() < numValues) {
+    while (values.size() < numValues) {
       for (int i = 0; i < bitWidth; i++) {
         next8Values[i] = (byte) is.read();
       }

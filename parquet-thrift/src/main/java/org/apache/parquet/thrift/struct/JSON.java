@@ -40,7 +40,7 @@ class JSON {
   }
 
   static String toJSON(Object o) {
-    try(final StringWriter sw = new StringWriter()) {
+    try (final StringWriter sw = new StringWriter()) {
       om.writeValue(sw, o);
       return sw.toString();
     } catch (IOException e) {

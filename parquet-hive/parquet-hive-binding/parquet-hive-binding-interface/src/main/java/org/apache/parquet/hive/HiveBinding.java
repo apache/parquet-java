@@ -27,26 +27,24 @@ import org.apache.hadoop.mapred.JobConf;
 public interface HiveBinding {
 
   /**
-   * From a string which columns names (including hive column), return a list
-   * of string columns
+   * From a string which columns names (including hive column), return a list of
+   * string columns
    *
    * @param columns comma separated list of columns
    * @return list with virtual columns removed
    */
   public List<String> getColumns(final String columns);
-  
+
   /**
    * Processes the JobConf object pushing down projections and filters.
    *
    * We are going to get the Table from a partition in order to get all the
-   * aliases from it. Once we have them, we take a look at the different
-   * columns needed for each of them, and we update the job by appending
-   * these columns.
+   * aliases from it. Once we have them, we take a look at the different columns
+   * needed for each of them, and we update the job by appending these columns.
    *
-   * The JobConf is modified and therefore is cloned first to ensure
-   * other owners are not impacted by the changes here. This is a standard
-   * practice when modifying JobConf objects in InputFormats, for example
-   * HCatalog does this.
+   * The JobConf is modified and therefore is cloned first to ensure other owners
+   * are not impacted by the changes here. This is a standard practice when
+   * modifying JobConf objects in InputFormats, for example HCatalog does this.
    *
    * @param jobConf a mapred job conf
    * @param path a path

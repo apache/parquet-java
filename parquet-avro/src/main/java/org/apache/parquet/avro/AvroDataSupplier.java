@@ -21,10 +21,9 @@ package org.apache.parquet.avro;
 import org.apache.avro.generic.GenericData;
 
 /**
- * Allows clients to control how the classes associated
- * with specific Avro records are managed and found, e.g.,
- * by creating an instance of {@code GenericData} that
- * uses a particular {@code ClassLoader}.
+ * Allows clients to control how the classes associated with specific Avro
+ * records are managed and found, e.g., by creating an instance of
+ * {@code GenericData} that uses a particular {@code ClassLoader}.
  */
 public interface AvroDataSupplier {
   GenericData get();

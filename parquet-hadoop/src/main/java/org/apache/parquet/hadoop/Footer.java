@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -48,6 +47,6 @@ public class Footer {
 
   @Override
   public String toString() {
-    return "Footer{"+file+", "+parquetMetadata+"}";
+    return "Footer{" + file + ", " + parquetMetadata + "}";
   }
 }

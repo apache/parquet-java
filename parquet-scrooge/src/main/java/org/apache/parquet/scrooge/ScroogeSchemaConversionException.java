@@ -33,4 +33,3 @@ class ScroogeSchemaConversionException extends ParquetRuntimeException {
     super(message);
   }
 }
-

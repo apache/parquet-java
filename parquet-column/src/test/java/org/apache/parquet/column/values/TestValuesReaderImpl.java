@@ -137,10 +137,8 @@ public class TestValuesReaderImpl {
   }
 
   private void validateWithByteBufferInputStream(ValuesReader reader) throws IOException {
-    ByteBufferInputStream bbis = ByteBufferInputStream.wrap(
-        ByteBuffer.wrap("==padding==".getBytes()),
-        ByteBuffer.wrap("The expected ".getBytes()),
-        ByteBuffer.wrap("page content".getBytes()));
+    ByteBufferInputStream bbis = ByteBufferInputStream.wrap(ByteBuffer.wrap("==padding==".getBytes()),
+        ByteBuffer.wrap("The expected ".getBytes()), ByteBuffer.wrap("page content".getBytes()));
     bbis.skipFully(11);
     reader.initFromPage(25, bbis);
     assertEquals("The expected page content", reader.readBytes().toStringUsingUTF8());

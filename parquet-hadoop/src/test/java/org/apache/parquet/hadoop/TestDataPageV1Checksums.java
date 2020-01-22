@@ -69,15 +69,15 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * Tests that page level checksums are correctly written and that checksum verification works as
- * expected
+ * Tests that page level checksums are correctly written and that checksum
+ * verification works as expected
  */
 public class TestDataPageV1Checksums {
   @Rule
   public final TemporaryFolder tempFolder = new TemporaryFolder();
 
-  private static final Statistics<?> EMPTY_STATS_INT32 = Statistics.getBuilderForReading(
-    Types.required(INT32).named("a")).build();
+  private static final Statistics<?> EMPTY_STATS_INT32 = Statistics
+      .getBuilderForReading(Types.required(INT32).named("a")).build();
 
   private CRC32 crc = new CRC32();
 
@@ -85,11 +85,8 @@ public class TestDataPageV1Checksums {
 
   private static final int PAGE_SIZE = 1024 * 1024; // 1MB
 
-  private static final MessageType schemaSimple = MessageTypeParser.parseMessageType(
-    "message m {" +
-    "  required int32 a;" +
-    "  required int32 b;" +
-    "}");
+  private static final MessageType schemaSimple = MessageTypeParser
+      .parseMessageType("message m {" + "  required int32 a;" + "  required int32 b;" + "}");
   private static final ColumnDescriptor colADesc = schemaSimple.getColumns().get(0);
   private static final ColumnDescriptor colBDesc = schemaSimple.getColumns().get(1);
   private static final byte[] colAPage1Bytes = new byte[PAGE_SIZE];
@@ -98,9 +95,11 @@ public class TestDataPageV1Checksums {
   private static final byte[] colBPage2Bytes = new byte[PAGE_SIZE];
   private static final int numRecordsLargeFile = (2 * PAGE_SIZE) / Integer.BYTES;
 
-  /** Write out sample Parquet file using ColumnChunkPageWriteStore directly, return path to file */
-  private Path writeSimpleParquetFile(Configuration conf, CompressionCodecName compression)
-    throws IOException {
+  /**
+   * Write out sample Parquet file using ColumnChunkPageWriteStore directly,
+   * return path to file
+   */
+  private Path writeSimpleParquetFile(Configuration conf, CompressionCodecName compression) throws IOException {
     File file = tempFolder.newFile();
     file.delete();
     Path path = new Path(file.toURI());
@@ -112,8 +111,8 @@ public class TestDataPageV1Checksums {
       colBPage2Bytes[i] = (byte) (i - 100);
     }
 
-    ParquetFileWriter writer =  new ParquetFileWriter(conf, schemaSimple, path,
-      ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
+    ParquetFileWriter writer = new ParquetFileWriter(conf, schemaSimple, path, ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
 
     writer.start();
     writer.startBlock(numRecordsLargeFile);
@@ -121,21 +120,20 @@ public class TestDataPageV1Checksums {
     CodecFactory codecFactory = new CodecFactory(conf, PAGE_SIZE);
     CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(compression);
 
-    ColumnChunkPageWriteStore writeStore = new ColumnChunkPageWriteStore(
-      compressor, schemaSimple, new HeapByteBufferAllocator(),
-      Integer.MAX_VALUE, ParquetOutputFormat.getPageWriteChecksumEnabled(conf));
+    ColumnChunkPageWriteStore writeStore = new ColumnChunkPageWriteStore(compressor, schemaSimple,
+        new HeapByteBufferAllocator(), Integer.MAX_VALUE, ParquetOutputFormat.getPageWriteChecksumEnabled(conf));
 
     PageWriter pageWriter = writeStore.getPageWriter(colADesc);
-    pageWriter.writePage(BytesInput.from(colAPage1Bytes), numRecordsLargeFile / 2,
-      numRecordsLargeFile / 2, EMPTY_STATS_INT32, Encoding.RLE, Encoding.RLE, Encoding.PLAIN);
-    pageWriter.writePage(BytesInput.from(colAPage2Bytes), numRecordsLargeFile / 2,
-      numRecordsLargeFile / 2, EMPTY_STATS_INT32, Encoding.RLE, Encoding.RLE, Encoding.PLAIN);
+    pageWriter.writePage(BytesInput.from(colAPage1Bytes), numRecordsLargeFile / 2, numRecordsLargeFile / 2,
+        EMPTY_STATS_INT32, Encoding.RLE, Encoding.RLE, Encoding.PLAIN);
+    pageWriter.writePage(BytesInput.from(colAPage2Bytes), numRecordsLargeFile / 2, numRecordsLargeFile / 2,
+        EMPTY_STATS_INT32, Encoding.RLE, Encoding.RLE, Encoding.PLAIN);
 
     pageWriter = writeStore.getPageWriter(colBDesc);
-    pageWriter.writePage(BytesInput.from(colBPage1Bytes), numRecordsLargeFile / 2,
-      numRecordsLargeFile / 2, EMPTY_STATS_INT32, Encoding.RLE, Encoding.RLE, Encoding.PLAIN);
-    pageWriter.writePage(BytesInput.from(colBPage2Bytes), numRecordsLargeFile / 2,
-      numRecordsLargeFile / 2, EMPTY_STATS_INT32, Encoding.RLE, Encoding.RLE, Encoding.PLAIN);
+    pageWriter.writePage(BytesInput.from(colBPage1Bytes), numRecordsLargeFile / 2, numRecordsLargeFile / 2,
+        EMPTY_STATS_INT32, Encoding.RLE, Encoding.RLE, Encoding.PLAIN);
+    pageWriter.writePage(BytesInput.from(colBPage2Bytes), numRecordsLargeFile / 2, numRecordsLargeFile / 2,
+        EMPTY_STATS_INT32, Encoding.RLE, Encoding.RLE, Encoding.PLAIN);
 
     writeStore.flushToFileWriter(writer);
 
@@ -149,53 +147,39 @@ public class TestDataPageV1Checksums {
 
   // Sample data, nested schema with nulls
 
-  private static final MessageType schemaNestedWithNulls = MessageTypeParser.parseMessageType(
-    "message m {" +
-      "  optional group c {" +
-      "    required int64 id;" +
-      "    required group d {" +
-      "      repeated int32 val;" +
-      "    }" +
-      "  }" +
-      "}");
+  private static final MessageType schemaNestedWithNulls = MessageTypeParser
+      .parseMessageType("message m {" + "  optional group c {" + "    required int64 id;" + "    required group d {"
+          + "      repeated int32 val;" + "    }" + "  }" + "}");
   private static final ColumnDescriptor colCIdDesc = schemaNestedWithNulls.getColumns().get(0);
   private static final ColumnDescriptor colDValDesc = schemaNestedWithNulls.getColumns().get(1);
 
   private static final double nullRatio = 0.3;
   private static final int numRecordsNestedWithNullsFile = 2000;
 
-  private Path writeNestedWithNullsSampleParquetFile(Configuration conf,
-                                                     boolean dictionaryEncoding,
-                                                     CompressionCodecName compression)
-    throws IOException {
+  private Path writeNestedWithNullsSampleParquetFile(Configuration conf, boolean dictionaryEncoding,
+      CompressionCodecName compression) throws IOException {
     File file = tempFolder.newFile();
     file.delete();
     Path path = new Path(file.toURI());
 
-    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-      .withConf(conf)
-      .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
-      .withCompressionCodec(compression)
-      .withDictionaryEncoding(dictionaryEncoding)
-      .withType(schemaNestedWithNulls)
-      .withPageWriteChecksumEnabled(ParquetOutputFormat.getPageWriteChecksumEnabled(conf))
-      .build()) {
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path).withConf(conf)
+        .withWriteMode(ParquetFileWriter.Mode.OVERWRITE).withCompressionCodec(compression)
+        .withDictionaryEncoding(dictionaryEncoding).withType(schemaNestedWithNulls)
+        .withPageWriteChecksumEnabled(ParquetOutputFormat.getPageWriteChecksumEnabled(conf)).build()) {
       GroupFactory groupFactory = new SimpleGroupFactory(schemaNestedWithNulls);
       Random rand = new Random(42);
 
       for (int i = 0; i < numRecordsNestedWithNullsFile; i++) {
         Group group = groupFactory.newGroup();
         if (rand.nextDouble() > nullRatio) {
-          // With equal probability, write out either 1 or 3 values in group e. To ensure our values
+          // With equal probability, write out either 1 or 3 values in group e. To ensure
+          // our values
           // are dictionary encoded when required, perform modulo.
           if (rand.nextDouble() > 0.5) {
-            group.addGroup("c").append("id", (long) i).addGroup("d")
-              .append("val", rand.nextInt() % 10);
+            group.addGroup("c").append("id", (long) i).addGroup("d").append("val", rand.nextInt() % 10);
           } else {
-            group.addGroup("c").append("id", (long) i).addGroup("d")
-              .append("val", rand.nextInt() % 10)
-              .append("val", rand.nextInt() % 10)
-              .append("val", rand.nextInt() % 10);
+            group.addGroup("c").append("id", (long) i).addGroup("d").append("val", rand.nextInt() % 10)
+                .append("val", rand.nextInt() % 10).append("val", rand.nextInt() % 10);
           }
         }
         writer.write(group);
@@ -206,9 +190,10 @@ public class TestDataPageV1Checksums {
   }
 
   /**
-   * Enable writing out page level crc checksum, disable verification in read path but check that
-   * the crc checksums are correct. Tests whether we successfully write out correct crc checksums
-   * without potentially failing on the read path verification .
+   * Enable writing out page level crc checksum, disable verification in read path
+   * but check that the crc checksums are correct. Tests whether we successfully
+   * write out correct crc checksums without potentially failing on the read path
+   * verification .
    */
   @Test
   public void testWriteOnVerifyOff() throws IOException {
@@ -218,8 +203,7 @@ public class TestDataPageV1Checksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf,
-      Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       DataPageV1 colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -249,8 +233,7 @@ public class TestDataPageV1Checksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf,
-      Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       assertCrcNotSet(readNextPage(colADesc, pageReadStore));
@@ -261,8 +244,9 @@ public class TestDataPageV1Checksums {
   }
 
   /**
-   * Do not write out page level crc checksums, but enable verification on the read path. Tests
-   * that the read still succeeds and does not throw an exception.
+   * Do not write out page level crc checksums, but enable verification on the
+   * read path. Tests that the read still succeeds and does not throw an
+   * exception.
    */
   @Test
   public void testWriteOffVerifyOn() throws IOException {
@@ -272,24 +256,20 @@ public class TestDataPageV1Checksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf,
-      Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
-      assertCorrectContent(readNextPage(colADesc, pageReadStore).getBytes().toByteArray(),
-        colAPage1Bytes);
-      assertCorrectContent(readNextPage(colADesc, pageReadStore).getBytes().toByteArray(),
-        colAPage2Bytes);
-      assertCorrectContent(readNextPage(colBDesc, pageReadStore).getBytes().toByteArray(),
-        colBPage1Bytes);
-      assertCorrectContent(readNextPage(colBDesc, pageReadStore).getBytes().toByteArray(),
-        colBPage2Bytes);
+      assertCorrectContent(readNextPage(colADesc, pageReadStore).getBytes().toByteArray(), colAPage1Bytes);
+      assertCorrectContent(readNextPage(colADesc, pageReadStore).getBytes().toByteArray(), colAPage2Bytes);
+      assertCorrectContent(readNextPage(colBDesc, pageReadStore).getBytes().toByteArray(), colBPage1Bytes);
+      assertCorrectContent(readNextPage(colBDesc, pageReadStore).getBytes().toByteArray(), colBPage2Bytes);
     }
   }
 
   /**
-   * Write out checksums and verify them on the read path. Tests that crc is set and that we can
-   * read back what we wrote if checksums are enabled on both the write and read path.
+   * Write out checksums and verify them on the read path. Tests that crc is set
+   * and that we can read back what we wrote if checksums are enabled on both the
+   * write and read path.
    */
   @Test
   public void testWriteOnVerifyOn() throws IOException {
@@ -299,8 +279,7 @@ public class TestDataPageV1Checksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf,
-      Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       DataPageV1 colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -322,7 +301,8 @@ public class TestDataPageV1Checksums {
   }
 
   /**
-   * Test whether corruption in the page content is detected by checksum verification
+   * Test whether corruption in the page content is detected by checksum
+   * verification
    */
   @Test
   public void testCorruptedPage() throws IOException {
@@ -338,8 +318,10 @@ public class TestDataPageV1Checksums {
       inputStream.readFully(fileBytes);
       inputStream.close();
 
-      // There are 4 pages in total (2 per column), we corrupt the first page of the first column
-      // and the second page of the second column. We do this by altering a byte roughly in the
+      // There are 4 pages in total (2 per column), we corrupt the first page of the
+      // first column
+      // and the second page of the second column. We do this by altering a byte
+      // roughly in the
       // middle of each page to be corrupted
       fileBytes[fileLen / 8]++;
       fileBytes[fileLen / 8 + ((fileLen / 4) * 3)]++;
@@ -349,28 +331,28 @@ public class TestDataPageV1Checksums {
         outputStream.write(fileBytes);
         outputStream.close();
 
-        // First we disable checksum verification, the corruption will go undetected as it is in the
+        // First we disable checksum verification, the corruption will go undetected as
+        // it is in the
         // data section of the page
         conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
-        try (ParquetFileReader reader = getParquetFileReader(path, conf,
-          Arrays.asList(colADesc, colBDesc))) {
+        try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
           PageReadStore pageReadStore = reader.readNextRowGroup();
 
           DataPageV1 colAPage1 = readNextPage(colADesc, pageReadStore);
           assertFalse("Data in page was not corrupted",
-            Arrays.equals(colAPage1.getBytes().toByteArray(), colAPage1Bytes));
+              Arrays.equals(colAPage1.getBytes().toByteArray(), colAPage1Bytes));
           readNextPage(colADesc, pageReadStore);
           readNextPage(colBDesc, pageReadStore);
           DataPageV1 colBPage2 = readNextPage(colBDesc, pageReadStore);
           assertFalse("Data in page was not corrupted",
-            Arrays.equals(colBPage2.getBytes().toByteArray(), colBPage2Bytes));
+              Arrays.equals(colBPage2.getBytes().toByteArray(), colBPage2Bytes));
         }
 
         // Now we enable checksum verification, the corruption should be detected
         conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
-        try (ParquetFileReader reader =
-               getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
-          // We expect an exception on the first encountered corrupt page (in readAllPages)
+        try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+          // We expect an exception on the first encountered corrupt page (in
+          // readAllPages)
           assertVerificationFailed(reader);
         }
       }
@@ -378,8 +360,8 @@ public class TestDataPageV1Checksums {
   }
 
   /**
-   * Tests that the checksum is calculated using the compressed version of the data and that
-   * checksum verification succeeds
+   * Tests that the checksum is calculated using the compressed version of the
+   * data and that checksum verification succeeds
    */
   @Test
   public void testCompression() throws IOException {
@@ -389,8 +371,7 @@ public class TestDataPageV1Checksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.SNAPPY);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf,
-      Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       DataPageV1 colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -412,23 +393,24 @@ public class TestDataPageV1Checksums {
   }
 
   /**
-   * Tests that we adhere to the checksum calculation specification, namely that the crc is
-   * calculated using the compressed concatenation of the repetition levels, definition levels and
-   * the actual data. This is done by generating sample data with a nested schema containing nulls
-   * (generating non trivial repetition and definition levels).
+   * Tests that we adhere to the checksum calculation specification, namely that
+   * the crc is calculated using the compressed concatenation of the repetition
+   * levels, definition levels and the actual data. This is done by generating
+   * sample data with a nested schema containing nulls (generating non trivial
+   * repetition and definition levels).
    */
   @Test
   public void testNestedWithNulls() throws IOException {
     Configuration conf = new Configuration();
 
-    // Write out sample file via the non-checksum code path, extract the raw bytes to calculate the
+    // Write out sample file via the non-checksum code path, extract the raw bytes
+    // to calculate the
     // reference crc with
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
     conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
     Path refPath = writeNestedWithNullsSampleParquetFile(conf, false, CompressionCodecName.SNAPPY);
 
-    try (ParquetFileReader refReader = getParquetFileReader(refPath, conf,
-      Arrays.asList(colCIdDesc, colDValDesc))) {
+    try (ParquetFileReader refReader = getParquetFileReader(refPath, conf, Arrays.asList(colCIdDesc, colDValDesc))) {
       PageReadStore refPageReadStore = refReader.readNextRowGroup();
       byte[] colCIdPageBytes = readNextPage(colCIdDesc, refPageReadStore).getBytes().toByteArray();
       byte[] colDValPageBytes = readNextPage(colDValDesc, refPageReadStore).getBytes().toByteArray();
@@ -438,8 +420,7 @@ public class TestDataPageV1Checksums {
       conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
       Path path = writeNestedWithNullsSampleParquetFile(conf, false, CompressionCodecName.SNAPPY);
 
-      try (ParquetFileReader reader = getParquetFileReader(path, conf,
-        Arrays.asList(colCIdDesc, colDValDesc))) {
+      try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colCIdDesc, colDValDesc))) {
         PageReadStore pageReadStore = reader.readNextRowGroup();
 
         DataPageV1 colCIdPage = readNextPage(colCIdDesc, pageReadStore);
@@ -457,14 +438,14 @@ public class TestDataPageV1Checksums {
   public void testDictionaryEncoding() throws IOException {
     Configuration conf = new Configuration();
 
-    // Write out dictionary encoded sample file via the non-checksum code path, extract the raw
-    // bytes to calculate the  reference crc with
+    // Write out dictionary encoded sample file via the non-checksum code path,
+    // extract the raw
+    // bytes to calculate the reference crc with
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
     conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
     Path refPath = writeNestedWithNullsSampleParquetFile(conf, true, CompressionCodecName.SNAPPY);
 
-    try (ParquetFileReader refReader =
-      getParquetFileReader(refPath, conf, Collections.singletonList(colDValDesc))) {
+    try (ParquetFileReader refReader = getParquetFileReader(refPath, conf, Collections.singletonList(colDValDesc))) {
       PageReadStore refPageReadStore = refReader.readNextRowGroup();
       // Read (decompressed) dictionary page
       byte[] dictPageBytes = readDictPage(colDValDesc, refPageReadStore).getBytes().toByteArray();
@@ -475,8 +456,7 @@ public class TestDataPageV1Checksums {
       conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
       Path path = writeNestedWithNullsSampleParquetFile(conf, true, CompressionCodecName.SNAPPY);
 
-      try (ParquetFileReader reader =
-        getParquetFileReader(path, conf, Collections.singletonList(colDValDesc))) {
+      try (ParquetFileReader reader = getParquetFileReader(path, conf, Collections.singletonList(colDValDesc))) {
         PageReadStore pageReadStore = reader.readNextRowGroup();
 
         DictionaryPage dictPage = readDictPage(colDValDesc, pageReadStore);
@@ -502,12 +482,10 @@ public class TestDataPageV1Checksums {
   }
 
   /** Construct ParquetFileReader for input file and columns */
-  private ParquetFileReader getParquetFileReader(Path path, Configuration conf,
-                                                 List<ColumnDescriptor> columns)
-    throws IOException {
+  private ParquetFileReader getParquetFileReader(Path path, Configuration conf, List<ColumnDescriptor> columns)
+      throws IOException {
     ParquetMetadata footer = ParquetFileReader.readFooter(conf, path);
-    return new ParquetFileReader(conf, footer.getFileMetaData(), path,
-      footer.getBlocks(), columns);
+    return new ParquetFileReader(conf, footer.getFileMetaData(), path, footer.getBlocks(), columns);
   }
 
   /** Read the dictionary page for the column */
@@ -524,21 +502,20 @@ public class TestDataPageV1Checksums {
    * Compare the extracted (decompressed) bytes to the reference bytes
    */
   private void assertCorrectContent(byte[] pageBytes, byte[] referenceBytes) {
-    assertArrayEquals("Read page content was different from expected page content", referenceBytes,
-      pageBytes);
+    assertArrayEquals("Read page content was different from expected page content", referenceBytes, pageBytes);
   }
 
   /**
-   * Verify that the crc is set in a page, calculate the reference crc using the reference bytes and
-   * check that the crc's are identical.
+   * Verify that the crc is set in a page, calculate the reference crc using the
+   * reference bytes and check that the crc's are identical.
    */
   private void assertCrcSetAndCorrect(Page page, byte[] referenceBytes) {
     assertTrue("Checksum was not set in page", page.getCrc().isPresent());
     int crcFromPage = page.getCrc().getAsInt();
     crc.reset();
     crc.update(referenceBytes);
-    assertEquals("Checksum found in page did not match calculated reference checksum",
-      crc.getValue(), (long) crcFromPage & 0xffffffffL);
+    assertEquals("Checksum found in page did not match calculated reference checksum", crc.getValue(),
+        (long) crcFromPage & 0xffffffffL);
   }
 
   /** Verify that the crc is not set */
@@ -547,8 +524,9 @@ public class TestDataPageV1Checksums {
   }
 
   /**
-   * Read the next page for a column, fail if this did not throw an checksum verification exception,
-   * if the read succeeds (no exception was thrown ), verify that the checksum was not set.
+   * Read the next page for a column, fail if this did not throw an checksum
+   * verification exception, if the read succeeds (no exception was thrown ),
+   * verify that the checksum was not set.
    */
   private void assertVerificationFailed(ParquetFileReader reader) {
     try {
@@ -557,7 +535,7 @@ public class TestDataPageV1Checksums {
     } catch (Exception e) {
       assertTrue("Thrown exception is of incorrect type", e instanceof ParquetDecodingException);
       assertTrue("Did not catch checksum verification ParquetDecodingException",
-        e.getMessage().contains("CRC checksum verification failed"));
+          e.getMessage().contains("CRC checksum verification failed"));
     }
   }
 }

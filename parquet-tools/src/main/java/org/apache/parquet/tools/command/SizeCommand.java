@@ -45,25 +45,18 @@ public class SizeCommand extends ArgsOnlyCommand {
   private static final double ONE_TB = ONE_GB * 1024;
   private static final double ONE_PB = ONE_TB * 1024;
 
-  public static final String[] USAGE = new String[] {
-          "<input>",
-          "where <input> is the parquet file to get size & human readable size to stdout"
-  };
+  public static final String[] USAGE = new String[] { "<input>",
+      "where <input> is the parquet file to get size & human readable size to stdout" };
 
   public static final Options OPTIONS;
   static {
     OPTIONS = new Options();
-    Option help = OptionBuilder.withLongOpt("pretty")
-            .withDescription("Pretty size")
-            .create('p');
+    Option help = OptionBuilder.withLongOpt("pretty").withDescription("Pretty size").create('p');
     OPTIONS.addOption(help);
-    Option uncompressed = OptionBuilder.withLongOpt("uncompressed")
-            .withDescription("Uncompressed size")
-            .create('u');
+    Option uncompressed = OptionBuilder.withLongOpt("uncompressed").withDescription("Uncompressed size").create('u');
     OPTIONS.addOption(uncompressed);
-    Option detailed = OptionBuilder.withLongOpt("detailed")
-            .withDescription("Detailed size of each matching file")
-            .create('d');
+    Option detailed = OptionBuilder.withLongOpt("detailed").withDescription("Detailed size of each matching file")
+        .create('d');
     OPTIONS.addOption(detailed);
   }
 
@@ -108,8 +101,7 @@ public class SizeCommand extends ArgsOnlyCommand {
       if (options.hasOption('d')) {
         if (options.hasOption('p')) {
           out.format("%s: %s\n", fs.getPath().getName(), getPrettySize(fileSize));
-        }
-        else {
+        } else {
           out.format("%s: %d bytes\n", fs.getPath().getName(), fileSize);
         }
       }
@@ -117,29 +109,28 @@ public class SizeCommand extends ArgsOnlyCommand {
 
     if (options.hasOption('p')) {
       out.format("Total Size: %s", getPrettySize(size));
-    }
-    else {
+    } else {
       out.format("Total Size: %d bytes", size);
     }
     out.println();
   }
 
-  public String getPrettySize(long bytes){
-    if (bytes/ONE_KB < 1) {
-      return  String.format("%d", bytes) + " bytes";
+  public String getPrettySize(long bytes) {
+    if (bytes / ONE_KB < 1) {
+      return String.format("%d", bytes) + " bytes";
     }
-    if (bytes/ONE_MB < 1) {
-      return String.format("%.3f", bytes/ONE_KB) + " KB";
+    if (bytes / ONE_MB < 1) {
+      return String.format("%.3f", bytes / ONE_KB) + " KB";
     }
-    if (bytes/ONE_GB < 1) {
-      return String.format("%.3f", bytes/ONE_MB) + " MB";
+    if (bytes / ONE_GB < 1) {
+      return String.format("%.3f", bytes / ONE_MB) + " MB";
     }
-    if (bytes/ONE_TB < 1) {
-      return String.format("%.3f", bytes/ONE_GB) + " GB";
+    if (bytes / ONE_TB < 1) {
+      return String.format("%.3f", bytes / ONE_GB) + " GB";
     }
-    if (bytes/ONE_PB < 1) {
-      return String.format("%.3f", bytes/ONE_TB) + " TB";
+    if (bytes / ONE_PB < 1) {
+      return String.format("%.3f", bytes / ONE_TB) + " TB";
     }
-    return String.format("%.3f", bytes/ONE_PB) + " PB";
+    return String.format("%.3f", bytes / ONE_PB) + " PB";
   }
 }

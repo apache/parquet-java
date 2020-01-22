@@ -45,7 +45,9 @@ public final class EventBasedThriftReader {
   }
 
   /**
-   * reads a Struct from the underlying protocol and passes the field events to the FieldConsumer
+   * reads a Struct from the underlying protocol and passes the field events to
+   * the FieldConsumer
+   * 
    * @param c the field consumer
    * @throws TException if any thrift related error occurs during the reading
    */
@@ -56,7 +58,9 @@ public final class EventBasedThriftReader {
   }
 
   /**
-   * reads the content of a struct (fields) from the underlying protocol and passes the events to c
+   * reads the content of a struct (fields) from the underlying protocol and
+   * passes the events to c
+   * 
    * @param c the field consumer
    * @throws TException if any thrift related error occurs during the reading
    */
@@ -72,26 +76,28 @@ public final class EventBasedThriftReader {
   }
 
   /**
-   * reads the set content (elements) from the underlying protocol and passes the events to the set event consumer
+   * reads the set content (elements) from the underlying protocol and passes the
+   * events to the set event consumer
+   * 
    * @param eventConsumer the consumer
    * @param tSet the set descriptor
    * @throws TException if any thrift related error occurs during the reading
    */
-  public void readSetContent(SetConsumer eventConsumer, TSet tSet)
-      throws TException {
+  public void readSetContent(SetConsumer eventConsumer, TSet tSet) throws TException {
     for (int i = 0; i < tSet.size; i++) {
       eventConsumer.consumeElement(protocol, this, tSet.elemType);
     }
   }
 
   /**
-   * reads the map content (key values) from the underlying protocol and passes the events to the map event consumer
+   * reads the map content (key values) from the underlying protocol and passes
+   * the events to the map event consumer
+   * 
    * @param eventConsumer the consumer
    * @param tMap the map descriptor
    * @throws TException if any thrift related error occurs during the reading
    */
-  public void readMapContent(MapConsumer eventConsumer, TMap tMap)
-      throws TException {
+  public void readMapContent(MapConsumer eventConsumer, TMap tMap) throws TException {
     for (int i = 0; i < tMap.size; i++) {
       eventConsumer.consumeEntry(protocol, this, tMap.keyType, tMap.valueType);
     }
@@ -99,6 +105,7 @@ public final class EventBasedThriftReader {
 
   /**
    * reads a key-value pair
+   * 
    * @param keyType the type of the key
    * @param keyConsumer the consumer for the key
    * @param valueType the type of the value
@@ -112,13 +119,14 @@ public final class EventBasedThriftReader {
   }
 
   /**
-   * reads the list content (elements) from the underlying protocol and passes the events to the list event consumer
+   * reads the list content (elements) from the underlying protocol and passes the
+   * events to the list event consumer
+   * 
    * @param eventConsumer the consumer
    * @param tList the list descriptor
    * @throws TException if any thrift related error occurs during the reading
    */
-  public void readListContent(ListConsumer eventConsumer, TList tList)
-      throws TException {
+  public void readListContent(ListConsumer eventConsumer, TList tList) throws TException {
     for (int i = 0; i < tList.size; i++) {
       eventConsumer.consumeElement(protocol, this, tList.elemType);
     }

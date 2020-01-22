@@ -35,11 +35,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MergeCommand extends ArgsOnlyCommand {
-  public static final String[] USAGE = new String[] {
-          "<input> [<input> ...] <output>",
-          "where <input> is the source parquet files/directory to be merged",
-          "   <output> is the destination parquet file"
-  };
+  public static final String[] USAGE = new String[] { "<input> [<input> ...] <output>",
+      "where <input> is the source parquet files/directory to be merged",
+      "   <output> is the destination parquet file" };
 
   /**
    * Biggest number of input files we can merge.
@@ -62,10 +60,10 @@ public class MergeCommand extends ArgsOnlyCommand {
 
   @Override
   public String getCommandDescription() {
-    return "Merges multiple Parquet files into one. " +
-      "The command doesn't merge row groups, just places one after the other. " +
-      "When used to merge many small files, the resulting file will still contain small row groups, " +
-      "which usually leads to bad query performance.";
+    return "Merges multiple Parquet files into one. "
+        + "The command doesn't merge row groups, just places one after the other. "
+        + "When used to merge many small files, the resulting file will still contain small row groups, "
+        + "which usually leads to bad query performance.";
   }
 
   @Override
@@ -80,15 +78,14 @@ public class MergeCommand extends ArgsOnlyCommand {
     PrintWriter out = new PrintWriter(Main.out, true);
 
     // Merge data
-    ParquetFileWriter writer = new ParquetFileWriter(conf,
-            mergedMeta.getSchema(), outputFile, ParquetFileWriter.Mode.CREATE);
+    ParquetFileWriter writer = new ParquetFileWriter(conf, mergedMeta.getSchema(), outputFile,
+        ParquetFileWriter.Mode.CREATE);
     writer.start();
     boolean tooSmallFilesMerged = false;
-    for (Path input: inputFiles) {
+    for (Path input : inputFiles) {
       if (input.getFileSystem(conf).getFileStatus(input).getLen() < TOO_SMALL_FILE_THRESHOLD) {
-        out.format("Warning: file %s is too small, length: %d\n",
-          input,
-          input.getFileSystem(conf).getFileStatus(input).getLen());
+        out.format("Warning: file %s is too small, length: %d\n", input,
+            input.getFileSystem(conf).getFileStatus(input).getLen());
         tooSmallFilesMerged = true;
       }
 
@@ -96,9 +93,9 @@ public class MergeCommand extends ArgsOnlyCommand {
     }
 
     if (tooSmallFilesMerged) {
-      out.println("Warning: you merged too small files. " +
-        "Although the size of the merged file is bigger, it STILL contains small row groups, thus you don't have the advantage of big row groups, " +
-        "which usually leads to bad query performance!");
+      out.println("Warning: you merged too small files. "
+          + "Although the size of the merged file is bigger, it STILL contains small row groups, thus you don't have the advantage of big row groups, "
+          + "which usually leads to bad query performance!");
     }
     writer.end(mergedMeta.getKeyValueMetaData());
   }
@@ -109,6 +106,7 @@ public class MergeCommand extends ArgsOnlyCommand {
 
   /**
    * Get all input files.
+   * 
    * @param input input files or directory.
    * @return ordered input files.
    */
@@ -133,8 +131,8 @@ public class MergeCommand extends ArgsOnlyCommand {
   }
 
   /**
-   * Check input files basically.
-   * ParquetFileReader will throw exception when reading an illegal parquet file.
+   * Check input files basically. ParquetFileReader will throw exception when
+   * reading an illegal parquet file.
    *
    * @param inputFiles files to be merged.
    * @throws IOException
@@ -144,7 +142,7 @@ public class MergeCommand extends ArgsOnlyCommand {
       throw new IllegalArgumentException("Not enough files to merge");
     }
 
-    for (Path inputFile: inputFiles) {
+    for (Path inputFile : inputFiles) {
       FileSystem fs = inputFile.getFileSystem(conf);
       FileStatus status = fs.getFileStatus(inputFile);
 
@@ -156,6 +154,7 @@ public class MergeCommand extends ArgsOnlyCommand {
 
   /**
    * Get all parquet files under partition directory.
+   * 
    * @param partitionDir partition directory.
    * @return parquet files to be merged.
    */
@@ -164,7 +163,7 @@ public class MergeCommand extends ArgsOnlyCommand {
     FileStatus[] inputFiles = fs.listStatus(partitionDir.getPath(), HiddenFileFilter.INSTANCE);
 
     List<Path> input = new ArrayList<Path>();
-    for (FileStatus f: inputFiles) {
+    for (FileStatus f : inputFiles) {
       input.add(f.getPath());
     }
     return input;
@@ -173,7 +172,7 @@ public class MergeCommand extends ArgsOnlyCommand {
   private List<Path> parseInputFiles(List<String> input) {
     List<Path> inputFiles = new ArrayList<Path>();
 
-    for (String name: input) {
+    for (String name : input) {
       inputFiles.add(new Path(name));
     }
 

@@ -34,13 +34,10 @@ public class RecordException extends RuntimeException {
   /**
    * Precondition-style validation that throws a {@link RecordException}.
    *
-   * @param isValid
-   *          {@code true} if valid, {@code false} if an exception should be
-   *          thrown
-   * @param message
-   *          A String message for the exception.
-   * @param args
-   *          Args to fill into the message using String.format
+   * @param isValid {@code true} if valid, {@code false} if an exception should be
+   * thrown
+   * @param message A String message for the exception.
+   * @param args Args to fill into the message using String.format
    */
   public static void check(boolean isValid, String message, Object... args) {
     if (!isValid) {
@@ -48,8 +45,7 @@ public class RecordException extends RuntimeException {
       for (int i = 0; i < args.length; i += 1) {
         argStrings[i] = String.valueOf(args[i]);
       }
-      throw new RecordException(
-          String.format(String.valueOf(message), (Object[]) argStrings));
+      throw new RecordException(String.format(String.valueOf(message), (Object[]) argStrings));
     }
   }
 }

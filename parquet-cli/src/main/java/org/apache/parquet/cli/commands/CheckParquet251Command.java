@@ -86,35 +86,29 @@ public class CheckParquet251Command extends BaseCommand {
 
   private String check(String file) throws IOException {
     Path path = qualifiedPath(file);
-    ParquetMetadata footer = ParquetFileReader.readFooter(
-        getConf(), path, ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata footer = ParquetFileReader.readFooter(getConf(), path, ParquetMetadataConverter.NO_FILTER);
 
     FileMetaData meta = footer.getFileMetaData();
     String createdBy = meta.getCreatedBy();
     if (CorruptStatistics.shouldIgnoreStatistics(createdBy, BINARY)) {
       // create fake metadata that will read corrupt stats and return them
-      FileMetaData fakeMeta = new FileMetaData(
-          meta.getSchema(), meta.getKeyValueMetaData(), Version.FULL_VERSION);
+      FileMetaData fakeMeta = new FileMetaData(meta.getSchema(), meta.getKeyValueMetaData(), Version.FULL_VERSION);
 
       // get just the binary columns
       List<ColumnDescriptor> columns = Lists.newArrayList();
-      Iterables.addAll(columns, Iterables.filter(
-          meta.getSchema().getColumns(),
-          new Predicate<ColumnDescriptor>() {
-            @Override
-            public boolean apply(@Nullable ColumnDescriptor input) {
-              return input != null && input.getType() == BINARY;
-            }
-          }));
+      Iterables.addAll(columns, Iterables.filter(meta.getSchema().getColumns(), new Predicate<ColumnDescriptor>() {
+        @Override
+        public boolean apply(@Nullable ColumnDescriptor input) {
+          return input != null && input.getType() == BINARY;
+        }
+      }));
 
       // now check to see if the data is actually corrupt
-      ParquetFileReader reader = new ParquetFileReader(getConf(),
-          fakeMeta, path, footer.getBlocks(), columns);
+      ParquetFileReader reader = new ParquetFileReader(getConf(), fakeMeta, path, footer.getBlocks(), columns);
 
       try {
         PageStatsValidator validator = new PageStatsValidator();
-        for (PageReadStore pages = reader.readNextRowGroup(); pages != null;
-             pages = reader.readNextRowGroup()) {
+        for (PageReadStore pages = reader.readNextRowGroup(); pages != null; pages = reader.readNextRowGroup()) {
           validator.validate(columns, pages);
         }
       } catch (BadStatsException e) {
@@ -127,11 +121,8 @@ public class CheckParquet251Command extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Arrays.asList(
-        "# Check file1.parquet for corrupt page and column stats",
-        "file1.parquet");
+    return Arrays.asList("# Check file1.parquet for corrupt page and column stats", "file1.parquet");
   }
-
 
   public static class BadStatsException extends RuntimeException {
     public BadStatsException(String message) {
@@ -164,8 +155,7 @@ public class CheckParquet251Command extends BaseCommand {
     }
   }
 
-  private static <T extends Comparable<T>>
-  Statistics<T> getStatisticsFromPageHeader(DataPage page) {
+  private static <T extends Comparable<T>> Statistics<T> getStatisticsFromPageHeader(DataPage page) {
     return page.accept(new DataPage.Visitor<Statistics<T>>() {
       @Override
       @SuppressWarnings("unchecked")
@@ -212,8 +202,7 @@ public class CheckParquet251Command extends BaseCommand {
     }
   }
 
-  private PrimitiveConverter getValidatingConverter(
-      final DataPage page, PrimitiveTypeName type) {
+  private PrimitiveConverter getValidatingConverter(final DataPage page, PrimitiveTypeName type) {
     return type.convert(new PrimitiveTypeNameConverter<PrimitiveConverter, RuntimeException>() {
       @Override
       public PrimitiveConverter convertFLOAT(PrimitiveTypeName primitiveTypeName) {
@@ -293,10 +282,9 @@ public class CheckParquet251Command extends BaseCommand {
     });
   }
 
-  private static final DynConstructors.Ctor<ColumnReader> COL_READER_CTOR =
-      new DynConstructors.Builder(ColumnReader.class)
-          .hiddenImpl("org.apache.parquet.column.impl.ColumnReaderImpl",
-              ColumnDescriptor.class, PageReader.class,
+  private static final DynConstructors.Ctor<ColumnReader> COL_READER_CTOR = new DynConstructors.Builder(
+      ColumnReader.class)
+          .hiddenImpl("org.apache.parquet.column.impl.ColumnReaderImpl", ColumnDescriptor.class, PageReader.class,
               PrimitiveConverter.class, VersionParser.ParsedVersion.class)
           .build();
 
@@ -308,9 +296,8 @@ public class CheckParquet251Command extends BaseCommand {
         DictionaryPage reusableDict = null;
         if (dict != null) {
           try {
-            reusableDict = new DictionaryPage(
-                BytesInput.from(dict.getBytes().toByteArray()),
-                dict.getDictionarySize(), dict.getEncoding());
+            reusableDict = new DictionaryPage(BytesInput.from(dict.getBytes().toByteArray()), dict.getDictionarySize(),
+                dict.getEncoding());
           } catch (IOException e) {
             throw new ParquetDecodingException("Cannot read dictionary", e);
           }
@@ -322,8 +309,7 @@ public class CheckParquet251Command extends BaseCommand {
       }
     }
 
-    private void validateStatsForPage(DataPage page, DictionaryPage dict,
-                                      ColumnDescriptor desc) {
+    private void validateStatsForPage(DataPage page, DictionaryPage dict, ColumnDescriptor desc) {
       SingletonPageReader reader = new SingletonPageReader(dict, page);
       PrimitiveConverter converter = getValidatingConverter(page, desc.getType());
       Statistics stats = getStatisticsFromPageHeader(page);
@@ -344,11 +330,8 @@ public class CheckParquet251Command extends BaseCommand {
         throw new BadStatsException("Number of nulls doesn't match.");
       }
 
-      console.debug(String.format(
-          "Validated stats min=%s max=%s nulls=%d for page=%s col=%s",
-          stats.minAsString(),
-          stats.maxAsString(), stats.getNumNulls(), page,
-          Arrays.toString(desc.getPath())));
+      console.debug(String.format("Validated stats min=%s max=%s nulls=%d for page=%s col=%s", stats.minAsString(),
+          stats.maxAsString(), stats.getNumNulls(), page, Arrays.toString(desc.getPath())));
     }
   }
 }

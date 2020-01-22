@@ -52,19 +52,26 @@ import static org.junit.Assert.fail;
 public class TestCorruptDeltaByteArrays {
   @Test
   public void testCorruptDeltaByteArrayVerisons() {
-    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.6.0 (build abcd)", Encoding.DELTA_BYTE_ARRAY));
+    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.6.0 (build abcd)",
+        Encoding.DELTA_BYTE_ARRAY));
     assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((String) null, Encoding.DELTA_BYTE_ARRAY));
     assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((ParsedVersion) null, Encoding.DELTA_BYTE_ARRAY));
     assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((SemanticVersion) null, Encoding.DELTA_BYTE_ARRAY));
-    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.DELTA_BYTE_ARRAY));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.6.0 (build abcd)", Encoding.DELTA_BINARY_PACKED));
+    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)",
+        Encoding.DELTA_BYTE_ARRAY));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.6.0 (build abcd)",
+        Encoding.DELTA_BINARY_PACKED));
     assertFalse(CorruptDeltaByteArrays.requiresSequentialReads((String) null, Encoding.DELTA_LENGTH_BYTE_ARRAY));
     assertFalse(CorruptDeltaByteArrays.requiresSequentialReads((ParsedVersion) null, Encoding.PLAIN));
     assertFalse(CorruptDeltaByteArrays.requiresSequentialReads((SemanticVersion) null, Encoding.RLE));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.RLE_DICTIONARY));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.PLAIN_DICTIONARY));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.BIT_PACKED));
-    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0 (build abcd)", Encoding.DELTA_BYTE_ARRAY));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)",
+        Encoding.RLE_DICTIONARY));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)",
+        Encoding.PLAIN_DICTIONARY));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)",
+        Encoding.BIT_PACKED));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0 (build abcd)",
+        Encoding.DELTA_BYTE_ARRAY));
   }
 
   @Test
@@ -187,14 +194,11 @@ public class TestCorruptDeltaByteArrays {
 
   @Test
   public void testColumnReaderImplWithCorruptPage() throws Exception {
-    ColumnDescriptor column = new ColumnDescriptor(
-        new String[] {"s"}, PrimitiveType.PrimitiveTypeName.BINARY, 0, 0);
+    ColumnDescriptor column = new ColumnDescriptor(new String[] { "s" }, PrimitiveType.PrimitiveTypeName.BINARY, 0, 0);
     MemPageStore pages = new MemPageStore(0);
     PageWriter memWriter = pages.getPageWriter(column);
 
-    ParquetProperties parquetProps = ParquetProperties.builder()
-        .withDictionaryEncoding(false)
-        .build();
+    ParquetProperties parquetProps = ParquetProperties.builder().withDictionaryEncoding(false).build();
 
     // get generic repetition and definition level bytes to use for pages
     ValuesWriter rdValues = parquetProps.newDefinitionLevelWriter(column);
@@ -212,12 +216,8 @@ public class TestCorruptDeltaByteArrays {
       values.add(lastValue);
     }
 
-    memWriter.writePage(BytesInput.concat(rd, rd, writer.getBytes()),
-        10, /* number of values in the page */
-        new BinaryStatistics(),
-        rdValues.getEncoding(),
-        rdValues.getEncoding(),
-        writer.getEncoding());
+    memWriter.writePage(BytesInput.concat(rd, rd, writer.getBytes()), 10, /* number of values in the page */
+        new BinaryStatistics(), rdValues.getEncoding(), rdValues.getEncoding(), writer.getEncoding());
     pages.addRowCount(10);
 
     writer.reset(); // sets previous to new byte[0]
@@ -228,12 +228,8 @@ public class TestCorruptDeltaByteArrays {
       values.add(value);
     }
 
-    memWriter.writePage(BytesInput.concat(rd, rd, writer.getBytes()),
-        10, /* number of values in the page */
-        new BinaryStatistics(),
-        rdValues.getEncoding(),
-        rdValues.getEncoding(),
-        writer.getEncoding());
+    memWriter.writePage(BytesInput.concat(rd, rd, writer.getBytes()), 10, /* number of values in the page */
+        new BinaryStatistics(), rdValues.getEncoding(), rdValues.getEncoding(), writer.getEncoding());
     pages.addRowCount(10);
 
     final List<String> actualValues = new ArrayList<>();
@@ -244,8 +240,7 @@ public class TestCorruptDeltaByteArrays {
       }
     };
 
-    ColumnReaderImpl columnReader = new ColumnReaderImpl(
-        column, pages.getPageReader(column), converter,
+    ColumnReaderImpl columnReader = new ColumnReaderImpl(column, pages.getPageReader(column), converter,
         new ParsedVersion("parquet-mr", "1.6.0", "abcd"));
 
     while (actualValues.size() < columnReader.getTotalValueCount()) {

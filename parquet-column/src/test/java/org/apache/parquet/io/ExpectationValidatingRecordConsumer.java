@@ -25,8 +25,7 @@ import java.util.Deque;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 
-final public class ExpectationValidatingRecordConsumer extends
-    RecordConsumer {
+final public class ExpectationValidatingRecordConsumer extends RecordConsumer {
   private final Deque<String> expectations;
   int count = 0;
 
@@ -36,7 +35,7 @@ final public class ExpectationValidatingRecordConsumer extends
 
   private void validate(String got) {
 //    System.out.println("  \"" + got + "\";");
-    assertEquals("event #"+count, expectations.pop(), got);
+    assertEquals("event #" + count, expectations.pop(), got);
     ++count;
   }
 
@@ -52,7 +51,7 @@ final public class ExpectationValidatingRecordConsumer extends
 
   @Override
   public void startField(String field, int index) {
-    validate("startField("+field+", "+index+")");
+    validate("startField(" + field + ", " + index + ")");
   }
 
   @Override
@@ -67,37 +66,37 @@ final public class ExpectationValidatingRecordConsumer extends
 
   @Override
   public void endField(String field, int index) {
-    validate("endField("+field+", "+index+")");
+    validate("endField(" + field + ", " + index + ")");
   }
 
   @Override
   public void addInteger(int value) {
-    validate("addInt("+value+")");
+    validate("addInt(" + value + ")");
   }
 
   @Override
   public void addLong(long value) {
-    validate("addLong("+value+")");
+    validate("addLong(" + value + ")");
   }
 
   @Override
   public void addBoolean(boolean value) {
-    validate("addBoolean("+value+")");
+    validate("addBoolean(" + value + ")");
   }
 
   @Override
   public void addBinary(Binary value) {
-    validate("addBinary("+value.toStringUsingUTF8()+")");
+    validate("addBinary(" + value.toStringUsingUTF8() + ")");
   }
 
   @Override
   public void addFloat(float value) {
-    validate("addFloat("+value+")");
+    validate("addFloat(" + value + ")");
   }
 
   @Override
   public void addDouble(double value) {
-    validate("addDouble("+value+")");
+    validate("addDouble(" + value + ")");
   }
 
   /**
@@ -109,4 +108,3 @@ final public class ExpectationValidatingRecordConsumer extends
   }
 
 }
-

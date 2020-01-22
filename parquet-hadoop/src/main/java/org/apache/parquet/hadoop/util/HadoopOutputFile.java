@@ -53,8 +53,7 @@ public class HadoopOutputFile implements OutputFile {
   private final Path path;
   private final Configuration conf;
 
-  public static HadoopOutputFile fromPath(Path path, Configuration conf)
-      throws IOException {
+  public static HadoopOutputFile fromPath(Path path, Configuration conf) throws IOException {
     FileSystem fs = path.getFileSystem(conf);
     return new HadoopOutputFile(fs, fs.makeQualified(path), conf);
   }
@@ -71,16 +70,14 @@ public class HadoopOutputFile implements OutputFile {
 
   @Override
   public PositionOutputStream create(long blockSizeHint) throws IOException {
-    return HadoopStreams.wrap(fs.create(path, false /* do not overwrite */,
-        DFS_BUFFER_SIZE_DEFAULT, fs.getDefaultReplication(path),
-        Math.max(fs.getDefaultBlockSize(path), blockSizeHint)));
+    return HadoopStreams.wrap(fs.create(path, false /* do not overwrite */, DFS_BUFFER_SIZE_DEFAULT,
+        fs.getDefaultReplication(path), Math.max(fs.getDefaultBlockSize(path), blockSizeHint)));
   }
 
   @Override
   public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
-    return HadoopStreams.wrap(fs.create(path, true /* overwrite if exists */,
-        DFS_BUFFER_SIZE_DEFAULT, fs.getDefaultReplication(path),
-        Math.max(fs.getDefaultBlockSize(path), blockSizeHint)));
+    return HadoopStreams.wrap(fs.create(path, true /* overwrite if exists */, DFS_BUFFER_SIZE_DEFAULT,
+        fs.getDefaultReplication(path), Math.max(fs.getDefaultBlockSize(path), blockSizeHint)));
   }
 
   @Override

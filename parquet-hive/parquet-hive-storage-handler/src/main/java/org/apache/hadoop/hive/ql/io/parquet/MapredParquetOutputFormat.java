@@ -52,8 +52,8 @@ import org.slf4j.LoggerFactory;
  * A Parquet OutputFormat for Hive (with the deprecated package mapred)
  *
  */
-public class MapredParquetOutputFormat extends FileOutputFormat<Void, ArrayWritable> implements
-  HiveOutputFormat<Void, ArrayWritable> {
+public class MapredParquetOutputFormat extends FileOutputFormat<Void, ArrayWritable>
+    implements HiveOutputFormat<Void, ArrayWritable> {
 
   private static final Logger LOG = LoggerFactory.getLogger(MapredParquetOutputFormat.class);
 
@@ -73,27 +73,19 @@ public class MapredParquetOutputFormat extends FileOutputFormat<Void, ArrayWrita
   }
 
   @Override
-  public RecordWriter<Void, ArrayWritable> getRecordWriter(
-      final FileSystem ignored,
-      final JobConf job,
-      final String name,
-      final Progressable progress
-      ) throws IOException {
+  public RecordWriter<Void, ArrayWritable> getRecordWriter(final FileSystem ignored, final JobConf job,
+      final String name, final Progressable progress) throws IOException {
     throw new RuntimeException("Should never be used");
   }
 
   /**
    *
-   * Create the parquet schema from the hive schema, and return the RecordWriterWrapper which
-   * contains the real output format
+   * Create the parquet schema from the hive schema, and return the
+   * RecordWriterWrapper which contains the real output format
    */
   @Override
-  public FileSinkOperator.RecordWriter getHiveRecordWriter(
-      final JobConf jobConf,
-      final Path finalOutPath,
-      final Class<? extends Writable> valueClass,
-      final boolean isCompressed,
-      final Properties tableProperties,
+  public FileSinkOperator.RecordWriter getHiveRecordWriter(final JobConf jobConf, final Path finalOutPath,
+      final Class<? extends Writable> valueClass, final boolean isCompressed, final Properties tableProperties,
       final Progressable progress) throws IOException {
 
     LOG.info("creating new record writer...{}", this);
@@ -120,11 +112,8 @@ public class MapredParquetOutputFormat extends FileOutputFormat<Void, ArrayWrita
   }
 
   protected ParquetRecordWriterWrapper getParquerRecordWriterWrapper(
-      ParquetOutputFormat<ArrayWritable> realOutputFormat,
-      JobConf jobConf,
-      String finalOutPath,
-      Progressable progress
-      ) throws IOException {
+      ParquetOutputFormat<ArrayWritable> realOutputFormat, JobConf jobConf, String finalOutPath, Progressable progress)
+      throws IOException {
     return new ParquetRecordWriterWrapper(realOutputFormat, jobConf, finalOutPath.toString(), progress);
   }
 }

@@ -32,7 +32,8 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private boolean min;
 
   /**
-   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   * @deprecated will be removed in 2.0.0. Use
+   * {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
    */
   @Deprecated
   public BooleanStatistics() {
@@ -62,7 +63,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
-    BooleanStatistics boolStats = (BooleanStatistics)stats;
+    BooleanStatistics boolStats = (BooleanStatistics) stats;
     if (!this.hasNonNullValue()) {
       initializeStats(boolStats.getMin(), boolStats.getMax());
     } else {
@@ -98,14 +99,18 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   public void updateStats(boolean min_value, boolean max_value) {
-    if (comparator().compare(min, min_value) > 0) { min = min_value; }
-    if (comparator().compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) {
+      min = min_value;
+    }
+    if (comparator().compare(max, max_value) < 0) {
+      max = max_value;
+    }
   }
 
   public void initializeStats(boolean min_value, boolean max_value) {
-      min = min_value;
-      max = max_value;
-      this.markAsNotEmpty();
+    min = min_value;
+    max = max_value;
+    this.markAsNotEmpty();
   }
 
   @Override

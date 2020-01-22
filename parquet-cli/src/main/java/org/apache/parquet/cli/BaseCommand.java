@@ -93,8 +93,7 @@ public abstract class BaseCommand implements Command, Configurable {
    * @param filename The destination {@link Path} as a String
    * @throws IOException if there is an error while writing
    */
-  public void output(String content, Logger console, String filename)
-      throws IOException {
+  public void output(String content, Logger console, String filename) throws IOException {
     if (filename == null || "-".equals(filename)) {
       console.info(content);
     } else {
@@ -112,8 +111,8 @@ public abstract class BaseCommand implements Command, Configurable {
    *
    * If the file does not have a file system scheme, this uses the default FS.
    *
-   * This will not produce checksum files and will overwrite a file that
-   * already exists.
+   * This will not produce checksum files and will overwrite a file that already
+   * exists.
    *
    * @param filename The filename to create
    * @return An open FSDataOutputStream
@@ -135,13 +134,11 @@ public abstract class BaseCommand implements Command, Configurable {
    * @return An open FSDataOutputStream
    * @throws IOException if there is an error creating the file
    */
-  public FSDataOutputStream createWithChecksum(String filename)
-      throws IOException {
+  public FSDataOutputStream createWithChecksum(String filename) throws IOException {
     return create(filename, false);
   }
 
-  private FSDataOutputStream create(String filename, boolean noChecksum)
-      throws IOException {
+  private FSDataOutputStream create(String filename, boolean noChecksum) throws IOException {
     Path filePath = qualifiedPath(filename);
     // even though it was qualified using the default FS, it may not be in it
     FileSystem fs = filePath.getFileSystem(getConf());
@@ -166,8 +163,8 @@ public abstract class BaseCommand implements Command, Configurable {
   }
 
   /**
-   * Returns a {@link URI} for the {@code filename} that is a qualified Path or
-   * a resource URI.
+   * Returns a {@link URI} for the {@code filename} that is a qualified Path or a
+   * resource URI.
    *
    * If the file does not have a file system scheme, this uses the default FS.
    *
@@ -181,7 +178,8 @@ public abstract class BaseCommand implements Command, Configurable {
       if (RESOURCE_URI_SCHEME.equals(fileURI.getScheme())) {
         return fileURI;
       }
-    } catch (URISyntaxException ignore) {}
+    } catch (URISyntaxException ignore) {
+    }
     return qualifiedPath(filename).toUri();
   }
 
@@ -237,10 +235,9 @@ public abstract class BaseCommand implements Command, Configurable {
    * @param jars A list of jar paths
    * @param paths A list of directories containing .class files
    * @return a classloader for the jars and paths
-   * @throws MalformedURLException if  a jar or path is invalid
+   * @throws MalformedURLException if a jar or path is invalid
    */
-  protected static ClassLoader loaderFor(List<String> jars, List<String> paths)
-      throws MalformedURLException {
+  protected static ClassLoader loaderFor(List<String> jars, List<String> paths) throws MalformedURLException {
     return AccessController.doPrivileged(new GetClassLoader(urls(jars, paths)));
   }
 
@@ -251,8 +248,7 @@ public abstract class BaseCommand implements Command, Configurable {
    * @return a classloader for the jars
    * @throws MalformedURLException if a URL is invalid
    */
-  protected static ClassLoader loaderForJars(List<String> jars)
-      throws MalformedURLException {
+  protected static ClassLoader loaderForJars(List<String> jars) throws MalformedURLException {
     return AccessController.doPrivileged(new GetClassLoader(urls(jars, null)));
   }
 
@@ -263,23 +259,19 @@ public abstract class BaseCommand implements Command, Configurable {
    * @return a classloader for the paths
    * @throws MalformedURLException if a path is invalid
    */
-  protected static ClassLoader loaderForPaths(List<String> paths)
-      throws MalformedURLException {
+  protected static ClassLoader loaderForPaths(List<String> paths) throws MalformedURLException {
     return AccessController.doPrivileged(new GetClassLoader(urls(null, paths)));
   }
 
-  private static List<URL> urls(List<String> jars, List<String> dirs)
-      throws MalformedURLException {
+  private static List<URL> urls(List<String> jars, List<String> dirs) throws MalformedURLException {
     // check the additional jars and lib directories in the local FS
     final List<URL> urls = Lists.newArrayList();
     if (dirs != null) {
       for (String lib : dirs) {
         // final URLs must end in '/' for URLClassLoader
         File path = lib.endsWith("/") ? new File(lib) : new File(lib + "/");
-        Preconditions.checkArgument(path.exists(),
-            "Lib directory does not exist: " + lib);
-        Preconditions.checkArgument(path.isDirectory(),
-            "Not a directory: " + lib);
+        Preconditions.checkArgument(path.exists(), "Lib directory does not exist: " + lib);
+        Preconditions.checkArgument(path.isDirectory(), "Not a directory: " + lib);
         Preconditions.checkArgument(path.canRead() && path.canExecute(),
             "Insufficient permissions to access lib directory: " + lib);
         urls.add(path.toURI().toURL());
@@ -288,87 +280,78 @@ public abstract class BaseCommand implements Command, Configurable {
     if (jars != null) {
       for (String jar : jars) {
         File path = new File(jar);
-        Preconditions.checkArgument(path.exists(),
-            "Jar files does not exist: " + jar);
-        Preconditions.checkArgument(path.isFile(),
-            "Not a file: " + jar);
-        Preconditions.checkArgument(path.canRead(),
-            "Cannot read jar file: " + jar);
+        Preconditions.checkArgument(path.exists(), "Jar files does not exist: " + jar);
+        Preconditions.checkArgument(path.isFile(), "Not a file: " + jar);
+        Preconditions.checkArgument(path.canRead(), "Cannot read jar file: " + jar);
         urls.add(path.toURI().toURL());
       }
     }
     return urls;
   }
 
-  protected <D> Iterable<D> openDataFile(final String source, Schema projection)
-      throws IOException {
+  protected <D> Iterable<D> openDataFile(final String source, Schema projection) throws IOException {
     Formats.Format format = Formats.detectFormat(open(source));
     switch (format) {
-      case PARQUET:
-        Configuration conf = new Configuration(getConf());
-        // TODO: add these to the reader builder
-        AvroReadSupport.setRequestedProjection(conf, projection);
-        AvroReadSupport.setAvroReadSchema(conf, projection);
-        final ParquetReader<D> parquet = AvroParquetReader.<D>builder(qualifiedPath(source))
-            .disableCompatibility()
-            .withDataModel(GenericData.get())
-            .withConf(conf)
-            .build();
-        return new Iterable<D>() {
-          @Override
-          public Iterator<D> iterator() {
-            return new Iterator<D>() {
-              private boolean hasNext = false;
-              private D next = advance();
+    case PARQUET:
+      Configuration conf = new Configuration(getConf());
+      // TODO: add these to the reader builder
+      AvroReadSupport.setRequestedProjection(conf, projection);
+      AvroReadSupport.setAvroReadSchema(conf, projection);
+      final ParquetReader<D> parquet = AvroParquetReader.<D>builder(qualifiedPath(source)).disableCompatibility()
+          .withDataModel(GenericData.get()).withConf(conf).build();
+      return new Iterable<D>() {
+        @Override
+        public Iterator<D> iterator() {
+          return new Iterator<D>() {
+            private boolean hasNext = false;
+            private D next = advance();
 
-              @Override
-              public boolean hasNext() {
-                return hasNext;
+            @Override
+            public boolean hasNext() {
+              return hasNext;
+            }
+
+            @Override
+            public D next() {
+              if (!hasNext) {
+                throw new NoSuchElementException();
               }
+              D toReturn = next;
+              this.next = advance();
+              return toReturn;
+            }
 
-              @Override
-              public D next() {
-                if (!hasNext) {
-                  throw new NoSuchElementException();
-                }
-                D toReturn = next;
-                this.next = advance();
-                return toReturn;
+            private D advance() {
+              try {
+                D next = parquet.read();
+                this.hasNext = (next != null);
+                return next;
+              } catch (IOException e) {
+                throw new RuntimeException("Failed while reading Parquet file: " + source, e);
               }
+            }
 
-              private D advance() {
-                try {
-                  D next = parquet.read();
-                  this.hasNext = (next != null);
-                  return next;
-                } catch (IOException e) {
-                  throw new RuntimeException(
-                      "Failed while reading Parquet file: " + source, e);
-                }
-              }
-
-              @Override
-              public void remove() {
-                throw new UnsupportedOperationException("Remove is not supported");
-              }
-            };
-          }
-        };
-
-      case AVRO:
-        Iterable<D> avroReader = (Iterable<D>) DataFileReader.openReader(
-            openSeekable(source), new GenericDatumReader<>(projection));
-        return avroReader;
-
-      default:
-        if (source.endsWith("json")) {
-          return new AvroJsonReader<>(open(source), projection);
-        } else {
-          Preconditions.checkArgument(projection == null,
-              "Cannot select columns from text files");
-          Iterable text = CharStreams.readLines(new InputStreamReader(open(source)));
-          return text;
+            @Override
+            public void remove() {
+              throw new UnsupportedOperationException("Remove is not supported");
+            }
+          };
         }
+      };
+
+    case AVRO:
+      Iterable<D> avroReader = (Iterable<D>) DataFileReader.openReader(openSeekable(source),
+          new GenericDatumReader<>(projection));
+      return avroReader;
+
+    default:
+      if (source.endsWith("json")) {
+        return new AvroJsonReader<>(open(source), projection);
+      } else {
+        Preconditions.checkArgument(projection == null, "Cannot select columns from text files");
+        Iterable text = CharStreams.readLines(new InputStreamReader(open(source)));
+        return text;
+      }
     }
   }
 
@@ -379,21 +362,20 @@ public abstract class BaseCommand implements Command, Configurable {
       in.seek(0);
 
       switch (format) {
-        case PARQUET:
-          return Schemas.fromParquet(getConf(), qualifiedURI(source));
-        case AVRO:
-          return Schemas.fromAvro(open(source));
-        case TEXT:
-          if (source.endsWith("avsc")) {
-            return Schemas.fromAvsc(open(source));
-          } else if (source.endsWith("json")) {
-            return Schemas.fromJSON("json", open(source));
-          }
-        default:
+      case PARQUET:
+        return Schemas.fromParquet(getConf(), qualifiedURI(source));
+      case AVRO:
+        return Schemas.fromAvro(open(source));
+      case TEXT:
+        if (source.endsWith("avsc")) {
+          return Schemas.fromAvsc(open(source));
+        } else if (source.endsWith("json")) {
+          return Schemas.fromJSON("json", open(source));
+        }
+      default:
       }
 
-      throw new IllegalArgumentException(String.format(
-          "Could not determine file format of %s.", source));
+      throw new IllegalArgumentException(String.format("Could not determine file format of %s.", source));
     }
   }
 }

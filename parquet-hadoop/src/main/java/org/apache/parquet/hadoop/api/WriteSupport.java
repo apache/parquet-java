@@ -29,9 +29,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 
-
 /**
- * Abstraction to use with {@link org.apache.parquet.hadoop.ParquetOutputFormat} to convert incoming records
+ * Abstraction to use with {@link org.apache.parquet.hadoop.ParquetOutputFormat}
+ * to convert incoming records
  *
  * @param <T> the type of the incoming records
  */
@@ -53,12 +53,14 @@ abstract public class WriteSupport<T> {
       this.schema = checkNotNull(schema, "schema");
       this.extraMetaData = Collections.unmodifiableMap(checkNotNull(extraMetaData, "extraMetaData"));
     }
+
     /**
      * @return the schema of the file
      */
     public MessageType getSchema() {
       return schema;
     }
+
     /**
      * @return application specific metadata
      */
@@ -95,6 +97,7 @@ abstract public class WriteSupport<T> {
 
   /**
    * called first in the task
+   * 
    * @param configuration the job's configuration
    * @return the information needed to write the file
    */
@@ -102,19 +105,21 @@ abstract public class WriteSupport<T> {
 
   /**
    * This will be called once per row group
+   * 
    * @param recordConsumer the recordConsumer to write to
    */
   public abstract void prepareForWrite(RecordConsumer recordConsumer);
 
   /**
    * called once per record
+   * 
    * @param record one record to write to the previously provided record consumer
    */
   public abstract void write(T record);
 
   /**
-   * Called to get a name to identify the WriteSupport object model.
-   * If not null, this is added to the file footer metadata.
+   * Called to get a name to identify the WriteSupport object model. If not null,
+   * this is added to the file footer metadata.
    * <p>
    * Defining this method will be required in a future API version.
    *
@@ -126,6 +131,7 @@ abstract public class WriteSupport<T> {
 
   /**
    * called once in the end after the last record was written
+   * 
    * @return information to be added in the file
    */
   public FinalizedWriteContext finalizeWrite() {

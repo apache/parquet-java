@@ -21,7 +21,8 @@ import org.apache.parquet.hadoop.ParquetOutputFormat;
 
 /**
  * Use this class to write Scrooge records to parquet
- * @param <T>  Type of Scrooge records to write
+ * 
+ * @param <T> Type of Scrooge records to write
  */
 public class ParquetScroogeOutputFormat<T extends ThriftStruct> extends ParquetOutputFormat<T> {
 

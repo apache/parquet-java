@@ -38,14 +38,11 @@ public class TestBackwardCompatibility {
     // schema is recognized and used to read the file as expected.
     Path testFile = new Path(Resources.getResource("strings-2.parquet").getFile());
     Configuration conf = new Configuration();
-    ParquetReader<GenericRecord> reader = AvroParquetReader
-        .builder(new AvroReadSupport<GenericRecord>(), testFile)
-        .withConf(conf)
-        .build();
+    ParquetReader<GenericRecord> reader = AvroParquetReader.builder(new AvroReadSupport<GenericRecord>(), testFile)
+        .withConf(conf).build();
     GenericRecord r;
     while ((r = reader.read()) != null) {
-      Assert.assertTrue("Should read value into a String",
-          r.get("text") instanceof String);
+      Assert.assertTrue("Should read value into a String", r.get("text") instanceof String);
     }
   }
 
@@ -54,14 +51,11 @@ public class TestBackwardCompatibility {
     Path testFile = new Path(Resources.getResource("strings-2.parquet").getFile());
     Configuration conf = new Configuration();
     conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
-    ParquetReader<GenericRecord> reader = AvroParquetReader
-        .builder(new AvroReadSupport<GenericRecord>(), testFile)
-        .withConf(conf)
-        .build();
+    ParquetReader<GenericRecord> reader = AvroParquetReader.builder(new AvroReadSupport<GenericRecord>(), testFile)
+        .withConf(conf).build();
     GenericRecord r;
     while ((r = reader.read()) != null) {
-      Assert.assertTrue("Should read value into a String",
-          r.get("text") instanceof Utf8);
+      Assert.assertTrue("Should read value into a String", r.get("text") instanceof Utf8);
     }
   }
 

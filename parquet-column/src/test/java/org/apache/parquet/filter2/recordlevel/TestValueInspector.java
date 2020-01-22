@@ -59,8 +59,9 @@ public class TestValueInspector {
       v.update(11);
       fail("this should throw");
     } catch (IllegalStateException e) {
-      assertEquals("setResult() called on a ValueInspector whose result is already known!"
-          + " Did you forget to call reset()?", e.getMessage());
+      assertEquals(
+          "setResult() called on a ValueInspector whose result is already known!" + " Did you forget to call reset()?",
+          e.getMessage());
     }
 
     // back to unknown state

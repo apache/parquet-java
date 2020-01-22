@@ -42,7 +42,7 @@ public class AvroJsonReader<E> implements Iterator<E>, Iterable<E>, Closeable {
     this.schema = schema;
     this.model = GenericData.get();
     this.iterator = Iterators.transform(AvroJson.parser(stream),
-      node -> (E) AvroJson.convertToAvro(model, node, AvroJsonReader.this.schema));
+        node -> (E) AvroJson.convertToAvro(model, node, AvroJsonReader.this.schema));
   }
 
   @Override

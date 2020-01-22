@@ -30,136 +30,116 @@ public class TestDynConstructors {
   public void testNoImplCall() {
     final DynConstructors.Builder builder = new DynConstructors.Builder();
 
-    TestUtils.assertThrows("Checked build should throw NoSuchMethodException",
-        NoSuchMethodException.class, (Callable) builder::buildChecked);
+    TestUtils.assertThrows("Checked build should throw NoSuchMethodException", NoSuchMethodException.class,
+        (Callable) builder::buildChecked);
 
-    TestUtils.assertThrows("Normal build should throw RuntimeException",
-        RuntimeException.class, (Runnable) builder::build);
+    TestUtils.assertThrows("Normal build should throw RuntimeException", RuntimeException.class,
+        (Runnable) builder::build);
   }
 
   @Test
   public void testMissingClass() {
-    final DynConstructors.Builder builder = new DynConstructors.Builder()
-        .impl("not.a.RealClass");
+    final DynConstructors.Builder builder = new DynConstructors.Builder().impl("not.a.RealClass");
 
-    TestUtils.assertThrows("Checked build should throw NoSuchMethodException",
-        NoSuchMethodException.class, (Callable) builder::buildChecked);
+    TestUtils.assertThrows("Checked build should throw NoSuchMethodException", NoSuchMethodException.class,
+        (Callable) builder::buildChecked);
 
-    TestUtils.assertThrows("Normal build should throw RuntimeException",
-        RuntimeException.class, (Callable) builder::build);
+    TestUtils.assertThrows("Normal build should throw RuntimeException", RuntimeException.class,
+        (Callable) builder::build);
   }
 
   @Test
   public void testMissingConstructor() {
-    final DynConstructors.Builder builder = new DynConstructors.Builder()
-        .impl(Concatenator.class, String.class, String.class);
+    final DynConstructors.Builder builder = new DynConstructors.Builder().impl(Concatenator.class, String.class,
+        String.class);
 
-    TestUtils.assertThrows("Checked build should throw NoSuchMethodException",
-        NoSuchMethodException.class, (Callable) builder::buildChecked);
+    TestUtils.assertThrows("Checked build should throw NoSuchMethodException", NoSuchMethodException.class,
+        (Callable) builder::buildChecked);
 
-    TestUtils.assertThrows("Normal build should throw RuntimeException",
-        RuntimeException.class, (Callable) builder::build);
+    TestUtils.assertThrows("Normal build should throw RuntimeException", RuntimeException.class,
+        (Callable) builder::build);
   }
 
   @Test
   public void testFirstImplReturned() throws Exception {
     final DynConstructors.Ctor<Concatenator> sepCtor = new DynConstructors.Builder()
-        .impl("not.a.RealClass", String.class)
-        .impl(Concatenator.class, String.class)
-        .impl(Concatenator.class)
+        .impl("not.a.RealClass", String.class).impl(Concatenator.class, String.class).impl(Concatenator.class)
         .buildChecked();
 
     Concatenator dashCat = sepCtor.newInstanceChecked("-");
-    Assert.assertEquals("Should construct with the 1-arg version",
-        "a-b", dashCat.concat("a", "b"));
+    Assert.assertEquals("Should construct with the 1-arg version", "a-b", dashCat.concat("a", "b"));
 
-    TestUtils.assertThrows("Should complain about extra arguments",
-        IllegalArgumentException.class, () -> sepCtor.newInstanceChecked("/", "-"));
+    TestUtils.assertThrows("Should complain about extra arguments", IllegalArgumentException.class,
+        () -> sepCtor.newInstanceChecked("/", "-"));
 
-    TestUtils.assertThrows("Should complain about extra arguments",
-        IllegalArgumentException.class, () -> sepCtor.newInstance("/", "-"));
+    TestUtils.assertThrows("Should complain about extra arguments", IllegalArgumentException.class,
+        () -> sepCtor.newInstance("/", "-"));
 
-    DynConstructors.Ctor<Concatenator> defaultCtor = new DynConstructors.Builder()
-        .impl("not.a.RealClass", String.class)
-        .impl(Concatenator.class)
-        .impl(Concatenator.class, String.class)
-        .buildChecked();
+    DynConstructors.Ctor<Concatenator> defaultCtor = new DynConstructors.Builder().impl("not.a.RealClass", String.class)
+        .impl(Concatenator.class).impl(Concatenator.class, String.class).buildChecked();
 
     Concatenator cat = defaultCtor.newInstanceChecked();
-    Assert.assertEquals("Should construct with the no-arg version",
-        "ab", cat.concat("a", "b"));
+    Assert.assertEquals("Should construct with the no-arg version", "ab", cat.concat("a", "b"));
   }
 
   @Test
   public void testExceptionThrown() throws Exception {
     final SomeCheckedException exc = new SomeCheckedException();
     final DynConstructors.Ctor<Concatenator> sepCtor = new DynConstructors.Builder()
-        .impl("not.a.RealClass", String.class)
-        .impl(Concatenator.class, Exception.class)
-        .buildChecked();
+        .impl("not.a.RealClass", String.class).impl(Concatenator.class, Exception.class).buildChecked();
 
-    TestUtils.assertThrows("Should re-throw the exception",
-        SomeCheckedException.class, () -> sepCtor.newInstanceChecked(exc));
+    TestUtils.assertThrows("Should re-throw the exception", SomeCheckedException.class,
+        () -> sepCtor.newInstanceChecked(exc));
 
-    TestUtils.assertThrows("Should wrap the exception in RuntimeException",
-        RuntimeException.class, () -> sepCtor.newInstance(exc));
+    TestUtils.assertThrows("Should wrap the exception in RuntimeException", RuntimeException.class,
+        () -> sepCtor.newInstance(exc));
   }
 
   @Test
   public void testStringClassname() throws Exception {
     final DynConstructors.Ctor<Concatenator> sepCtor = new DynConstructors.Builder()
-        .impl(Concatenator.class.getName(), String.class)
-        .buildChecked();
+        .impl(Concatenator.class.getName(), String.class).buildChecked();
 
     Assert.assertNotNull("Should find 1-arg constructor", sepCtor.newInstance("-"));
   }
 
   @Test
   public void testHiddenMethod() throws Exception {
-    TestUtils.assertThrows("Should fail to find hidden method",
-        NoSuchMethodException.class, () -> new DynMethods.Builder("setSeparator")
-            .impl(Concatenator.class, char.class)
-            .buildChecked());
+    TestUtils.assertThrows("Should fail to find hidden method", NoSuchMethodException.class,
+        () -> new DynMethods.Builder("setSeparator").impl(Concatenator.class, char.class).buildChecked());
 
     final DynConstructors.Ctor<Concatenator> sepCtor = new DynConstructors.Builder()
-        .hiddenImpl(Concatenator.class.getName(), char.class)
-        .buildChecked();
+        .hiddenImpl(Concatenator.class.getName(), char.class).buildChecked();
 
     Assert.assertNotNull("Should find hidden ctor with hiddenImpl", sepCtor);
 
     Concatenator slashCat = sepCtor.newInstanceChecked('/');
 
-    Assert.assertEquals("Should use separator /",
-        "a/b", slashCat.concat("a", "b"));
+    Assert.assertEquals("Should use separator /", "a/b", slashCat.concat("a", "b"));
   }
 
   @Test
   public void testBind() throws Exception {
-    final DynConstructors.Ctor<Concatenator> ctor = new DynConstructors.Builder()
-        .impl(Concatenator.class.getName())
+    final DynConstructors.Ctor<Concatenator> ctor = new DynConstructors.Builder().impl(Concatenator.class.getName())
         .buildChecked();
 
     Assert.assertTrue("Should always be static", ctor.isStatic());
 
-    TestUtils.assertThrows("Should complain that method is static",
-        IllegalStateException.class, () -> ctor.bind(null));
+    TestUtils.assertThrows("Should complain that method is static", IllegalStateException.class, () -> ctor.bind(null));
   }
 
   @Test
   public void testInvoke() throws Exception {
-    final DynMethods.UnboundMethod ctor = new DynConstructors.Builder()
-        .impl(Concatenator.class.getName())
+    final DynMethods.UnboundMethod ctor = new DynConstructors.Builder().impl(Concatenator.class.getName())
         .buildChecked();
 
-    TestUtils.assertThrows("Should complain that target must be null",
-        IllegalArgumentException.class, () -> ctor.invokeChecked("a"));
+    TestUtils.assertThrows("Should complain that target must be null", IllegalArgumentException.class,
+        () -> ctor.invokeChecked("a"));
 
-    TestUtils.assertThrows("Should complain that target must be null",
-        IllegalArgumentException.class, () -> ctor.invoke("a"));
+    TestUtils.assertThrows("Should complain that target must be null", IllegalArgumentException.class,
+        () -> ctor.invoke("a"));
 
-    Assert.assertNotNull("Should allow invokeChecked(null, ...)",
-        ctor.invokeChecked(null));
-    Assert.assertNotNull("Should allow invoke(null, ...)",
-        ctor.invoke(null));
+    Assert.assertNotNull("Should allow invokeChecked(null, ...)", ctor.invokeChecked(null));
+    Assert.assertNotNull("Should allow invoke(null, ...)", ctor.invoke(null));
   }
 }

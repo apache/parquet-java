@@ -136,7 +136,6 @@ public class TestIncrementallyUpdatedFilterPredicateEvaluator {
     v2.reset();
   }
 
-
   @Test
   public void testOr() {
     ValueInspector v1 = intIsEven();

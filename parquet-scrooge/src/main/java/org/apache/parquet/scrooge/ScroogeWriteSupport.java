@@ -33,13 +33,13 @@ public class ScroogeWriteSupport<T extends ThriftStruct> extends AbstractThriftW
   }
 
   public static Class<? extends ThriftStruct> getScroogeClass(Configuration configuration) {
-    return (Class<? extends ThriftStruct>)AbstractThriftWriteSupport.getGenericThriftClass(configuration);
+    return (Class<? extends ThriftStruct>) AbstractThriftWriteSupport.getGenericThriftClass(configuration);
   }
 
   /**
-   * used from hadoop
-   * the configuration must contain a "parquet.thrift.write.class" setting
-   * (see ScroogeWriteSupport#setScroogeClass)
+   * used from hadoop the configuration must contain a
+   * "parquet.thrift.write.class" setting (see
+   * ScroogeWriteSupport#setScroogeClass)
    */
   public ScroogeWriteSupport() {
   }

@@ -31,7 +31,7 @@ public class UnknownColumnTypeException extends ParquetRuntimeException {
 
   public UnknownColumnTypeException(PrimitiveTypeName type) {
     super("Column type not found: " + type.toString());
-    this.type= type;
+    this.type = type;
   }
 
   public PrimitiveTypeName getType() {

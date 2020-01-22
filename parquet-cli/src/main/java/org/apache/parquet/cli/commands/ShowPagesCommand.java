@@ -51,7 +51,7 @@ import static org.apache.parquet.cli.Util.minMaxAsString;
 import static org.apache.parquet.cli.Util.primitive;
 import static org.apache.parquet.cli.Util.shortCodec;
 
-@Parameters(commandDescription="Print page summaries for a Parquet file")
+@Parameters(commandDescription = "Print page summaries for a Parquet file")
 public class ShowPagesCommand extends BaseCommand {
 
   public ShowPagesCommand(Logger console) {
@@ -61,18 +61,14 @@ public class ShowPagesCommand extends BaseCommand {
   @Parameter(description = "<parquet path>")
   List<String> targets;
 
-  @Parameter(
-      names = {"-c", "--column", "--columns"},
-      description = "List of columns")
+  @Parameter(names = { "-c", "--column", "--columns" }, description = "List of columns")
   List<String> columns;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(targets != null && targets.size() >= 1,
-        "A Parquet file is required.");
-    Preconditions.checkArgument(targets.size() == 1,
-        "Cannot process multiple Parquet files.");
+    Preconditions.checkArgument(targets != null && targets.size() >= 1, "A Parquet file is required.");
+    Preconditions.checkArgument(targets.size() == 1, "Cannot process multiple Parquet files.");
 
     String source = targets.get(0);
     ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source));
@@ -118,7 +114,8 @@ public class ShowPagesCommand extends BaseCommand {
       rowGroupNum += 1;
     }
 
-    // TODO: Show total column size and overall size per value in the column summary line
+    // TODO: Show total column size and overall size per value in the column summary
+    // line
     for (String columnName : formatted.keySet()) {
       console.info(String.format("\nColumn: %s\n%s", columnName, StringUtils.leftPad("", 80, '-')));
       console.info(formatter.getHeader());
@@ -133,10 +130,7 @@ public class ShowPagesCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
-        "# Show pages for column 'col' from a Parquet file",
-        "-c col sample.parquet"
-    );
+    return Lists.newArrayList("# Show pages for column 'col' from a Parquet file", "-c col sample.parquet");
   }
 
   private class PageFormatter implements DataPage.Visitor<String> {
@@ -146,8 +140,8 @@ public class ShowPagesCommand extends BaseCommand {
     private String shortCodec;
 
     String getHeader() {
-      return String.format("  %-6s %-5s %-4s %-7s %-10s %-10s %-8s %-7s %s",
-          "page", "type", "enc", "count", "avg size", "size", "rows", "nulls", "min / max");
+      return String.format("  %-6s %-5s %-4s %-7s %-10s %-10s %-8s %-7s %s", "page", "type", "enc", "count", "avg size",
+          "size", "rows", "nulls", "min / max");
     }
 
     void setContext(int rowGroupNum, PrimitiveType type, CompressionCodecName codec) {
@@ -176,13 +170,11 @@ public class ShowPagesCommand extends BaseCommand {
       float perValue = ((float) totalSize) / count;
       String enc = encodingAsString(dict.getEncoding(), true);
       if (pageNum == 0) {
-        return String.format("%3d-D    %-5s %s %-2s %-7d %-10s %-10s",
-            rowGroupNum, "dict", shortCodec, enc, count, humanReadable(perValue),
-            humanReadable(totalSize));
+        return String.format("%3d-D    %-5s %s %-2s %-7d %-10s %-10s", rowGroupNum, "dict", shortCodec, enc, count,
+            humanReadable(perValue), humanReadable(totalSize));
       } else {
-        return String.format("%3d-%-3d  %-5s %s %-2s %-7d %-10s %-10s",
-            rowGroupNum, pageNum, "dict", shortCodec, enc, count, humanReadable(perValue),
-            humanReadable(totalSize));
+        return String.format("%3d-%-3d  %-5s %s %-2s %-7d %-10s %-10s", rowGroupNum, pageNum, "dict", shortCodec, enc,
+            count, humanReadable(perValue), humanReadable(totalSize));
       }
     }
 
@@ -194,9 +186,8 @@ public class ShowPagesCommand extends BaseCommand {
       String numNulls = page.getStatistics().isNumNullsSet() ? Long.toString(page.getStatistics().getNumNulls()) : "";
       float perValue = ((float) totalSize) / count;
       String minMax = minMaxAsString(page.getStatistics());
-      return String.format("%3d-%-3d  %-5s %s %-2s %-7d %-10s %-10s %-8s %-7s %s",
-          rowGroupNum, pageNum, "data", shortCodec, enc, count, humanReadable(perValue),
-          humanReadable(totalSize), "", numNulls, minMax);
+      return String.format("%3d-%-3d  %-5s %s %-2s %-7d %-10s %-10s %-8s %-7s %s", rowGroupNum, pageNum, "data",
+          shortCodec, enc, count, humanReadable(perValue), humanReadable(totalSize), "", numNulls, minMax);
     }
 
     @Override
@@ -209,9 +200,8 @@ public class ShowPagesCommand extends BaseCommand {
       float perValue = ((float) totalSize) / count;
       String minMax = minMaxAsString(page.getStatistics());
       String compression = (page.isCompressed() ? shortCodec : "_");
-      return String.format("%3d-%-3d  %-5s %s %-2s %-7d %-10s %-10s %-8d %-7s %s",
-          rowGroupNum, pageNum, "data", compression, enc, count, humanReadable(perValue),
-          humanReadable(totalSize), numRows, numNulls, minMax);
+      return String.format("%3d-%-3d  %-5s %s %-2s %-7d %-10s %-10s %-8d %-7s %s", rowGroupNum, pageNum, "data",
+          compression, enc, count, humanReadable(perValue), humanReadable(totalSize), numRows, numNulls, minMax);
     }
   }
 }

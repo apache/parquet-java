@@ -34,12 +34,12 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * Converts a {@link FilterPredicate} to its logical inverse.
- * The returned predicate should be equivalent to not(p), but without
- * the use of a not() operator.
+ * Converts a {@link FilterPredicate} to its logical inverse. The returned
+ * predicate should be equivalent to not(p), but without the use of a not()
+ * operator.
  *
- * See also {@link LogicalInverseRewriter}, which can remove the use
- * of all not() operators without inverting the overall predicate.
+ * See also {@link LogicalInverseRewriter}, which can remove the use of all
+ * not() operators without inverting the overall predicate.
  */
 public final class LogicalInverter implements Visitor<FilterPredicate> {
   private static final LogicalInverter INSTANCE = new LogicalInverter();
@@ -49,7 +49,8 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
     return pred.accept(INSTANCE);
   }
 
-  private LogicalInverter() {}
+  private LogicalInverter() {
+  }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Eq<T> eq) {
@@ -97,12 +98,13 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
   }
 
   @Override
-  public <T extends Comparable<T>,  U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
     return new LogicalNotUserDefined<>(udp);
   }
 
   @Override
-  public <T extends Comparable<T>,  U extends UserDefinedPredicate<T>> FilterPredicate visit(LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(
+      LogicalNotUserDefined<T, U> udp) {
     return udp.getUserDefined();
   }
 }

@@ -41,12 +41,13 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private long minDeltaInCurrentBlock;
 
   /**
-   * stores the decoded values including the first value which is written to the header
+   * stores the decoded values including the first value which is written to the
+   * header
    */
   private long[] valuesBuffer;
   /**
-   * values loaded to the buffer, it could be bigger than the totalValueCount
-   * when data is not aligned to mini block, which means padding 0s are in the buffer
+   * values loaded to the buffer, it could be bigger than the totalValueCount when
+   * data is not aligned to mini block, which means padding 0s are in the buffer
    */
   private int valuesBuffered;
   private ByteBufferInputStream in;
@@ -65,22 +66,23 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     allocateValuesBuffer();
     bitWidths = new int[config.miniBlockNumInABlock];
 
-    //read first value from header
+    // read first value from header
     valuesBuffer[valuesBuffered++] = BytesUtils.readZigZagVarLong(in);
 
-    while (valuesBuffered < totalValueCount) { //values Buffered could be more than totalValueCount, since we flush on a mini block basis
+    while (valuesBuffered < totalValueCount) { // values Buffered could be more than totalValueCount, since we flush on
+                                               // a mini block basis
       loadNewBlockToBuffer();
     }
     updateNextOffset((int) (in.position() - startPos));
   }
 
   /**
-   * the value buffer is allocated so that the size of it is multiple of mini block
-   * because when writing, data is flushed on a mini block basis
+   * the value buffer is allocated so that the size of it is multiple of mini
+   * block because when writing, data is flushed on a mini block basis
    */
   private void allocateValuesBuffer() {
     int totalMiniBlockCount = (int) Math.ceil((double) totalValueCount / config.miniBlockSizeInValues);
-    //+ 1 because first value written to header is also stored in values buffer
+    // + 1 because first value written to header is also stored in values buffer
     valuesBuffer = new long[totalMiniBlockCount * config.miniBlockSizeInValues + 1];
   }
 
@@ -92,7 +94,8 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
   @Override
   public void skip(int n) {
-    // checkRead() is invoked before incrementing valuesRead so increase valuesRead size in 2 steps
+    // checkRead() is invoked before incrementing valuesRead so increase valuesRead
+    // size in 2 steps
     valuesRead += n - 1;
     checkRead();
     ++valuesRead;
@@ -125,16 +128,17 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
     readBitWidthsForMiniBlocks();
 
-    // mini block is atomic for reading, we read a mini block when there are more values left
+    // mini block is atomic for reading, we read a mini block when there are more
+    // values left
     int i;
     for (i = 0; i < config.miniBlockNumInABlock && valuesBuffered < totalValueCount; i++) {
       BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidths[i]);
       unpackMiniBlock(packer);
     }
 
-    //calculate values from deltas unpacked for current block
-    int valueUnpacked=i*config.miniBlockSizeInValues;
-    for (int j = valuesBuffered-valueUnpacked; j < valuesBuffered; j++) {
+    // calculate values from deltas unpacked for current block
+    int valueUnpacked = i * config.miniBlockSizeInValues;
+    for (int j = valuesBuffered - valueUnpacked; j < valuesBuffered; j++) {
       int index = j;
       valuesBuffer[index] += minDeltaInCurrentBlock + valuesBuffer[index - 1];
     }

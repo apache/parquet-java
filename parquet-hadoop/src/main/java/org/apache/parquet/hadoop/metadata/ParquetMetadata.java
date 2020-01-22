@@ -23,23 +23,21 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
 
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-
 /**
- * Meta Data block stored in the footer of the file
- * contains file level (Codec, Schema, ...) and block level (location, columns, record count, ...) meta data
+ * Meta Data block stored in the footer of the file contains file level (Codec,
+ * Schema, ...) and block level (location, columns, record count, ...) meta data
  */
 public class ParquetMetadata {
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  // Enable FAIL_ON_EMPTY_BEANS on objectmapper. Without this feature parquet-casdacing tests fail,
-  // because LogicalTypeAnnotation implementations are classes without any property.
+  // Enable FAIL_ON_EMPTY_BEANS on objectmapper. Without this feature
+  // parquet-casdacing tests fail,
+  // because LogicalTypeAnnotation implementations are classes without any
+  // property.
   static {
     objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
   }
@@ -117,10 +115,9 @@ public class ParquetMetadata {
     return fileMetaData;
   }
 
-
   @Override
   public String toString() {
-    return "ParquetMetaData{"+fileMetaData+", blocks: "+blocks+"}";
+    return "ParquetMetaData{" + fileMetaData + ", blocks: " + blocks + "}";
   }
 
 }

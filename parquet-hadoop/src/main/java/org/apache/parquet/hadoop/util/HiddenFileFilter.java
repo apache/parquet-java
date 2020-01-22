@@ -29,7 +29,8 @@ import org.apache.hadoop.fs.PathFilter;
 public class HiddenFileFilter implements PathFilter {
   public static final HiddenFileFilter INSTANCE = new HiddenFileFilter();
 
-  private HiddenFileFilter() {}
+  private HiddenFileFilter() {
+  }
 
   @Override
   public boolean accept(Path p) {

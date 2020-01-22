@@ -47,96 +47,77 @@ import static org.apache.avro.generic.GenericData.Record;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 
-@Parameters(commandDescription="Create a file from CSV data")
+@Parameters(commandDescription = "Create a file from CSV data")
 public class ConvertCSVCommand extends BaseCommand {
 
   public ConvertCSVCommand(Logger console) {
     super(console);
   }
 
-  @Parameter(description="<csv path>")
+  @Parameter(description = "<csv path>")
   List<String> targets;
 
-  @Parameter(
-      names={"-o", "--output"},
-      description="Output file path",
-      required=true)
+  @Parameter(names = { "-o", "--output" }, description = "Output file path", required = true)
   String outputPath = null;
 
-  @Parameter(
-      names={"-2", "--format-version-2", "--writer-version-2"},
-      description="Use Parquet format version 2",
-      hidden = true)
+  @Parameter(names = { "-2", "--format-version-2",
+      "--writer-version-2" }, description = "Use Parquet format version 2", hidden = true)
   boolean v2 = false;
 
-  @Parameter(names="--delimiter", description="Delimiter character")
+  @Parameter(names = "--delimiter", description = "Delimiter character")
   String delimiter = ",";
 
-  @Parameter(names="--escape", description="Escape character")
+  @Parameter(names = "--escape", description = "Escape character")
   String escape = "\\";
 
-  @Parameter(names="--quote", description="Quote character")
+  @Parameter(names = "--quote", description = "Quote character")
   String quote = "\"";
 
-  @Parameter(names="--no-header", description="Don't use first line as CSV header")
+  @Parameter(names = "--no-header", description = "Don't use first line as CSV header")
   boolean noHeader = false;
 
-  @Parameter(names="--skip-lines", description="Lines to skip before CSV start")
+  @Parameter(names = "--skip-lines", description = "Lines to skip before CSV start")
   int linesToSkip = 0;
 
-  @Parameter(names="--charset", description="Character set name", hidden = true)
+  @Parameter(names = "--charset", description = "Character set name", hidden = true)
   String charsetName = Charset.defaultCharset().displayName();
 
-  @Parameter(names="--header",
-      description="Line to use as a header. Must match the CSV settings.")
+  @Parameter(names = "--header", description = "Line to use as a header. Must match the CSV settings.")
   String header;
 
-  @Parameter(names="--require",
-      description="Do not allow null values for the given field")
+  @Parameter(names = "--require", description = "Do not allow null values for the given field")
   List<String> requiredFields;
 
-  @Parameter(names = {"-s", "--schema"},
-      description = "The file containing the Avro schema.")
+  @Parameter(names = { "-s", "--schema" }, description = "The file containing the Avro schema.")
   String avroSchemaFile;
 
-  @Parameter(names = {"--compression-codec"},
-      description = "A compression codec name.")
+  @Parameter(names = { "--compression-codec" }, description = "A compression codec name.")
   String compressionCodecName = "GZIP";
 
-  @Parameter(names="--row-group-size", description="Target row group size")
+  @Parameter(names = "--row-group-size", description = "Target row group size")
   int rowGroupSize = ParquetWriter.DEFAULT_BLOCK_SIZE;
 
-  @Parameter(names="--page-size", description="Target page size")
+  @Parameter(names = "--page-size", description = "Target page size")
   int pageSize = ParquetWriter.DEFAULT_PAGE_SIZE;
 
-  @Parameter(names="--dictionary-size", description="Max dictionary page size")
+  @Parameter(names = "--dictionary-size", description = "Max dictionary page size")
   int dictionaryPageSize = ParquetWriter.DEFAULT_PAGE_SIZE;
 
-  @Parameter(
-      names={"--overwrite"},
-      description="Remove any data already in the target view or dataset")
+  @Parameter(names = { "--overwrite" }, description = "Remove any data already in the target view or dataset")
   boolean overwrite = false;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(targets != null && targets.size() == 1,
-        "CSV path is required.");
+    Preconditions.checkArgument(targets != null && targets.size() == 1, "CSV path is required.");
 
     if (header != null) {
       // if a header is given on the command line, don't assume one is in the file
       noHeader = true;
     }
 
-    CSVProperties props = new CSVProperties.Builder()
-        .delimiter(delimiter)
-        .escape(escape)
-        .quote(quote)
-        .header(header)
-        .hasHeader(!noHeader)
-        .linesToSkip(linesToSkip)
-        .charset(charsetName)
-        .build();
+    CSVProperties props = new CSVProperties.Builder().delimiter(delimiter).escape(escape).quote(quote).header(header)
+        .hasHeader(!noHeader).linesToSkip(linesToSkip).charset(charsetName).build();
 
     String source = targets.get(0);
 
@@ -157,28 +138,18 @@ public class ConvertCSVCommand extends BaseCommand {
         recordName = filename;
       }
 
-      csvSchema = AvroCSV.inferNullableSchema(
-          recordName, open(source), props, required);
+      csvSchema = AvroCSV.inferNullableSchema(recordName, open(source), props, required);
     }
 
     long count = 0;
-    try (AvroCSVReader<Record> reader = new AvroCSVReader<>(
-        open(source), props, csvSchema, Record.class, true)) {
-        CompressionCodecName codec = Codecs.parquetCodec(compressionCodecName);
-      try (ParquetWriter<Record> writer = AvroParquetWriter
-          .<Record>builder(qualifiedPath(outputPath))
+    try (AvroCSVReader<Record> reader = new AvroCSVReader<>(open(source), props, csvSchema, Record.class, true)) {
+      CompressionCodecName codec = Codecs.parquetCodec(compressionCodecName);
+      try (ParquetWriter<Record> writer = AvroParquetWriter.<Record>builder(qualifiedPath(outputPath))
           .withWriterVersion(v2 ? PARQUET_2_0 : PARQUET_1_0)
-          .withWriteMode(overwrite ?
-              ParquetFileWriter.Mode.OVERWRITE : ParquetFileWriter.Mode.CREATE)
-          .withCompressionCodec(codec)
-          .withDictionaryEncoding(true)
-          .withDictionaryPageSize(dictionaryPageSize)
-          .withPageSize(pageSize)
-          .withRowGroupSize(rowGroupSize)
-          .withDataModel(GenericData.get())
-          .withConf(getConf())
-          .withSchema(csvSchema)
-          .build()) {
+          .withWriteMode(overwrite ? ParquetFileWriter.Mode.OVERWRITE : ParquetFileWriter.Mode.CREATE)
+          .withCompressionCodec(codec).withDictionaryEncoding(true).withDictionaryPageSize(dictionaryPageSize)
+          .withPageSize(pageSize).withRowGroupSize(rowGroupSize).withDataModel(GenericData.get()).withConf(getConf())
+          .withSchema(csvSchema).build()) {
         for (Record record : reader) {
           writer.write(record);
         }
@@ -192,13 +163,10 @@ public class ConvertCSVCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
-        "# Create a Parquet file from a CSV file",
-        "sample.csv sample.parquet --schema schema.avsc",
-        "# Create a Parquet file in HDFS from local CSV",
+    return Lists.newArrayList("# Create a Parquet file from a CSV file",
+        "sample.csv sample.parquet --schema schema.avsc", "# Create a Parquet file in HDFS from local CSV",
         "path/to/sample.csv hdfs:/user/me/sample.parquet --schema schema.avsc",
         "# Create an Avro file from CSV data in S3",
-        "s3:/data/path/sample.csv sample.avro --format avro --schema s3:/schemas/schema.avsc"
-    );
+        "s3:/data/path/sample.csv sample.avro --format avro --schema s3:/schemas/schema.avsc");
   }
 }

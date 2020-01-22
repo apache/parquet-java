@@ -65,8 +65,6 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -76,22 +74,16 @@ import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.io.Files;
 
 @RunWith(Parameterized.class)
 public class TestColumnIndexes {
   private static final int MAX_TOTAL_ROWS = 100_000;
-  private static final MessageType SCHEMA = new MessageType("schema",
-      new PrimitiveType(OPTIONAL, INT32, "i32"),
-      new PrimitiveType(OPTIONAL, INT64, "i64"),
-      new PrimitiveType(OPTIONAL, INT96, "i96"),
-      new PrimitiveType(OPTIONAL, FLOAT, "sngl"),
-      new PrimitiveType(OPTIONAL, DOUBLE, "dbl"),
-      new PrimitiveType(OPTIONAL, BINARY, "strings"),
-      new PrimitiveType(OPTIONAL, BINARY, "binary"),
+  private static final MessageType SCHEMA = new MessageType("schema", new PrimitiveType(OPTIONAL, INT32, "i32"),
+      new PrimitiveType(OPTIONAL, INT64, "i64"), new PrimitiveType(OPTIONAL, INT96, "i96"),
+      new PrimitiveType(OPTIONAL, FLOAT, "sngl"), new PrimitiveType(OPTIONAL, DOUBLE, "dbl"),
+      new PrimitiveType(OPTIONAL, BINARY, "strings"), new PrimitiveType(OPTIONAL, BINARY, "binary"),
       new PrimitiveType(OPTIONAL, FIXED_LEN_BYTE_ARRAY, 17, "fixed-binary"),
-      new PrimitiveType(REQUIRED, INT32, "unconstrained-i32"),
-      new PrimitiveType(REQUIRED, INT64, "unconstrained-i64"),
+      new PrimitiveType(REQUIRED, INT32, "unconstrained-i32"), new PrimitiveType(REQUIRED, INT64, "unconstrained-i64"),
       new PrimitiveType(REQUIRED, FLOAT, "unconstrained-sngl"),
       new PrimitiveType(REQUIRED, DOUBLE, "unconstrained-dbl"),
       Types.optional(INT32).as(intType(8, true)).named("int8"),
@@ -106,10 +98,8 @@ public class TestColumnIndexes {
       Types.optional(INT64).as(decimalType(4, 18)).named("decimal-int64"),
       Types.optional(FIXED_LEN_BYTE_ARRAY).length(19).as(decimalType(25, 45)).named("decimal-fixed"),
       Types.optional(BINARY).as(decimalType(20, 38)).named("decimal-binary"),
-      Types.optional(BINARY).as(stringType()).named("utf8"),
-      Types.optional(BINARY).as(enumType()).named("enum"),
-      Types.optional(BINARY).as(jsonType()).named("json"),
-      Types.optional(BINARY).as(bsonType()).named("bson"),
+      Types.optional(BINARY).as(stringType()).named("utf8"), Types.optional(BINARY).as(enumType()).named("enum"),
+      Types.optional(BINARY).as(jsonType()).named("json"), Types.optional(BINARY).as(bsonType()).named("bson"),
       Types.optional(INT32).as(dateType()).named("date"),
       Types.optional(INT32).as(timeType(true, TimeUnit.MILLIS)).named("time-millis"),
       Types.optional(INT64).as(timeType(false, TimeUnit.MICROS)).named("time-micros"),
@@ -205,11 +195,8 @@ public class TestColumnIndexes {
       List<Supplier<?>> generators = buildGenerators(recordCount, random);
       Configuration conf = new Configuration();
       ParquetOutputFormat.setColumnIndexTruncateLength(conf, columnIndexTruncateLength);
-      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
-          .withType(SCHEMA)
-          .withPageRowCountLimit(pageRowCountLimit)
-          .withConf(conf)
-          .build()) {
+      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file).withType(SCHEMA)
+          .withPageRowCountLimit(pageRowCountLimit).withConf(conf).build()) {
         for (int i = 0; i < recordCount; i++) {
           writer.write(createGroup(generators, random));
         }
@@ -254,9 +241,8 @@ public class TestColumnIndexes {
 
     @Override
     public String toString() {
-      return "seed=" + seed
-          + ",pageRowCountLimit=" + pageRowCountLimit
-          + ",columnIndexTruncateLength=" + columnIndexTruncateLength;
+      return "seed=" + seed + ",pageRowCountLimit=" + pageRowCountLimit + ",columnIndexTruncateLength="
+          + columnIndexTruncateLength;
     }
   }
 
@@ -267,9 +253,7 @@ public class TestColumnIndexes {
 
   @Parameters
   public static Collection<WriteContext> getContexts() {
-    return Arrays.asList(
-        new WriteContext(System.nanoTime(), 1000, 8),
-        new WriteContext(System.nanoTime(), 20000, 64),
+    return Arrays.asList(new WriteContext(System.nanoTime(), 1000, 8), new WriteContext(System.nanoTime(), 20000, 64),
         new WriteContext(System.nanoTime(), 50000, 10));
   }
 

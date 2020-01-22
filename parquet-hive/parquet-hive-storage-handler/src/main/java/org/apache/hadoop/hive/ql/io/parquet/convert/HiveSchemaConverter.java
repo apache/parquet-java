@@ -49,8 +49,8 @@ public class HiveSchemaConverter {
 
   private static Type[] convertTypes(final List<String> columnNames, final List<TypeInfo> columnTypes) {
     if (columnNames.size() != columnTypes.size()) {
-      throw new IllegalStateException("Mismatched Hive columns and types. Hive columns names" +
-        " found : " + columnNames + " . And Hive types found : " + columnTypes);
+      throw new IllegalStateException("Mismatched Hive columns and types. Hive columns names" + " found : "
+          + columnNames + " . And Hive types found : " + columnTypes);
     }
     final Type[] types = new Type[columnNames.size()];
     for (int i = 0; i < columnNames.size(); ++i) {
@@ -67,9 +67,8 @@ public class HiveSchemaConverter {
     if (typeInfo.getCategory().equals(Category.PRIMITIVE)) {
       if (typeInfo.equals(TypeInfoFactory.stringTypeInfo)) {
         return new PrimitiveType(repetition, PrimitiveTypeName.BINARY, name);
-      } else if (typeInfo.equals(TypeInfoFactory.intTypeInfo) ||
-          typeInfo.equals(TypeInfoFactory.shortTypeInfo) ||
-          typeInfo.equals(TypeInfoFactory.byteTypeInfo)) {
+      } else if (typeInfo.equals(TypeInfoFactory.intTypeInfo) || typeInfo.equals(TypeInfoFactory.shortTypeInfo)
+          || typeInfo.equals(TypeInfoFactory.byteTypeInfo)) {
         return new PrimitiveType(repetition, PrimitiveTypeName.INT32, name);
       } else if (typeInfo.equals(TypeInfoFactory.longTypeInfo)) {
         return new PrimitiveType(repetition, PrimitiveTypeName.INT64, name);
@@ -108,8 +107,8 @@ public class HiveSchemaConverter {
   // 1 anonymous element "array_element"
   private static GroupType convertArrayType(final String name, final ListTypeInfo typeInfo) {
     final TypeInfo subType = typeInfo.getListElementTypeInfo();
-    return listWrapper(name, listType(), new GroupType(Repetition.REPEATED,
-        ParquetHiveSerDe.ARRAY.toString(), convertType("array_element", subType)));
+    return listWrapper(name, listType(),
+        new GroupType(Repetition.REPEATED, ParquetHiveSerDe.ARRAY.toString(), convertType("array_element", subType)));
   }
 
   // An optional group containing multiple elements
@@ -123,10 +122,9 @@ public class HiveSchemaConverter {
   // An optional group containing a repeated anonymous group "map", containing
   // 2 elements: "key", "value"
   private static GroupType convertMapType(final String name, final MapTypeInfo typeInfo) {
-    final Type keyType = convertType(ParquetHiveSerDe.MAP_KEY.toString(),
-        typeInfo.getMapKeyTypeInfo(), Repetition.REQUIRED);
-    final Type valueType = convertType(ParquetHiveSerDe.MAP_VALUE.toString(),
-        typeInfo.getMapValueTypeInfo());
+    final Type keyType = convertType(ParquetHiveSerDe.MAP_KEY.toString(), typeInfo.getMapKeyTypeInfo(),
+        Repetition.REQUIRED);
+    final Type valueType = convertType(ParquetHiveSerDe.MAP_VALUE.toString(), typeInfo.getMapValueTypeInfo());
     return ConversionPatterns.mapType(Repetition.OPTIONAL, name, keyType, valueType);
   }
 

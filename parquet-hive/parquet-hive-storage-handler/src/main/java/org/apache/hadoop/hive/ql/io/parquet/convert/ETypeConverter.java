@@ -132,7 +132,7 @@ public enum ETypeConverter {
 
         @Override
         public void addValueFromDictionary(int dictionaryId) {
-          parent.set(index, new DicBinaryWritable(dictBinary[dictionaryId],  dict[dictionaryId]));
+          parent.set(index, new DicBinaryWritable(dictBinary[dictionaryId], dict[dictionaryId]));
         }
 
         @Override

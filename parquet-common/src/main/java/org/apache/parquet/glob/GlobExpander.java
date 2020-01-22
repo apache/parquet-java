@@ -30,38 +30,40 @@ import org.apache.parquet.glob.GlobNode.OneOf;
  * Implementation of {@link org.apache.parquet.Strings#expandGlob(String)}
  */
 public final class GlobExpander {
-  private GlobExpander()  { }
+  private GlobExpander() {
+  }
 
   /**
-   * Expands a string with braces ("{}") into all of its possible permutations.
-   * We call anything inside of {} braces a "one-of" group.
+   * Expands a string with braces ("{}") into all of its possible permutations. We
+   * call anything inside of {} braces a "one-of" group.
    *
    * The only special characters in this glob syntax are '}', '{' and ','
    *
-   * The top-level pattern must not contain any commas, but a "one-of" group separates
-   * its elements with commas, and a one-of group may contain sub one-of groups.
+   * The top-level pattern must not contain any commas, but a "one-of" group
+   * separates its elements with commas, and a one-of group may contain sub one-of
+   * groups.
    *
-   * For example:
-   * start{a,b,c}end -&gt; startaend, startbend, startcend
-   * start{a,{b,c},d} -&gt; startaend, startbend, startcend, startdend
-   * {a,b,c} -&gt; a, b, c
-   * start{a, b{x,y}} -&gt; starta, startbx, startby
+   * For example: start{a,b,c}end -&gt; startaend, startbend, startcend
+   * start{a,{b,c},d} -&gt; startaend, startbend, startcend, startdend {a,b,c}
+   * -&gt; a, b, c start{a, b{x,y}} -&gt; starta, startbx, startby
    *
    * @param globPattern a string in the format described above
-   * @return a list of all the strings that would satisfy globPattern, including duplicates
+   * @return a list of all the strings that would satisfy globPattern, including
+   * duplicates
    */
   public static List<String> expand(String globPattern) {
     return GlobExpanderImpl.expand(GlobParser.parse(globPattern));
   }
 
   /**
-   * Transforms a tree of {@link GlobNode} into a list of all the strings that satisfy
-   * this tree.
+   * Transforms a tree of {@link GlobNode} into a list of all the strings that
+   * satisfy this tree.
    */
   private final static class GlobExpanderImpl implements GlobNode.Visitor<List<String>> {
     private static final GlobExpanderImpl INSTANCE = new GlobExpanderImpl();
 
-    private GlobExpanderImpl() {}
+    private GlobExpanderImpl() {
+    }
 
     public static List<String> expand(GlobNode node) {
       return node.accept(INSTANCE);
@@ -100,9 +102,9 @@ public final class GlobExpander {
     }
 
     /**
-     * Computes the cross product of two lists by adding each string in list1 to each string in list2.
-     * If one of the lists is empty, a copy of the other list is returned.
-     * If both are empty, an empty list is returned.
+     * Computes the cross product of two lists by adding each string in list1 to
+     * each string in list2. If one of the lists is empty, a copy of the other list
+     * is returned. If both are empty, an empty list is returned.
      */
     public static List<String> crossOrTakeNonEmpty(List<String> list1, List<String> list2) {
       if (list1.isEmpty()) {

@@ -25,17 +25,17 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
 public class TBaseWriteSupport<T extends TBase<?, ?>> extends AbstractThriftWriteSupport<T> {
 
-  public static <U extends TBase<?,?>> void setThriftClass(Configuration configuration, Class<U> thriftClass) {
+  public static <U extends TBase<?, ?>> void setThriftClass(Configuration configuration, Class<U> thriftClass) {
     AbstractThriftWriteSupport.setGenericThriftClass(configuration, thriftClass);
   }
 
-  public static Class<? extends TBase<?,?>> getThriftClass(Configuration configuration) {
-    return (Class<? extends TBase<?,?>>)AbstractThriftWriteSupport.getGenericThriftClass(configuration);
+  public static Class<? extends TBase<?, ?>> getThriftClass(Configuration configuration) {
+    return (Class<? extends TBase<?, ?>>) AbstractThriftWriteSupport.getGenericThriftClass(configuration);
   }
 
   /**
-   * used from hadoop
-   * the configuration must contain a thriftClass setting
+   * used from hadoop the configuration must contain a thriftClass setting
+   * 
    * @see TBaseWriteSupport#setThriftClass(Configuration, Class)
    */
   public TBaseWriteSupport() {

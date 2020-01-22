@@ -29,11 +29,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Use java.nio.file.Files facilities as replacement. 
+ * Use java.nio.file.Files facilities as replacement.
  */
 @Deprecated
 public final class Files {
-  private Files() { }
+  private Files() {
+  }
 
   public static List<String> readAllLines(File file, Charset charset) throws IOException {
     BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), charset));
@@ -46,8 +47,7 @@ public final class Files {
         result.add(line);
       }
       return result;
-    }
-    finally {
+    } finally {
       reader.close();
     }
   }

@@ -47,7 +47,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
   public void commitJob(JobContext jobContext) throws IOException {
     super.commitJob(jobContext);
     Configuration configuration = ContextUtil.getConfiguration(jobContext);
-    writeMetaDataFile(configuration,outputPath);
+    writeMetaDataFile(configuration, outputPath);
   }
 
   // TODO: This method should propagate errors, and we should clean up
@@ -64,17 +64,19 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
       List<Footer> footers;
 
       switch (level) {
-        case ALL:
-          footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, false); // don't skip row groups
-          break;
-        case COMMON_ONLY:
-          footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, true); // skip row groups
-          break;
-        default:
-          throw new IllegalArgumentException("Unrecognized job summary level: " + level);
+      case ALL:
+        footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, false); // don't skip row
+                                                                                                  // groups
+        break;
+      case COMMON_ONLY:
+        footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, true); // skip row groups
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized job summary level: " + level);
       }
 
-      // If there are no footers, _metadata file cannot be written since there is no way to determine schema!
+      // If there are no footers, _metadata file cannot be written since there is no
+      // way to determine schema!
       // Onus of writing any summary files lies with the caller in this case.
       if (footers.isEmpty()) {
         return;

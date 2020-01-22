@@ -50,16 +50,15 @@ public class HadoopStreams {
    */
   public static SeekableInputStream wrap(FSDataInputStream stream) {
     Preconditions.checkNotNull(stream, "Cannot wrap a null input stream");
-    if (byteBufferReadableClass != null && h2SeekableConstructor != null &&
-        byteBufferReadableClass.isInstance(stream.getWrappedStream())) {
+    if (byteBufferReadableClass != null && h2SeekableConstructor != null
+        && byteBufferReadableClass.isInstance(stream.getWrappedStream())) {
       try {
         return h2SeekableConstructor.newInstance(stream);
       } catch (InstantiationException | IllegalAccessException e) {
         LOG.warn("Could not instantiate H2SeekableInputStream, falling back to byte array reads", e);
         return new H1SeekableInputStream(stream);
       } catch (InvocationTargetException e) {
-        throw new ParquetDecodingException(
-            "Could not instantiate H2SeekableInputStream", e.getTargetException());
+        throw new ParquetDecodingException("Could not instantiate H2SeekableInputStream", e.getTargetException());
       }
     } else {
       return new H1SeekableInputStream(stream);
@@ -77,8 +76,7 @@ public class HadoopStreams {
   @SuppressWarnings("unchecked")
   private static Class<SeekableInputStream> getH2SeekableClass() {
     try {
-      return (Class<SeekableInputStream>) Class.forName(
-          "org.apache.parquet.hadoop.util.H2SeekableInputStream");
+      return (Class<SeekableInputStream>) Class.forName("org.apache.parquet.hadoop.util.H2SeekableInputStream");
     } catch (ClassNotFoundException | NoClassDefFoundError e) {
       return null;
     }

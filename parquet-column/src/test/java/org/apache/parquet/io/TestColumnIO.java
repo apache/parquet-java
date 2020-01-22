@@ -73,83 +73,39 @@ import org.slf4j.LoggerFactory;
 public class TestColumnIO {
   private static final Logger LOG = LoggerFactory.getLogger(TestColumnIO.class);
 
-  private static final String oneOfEach =
-    "message Document {\n"
-  + "  required int64 a;\n"
-  + "  required int32 b;\n"
-  + "  required float c;\n"
-  + "  required double d;\n"
-  + "  required boolean e;\n"
-  + "  required binary f;\n"
-  + "  required int96 g;\n"
-  + "  required fixed_len_byte_array(3) h;\n"
-  + "}\n";
+  private static final String oneOfEach = "message Document {\n" + "  required int64 a;\n" + "  required int32 b;\n"
+      + "  required float c;\n" + "  required double d;\n" + "  required boolean e;\n" + "  required binary f;\n"
+      + "  required int96 g;\n" + "  required fixed_len_byte_array(3) h;\n" + "}\n";
 
-  private static final String schemaString =
-      "message Document {\n"
-    + "  required int64 DocId;\n"
-    + "  optional group Links {\n"
-    + "    repeated int64 Backward;\n"
-    + "    repeated int64 Forward;\n"
-    + "  }\n"
-    + "  repeated group Name {\n"
-    + "    repeated group Language {\n"
-    + "      required binary Code;\n"
-    + "      optional binary Country;\n"
-    + "    }\n"
-    + "    optional binary Url;\n"
-    + "  }\n"
-    + "}\n";
+  private static final String schemaString = "message Document {\n" + "  required int64 DocId;\n"
+      + "  optional group Links {\n" + "    repeated int64 Backward;\n" + "    repeated int64 Forward;\n" + "  }\n"
+      + "  repeated group Name {\n" + "    repeated group Language {\n" + "      required binary Code;\n"
+      + "      optional binary Country;\n" + "    }\n" + "    optional binary Url;\n" + "  }\n" + "}\n";
 
-  int[][] expectedFSA = new int[][] {
-      { 1 },      // 0: DocId
-      { 2, 1 },   // 1: Links.Backward
-      { 3, 2 },   // 2: Links.Forward
-      { 4, 4, 4 },// 3: Name.Language.Code
-      { 5, 5, 3 },// 4: Name.Language.Country
-      { 6, 3 }    // 5: Name.Url
+  int[][] expectedFSA = new int[][] { { 1 }, // 0: DocId
+      { 2, 1 }, // 1: Links.Backward
+      { 3, 2 }, // 2: Links.Forward
+      { 4, 4, 4 }, // 3: Name.Language.Code
+      { 5, 5, 3 }, // 4: Name.Language.Country
+      { 6, 3 } // 5: Name.Url
   };
 
-  int[][] expectedFSA2 = new int[][] {
-      { 1 },      // 0: DocId
+  int[][] expectedFSA2 = new int[][] { { 1 }, // 0: DocId
       { 2, 1, 1 },// 1: Name.Language.Country
   };
 
-  public static final String[] expectedEventsForR1 = {
-    "startMessage()",
-    "DocId.addLong(10)",
-    "Links.start()",
-    "Links.Forward.addLong(20)",
-    "Links.Forward.addLong(40)",
-    "Links.Forward.addLong(60)",
-    "Links.end()",
-    "Name.start()",
-    "Name.Language.start()",
-    "Name.Language.Code.addBinary(en-us)",
-    "Name.Language.Country.addBinary(us)",
-    "Name.Language.end()",
-    "Name.Language.start()",
-    "Name.Language.Code.addBinary(en)",
-    "Name.Language.end()",
-    "Name.Url.addBinary(http://A)",
-    "Name.end()",
-    "Name.start()",
-    "Name.Url.addBinary(http://B)",
-    "Name.end()",
-    "Name.start()",
-    "Name.Language.start()",
-    "Name.Language.Code.addBinary(en-gb)",
-    "Name.Language.Country.addBinary(gb)",
-    "Name.Language.end()",
-    "Name.end()",
-    "endMessage()"
-  };
+  public static final String[] expectedEventsForR1 = { "startMessage()", "DocId.addLong(10)", "Links.start()",
+      "Links.Forward.addLong(20)", "Links.Forward.addLong(40)", "Links.Forward.addLong(60)", "Links.end()",
+      "Name.start()", "Name.Language.start()", "Name.Language.Code.addBinary(en-us)",
+      "Name.Language.Country.addBinary(us)", "Name.Language.end()", "Name.Language.start()",
+      "Name.Language.Code.addBinary(en)", "Name.Language.end()", "Name.Url.addBinary(http://A)", "Name.end()",
+      "Name.start()", "Name.Url.addBinary(http://B)", "Name.end()", "Name.start()", "Name.Language.start()",
+      "Name.Language.Code.addBinary(en-gb)", "Name.Language.Country.addBinary(gb)", "Name.Language.end()", "Name.end()",
+      "endMessage()" };
 
   @Parameterized.Parameters
   public static Collection<Object[]> data() throws IOException {
-    Object[][] data = {
-        { true },
-        { false } };
+    Object[][] data = { { true }, { false } };
     return Arrays.asList(data);
   }
 
@@ -165,23 +121,19 @@ public class TestColumnIO {
   }
 
   @Test
-  public void testReadUsingRequestedSchemaWithExtraFields(){
-    MessageType orginalSchema = new MessageType("schema",
-            new PrimitiveType(REQUIRED, INT32, "a"),
-            new PrimitiveType(OPTIONAL, INT32, "b")
-    );
-    MessageType schemaWithExtraField = new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT32, "b"),
-            new PrimitiveType(OPTIONAL, INT32, "a"),
-            new PrimitiveType(OPTIONAL, INT32, "c")
-    );
+  public void testReadUsingRequestedSchemaWithExtraFields() {
+    MessageType orginalSchema = new MessageType("schema", new PrimitiveType(REQUIRED, INT32, "a"),
+        new PrimitiveType(OPTIONAL, INT32, "b"));
+    MessageType schemaWithExtraField = new MessageType("schema", new PrimitiveType(OPTIONAL, INT32, "b"),
+        new PrimitiveType(OPTIONAL, INT32, "a"), new PrimitiveType(OPTIONAL, INT32, "c"));
     MemPageStore memPageStoreForOriginalSchema = new MemPageStore(1);
     MemPageStore memPageStoreForSchemaWithExtraField = new MemPageStore(1);
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(orginalSchema);
     writeGroups(orginalSchema, memPageStoreForOriginalSchema, groupFactory.newGroup().append("a", 1).append("b", 2));
 
     SimpleGroupFactory groupFactory2 = new SimpleGroupFactory(schemaWithExtraField);
-    writeGroups(schemaWithExtraField, memPageStoreForSchemaWithExtraField, groupFactory2.newGroup().append("a", 1).append("b", 2).append("c",3));
+    writeGroups(schemaWithExtraField, memPageStoreForSchemaWithExtraField,
+        groupFactory2.newGroup().append("a", 1).append("b", 2).append("c", 3));
 
     {
       List<Group> groups = new ArrayList<>();
@@ -189,9 +141,7 @@ public class TestColumnIO {
       groups.addAll(readGroups(memPageStoreForSchemaWithExtraField, schemaWithExtraField, schemaWithExtraField, 1));
       // TODO: add once we have the support for empty projection
 //      groups1.addAll(readGroups(memPageStore3, schema3, schema2, 1));
-      Object[][] expected = {
-              { 2, 1, null},
-              { 2, 1, 3},
+      Object[][] expected = { { 2, 1, null }, { 2, 1, 3 },
 //          { null, null}
       };
       validateGroups(groups, expected);
@@ -199,50 +149,50 @@ public class TestColumnIO {
   }
 
   @Test
-  public void testReadUsingRequestedSchemaWithIncompatibleField(){
-    MessageType originalSchema = new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT32, "e"));
+  public void testReadUsingRequestedSchemaWithIncompatibleField() {
+    MessageType originalSchema = new MessageType("schema", new PrimitiveType(OPTIONAL, INT32, "e"));
     MemPageStore store = new MemPageStore(1);
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(originalSchema);
     writeGroups(originalSchema, store, groupFactory.newGroup().append("e", 4));
 
     try {
-      MessageType schemaWithIncompatibleField = new MessageType("schema",
-              new PrimitiveType(OPTIONAL, BINARY, "e")); // Incompatible schema: different type
+      MessageType schemaWithIncompatibleField = new MessageType("schema", new PrimitiveType(OPTIONAL, BINARY, "e")); // Incompatible
+                                                                                                                     // schema:
+                                                                                                                     // different
+                                                                                                                     // type
       readGroups(store, originalSchema, schemaWithIncompatibleField, 1);
       fail("should have thrown an incompatible schema exception");
     } catch (ParquetDecodingException e) {
-      assertEquals("The requested schema is not compatible with the file schema. incompatible types: optional binary e != optional int32 e", e.getMessage());
+      assertEquals(
+          "The requested schema is not compatible with the file schema. incompatible types: optional binary e != optional int32 e",
+          e.getMessage());
     }
   }
 
   @Test
-  public void testReadUsingSchemaWithRequiredFieldThatWasOptional(){
-    MessageType originalSchema = new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT32, "e"));
+  public void testReadUsingSchemaWithRequiredFieldThatWasOptional() {
+    MessageType originalSchema = new MessageType("schema", new PrimitiveType(OPTIONAL, INT32, "e"));
     MemPageStore store = new MemPageStore(1);
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(originalSchema);
     writeGroups(originalSchema, store, groupFactory.newGroup().append("e", 4));
 
     try {
       MessageType schemaWithRequiredFieldThatWasOptional = new MessageType("schema",
-              new PrimitiveType(REQUIRED, INT32, "e")); // Incompatible schema: required when it was optional
+          new PrimitiveType(REQUIRED, INT32, "e")); // Incompatible schema: required when it was optional
       readGroups(store, originalSchema, schemaWithRequiredFieldThatWasOptional, 1);
       fail("should have thrown an incompatible schema exception");
     } catch (ParquetDecodingException e) {
-      assertEquals("The requested schema is not compatible with the file schema. incompatible types: required int32 e != optional int32 e", e.getMessage());
+      assertEquals(
+          "The requested schema is not compatible with the file schema. incompatible types: required int32 e != optional int32 e",
+          e.getMessage());
     }
   }
 
   @Test
-  public void testReadUsingProjectedSchema(){
-    MessageType orginalSchema = new MessageType("schema",
-            new PrimitiveType(REQUIRED, INT32, "a"),
-            new PrimitiveType(REQUIRED, INT32, "b")
-    );
-    MessageType projectedSchema = new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT32, "b")
-    );
+  public void testReadUsingProjectedSchema() {
+    MessageType orginalSchema = new MessageType("schema", new PrimitiveType(REQUIRED, INT32, "a"),
+        new PrimitiveType(REQUIRED, INT32, "b"));
+    MessageType projectedSchema = new MessageType("schema", new PrimitiveType(OPTIONAL, INT32, "b"));
     MemPageStore store = new MemPageStore(1);
     SimpleGroupFactory groupFactory = new SimpleGroupFactory(orginalSchema);
     writeGroups(orginalSchema, store, groupFactory.newGroup().append("a", 1).append("b", 2));
@@ -250,9 +200,7 @@ public class TestColumnIO {
     {
       List<Group> groups = new ArrayList<>();
       groups.addAll(readGroups(store, orginalSchema, projectedSchema, 1));
-      Object[][] expected = {
-              {2},
-      };
+      Object[][] expected = { { 2 }, };
       validateGroups(groups, expected);
     }
   }
@@ -274,7 +222,8 @@ public class TestColumnIO {
     }
   }
 
-  private List<Group> readGroups(MemPageStore memPageStore, MessageType fileSchema, MessageType requestedSchema, int n) {
+  private List<Group> readGroups(MemPageStore memPageStore, MessageType fileSchema, MessageType requestedSchema,
+      int n) {
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema);
     RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, requestedSchema, memPageStore);
@@ -364,14 +313,8 @@ public class TestColumnIO {
   public void testOneOfEach() {
     MessageType oneOfEachSchema = MessageTypeParser.parseMessageType(oneOfEach);
     GroupFactory gf = new SimpleGroupFactory(oneOfEachSchema);
-    Group g1 = gf.newGroup()
-        .append("a", 1l)
-        .append("b", 2)
-        .append("c", 3.0f)
-        .append("d", 4.0d)
-        .append("e", true)
-        .append("f", Binary.fromString("6"))
-        .append("g", new NanoTime(1234, System.currentTimeMillis() * 1000))
+    Group g1 = gf.newGroup().append("a", 1l).append("b", 2).append("c", 3.0f).append("d", 4.0d).append("e", true)
+        .append("f", Binary.fromString("6")).append("g", new NanoTime(1234, System.currentTimeMillis() * 1000))
         .append("h", Binary.fromString("abc"));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
@@ -380,11 +323,7 @@ public class TestColumnIO {
   @Test
   public void testRequiredOfRequired() {
     MessageType reqreqSchema = MessageTypeParser.parseMessageType(
-          "message Document {\n"
-        + "  required group foo {\n"
-        + "    required int64 bar;\n"
-        + "  }\n"
-        + "}\n");
+        "message Document {\n" + "  required group foo {\n" + "    required int64 bar;\n" + "  }\n" + "}\n");
 
     GroupFactory gf = new SimpleGroupFactory(reqreqSchema);
     Group g1 = gf.newGroup();
@@ -400,7 +339,7 @@ public class TestColumnIO {
       for (int j = 0; j < i; j++) {
         current = new GroupType(Repetition.REQUIRED, "req" + j, current);
       }
-      MessageType groupSchema = new MessageType("schema"+i, current);
+      MessageType groupSchema = new MessageType("schema" + i, current);
       GroupFactory gf = new SimpleGroupFactory(groupSchema);
       List<Group> groups = new ArrayList<>();
       Group root = gf.newGroup();
@@ -417,7 +356,7 @@ public class TestColumnIO {
       for (int j = 0; j < i; j++) {
         current = new GroupType(Repetition.REQUIRED, "req" + j, current);
       }
-      MessageType groupSchema = new MessageType("schema"+(i+6), current);
+      MessageType groupSchema = new MessageType("schema" + (i + 6), current);
       GroupFactory gf = new SimpleGroupFactory(groupSchema);
       List<Group> groups = new ArrayList<>();
       Group rootDefined = gf.newGroup();
@@ -436,9 +375,9 @@ public class TestColumnIO {
     for (int i = 0; i < 6; i++) {
       Type current = new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "primitive");
       for (int j = 0; j < 6; j++) {
-        current = new GroupType(i==j ? Repetition.OPTIONAL : Repetition.REQUIRED, "req" + j, current);
+        current = new GroupType(i == j ? Repetition.OPTIONAL : Repetition.REQUIRED, "req" + j, current);
       }
-      MessageType groupSchema = new MessageType("schema"+(i+12), current);
+      MessageType groupSchema = new MessageType("schema" + (i + 12), current);
       GroupFactory gf = new SimpleGroupFactory(groupSchema);
       List<Group> groups = new ArrayList<>();
       Group rootDefined = gf.newGroup();
@@ -468,8 +407,7 @@ public class TestColumnIO {
 
     // Write groups.
     RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
-    GroupWriter groupWriter =
-        new GroupWriter(recordWriter, messageSchema);
+    GroupWriter groupWriter = new GroupWriter(recordWriter, messageSchema);
     for (Group group : groups) {
       groupWriter.write(group);
     }
@@ -477,19 +415,18 @@ public class TestColumnIO {
     columns.flush();
 
     // Read groups and verify.
-    RecordReaderImplementation<Group> recordReader =
-        getRecordReader(columnIO, messageSchema, memPageStore);
+    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, messageSchema, memPageStore);
     for (Group group : groups) {
       final Group got = recordReader.read();
-      assertEquals("deserialization does not display the same result",
-                   group.toString(), got.toString());
+      assertEquals("deserialization does not display the same result", group.toString(), got.toString());
     }
   }
 
-  private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
+  private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema,
+      PageReadStore pageReadStore) {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
 
-    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConverter);
+    return (RecordReaderImplementation<Group>) columnIO.getRecordReader(pageReadStore, recordConverter);
   }
 
   private void log(Object o) {
@@ -504,8 +441,10 @@ public class TestColumnIO {
       log(Arrays.toString(primitiveColumnIO.getFieldPath()));
       for (int r = 0; r < expectedFSA[i].length; r++) {
         int next = expectedFSA[i][r];
-        log(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath()))+": "+recordReader.getNextLevel(i, r));
-        assertEquals(Arrays.toString(primitiveColumnIO.getFieldPath())+": "+r+" -> ", next, recordReader.getNextReader(i, r));
+        log(" " + r + " -> " + (next == leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath())) + ": "
+            + recordReader.getNextLevel(i, r));
+        assertEquals(Arrays.toString(primitiveColumnIO.getFieldPath()) + ": " + r + " -> ", next,
+            recordReader.getNextReader(i, r));
       }
     }
     log("----");
@@ -521,18 +460,15 @@ public class TestColumnIO {
     recordWriter.flush();
     columns.flush();
 
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectedEventsForR1, schema));
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore,
+        new ExpectationValidatingConverter(expectedEventsForR1, schema));
     recordReader.read();
 
   }
 
   private ColumnWriteStoreV1 newColumnWriteStore(MemPageStore memPageStore) {
-    return new ColumnWriteStoreV1(memPageStore,
-        ParquetProperties.builder()
-            .withPageSize(800)
-            .withDictionaryPageSize(800)
-            .withDictionaryEncoding(useDictionary)
-            .build());
+    return new ColumnWriteStoreV1(memPageStore, ParquetProperties.builder().withPageSize(800)
+        .withDictionaryPageSize(800).withDictionaryEncoding(useDictionary).build());
   }
 
   @Test
@@ -571,31 +507,16 @@ public class TestColumnIO {
   @Test
   public void testWriteWithGroupWriter() {
 
-    final String[] expected = {
-        "[DocId]: 10, r:0, d:0",
-        "[Links, Forward]: 20, r:0, d:2",
-        "[Links, Forward]: 40, r:1, d:2",
-        "[Links, Forward]: 60, r:1, d:2",
-        "[Links, Backward]: null, r:0, d:1",
-        "[Name, Language, Code]: en-us, r:0, d:2",
-        "[Name, Language, Country]: us, r:0, d:3",
-        "[Name, Language, Code]: en, r:2, d:2",
-        "[Name, Language, Country]: null, r:2, d:2",
-        "[Name, Url]: http://A, r:0, d:2",
-        "[Name, Url]: http://B, r:1, d:2",
-        "[Name, Language, Code]: null, r:1, d:1",
-        "[Name, Language, Country]: null, r:1, d:1",
-        "[Name, Language, Code]: en-gb, r:1, d:2",
-        "[Name, Language, Country]: gb, r:1, d:3",
-        "[Name, Url]: null, r:1, d:1",
-        "[DocId]: 20, r:0, d:0",
-        "[Links, Backward]: 10, r:0, d:2",
-        "[Links, Backward]: 30, r:1, d:2",
-        "[Links, Forward]: 80, r:0, d:2",
-        "[Name, Url]: http://C, r:0, d:2",
-        "[Name, Language, Code]: null, r:0, d:1",
-        "[Name, Language, Country]: null, r:0, d:1"
-    };
+    final String[] expected = { "[DocId]: 10, r:0, d:0", "[Links, Forward]: 20, r:0, d:2",
+        "[Links, Forward]: 40, r:1, d:2", "[Links, Forward]: 60, r:1, d:2", "[Links, Backward]: null, r:0, d:1",
+        "[Name, Language, Code]: en-us, r:0, d:2", "[Name, Language, Country]: us, r:0, d:3",
+        "[Name, Language, Code]: en, r:2, d:2", "[Name, Language, Country]: null, r:2, d:2",
+        "[Name, Url]: http://A, r:0, d:2", "[Name, Url]: http://B, r:1, d:2", "[Name, Language, Code]: null, r:1, d:1",
+        "[Name, Language, Country]: null, r:1, d:1", "[Name, Language, Code]: en-gb, r:1, d:2",
+        "[Name, Language, Country]: gb, r:1, d:3", "[Name, Url]: null, r:1, d:1", "[DocId]: 20, r:0, d:0",
+        "[Links, Backward]: 10, r:0, d:2", "[Links, Backward]: 30, r:1, d:2", "[Links, Forward]: 80, r:0, d:2",
+        "[Name, Url]: http://C, r:0, d:2", "[Name, Language, Code]: null, r:0, d:1",
+        "[Name, Language, Country]: null, r:0, d:1" };
 
     ValidatingColumnWriteStore columns = new ValidatingColumnWriteStore(expected);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
@@ -609,6 +530,7 @@ public class TestColumnIO {
     columns.close();
   }
 }
+
 final class ValidatingColumnWriteStore implements ColumnWriteStore {
   private final String[] expected;
   int counter = 0;
@@ -625,11 +547,11 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
   @Override
   public ColumnWriter getColumnWriter(final ColumnDescriptor path) {
     return new ColumnWriter() {
-      private void validate(Object value, int repetitionLevel,
-          int definitionLevel) {
-        String actual = Arrays.toString(path.getPath())+": "+value+", r:"+repetitionLevel+", d:"+definitionLevel;
+      private void validate(Object value, int repetitionLevel, int definitionLevel) {
+        String actual = Arrays.toString(path.getPath()) + ": " + value + ", r:" + repetitionLevel + ", d:"
+            + definitionLevel;
         assertEquals("event #" + counter, expected[counter], actual);
-        ++ counter;
+        ++counter;
       }
 
       @Override

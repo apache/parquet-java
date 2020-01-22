@@ -30,7 +30,6 @@ import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArra
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesWriter;
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
-import org.apache.parquet.io.api.Binary;
 
 import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
 import com.carrotsearch.junitbenchmarks.BenchmarkRule;
@@ -61,7 +60,8 @@ public class BenchmarkDeltaLengthByteArray {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkRandomStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
-    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
+    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64 * 1024, 64 * 1024,
+        new DirectByteBufferAllocator());
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
 
     Utils.writeData(writer, values);

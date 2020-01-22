@@ -21,8 +21,8 @@ package org.apache.parquet.hadoop.codec;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 /**
- * This exception will be thrown when the codec is not supported by parquet, meaning there is no
- * matching codec defined in {@link CompressionCodecName}
+ * This exception will be thrown when the codec is not supported by parquet,
+ * meaning there is no matching codec defined in {@link CompressionCodecName}
  */
 public class CompressionCodecNotSupportedException extends RuntimeException {
   private final Class codecClass;

@@ -21,9 +21,9 @@ package org.apache.parquet.hadoop.metadata;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * returns canonical representation of objects (similar to String.intern()) to save memory
- * if a.equals(b) then canonicalize(a) == canonicalize(b)
- * this class is thread safe
+ * returns canonical representation of objects (similar to String.intern()) to
+ * save memory if a.equals(b) then canonicalize(a) == canonicalize(b) this class
+ * is thread safe
  *
  * @param <T> the type of values canonicalized by subclasses
  */
@@ -40,7 +40,8 @@ public class Canonicalizer<T> {
     if (canonical == null) {
       value = toCanonical(value);
       T existing = canonicals.putIfAbsent(value, value);
-      // putIfAbsent is atomic, making sure we always return the same canonical representation of the value
+      // putIfAbsent is atomic, making sure we always return the same canonical
+      // representation of the value
       if (existing == null) {
         canonical = value;
       } else {
@@ -58,4 +59,3 @@ public class Canonicalizer<T> {
     return value;
   }
 }
-

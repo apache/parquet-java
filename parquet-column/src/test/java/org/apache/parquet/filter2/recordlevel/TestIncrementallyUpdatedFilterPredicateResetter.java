@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.filter2.recordlevel;
 
-
 import org.junit.Test;
 
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.And;

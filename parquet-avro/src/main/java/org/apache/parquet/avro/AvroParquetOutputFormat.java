@@ -19,9 +19,7 @@
 package org.apache.parquet.avro;
 
 import org.apache.avro.Schema;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.parquet.avro.AvroWriteSupport;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.util.ContextUtil;
 
@@ -31,13 +29,15 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 public class AvroParquetOutputFormat<T> extends ParquetOutputFormat<T> {
 
   /**
-   * Set the Avro schema to use for writing. The schema is translated into a Parquet
-   * schema so that the records can be written in Parquet format. It is also
-   * stored in the Parquet metadata so that records can be reconstructed as Avro
-   * objects at read time without specifying a read schema.
+   * Set the Avro schema to use for writing. The schema is translated into a
+   * Parquet schema so that the records can be written in Parquet format. It is
+   * also stored in the Parquet metadata so that records can be reconstructed as
+   * Avro objects at read time without specifying a read schema.
+   * 
    * @param job a job
    * @param schema a schema for the data that will be written
-   * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job,
+   * org.apache.avro.Schema)
    */
   public static void setSchema(Job job, Schema schema) {
     AvroWriteSupport.setSchema(ContextUtil.getConfiguration(job), schema);
@@ -48,16 +48,14 @@ public class AvroParquetOutputFormat<T> extends ParquetOutputFormat<T> {
   }
 
   /**
-   * Sets the {@link AvroDataSupplier} class that will be used. The data
-   * supplier provides instances of {@link org.apache.avro.generic.GenericData}
-   * that are used to deconstruct records.
+   * Sets the {@link AvroDataSupplier} class that will be used. The data supplier
+   * provides instances of {@link org.apache.avro.generic.GenericData} that are
+   * used to deconstruct records.
    *
    * @param job a {@link Job} to configure
    * @param supplierClass a supplier class
    */
-  public static void setAvroDataSupplier(
-      Job job, Class<? extends AvroDataSupplier> supplierClass) {
-    AvroWriteSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job),
-        supplierClass);
+  public static void setAvroDataSupplier(Job job, Class<? extends AvroDataSupplier> supplierClass) {
+    AvroWriteSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job), supplierClass);
   }
 }

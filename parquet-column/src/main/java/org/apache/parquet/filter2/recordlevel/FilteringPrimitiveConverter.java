@@ -29,7 +29,8 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  * see {@link FilteringRecordMaterializer}
  *
  * This pass-through proxy for a delegate {@link PrimitiveConverter} also
- * updates the {@link ValueInspector}s of a {@link IncrementallyUpdatedFilterPredicate}
+ * updates the {@link ValueInspector}s of a
+ * {@link IncrementallyUpdatedFilterPredicate}
  */
 public class FilteringPrimitiveConverter extends PrimitiveConverter {
   private final PrimitiveConverter delegate;
@@ -43,7 +44,8 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
   // TODO: this works, but
   // TODO: essentially turns off the benefits of dictionary support
   // TODO: even if the underlying delegate supports it.
-  // TODO: we should support it here. (https://issues.apache.org/jira/browse/PARQUET-36)
+  // TODO: we should support it here.
+  // (https://issues.apache.org/jira/browse/PARQUET-36)
   @Override
   public boolean hasDictionarySupport() {
     return false;

@@ -27,7 +27,8 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
 import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
 
 /**
- * Handles ValuesWriter creation statically based on the types of the columns and the writer version.
+ * Handles ValuesWriter creation statically based on the types of the columns
+ * and the writer version.
  */
 public class DefaultValuesWriterFactory implements ValuesWriterFactory {
 
@@ -52,34 +53,44 @@ public class DefaultValuesWriterFactory implements ValuesWriterFactory {
     return delegateFactory.newValuesWriter(descriptor);
   }
 
-  static DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path, ParquetProperties properties, Encoding dictPageEncoding, Encoding dataPageEncoding) {
+  static DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path, ParquetProperties properties,
+      Encoding dictPageEncoding, Encoding dataPageEncoding) {
     switch (path.getType()) {
-      case BOOLEAN:
-        throw new IllegalArgumentException("no dictionary encoding for BOOLEAN");
-      case BINARY:
-        return new DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
-      case INT32:
-        return new DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
-      case INT64:
-        return new DictionaryValuesWriter.PlainLongDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
-      case INT96:
-        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), 12, dataPageEncoding, dictPageEncoding, properties.getAllocator());
-      case DOUBLE:
-        return new DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
-      case FLOAT:
-        return new DictionaryValuesWriter.PlainFloatDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
-      case FIXED_LEN_BYTE_ARRAY:
-        return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(), path.getTypeLength(), dataPageEncoding, dictPageEncoding, properties.getAllocator());
-      default:
-        throw new IllegalArgumentException("Unknown type " + path.getType());
+    case BOOLEAN:
+      throw new IllegalArgumentException("no dictionary encoding for BOOLEAN");
+    case BINARY:
+      return new DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(),
+          dataPageEncoding, dictPageEncoding, properties.getAllocator());
+    case INT32:
+      return new DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(),
+          dataPageEncoding, dictPageEncoding, properties.getAllocator());
+    case INT64:
+      return new DictionaryValuesWriter.PlainLongDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(),
+          dataPageEncoding, dictPageEncoding, properties.getAllocator());
+    case INT96:
+      return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(
+          properties.getDictionaryPageSizeThreshold(), 12, dataPageEncoding, dictPageEncoding,
+          properties.getAllocator());
+    case DOUBLE:
+      return new DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(),
+          dataPageEncoding, dictPageEncoding, properties.getAllocator());
+    case FLOAT:
+      return new DictionaryValuesWriter.PlainFloatDictionaryValuesWriter(properties.getDictionaryPageSizeThreshold(),
+          dataPageEncoding, dictPageEncoding, properties.getAllocator());
+    case FIXED_LEN_BYTE_ARRAY:
+      return new DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter(
+          properties.getDictionaryPageSizeThreshold(), path.getTypeLength(), dataPageEncoding, dictPageEncoding,
+          properties.getAllocator());
+    default:
+      throw new IllegalArgumentException("Unknown type " + path.getType());
     }
   }
 
-  static ValuesWriter dictWriterWithFallBack(ColumnDescriptor path, ParquetProperties parquetProperties, Encoding dictPageEncoding, Encoding dataPageEncoding, ValuesWriter writerToFallBackTo) {
+  static ValuesWriter dictWriterWithFallBack(ColumnDescriptor path, ParquetProperties parquetProperties,
+      Encoding dictPageEncoding, Encoding dataPageEncoding, ValuesWriter writerToFallBackTo) {
     if (parquetProperties.isEnableDictionary()) {
-      return FallbackValuesWriter.of(
-        dictionaryWriter(path, parquetProperties, dictPageEncoding, dataPageEncoding),
-        writerToFallBackTo);
+      return FallbackValuesWriter.of(dictionaryWriter(path, parquetProperties, dictPageEncoding, dataPageEncoding),
+          writerToFallBackTo);
     } else {
       return writerToFallBackTo;
     }

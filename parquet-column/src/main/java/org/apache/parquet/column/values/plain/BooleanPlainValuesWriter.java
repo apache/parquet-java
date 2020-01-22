@@ -18,14 +18,12 @@
  */
 package org.apache.parquet.column.values.plain;
 
-
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
-
 
 /**
  * An implementation of the PLAIN encoding

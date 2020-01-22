@@ -44,7 +44,7 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
   int count = 0;
 
   public void validate(String got) {
-    assertEquals("event #"+count, expectations.pop(), got);
+    assertEquals("event #" + count, expectations.pop(), got);
     ++count;
   }
 
@@ -54,7 +54,7 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
 
   public ExpectationValidatingConverter(Deque<String> expectations, MessageType schema) {
     this.expectations = expectations;
-    this.root = (GroupConverter)schema.convertWith(new TypeConverter<Converter>() {
+    this.root = (GroupConverter) schema.convertWith(new TypeConverter<Converter>() {
 
       @Override
       public Converter convertPrimitiveType(final List<GroupType> path, final PrimitiveType primitiveType) {
@@ -66,38 +66,39 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
 
           @Override
           public void addBinary(Binary value) {
-            validate("addBinary("+value.toStringUsingUTF8()+")");
+            validate("addBinary(" + value.toStringUsingUTF8() + ")");
           }
 
           @Override
           public void addBoolean(boolean value) {
-            validate("addBoolean("+value+")");
+            validate("addBoolean(" + value + ")");
           }
 
           @Override
           public void addDouble(double value) {
-            validate("addDouble("+value+")");
+            validate("addDouble(" + value + ")");
           }
 
           @Override
           public void addFloat(float value) {
-            validate("addFloat("+value+")");
+            validate("addFloat(" + value + ")");
           }
 
           @Override
           public void addInt(int value) {
-            validate("addInt("+value+")");
+            validate("addInt(" + value + ")");
           }
 
           @Override
           public void addLong(long value) {
-            validate("addLong("+value+")");
+            validate("addLong(" + value + ")");
           }
         };
       }
 
       @Override
-      public Converter convertGroupType(final List<GroupType> path, final GroupType groupType, final List<Converter> children) {
+      public Converter convertGroupType(final List<GroupType> path, final GroupType groupType,
+          final List<Converter> children) {
         return new GroupConverter() {
 
           private void validate(String message) {

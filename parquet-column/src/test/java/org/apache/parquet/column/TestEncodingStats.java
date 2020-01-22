@@ -43,24 +43,16 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.PLAIN);
     EncodingStats stats2 = builder.build();
 
-    assertEquals("Dictionary stats should be correct", 0,
-        stats2.dictStats.size());
-    assertEquals("Data stats size should be correct", 1,
-        stats2.dataStats.size());
-    assertEquals("Data stats content should be correct", 4,
-        stats2.dataStats.get(Encoding.PLAIN).intValue());
+    assertEquals("Dictionary stats should be correct", 0, stats2.dictStats.size());
+    assertEquals("Data stats size should be correct", 1, stats2.dataStats.size());
+    assertEquals("Data stats content should be correct", 4, stats2.dataStats.get(Encoding.PLAIN).intValue());
 
-    assertEquals("Dictionary stats size should be correct after reuse",
-        1, stats1.dictStats.size());
-    assertEquals("Dictionary stats content should be correct", 1,
-        stats1.dictStats.get(Encoding.PLAIN).intValue());
+    assertEquals("Dictionary stats size should be correct after reuse", 1, stats1.dictStats.size());
+    assertEquals("Dictionary stats content should be correct", 1, stats1.dictStats.get(Encoding.PLAIN).intValue());
 
-    assertEquals("Data stats size should be correct after reuse", 2,
-        stats1.dataStats.size());
-    assertEquals("Data stats content should be correct", 3,
-        stats1.dataStats.get(Encoding.RLE_DICTIONARY).intValue());
-    assertEquals("Data stats content should be correct", 2,
-        stats1.dataStats.get(Encoding.DELTA_BYTE_ARRAY).intValue());
+    assertEquals("Data stats size should be correct after reuse", 2, stats1.dataStats.size());
+    assertEquals("Data stats content should be correct", 3, stats1.dataStats.get(Encoding.RLE_DICTIONARY).intValue());
+    assertEquals("Data stats content should be correct", 2, stats1.dataStats.get(Encoding.DELTA_BYTE_ARRAY).intValue());
   }
 
   @Test

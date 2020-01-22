@@ -33,13 +33,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Base implementation for {@link ColumnWriter} to be extended to specialize for V1 and V2 pages.
+ * Base implementation for {@link ColumnWriter} to be extended to specialize for
+ * V1 and V2 pages.
  */
 abstract class ColumnWriterBase implements ColumnWriter {
   private static final Logger LOG = LoggerFactory.getLogger(ColumnWriterBase.class);
 
-  // By default: Debugging disabled this way (using the "if (DEBUG)" IN the methods) to allow
-  // the java compiler (not the JIT) to remove the unused statements during build time.
+  // By default: Debugging disabled this way (using the "if (DEBUG)" IN the
+  // methods) to allow
+  // the java compiler (not the JIT) to remove the unused statements during build
+  // time.
   private static final boolean DEBUG = false;
 
   final ColumnDescriptor path;
@@ -53,10 +56,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   private long rowsWrittenSoFar = 0;
   private int pageRowCount;
 
-  ColumnWriterBase(
-      ColumnDescriptor path,
-      PageWriter pageWriter,
-      ParquetProperties props) {
+  ColumnWriterBase(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
     this.path = path;
     this.pageWriter = pageWriter;
     resetStatistics();
@@ -116,10 +116,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   @Override
   public long getBufferedSizeInMemory() {
-    return repetitionLevelColumn.getBufferedSize()
-        + definitionLevelColumn.getBufferedSize()
-        + dataColumn.getBufferedSize()
-        + pageWriter.getMemSize();
+    return repetitionLevelColumn.getBufferedSize() + definitionLevelColumn.getBufferedSize()
+        + dataColumn.getBufferedSize() + pageWriter.getMemSize();
   }
 
   /**
@@ -231,8 +229,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
   }
 
   /**
-   * Finalizes the Column chunk. Possibly adding extra pages if needed (dictionary, ...)
-   * Is called right after writePage
+   * Finalizes the Column chunk. Possibly adding extra pages if needed
+   * (dictionary, ...) Is called right after writePage
    */
   void finalizeColumnChunk() {
     final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
@@ -254,36 +252,31 @@ abstract class ColumnWriterBase implements ColumnWriter {
    * @return the number of bytes of memory used to buffer the current data
    */
   long getCurrentPageBufferedSize() {
-    return repetitionLevelColumn.getBufferedSize()
-        + definitionLevelColumn.getBufferedSize()
+    return repetitionLevelColumn.getBufferedSize() + definitionLevelColumn.getBufferedSize()
         + dataColumn.getBufferedSize();
   }
 
   /**
    * Used to decide when to write a page or row group
    *
-   * @return the number of bytes of memory used to buffer the current data and the previously written pages
+   * @return the number of bytes of memory used to buffer the current data and the
+   * previously written pages
    */
   long getTotalBufferedSize() {
-    return repetitionLevelColumn.getBufferedSize()
-        + definitionLevelColumn.getBufferedSize()
-        + dataColumn.getBufferedSize()
-        + pageWriter.getMemSize();
+    return repetitionLevelColumn.getBufferedSize() + definitionLevelColumn.getBufferedSize()
+        + dataColumn.getBufferedSize() + pageWriter.getMemSize();
   }
 
   /**
    * @return actual memory used
    */
   long allocatedSize() {
-    return repetitionLevelColumn.getAllocatedSize()
-        + definitionLevelColumn.getAllocatedSize()
-        + dataColumn.getAllocatedSize()
-        + pageWriter.allocatedSize();
+    return repetitionLevelColumn.getAllocatedSize() + definitionLevelColumn.getAllocatedSize()
+        + dataColumn.getAllocatedSize() + pageWriter.allocatedSize();
   }
 
   /**
-   * @param indent
-   *          a prefix to format lines
+   * @param indent a prefix to format lines
    * @return a formatted string showing how memory is used
    */
   String memUsageString(String indent) {

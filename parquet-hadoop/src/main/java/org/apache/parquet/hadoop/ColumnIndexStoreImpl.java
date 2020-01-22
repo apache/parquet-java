@@ -118,8 +118,8 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
   private final Map<ColumnPath, IndexStore> store;
 
   /*
-   * Creates a column index store which lazily reads column/offset indexes for the columns in paths. (paths are the set
-   * of columns used for the projection)
+   * Creates a column index store which lazily reads column/offset indexes for the
+   * columns in paths. (paths are the set of columns used for the projection)
    */
   static ColumnIndexStore create(ParquetFileReader reader, BlockMetaData block, Set<ColumnPath> paths) {
     try {
@@ -130,7 +130,8 @@ class ColumnIndexStoreImpl implements ColumnIndexStore {
   }
 
   private ColumnIndexStoreImpl(ParquetFileReader reader, BlockMetaData block, Set<ColumnPath> paths) {
-    // TODO[GS]: Offset index for every paths will be required; pre-read the consecutive ones at once?
+    // TODO[GS]: Offset index for every paths will be required; pre-read the
+    // consecutive ones at once?
     // TODO[GS]: Pre-read column index based on filter?
     this.reader = reader;
     Map<ColumnPath, IndexStore> store = new HashMap<>();

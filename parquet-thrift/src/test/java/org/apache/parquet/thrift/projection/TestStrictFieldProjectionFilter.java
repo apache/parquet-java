@@ -60,25 +60,23 @@ public class TestStrictFieldProjectionFilter {
     }
   }
 
-
   @Test
   public void testProjection() {
     StrictFieldProjectionFilter filter = StrictFieldProjectionFilter.fromSemicolonDelimitedString(
         "home.phone_number;home.address;work.address.zip;base_info;*.average;a.b.c.pre{x,y,z{a,b,c}}post");
 
-    assertMatches(filter, "home.phone_number", "home.address", "work.address.zip", "base_info",
-        "foo.average", "bar.x.y.z.average", "base_info.nested.field", "a.b.c.prexpost", "a.b.c.prezapost");
+    assertMatches(filter, "home.phone_number", "home.address", "work.address.zip", "base_info", "foo.average",
+        "bar.x.y.z.average", "base_info.nested.field", "a.b.c.prexpost", "a.b.c.prezapost");
 
-    assertDoesNotMatch(filter, "home2.phone_number", "home2.address", "work.address", "base_info2",
-        "foo_average", "bar.x.y.z_average", "base_info_nested.field", "hi", "average", "a.b.c.pre{x,y,z{a,b,c}}post",
-        "");
+    assertDoesNotMatch(filter, "home2.phone_number", "home2.address", "work.address", "base_info2", "foo_average",
+        "bar.x.y.z_average", "base_info_nested.field", "hi", "average", "a.b.c.pre{x,y,z{a,b,c}}post", "");
 
   }
 
   @Test
   public void testIsStrict() {
-    StrictFieldProjectionFilter filter = StrictFieldProjectionFilter.fromSemicolonDelimitedString(
-        "home.phone_number;a.b.c.pre{x,y,z{a,b,c}}post;bar.*.average");
+    StrictFieldProjectionFilter filter = StrictFieldProjectionFilter
+        .fromSemicolonDelimitedString("home.phone_number;a.b.c.pre{x,y,z{a,b,c}}post;bar.*.average");
 
     assertMatches(filter, "home.phone_number", "bar.foo.average", "a.b.c.prexpost", "a.b.c.prezcpost");
     assertDoesNotMatch(filter, "hello");
@@ -86,10 +84,10 @@ public class TestStrictFieldProjectionFilter {
       filter.assertNoUnmatchedPatterns();
       fail("this should throw");
     } catch (ThriftProjectionException e) {
-      String expectedMessage = "The following projection patterns did not match any columns in this schema:\n" +
-          "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.preypost')\n" +
-          "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezapost')\n" +
-          "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezbpost')\n";
+      String expectedMessage = "The following projection patterns did not match any columns in this schema:\n"
+          + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.preypost')\n"
+          + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezapost')\n"
+          + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezbpost')\n";
       assertEquals(expectedMessage, e.getMessage());
     }
   }
@@ -97,8 +95,7 @@ public class TestStrictFieldProjectionFilter {
   @Test
   public void testWarnWhenMultiplePatternsMatch() {
     StrictFieldProjectionFilter filter = createMockBuilder(StrictFieldProjectionFilter.class)
-        .withConstructor(Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average"))
-        .addMockedMethod("warn")
+        .withConstructor(Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average")).addMockedMethod("warn")
         .createMock();
 
     // set expectations

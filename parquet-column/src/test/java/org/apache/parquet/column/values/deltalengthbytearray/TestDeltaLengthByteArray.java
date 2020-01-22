@@ -31,21 +31,21 @@ import org.apache.parquet.io.api.Binary;
 
 public class TestDeltaLengthByteArray {
 
-  String[] values = { "parquet", "hadoop", "mapreduce"};
+  String[] values = { "parquet", "hadoop", "mapreduce" };
 
   private DeltaLengthByteArrayValuesWriter getDeltaLengthByteArrayValuesWriter() {
     return new DeltaLengthByteArrayValuesWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
   }
 
   @Test
-  public void testSerialization () throws IOException {
+  public void testSerialization() throws IOException {
     DeltaLengthByteArrayValuesWriter writer = getDeltaLengthByteArrayValuesWriter();
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
-    
+
     Utils.writeData(writer, values);
     Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), values.length);
 
-    for(int i =0; i< bin.length ; i++) {
+    for (int i = 0; i < bin.length; i++) {
       Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
     }
   }
@@ -59,7 +59,7 @@ public class TestDeltaLengthByteArray {
     Utils.writeData(writer, values);
     Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), values.length);
 
-    for(int i =0; i< bin.length ; i++) {
+    for (int i = 0; i < bin.length; i++) {
       Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
     }
   }
@@ -96,7 +96,7 @@ public class TestDeltaLengthByteArray {
     Utils.writeData(writer, values);
     int[] bin = Utils.readInts(reader, writer.getBytes().toInputStream(), values.length);
 
-    for(int i =0; i< bin.length ; i++) {
+    for (int i = 0; i < bin.length; i++) {
       Assert.assertEquals(values[i].length(), bin[i]);
     }
   }

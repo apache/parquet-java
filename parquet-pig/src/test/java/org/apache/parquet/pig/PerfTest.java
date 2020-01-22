@@ -35,7 +35,8 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 
 /**
- * some hardcoded latencies in hadoop prevent any information to come out of this test
+ * some hardcoded latencies in hadoop prevent any information to come out of
+ * this test
  */
 public class PerfTest {
   private static final int COLUMN_COUNT = 50;
@@ -64,7 +65,7 @@ public class PerfTest {
       pigServer.setBatchOn();
       pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
       pigServer.deleteFile(out);
-      pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
+      pigServer.registerQuery("Store A into '" + out + "' using " + ParquetStorer.class.getName() + "();");
 
       if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
         throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
@@ -88,17 +89,18 @@ public class PerfTest {
       schemaString.append(", a" + i + ": chararray");
     }
     PigServer pigServer = new PigServer(ExecType.LOCAL);
-    pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"('"+schemaString+"');");
+    pigServer
+        .registerQuery("B = LOAD '" + out + "' USING " + ParquetLoader.class.getName() + "('" + schemaString + "');");
     pigServer.registerQuery("C = FOREACH (GROUP B ALL) GENERATE COUNT(B);");
     Iterator<Tuple> it = pigServer.openIterator("C");
     if (!it.hasNext()) {
       throw new RuntimeException("Job failed: no tuple to read");
     }
-    Long count = (Long)it.next().get(0);
+    Long count = (Long) it.next().get(0);
 
     assertEquals(ROW_COUNT, count.longValue());
     long t1 = System.currentTimeMillis();
-    results.append((t1-t0)+" ms to read "+colsToLoad+" columns\n");
+    results.append((t1 - t0) + " ms to read " + colsToLoad + " columns\n");
   }
 
 }

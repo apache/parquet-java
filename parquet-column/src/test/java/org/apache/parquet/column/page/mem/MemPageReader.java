@@ -29,7 +29,6 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class MemPageReader implements PageReader {
   private static final Logger LOG = LoggerFactory.getLogger(MemPageReader.class);
 

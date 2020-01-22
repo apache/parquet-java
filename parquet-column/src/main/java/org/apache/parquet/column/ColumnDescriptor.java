@@ -40,11 +40,11 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
    * @param type the type of the field
    * @param maxRep the maximum repetition level for that path
    * @param maxDef the maximum definition level for that path
-   * @deprecated will be removed in 2.0.0; Use {@link #ColumnDescriptor(String[], PrimitiveType, int, int)}
+   * @deprecated will be removed in 2.0.0; Use
+   * {@link #ColumnDescriptor(String[], PrimitiveType, int, int)}
    */
   @Deprecated
-  public ColumnDescriptor(String[] path, PrimitiveTypeName type, int maxRep,
-                          int maxDef) {
+  public ColumnDescriptor(String[] path, PrimitiveTypeName type, int maxRep, int maxDef) {
     this(path, type, 0, maxRep, maxDef);
   }
 
@@ -52,15 +52,16 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
    *
    * @param path the path to the leaf field in the schema
    * @param type the type of the field
-   * @param typeLength the length of the type, if type is a fixed-length byte array
+   * @param typeLength the length of the type, if type is a fixed-length byte
+   * array
    * @param maxRep the maximum repetition level for that path
    * @param maxDef the maximum definition level for that path
-   * @deprecated will be removed in 2.0.0; Use {@link #ColumnDescriptor(String[], PrimitiveType, int, int)}
+   * @deprecated will be removed in 2.0.0; Use
+   * {@link #ColumnDescriptor(String[], PrimitiveType, int, int)}
    */
   @Deprecated
-  public ColumnDescriptor(String[] path, PrimitiveTypeName type,
-                          int typeLength, int maxRep, int maxDef) {
-    this(path, new PrimitiveType(Type.Repetition.OPTIONAL, type, typeLength,""), maxRep, maxDef);
+  public ColumnDescriptor(String[] path, PrimitiveTypeName type, int typeLength, int maxRep, int maxDef) {
+    this(path, new PrimitiveType(Type.Repetition.OPTIONAL, type, typeLength, ""), maxRep, maxDef);
   }
 
   /**
@@ -91,7 +92,7 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
   }
 
   /**
-   * @return  the maximum definition level for that path
+   * @return the maximum definition level for that path
    */
   public int getMaxDefinitionLevel() {
     return maxDef;

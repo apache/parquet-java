@@ -19,7 +19,8 @@
 package org.apache.parquet.internal.column.columnindex;
 
 /**
- * Offset index containing the offset and size of the page and the index of the first row in the page.
+ * Offset index containing the offset and size of the page and the index of the
+ * first row in the page.
  *
  * @see org.apache.parquet.format.OffsetIndex
  */
@@ -30,31 +31,26 @@ public interface OffsetIndex {
   public int getPageCount();
 
   /**
-   * @param pageIndex
-   *          the index of the page
+   * @param pageIndex the index of the page
    * @return the offset of the page in the file
    */
   public long getOffset(int pageIndex);
 
   /**
-   * @param pageIndex
-   *          the index of the page
+   * @param pageIndex the index of the page
    * @return the compressed size of the page (including page header)
    */
   public int getCompressedPageSize(int pageIndex);
 
   /**
-   * @param pageIndex
-   *          the index of the page
+   * @param pageIndex the index of the page
    * @return the index of the first row in the page
    */
   public long getFirstRowIndex(int pageIndex);
 
   /**
-   * @param pageIndex
-   *          the index of the page
-   * @param rowGroupRowCount
-   *          the total number of rows in the row-group
+   * @param pageIndex the index of the page
+   * @param rowGroupRowCount the total number of rows in the row-group
    * @return the calculated index of the last row of the given page
    */
   public default long getLastRowIndex(int pageIndex, long rowGroupRowCount) {

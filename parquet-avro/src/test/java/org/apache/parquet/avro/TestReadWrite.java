@@ -68,8 +68,7 @@ public class TestReadWrite {
 
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
-    Object[][] data = new Object[][] {
-        { false },  // use the new converters
+    Object[][] data = new Object[][] { { false }, // use the new converters
         { true } }; // use the old converters
     return Arrays.asList(data);
   }
@@ -86,21 +85,16 @@ public class TestReadWrite {
 
   @Test
   public void testEmptyArray() throws Exception {
-    Schema schema = new Schema.Parser().parse(
-        Resources.getResource("array.avsc").openStream());
+    Schema schema = new Schema.Parser().parse(Resources.getResource("array.avsc").openStream());
 
     // Write a record with an empty array.
     List<Integer> emptyArray = new ArrayList<>();
 
     Path file = new Path(createTempFile().getPath());
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
-      GenericData.Record record = new GenericRecordBuilder(schema)
-        .set("myarray", emptyArray).build();
+    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(file).withSchema(schema)
+        .withConf(testConf).build()) {
+      GenericData.Record record = new GenericRecordBuilder(schema).set("myarray", emptyArray).build();
       writer.write(record);
     }
 
@@ -114,25 +108,20 @@ public class TestReadWrite {
 
   @Test
   public void testEmptyMap() throws Exception {
-    Schema schema = new Schema.Parser().parse(
-        Resources.getResource("map.avsc").openStream());
+    Schema schema = new Schema.Parser().parse(Resources.getResource("map.avsc").openStream());
 
     Path file = new Path(createTempFile().getPath());
     ImmutableMap<String, Integer> emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
+    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(file).withSchema(schema)
+        .withConf(testConf).build()) {
 
       // Write a record with an empty map.
-      GenericData.Record record = new GenericRecordBuilder(schema)
-        .set("mymap", emptyMap).build();
+      GenericData.Record record = new GenericRecordBuilder(schema).set("mymap", emptyMap).build();
       writer.write(record);
     }
 
-    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file)) {
+    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -142,8 +131,7 @@ public class TestReadWrite {
 
   @Test
   public void testMapWithNulls() throws Exception {
-    Schema schema = new Schema.Parser().parse(
-        Resources.getResource("map_with_nulls.avsc").openStream());
+    Schema schema = new Schema.Parser().parse(Resources.getResource("map_with_nulls.avsc").openStream());
 
     Path file = new Path(createTempFile().getPath());
 
@@ -153,18 +141,14 @@ public class TestReadWrite {
     map.put(str("eleventy-one"), null);
     map.put(str("one-hundred"), 100);
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
+    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(file).withSchema(schema)
+        .withConf(testConf).build()) {
 
-      GenericData.Record record = new GenericRecordBuilder(schema)
-        .set("mymap", map).build();
+      GenericData.Record record = new GenericRecordBuilder(schema).set("mymap", map).build();
       writer.write(record);
     }
 
-    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -172,19 +156,16 @@ public class TestReadWrite {
     }
   }
 
-  @Test(expected=RuntimeException.class)
+  @Test(expected = RuntimeException.class)
   public void testMapRequiredValueWithNull() throws Exception {
     Schema schema = Schema.createRecord("record1", null, null, false);
-    schema.setFields(Lists.newArrayList(
-        new Schema.Field("mymap", Schema.createMap(Schema.create(Schema.Type.INT)), null, null)));
+    schema.setFields(
+        Lists.newArrayList(new Schema.Field("mymap", Schema.createMap(Schema.create(Schema.Type.INT)), null, null)));
 
     Path file = new Path(createTempFile().getPath());
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
+    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(file).withSchema(schema)
+        .withConf(testConf).build()) {
 
       // Write a record with a null value
       Map<String, Integer> map = new HashMap<String, Integer>();
@@ -192,33 +173,27 @@ public class TestReadWrite {
       map.put("eleventy-one", null);
       map.put("one-hundred", 100);
 
-      GenericData.Record record = new GenericRecordBuilder(schema)
-        .set("mymap", map).build();
+      GenericData.Record record = new GenericRecordBuilder(schema).set("mymap", map).build();
       writer.write(record);
     }
   }
 
   @Test
   public void testMapWithUtf8Key() throws Exception {
-    Schema schema = new Schema.Parser().parse(
-        Resources.getResource("map.avsc").openStream());
+    Schema schema = new Schema.Parser().parse(Resources.getResource("map.avsc").openStream());
 
     Path file = new Path(createTempFile().getPath());
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
+    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(file).withSchema(schema)
+        .withConf(testConf).build()) {
 
       // Write a record with a map with Utf8 keys.
       GenericData.Record record = new GenericRecordBuilder(schema)
-        .set("mymap", ImmutableMap.of(new Utf8("a"), 1, new Utf8("b"), 2))
-        .build();
+          .set("mymap", ImmutableMap.of(new Utf8("a"), 1, new Utf8("b"), 2)).build();
       writer.write(record);
     }
 
-    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -232,10 +207,8 @@ public class TestReadWrite {
   @Test
   public void testDecimalValues() throws Exception {
     Schema decimalSchema = Schema.createRecord("myrecord", null, null, false);
-    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(
-        Schema.create(Schema.Type.BYTES));
-    decimalSchema.setFields(Collections.singletonList(
-        new Schema.Field("dec", decimal, null, null)));
+    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(Schema.create(Schema.Type.BYTES));
+    decimalSchema.setFields(Collections.singletonList(new Schema.Field("dec", decimal, null, null)));
 
     // add the decimal conversion to a generic data model
     GenericData decimalSupport = new GenericData();
@@ -246,11 +219,8 @@ public class TestReadWrite {
     Path path = new Path(file.toString());
     List<GenericRecord> expected = Lists.newArrayList();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(path)
-        .withDataModel(decimalSupport)
-        .withSchema(decimalSchema)
-        .build()) {
+    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(path)
+        .withDataModel(decimalSupport).withSchema(decimalSchema).build()) {
 
       Random random = new Random(34L);
       GenericRecordBuilder builder = new GenericRecordBuilder(decimalSchema);
@@ -265,29 +235,23 @@ public class TestReadWrite {
     }
     List<GenericRecord> records = Lists.newArrayList();
 
-    try(ParquetReader<GenericRecord> reader = AvroParquetReader
-        .<GenericRecord>builder(path)
-        .withDataModel(decimalSupport)
-        .disableCompatibility()
-        .build()) {
+    try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(path)
+        .withDataModel(decimalSupport).disableCompatibility().build()) {
       GenericRecord rec;
       while ((rec = reader.read()) != null) {
         records.add(rec);
       }
     }
 
-    Assert.assertTrue("dec field should be a BigDecimal instance",
-        records.get(0).get("dec") instanceof BigDecimal);
+    Assert.assertTrue("dec field should be a BigDecimal instance", records.get(0).get("dec") instanceof BigDecimal);
     Assert.assertEquals("Content should match", expected, records);
   }
 
   @Test
   public void testFixedDecimalValues() throws Exception {
     Schema decimalSchema = Schema.createRecord("myrecord", null, null, false);
-    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(
-        Schema.createFixed("dec", null, null, 4));
-    decimalSchema.setFields(Collections.singletonList(
-        new Schema.Field("dec", decimal, null, null)));
+    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(Schema.createFixed("dec", null, null, 4));
+    decimalSchema.setFields(Collections.singletonList(new Schema.Field("dec", decimal, null, null)));
 
     // add the decimal conversion to a generic data model
     GenericData decimalSupport = new GenericData();
@@ -298,11 +262,8 @@ public class TestReadWrite {
     Path path = new Path(file.toString());
     List<GenericRecord> expected = Lists.newArrayList();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(path)
-        .withDataModel(decimalSupport)
-        .withSchema(decimalSchema)
-        .build()) {
+    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(path)
+        .withDataModel(decimalSupport).withSchema(decimalSchema).build()) {
 
       Random random = new Random(34L);
       GenericRecordBuilder builder = new GenericRecordBuilder(decimalSchema);
@@ -317,82 +278,57 @@ public class TestReadWrite {
     }
     List<GenericRecord> records = Lists.newArrayList();
 
-    try(ParquetReader<GenericRecord> reader = AvroParquetReader
-        .<GenericRecord>builder(path)
-        .withDataModel(decimalSupport)
-        .disableCompatibility()
-        .build()) {
+    try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(path)
+        .withDataModel(decimalSupport).disableCompatibility().build()) {
       GenericRecord rec;
       while ((rec = reader.read()) != null) {
         records.add(rec);
       }
     }
 
-    Assert.assertTrue("dec field should be a BigDecimal instance",
-        records.get(0).get("dec") instanceof BigDecimal);
+    Assert.assertTrue("dec field should be a BigDecimal instance", records.get(0).get("dec") instanceof BigDecimal);
     Assert.assertEquals("Content should match", expected, records);
   }
 
   @Test
   public void testAll() throws Exception {
-    Schema schema = new Schema.Parser().parse(
-        Resources.getResource("all.avsc").openStream());
+    Schema schema = new Schema.Parser().parse(Resources.getResource("all.avsc").openStream());
 
     Path file = new Path(createTempFile().getPath());
     List<Integer> integerArray = Arrays.asList(1, 2, 3);
-    GenericData.Record nestedRecord = new GenericRecordBuilder(
-      schema.getField("mynestedrecord").schema())
-      .set("mynestedint", 1).build();
+    GenericData.Record nestedRecord = new GenericRecordBuilder(schema.getField("mynestedrecord").schema())
+        .set("mynestedint", 1).build();
     List<Integer> emptyArray = new ArrayList<Integer>();
-    Schema arrayOfOptionalIntegers = Schema.createArray(
-      optional(Schema.create(Schema.Type.INT)));
-    GenericData.Array<Integer> genericIntegerArrayWithNulls =
-      new GenericData.Array<Integer>(
-        arrayOfOptionalIntegers,
+    Schema arrayOfOptionalIntegers = Schema.createArray(optional(Schema.create(Schema.Type.INT)));
+    GenericData.Array<Integer> genericIntegerArrayWithNulls = new GenericData.Array<Integer>(arrayOfOptionalIntegers,
         Arrays.asList(1, null, 2, null, 3));
-    GenericFixed genericFixed = new GenericData.Fixed(
-      Schema.createFixed("fixed", null, null, 1), new byte[]{(byte) 65});
+    GenericFixed genericFixed = new GenericData.Fixed(Schema.createFixed("fixed", null, null, 1),
+        new byte[] { (byte) 65 });
     ImmutableMap<String, Integer> emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
+    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(file).withSchema(schema)
+        .withConf(testConf).build()) {
 
       GenericData.Array<Integer> genericIntegerArray = new GenericData.Array<Integer>(
-        Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
+          Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
 
-      GenericData.Record record = new GenericRecordBuilder(schema)
-        .set("mynull", null)
-        .set("myboolean", true)
-        .set("myint", 1)
-        .set("mylong", 2L)
-        .set("myfloat", 3.1f)
-        .set("mydouble", 4.1)
-        .set("mybytes", ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8)))
-        .set("mystring", "hello")
-        .set("mynestedrecord", nestedRecord)
-        .set("myenum", "a")
-        .set("myarray", genericIntegerArray)
-        .set("myemptyarray", emptyArray)
-        .set("myoptionalarray", genericIntegerArray)
-        .set("myarrayofoptional", genericIntegerArrayWithNulls)
-        .set("mymap", ImmutableMap.of("a", 1, "b", 2))
-        .set("myemptymap", emptyMap)
-        .set("myfixed", genericFixed)
-        .build();
+      GenericData.Record record = new GenericRecordBuilder(schema).set("mynull", null).set("myboolean", true)
+          .set("myint", 1).set("mylong", 2L).set("myfloat", 3.1f).set("mydouble", 4.1)
+          .set("mybytes", ByteBuffer.wrap("hello".getBytes(StandardCharsets.UTF_8))).set("mystring", "hello")
+          .set("mynestedrecord", nestedRecord).set("myenum", "a").set("myarray", genericIntegerArray)
+          .set("myemptyarray", emptyArray).set("myoptionalarray", genericIntegerArray)
+          .set("myarrayofoptional", genericIntegerArrayWithNulls).set("mymap", ImmutableMap.of("a", 1, "b", 2))
+          .set("myemptymap", emptyMap).set("myfixed", genericFixed).build();
 
       writer.write(record);
     }
 
     final GenericRecord nextRecord;
-    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file)) {
+    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file)) {
       nextRecord = reader.read();
     }
 
-    Object expectedEnumSymbol = compat ? "a" :
-        new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
+    Object expectedEnumSymbol = compat ? "a" : new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
 
     assertNotNull(nextRecord);
     assertEquals(null, nextRecord.get("mynull"));
@@ -419,151 +355,150 @@ public class TestReadWrite {
     Path file = new Path(createTempFile().getPath());
 
     // write file using Parquet APIs
-    try(ParquetWriter<Map<String, Object>> parquetWriter = new ParquetWriter<>(file,
+    try (ParquetWriter<Map<String, Object>> parquetWriter = new ParquetWriter<>(file,
         new WriteSupport<Map<String, Object>>() {
 
-      private RecordConsumer recordConsumer;
+          private RecordConsumer recordConsumer;
 
-      @Override
-      public WriteContext init(Configuration configuration) {
-        return new WriteContext(MessageTypeParser.parseMessageType(TestAvroSchemaConverter.ALL_PARQUET_SCHEMA),
-            new HashMap<String, String>());
-      }
-
-      @Override
-      public void prepareForWrite(RecordConsumer recordConsumer) {
-        this.recordConsumer = recordConsumer;
-      }
-
-      @Override
-      public void write(Map<String, Object> record) {
-        recordConsumer.startMessage();
-
-        int index = 0;
-
-        recordConsumer.startField("myboolean", index);
-        recordConsumer.addBoolean((Boolean) record.get("myboolean"));
-        recordConsumer.endField("myboolean", index++);
-
-        recordConsumer.startField("myint", index);
-        recordConsumer.addInteger((Integer) record.get("myint"));
-        recordConsumer.endField("myint", index++);
-
-        recordConsumer.startField("mylong", index);
-        recordConsumer.addLong((Long) record.get("mylong"));
-        recordConsumer.endField("mylong", index++);
-
-        recordConsumer.startField("myfloat", index);
-        recordConsumer.addFloat((Float) record.get("myfloat"));
-        recordConsumer.endField("myfloat", index++);
-
-        recordConsumer.startField("mydouble", index);
-        recordConsumer.addDouble((Double) record.get("mydouble"));
-        recordConsumer.endField("mydouble", index++);
-
-        recordConsumer.startField("mybytes", index);
-        recordConsumer.addBinary(
-            Binary.fromReusedByteBuffer((ByteBuffer) record.get("mybytes")));
-        recordConsumer.endField("mybytes", index++);
-
-        recordConsumer.startField("mystring", index);
-        recordConsumer.addBinary(Binary.fromString((String) record.get("mystring")));
-        recordConsumer.endField("mystring", index++);
-
-        recordConsumer.startField("mynestedrecord", index);
-        recordConsumer.startGroup();
-        recordConsumer.startField("mynestedint", 0);
-        recordConsumer.addInteger((Integer) record.get("mynestedint"));
-        recordConsumer.endField("mynestedint", 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("mynestedrecord", index++);
-
-        recordConsumer.startField("myenum", index);
-        recordConsumer.addBinary(Binary.fromString((String) record.get("myenum")));
-        recordConsumer.endField("myenum", index++);
-
-        recordConsumer.startField("myarray", index);
-        recordConsumer.startGroup();
-        recordConsumer.startField("array", 0);
-        for (int val : (int[]) record.get("myarray")) {
-          recordConsumer.addInteger(val);
-        }
-        recordConsumer.endField("array", 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("myarray", index++);
-
-        recordConsumer.startField("myoptionalarray", index);
-        recordConsumer.startGroup();
-        recordConsumer.startField("array", 0);
-        for (int val : (int[]) record.get("myoptionalarray")) {
-          recordConsumer.addInteger(val);
-        }
-        recordConsumer.endField("array", 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("myoptionalarray", index++);
-
-        recordConsumer.startField("myarrayofoptional", index);
-        recordConsumer.startGroup();
-        recordConsumer.startField("list", 0);
-        for (Integer val : (Integer[]) record.get("myarrayofoptional")) {
-          recordConsumer.startGroup();
-          if (val != null) {
-            recordConsumer.startField("element", 0);
-            recordConsumer.addInteger(val);
-            recordConsumer.endField("element", 0);
+          @Override
+          public WriteContext init(Configuration configuration) {
+            return new WriteContext(MessageTypeParser.parseMessageType(TestAvroSchemaConverter.ALL_PARQUET_SCHEMA),
+                new HashMap<String, String>());
           }
-          recordConsumer.endGroup();
-        }
-        recordConsumer.endField("list", 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("myarrayofoptional", index++);
 
-        recordConsumer.startField("myrecordarray", index);
-        recordConsumer.startGroup();
-        recordConsumer.startField("array", 0);
-        recordConsumer.startGroup();
-        recordConsumer.startField("a", 0);
-        for (int val : (int[]) record.get("myrecordarraya")) {
-          recordConsumer.addInteger(val);
-        }
-        recordConsumer.endField("a", 0);
-        recordConsumer.startField("b", 1);
-        for (int val : (int[]) record.get("myrecordarrayb")) {
-          recordConsumer.addInteger(val);
-        }
-        recordConsumer.endField("b", 1);
-        recordConsumer.endGroup();
-        recordConsumer.endField("array", 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("myrecordarray", index++);
+          @Override
+          public void prepareForWrite(RecordConsumer recordConsumer) {
+            this.recordConsumer = recordConsumer;
+          }
 
-        recordConsumer.startField("mymap", index);
-        recordConsumer.startGroup();
-        recordConsumer.startField("map", 0);
-        recordConsumer.startGroup();
-        Map<String, Integer> mymap = (Map<String, Integer>) record.get("mymap");
-        recordConsumer.startField("key", 0);
-        for (String key : mymap.keySet()) {
-          recordConsumer.addBinary(Binary.fromString(key));
-        }
-        recordConsumer.endField("key", 0);
-        recordConsumer.startField("value", 1);
-        for (int val : mymap.values()) {
-          recordConsumer.addInteger(val);
-        }
-        recordConsumer.endField("value", 1);
-        recordConsumer.endGroup();
-        recordConsumer.endField("map", 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("mymap", index++);
+          @Override
+          public void write(Map<String, Object> record) {
+            recordConsumer.startMessage();
 
-        recordConsumer.startField("myfixed", index);
-        recordConsumer.addBinary(Binary.fromReusedByteArray((byte[]) record.get("myfixed")));
-        recordConsumer.endField("myfixed", index++);
+            int index = 0;
 
-        recordConsumer.endMessage();
-      }
-    })) {
+            recordConsumer.startField("myboolean", index);
+            recordConsumer.addBoolean((Boolean) record.get("myboolean"));
+            recordConsumer.endField("myboolean", index++);
+
+            recordConsumer.startField("myint", index);
+            recordConsumer.addInteger((Integer) record.get("myint"));
+            recordConsumer.endField("myint", index++);
+
+            recordConsumer.startField("mylong", index);
+            recordConsumer.addLong((Long) record.get("mylong"));
+            recordConsumer.endField("mylong", index++);
+
+            recordConsumer.startField("myfloat", index);
+            recordConsumer.addFloat((Float) record.get("myfloat"));
+            recordConsumer.endField("myfloat", index++);
+
+            recordConsumer.startField("mydouble", index);
+            recordConsumer.addDouble((Double) record.get("mydouble"));
+            recordConsumer.endField("mydouble", index++);
+
+            recordConsumer.startField("mybytes", index);
+            recordConsumer.addBinary(Binary.fromReusedByteBuffer((ByteBuffer) record.get("mybytes")));
+            recordConsumer.endField("mybytes", index++);
+
+            recordConsumer.startField("mystring", index);
+            recordConsumer.addBinary(Binary.fromString((String) record.get("mystring")));
+            recordConsumer.endField("mystring", index++);
+
+            recordConsumer.startField("mynestedrecord", index);
+            recordConsumer.startGroup();
+            recordConsumer.startField("mynestedint", 0);
+            recordConsumer.addInteger((Integer) record.get("mynestedint"));
+            recordConsumer.endField("mynestedint", 0);
+            recordConsumer.endGroup();
+            recordConsumer.endField("mynestedrecord", index++);
+
+            recordConsumer.startField("myenum", index);
+            recordConsumer.addBinary(Binary.fromString((String) record.get("myenum")));
+            recordConsumer.endField("myenum", index++);
+
+            recordConsumer.startField("myarray", index);
+            recordConsumer.startGroup();
+            recordConsumer.startField("array", 0);
+            for (int val : (int[]) record.get("myarray")) {
+              recordConsumer.addInteger(val);
+            }
+            recordConsumer.endField("array", 0);
+            recordConsumer.endGroup();
+            recordConsumer.endField("myarray", index++);
+
+            recordConsumer.startField("myoptionalarray", index);
+            recordConsumer.startGroup();
+            recordConsumer.startField("array", 0);
+            for (int val : (int[]) record.get("myoptionalarray")) {
+              recordConsumer.addInteger(val);
+            }
+            recordConsumer.endField("array", 0);
+            recordConsumer.endGroup();
+            recordConsumer.endField("myoptionalarray", index++);
+
+            recordConsumer.startField("myarrayofoptional", index);
+            recordConsumer.startGroup();
+            recordConsumer.startField("list", 0);
+            for (Integer val : (Integer[]) record.get("myarrayofoptional")) {
+              recordConsumer.startGroup();
+              if (val != null) {
+                recordConsumer.startField("element", 0);
+                recordConsumer.addInteger(val);
+                recordConsumer.endField("element", 0);
+              }
+              recordConsumer.endGroup();
+            }
+            recordConsumer.endField("list", 0);
+            recordConsumer.endGroup();
+            recordConsumer.endField("myarrayofoptional", index++);
+
+            recordConsumer.startField("myrecordarray", index);
+            recordConsumer.startGroup();
+            recordConsumer.startField("array", 0);
+            recordConsumer.startGroup();
+            recordConsumer.startField("a", 0);
+            for (int val : (int[]) record.get("myrecordarraya")) {
+              recordConsumer.addInteger(val);
+            }
+            recordConsumer.endField("a", 0);
+            recordConsumer.startField("b", 1);
+            for (int val : (int[]) record.get("myrecordarrayb")) {
+              recordConsumer.addInteger(val);
+            }
+            recordConsumer.endField("b", 1);
+            recordConsumer.endGroup();
+            recordConsumer.endField("array", 0);
+            recordConsumer.endGroup();
+            recordConsumer.endField("myrecordarray", index++);
+
+            recordConsumer.startField("mymap", index);
+            recordConsumer.startGroup();
+            recordConsumer.startField("map", 0);
+            recordConsumer.startGroup();
+            Map<String, Integer> mymap = (Map<String, Integer>) record.get("mymap");
+            recordConsumer.startField("key", 0);
+            for (String key : mymap.keySet()) {
+              recordConsumer.addBinary(Binary.fromString(key));
+            }
+            recordConsumer.endField("key", 0);
+            recordConsumer.startField("value", 1);
+            for (int val : mymap.values()) {
+              recordConsumer.addInteger(val);
+            }
+            recordConsumer.endField("value", 1);
+            recordConsumer.endGroup();
+            recordConsumer.endField("map", 0);
+            recordConsumer.endGroup();
+            recordConsumer.endField("mymap", index++);
+
+            recordConsumer.startField("myfixed", index);
+            recordConsumer.addBinary(Binary.fromReusedByteArray((byte[]) record.get("myfixed")));
+            recordConsumer.endField("myfixed", index++);
+
+            recordConsumer.endMessage();
+          }
+        })) {
       Map<String, Object> record = new HashMap<String, Object>();
       record.put("myboolean", true);
       record.put("myint", 1);
@@ -574,31 +509,27 @@ public class TestReadWrite {
       record.put("mystring", "hello");
       record.put("myenum", "a");
       record.put("mynestedint", 1);
-      record.put("myarray", new int[]{1, 2, 3});
-      record.put("myoptionalarray", new int[]{1, 2, 3});
-      record.put("myarrayofoptional", new Integer[]{1, null, 2, null, 3});
-      record.put("myrecordarraya", new int[]{1, 2, 3});
-      record.put("myrecordarrayb", new int[]{4, 5, 6});
+      record.put("myarray", new int[] { 1, 2, 3 });
+      record.put("myoptionalarray", new int[] { 1, 2, 3 });
+      record.put("myarrayofoptional", new Integer[] { 1, null, 2, null, 3 });
+      record.put("myrecordarraya", new int[] { 1, 2, 3 });
+      record.put("myrecordarrayb", new int[] { 4, 5, 6 });
       record.put("mymap", ImmutableMap.of("a", 1, "b", 2));
-      record.put("myfixed", new byte[]{(byte) 65});
+      record.put("myfixed", new byte[] { (byte) 65 });
       parquetWriter.write(record);
     }
 
     Schema nestedRecordSchema = Schema.createRecord("mynestedrecord", null, null, false);
-    nestedRecordSchema.setFields(Arrays.asList(
-        new Schema.Field("mynestedint", Schema.create(Schema.Type.INT), null, null)
-    ));
-    GenericData.Record nestedRecord = new GenericRecordBuilder(nestedRecordSchema)
-        .set("mynestedint", 1).build();
+    nestedRecordSchema
+        .setFields(Arrays.asList(new Schema.Field("mynestedint", Schema.create(Schema.Type.INT), null, null)));
+    GenericData.Record nestedRecord = new GenericRecordBuilder(nestedRecordSchema).set("mynestedint", 1).build();
 
     List<Integer> integerArray = Arrays.asList(1, 2, 3);
     List<Integer> ingeterArrayWithNulls = Arrays.asList(1, null, 2, null, 3);
 
     Schema recordArraySchema = Schema.createRecord("array", null, null, false);
-    recordArraySchema.setFields(Arrays.asList(
-        new Schema.Field("a", Schema.create(Schema.Type.INT), null, null),
-        new Schema.Field("b", Schema.create(Schema.Type.INT), null, null)
-    ));
+    recordArraySchema.setFields(Arrays.asList(new Schema.Field("a", Schema.create(Schema.Type.INT), null, null),
+        new Schema.Field("b", Schema.create(Schema.Type.INT), null, null)));
     GenericRecordBuilder builder = new GenericRecordBuilder(recordArraySchema);
     List<GenericData.Record> recordArray = new ArrayList<GenericData.Record>();
     recordArray.add(builder.set("a", 1).set("b", 4).build());
@@ -607,10 +538,10 @@ public class TestReadWrite {
     GenericData.Array<GenericData.Record> genericRecordArray = new GenericData.Array<GenericData.Record>(
         Schema.createArray(recordArraySchema), recordArray);
 
-    GenericFixed genericFixed = new GenericData.Fixed(
-        Schema.createFixed("fixed", null, null, 1), new byte[] { (byte) 65 });
+    GenericFixed genericFixed = new GenericData.Fixed(Schema.createFixed("fixed", null, null, 1),
+        new byte[] { (byte) 65 });
 
-    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
       assertNotNull(nextRecord);
       assertEquals(true, nextRecord.get("myboolean"));
@@ -634,25 +565,21 @@ public class TestReadWrite {
   @Test
   public void testUnionWithSingleNonNullType() throws Exception {
     Schema avroSchema = Schema.createRecord("SingleStringUnionRecord", null, null, false);
-    avroSchema.setFields(
-      Collections.singletonList(new Schema.Field("value",
-        Schema.createUnion(Schema.create(Schema.Type.STRING)), null, null)));
+    avroSchema.setFields(Collections
+        .singletonList(new Schema.Field("value", Schema.createUnion(Schema.create(Schema.Type.STRING)), null, null)));
 
     Path file = new Path(createTempFile().getPath());
 
     // Parquet writer
-    try(ParquetWriter parquetWriter = AvroParquetWriter.builder(file).withSchema(avroSchema)
-      .withConf(new Configuration())
-      .build()) {
+    try (ParquetWriter parquetWriter = AvroParquetWriter.builder(file).withSchema(avroSchema)
+        .withConf(new Configuration()).build()) {
 
-      GenericRecord record = new GenericRecordBuilder(avroSchema)
-        .set("value", "theValue")
-        .build();
+      GenericRecord record = new GenericRecordBuilder(avroSchema).set("value", "theValue").build();
 
       parquetWriter.write(record);
     }
 
-    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -662,26 +589,20 @@ public class TestReadWrite {
 
   @Test
   public void testDuplicatedValuesWithDictionary() throws Exception {
-    Schema schema = SchemaBuilder.record("spark_schema")
-      .fields().optionalBytes("value").endRecord();
+    Schema schema = SchemaBuilder.record("spark_schema").fields().optionalBytes("value").endRecord();
 
     Path file = new Path(createTempFile().getPath());
 
-    String[] records = {"one", "two", "three", "three", "two", "one", "zero"};
-    try (ParquetWriter<GenericData.Record> writer = AvroParquetWriter
-      .<GenericData.Record>builder(file)
-      .withSchema(schema)
-      .withConf(testConf)
-      .build()) {
+    String[] records = { "one", "two", "three", "three", "two", "one", "zero" };
+    try (ParquetWriter<GenericData.Record> writer = AvroParquetWriter.<GenericData.Record>builder(file)
+        .withSchema(schema).withConf(testConf).build()) {
       for (String record : records) {
-        writer.write(new GenericRecordBuilder(schema)
-          .set("value", record.getBytes()).build());
+        writer.write(new GenericRecordBuilder(schema).set("value", record.getBytes()).build());
       }
     }
 
-    try (ParquetReader<GenericRecord> reader = AvroParquetReader
-      .<GenericRecord>builder(file)
-      .withConf(testConf).build()) {
+    try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(file).withConf(testConf)
+        .build()) {
       GenericRecord rec;
       int i = 0;
       while ((rec = reader.read()) != null) {
@@ -695,23 +616,19 @@ public class TestReadWrite {
 
   @Test
   public void testNestedLists() throws Exception {
-    Schema schema = new Schema.Parser().parse(
-      Resources.getResource("nested_array.avsc").openStream());
+    Schema schema = new Schema.Parser().parse(Resources.getResource("nested_array.avsc").openStream());
     Path file = new Path(createTempFile().getPath());
 
     // Parquet writer
-    ParquetWriter parquetWriter = AvroParquetWriter.builder(file).withSchema(schema)
-      .withConf(testConf)
-      .build();
+    ParquetWriter parquetWriter = AvroParquetWriter.builder(file).withSchema(schema).withConf(testConf).build();
 
-    Schema innerRecordSchema = schema.getField("l1").schema().getTypes()
-      .get(1).getElementType().getTypes().get(1);
+    Schema innerRecordSchema = schema.getField("l1").schema().getTypes().get(1).getElementType().getTypes().get(1);
 
     GenericRecord record = new GenericRecordBuilder(schema)
-      .set("l1", Collections.singletonList(
-        new GenericRecordBuilder(innerRecordSchema).set("l2", Collections.singletonList("hello")).build()
-      ))
-      .build();
+        .set("l1",
+            Collections.singletonList(
+                new GenericRecordBuilder(innerRecordSchema).set("l2", Collections.singletonList("hello")).build()))
+        .build();
 
     parquetWriter.write(record);
     parquetWriter.close();

@@ -36,9 +36,9 @@ import org.apache.parquet.schema.MessageType;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * Given a {@link Filter} applies it to a list of BlockMetaData (row groups)
- * If the Filter is an {@link org.apache.parquet.filter.UnboundRecordFilter} or the no op filter,
- * no filtering will be performed.
+ * Given a {@link Filter} applies it to a list of BlockMetaData (row groups) If
+ * the Filter is an {@link org.apache.parquet.filter.UnboundRecordFilter} or the
+ * no op filter, no filtering will be performed.
  */
 public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
   private final List<BlockMetaData> blocks;
@@ -47,8 +47,7 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
   private final ParquetFileReader reader;
 
   public enum FilterLevel {
-    STATISTICS,
-    DICTIONARY
+    STATISTICS, DICTIONARY
   }
 
   /**
@@ -64,7 +63,8 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
     return filter.accept(new RowGroupFilter(blocks, schema));
   }
 
-  public static List<BlockMetaData> filterRowGroups(List<FilterLevel> levels, Filter filter, List<BlockMetaData> blocks, ParquetFileReader reader) {
+  public static List<BlockMetaData> filterRowGroups(List<FilterLevel> levels, Filter filter, List<BlockMetaData> blocks,
+      ParquetFileReader reader) {
     checkNotNull(filter, "filter");
     return filter.accept(new RowGroupFilter(levels, blocks, reader));
   }
@@ -96,15 +96,15 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
     for (BlockMetaData block : blocks) {
       boolean drop = false;
 
-      if(levels.contains(FilterLevel.STATISTICS)) {
+      if (levels.contains(FilterLevel.STATISTICS)) {
         drop = StatisticsFilter.canDrop(filterPredicate, block.getColumns());
       }
 
-      if(!drop && levels.contains(FilterLevel.DICTIONARY)) {
+      if (!drop && levels.contains(FilterLevel.DICTIONARY)) {
         drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
       }
 
-      if(!drop) {
+      if (!drop) {
         filteredBlocks.add(block);
       }
     }

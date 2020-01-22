@@ -60,9 +60,7 @@ public class Help implements Command {
 
         boolean hasRequired = false;
         console.info("\nUsage: {} [general options] {} {} [command options]",
-            new Object[] {
-                programName, cmd,
-                commander.getMainParameterDescription()});
+            new Object[] { programName, cmd, commander.getMainParameterDescription() });
         console.info("\n  Description:");
         console.info("\n    {}", jc.getCommandDescription(cmd));
         if (!commander.getParameters().isEmpty()) {
@@ -82,8 +80,7 @@ public class Help implements Command {
               // comment
               console.info("\n    {}", example);
             } else {
-              console.info("    {} {} {}",
-                  new Object[] {programName, cmd, example});
+              console.info("    {} {} {}", new Object[] { programName, cmd, example });
             }
           }
         }
@@ -96,9 +93,7 @@ public class Help implements Command {
 
   public void printGenericHelp() {
     boolean hasRequired = false;
-    console.info(
-        "\nUsage: {} [options] [command] [command options]",
-        programName);
+    console.info("\nUsage: {} [options] [command] [command options]", programName);
     console.info("\n  Options:\n");
     for (ParameterDescription param : jc.getParameters()) {
       hasRequired = printOption(console, param) || hasRequired;
@@ -108,27 +103,21 @@ public class Help implements Command {
     }
     console.info("\n  Commands:\n");
     for (String command : jc.getCommands().keySet()) {
-      console.info("    {}\n\t{}",
-          command, jc.getCommandDescription(command));
+      console.info("    {}\n\t{}", command, jc.getCommandDescription(command));
     }
 
     jc.getCommands().keySet().stream().filter(s -> !s.equals("help")).findFirst().ifPresent(command -> {
       console.info("\n  Examples:");
-      console.info("\n    # print information for {}\n    {} help {}",
-        command, programName, command);
-      console.info("\n  See '{} help <command>' for more information on a " +
-        "specific command.", programName);
+      console.info("\n    # print information for {}\n    {} help {}", command, programName, command);
+      console.info("\n  See '{} help <command>' for more information on a " + "specific command.", programName);
     });
   }
 
   private boolean printOption(Logger console, ParameterDescription param) {
     boolean required = param.getParameter().required();
     if (!param.getParameter().hidden()) {
-      console.info("  {} {}\n\t{}{}", new Object[]{
-          required ? "*" : " ",
-          param.getNames().trim(),
-          param.getDescription(),
-          formatDefault(param)});
+      console.info("  {} {}\n\t{}{}",
+          new Object[] { required ? "*" : " ", param.getNames().trim(), param.getDescription(), formatDefault(param) });
     }
     return required;
   }
@@ -138,9 +127,8 @@ public class Help implements Command {
     if (defaultValue == null || param.getParameter().arity() < 1) {
       return "";
     }
-    return " (default: " + ((defaultValue instanceof String) ?
-        "\"" + defaultValue + "\"" :
-        defaultValue.toString()) + ")";
+    return " (default: " + ((defaultValue instanceof String) ? "\"" + defaultValue + "\"" : defaultValue.toString())
+        + ")";
   }
 
   @Override

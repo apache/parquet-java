@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import org.junit.Assert;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -65,10 +64,10 @@ public class TestInputOutputFormat {
     final ArrayList<Person> persons = new ArrayList<Person>();
     for (int j = 0; j < i % 3; j++) {
       final ArrayList<PhoneNumber> phones = new ArrayList<PhoneNumber>();
-      for (int k = 0; k < i%4; k++) {
-        phones.add(new PhoneNumber("12345"+i));
+      for (int k = 0; k < i % 4; k++) {
+        phones.add(new PhoneNumber("12345" + i));
       }
-      persons.add(new Person(new Name("John"+i, "Roberts"), i, "John@example.com" + i, phones));
+      persons.add(new Person(new Name("John" + i, "Roberts"), i, "John@example.com" + i, phones));
     }
     AddressBook a = new AddressBook(persons);
     return a;
@@ -76,7 +75,8 @@ public class TestInputOutputFormat {
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, AddressBook> {
 
-    public void run(org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,AddressBook>.Context context) throws IOException, InterruptedException {
+    public void run(org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, AddressBook>.Context context)
+        throws IOException, InterruptedException {
       for (int i = 0; i < 10; i++) {
         AddressBook a = TestInputOutputFormat.nextAddressbook(i);
         context.write(null, a);
@@ -85,7 +85,8 @@ public class TestInputOutputFormat {
   }
 
   public static class MyMapper2 extends Mapper<Void, Group, LongWritable, Text> {
-    protected void map(Void key, AddressBook value, Mapper<Void,Group,LongWritable,Text>.Context context) throws IOException ,InterruptedException {
+    protected void map(Void key, AddressBook value, Mapper<Void, Group, LongWritable, Text>.Context context)
+        throws IOException, InterruptedException {
       context.write(null, new Text(value.toString()));
     }
 
@@ -138,20 +139,24 @@ public class TestInputOutputFormat {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
       AddressBook a = nextAddressbook(lineNumber);
       assertEquals("line " + lineNumber, a.toString(), lineOut);
-      ++ lineNumber;
+      ++lineNumber;
     }
     assertNull("line " + lineNumber, out.readLine());
     out.close();
   }
 
   public static class SchemaEvolutionMapper1 extends Mapper<LongWritable, Text, Void, StructV1> {
-    protected void map(LongWritable key, Text value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,StructV1>.Context context) throws IOException ,InterruptedException {
+    protected void map(LongWritable key, Text value,
+        org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, StructV1>.Context context)
+        throws IOException, InterruptedException {
       context.write(null, new StructV1(value.toString() + 1));
     };
   }
 
   public static class SchemaEvolutionMapper2 extends Mapper<LongWritable, Text, Void, StructV2> {
-    protected void map(LongWritable key, Text value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,StructV2>.Context context) throws IOException ,InterruptedException {
+    protected void map(LongWritable key, Text value,
+        org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, StructV2>.Context context)
+        throws IOException, InterruptedException {
       final StructV2 s = new StructV2(value.toString() + 2);
       s.setAge("undetermined");
       context.write(null, s);
@@ -159,7 +164,9 @@ public class TestInputOutputFormat {
   }
 
   public static class SchemaEvolutionMapper3 extends Mapper<LongWritable, Text, Void, StructV3> {
-    protected void map(LongWritable key, Text value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,StructV3>.Context context) throws IOException ,InterruptedException {
+    protected void map(LongWritable key, Text value,
+        org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, StructV3>.Context context)
+        throws IOException, InterruptedException {
       final StructV3 s = new StructV3(value.toString() + 3);
       s.setAge("average");
       s.setGender("unavailable");
@@ -168,7 +175,9 @@ public class TestInputOutputFormat {
   }
 
   public static class SchemaEvolutionReadMapper extends Mapper<LongWritable, Text, Void, StructV3> {
-    protected void map(LongWritable key, StructV3 value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,Text>.Context context) throws IOException ,InterruptedException {
+    protected void map(LongWritable key, StructV3 value,
+        org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, Text>.Context context)
+        throws IOException, InterruptedException {
       context.write(null, new Text(value.toString()));
     };
   }
@@ -187,9 +196,12 @@ public class TestInputOutputFormat {
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
     {
-      write(conf, inputPath, new Path(parquetPath, "V1"), TestInputOutputFormat.SchemaEvolutionMapper1.class, StructV1.class);
-      write(conf, inputPath, new Path(parquetPath, "V2"), TestInputOutputFormat.SchemaEvolutionMapper2.class, StructV2.class);
-      write(conf, inputPath, new Path(parquetPath, "V3"), TestInputOutputFormat.SchemaEvolutionMapper3.class, StructV3.class);
+      write(conf, inputPath, new Path(parquetPath, "V1"), TestInputOutputFormat.SchemaEvolutionMapper1.class,
+          StructV1.class);
+      write(conf, inputPath, new Path(parquetPath, "V2"), TestInputOutputFormat.SchemaEvolutionMapper2.class,
+          StructV2.class);
+      write(conf, inputPath, new Path(parquetPath, "V3"), TestInputOutputFormat.SchemaEvolutionMapper3.class,
+          StructV3.class);
     }
     {
       final Job job = new Job(conf, "read");
@@ -210,22 +222,21 @@ public class TestInputOutputFormat {
     read(outputPath + "/part-m-00002", 3);
   }
 
-  private void read(String outputPath, int expected) throws FileNotFoundException,
-      IOException {
+  private void read(String outputPath, int expected) throws FileNotFoundException, IOException {
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString())));
     String lineOut = null;
     int lineNumber = 0;
     while ((lineOut = out.readLine()) != null) {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
       System.out.println(lineOut);
-      ++ lineNumber;
+      ++lineNumber;
     }
     out.close();
     Assert.assertEquals(expected, lineNumber);
   }
 
-  private void write(final Configuration conf, final Path inputPath,
-      final Path parquetPath, Class<? extends Mapper> mapperClass, Class<? extends TBase<?, ?>> outputClass) throws IOException, Exception {
+  private void write(final Configuration conf, final Path inputPath, final Path parquetPath,
+      Class<? extends Mapper> mapperClass, Class<? extends TBase<?, ?>> outputClass) throws IOException, Exception {
     final Job job = new Job(conf, "write");
 
     // input not really used

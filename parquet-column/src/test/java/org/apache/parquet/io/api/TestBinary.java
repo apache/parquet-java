@@ -74,7 +74,7 @@ public class TestBinary {
   private static final BinaryFactory BYTE_ARRAY_SLICE_BACKED_BF = new BinaryFactory() {
     @Override
     public BinaryAndOriginal get(byte[] bytes, boolean reused) throws Exception {
-      byte [] orig = padded(bytes);
+      byte[] orig = padded(bytes);
       Binary b;
       if (reused) {
         b = Binary.fromReusedByteArray(orig, 5, bytes.length);
@@ -89,7 +89,7 @@ public class TestBinary {
   private static final BinaryFactory BUFFER_BF = new BinaryFactory() {
     @Override
     public BinaryAndOriginal get(byte[] bytes, boolean reused) throws Exception {
-      byte [] orig = padded(bytes);
+      byte[] orig = padded(bytes);
       ByteBuffer buff = ByteBuffer.wrap(orig, 5, bytes.length);
       Binary b;
 
@@ -157,7 +157,7 @@ public class TestBinary {
 
   @Test
   public void testWriteAllTo() throws Exception {
-    byte[] orig = {10, 9 ,8, 7, 6, 5, 4, 3, 2, 1};
+    byte[] orig = { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
     testWriteAllToHelper(Binary.fromConstantByteBuffer(ByteBuffer.wrap(orig)), orig);
     ByteBuffer buf = ByteBuffer.allocateDirect(orig.length);
     buf.put(orig);
@@ -230,8 +230,7 @@ public class TestBinary {
     out.close();
     baos.close();
 
-    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(
-        baos.toByteArray()));
+    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
     Object object = in.readObject();
     assertTrue(object instanceof Binary);
     assertEquals(bao.binary, object);

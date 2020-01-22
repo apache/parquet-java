@@ -37,7 +37,7 @@ public class TestStandardParquetHiveMapInspector extends TestCase {
   @Override
   public void setUp() {
     inspector = new StandardParquetHiveMapInspector(PrimitiveObjectInspectorFactory.javaIntObjectInspector,
-            PrimitiveObjectInspectorFactory.javaIntObjectInspector);
+        PrimitiveObjectInspectorFactory.javaIntObjectInspector);
   }
 
   @Test
@@ -59,16 +59,18 @@ public class TestStandardParquetHiveMapInspector extends TestCase {
 
   @Test
   public void testRegularMap() {
-    final Writable[] entry1 = new Writable[]{new IntWritable(0), new IntWritable(1)};
-    final Writable[] entry2 = new Writable[]{new IntWritable(2), new IntWritable(3)};
+    final Writable[] entry1 = new Writable[] { new IntWritable(0), new IntWritable(1) };
+    final Writable[] entry2 = new Writable[] { new IntWritable(2), new IntWritable(3) };
 
-    final ArrayWritable internalMap = new ArrayWritable(ArrayWritable.class, new Writable[]{
-      new ArrayWritable(Writable.class, entry1), new ArrayWritable(Writable.class, entry2)});
+    final ArrayWritable internalMap = new ArrayWritable(ArrayWritable.class,
+        new Writable[] { new ArrayWritable(Writable.class, entry1), new ArrayWritable(Writable.class, entry2) });
 
-    final ArrayWritable map = new ArrayWritable(ArrayWritable.class, new Writable[]{internalMap});
+    final ArrayWritable map = new ArrayWritable(ArrayWritable.class, new Writable[] { internalMap });
 
-    assertEquals("Wrong result of inspection", new IntWritable(1), inspector.getMapValueElement(map, new IntWritable(0)));
-    assertEquals("Wrong result of inspection", new IntWritable(3), inspector.getMapValueElement(map, new IntWritable(2)));
+    assertEquals("Wrong result of inspection", new IntWritable(1),
+        inspector.getMapValueElement(map, new IntWritable(0)));
+    assertEquals("Wrong result of inspection", new IntWritable(3),
+        inspector.getMapValueElement(map, new IntWritable(2)));
     assertNull("Wrong result of inspection", inspector.getMapValueElement(map, new ShortWritable((short) 0)));
     assertNull("Wrong result of inspection", inspector.getMapValueElement(map, new ShortWritable((short) 2)));
   }
@@ -81,10 +83,14 @@ public class TestStandardParquetHiveMapInspector extends TestCase {
     map.put(new IntWritable(4), new IntWritable(5));
     map.put(new IntWritable(6), new IntWritable(7));
 
-    assertEquals("Wrong result of inspection", new IntWritable(1), inspector.getMapValueElement(map, new IntWritable(0)));
-    assertEquals("Wrong result of inspection", new IntWritable(3), inspector.getMapValueElement(map, new IntWritable(2)));
-    assertEquals("Wrong result of inspection", new IntWritable(5), inspector.getMapValueElement(map, new IntWritable(4)));
-    assertEquals("Wrong result of inspection", new IntWritable(7), inspector.getMapValueElement(map, new IntWritable(6)));
+    assertEquals("Wrong result of inspection", new IntWritable(1),
+        inspector.getMapValueElement(map, new IntWritable(0)));
+    assertEquals("Wrong result of inspection", new IntWritable(3),
+        inspector.getMapValueElement(map, new IntWritable(2)));
+    assertEquals("Wrong result of inspection", new IntWritable(5),
+        inspector.getMapValueElement(map, new IntWritable(4)));
+    assertEquals("Wrong result of inspection", new IntWritable(7),
+        inspector.getMapValueElement(map, new IntWritable(6)));
     assertNull("Wrong result of inspection", inspector.getMapValueElement(map, new ShortWritable((short) 0)));
     assertNull("Wrong result of inspection", inspector.getMapValueElement(map, new ShortWritable((short) 2)));
     assertNull("Wrong result of inspection", inspector.getMapValueElement(map, new ShortWritable((short) 4)));

@@ -54,11 +54,14 @@ public class ProtoSchemaConverter {
   }
 
   /**
-   * Instantiate a schema converter to get the parquet schema corresponding to protobuf classes.
-   * @param parquetSpecsCompliant   If set to false, the parquet schema generated will be using the old
-   *                                schema style (prior to PARQUET-968) to provide backward-compatibility
-   *                                but which does not use LIST and MAP wrappers around collections as required
-   *                                by the parquet specifications. If set to true, specs compliant schemas are used.
+   * Instantiate a schema converter to get the parquet schema corresponding to
+   * protobuf classes.
+   * 
+   * @param parquetSpecsCompliant If set to false, the parquet schema generated
+   * will be using the old schema style (prior to PARQUET-968) to provide
+   * backward-compatibility but which does not use LIST and MAP wrappers around
+   * collections as required by the parquet specifications. If set to true, specs
+   * compliant schemas are used.
    */
   public ProtoSchemaConverter(boolean parquetSpecsCompliant) {
     this.parquetSpecsCompliant = parquetSpecsCompliant;
@@ -67,8 +70,7 @@ public class ProtoSchemaConverter {
   public MessageType convert(Class<? extends Message> protobufClass) {
     LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
-    MessageType messageType =
-        convertFields(Types.buildMessage(), descriptor.getFields())
+    MessageType messageType = convertFields(Types.buildMessage(), descriptor.getFields())
         .named(descriptor.getFullName());
     LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
     return messageType;
@@ -77,9 +79,7 @@ public class ProtoSchemaConverter {
   /* Iterates over list of fields. **/
   private <T> GroupBuilder<T> convertFields(GroupBuilder<T> groupBuilder, List<FieldDescriptor> fieldDescriptors) {
     for (FieldDescriptor fieldDescriptor : fieldDescriptors) {
-      groupBuilder =
-          addField(fieldDescriptor, groupBuilder)
-          .id(fieldDescriptor.getNumber())
+      groupBuilder = addField(fieldDescriptor, groupBuilder).id(fieldDescriptor.getNumber())
           .named(fieldDescriptor.getName());
     }
     return groupBuilder;
@@ -95,7 +95,8 @@ public class ProtoSchemaConverter {
     }
   }
 
-  private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addField(FieldDescriptor descriptor, final GroupBuilder<T> builder) {
+  private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addField(FieldDescriptor descriptor,
+      final GroupBuilder<T> builder) {
     if (descriptor.getJavaType() == JavaType.MESSAGE) {
       return addMessageField(descriptor, builder);
     }
@@ -106,26 +107,19 @@ public class ProtoSchemaConverter {
       return addRepeatedPrimitive(parquetType.primitiveType, parquetType.logicalTypeAnnotation, builder);
     }
 
-    return builder.primitive(parquetType.primitiveType, getRepetition(descriptor)).as(parquetType.logicalTypeAnnotation);
+    return builder.primitive(parquetType.primitiveType, getRepetition(descriptor))
+        .as(parquetType.logicalTypeAnnotation);
   }
 
-  private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addRepeatedPrimitive(PrimitiveTypeName primitiveType,
-                                                                                                   LogicalTypeAnnotation logicalTypeAnnotation,
-                                                                                                   final GroupBuilder<T> builder) {
-    return builder
-        .group(Type.Repetition.OPTIONAL).as(listType())
-          .group(Type.Repetition.REPEATED)
-            .primitive(primitiveType, Type.Repetition.REQUIRED).as(logicalTypeAnnotation)
-          .named("element")
-        .named("list");
+  private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addRepeatedPrimitive(
+      PrimitiveTypeName primitiveType, LogicalTypeAnnotation logicalTypeAnnotation, final GroupBuilder<T> builder) {
+    return builder.group(Type.Repetition.OPTIONAL).as(listType()).group(Type.Repetition.REPEATED)
+        .primitive(primitiveType, Type.Repetition.REQUIRED).as(logicalTypeAnnotation).named("element").named("list");
   }
 
   private <T> GroupBuilder<GroupBuilder<T>> addRepeatedMessage(FieldDescriptor descriptor, GroupBuilder<T> builder) {
-    GroupBuilder<GroupBuilder<GroupBuilder<GroupBuilder<T>>>> result =
-      builder
-        .group(Type.Repetition.OPTIONAL).as(listType())
-        .group(Type.Repetition.REPEATED)
-        .group(Type.Repetition.OPTIONAL);
+    GroupBuilder<GroupBuilder<GroupBuilder<GroupBuilder<T>>>> result = builder.group(Type.Repetition.OPTIONAL)
+        .as(listType()).group(Type.Repetition.REPEATED).group(Type.Repetition.OPTIONAL);
 
     convertFields(result, descriptor.getMessageType().getFields());
 
@@ -138,7 +132,8 @@ public class ProtoSchemaConverter {
       return addMapField(descriptor, builder);
     }
     if (descriptor.isRepeated() && parquetSpecsCompliant) {
-      // the old schema style did not include the LIST wrapper around repeated messages
+      // the old schema style did not include the LIST wrapper around repeated
+      // messages
       return addRepeatedMessage(descriptor, builder);
     }
 
@@ -156,29 +151,42 @@ public class ProtoSchemaConverter {
 
     ParquetType mapKeyParquetType = getParquetType(fields.get(0));
 
-    GroupBuilder<GroupBuilder<GroupBuilder<T>>> group = builder
-      .group(Type.Repetition.OPTIONAL).as(mapType()) // only optional maps are allowed in Proto3
-      .group(Type.Repetition.REPEATED) // key_value wrapper
-      .primitive(mapKeyParquetType.primitiveType, Type.Repetition.REQUIRED).as(mapKeyParquetType.logicalTypeAnnotation).named("key");
+    GroupBuilder<GroupBuilder<GroupBuilder<T>>> group = builder.group(Type.Repetition.OPTIONAL).as(mapType()) // only
+                                                                                                              // optional
+                                                                                                              // maps
+                                                                                                              // are
+                                                                                                              // allowed
+                                                                                                              // in
+                                                                                                              // Proto3
+        .group(Type.Repetition.REPEATED) // key_value wrapper
+        .primitive(mapKeyParquetType.primitiveType, Type.Repetition.REQUIRED)
+        .as(mapKeyParquetType.logicalTypeAnnotation).named("key");
 
-    return addField(fields.get(1), group).named("value")
-      .named("key_value");
+    return addField(fields.get(1), group).named("value").named("key_value");
   }
 
   private ParquetType getParquetType(FieldDescriptor fieldDescriptor) {
 
     JavaType javaType = fieldDescriptor.getJavaType();
     switch (javaType) {
-      case INT: return ParquetType.of(INT32);
-      case LONG: return ParquetType.of(INT64);
-      case DOUBLE: return ParquetType.of(DOUBLE);
-      case BOOLEAN: return ParquetType.of(BOOLEAN);
-      case FLOAT: return ParquetType.of(FLOAT);
-      case STRING: return ParquetType.of(BINARY, stringType());
-      case ENUM: return ParquetType.of(BINARY, enumType());
-      case BYTE_STRING: return ParquetType.of(BINARY);
-      default:
-        throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType);
+    case INT:
+      return ParquetType.of(INT32);
+    case LONG:
+      return ParquetType.of(INT64);
+    case DOUBLE:
+      return ParquetType.of(DOUBLE);
+    case BOOLEAN:
+      return ParquetType.of(BOOLEAN);
+    case FLOAT:
+      return ParquetType.of(FLOAT);
+    case STRING:
+      return ParquetType.of(BINARY, stringType());
+    case ENUM:
+      return ParquetType.of(BINARY, enumType());
+    case BYTE_STRING:
+      return ParquetType.of(BINARY);
+    default:
+      throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType);
     }
   }
 

@@ -103,12 +103,8 @@ class ColumnIndexFilterUtils {
         for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
           int index = Arrays.binarySearch(indexMap, i);
           boolean isHidden = index < 0;
-          formatter.format("%spage-%-5d  %20d  %16d  %20d\n",
-              isHidden ? "- " : "  ",
-              isHidden ? i : index,
-              offsetIndex.getOffset(i),
-              offsetIndex.getCompressedPageSize(i),
-              offsetIndex.getFirstRowIndex(i));
+          formatter.format("%spage-%-5d  %20d  %16d  %20d\n", isHidden ? "- " : "  ", isHidden ? i : index,
+              offsetIndex.getOffset(i), offsetIndex.getCompressedPageSize(i), offsetIndex.getFirstRowIndex(i));
         }
         return formatter.toString();
       }
@@ -116,7 +112,8 @@ class ColumnIndexFilterUtils {
   }
 
   /*
-   * Returns the filtered offset index containing only the pages which are overlapping with rowRanges.
+   * Returns the filtered offset index containing only the pages which are
+   * overlapping with rowRanges.
    */
   static OffsetIndex filterOffsetIndex(OffsetIndex offsetIndex, RowRanges rowRanges, long totalRowCount) {
     IntList indexMap = new IntArrayList();

@@ -23,18 +23,19 @@ import java.util.regex.Pattern;
 import org.apache.parquet.Preconditions;
 
 /**
- * Holds a String with wildcards ('*'), and can answer whether a given string matches this WildcardPath.
- * For example:
- * "foo.*.baz" or "foo*baz.bar*"
+ * Holds a String with wildcards ('*'), and can answer whether a given string
+ * matches this WildcardPath. For example: "foo.*.baz" or "foo*baz.bar*"
  *
  * The '*' in "foo*bar" is treated the same way that java regex treats "(.*)",
- * and all WildcardPath's are considered to match child paths.
- * For example, "foo.bar" will match "foo.bar.baz". It will not match "foo.barbaz" however.
- * To match "foo.barbaz" the pattern "foo.bar*" could be used, which would also match "foo.barbaz.x"
+ * and all WildcardPath's are considered to match child paths. For example,
+ * "foo.bar" will match "foo.bar.baz". It will not match "foo.barbaz" however.
+ * To match "foo.barbaz" the pattern "foo.bar*" could be used, which would also
+ * match "foo.barbaz.x"
  *
- * Only '*' is  considered a special character.
- * All other characters are not treated as special characters, including '{', '}', '.', and '/'
- * with one exception -- the delimiter character is used for matching against child paths as explained above.
+ * Only '*' is considered a special character. All other characters are not
+ * treated as special characters, including '{', '}', '.', and '/' with one
+ * exception -- the delimiter character is used for matching against child paths
+ * as explained above.
  *
  * It is assumed that {} globs have already been expanded before constructing
  * this object.
@@ -103,14 +104,15 @@ public class WildcardPath {
 
   @Override
   public String toString() {
-    return String.format("WildcardPath(parentGlobPath: '%s', pattern: '%s')",
-        parentGlobPath, originalPattern);
+    return String.format("WildcardPath(parentGlobPath: '%s', pattern: '%s')", parentGlobPath, originalPattern);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o)
+      return true;
+    if (o == null || getClass() != o.getClass())
+      return false;
     WildcardPath wildcardPath = (WildcardPath) o;
     return originalPattern.equals(wildcardPath.originalPattern);
   }

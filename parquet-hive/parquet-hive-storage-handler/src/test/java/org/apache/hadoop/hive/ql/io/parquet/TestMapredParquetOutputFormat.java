@@ -67,7 +67,8 @@ public class TestMapredParquetOutputFormat {
     tableProps.setProperty("columns.types", "int:int");
 
     final Progressable mockProgress = mock(Progressable.class);
-    final ParquetOutputFormat<ArrayWritable> outputFormat = (ParquetOutputFormat<ArrayWritable>) mock(ParquetOutputFormat.class);
+    final ParquetOutputFormat<ArrayWritable> outputFormat = (ParquetOutputFormat<ArrayWritable>) mock(
+        ParquetOutputFormat.class);
 
     JobConf jobConf = new JobConf();
 
@@ -75,11 +76,8 @@ public class TestMapredParquetOutputFormat {
       new MapredParquetOutputFormat(outputFormat) {
         @Override
         protected ParquetRecordWriterWrapper getParquerRecordWriterWrapper(
-            ParquetOutputFormat<ArrayWritable> realOutputFormat,
-            JobConf jobConf,
-            String finalOutPath,
-            Progressable progress
-            ) throws IOException {
+            ParquetOutputFormat<ArrayWritable> realOutputFormat, JobConf jobConf, String finalOutPath,
+            Progressable progress) throws IOException {
           assertEquals(outputFormat, realOutputFormat);
           assertNotNull(jobConf.get(DataWritableWriteSupport.PARQUET_HIVE_SCHEMA));
           assertEquals("/foo", finalOutPath.toString());

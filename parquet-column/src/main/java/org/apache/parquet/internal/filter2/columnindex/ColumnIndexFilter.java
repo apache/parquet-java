@@ -48,10 +48,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Filter implementation based on column indexes.
- * No filtering will be applied for columns where no column index is available.
- * Offset index is required for all the columns in the projection, therefore a {@link MissingOffsetIndexException} will
- * be thrown from any {@code visit} methods if any of the required offset indexes is missing.
+ * Filter implementation based on column indexes. No filtering will be applied
+ * for columns where no column index is available. Offset index is required for
+ * all the columns in the projection, therefore a
+ * {@link MissingOffsetIndexException} will be thrown from any {@code visit}
+ * methods if any of the required offset indexes is missing.
  */
 public class ColumnIndexFilter implements Visitor<RowRanges> {
 
@@ -62,19 +63,17 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
   private RowRanges allRows;
 
   /**
-   * Calculates the row ranges containing the indexes of the rows might match the specified filter.
+   * Calculates the row ranges containing the indexes of the rows might match the
+   * specified filter.
    *
-   * @param filter
-   *          to be used for filtering the rows
-   * @param columnIndexStore
-   *          the store for providing column/offset indexes
-   * @param paths
-   *          the paths of the columns used in the actual projection; a column not being part of the projection will be
-   *          handled as containing {@code null} values only even if the column has values written in the file
-   * @param rowCount
-   *          the total number of rows in the row-group
-   * @return the ranges of the possible matching row indexes; the returned ranges will contain all the rows if any of
-   *         the required offset index is missing
+   * @param filter to be used for filtering the rows
+   * @param columnIndexStore the store for providing column/offset indexes
+   * @param paths the paths of the columns used in the actual projection; a column
+   * not being part of the projection will be handled as containing {@code null}
+   * values only even if the column has values written in the file
+   * @param rowCount the total number of rows in the row-group
+   * @return the ranges of the possible matching row indexes; the returned ranges
+   * will contain all the rows if any of the required offset index is missing
    */
   public static RowRanges calculateRowRanges(FilterCompat.Filter filter, ColumnIndexStore columnIndexStore,
       Set<ColumnPath> paths, long rowCount) {
@@ -153,8 +152,7 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> RowRanges visit(
-      LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> RowRanges visit(LogicalNotUserDefined<T, U> udp) {
     return applyPredicate(udp.getUserDefined().getColumn(), ci -> ci.visit(udp),
         udp.getUserDefined().getUserDefinedPredicate().acceptsNullValue() ? RowRanges.EMPTY : allRows());
   }

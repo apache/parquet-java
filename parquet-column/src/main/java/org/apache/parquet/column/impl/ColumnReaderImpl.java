@@ -25,21 +25,19 @@ import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.io.api.PrimitiveConverter;
 
 /**
- * ColumnReader implementation for the scenario when column indexes are not used (all values are read)
+ * ColumnReader implementation for the scenario when column indexes are not used
+ * (all values are read)
  */
 public class ColumnReaderImpl extends ColumnReaderBase {
 
   /**
    * creates a reader for triplets
    * 
-   * @param path
-   *          the descriptor for the corresponding column
-   * @param pageReader
-   *          the underlying store to read from
-   * @param converter
-   *          a converter that materializes the values in this column in the current record
-   * @param writerVersion
-   *          writer version string from the Parquet file being read
+   * @param path the descriptor for the corresponding column
+   * @param pageReader the underlying store to read from
+   * @param converter a converter that materializes the values in this column in
+   * the current record
+   * @param writerVersion writer version string from the Parquet file being read
    */
   public ColumnReaderImpl(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter,
       ParsedVersion writerVersion) {

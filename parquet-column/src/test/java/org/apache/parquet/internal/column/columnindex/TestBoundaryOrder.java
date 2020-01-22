@@ -162,8 +162,8 @@ public class TestBoundaryOrder {
       return String.format(
           "Linear search: %.2fms (avg: %.6fms); number of compares: %d (avg: %d) [100.00%%]%n"
               + "Binary search: %.2fms (avg: %.6fms); number of compares: %d (avg: %d) [%.2f%%]",
-          linearMs, linearMs / execCount, linearCompareCount, linearCompareCount / execCount,
-          binaryMs, binaryMs / execCount, binaryCompareCount, binaryCompareCount / execCount,
+          linearMs, linearMs / execCount, linearCompareCount, linearCompareCount / execCount, binaryMs,
+          binaryMs / execCount, binaryCompareCount, binaryCompareCount / execCount,
           100.0 * binaryCompareCount / linearCompareCount);
     }
   }
@@ -267,44 +267,28 @@ public class TestBoundaryOrder {
   @Test
   public void testEq() {
     for (int i = FROM - 1; i <= TO + 1; ++i) {
-      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::eq,
-          BoundaryOrder.ASCENDING::eq,
-          ASCENDING.createValueComparator(i));
+      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order", BoundaryOrder.UNORDERED::eq,
+          BoundaryOrder.ASCENDING::eq, ASCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::eq,
-          BoundaryOrder.DESCENDING::eq,
-          DESCENDING.createValueComparator(i));
+          BoundaryOrder.UNORDERED::eq, BoundaryOrder.DESCENDING::eq, DESCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with ASCENDING order in ",
-          BoundaryOrder.UNORDERED::eq,
-          BoundaryOrder.ASCENDING::eq,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::eq, BoundaryOrder.ASCENDING::eq, ALL_NULL_PAGES.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with DESCENDING order in ",
-          BoundaryOrder.UNORDERED::eq,
-          BoundaryOrder.DESCENDING::eq,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::eq, BoundaryOrder.DESCENDING::eq, ALL_NULL_PAGES.createValueComparator(i));
     }
     for (int i = SINGLE_FROM - 1; i <= SINGLE_TO + 1; ++i) {
       ColumnIndexBase<?>.ValueComparator singleComparator = SINGLE.createValueComparator(i);
-      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::eq,
-          BoundaryOrder.ASCENDING::eq,
-          singleComparator);
+      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order", BoundaryOrder.UNORDERED::eq,
+          BoundaryOrder.ASCENDING::eq, singleComparator);
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::eq,
-          BoundaryOrder.DESCENDING::eq,
-          singleComparator);
+          BoundaryOrder.UNORDERED::eq, BoundaryOrder.DESCENDING::eq, singleComparator);
     }
     ExecStats stats = new ExecStats();
     for (int i = RAND_FROM - 1; i <= RAND_TO + 1; ++i) {
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::eq,
-          BoundaryOrder.ASCENDING::eq,
-          RAND_ASCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::eq, BoundaryOrder.ASCENDING::eq, RAND_ASCENDING.createValueComparator(i)));
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::eq,
-          BoundaryOrder.DESCENDING::eq,
-          RAND_DESCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::eq, BoundaryOrder.DESCENDING::eq, RAND_DESCENDING.createValueComparator(i)));
     }
     LOGGER.info("Executed eq on random data (page count: {}, values searched: {}):\n{}", RAND_COUNT,
         RAND_TO - RAND_FROM + 2, stats);
@@ -313,44 +297,28 @@ public class TestBoundaryOrder {
   @Test
   public void testGt() {
     for (int i = FROM - 1; i <= TO + 1; ++i) {
-      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::gt,
-          BoundaryOrder.ASCENDING::gt,
-          ASCENDING.createValueComparator(i));
+      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order", BoundaryOrder.UNORDERED::gt,
+          BoundaryOrder.ASCENDING::gt, ASCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::gt,
-          BoundaryOrder.DESCENDING::gt,
-          DESCENDING.createValueComparator(i));
+          BoundaryOrder.UNORDERED::gt, BoundaryOrder.DESCENDING::gt, DESCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with ASCENDING order in ",
-          BoundaryOrder.UNORDERED::gt,
-          BoundaryOrder.ASCENDING::gt,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::gt, BoundaryOrder.ASCENDING::gt, ALL_NULL_PAGES.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with DESCENDING order in ",
-          BoundaryOrder.UNORDERED::gt,
-          BoundaryOrder.DESCENDING::gt,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::gt, BoundaryOrder.DESCENDING::gt, ALL_NULL_PAGES.createValueComparator(i));
     }
     for (int i = SINGLE_FROM - 1; i <= SINGLE_TO + 1; ++i) {
       ColumnIndexBase<?>.ValueComparator singleComparator = SINGLE.createValueComparator(i);
-      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::gt,
-          BoundaryOrder.ASCENDING::gt,
-          singleComparator);
+      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order", BoundaryOrder.UNORDERED::gt,
+          BoundaryOrder.ASCENDING::gt, singleComparator);
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::gt,
-          BoundaryOrder.DESCENDING::gt,
-          singleComparator);
+          BoundaryOrder.UNORDERED::gt, BoundaryOrder.DESCENDING::gt, singleComparator);
     }
     ExecStats stats = new ExecStats();
     for (int i = RAND_FROM - 1; i <= RAND_TO + 1; ++i) {
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::gt,
-          BoundaryOrder.ASCENDING::gt,
-          RAND_ASCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::gt, BoundaryOrder.ASCENDING::gt, RAND_ASCENDING.createValueComparator(i)));
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::gt,
-          BoundaryOrder.DESCENDING::gt,
-          RAND_DESCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::gt, BoundaryOrder.DESCENDING::gt, RAND_DESCENDING.createValueComparator(i)));
     }
     LOGGER.info("Executed gt on random data (page count: {}, values searched: {}):\n{}", RAND_COUNT,
         RAND_TO - RAND_FROM + 2, stats);
@@ -360,43 +328,27 @@ public class TestBoundaryOrder {
   public void testGtEq() {
     for (int i = FROM - 1; i <= TO + 1; ++i) {
       validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::gtEq,
-          BoundaryOrder.ASCENDING::gtEq,
-          ASCENDING.createValueComparator(i));
+          BoundaryOrder.UNORDERED::gtEq, BoundaryOrder.ASCENDING::gtEq, ASCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::gtEq,
-          BoundaryOrder.DESCENDING::gtEq,
-          DESCENDING.createValueComparator(i));
+          BoundaryOrder.UNORDERED::gtEq, BoundaryOrder.DESCENDING::gtEq, DESCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with ASCENDING order in ",
-          BoundaryOrder.UNORDERED::gtEq,
-          BoundaryOrder.ASCENDING::gtEq,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::gtEq, BoundaryOrder.ASCENDING::gtEq, ALL_NULL_PAGES.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with DESCENDING order in ",
-          BoundaryOrder.UNORDERED::gtEq,
-          BoundaryOrder.DESCENDING::gtEq,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::gtEq, BoundaryOrder.DESCENDING::gtEq, ALL_NULL_PAGES.createValueComparator(i));
     }
     for (int i = SINGLE_FROM - 1; i <= SINGLE_TO + 1; ++i) {
       ColumnIndexBase<?>.ValueComparator singleComparator = SINGLE.createValueComparator(i);
       validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::gtEq,
-          BoundaryOrder.ASCENDING::gtEq,
-          singleComparator);
+          BoundaryOrder.UNORDERED::gtEq, BoundaryOrder.ASCENDING::gtEq, singleComparator);
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::gtEq,
-          BoundaryOrder.DESCENDING::gtEq,
-          singleComparator);
+          BoundaryOrder.UNORDERED::gtEq, BoundaryOrder.DESCENDING::gtEq, singleComparator);
     }
     ExecStats stats = new ExecStats();
     for (int i = RAND_FROM - 1; i <= RAND_TO + 1; ++i) {
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::gtEq,
-          BoundaryOrder.ASCENDING::gtEq,
-          RAND_ASCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::gtEq, BoundaryOrder.ASCENDING::gtEq, RAND_ASCENDING.createValueComparator(i)));
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::gtEq,
-          BoundaryOrder.DESCENDING::gtEq,
-          RAND_DESCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::gtEq, BoundaryOrder.DESCENDING::gtEq, RAND_DESCENDING.createValueComparator(i)));
     }
     LOGGER.info("Executed gtEq on random data (page count: {}, values searched: {}):\n{}", RAND_COUNT,
         RAND_TO - RAND_FROM + 2, stats);
@@ -405,44 +357,28 @@ public class TestBoundaryOrder {
   @Test
   public void testLt() {
     for (int i = FROM - 1; i <= TO + 1; ++i) {
-      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::lt,
-          BoundaryOrder.ASCENDING::lt,
-          ASCENDING.createValueComparator(i));
+      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order", BoundaryOrder.UNORDERED::lt,
+          BoundaryOrder.ASCENDING::lt, ASCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::lt,
-          BoundaryOrder.DESCENDING::lt,
-          DESCENDING.createValueComparator(i));
+          BoundaryOrder.UNORDERED::lt, BoundaryOrder.DESCENDING::lt, DESCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with ASCENDING order in ",
-          BoundaryOrder.UNORDERED::lt,
-          BoundaryOrder.ASCENDING::lt,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::lt, BoundaryOrder.ASCENDING::lt, ALL_NULL_PAGES.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with DESCENDING order in ",
-          BoundaryOrder.UNORDERED::lt,
-          BoundaryOrder.DESCENDING::lt,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::lt, BoundaryOrder.DESCENDING::lt, ALL_NULL_PAGES.createValueComparator(i));
     }
     for (int i = SINGLE_FROM - 1; i <= SINGLE_TO + 1; ++i) {
       ColumnIndexBase<?>.ValueComparator singleComparator = SINGLE.createValueComparator(i);
-      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::lt,
-          BoundaryOrder.ASCENDING::lt,
-          singleComparator);
+      validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order", BoundaryOrder.UNORDERED::lt,
+          BoundaryOrder.ASCENDING::lt, singleComparator);
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::lt,
-          BoundaryOrder.DESCENDING::lt,
-          singleComparator);
+          BoundaryOrder.UNORDERED::lt, BoundaryOrder.DESCENDING::lt, singleComparator);
     }
     ExecStats stats = new ExecStats();
     for (int i = RAND_FROM - 1; i <= RAND_TO + 1; ++i) {
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::lt,
-          BoundaryOrder.ASCENDING::lt,
-          RAND_ASCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::lt, BoundaryOrder.ASCENDING::lt, RAND_ASCENDING.createValueComparator(i)));
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::lt,
-          BoundaryOrder.DESCENDING::lt,
-          RAND_DESCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::lt, BoundaryOrder.DESCENDING::lt, RAND_DESCENDING.createValueComparator(i)));
     }
     LOGGER.info("Executed lt on random data (page count: {}, values searched: {}):\n{}", RAND_COUNT,
         RAND_TO - RAND_FROM + 2, stats);
@@ -452,43 +388,27 @@ public class TestBoundaryOrder {
   public void testLtEq() {
     for (int i = FROM - 1; i <= TO + 1; ++i) {
       validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::ltEq,
-          BoundaryOrder.ASCENDING::ltEq,
-          ASCENDING.createValueComparator(i));
+          BoundaryOrder.UNORDERED::ltEq, BoundaryOrder.ASCENDING::ltEq, ASCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::ltEq,
-          BoundaryOrder.DESCENDING::ltEq,
-          DESCENDING.createValueComparator(i));
+          BoundaryOrder.UNORDERED::ltEq, BoundaryOrder.DESCENDING::ltEq, DESCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with ASCENDING order in ",
-          BoundaryOrder.UNORDERED::ltEq,
-          BoundaryOrder.ASCENDING::ltEq,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::ltEq, BoundaryOrder.ASCENDING::ltEq, ALL_NULL_PAGES.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with DESCENDING order in ",
-          BoundaryOrder.UNORDERED::ltEq,
-          BoundaryOrder.DESCENDING::ltEq,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::ltEq, BoundaryOrder.DESCENDING::ltEq, ALL_NULL_PAGES.createValueComparator(i));
     }
     for (int i = SINGLE_FROM - 1; i <= SINGLE_TO + 1; ++i) {
       ColumnIndexBase<?>.ValueComparator singleComparator = SINGLE.createValueComparator(i);
       validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::ltEq,
-          BoundaryOrder.ASCENDING::ltEq,
-          singleComparator);
+          BoundaryOrder.UNORDERED::ltEq, BoundaryOrder.ASCENDING::ltEq, singleComparator);
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::ltEq,
-          BoundaryOrder.DESCENDING::ltEq,
-          singleComparator);
+          BoundaryOrder.UNORDERED::ltEq, BoundaryOrder.DESCENDING::ltEq, singleComparator);
     }
     ExecStats stats = new ExecStats();
     for (int i = RAND_FROM - 1; i <= RAND_TO + 1; ++i) {
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::ltEq,
-          BoundaryOrder.ASCENDING::ltEq,
-          RAND_ASCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::ltEq, BoundaryOrder.ASCENDING::ltEq, RAND_ASCENDING.createValueComparator(i)));
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::ltEq,
-          BoundaryOrder.DESCENDING::ltEq,
-          RAND_DESCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::ltEq, BoundaryOrder.DESCENDING::ltEq, RAND_DESCENDING.createValueComparator(i)));
     }
     LOGGER.info("Executed ltEq on random data (page count: {}, values searched: {}):\n{}", RAND_COUNT,
         RAND_TO - RAND_FROM + 2, stats);
@@ -498,43 +418,27 @@ public class TestBoundaryOrder {
   public void testNotEq() {
     for (int i = -16; i <= 16; ++i) {
       validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::notEq,
-          BoundaryOrder.ASCENDING::notEq,
-          ASCENDING.createValueComparator(i));
+          BoundaryOrder.UNORDERED::notEq, BoundaryOrder.ASCENDING::notEq, ASCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::notEq,
-          BoundaryOrder.DESCENDING::notEq,
-          DESCENDING.createValueComparator(i));
+          BoundaryOrder.UNORDERED::notEq, BoundaryOrder.DESCENDING::notEq, DESCENDING.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with ASCENDING order in ",
-          BoundaryOrder.UNORDERED::notEq,
-          BoundaryOrder.ASCENDING::notEq,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::notEq, BoundaryOrder.ASCENDING::notEq, ALL_NULL_PAGES.createValueComparator(i));
       validateOperator("Mismatching page indexes for all null pages and value " + i + " with DESCENDING order in ",
-          BoundaryOrder.UNORDERED::notEq,
-          BoundaryOrder.DESCENDING::notEq,
-          ALL_NULL_PAGES.createValueComparator(i));
+          BoundaryOrder.UNORDERED::notEq, BoundaryOrder.DESCENDING::notEq, ALL_NULL_PAGES.createValueComparator(i));
     }
     for (int i = FROM - 1; i <= TO + 1; ++i) {
       ColumnIndexBase<?>.ValueComparator singleComparator = SINGLE.createValueComparator(i);
       validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::notEq,
-          BoundaryOrder.ASCENDING::notEq,
-          singleComparator);
+          BoundaryOrder.UNORDERED::notEq, BoundaryOrder.ASCENDING::notEq, singleComparator);
       validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::notEq,
-          BoundaryOrder.DESCENDING::notEq,
-          singleComparator);
+          BoundaryOrder.UNORDERED::notEq, BoundaryOrder.DESCENDING::notEq, singleComparator);
     }
     ExecStats stats = new ExecStats();
     for (int i = RAND_FROM - 1; i <= RAND_TO + 1; ++i) {
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with ASCENDING order",
-          BoundaryOrder.UNORDERED::notEq,
-          BoundaryOrder.ASCENDING::notEq,
-          RAND_ASCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::notEq, BoundaryOrder.ASCENDING::notEq, RAND_ASCENDING.createValueComparator(i)));
       stats.add(validateOperator("Mismatching page indexes for value " + i + " with DESCENDING order",
-          BoundaryOrder.UNORDERED::notEq,
-          BoundaryOrder.DESCENDING::notEq,
-          RAND_DESCENDING.createValueComparator(i)));
+          BoundaryOrder.UNORDERED::notEq, BoundaryOrder.DESCENDING::notEq, RAND_DESCENDING.createValueComparator(i)));
     }
     LOGGER.info("Executed notEq on random data (page count: {}, values searched: {}):\n{}", RAND_COUNT,
         RAND_TO - RAND_FROM + 2, stats);

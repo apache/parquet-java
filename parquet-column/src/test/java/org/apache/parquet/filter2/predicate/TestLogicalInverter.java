@@ -44,23 +44,18 @@ public class TestLogicalInverter {
   private static final IntColumn intColumn = intColumn("a.b.c");
   private static final DoubleColumn doubleColumn = doubleColumn("a.b.c");
 
-  private  static  final UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
+  private static final UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
 
-  private static final FilterPredicate complex =
-      and(
-          or(ltEq(doubleColumn, 12.0),
-              and(
-                  not(or(eq(intColumn, 7), notEq(intColumn, 17))),
-                  userDefined(intColumn, DummyUdp.class))),
-          or(gt(doubleColumn, 100.0), notEq(intColumn, 77)));
+  private static final FilterPredicate complex = and(
+      or(ltEq(doubleColumn, 12.0),
+          and(not(or(eq(intColumn, 7), notEq(intColumn, 17))), userDefined(intColumn, DummyUdp.class))),
+      or(gt(doubleColumn, 100.0), notEq(intColumn, 77)));
 
-  private static final FilterPredicate complexInverse =
-      or(
-          and(gt(doubleColumn, 12.0),
-              or(
-                  or(eq(intColumn, 7), notEq(intColumn, 17)),
-                  new LogicalNotUserDefined<>(userDefined(intColumn, DummyUdp.class)))),
-          and(ltEq(doubleColumn, 100.0), eq(intColumn, 77)));
+  private static final FilterPredicate complexInverse = or(
+      and(gt(doubleColumn, 12.0),
+          or(or(eq(intColumn, 7), notEq(intColumn, 17)),
+              new LogicalNotUserDefined<>(userDefined(intColumn, DummyUdp.class)))),
+      and(ltEq(doubleColumn, 100.0), eq(intColumn, 77)));
 
   @Test
   public void testBaseCases() {

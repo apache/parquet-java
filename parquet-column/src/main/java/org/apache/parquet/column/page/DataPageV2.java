@@ -37,18 +37,10 @@ public class DataPageV2 extends DataPage {
    * @param statistics optional statistics for this page
    * @return an uncompressed page
    */
-  public static DataPageV2 uncompressed(
-      int rowCount, int nullCount, int valueCount,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
-      Statistics<?> statistics) {
-    return new DataPageV2(
-        rowCount, nullCount, valueCount,
-        repetitionLevels, definitionLevels,
-        dataEncoding, data,
-        Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
-        statistics,
-        false);
+  public static DataPageV2 uncompressed(int rowCount, int nullCount, int valueCount, BytesInput repetitionLevels,
+      BytesInput definitionLevels, Encoding dataEncoding, BytesInput data, Statistics<?> statistics) {
+    return new DataPageV2(rowCount, nullCount, valueCount, repetitionLevels, definitionLevels, dataEncoding, data,
+        Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()), statistics, false);
   }
 
   /**
@@ -63,18 +55,12 @@ public class DataPageV2 extends DataPage {
    * @param statistics optional statistics for this page
    * @return an uncompressed page
    */
-  public static DataPageV2 uncompressed(
-      int rowCount, int nullCount, int valueCount, long firstRowIndex,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
+  public static DataPageV2 uncompressed(int rowCount, int nullCount, int valueCount, long firstRowIndex,
+      BytesInput repetitionLevels, BytesInput definitionLevels, Encoding dataEncoding, BytesInput data,
       Statistics<?> statistics) {
-    return new DataPageV2(
-        rowCount, nullCount, valueCount, firstRowIndex,
-        repetitionLevels, definitionLevels,
-        dataEncoding, data,
-        Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
-        statistics,
-        false);
+    return new DataPageV2(rowCount, nullCount, valueCount, firstRowIndex, repetitionLevels, definitionLevels,
+        dataEncoding, data, Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
+        statistics, false);
   }
 
   /**
@@ -89,19 +75,11 @@ public class DataPageV2 extends DataPage {
    * @param statistics optional statistics for this page
    * @return a compressed page
    */
-  public static DataPageV2 compressed(
-      int rowCount, int nullCount, int valueCount,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
-      int uncompressedSize,
+  public static DataPageV2 compressed(int rowCount, int nullCount, int valueCount, BytesInput repetitionLevels,
+      BytesInput definitionLevels, Encoding dataEncoding, BytesInput data, int uncompressedSize,
       Statistics<?> statistics) {
-    return new DataPageV2(
-        rowCount, nullCount, valueCount,
-        repetitionLevels, definitionLevels,
-        dataEncoding, data,
-        uncompressedSize,
-        statistics,
-        true);
+    return new DataPageV2(rowCount, nullCount, valueCount, repetitionLevels, definitionLevels, dataEncoding, data,
+        uncompressedSize, statistics, true);
   }
 
   private final int rowCount;
@@ -113,14 +91,11 @@ public class DataPageV2 extends DataPage {
   private final Statistics<?> statistics;
   private final boolean isCompressed;
 
-  public DataPageV2(
-      int rowCount, int nullCount, int valueCount,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
-      int uncompressedSize,
-      Statistics<?> statistics,
-      boolean isCompressed) {
-    super(Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize, valueCount);
+  public DataPageV2(int rowCount, int nullCount, int valueCount, BytesInput repetitionLevels,
+      BytesInput definitionLevels, Encoding dataEncoding, BytesInput data, int uncompressedSize,
+      Statistics<?> statistics, boolean isCompressed) {
+    super(Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize,
+        valueCount);
     this.rowCount = rowCount;
     this.nullCount = nullCount;
     this.repetitionLevels = repetitionLevels;
@@ -131,13 +106,9 @@ public class DataPageV2 extends DataPage {
     this.isCompressed = isCompressed;
   }
 
-  private DataPageV2(
-      int rowCount, int nullCount, int valueCount, long firstRowIndex,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
-      int uncompressedSize,
-      Statistics<?> statistics,
-      boolean isCompressed) {
+  private DataPageV2(int rowCount, int nullCount, int valueCount, long firstRowIndex, BytesInput repetitionLevels,
+      BytesInput definitionLevels, Encoding dataEncoding, BytesInput data, int uncompressedSize,
+      Statistics<?> statistics, boolean isCompressed) {
     super(Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize,
         valueCount, firstRowIndex);
     this.rowCount = rowCount;
@@ -194,14 +165,9 @@ public class DataPageV2 extends DataPage {
 
   @Override
   public String toString() {
-    return "Page V2 ["
-        + "dl size=" + definitionLevels.size() + ", "
-        + "rl size=" + repetitionLevels.size() + ", "
-        + "data size=" + data.size() + ", "
-        + "data enc=" + dataEncoding + ", "
-        + "valueCount=" + getValueCount() + ", "
-        + "rowCount=" + getRowCount() + ", "
-        + "is compressed=" + isCompressed + ", "
-        + "uncompressedSize=" + getUncompressedSize() + "]";
+    return "Page V2 [" + "dl size=" + definitionLevels.size() + ", " + "rl size=" + repetitionLevels.size() + ", "
+        + "data size=" + data.size() + ", " + "data enc=" + dataEncoding + ", " + "valueCount=" + getValueCount() + ", "
+        + "rowCount=" + getRowCount() + ", " + "is compressed=" + isCompressed + ", " + "uncompressedSize="
+        + getUncompressedSize() + "]";
   }
 }

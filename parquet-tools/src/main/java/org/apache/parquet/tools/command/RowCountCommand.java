@@ -38,17 +38,14 @@ public class RowCountCommand extends ArgsOnlyCommand {
   private Configuration conf;
   private Path inputPath;
   private PrintWriter out;
-  public static final String[] USAGE = new String[] {
-          "<input>",
-          "where <input> is the parquet file to count rows to stdout"
-  };
+  public static final String[] USAGE = new String[] { "<input>",
+      "where <input> is the parquet file to count rows to stdout" };
 
   public static final Options OPTIONS;
   static {
     OPTIONS = new Options();
-    Option detailed = OptionBuilder.withLongOpt("detailed")
-            .withDescription("Detailed rowcount of each matching file")
-            .create('d');
+    Option detailed = OptionBuilder.withLongOpt("detailed").withDescription("Detailed rowcount of each matching file")
+        .create('d');
     OPTIONS.addOption(detailed);
   }
 
@@ -84,7 +81,7 @@ public class RowCountCommand extends ArgsOnlyCommand {
     long rowCount = 0;
 
     for (FileStatus fs : inputFileStatuses) {
-      long fileRowCount=0;
+      long fileRowCount = 0;
       for (Footer f : ParquetFileReader.readFooters(conf, fs, false)) {
         for (BlockMetaData b : f.getParquetMetadata().getBlocks()) {
           rowCount += b.getRowCount();

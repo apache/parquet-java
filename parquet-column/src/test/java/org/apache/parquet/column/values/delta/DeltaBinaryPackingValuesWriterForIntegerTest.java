@@ -45,18 +45,17 @@ public class DeltaBinaryPackingValuesWriterForIntegerTest {
   public void setUp() {
     blockSize = 128;
     miniBlockNum = 4;
-    writer = new DeltaBinaryPackingValuesWriterForInteger(
-        blockSize, miniBlockNum, 100, 200, new DirectByteBufferAllocator());
+    writer = new DeltaBinaryPackingValuesWriterForInteger(blockSize, miniBlockNum, 100, 200,
+        new DirectByteBufferAllocator());
     random = new Random(0);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriterForInteger(
-        1281, 4, 100, 100, new DirectByteBufferAllocator());
+    new DeltaBinaryPackingValuesWriterForInteger(1281, 4, 100, 100, new DirectByteBufferAllocator());
   }
 
-  /* When data size is multiple of Block*/
+  /* When data size is multiple of Block */
   @Test
   public void shouldWriteWhenDataIsAlignedWithBlock() throws IOException {
     int[] data = new int[5 * blockSize];
@@ -247,7 +246,6 @@ public class DeltaBinaryPackingValuesWriterForIntegerTest {
 
     for (int round = 0; round < 100000; round++) {
 
-
       int size = random.nextInt(maxSize);
 
       for (int i = 0; i < size; i++) {
@@ -270,10 +268,10 @@ public class DeltaBinaryPackingValuesWriterForIntegerTest {
 
     double miniBlockFlushed = Math.ceil(((double) length - 1) / miniBlockSize);
     double blockFlushed = Math.ceil(((double) length - 1) / blockSize);
-    double estimatedSize = 4 * 5 //blockHeader
-        + 4 * miniBlockFlushed * miniBlockSize //data(aligned to miniBlock)
-        + blockFlushed * miniBlockNum //bitWidth of mini blocks
-        + (5.0 * blockFlushed);//min delta for each block
+    double estimatedSize = 4 * 5 // blockHeader
+        + 4 * miniBlockFlushed * miniBlockSize // data(aligned to miniBlock)
+        + blockFlushed * miniBlockNum // bitWidth of mini blocks
+        + (5.0 * blockFlushed);// min delta for each block
     assertTrue(estimatedSize >= page.length);
     reader.initFromPage(100, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
 

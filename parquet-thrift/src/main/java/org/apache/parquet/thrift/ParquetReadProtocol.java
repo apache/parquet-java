@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.thrift;
 
-
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Collection;
@@ -34,7 +33,6 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 class ParquetReadProtocol extends ParquetProtocol {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetReadProtocol.class);

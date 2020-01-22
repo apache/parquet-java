@@ -26,13 +26,11 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.MessageTypeParser;
 
 public class GroupWriteSupport extends WriteSupport<Group> {
 

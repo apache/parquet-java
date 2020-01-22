@@ -43,35 +43,34 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
-
 /**
- * Descriptor for a Thrift class.
- * Used to persist the thrift schema
+ * Descriptor for a Thrift class. Used to persist the thrift schema
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "id")
-@JsonSubTypes({
-    @JsonSubTypes.Type(value=ThriftType.BoolType.class, name="BOOL"),
-    @JsonSubTypes.Type(value=ThriftType.ByteType.class, name="BYTE"),
-    @JsonSubTypes.Type(value=ThriftType.DoubleType.class, name="DOUBLE"),
-    @JsonSubTypes.Type(value=ThriftType.EnumType.class, name="ENUM"),
-    @JsonSubTypes.Type(value=ThriftType.I16Type.class, name="I16"),
-    @JsonSubTypes.Type(value=ThriftType.I32Type.class, name="I32"),
-    @JsonSubTypes.Type(value=ThriftType.I64Type.class, name="I64"),
-    @JsonSubTypes.Type(value=ThriftType.ListType.class, name="LIST"),
-    @JsonSubTypes.Type(value=ThriftType.MapType.class, name="MAP"),
-    @JsonSubTypes.Type(value=ThriftType.SetType.class, name="SET"),
-    @JsonSubTypes.Type(value=ThriftType.StringType.class, name="STRING"),
-    @JsonSubTypes.Type(value=ThriftType.StructType.class, name="STRUCT")
-})
+@JsonSubTypes({ @JsonSubTypes.Type(value = ThriftType.BoolType.class, name = "BOOL"),
+    @JsonSubTypes.Type(value = ThriftType.ByteType.class, name = "BYTE"),
+    @JsonSubTypes.Type(value = ThriftType.DoubleType.class, name = "DOUBLE"),
+    @JsonSubTypes.Type(value = ThriftType.EnumType.class, name = "ENUM"),
+    @JsonSubTypes.Type(value = ThriftType.I16Type.class, name = "I16"),
+    @JsonSubTypes.Type(value = ThriftType.I32Type.class, name = "I32"),
+    @JsonSubTypes.Type(value = ThriftType.I64Type.class, name = "I64"),
+    @JsonSubTypes.Type(value = ThriftType.ListType.class, name = "LIST"),
+    @JsonSubTypes.Type(value = ThriftType.MapType.class, name = "MAP"),
+    @JsonSubTypes.Type(value = ThriftType.SetType.class, name = "SET"),
+    @JsonSubTypes.Type(value = ThriftType.StringType.class, name = "STRING"),
+    @JsonSubTypes.Type(value = ThriftType.StructType.class, name = "STRUCT") })
 public abstract class ThriftType {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof ThriftType)) return false;
+    if (this == o)
+      return true;
+    if (!(o instanceof ThriftType))
+      return false;
 
     ThriftType that = (ThriftType) o;
-    if (type != that.type) return false;
+    if (type != that.type)
+      return false;
 
     return true;
   }
@@ -206,17 +205,15 @@ public abstract class ThriftType {
 
     private final ThriftField[] childById;
 
-  /**
-   * Whether a struct is a union or a regular struct is not always known, because it was not always
-   * written to the metadata files.
-   *
-   * We should always know this in the write path, but may not in the read path.
-   */
-   public enum StructOrUnionType {
-      STRUCT,
-      UNION,
-      UNKNOWN
-   }
+    /**
+     * Whether a struct is a union or a regular struct is not always known, because
+     * it was not always written to the metadata files.
+     *
+     * We should always know this in the write path, but may not in the read path.
+     */
+    public enum StructOrUnionType {
+      STRUCT, UNION, UNKNOWN
+    }
 
     private final StructOrUnionType structOrUnionType;
 
@@ -227,7 +224,7 @@ public abstract class ThriftType {
 
     @JsonCreator
     public StructType(@JsonProperty("children") List<ThriftField> children,
-                      @JsonProperty("structOrUnionType") StructOrUnionType structOrUnionType) {
+        @JsonProperty("structOrUnionType") StructOrUnionType structOrUnionType) {
       super(STRUCT);
       this.structOrUnionType = structOrUnionType == null ? StructOrUnionType.STRUCT : structOrUnionType;
       this.children = children;
@@ -275,12 +272,15 @@ public abstract class ThriftType {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       StructType that = (StructType) o;
 
-      if (!Arrays.equals(childById, that.childById)) return false;
+      if (!Arrays.equals(childById, that.childById))
+        return false;
       return true;
     }
 
@@ -323,14 +323,19 @@ public abstract class ThriftType {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof MapType)) return false;
-      if (!super.equals(o)) return false;
+      if (this == o)
+        return true;
+      if (!(o instanceof MapType))
+        return false;
+      if (!super.equals(o))
+        return false;
 
       MapType mapType = (MapType) o;
 
-      if (!key.equals(mapType.key)) return false;
-      if (!value.equals(mapType.value)) return false;
+      if (!key.equals(mapType.key))
+        return false;
+      if (!value.equals(mapType.value))
+        return false;
 
       return true;
     }
@@ -369,13 +374,17 @@ public abstract class ThriftType {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof SetType)) return false;
-      if (!super.equals(o)) return false;
+      if (this == o)
+        return true;
+      if (!(o instanceof SetType))
+        return false;
+      if (!super.equals(o))
+        return false;
 
       SetType setType = (SetType) o;
 
-      if (!values.equals(setType.values)) return false;
+      if (!values.equals(setType.values))
+        return false;
 
       return true;
     }
@@ -413,13 +422,17 @@ public abstract class ThriftType {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof ListType)) return false;
-      if (!super.equals(o)) return false;
+      if (this == o)
+        return true;
+      if (!(o instanceof ListType))
+        return false;
+      if (!super.equals(o))
+        return false;
 
       ListType listType = (ListType) o;
 
-      if (!values.equals(listType.values)) return false;
+      if (!values.equals(listType.values))
+        return false;
 
       return true;
     }
@@ -442,22 +455,28 @@ public abstract class ThriftType {
       this.id = id;
       this.name = name;
     }
+
     public int getId() {
       return id;
     }
+
     public String getName() {
       return name;
     }
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof EnumValue)) return false;
+      if (this == o)
+        return true;
+      if (!(o instanceof EnumValue))
+        return false;
 
       EnumValue enumValue = (EnumValue) o;
 
-      if (id != enumValue.id) return false;
-      if (name != null ? !name.equals(enumValue.name) : enumValue.name != null) return false;
+      if (id != enumValue.id)
+        return false;
+      if (name != null ? !name.equals(enumValue.name) : enumValue.name != null)
+        return false;
 
       return true;
     }
@@ -472,7 +491,8 @@ public abstract class ThriftType {
 
   public static class EnumType extends ThriftType {
     private final List<EnumValue> values;
-    private Map<Integer,EnumValue> idEnumLookup;
+    private Map<Integer, EnumValue> idEnumLookup;
+
     @JsonCreator
     public EnumType(@JsonProperty("values") List<EnumValue> values) {
       super(ENUM);
@@ -495,9 +515,9 @@ public abstract class ThriftType {
 
     private void prepareEnumLookUp() {
       if (idEnumLookup == null) {
-        idEnumLookup=new HashMap<Integer, EnumValue>();
+        idEnumLookup = new HashMap<Integer, EnumValue>();
         for (EnumValue value : values) {
-          idEnumLookup.put(value.getId(),value);
+          idEnumLookup.put(value.getId(), value);
         }
       }
     }
@@ -514,13 +534,17 @@ public abstract class ThriftType {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof EnumType)) return false;
-      if (!super.equals(o)) return false;
+      if (this == o)
+        return true;
+      if (!(o instanceof EnumType))
+        return false;
+      if (!super.equals(o))
+        return false;
 
       EnumType enumType = (EnumType) o;
 
-      if (!values.equals(enumType.values)) return false;
+      if (!values.equals(enumType.values))
+        return false;
 
       return true;
     }
@@ -539,6 +563,7 @@ public abstract class ThriftType {
     public BoolType() {
       super(BOOL);
     }
+
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
@@ -556,6 +581,7 @@ public abstract class ThriftType {
     public ByteType() {
       super(BYTE);
     }
+
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
@@ -573,6 +599,7 @@ public abstract class ThriftType {
     public DoubleType() {
       super(DOUBLE);
     }
+
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
@@ -590,6 +617,7 @@ public abstract class ThriftType {
     public I16Type() {
       super(I16);
     }
+
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
@@ -607,6 +635,7 @@ public abstract class ThriftType {
     public I32Type() {
       super(I32);
     }
+
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
@@ -624,11 +653,11 @@ public abstract class ThriftType {
     public I64Type() {
       super(I64);
     }
+
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
     }
-
 
     @Override
     public void accept(TypeVisitor visitor) {

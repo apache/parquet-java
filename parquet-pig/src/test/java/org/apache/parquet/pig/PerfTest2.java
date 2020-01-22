@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputFormat;
@@ -75,21 +74,20 @@ public class PerfTest2 {
     write(out);
     for (int i = 0; i < 2; i++) {
 
-    load(out, 1, results);
-    load(out, 2, results);
-    load(out, 3, results);
-    load(out, 4, results);
-    load(out, 5, results);
-    load(out, 10, results);
-    load(out, 20, results);
-    load(out, 50, results);
-    results.append("\n");
+      load(out, 1, results);
+      load(out, 2, results);
+      load(out, 3, results);
+      load(out, 4, results);
+      load(out, 5, results);
+      load(out, 10, results);
+      load(out, 20, results);
+      load(out, 50, results);
+      results.append("\n");
     }
     System.out.println(results);
   }
 
-  public static void write(String out) throws IOException, ParserException,
-      InterruptedException, ExecException {
+  public static void write(String out) throws IOException, ParserException, InterruptedException, ExecException {
     {
       StringBuilder schemaString = new StringBuilder("a0: chararray");
       for (int i = 1; i < COLUMN_COUNT; i++) {
@@ -108,16 +106,17 @@ public class PerfTest2 {
       @SuppressWarnings("unchecked") // that's how the base class is defined
       OutputFormat<Void, Tuple> outputFormat = storer.getOutputFormat();
       // it's ContextUtil.getConfiguration(job) and not just conf !
-      JobContext jobContext = ContextUtil.newJobContext(ContextUtil.getConfiguration(job), new JobID("jt", jobid ++));
+      JobContext jobContext = ContextUtil.newJobContext(ContextUtil.getConfiguration(job), new JobID("jt", jobid++));
       outputFormat.checkOutputSpecs(jobContext);
       if (schema != null) {
         ResourceSchema resourceSchema = new ResourceSchema(Utils.getSchemaFromString(schema));
         storer.checkSchema(resourceSchema);
         if (storer instanceof StoreMetadata) {
-          ((StoreMetadata)storer).storeSchema(resourceSchema, absPath, job);
+          ((StoreMetadata) storer).storeSchema(resourceSchema, absPath, job);
         }
       }
-      TaskAttemptContext taskAttemptContext = ContextUtil.newTaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID("jt", jobid, true, 1, 0));
+      TaskAttemptContext taskAttemptContext = ContextUtil.newTaskAttemptContext(ContextUtil.getConfiguration(job),
+          new TaskAttemptID("jt", jobid, true, 1, 0));
       RecordWriter<Void, Tuple> recordWriter = outputFormat.getRecordWriter(taskAttemptContext);
       storer.prepareToWrite(recordWriter);
 
@@ -155,9 +154,9 @@ public class PerfTest2 {
 
     long t0 = System.currentTimeMillis();
     Job job = new Job(conf);
-    int loadjobId = jobid ++;
+    int loadjobId = jobid++;
     LoadFunc loadFunc = new ParquetLoader(schemaString.toString());
-    loadFunc.setUDFContextSignature("sigLoader"+loadjobId);
+    loadFunc.setUDFContextSignature("sigLoader" + loadjobId);
     String absPath = loadFunc.relativeToAbsolutePath(out, new Path(new File(".").getAbsoluteFile().toURI()));
     loadFunc.setLocation(absPath, job);
     @SuppressWarnings("unchecked") // that's how the base class is defined
@@ -167,19 +166,21 @@ public class PerfTest2 {
     int i = 0;
     int taskid = 0;
     for (InputSplit split : splits) {
-      TaskAttemptContext taskAttemptContext = ContextUtil.newTaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID("jt", loadjobId, true, taskid++, 0));
+      TaskAttemptContext taskAttemptContext = ContextUtil.newTaskAttemptContext(ContextUtil.getConfiguration(job),
+          new TaskAttemptID("jt", loadjobId, true, taskid++, 0));
       RecordReader<Void, Tuple> recordReader = inputFormat.createRecordReader(split, taskAttemptContext);
       loadFunc.prepareToRead(recordReader, null);
       recordReader.initialize(split, taskAttemptContext);
       Tuple t;
       while ((t = loadFunc.getNext()) != null) {
-        if (DEBUG) System.out.println(t);
+        if (DEBUG)
+          System.out.println(t);
         ++i;
       }
     }
     assertEquals(ROW_COUNT, i);
     long t1 = System.currentTimeMillis();
-    results.append((t1-t0)+" ms to read "+colsToLoad+" columns\n");
+    results.append((t1 - t0) + " ms to read " + colsToLoad + " columns\n");
   }
 
 }

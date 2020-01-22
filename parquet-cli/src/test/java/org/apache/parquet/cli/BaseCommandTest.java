@@ -66,16 +66,14 @@ public class BaseCommandTest {
   // For Windows
   @Test
   public void qualifiedPathTestForWindows() throws IOException {
-    Assume.assumeTrue
-             (System.getProperty("os.name").toLowerCase().startsWith("win"));
+    Assume.assumeTrue(System.getProperty("os.name").toLowerCase().startsWith("win"));
     Path path = this.command.qualifiedPath(WIN_FILE_PATH);
     Assert.assertEquals("test.parquet", path.getName());
   }
 
   @Test
   public void qualifiedURITestForWindows() throws IOException {
-    Assume.assumeTrue
-             (System.getProperty("os.name").toLowerCase().startsWith("win"));
+    Assume.assumeTrue(System.getProperty("os.name").toLowerCase().startsWith("win"));
     URI uri = this.command.qualifiedURI(WIN_FILE_PATH);
     Assert.assertEquals("/C:/Test/Downloads/test.parquet", uri.getPath());
   }

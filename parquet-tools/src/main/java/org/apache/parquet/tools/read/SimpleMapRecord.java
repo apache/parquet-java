@@ -54,29 +54,21 @@ public class SimpleMapRecord extends SimpleRecord {
     if (type.isArray()) {
       if (type.getComponentType() == boolean.class) {
         return Arrays.toString((boolean[]) kvValue);
-      }
-      else if (type.getComponentType() == byte.class) {
+      } else if (type.getComponentType() == byte.class) {
         return new BinaryNode((byte[]) kvValue).asText();
-      }
-      else if (type.getComponentType() == char.class) {
+      } else if (type.getComponentType() == char.class) {
         return Arrays.toString((char[]) kvValue);
-      }
-      else if (type.getComponentType() == double.class) {
+      } else if (type.getComponentType() == double.class) {
         return Arrays.toString((double[]) kvValue);
-      }
-      else if (type.getComponentType() == float.class) {
+      } else if (type.getComponentType() == float.class) {
         return Arrays.toString((float[]) kvValue);
-      }
-      else if (type.getComponentType() == int.class) {
+      } else if (type.getComponentType() == int.class) {
         return Arrays.toString((int[]) kvValue);
-      }
-      else if (type.getComponentType() == long.class) {
+      } else if (type.getComponentType() == long.class) {
         return Arrays.toString((long[]) kvValue);
-      }
-      else if (type.getComponentType() == short.class) {
+      } else if (type.getComponentType() == short.class) {
         return Arrays.toString((short[]) kvValue);
-      }
-      else {
+      } else {
         return Arrays.toString((Object[]) kvValue);
       }
     } else {

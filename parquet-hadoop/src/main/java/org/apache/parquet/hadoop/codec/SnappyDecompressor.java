@@ -36,12 +36,12 @@ public class SnappyDecompressor implements Decompressor {
   private boolean finished;
 
   /**
-   * Fills specified buffer with uncompressed data. Returns actual number
-   * of bytes of uncompressed data. A return value of 0 indicates that
-   * {@link #needsInput()} should be called in order to determine if more
-   * input data is required.
+   * Fills specified buffer with uncompressed data. Returns actual number of bytes
+   * of uncompressed data. A return value of 0 indicates that
+   * {@link #needsInput()} should be called in order to determine if more input
+   * data is required.
    *
-   * @param buffer   Buffer for the compressed data
+   * @param buffer Buffer for the compressed data
    * @param off Start offset of the data
    * @param len Size of the buffer
    * @return The actual number of bytes of uncompressed data.
@@ -50,10 +50,10 @@ public class SnappyDecompressor implements Decompressor {
   @Override
   public synchronized int decompress(byte[] buffer, int off, int len) throws IOException {
     SnappyUtil.validateBuffer(buffer, off, len);
-	if (inputBuffer.position() == 0 && !outputBuffer.hasRemaining()) {
+    if (inputBuffer.position() == 0 && !outputBuffer.hasRemaining()) {
       return 0;
     }
-    
+
     if (!outputBuffer.hasRemaining()) {
       inputBuffer.rewind();
       Preconditions.checkArgument(inputBuffer.position() == 0, "Invalid position of 0.");
@@ -79,20 +79,19 @@ public class SnappyDecompressor implements Decompressor {
     // Return compressed output up to 'len'
     int numBytes = Math.min(len, outputBuffer.remaining());
     outputBuffer.get(buffer, off, numBytes);
-    return numBytes;	    
+    return numBytes;
   }
 
   /**
-   * Sets input data for decompression.
-   * This should be called if and only if {@link #needsInput()} returns
-   * <code>true</code> indicating that more input data is required.
-   * (Both native and non-native versions of various Decompressors require
-   * that the data passed in via <code>b[]</code> remain unmodified until
-   * the caller is explicitly notified--via {@link #needsInput()}--that the
-   * buffer may be safely modified.  With this requirement, an extra
-   * buffer-copy can be avoided.)
+   * Sets input data for decompression. This should be called if and only if
+   * {@link #needsInput()} returns <code>true</code> indicating that more input
+   * data is required. (Both native and non-native versions of various
+   * Decompressors require that the data passed in via <code>b[]</code> remain
+   * unmodified until the caller is explicitly notified--via
+   * {@link #needsInput()}--that the buffer may be safely modified. With this
+   * requirement, an extra buffer-copy can be avoided.)
    *
-   * @param buffer   Input data
+   * @param buffer Input data
    * @param off Start offset
    * @param len Length
    */
@@ -150,7 +149,7 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public void setDictionary(byte[] b, int off, int len) {
-    // No-op		
+    // No-op
   }
 
-} //class SnappyDecompressor
+} // class SnappyDecompressor

@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.values.plain;
 
-
 import java.io.IOException;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -54,10 +53,8 @@ public class BinaryPlainValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream)
-      throws IOException {
-    LOG.debug("init from page at offset {} for length {}",
-        stream.position(), (stream.available() - stream.position()));
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
+    LOG.debug("init from page at offset {} for length {}", stream.position(), (stream.available() - stream.position()));
     this.in = stream.remainingStream();
   }
 }

@@ -32,24 +32,16 @@ import org.apache.parquet.thrift.struct.ThriftType.MapType;
 import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+
 /**
  * The list of thrift types
  */
 public enum ThriftTypeID {
-  STOP (TType.STOP),
-  VOID (TType.VOID),
-  BOOL (TType.BOOL, BoolType.class),
-  BYTE (TType.BYTE, ByteType.class),
-  DOUBLE (TType.DOUBLE, DoubleType.class),
-  I16 (TType.I16, I16Type.class),
-  I32 (TType.I32, I32Type.class),
-  I64 (TType.I64, I64Type.class),
-  STRING (TType.STRING, StringType.class),
-  STRUCT (TType.STRUCT, true, StructType.class),
-  MAP (TType.MAP, true, MapType.class),
-  SET (TType.SET, true, SetType.class),
-  LIST (TType.LIST, true, ListType.class),
-  ENUM (TType.ENUM, TType.I32, EnumType.class);
+  STOP(TType.STOP), VOID(TType.VOID), BOOL(TType.BOOL, BoolType.class), BYTE(TType.BYTE, ByteType.class),
+  DOUBLE(TType.DOUBLE, DoubleType.class), I16(TType.I16, I16Type.class), I32(TType.I32, I32Type.class),
+  I64(TType.I64, I64Type.class), STRING(TType.STRING, StringType.class), STRUCT(TType.STRUCT, true, StructType.class),
+  MAP(TType.MAP, true, MapType.class), SET(TType.SET, true, SetType.class), LIST(TType.LIST, true, ListType.class),
+  ENUM(TType.ENUM, TType.I32, EnumType.class);
 
   private static ThriftTypeID[] types = new ThriftTypeID[17];
   static {

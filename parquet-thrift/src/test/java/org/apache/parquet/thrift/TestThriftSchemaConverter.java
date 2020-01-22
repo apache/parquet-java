@@ -47,25 +47,13 @@ public class TestThriftSchemaConverter {
 
   @Test
   public void testToMessageType() throws Exception {
-    String expected =
-            "message ParquetSchema {\n" +
-                    "  optional group persons (LIST) = 1 {\n" +
-                    "    repeated group persons_tuple {\n" +
-                    "      required group name = 1 {\n" +
-                    "        optional binary first_name (UTF8) = 1;\n" +
-                    "        optional binary last_name (UTF8) = 2;\n" +
-                    "      }\n" +
-                    "      optional int32 id = 2;\n" +
-                    "      optional binary email (UTF8) = 3;\n" +
-                    "      optional group phones (LIST) = 4 {\n" +
-                    "        repeated group phones_tuple {\n" +
-                    "          optional binary number (UTF8) = 1;\n" +
-                    "          optional binary type (ENUM) = 2;\n" +
-                    "        }\n" +
-                    "      }\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "}";
+    String expected = "message ParquetSchema {\n" + "  optional group persons (LIST) = 1 {\n"
+        + "    repeated group persons_tuple {\n" + "      required group name = 1 {\n"
+        + "        optional binary first_name (UTF8) = 1;\n" + "        optional binary last_name (UTF8) = 2;\n"
+        + "      }\n" + "      optional int32 id = 2;\n" + "      optional binary email (UTF8) = 3;\n"
+        + "      optional group phones (LIST) = 4 {\n" + "        repeated group phones_tuple {\n"
+        + "          optional binary number (UTF8) = 1;\n" + "          optional binary type (ENUM) = 2;\n"
+        + "        }\n" + "      }\n" + "    }\n" + "  }\n" + "}";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType converted = schemaConverter.convert(AddressBook.class);
     assertEquals(MessageTypeParser.parseMessageType(expected), converted);
@@ -74,143 +62,93 @@ public class TestThriftSchemaConverter {
   @Test
   public void testToProjectedThriftType() {
 
-    shouldGetProjectedSchema("name/first_name", "name.first_name", "message ParquetSchema {" +
-            "  required group name = 1 {" +
-            "    optional binary first_name (UTF8) = 1;" +
-            "  }}", Person.class);
+    shouldGetProjectedSchema("name/first_name", "name.first_name", "message ParquetSchema {"
+        + "  required group name = 1 {" + "    optional binary first_name (UTF8) = 1;" + "  }}", Person.class);
 
-    shouldGetProjectedSchema("name/first_name;name/last_name", "name.first_name;name.last_name" ,"message ParquetSchema {" +
-            "  required group name = 1 {" +
-            "    optional binary first_name (UTF8) = 1;" +
-            "    optional binary last_name (UTF8) = 2;" +
-            "  }}", Person.class);
+    shouldGetProjectedSchema("name/first_name;name/last_name", "name.first_name;name.last_name",
+        "message ParquetSchema {" + "  required group name = 1 {" + "    optional binary first_name (UTF8) = 1;"
+            + "    optional binary last_name (UTF8) = 2;" + "  }}",
+        Person.class);
 
-    shouldGetProjectedSchema("name/{first,last}_name;", "name.{first,last}_name;", "message ParquetSchema {" +
-            "  required group name = 1 {" +
-            "    optional binary first_name (UTF8) = 1;" +
-            "    optional binary last_name (UTF8) = 2;" +
-            "  }}", Person.class);
+    shouldGetProjectedSchema(
+        "name/{first,last}_name;", "name.{first,last}_name;", "message ParquetSchema {" + "  required group name = 1 {"
+            + "    optional binary first_name (UTF8) = 1;" + "    optional binary last_name (UTF8) = 2;" + "  }}",
+        Person.class);
 
-    shouldGetProjectedSchema("name/*", "name" ,"message ParquetSchema {" +
-            "  required group name = 1 {" +
-            "    optional binary first_name (UTF8) = 1;" +
-            "    optional binary last_name (UTF8) = 2;" +
-            "  }" +
-            "}", Person.class);
+    shouldGetProjectedSchema(
+        "name/*", "name", "message ParquetSchema {" + "  required group name = 1 {"
+            + "    optional binary first_name (UTF8) = 1;" + "    optional binary last_name (UTF8) = 2;" + "  }" + "}",
+        Person.class);
 
-    shouldGetProjectedSchema("*/*_name", "*.*_name" ,"message ParquetSchema {" +
-            "  required group name = 1 {" +
-            "    optional binary first_name (UTF8) = 1;" +
-            "    optional binary last_name (UTF8) = 2;" +
-            "  }" +
-            "}", Person.class);
+    shouldGetProjectedSchema(
+        "*/*_name", "*.*_name", "message ParquetSchema {" + "  required group name = 1 {"
+            + "    optional binary first_name (UTF8) = 1;" + "    optional binary last_name (UTF8) = 2;" + "  }" + "}",
+        Person.class);
 
-    shouldGetProjectedSchema("name/first_*", "name.first_*","message ParquetSchema {" +
-            "  required group name = 1 {" +
-            "    optional binary first_name (UTF8) = 1;" +
-            "  }" +
-            "}", Person.class);
+    shouldGetProjectedSchema("name/first_*", "name.first_*", "message ParquetSchema {" + "  required group name = 1 {"
+        + "    optional binary first_name (UTF8) = 1;" + "  }" + "}", Person.class);
 
-    shouldGetProjectedSchema("*/*", "*.*", "message ParquetSchema {" +
-            "  required group name = 1 {" +
-            "  optional binary first_name (UTF8) = 1;" +
-            "  optional binary last_name (UTF8) = 2;" +
-            "} " +
-            "  optional group phones (LIST) = 4 {" +
-            "    repeated group phones_tuple {" +
-            "      optional binary number (UTF8) = 1;" +
-            "      optional binary type (ENUM) = 2;" +
-            "    }" +
-            "}}", Person.class);
+    shouldGetProjectedSchema("*/*", "*.*",
+        "message ParquetSchema {" + "  required group name = 1 {" + "  optional binary first_name (UTF8) = 1;"
+            + "  optional binary last_name (UTF8) = 2;" + "} " + "  optional group phones (LIST) = 4 {"
+            + "    repeated group phones_tuple {" + "      optional binary number (UTF8) = 1;"
+            + "      optional binary type (ENUM) = 2;" + "    }" + "}}",
+        Person.class);
   }
 
-  /* Original message type, before projection
- message TestStructInMap {
-   optional binary name(UTF8);
-   optional group names(MAP) {
-     repeated group map(MAP_KEY_VALUE) {
-       required binary key(UTF8);
-       optional group value {
-         optional group name {
-           optional binary first_name(UTF8);
-           optional binary last_name(UTF8);
-         }
-         optional group phones(MAP) {
-           repeated group map(MAP_KEY_VALUE) {
-             required binary key(ENUM);
-             optional binary value(UTF8);
-           }
-         }
-       }
-     }
-   }
- }
- */
+  /*
+   * Original message type, before projection message TestStructInMap { optional
+   * binary name(UTF8); optional group names(MAP) { repeated group
+   * map(MAP_KEY_VALUE) { required binary key(UTF8); optional group value {
+   * optional group name { optional binary first_name(UTF8); optional binary
+   * last_name(UTF8); } optional group phones(MAP) { repeated group
+   * map(MAP_KEY_VALUE) { required binary key(ENUM); optional binary value(UTF8);
+   * } } } } } }
+   */
   @Test
   public void testProjectMapThriftType() {
-    //project nested map
-    shouldGetProjectedSchema("name;names/key*;names/value/**", "name;names.key*;names.value", "message ParquetSchema {\n" +
-            "  optional binary name (UTF8) = 1;\n" +
-            "  optional group names (MAP) = 2 {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
-            "      required binary key (UTF8);\n" +
-            "      optional group value {\n" +
-            "        optional group name = 1 {\n" +
-            "          optional binary first_name (UTF8) = 1;\n" +
-            "          optional binary last_name (UTF8) = 2;\n" +
-            "        }\n" +
-            "        optional group phones (MAP) = 2 {\n" +
-            "          repeated group map (MAP_KEY_VALUE) {\n" +
-            "            required binary key (ENUM);\n" +
-            "            optional binary value (UTF8);\n" +
-            "          }\n" +
-            "        }\n" +
-            "      }\n" +
-            "    }\n" +
-            "  }\n" +
-            "}", TestStructInMap.class);
+    // project nested map
+    shouldGetProjectedSchema("name;names/key*;names/value/**", "name;names.key*;names.value",
+        "message ParquetSchema {\n" + "  optional binary name (UTF8) = 1;\n" + "  optional group names (MAP) = 2 {\n"
+            + "    repeated group map (MAP_KEY_VALUE) {\n" + "      required binary key (UTF8);\n"
+            + "      optional group value {\n" + "        optional group name = 1 {\n"
+            + "          optional binary first_name (UTF8) = 1;\n" + "          optional binary last_name (UTF8) = 2;\n"
+            + "        }\n" + "        optional group phones (MAP) = 2 {\n"
+            + "          repeated group map (MAP_KEY_VALUE) {\n" + "            required binary key (ENUM);\n"
+            + "            optional binary value (UTF8);\n" + "          }\n" + "        }\n" + "      }\n" + "    }\n"
+            + "  }\n" + "}",
+        TestStructInMap.class);
 
-    //project only one level of nested map
-    shouldGetProjectedSchema("name;names/key;names/value/name/*", "name;names.key;names.value.name","message ParquetSchema {\n" +
-            "  optional binary name (UTF8) = 1;\n" +
-            "  optional group names (MAP) = 2 {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
-            "      required binary key (UTF8);\n" +
-            "      optional group value {\n" +
-            "        optional group name = 1 {\n" +
-            "          optional binary first_name (UTF8) = 1;\n" +
-            "          optional binary last_name (UTF8) = 2;\n" +
-            "        }\n" +
-            "      }\n" +
-            "    }\n" +
-            "  }\n" +
-            "}", TestStructInMap.class);
+    // project only one level of nested map
+    shouldGetProjectedSchema("name;names/key;names/value/name/*", "name;names.key;names.value.name",
+        "message ParquetSchema {\n" + "  optional binary name (UTF8) = 1;\n" + "  optional group names (MAP) = 2 {\n"
+            + "    repeated group map (MAP_KEY_VALUE) {\n" + "      required binary key (UTF8);\n"
+            + "      optional group value {\n" + "        optional group name = 1 {\n"
+            + "          optional binary first_name (UTF8) = 1;\n" + "          optional binary last_name (UTF8) = 2;\n"
+            + "        }\n" + "      }\n" + "    }\n" + "  }\n" + "}",
+        TestStructInMap.class);
   }
 
   @Test
   public void testProjectOnlyKeyInMap() {
-    shouldGetProjectedSchema("name;names/key", "name;names.key", "message ParquetSchema {\n" +
-            "  optional binary name (UTF8) = 1;\n" +
-            "  optional group names (MAP) = 2 {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
-            "      required binary key (UTF8);\n" +
-            "      optional group value {\n" +
-            "        optional group name = 1 {\n" +
-            "          optional binary first_name (UTF8) = 1;\n" +
-            "        }\n" +
-            "      }" +
-            "    }\n" +
-            "  }\n" +
-            "}",TestStructInMap.class);
+    shouldGetProjectedSchema("name;names/key", "name;names.key",
+        "message ParquetSchema {\n" + "  optional binary name (UTF8) = 1;\n" + "  optional group names (MAP) = 2 {\n"
+            + "    repeated group map (MAP_KEY_VALUE) {\n" + "      required binary key (UTF8);\n"
+            + "      optional group value {\n" + "        optional group name = 1 {\n"
+            + "          optional binary first_name (UTF8) = 1;\n" + "        }\n" + "      }" + "    }\n" + "  }\n"
+            + "}",
+        TestStructInMap.class);
   }
 
-  private void shouldThrowWhenProjectionFilterMatchesNothing(String filters, String unmatchedFilter, Class<? extends TBase<?, ?>> thriftClass) {
+  private void shouldThrowWhenProjectionFilterMatchesNothing(String filters, String unmatchedFilter,
+      Class<? extends TBase<?, ?>> thriftClass) {
     try {
       getDeprecatedFilteredSchema(filters, thriftClass);
       fail("should throw projection exception when filter matches nothing");
     } catch (ThriftProjectionException e) {
-      assertEquals("The following projection patterns did not match any columns in this schema:\n"
-          + unmatchedFilter + "\n", e.getMessage());
+      assertEquals(
+          "The following projection patterns did not match any columns in this schema:\n" + unmatchedFilter + "\n",
+          e.getMessage());
     }
   }
 
@@ -233,7 +171,8 @@ public class TestThriftSchemaConverter {
     shouldThrowWhenProjectionFilterMatchesNothing("name;non_existing", "non_existing", TestStructInMap.class);
     shouldThrowWhenProjectionFilterMatchesNothing("**;non_existing", "non_existing", TestStructInMap.class);
     shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing", "names/non_existing", TestStructInMap.class);
-    shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing;non_existing", "names/non_existing\nnon_existing", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing;non_existing",
+        "names/non_existing\nnon_existing", TestStructInMap.class);
   }
 
   @Test
@@ -295,25 +234,21 @@ public class TestThriftSchemaConverter {
 
   @Test
   public void testConvertStructCreatedViaDeprecatedConstructor() {
-    String expected = "message ParquetSchema {\n" +
-      "  required binary a (UTF8) = 1;\n" +
-      "  required binary b (UTF8) = 2;\n" +
-      "}\n";
+    String expected = "message ParquetSchema {\n" + "  required binary a (UTF8) = 1;\n"
+        + "  required binary b (UTF8) = 2;\n" + "}\n";
 
     ThriftSchemaConverter converter = new ThriftSchemaConverter();
 
     StructType structType = new StructType(
-      Arrays.asList(
-        new ThriftField("a", (short) 1, REQUIRED, new ThriftType.StringType()),
-        new ThriftField("b", (short) 2, REQUIRED, new ThriftType.StringType())
-      )
-    );
+        Arrays.asList(new ThriftField("a", (short) 1, REQUIRED, new ThriftType.StringType()),
+            new ThriftField("b", (short) 2, REQUIRED, new ThriftType.StringType())));
 
     final MessageType converted = converter.convert(structType);
     assertEquals(MessageTypeParser.parseMessageType(expected), converted);
   }
 
-  public static void shouldGetProjectedSchema(String deprecatedFilterDesc, String strictFilterDesc, String expectedSchemaStr, Class<? extends TBase<?,?>> thriftClass) {
+  public static void shouldGetProjectedSchema(String deprecatedFilterDesc, String strictFilterDesc,
+      String expectedSchemaStr, Class<? extends TBase<?, ?>> thriftClass) {
     MessageType depRequestedSchema = getDeprecatedFilteredSchema(deprecatedFilterDesc, thriftClass);
     MessageType strictRequestedSchema = getStrictFilteredSchema(strictFilterDesc, thriftClass);
     MessageType expectedSchema = parseMessageType(expectedSchemaStr);
@@ -321,13 +256,15 @@ public class TestThriftSchemaConverter {
     assertEquals(expectedSchema, strictRequestedSchema);
   }
 
-  private static MessageType getDeprecatedFilteredSchema(String filterDesc, Class<? extends TBase<?,?>> thriftClass) {
+  private static MessageType getDeprecatedFilteredSchema(String filterDesc, Class<? extends TBase<?, ?>> thriftClass) {
     DeprecatedFieldProjectionFilter fieldProjectionFilter = new DeprecatedFieldProjectionFilter(filterDesc);
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }
 
-  private static MessageType getStrictFilteredSchema(String semicolonDelimitedString, Class<? extends TBase<?,?>> thriftClass) {
-    StrictFieldProjectionFilter fieldProjectionFilter = StrictFieldProjectionFilter.fromSemicolonDelimitedString(semicolonDelimitedString);
+  private static MessageType getStrictFilteredSchema(String semicolonDelimitedString,
+      Class<? extends TBase<?, ?>> thriftClass) {
+    StrictFieldProjectionFilter fieldProjectionFilter = StrictFieldProjectionFilter
+        .fromSemicolonDelimitedString(semicolonDelimitedString);
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }
 
@@ -341,10 +278,7 @@ public class TestThriftSchemaConverter {
 
   @Test
   public void testLogicalTypeConvertion() throws Exception {
-    String expected =
-      "message ParquetSchema {\n" +
-        "  required int32 test_i16 (INTEGER(16,true)) = 1;" +
-        "}";
+    String expected = "message ParquetSchema {\n" + "  required int32 test_i16 (INTEGER(16,true)) = 1;" + "}";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType converted = schemaConverter.convert(TestLogicalType.class);
     assertEquals(MessageTypeParser.parseMessageType(expected), converted);

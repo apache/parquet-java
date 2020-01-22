@@ -23,28 +23,34 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.ValuesWriter;
 
 /**
- * Can be overridden to allow users to manually test different strategies to create ValuesWriters.
- * To do this, the ValuesWriterFactory to be used must be passed to the {@link org.apache.parquet.column.ParquetProperties.Builder}.
+ * Can be overridden to allow users to manually test different strategies to
+ * create ValuesWriters. To do this, the ValuesWriterFactory to be used must be
+ * passed to the {@link org.apache.parquet.column.ParquetProperties.Builder}.
  * <p>
  * Lifecycle of ValuesWriterFactories is:
  * <ul>
- * <li> Initialized while creating a {@link org.apache.parquet.column.ParquetProperties} using the Builder</li>
- * <li> If the factory must read Hadoop config, it needs to implement the Configurable interface.
- * In addition to that, ParquetOutputFormat needs to be updated to pass in the Hadoop config via the setConf()
- * method on the Configurable interface.</li>
- * <li> newValuesWriter is called once per column for every block of data.</li>
+ * <li>Initialized while creating a
+ * {@link org.apache.parquet.column.ParquetProperties} using the Builder</li>
+ * <li>If the factory must read Hadoop config, it needs to implement the
+ * Configurable interface. In addition to that, ParquetOutputFormat needs to be
+ * updated to pass in the Hadoop config via the setConf() method on the
+ * Configurable interface.</li>
+ * <li>newValuesWriter is called once per column for every block of data.</li>
  * </ul>
  */
 public interface ValuesWriterFactory {
 
   /**
-   * Used to initialize the factory. This method is called before newValuesWriter()
+   * Used to initialize the factory. This method is called before
+   * newValuesWriter()
+   * 
    * @param parquetProperties a write configuration
    */
   void initialize(ParquetProperties parquetProperties);
 
   /**
    * Creates a ValuesWriter to write values for the given column.
+   * 
    * @param descriptor a column descriptor
    * @return a new values writer for values in the descriptor's column
    */

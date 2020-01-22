@@ -142,10 +142,8 @@ public abstract class AbstractParquetMapInspector implements SettableMapObjectIn
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result
-        + ((keyInspector == null) ? 0 : keyInspector.hashCode());
-    result = prime * result
-        + ((valueInspector == null) ? 0 : valueInspector.hashCode());
+    result = prime * result + ((keyInspector == null) ? 0 : keyInspector.hashCode());
+    result = prime * result + ((valueInspector == null) ? 0 : valueInspector.hashCode());
     return result;
   }
 

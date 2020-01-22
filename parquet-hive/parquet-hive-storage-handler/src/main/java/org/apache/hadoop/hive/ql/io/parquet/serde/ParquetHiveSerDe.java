@@ -79,9 +79,7 @@ public class ParquetHiveSerDe implements SerDe {
   private ObjectInspector objInspector;
 
   private enum LAST_OPERATION {
-    SERIALIZE,
-    DESERIALIZE,
-    UNKNOWN
+    SERIALIZE, DESERIALIZE, UNKNOWN
   }
 
   private LAST_OPERATION status;
@@ -109,9 +107,8 @@ public class ParquetHiveSerDe implements SerDe {
       columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnTypeProperty);
     }
     if (columnNames.size() != columnTypes.size()) {
-      throw new IllegalArgumentException("ParquetHiveSerde initialization failed. Number of column " +
-        "name and column type differs. columnNames = " + columnNames + ", columnTypes = " +
-        columnTypes);
+      throw new IllegalArgumentException("ParquetHiveSerde initialization failed. Number of column "
+          + "name and column type differs. columnNames = " + columnNames + ", columnTypes = " + columnTypes);
     }
     // Create row related objects
     rowTypeInfo = TypeInfoFactory.getStructTypeInfo(columnNames, columnTypes);
@@ -147,8 +144,7 @@ public class ParquetHiveSerDe implements SerDe {
   }
 
   @Override
-  public Writable serialize(final Object obj, final ObjectInspector objInspector)
-      throws SerDeException {
+  public Writable serialize(final Object obj, final ObjectInspector objInspector) throws SerDeException {
     if (!objInspector.getCategory().equals(Category.STRUCT)) {
       throw new SerDeException("Cannot serialize " + objInspector.getCategory() + ". Can only serialize a struct");
     }
@@ -158,8 +154,7 @@ public class ParquetHiveSerDe implements SerDe {
     return serializeData;
   }
 
-  private ArrayWritable createStruct(final Object obj, final StructObjectInspector inspector)
-      throws SerDeException {
+  private ArrayWritable createStruct(final Object obj, final StructObjectInspector inspector) throws SerDeException {
     final List<? extends StructField> fields = inspector.getAllStructFieldRefs();
     final Writable[] arr = new Writable[fields.size()];
     for (int i = 0; i < fields.size(); i++) {
@@ -171,8 +166,7 @@ public class ParquetHiveSerDe implements SerDe {
     return new ArrayWritable(Writable.class, arr);
   }
 
-  private Writable createMap(final Object obj, final MapObjectInspector inspector)
-      throws SerDeException {
+  private Writable createMap(final Object obj, final MapObjectInspector inspector) throws SerDeException {
     final Map<?, ?> sourceMap = inspector.getMap(obj);
     final ObjectInspector keyInspector = inspector.getMapKeyObjectInspector();
     final ObjectInspector valueInspector = inspector.getMapValueObjectInspector();
@@ -193,14 +187,13 @@ public class ParquetHiveSerDe implements SerDe {
     if (array.size() > 0) {
       final ArrayWritable subArray = new ArrayWritable(ArrayWritable.class,
           array.toArray(new ArrayWritable[array.size()]));
-      return new ArrayWritable(Writable.class, new Writable[] {subArray});
+      return new ArrayWritable(Writable.class, new Writable[] { subArray });
     } else {
       return null;
     }
   }
 
-  private ArrayWritable createArray(final Object obj, final ListObjectInspector inspector)
-      throws SerDeException {
+  private ArrayWritable createArray(final Object obj, final ListObjectInspector inspector) throws SerDeException {
     final List<?> sourceArray = inspector.getList(obj);
     final ObjectInspector subInspector = inspector.getListElementObjectInspector();
     final List<Writable> array = new ArrayList<Writable>();
@@ -215,14 +208,13 @@ public class ParquetHiveSerDe implements SerDe {
     if (array.size() > 0) {
       final ArrayWritable subArray = new ArrayWritable(array.get(0).getClass(),
           array.toArray(new Writable[array.size()]));
-      return new ArrayWritable(Writable.class, new Writable[] {subArray});
+      return new ArrayWritable(Writable.class, new Writable[] { subArray });
     } else {
       return null;
     }
   }
 
-  private Writable createPrimitive(final Object obj, final PrimitiveObjectInspector inspector)
-      throws SerDeException {
+  private Writable createPrimitive(final Object obj, final PrimitiveObjectInspector inspector) throws SerDeException {
     if (obj == null) {
       return null;
     }

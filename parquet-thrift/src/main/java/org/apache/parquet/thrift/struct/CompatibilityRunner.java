@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.thrift.struct;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.thrift.TBase;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
@@ -31,19 +30,22 @@ import java.util.LinkedList;
 /**
  * Commandline runner for compatibility checker
  *
- * java CompatibilityRunner generate-json {category_name} {class_name} {dest_dir}
- * The above command will generate json representaion of thrift schema and store it as {dest_dir}/{category_name}.json
+ * java CompatibilityRunner generate-json {category_name} {class_name}
+ * {dest_dir} The above command will generate json representaion of thrift
+ * schema and store it as {dest_dir}/{category_name}.json
  *
- * java CompatibilityRunner compare-json {old_json_path} {new_json_path}
- * The above command will succeed when the new schema is compatible with the old schema.
- * It will fail when they are not compatible. For compatibility rules: {@link CompatibilityChecker}
+ * java CompatibilityRunner compare-json {old_json_path} {new_json_path} The
+ * above command will succeed when the new schema is compatible with the old
+ * schema. It will fail when they are not compatible. For compatibility rules:
+ * {@link CompatibilityChecker}
  */
 public class CompatibilityRunner {
   public static void main(String[] args) throws Exception {
     LinkedList<String> arguments = new LinkedList<String>(Arrays.asList(args));
     String operator = arguments.pollFirst();
     if (operator.equals("generate-json")) {
-      //java CompatibilityRunner generate-json tfe_request com.twitter.logs.TfeRequestLog old_json/
+      // java CompatibilityRunner generate-json tfe_request
+      // com.twitter.logs.TfeRequestLog old_json/
       generateJson(arguments);
     }
 
@@ -87,18 +89,17 @@ public class CompatibilityRunner {
       throw new RuntimeException("can not find file " + f);
   }
 
-
   private static void generateJson(LinkedList<String> arguments) throws ClassNotFoundException, IOException {
     String catName = arguments.pollFirst();
     String className = arguments.pollFirst();
     String storedPath = arguments.pollFirst();
     File storeDir = new File(storedPath);
-    ThriftType.StructType structType = ThriftSchemaConverter.toStructType((Class<? extends TBase<?, ?>>) Class.forName(className));
+    ThriftType.StructType structType = ThriftSchemaConverter
+        .toStructType((Class<? extends TBase<?, ?>>) Class.forName(className));
     ObjectMapper mapper = new ObjectMapper();
 
     String fileName = catName + ".json";
     mapper.writerWithDefaultPrettyPrinter().writeValue(new File(storeDir, fileName), structType);
   }
-
 
 }

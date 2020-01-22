@@ -43,59 +43,42 @@ public class AvroCSV {
   private static final Pattern FLOAT = Pattern.compile("\\d*\\.\\d*[fF]?");
   private static final int DEFAULT_INFER_LINES = 25;
   private static final Set<String> NO_REQUIRED_FIELDS = ImmutableSet.of();
-  //As per the Avro specs mentioned here -http://avro.apache.org/docs/1.7.5/spec.html
+  // As per the Avro specs mentioned here
+  // -http://avro.apache.org/docs/1.7.5/spec.html
   // It should start with [A-Za-z_] and subsequently contain only [A-Za-z0-9_]
-  private static final Pattern AVRO_COMPATIBLE = Pattern.
-      compile("^[A-Za-z_][A-Za-z\\d_]*$");
+  private static final Pattern AVRO_COMPATIBLE = Pattern.compile("^[A-Za-z_][A-Za-z\\d_]*$");
 
   static CSVReader newReader(InputStream incoming, CSVProperties props) {
-    return new CSVReader(
-        new InputStreamReader(incoming, Charset.forName(props.charset)),
-        props.delimiter.charAt(0), props.quote.charAt(0),
-        props.escape.charAt(0), props.linesToSkip,
-        false /* strict quotes off: don't ignore unquoted strings */,
-        true /* ignore leading white-space */ );
+    return new CSVReader(new InputStreamReader(incoming, Charset.forName(props.charset)), props.delimiter.charAt(0),
+        props.quote.charAt(0), props.escape.charAt(0), props.linesToSkip,
+        false /* strict quotes off: don't ignore unquoted strings */, true /* ignore leading white-space */ );
   }
 
   static CSVParser newParser(CSVProperties props) {
-    return new CSVParser(
-        props.delimiter.charAt(0), props.quote.charAt(0),
-        props.escape.charAt(0),
-        false /* strict quotes off: don't ignore unquoted strings */,
-        true /* ignore leading white-space */ );
+    return new CSVParser(props.delimiter.charAt(0), props.quote.charAt(0), props.escape.charAt(0),
+        false /* strict quotes off: don't ignore unquoted strings */, true /* ignore leading white-space */ );
   }
 
-  public static Schema inferNullableSchema(String name, InputStream incoming,
-                                           CSVProperties props)
-      throws IOException {
+  public static Schema inferNullableSchema(String name, InputStream incoming, CSVProperties props) throws IOException {
     return inferSchemaInternal(name, incoming, props, NO_REQUIRED_FIELDS, true);
   }
 
-  public static Schema inferNullableSchema(String name, InputStream incoming,
-                                           CSVProperties props,
-                                           Set<String> requiredFields)
-      throws IOException {
+  public static Schema inferNullableSchema(String name, InputStream incoming, CSVProperties props,
+      Set<String> requiredFields) throws IOException {
     return inferSchemaInternal(name, incoming, props, requiredFields, true);
   }
 
-  public static Schema inferSchema(String name, InputStream incoming,
-                                   CSVProperties props)
-      throws IOException {
+  public static Schema inferSchema(String name, InputStream incoming, CSVProperties props) throws IOException {
     return inferSchemaInternal(name, incoming, props, NO_REQUIRED_FIELDS, false);
   }
 
-  public static Schema inferSchema(String name, InputStream incoming,
-                                   CSVProperties props,
-                                   Set<String> requiredFields)
+  public static Schema inferSchema(String name, InputStream incoming, CSVProperties props, Set<String> requiredFields)
       throws IOException {
     return inferSchemaInternal(name, incoming, props, requiredFields, false);
   }
 
-  private static Schema inferSchemaInternal(String name, InputStream incoming,
-                                            CSVProperties props,
-                                            Set<String> requiredFields,
-                                            boolean makeNullable)
-      throws IOException {
+  private static Schema inferSchemaInternal(String name, InputStream incoming, CSVProperties props,
+      Set<String> requiredFields, boolean makeNullable) throws IOException {
     CSVReader reader = newReader(incoming, props);
 
     String[] header;
@@ -166,31 +149,24 @@ public class AvroCSV {
       String fieldName = header[i].trim();
 
       if (fieldName.isEmpty()) {
-        throw new RuntimeException(
-            "Bad header for field " + i + ": \"" + fieldName + "\"");
-      } else if(!isAvroCompatibleName(fieldName)) {
-    	  throw new RuntimeException(
-              "Bad header for field, should start with a character " +
-              "or _ and can contain only alphanumerics and _ " +
-              i + ": \"" + fieldName + "\"");
+        throw new RuntimeException("Bad header for field " + i + ": \"" + fieldName + "\"");
+      } else if (!isAvroCompatibleName(fieldName)) {
+        throw new RuntimeException("Bad header for field, should start with a character "
+            + "or _ and can contain only alphanumerics and _ " + i + ": \"" + fieldName + "\"");
       }
 
       // the empty string is not considered null for string fields
-      boolean foundNull = (nullable[i] ||
-          (empty[i] && types[i] != Schema.Type.STRING));
+      boolean foundNull = (nullable[i] || (empty[i] && types[i] != Schema.Type.STRING));
 
       if (requiredFields.contains(fieldName)) {
         if (foundNull) {
-          throw new RuntimeException("Found null value for required field: " +
-              fieldName + " (" + types[i] + ")");
+          throw new RuntimeException("Found null value for required field: " + fieldName + " (" + types[i] + ")");
         }
-        fieldAssembler = fieldAssembler.name(fieldName)
-            .doc("Type inferred from '" + sample(values[i]) + "'")
+        fieldAssembler = fieldAssembler.name(fieldName).doc("Type inferred from '" + sample(values[i]) + "'")
             .type(schema(types[i], false)).noDefault();
       } else {
         SchemaBuilder.GenericDefault<Schema> defaultBuilder = fieldAssembler.name(fieldName)
-            .doc("Type inferred from '" + sample(values[i]) + "'")
-            .type(schema(types[i], makeNullable || foundNull));
+            .doc("Type inferred from '" + sample(values[i]) + "'").type(schema(types[i], makeNullable || foundNull));
         if (makeNullable || foundNull) {
           fieldAssembler = defaultBuilder.withDefault(null);
         } else {
@@ -201,22 +177,20 @@ public class AvroCSV {
     return fieldAssembler.endRecord();
   }
 
-  private static final CharMatcher NON_PRINTABLE = CharMatcher
-      .inRange('\u0020', '\u007e').negate();
+  private static final CharMatcher NON_PRINTABLE = CharMatcher.inRange('\u0020', '\u007e').negate();
 
   private static String sample(String value) {
     if (value != null) {
-      return NON_PRINTABLE.replaceFrom(
-          value.subSequence(0, min(50, value.length())), '.');
+      return NON_PRINTABLE.replaceFrom(value.subSequence(0, min(50, value.length())), '.');
     } else {
       return "null";
     }
   }
 
   /**
-   * Create a {@link Schema} for the given type. If the type is null,
-   * the schema will be a nullable String. If isNullable is true, the returned
-   * schema will be nullable.
+   * Create a {@link Schema} for the given type. If the type is null, the schema
+   * will be a nullable String. If isNullable is true, the returned schema will be
+   * nullable.
    *
    * @param type a {@link Schema.Type} compatible with {@code Schema.create}
    * @param makeNullable If {@code true}, the return type will be nullable
@@ -226,8 +200,7 @@ public class AvroCSV {
   private static Schema schema(Schema.Type type, boolean makeNullable) {
     Schema schema = Schema.create(type == null ? Schema.Type.STRING : type);
     if (makeNullable || type == null) {
-      schema = Schema.createUnion(Lists.newArrayList(
-          Schema.create(Schema.Type.NULL), schema));
+      schema = Schema.createUnion(Lists.newArrayList(Schema.create(Schema.Type.NULL), schema));
     }
     return schema;
   }

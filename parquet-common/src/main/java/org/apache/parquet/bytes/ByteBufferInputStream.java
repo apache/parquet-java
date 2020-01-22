@@ -30,7 +30,8 @@ import org.apache.parquet.ShouldNeverHappenException;
 
 public class ByteBufferInputStream extends InputStream {
 
-  // Used to maintain the deprecated behavior of instantiating ByteBufferInputStream directly
+  // Used to maintain the deprecated behavior of instantiating
+  // ByteBufferInputStream directly
   private final ByteBufferInputStream delegate;
 
   public static ByteBufferInputStream wrap(ByteBuffer... buffers) {
@@ -54,9 +55,9 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   /**
-   * @param buffer
-   *          the buffer to be wrapped in this input stream
-   * @deprecated Will be removed in 2.0.0; Use {@link #wrap(ByteBuffer...)} instead
+   * @param buffer the buffer to be wrapped in this input stream
+   * @deprecated Will be removed in 2.0.0; Use {@link #wrap(ByteBuffer...)}
+   * instead
    */
   @Deprecated
   public ByteBufferInputStream(ByteBuffer buffer) {
@@ -64,13 +65,11 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   /**
-   * @param buffer
-   *          the buffer to be wrapped in this input stream
-   * @param offset
-   *          the offset of the data in the buffer
-   * @param count
-   *          the number of bytes to be read from the buffer
-   * @deprecated Will be removed in 2.0.0; Use {@link #wrap(ByteBuffer...)} instead
+   * @param buffer the buffer to be wrapped in this input stream
+   * @param offset the offset of the data in the buffer
+   * @param count the number of bytes to be read from the buffer
+   * @deprecated Will be removed in 2.0.0; Use {@link #wrap(ByteBuffer...)}
+   * instead
    */
   @Deprecated
   public ByteBufferInputStream(ByteBuffer buffer, int offset, int count) {
@@ -101,8 +100,7 @@ public class ByteBufferInputStream extends InputStream {
   public void skipFully(long n) throws IOException {
     long skipped = skip(n);
     if (skipped < n) {
-      throw new EOFException(
-          "Not enough bytes to skip: " + skipped + " < " + n);
+      throw new EOFException("Not enough bytes to skip: " + skipped + " < " + n);
     }
   }
 

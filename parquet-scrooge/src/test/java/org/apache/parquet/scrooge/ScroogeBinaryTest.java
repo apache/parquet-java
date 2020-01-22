@@ -38,8 +38,7 @@ public class ScroogeBinaryTest {
 
   @Test
   public void testScroogeBinaryEncoding() throws Exception {
-    StringAndBinary expected = new StringAndBinary.Immutable("test",
-        ByteBuffer.wrap(new byte[] {-123, 20, 33}));
+    StringAndBinary expected = new StringAndBinary.Immutable("test", ByteBuffer.wrap(new byte[] { -123, 20, 33 }));
 
     File temp = tempDir.newFile(UUID.randomUUID().toString());
     temp.deleteOnExit();
@@ -47,30 +46,26 @@ public class ScroogeBinaryTest {
 
     Path path = new Path(temp.getPath());
 
-    ParquetWriter<StringAndBinary> writer = new ParquetWriter<StringAndBinary>(
-        path, new Configuration(), new ScroogeWriteSupport<StringAndBinary>(StringAndBinary.class));
+    ParquetWriter<StringAndBinary> writer = new ParquetWriter<StringAndBinary>(path, new Configuration(),
+        new ScroogeWriteSupport<StringAndBinary>(StringAndBinary.class));
     writer.write(expected);
     writer.close();
 
     // read using the parquet-thrift version to isolate the write path
-    ParquetReader<org.apache.parquet.thrift.test.binary.StringAndBinary> reader = ThriftParquetReader.<org.apache.parquet.thrift.test.binary.StringAndBinary>
-        build(path)
-        .withThriftClass(org.apache.parquet.thrift.test.binary.StringAndBinary.class)
-        .build();
+    ParquetReader<org.apache.parquet.thrift.test.binary.StringAndBinary> reader = ThriftParquetReader.<org.apache.parquet.thrift.test.binary.StringAndBinary>build(
+        path).withThriftClass(org.apache.parquet.thrift.test.binary.StringAndBinary.class).build();
     org.apache.parquet.thrift.test.binary.StringAndBinary record = reader.read();
     reader.close();
 
-    Assert.assertEquals("String should match after serialization round trip",
-        "test", record.s);
+    Assert.assertEquals("String should match after serialization round trip", "test", record.s);
     Assert.assertEquals("ByteBuffer should match after serialization round trip",
-        ByteBuffer.wrap(new byte[] {-123, 20, 33}), record.b);
+        ByteBuffer.wrap(new byte[] { -123, 20, 33 }), record.b);
   }
 
   @Test
   @SuppressWarnings("unchecked")
   public void testScroogeBinaryDecoding() throws Exception {
-    StringAndBinary expected = new StringAndBinary.Immutable("test",
-        ByteBuffer.wrap(new byte[] {-123, 20, 33}));
+    StringAndBinary expected = new StringAndBinary.Immutable("test", ByteBuffer.wrap(new byte[] { -123, 20, 33 }));
 
     File temp = tempDir.newFile(UUID.randomUUID().toString());
     temp.deleteOnExit();
@@ -78,23 +73,20 @@ public class ScroogeBinaryTest {
 
     Path path = new Path(temp.getPath());
 
-    ParquetWriter<StringAndBinary> writer = new ParquetWriter<StringAndBinary>(
-        path, new Configuration(), new ScroogeWriteSupport<StringAndBinary>(StringAndBinary.class));
+    ParquetWriter<StringAndBinary> writer = new ParquetWriter<StringAndBinary>(path, new Configuration(),
+        new ScroogeWriteSupport<StringAndBinary>(StringAndBinary.class));
     writer.write(expected);
     writer.close();
 
     Configuration conf = new Configuration();
     conf.set("parquet.thrift.converter.class", ScroogeRecordConverter.class.getName());
-    ParquetReader<StringAndBinary> reader = ParquetReader.<StringAndBinary>
-        builder(new ScroogeReadSupport(), path)
-        .withConf(conf)
-        .build();
+    ParquetReader<StringAndBinary> reader = ParquetReader.<StringAndBinary>builder(new ScroogeReadSupport(), path)
+        .withConf(conf).build();
     StringAndBinary record = reader.read();
     reader.close();
 
-    Assert.assertEquals("String should match after serialization round trip",
-        "test", record.s());
+    Assert.assertEquals("String should match after serialization round trip", "test", record.s());
     Assert.assertEquals("ByteBuffer should match after serialization round trip",
-        ByteBuffer.wrap(new byte[] {-123, 20, 33}), record.b());
+        ByteBuffer.wrap(new byte[] { -123, 20, 33 }), record.b());
   }
 }

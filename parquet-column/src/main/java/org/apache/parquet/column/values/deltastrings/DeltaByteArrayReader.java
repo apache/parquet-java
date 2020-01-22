@@ -42,8 +42,7 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream)
-      throws IOException {
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     prefixLengthReader.initFromPage(valueCount, stream);
     suffixReader.initFromPage(valueCount, stream);
   }
@@ -68,11 +67,11 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
     // because of PARQUET-246.
 
     // We have to do this to materialize the output
-    if(prefixLength != 0) {
+    if (prefixLength != 0) {
       byte[] out = new byte[length];
       System.arraycopy(previous.getBytesUnsafe(), 0, out, 0, prefixLength);
       System.arraycopy(suffix.getBytesUnsafe(), 0, out, prefixLength, suffix.length());
-      previous =  Binary.fromConstantByteArray(out);
+      previous = Binary.fromConstantByteArray(out);
     } else {
       previous = suffix;
     }
@@ -80,12 +79,12 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
   }
 
   /**
-   * There was a bug (PARQUET-246) in which DeltaByteArrayWriter's reset() method did not
-   * clear the previous value state that it tracks internally. This resulted in the first
-   * value of all pages (except for the first page) to be a delta from the last value of the
-   * previous page. In order to read corrupted files written with this bug, when reading a
-   * new page we need to recover the previous page's last value to use it (if needed) to
-   * read the first value.
+   * There was a bug (PARQUET-246) in which DeltaByteArrayWriter's reset() method
+   * did not clear the previous value state that it tracks internally. This
+   * resulted in the first value of all pages (except for the first page) to be a
+   * delta from the last value of the previous page. In order to read corrupted
+   * files written with this bug, when reading a new page we need to recover the
+   * previous page's last value to use it (if needed) to read the first value.
    */
   @Override
   public void setPreviousReader(ValuesReader reader) {

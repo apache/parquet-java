@@ -56,18 +56,11 @@ public class ParquetReadOptions {
   private final int maxAllocationSize;
   private final Map<String, String> properties;
 
-  ParquetReadOptions(boolean useSignedStringMinMax,
-                     boolean useStatsFilter,
-                     boolean useDictionaryFilter,
-                     boolean useRecordFilter,
-                     boolean useColumnIndexFilter,
-                     boolean usePageChecksumVerification,
-                     FilterCompat.Filter recordFilter,
-                     ParquetMetadataConverter.MetadataFilter metadataFilter,
-                     CompressionCodecFactory codecFactory,
-                     ByteBufferAllocator allocator,
-                     int maxAllocationSize,
-                     Map<String, String> properties) {
+  ParquetReadOptions(boolean useSignedStringMinMax, boolean useStatsFilter, boolean useDictionaryFilter,
+      boolean useRecordFilter, boolean useColumnIndexFilter, boolean usePageChecksumVerification,
+      FilterCompat.Filter recordFilter, ParquetMetadataConverter.MetadataFilter metadataFilter,
+      CompressionCodecFactory codecFactory, ByteBufferAllocator allocator, int maxAllocationSize,
+      Map<String, String> properties) {
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.useStatsFilter = useStatsFilter;
     this.useDictionaryFilter = useDictionaryFilter;
@@ -136,8 +129,7 @@ public class ParquetReadOptions {
 
   public boolean isEnabled(String property, boolean defaultValue) {
     Optional<String> propValue = Optional.ofNullable(properties.get(property));
-    return propValue.isPresent() ? Boolean.valueOf(propValue.get())
-        : defaultValue;
+    return propValue.isPresent() ? Boolean.valueOf(propValue.get()) : defaultValue;
   }
 
   public static Builder builder() {
@@ -153,7 +145,8 @@ public class ParquetReadOptions {
     protected boolean usePageChecksumVerification = PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT;
     protected FilterCompat.Filter recordFilter = null;
     protected ParquetMetadataConverter.MetadataFilter metadataFilter = NO_FILTER;
-    // the page size parameter isn't used when only using the codec factory to get decompressors
+    // the page size parameter isn't used when only using the codec factory to get
+    // decompressors
     protected CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
     protected ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     protected int maxAllocationSize = ALLOCATION_SIZE_DEFAULT;
@@ -207,7 +200,6 @@ public class ParquetReadOptions {
     public Builder useColumnIndexFilter() {
       return useColumnIndexFilter(true);
     }
-
 
     public Builder usePageChecksumVerification(boolean usePageChecksumVerification) {
       this.usePageChecksumVerification = usePageChecksumVerification;
@@ -280,10 +272,9 @@ public class ParquetReadOptions {
     }
 
     public ParquetReadOptions build() {
-      return new ParquetReadOptions(
-        useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-        useColumnIndexFilter, usePageChecksumVerification, recordFilter, metadataFilter,
-        codecFactory, allocator, maxAllocationSize, properties);
+      return new ParquetReadOptions(useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
+          useColumnIndexFilter, usePageChecksumVerification, recordFilter, metadataFilter, codecFactory, allocator,
+          maxAllocationSize, properties);
     }
   }
 }

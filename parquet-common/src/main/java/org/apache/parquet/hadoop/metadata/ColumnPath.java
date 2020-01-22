@@ -42,7 +42,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
     return get(path.split("\\."));
   }
 
-  public static ColumnPath get(String... path){
+  public static ColumnPath get(String... path) {
     return paths.canonicalize(new ColumnPath(path));
   }
 
@@ -55,7 +55,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof ColumnPath) {
-      return Arrays.equals(p, ((ColumnPath)obj).p);
+      return Arrays.equals(p, ((ColumnPath) obj).p);
     }
     return false;
   }

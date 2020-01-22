@@ -36,7 +36,6 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   public static final String PARQUET_THRIFT_CLASS = "parquet.thrift.class";
   private static final Logger LOG = LoggerFactory.getLogger(AbstractThriftWriteSupport.class);
@@ -56,7 +55,8 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
       Class thriftClass = Class.forName(thriftClassName);
       return thriftClass;
     } catch (ClassNotFoundException e) {
-      throw new BadConfigurationException("the class "+thriftClassName+" in job conf at " + PARQUET_THRIFT_CLASS + " could not be found", e);
+      throw new BadConfigurationException(
+          "the class " + thriftClassName + " in job conf at " + PARQUET_THRIFT_CLASS + " could not be found", e);
     }
   }
 
@@ -67,8 +67,7 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   protected WriteContext writeContext;
 
   /**
-   * used from hadoop
-   * the configuration must contain a thriftClass setting
+   * used from hadoop the configuration must contain a thriftClass setting
    */
   public AbstractThriftWriteSupport() {
   }
@@ -90,7 +89,8 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
     // adding the Pig schema as it would have been mapped from thrift
     // TODO: make this work for non-tbase types
     if (isPigLoaded() && TBase.class.isAssignableFrom(thriftClass)) {
-      new PigMetaData(new ThriftToPig((Class<? extends TBase<?,?>>)thriftClass).toSchema()).addToMetaData(extraMetaData);
+      new PigMetaData(new ThriftToPig((Class<? extends TBase<?, ?>>) thriftClass).toSchema())
+          .addToMetaData(extraMetaData);
     }
 
     this.writeContext = new WriteContext(schema, extraMetaData);

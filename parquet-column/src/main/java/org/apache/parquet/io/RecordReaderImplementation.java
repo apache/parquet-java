@@ -38,7 +38,6 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * used to read reassembled records
  *
@@ -104,7 +103,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     @Override
     public boolean equals(Object obj) {
       if (obj instanceof Case) {
-        return equals((Case)obj);
+        return equals((Case) obj);
       }
       return false;
     }
@@ -127,12 +126,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 //    }
 
     public boolean equals(Case other) {
-      return other != null
-          && startLevel == other.startLevel
-          && depth == other.depth
-          && nextLevel == other.nextLevel
-          && nextState == other.nextState
-          && ((defined && other.defined) || (!defined && !other.defined));
+      return other != null && startLevel == other.startLevel && depth == other.depth && nextLevel == other.nextLevel
+          && nextState == other.nextState && ((defined && other.defined) || (!defined && !other.defined));
     }
 
     public int getID() {
@@ -146,6 +141,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     public int getDepth() {
       return depth;
     }
+
     public int getNextLevel() {
       return nextLevel;
     }
@@ -168,7 +164,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
     @Override
     public String toString() {
-      return "Case " + startLevel + " -> " + depth + " -> " + nextLevel + "; goto sate_"+getNextState();
+      return "Case " + startLevel + " -> " + depth + " -> " + nextLevel + "; goto sate_" + getNextState();
     }
 
   }
@@ -187,7 +183,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     public final PrimitiveConverter primitiveConverter;
     public final String primitiveField;
     public final int primitiveFieldIndex;
-    public final int[] nextLevel; //indexed by next r
+    public final int[] nextLevel; // indexed by next r
 
     private int[] definitionLevelToDepth; // indexed by current d
     private State[] nextState; // indexed by next r
@@ -195,7 +191,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     private List<Case> definedCases;
     private List<Case> undefinedCases;
 
-    private State(int id, PrimitiveColumnIO primitiveColumnIO, ColumnReader column, int[] nextLevel, GroupConverter[] groupConverterPath, PrimitiveConverter primitiveConverter) {
+    private State(int id, PrimitiveColumnIO primitiveColumnIO, ColumnReader column, int[] nextLevel,
+        GroupConverter[] groupConverterPath, PrimitiveConverter primitiveConverter) {
       this.id = id;
       this.primitiveColumnIO = primitiveColumnIO;
       this.maxDefinitionLevel = primitiveColumnIO.getDefinitionLevel();
@@ -246,20 +243,22 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
    * @param validating whether we should validate against the schema
    * @param columnStore where to read the column data from
    */
-  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
+  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating,
+      ColumnReadStoreImpl columnStore) {
     this.recordMaterializer = recordMaterializer;
-    this.recordRootConverter = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
+    this.recordRootConverter = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer),
+                                                                      // validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[0]);
     columnReaders = new ColumnReader[leaves.length];
     int[][] nextColumnIdxForRepLevel = new int[leaves.length][];
     int[][] levelToClose = new int[leaves.length][];
     GroupConverter[][] groupConverterPaths = new GroupConverter[leaves.length][];
     PrimitiveConverter[] leafConverters = new PrimitiveConverter[leaves.length];
-    int[] firstIndexForLevel  = new int[256]; // "256 levels of nesting ought to be enough for anybody"
+    int[] firstIndexForLevel = new int[256]; // "256 levels of nesting ought to be enough for anybody"
     // build the automaton
     for (int i = 0; i < leaves.length; i++) {
       PrimitiveColumnIO leafColumnIO = leaves[i];
-      //generate converters along the path from root to leaf
+      // generate converters along the path from root to leaf
       final int[] indexFieldPath = leafColumnIO.getIndexFieldPath();
       groupConverterPaths[i] = new GroupConverter[indexFieldPath.length - 1];
       GroupConverter current = this.recordRootConverter;
@@ -270,20 +269,22 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       leafConverters[i] = current.getConverter(indexFieldPath[indexFieldPath.length - 1]).asPrimitiveConverter();
       columnReaders[i] = columnStore.getColumnReader(leafColumnIO.getColumnDescriptor());
       int maxRepetitionLevel = leafColumnIO.getRepetitionLevel();
-      nextColumnIdxForRepLevel[i] = new int[maxRepetitionLevel+1];
+      nextColumnIdxForRepLevel[i] = new int[maxRepetitionLevel + 1];
 
-      levelToClose[i] = new int[maxRepetitionLevel+1]; //next level
+      levelToClose[i] = new int[maxRepetitionLevel + 1]; // next level
       for (int nextRepLevel = 0; nextRepLevel <= maxRepetitionLevel; ++nextRepLevel) {
         // remember which is the first for this level
         if (leafColumnIO.isFirst(nextRepLevel)) {
           firstIndexForLevel[nextRepLevel] = i;
         }
         int nextColIdx;
-        //TODO: when we use nextColumnIdxForRepLevel, should we provide current rep level or the rep level for next item
+        // TODO: when we use nextColumnIdxForRepLevel, should we provide current rep
+        // level or the rep level for next item
         // figure out automaton transition
         if (nextRepLevel == 0) { // 0 always means jump to the next (the last one being a special case)
           nextColIdx = i + 1;
-        } else if (leafColumnIO.isLast(nextRepLevel)) { // when we are at the last of the next repetition level we jump back to the first
+        } else if (leafColumnIO.isLast(nextRepLevel)) { // when we are at the last of the next repetition level we jump
+                                                        // back to the first
           nextColIdx = firstIndexForLevel[nextRepLevel];
         } else { // otherwise we just go back to the next.
           nextColIdx = i + 1;
@@ -295,13 +296,13 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
           ColumnIO parent = leafColumnIO.getParent(nextRepLevel);
           levelToClose[i][nextRepLevel] = parent.getFieldPath().length - 1;
         } else { // otherwise close until the next common parent
-          levelToClose[i][nextRepLevel] = getCommonParentLevel(
-              leafColumnIO.getFieldPath(),
+          levelToClose[i][nextRepLevel] = getCommonParentLevel(leafColumnIO.getFieldPath(),
               leaves[nextColIdx].getFieldPath());
         }
         // sanity check: that would be a bug
-        if (levelToClose[i][nextRepLevel] > leaves[i].getFieldPath().length-1) {
-          throw new ParquetEncodingException(Arrays.toString(leaves[i].getFieldPath())+" -("+nextRepLevel+")-> "+levelToClose[i][nextRepLevel]);
+        if (levelToClose[i][nextRepLevel] > leaves[i].getFieldPath().length - 1) {
+          throw new ParquetEncodingException(Arrays.toString(leaves[i].getFieldPath()) + " -(" + nextRepLevel + ")-> "
+              + levelToClose[i][nextRepLevel]);
         }
         nextColumnIdxForRepLevel[i][nextRepLevel] = nextColIdx;
       }
@@ -311,14 +312,13 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       states[i] = new State(i, leaves[i], columnReaders[i], levelToClose[i], groupConverterPaths[i], leafConverters[i]);
 
       int[] definitionLevelToDepth = new int[states[i].primitiveColumnIO.getDefinitionLevel() + 1];
-      // for each possible definition level, determine the depth at which to create groups
+      // for each possible definition level, determine the depth at which to create
+      // groups
       final ColumnIO[] path = states[i].primitiveColumnIO.getPath();
       int depth = 0;
       for (int d = 0; d < definitionLevelToDepth.length; ++d) {
-        while (depth < (states[i].fieldPath.length - 1)
-          && d >= path[depth + 1].getDefinitionLevel()
-          ) {
-          ++ depth;
+        while (depth < (states[i].fieldPath.length - 1) && d >= path[depth + 1].getDefinitionLevel()) {
+          ++depth;
         }
         definitionLevelToDepth[d] = depth - 1;
       }
@@ -337,15 +337,16 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       final Map<Case, Case> definedCases = new HashMap<>();
       final Map<Case, Case> undefinedCases = new HashMap<>();
       Case[][][] caseLookup = new Case[state.fieldPath.length][][];
-      for (int currentLevel = 0; currentLevel < state.fieldPath.length; ++ currentLevel) {
-        caseLookup[currentLevel] = new Case[state.maxDefinitionLevel+1][];
-        for (int d = 0; d <= state.maxDefinitionLevel; ++ d) {
-          caseLookup[currentLevel][d] = new Case[state.maxRepetitionLevel+1];
-          for (int nextR = 0; nextR <= state.maxRepetitionLevel; ++ nextR) {
+      for (int currentLevel = 0; currentLevel < state.fieldPath.length; ++currentLevel) {
+        caseLookup[currentLevel] = new Case[state.maxDefinitionLevel + 1][];
+        for (int d = 0; d <= state.maxDefinitionLevel; ++d) {
+          caseLookup[currentLevel][d] = new Case[state.maxRepetitionLevel + 1];
+          for (int nextR = 0; nextR <= state.maxRepetitionLevel; ++nextR) {
             int caseStartLevel = currentLevel;
             int caseDepth = Math.max(state.getDepth(d), caseStartLevel - 1);
             int caseNextLevel = Math.min(state.nextLevel[nextR], caseDepth + 1);
-            Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel, getNextReader(state.id, nextR), d == state.maxDefinitionLevel);
+            Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel, getNextReader(state.id, nextR),
+                d == state.maxDefinitionLevel);
             Map<Case, Case> cases = currentCase.isDefined() ? definedCases : undefinedCases;
             if (!cases.containsKey(currentCase)) {
               currentCase.setID(cases.size());
@@ -371,7 +372,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     }
   }
 
-  //TODO: have those wrappers for a converter
+  // TODO: have those wrappers for a converter
   private RecordConsumer validator(RecordConsumer recordConsumer, boolean validating, MessageType schema) {
     return validating ? new ValidatingRecordConsumer(recordConsumer, schema) : recordConsumer;
   }

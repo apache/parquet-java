@@ -63,10 +63,8 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream)
-      throws IOException {
-    LOG.debug("init from page at offset {} for length {}",
-        stream.position(), stream.available());
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
+    LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
     this.in = stream.remainingStream();
   }
 }

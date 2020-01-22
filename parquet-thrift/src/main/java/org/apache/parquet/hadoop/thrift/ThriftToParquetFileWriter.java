@@ -40,25 +40,26 @@ public class ThriftToParquetFileWriter implements Closeable {
 
   /**
    * defaults to buffered = true
-   * @param fileToCreate the file to create. If null will create the default file name from the taskAttemptContext
+   * 
+   * @param fileToCreate the file to create. If null will create the default file
+   * name from the taskAttemptContext
    * @param taskAttemptContext The current taskAttemptContext
    * @param protocolFactory to create protocols to read the incoming bytes
    * @param thriftClass to produce the schema
    * @throws IOException if there was a problem writing
    * @throws InterruptedException from the underlying Hadoop API
    */
-  public ThriftToParquetFileWriter(
-      Path fileToCreate,
-      TaskAttemptContext taskAttemptContext,
-      TProtocolFactory protocolFactory,
-      Class<? extends TBase<?,?>> thriftClass)
-          throws IOException, InterruptedException {
+  public ThriftToParquetFileWriter(Path fileToCreate, TaskAttemptContext taskAttemptContext,
+      TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass)
+      throws IOException, InterruptedException {
     this(fileToCreate, taskAttemptContext, protocolFactory, thriftClass, true, null);
   }
 
   /**
    * defaults to buffered = true
-   * @param fileToCreate the file to create. If null will create the default file name from the taskAttemptContext
+   * 
+   * @param fileToCreate the file to create. If null will create the default file
+   * name from the taskAttemptContext
    * @param taskAttemptContext The current taskAttemptContext
    * @param protocolFactory to create protocols to read the incoming bytes
    * @param thriftClass to produce the schema
@@ -66,17 +67,15 @@ public class ThriftToParquetFileWriter implements Closeable {
    * @throws IOException if there was a problem writing
    * @throws InterruptedException from the underlying Hadoop API
    */
-  public ThriftToParquetFileWriter(
-      Path fileToCreate,
-      TaskAttemptContext taskAttemptContext,
-      TProtocolFactory protocolFactory,
-      Class<? extends TBase<?,?>> thriftClass,
-      FieldIgnoredHandler errorHandler) throws IOException, InterruptedException {
+  public ThriftToParquetFileWriter(Path fileToCreate, TaskAttemptContext taskAttemptContext,
+      TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, FieldIgnoredHandler errorHandler)
+      throws IOException, InterruptedException {
     this(fileToCreate, taskAttemptContext, protocolFactory, thriftClass, true, errorHandler);
   }
 
   /**
-   * @param fileToCreate the file to create. If null will create the default file name from the taskAttemptContext
+   * @param fileToCreate the file to create. If null will create the default file
+   * name from the taskAttemptContext
    * @param taskAttemptContext The current taskAttemptContext
    * @param protocolFactory to create protocols to read the incoming bytes
    * @param thriftClass to produce the schema
@@ -85,19 +84,17 @@ public class ThriftToParquetFileWriter implements Closeable {
    * @throws IOException if there was a problem writing
    * @throws InterruptedException from the underlying Hadoop API
    */
-  public ThriftToParquetFileWriter(
-      Path fileToCreate,
-      TaskAttemptContext taskAttemptContext,
-      TProtocolFactory protocolFactory,
-      Class<? extends TBase<?,?>> thriftClass,
-      boolean buffered,
+  public ThriftToParquetFileWriter(Path fileToCreate, TaskAttemptContext taskAttemptContext,
+      TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered,
       FieldIgnoredHandler errorHandler) throws IOException, InterruptedException {
     this.taskAttemptContext = taskAttemptContext;
-    this.recordWriter = new ParquetThriftBytesOutputFormat(protocolFactory, thriftClass, buffered, errorHandler).getRecordWriter(taskAttemptContext, fileToCreate);
+    this.recordWriter = new ParquetThriftBytesOutputFormat(protocolFactory, thriftClass, buffered, errorHandler)
+        .getRecordWriter(taskAttemptContext, fileToCreate);
   }
 
   /**
    * write one record to the columnar store
+   * 
    * @param bytes a bytes writable
    * @throws IOException if there is an error while writing
    * @throws InterruptedException if writing is interrupted

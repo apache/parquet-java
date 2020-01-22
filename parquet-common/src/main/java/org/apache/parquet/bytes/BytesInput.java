@@ -32,14 +32,11 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
- * A source of bytes capable of writing itself to an output.
- * A BytesInput should be consumed right away.
- * It is not a container.
- * For example if it is referring to a stream,
- * subsequent BytesInput reads from the stream will be incorrect
- * if the previous has not been consumed.
+ * A source of bytes capable of writing itself to an output. A BytesInput should
+ * be consumed right away. It is not a container. For example if it is referring
+ * to a stream, subsequent BytesInput reads from the stream will be incorrect if
+ * the previous has not been consumed.
  */
 abstract public class BytesInput {
   private static final Logger LOG = LoggerFactory.getLogger(BytesInput.class);
@@ -47,6 +44,7 @@ abstract public class BytesInput {
 
   /**
    * logically concatenate the provided inputs
+   * 
    * @param inputs the inputs to concatenate
    * @return a concatenated input
    */
@@ -56,6 +54,7 @@ abstract public class BytesInput {
 
   /**
    * logically concatenate the provided inputs
+   * 
    * @param inputs the inputs to concatenate
    * @return a concatenated input
    */
@@ -74,8 +73,7 @@ abstract public class BytesInput {
 
   /**
    * @param buffer
-   * @param length
-   *          number of bytes to read
+   * @param length number of bytes to read
    * @return a BytesInput that will read the given bytes from the ByteBuffer
    * @deprecated Will be removed in 2.0.0
    */
@@ -117,7 +115,7 @@ abstract public class BytesInput {
    */
   public static BytesInput from(byte[] in) {
     LOG.debug("BytesInput from array of {} bytes", in.length);
-    return new ByteArrayBytesInput(in, 0 , in.length);
+    return new ByteArrayBytesInput(in, 0, in.length);
   }
 
   public static BytesInput from(byte[] in, int offset, int length) {
@@ -144,7 +142,8 @@ abstract public class BytesInput {
   /**
    *
    * @param intValue the int to write
-   * @return a ByteInput that contains the int value as a variable-length zig-zag encoded int
+   * @return a ByteInput that contains the int value as a variable-length zig-zag
+   * encoded int
    */
   public static BytesInput fromZigZagVarInt(int intValue) {
     int zigZag = (intValue << 1) ^ (intValue >> 31);
@@ -162,7 +161,8 @@ abstract public class BytesInput {
   /**
    *
    * @param longValue the long to write
-   * @return a ByteInput that contains the long value as a variable-length zig-zag encoded long
+   * @return a ByteInput that contains the long value as a variable-length zig-zag
+   * encoded long
    */
   public static BytesInput fromZigZagVarLong(long longValue) {
     long zigZag = (longValue << 1) ^ (longValue >> 63);
@@ -194,9 +194,11 @@ abstract public class BytesInput {
 
   /**
    * copies the input into a new byte array
+   * 
    * @param bytesInput a BytesInput
    * @return a copy of the BytesInput
-   * @throws IOException if there is an exception when reading bytes from the BytesInput
+   * @throws IOException if there is an exception when reading bytes from the
+   * BytesInput
    */
   public static BytesInput copy(BytesInput bytesInput) throws IOException {
     return from(bytesInput.toByteArray());
@@ -204,6 +206,7 @@ abstract public class BytesInput {
 
   /**
    * writes the bytes into a stream
+   * 
    * @param out an output stream
    * @throws IOException if there is an exception writing
    */
@@ -215,9 +218,9 @@ abstract public class BytesInput {
    * @throws IOException if there is an exception reading
    */
   public byte[] toByteArray() throws IOException {
-    BAOS baos = new BAOS((int)size());
+    BAOS baos = new BAOS((int) size());
     this.writeAllTo(baos);
-    LOG.debug("converted {} to byteArray of {} bytes", size() , baos.size());
+    LOG.debug("converted {} to byteArray of {} bytes", size(), baos.size());
     return baos.getBuf();
   }
 
@@ -308,9 +311,11 @@ abstract public class BytesInput {
       for (BytesInput input : inputs) {
 
         LOG.debug("write {} bytes to out", input.size());
-        if (input instanceof SequenceBytesIn) LOG.debug("{");
+        if (input instanceof SequenceBytesIn)
+          LOG.debug("{");
         input.writeAllTo(out);
-        if (input instanceof SequenceBytesIn) LOG.debug("}");
+        if (input instanceof SequenceBytesIn)
+          LOG.debug("}");
       }
     }
 

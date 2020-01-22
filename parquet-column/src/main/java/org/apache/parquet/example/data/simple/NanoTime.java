@@ -75,6 +75,6 @@ public class NanoTime extends Primitive {
 
   @Override
   public String toString() {
-    return "NanoTime{julianDay="+julianDay+", timeOfDayNanos="+timeOfDayNanos+"}";
+    return "NanoTime{julianDay=" + julianDay + ", timeOfDayNanos=" + timeOfDayNanos + "}";
   }
 }

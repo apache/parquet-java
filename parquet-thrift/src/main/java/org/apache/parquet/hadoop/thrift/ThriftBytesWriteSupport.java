@@ -58,14 +58,17 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   public static Class<TProtocolFactory> getTProtocolFactoryClass(Configuration conf) {
     final String tProtocolClassName = conf.get(PARQUET_PROTOCOL_CLASS);
     if (tProtocolClassName == null) {
-      throw new BadConfigurationException("the protocol class conf is missing in job conf at " + PARQUET_PROTOCOL_CLASS);
+      throw new BadConfigurationException(
+          "the protocol class conf is missing in job conf at " + PARQUET_PROTOCOL_CLASS);
     }
     try {
       @SuppressWarnings("unchecked")
-      Class<TProtocolFactory> tProtocolFactoryClass = (Class<TProtocolFactory>)Class.forName(tProtocolClassName + "$Factory");
+      Class<TProtocolFactory> tProtocolFactoryClass = (Class<TProtocolFactory>) Class
+          .forName(tProtocolClassName + "$Factory");
       return tProtocolFactoryClass;
     } catch (ClassNotFoundException e) {
-      throw new BadConfigurationException("the Factory for class " + tProtocolClassName + " in job conf at " + PARQUET_PROTOCOL_CLASS + " could not be found", e);
+      throw new BadConfigurationException("the Factory for class " + tProtocolClassName + " in job conf at "
+          + PARQUET_PROTOCOL_CLASS + " could not be found", e);
     }
   }
 
@@ -74,7 +77,7 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   private final TBaseWriteSupport<?> thriftWriteSupport = new TBaseWriteSupport();
   private ProtocolPipe readToWrite;
   private TProtocolFactory protocolFactory;
-  private Class<? extends TBase<?,?>> thriftClass;
+  private Class<? extends TBase<?, ?>> thriftClass;
   private MessageType schema;
   private StructType thriftStruct;
   private ParquetWriteProtocol parquetWriteProtocol;
@@ -85,7 +88,8 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
     this.errorHandler = null;
   }
 
-  public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered, FieldIgnoredHandler errorHandler) {
+  public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass,
+      boolean buffered, FieldIgnoredHandler errorHandler) {
     super();
     this.protocolFactory = protocolFactory;
     this.thriftClass = thriftClass;
@@ -135,15 +139,19 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   }
 
   private TProtocol protocol(BytesWritable record) {
-    TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(new ByteArrayInputStream(record.getBytes())));
+    TProtocol protocol = protocolFactory
+        .getProtocol(new TIOStreamTransport(new ByteArrayInputStream(record.getBytes())));
 
-    /* Reduce the chance of OOM when data is corrupted. When readBinary is called on TBinaryProtocol, it reads the length of the binary first,
-     so if the data is corrupted, it could read a big integer as the length of the binary and therefore causes OOM to happen.
-     Currently this fix only applies to TBinaryProtocol which has the setReadLength defined (thrift 0.7).
-      */
+    /*
+     * Reduce the chance of OOM when data is corrupted. When readBinary is called on
+     * TBinaryProtocol, it reads the length of the binary first, so if the data is
+     * corrupted, it could read a big integer as the length of the binary and
+     * therefore causes OOM to happen. Currently this fix only applies to
+     * TBinaryProtocol which has the setReadLength defined (thrift 0.7).
+     */
     if (SET_READ_LENGTH != null && protocol instanceof TBinaryProtocol) {
       try {
-        SET_READ_LENGTH.invoke(protocol, new Object[]{record.getLength()});
+        SET_READ_LENGTH.invoke(protocol, new Object[] { record.getLength() });
       } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
         LOG.warn("setReadLength should not throw an exception", e);
         SET_READ_LENGTH = null;

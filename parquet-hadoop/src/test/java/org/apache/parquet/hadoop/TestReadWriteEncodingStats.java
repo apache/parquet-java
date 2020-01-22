@@ -44,7 +44,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests that files are written with EncodingStats, the stats are readable, and generally correct.
+ * Tests that files are written with EncodingStats, the stats are readable, and
+ * generally correct.
  */
 public class TestReadWriteEncodingStats {
 
@@ -53,12 +54,8 @@ public class TestReadWriteEncodingStats {
 
   private static final Configuration CONF = new Configuration();
   private static final int NUM_RECORDS = 1000;
-  private static final MessageType SCHEMA = parseMessageType(
-      "message test { "
-          + "required binary dict_binary_field; "
-          + "required int32 plain_int32_field; "
-          + "required binary fallback_binary_field; "
-          + "} ");
+  private static final MessageType SCHEMA = parseMessageType("message test { " + "required binary dict_binary_field; "
+      + "required int32 plain_int32_field; " + "required binary fallback_binary_field; " + "} ");
 
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
@@ -67,29 +64,26 @@ public class TestReadWriteEncodingStats {
     for (int i = 0; i < NUM_RECORDS; i += 1) {
       int index = i % ALPHABET.length();
 
-      Group group = f.newGroup()
-          .append("dict_binary_field", ALPHABET.substring(index, index+1))
-          .append("plain_int32_field", i)
-          .append("fallback_binary_field", i < (NUM_RECORDS / 2) ?
-              ALPHABET.substring(index, index+1) : UUID.randomUUID().toString());
+      Group group = f.newGroup().append("dict_binary_field", ALPHABET.substring(index, index + 1))
+          .append("plain_int32_field", i).append("fallback_binary_field",
+              i < (NUM_RECORDS / 2) ? ALPHABET.substring(index, index + 1) : UUID.randomUUID().toString());
 
       writer.write(group);
     }
   }
+
   @Test
   public void testReadWrite() throws Exception {
     File file = temp.newFile("encoding-stats.parquet");
     assertTrue(file.delete());
     Path path = new Path(file.toString());
 
-    ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-        .withWriterVersion(PARQUET_1_0)
-        .withPageSize(1024) // ensure multiple pages are written
-        .enableDictionaryEncoding()
-        .withDictionaryPageSize(2*1024)
-        .withConf(CONF)
-        .withType(SCHEMA)
-        .build();
+    ParquetWriter<Group> writer = ExampleParquetWriter.builder(path).withWriterVersion(PARQUET_1_0).withPageSize(1024) // ensure
+                                                                                                                       // multiple
+                                                                                                                       // pages
+                                                                                                                       // are
+                                                                                                                       // written
+        .enableDictionaryEncoding().withDictionaryPageSize(2 * 1024).withConf(CONF).withType(SCHEMA).build();
     writeData(writer);
     writer.close();
 

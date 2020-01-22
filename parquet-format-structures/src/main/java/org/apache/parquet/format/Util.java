@@ -49,8 +49,8 @@ import org.apache.parquet.format.event.TypedConsumer.I64Consumer;
 import org.apache.parquet.format.event.TypedConsumer.StringConsumer;
 
 /**
- * Utility to read/write metadata
- * We use the TCompactProtocol to serialize metadata
+ * Utility to read/write metadata We use the TCompactProtocol to serialize
+ * metadata
  */
 public class Util {
 
@@ -78,15 +78,18 @@ public class Util {
     return read(from, new PageHeader());
   }
 
-  public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, OutputStream to) throws IOException {
+  public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, OutputStream to)
+      throws IOException {
     write(fileMetadata, to);
   }
 
   public static FileMetaData readFileMetaData(InputStream from) throws IOException {
     return read(from, new FileMetaData());
   }
+
   /**
    * reads the meta data from the stream
+   * 
    * @param from the stream to read the metadata from
    * @param skipRowGroups whether row groups should be skipped
    * @return the resulting metadata
@@ -108,10 +111,15 @@ public class Util {
    */
   public static abstract class FileMetaDataConsumer {
     abstract public void setVersion(int version);
+
     abstract public void setSchema(List<SchemaElement> schema);
+
     abstract public void setNumRows(long numRows);
+
     abstract public void addRowGroup(RowGroup rowGroup);
+
     abstract public void addKeyValueMetaData(KeyValue kv);
+
     abstract public void setCreatedBy(String createdBy);
   }
 
@@ -161,10 +169,10 @@ public class Util {
     readFileMetaData(from, consumer, false);
   }
 
-  public static void readFileMetaData(InputStream from, final FileMetaDataConsumer consumer, boolean skipRowGroups) throws IOException {
+  public static void readFileMetaData(InputStream from, final FileMetaDataConsumer consumer, boolean skipRowGroups)
+      throws IOException {
     try {
-      DelegatingFieldConsumer eventConsumer = fieldConsumer()
-      .onField(VERSION, new I32Consumer() {
+      DelegatingFieldConsumer eventConsumer = fieldConsumer().onField(VERSION, new I32Consumer() {
         @Override
         public void consume(int value) {
           consumer.setVersion(value);
@@ -191,12 +199,13 @@ public class Util {
         }
       });
       if (!skipRowGroups) {
-        eventConsumer = eventConsumer.onField(ROW_GROUPS, listElementsOf(struct(RowGroup.class, new Consumer<RowGroup>() {
-          @Override
-          public void consume(RowGroup rowGroup) {
-            consumer.addRowGroup(rowGroup);
-          }
-        })));
+        eventConsumer = eventConsumer.onField(ROW_GROUPS,
+            listElementsOf(struct(RowGroup.class, new Consumer<RowGroup>() {
+              @Override
+              public void consume(RowGroup rowGroup) {
+                consumer.addRowGroup(rowGroup);
+              }
+            })));
       }
       new EventBasedThriftReader(protocol(from)).readStruct(eventConsumer);
 
@@ -217,7 +226,7 @@ public class Util {
     return new InterningProtocol(new TCompactProtocol(t));
   }
 
-  private static <T extends TBase<?,?>> T read(InputStream from, T tbase) throws IOException {
+  private static <T extends TBase<?, ?>> T read(InputStream from, T tbase) throws IOException {
     try {
       tbase.read(protocol(from));
       return tbase;

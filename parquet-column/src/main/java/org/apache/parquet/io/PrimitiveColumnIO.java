@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.io;
 
-
 import java.util.Arrays;
 import java.util.List;
 
@@ -26,7 +25,6 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-
 
 /**
  * Primitive level of the IO structure
@@ -44,14 +42,11 @@ public class PrimitiveColumnIO extends ColumnIO {
   }
 
   @Override
-  void setLevels(int r, int d, String[] fieldPath, int[] fieldIndexPath, List<ColumnIO> repetition, List<ColumnIO> path) {
+  void setLevels(int r, int d, String[] fieldPath, int[] fieldIndexPath, List<ColumnIO> repetition,
+      List<ColumnIO> path) {
     super.setLevels(r, d, fieldPath, fieldIndexPath, repetition, path);
     PrimitiveType type = getType().asPrimitiveType();
-    this.columnDescriptor = new ColumnDescriptor(
-        fieldPath,
-        type,
-        getRepetitionLevel(),
-        getDefinitionLevel());
+    this.columnDescriptor = new ColumnDescriptor(fieldPath, type, getRepetitionLevel(), getDefinitionLevel());
     this.path = path.toArray(new ColumnIO[0]);
   }
 
@@ -88,6 +83,7 @@ public class PrimitiveColumnIO extends ColumnIO {
   PrimitiveColumnIO getFirst() {
     return this;
   }
+
   public boolean isFirst(int r) {
     return getFirst(r) == this;
   }

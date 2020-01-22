@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.values.dictionary;
 
-
 import java.io.IOException;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
@@ -47,12 +46,10 @@ public class DictionaryValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream)
-      throws IOException {
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     this.in = stream.remainingStream();
     if (in.available() > 0) {
-      LOG.debug("init from page at offset {} for length {}",
-          stream.position(), stream.available());
+      LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
       int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
       LOG.debug("bit width {}", bitWidth);
       decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);

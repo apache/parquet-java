@@ -35,8 +35,8 @@ import com.twitter.elephantbird.pig.util.PigToThrift;
 public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
 
   private final String className;
-  private ThriftWriteSupport<TBase<?,?>> thriftWriteSupport;
-  private PigToThrift<TBase<?,?>> pigToThrift;
+  private ThriftWriteSupport<TBase<?, ?>> thriftWriteSupport;
+  private PigToThrift<TBase<?, ?>> pigToThrift;
 
   /**
    * @param className the thrift class name
@@ -51,7 +51,7 @@ public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
     return "thrift";
   }
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
+  @SuppressWarnings({ "rawtypes", "unchecked" })
   @Override
   public WriteContext init(Configuration configuration) {
     try {

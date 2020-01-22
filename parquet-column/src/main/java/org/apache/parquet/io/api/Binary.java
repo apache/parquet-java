@@ -38,7 +38,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   protected boolean isBackingBytesReused;
 
   // this isn't really something others should extend
-  private Binary() { }
+  private Binary() {
+  }
 
   public static final Binary EMPTY = fromConstantByteArray(new byte[0]);
 
@@ -54,9 +55,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   /**
    * Variant of getBytes() that avoids copying backing data structure by returning
-   * backing byte[] of the Binary. Do not modify backing byte[] unless you know what
-   * you are doing.
-   * @return backing byte[] of correct size, with an offset of 0, if possible, else returns result of getBytes()
+   * backing byte[] of the Binary. Do not modify backing byte[] unless you know
+   * what you are doing.
+   * 
+   * @return backing byte[] of correct size, with an offset of 0, if possible,
+   * else returns result of getBytes()
    */
   abstract public byte[] getBytesUnsafe();
 
@@ -69,9 +72,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   abstract boolean equals(Binary other);
 
   /**
-   * @deprecated will be removed in 2.0.0. The comparison logic depends on the related logical type therefore this one
-   * might not be correct. The {@link java.util.Comparator} implementation for the related type available at
-   * {@link org.apache.parquet.schema.PrimitiveType#comparator} should be used instead.
+   * @deprecated will be removed in 2.0.0. The comparison logic depends on the
+   * related logical type therefore this one might not be correct. The
+   * {@link java.util.Comparator} implementation for the related type available at
+   * {@link org.apache.parquet.schema.PrimitiveType#comparator} should be used
+   * instead.
    */
   @Override
   @Deprecated
@@ -85,19 +90,15 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       return false;
     }
     if (obj instanceof Binary) {
-      return equals((Binary)obj);
+      return equals((Binary) obj);
     }
     return false;
   }
 
   @Override
   public String toString() {
-    return "Binary{" +
-        length() +
-        (isBackingBytesReused ? " reused": " constant") +
-        " bytes, " +
-        Arrays.toString(getBytesUnsafe())
-        + "}";
+    return "Binary{" + length() + (isBackingBytesReused ? " reused" : " constant") + " bytes, "
+        + Arrays.toString(getBytesUnsafe()) + "}";
   }
 
   public Binary copy() {
@@ -109,7 +110,9 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   }
 
   /**
-   * Signals if backing bytes are owned, and can be modified, by producer of the Binary
+   * Signals if backing bytes are owned, and can be modified, by producer of the
+   * Binary
+   * 
    * @return if backing bytes are held on by producer of the Binary
    */
   public boolean isBackingBytesReused() {
@@ -132,8 +135,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     public String toStringUsingUTF8() {
       // Charset#decode uses a thread-local decoder cache and is faster than
       // new String(...) which instantiates a new Decoder per invocation
-      return StandardCharsets.UTF_8
-          .decode(ByteBuffer.wrap(value, offset, length)).toString();
+      return StandardCharsets.UTF_8.decode(ByteBuffer.wrap(value, offset, length)).toString();
     }
 
     @Override
@@ -232,8 +234,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       return "Binary{\"" + toStringUsingUTF8() + "\"}";
     }
 
-    private static final ThreadLocal<CharsetEncoder> ENCODER =
-      ThreadLocal.withInitial(StandardCharsets.UTF_8::newEncoder);
+    private static final ThreadLocal<CharsetEncoder> ENCODER = ThreadLocal
+        .withInitial(StandardCharsets.UTF_8::newEncoder);
 
     private static ByteBuffer encodeUTF8(CharSequence value) {
       try {
@@ -248,14 +250,14 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return new ByteArraySliceBackedBinary(value, offset, length, true);
   }
 
-  public static Binary fromConstantByteArray(final byte[] value, final int offset,
-                                             final int length) {
+  public static Binary fromConstantByteArray(final byte[] value, final int offset, final int length) {
     return new ByteArraySliceBackedBinary(value, offset, length, false);
   }
 
   @Deprecated
   /**
-   * @deprecated Use @link{fromReusedByteArray} or @link{fromConstantByteArray} instead
+   * @deprecated Use @link{fromReusedByteArray} or @link{fromConstantByteArray}
+   * instead
    */
   public static Binary fromByteArray(final byte[] value, final int offset, final int length) {
     return fromReusedByteArray(value, offset, length); // Assume producer intends to reuse byte[]
@@ -328,7 +330,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR.compare(this, other);
     }
 
-   @Override
+    @Override
     public ByteBuffer toByteBuffer() {
       return ByteBuffer.wrap(value);
     }
@@ -350,7 +352,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   @Deprecated
   /**
-   * @deprecated Use @link{fromReusedByteArray} or @link{fromConstantByteArray} instead
+   * @deprecated Use @link{fromReusedByteArray} or @link{fromConstantByteArray}
+   * instead
    */
   public static Binary fromByteArray(final byte[] value) {
     return fromReusedByteArray(value); // Assume producer intends to reuse byte[]
@@ -380,14 +383,14 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     public String toStringUsingUTF8() {
       String ret;
       if (value.hasArray()) {
-        ret = new String(value.array(), value.arrayOffset() + offset, length,
-            StandardCharsets.UTF_8);
+        ret = new String(value.array(), value.arrayOffset() + offset, length, StandardCharsets.UTF_8);
       } else {
         int limit = value.limit();
-        value.limit(offset+length);
+        value.limit(offset + length);
         int position = value.position();
         value.position(offset);
-        // no corresponding interface to read a subset of a buffer, would have to slice it
+        // no corresponding interface to read a subset of a buffer, would have to slice
+        // it
         // which creates another ByteBuffer object or do what is done here to adjust the
         // limit/offset and set them back after
         ret = StandardCharsets.UTF_8.decode(value).toString();
@@ -438,6 +441,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     public Binary slice(int start, int length) {
       return Binary.fromConstantByteArray(getBytesUnsafe(), start, length);
     }
+
     @Override
     public int hashCode() {
       if (value.hasArray()) {
@@ -528,7 +532,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   @Deprecated
   /**
-   * @deprecated Use @link{fromReusedByteBuffer} or @link{fromConstantByteBuffer} instead
+   * @deprecated Use @link{fromReusedByteBuffer} or @link{fromConstantByteBuffer}
+   * instead
    */
   public static Binary fromByteBuffer(final ByteBuffer value) {
     return fromReusedByteBuffer(value); // Assume producer intends to reuse byte[]
@@ -567,10 +572,14 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return result;
   }
 
-  private static final boolean equals(ByteBuffer buf1, int offset1, int length1, ByteBuffer buf2, int offset2, int length2) {
-    if (buf1 == null && buf2 == null) return true;
-    if (buf1 == null || buf2 == null) return false;
-    if (length1 != length2) return false;
+  private static final boolean equals(ByteBuffer buf1, int offset1, int length1, ByteBuffer buf2, int offset2,
+      int length2) {
+    if (buf1 == null && buf2 == null)
+      return true;
+    if (buf1 == null || buf2 == null)
+      return false;
+    if (length1 != length2)
+      return false;
     for (int i = 0; i < length1; i++) {
       if (buf1.get(i + offset1) != buf2.get(i + offset2)) {
         return false;
@@ -579,10 +588,14 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return true;
   }
 
-  private static final boolean equals(byte[] array1, int offset1, int length1, ByteBuffer buf, int offset2, int length2) {
-    if (array1 == null && buf == null) return true;
-    if (array1 == null || buf == null) return false;
-    if (length1 != length2) return false;
+  private static final boolean equals(byte[] array1, int offset1, int length1, ByteBuffer buf, int offset2,
+      int length2) {
+    if (array1 == null && buf == null)
+      return true;
+    if (array1 == null || buf == null)
+      return false;
+    if (length1 != length2)
+      return false;
     for (int i = 0; i < length1; i++) {
       if (array1[i + offset1] != buf.get(i + offset2)) {
         return false;
@@ -601,11 +614,16 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
    * @param length2
    * @return
    */
-  private static final boolean equals(byte[] array1, int offset1, int length1, byte[] array2, int offset2, int length2) {
-    if (array1 == null && array2 == null) return true;
-    if (array1 == null || array2 == null) return false;
-    if (length1 != length2) return false;
-    if (array1 == array2 && offset1 == offset2) return true;
+  private static final boolean equals(byte[] array1, int offset1, int length1, byte[] array2, int offset2,
+      int length2) {
+    if (array1 == null && array2 == null)
+      return true;
+    if (array1 == null || array2 == null)
+      return false;
+    if (length1 != length2)
+      return false;
+    if (array1 == array2 && offset1 == offset2)
+      return true;
     for (int i = 0; i < length1; i++) {
       if (array1[i + offset1] != array2[i + offset2]) {
         return false;

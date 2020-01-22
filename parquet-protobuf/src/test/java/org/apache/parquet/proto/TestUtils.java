@@ -71,9 +71,10 @@ public class TestUtils {
   }
 
   /**
-   * Writes messages to file, reads messages from file and checks if everything is OK.
+   * Writes messages to file, reads messages from file and checks if everything is
+   * OK.
    */
-  public static <T extends  MessageOrBuilder> List<T> testData(T... messages) throws IOException {
+  public static <T extends MessageOrBuilder> List<T> testData(T... messages) throws IOException {
 
     checkSameBuilderInstance(messages);
 
@@ -142,7 +143,8 @@ public class TestUtils {
   }
 
   /**
-   * Reads messages from given file. The file could/should be created by method writeMessages
+   * Reads messages from given file. The file could/should be created by method
+   * writeMessages
    */
   public static <T extends MessageOrBuilder> List<T> readMessages(Path file) throws IOException {
     ProtoParquetReader<T> reader = new ProtoParquetReader<T>(file);
@@ -173,8 +175,7 @@ public class TestUtils {
   public static Path writeMessages(Class<? extends Message> cls, MessageOrBuilder... records) throws IOException {
     Path file = someTemporaryFilePath();
 
-    ProtoParquetWriter<MessageOrBuilder> writer =
-            new ProtoParquetWriter<MessageOrBuilder>(file, cls);
+    ProtoParquetWriter<MessageOrBuilder> writer = new ProtoParquetWriter<MessageOrBuilder>(file, cls);
 
     for (MessageOrBuilder record : records) {
       writer.write(record);

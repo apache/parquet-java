@@ -18,11 +18,7 @@
  */
 package org.apache.parquet.thrift.struct;
 
-
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.parquet.thrift.projection.FieldsPath;
@@ -36,17 +32,18 @@ import org.apache.parquet.thrift.struct.ThriftType.I64Type;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
 
 /**
- * A checker for thrift struct to enforce its backward compatibility, returns compatibility report based on following rules:
- * 1. Should not add new REQUIRED field in new thrift struct. Adding optional field is OK
- * 2. Should not change field type for an existing field
- * 3. Should not delete existing field
- * 4. Should not make requirement type more restrictive for a field in new thrift struct
+ * A checker for thrift struct to enforce its backward compatibility, returns
+ * compatibility report based on following rules: 1. Should not add new REQUIRED
+ * field in new thrift struct. Adding optional field is OK 2. Should not change
+ * field type for an existing field 3. Should not delete existing field 4.
+ * Should not make requirement type more restrictive for a field in new thrift
+ * struct
  */
 public class CompatibilityChecker {
 
   public CompatibilityReport checkCompatibility(ThriftType.StructType oldStruct, ThriftType.StructType newStruct) {
     CompatibleCheckerVisitor visitor = new CompatibleCheckerVisitor();
-    newStruct.accept(visitor, new State(oldStruct,new FieldsPath()));
+    newStruct.accept(visitor, new State(oldStruct, new FieldsPath()));
     return visitor.getReport();
   }
 
@@ -85,11 +82,8 @@ class CompatibilityReport {
 
   @Override
   public String toString() {
-    return "CompatibilityReport{" +
-        "isCompatible=" + isCompatible +
-        ", hasEmptyStruct=" + hasEmptyStruct +
-        ", messages=\n" + prettyMessages() +
-        '}';
+    return "CompatibilityReport{" + "isCompatible=" + isCompatible + ", hasEmptyStruct=" + hasEmptyStruct
+        + ", messages=\n" + prettyMessages() + '}';
   }
 }
 
@@ -120,7 +114,6 @@ class CompatibleCheckerVisitor implements ThriftType.StateVisitor<Void, State> {
     ThriftField newValueField = mapType.getValue();
     ThriftField oldValueField = oldMapType.getValue();
 
-
     checkField(oldKeyField, newKeyField, state.path);
     checkField(oldValueField, newValueField, state.path);
 
@@ -146,13 +139,14 @@ class CompatibleCheckerVisitor implements ThriftType.StateVisitor<Void, State> {
   }
 
   public void incompatible(String message, FieldsPath path) {
-    report.fail("at " + path + ":" +message);
+    report.fail("at " + path + ":" + message);
   }
 
   private void checkField(ThriftField oldField, ThriftField newField, FieldsPath path) {
 
     if (!newField.getType().getType().equals(oldField.getType().getType())) {
-      incompatible("type is not compatible: " + oldField.getType().getType() + " vs " + newField.getType().getType(), path);
+      incompatible("type is not compatible: " + oldField.getType().getType() + " vs " + newField.getType().getType(),
+          path);
       return;
     }
 
@@ -166,7 +160,7 @@ class CompatibleCheckerVisitor implements ThriftType.StateVisitor<Void, State> {
       return;
     }
 
-    newField.getType().accept(this, new State(oldField.getType(),path.push(newField)));
+    newField.getType().accept(this, new State(oldField.getType(), path.push(newField)));
   }
 
   private boolean firstIsMoreRestirctive(ThriftField.Requirement firstReq, ThriftField.Requirement secReq) {
@@ -200,11 +194,11 @@ class CompatibleCheckerVisitor implements ThriftType.StateVisitor<Void, State> {
       checkField(oldField, newField, state.path);
     }
 
-    //check for new added
+    // check for new added
     for (ThriftField newField : newStruct.getChildren()) {
-      //can not add required
+      // can not add required
       if (newField.getRequirement() != ThriftField.Requirement.REQUIRED)
-        continue;//can add optional field
+        continue;// can add optional field
 
       short newFieldId = newField.getFieldId();
       if (newFieldId > oldMaxId) {
@@ -261,5 +255,3 @@ class CompatibleCheckerVisitor implements ThriftType.StateVisitor<Void, State> {
     return null;
   }
 }
-
-

@@ -31,19 +31,18 @@ import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 
 /**
- * EncodingStats track dictionary and data page encodings for a single column within a row group.
- * These are used when filtering row groups. For example, to filter a row group based on a column's
- * dictionary, all of the data pages in that column must be dictionary-encoded. This class provides
- * convenience methods for those checks, like {@link #hasNonDictionaryEncodedPages()}.
+ * EncodingStats track dictionary and data page encodings for a single column
+ * within a row group. These are used when filtering row groups. For example, to
+ * filter a row group based on a column's dictionary, all of the data pages in
+ * that column must be dictionary-encoded. This class provides convenience
+ * methods for those checks, like {@link #hasNonDictionaryEncodedPages()}.
  */
 public class EncodingStats {
   final Map<Encoding, Number> dictStats;
   final Map<Encoding, Number> dataStats;
   private final boolean usesV2Pages;
 
-  private EncodingStats(Map<Encoding, Number> dictStats,
-                        Map<Encoding, Number> dataStats,
-                        boolean usesV2Pages) {
+  private EncodingStats(Map<Encoding, Number> dictStats, Map<Encoding, Number> dataStats, boolean usesV2Pages) {
     this.dictStats = dictStats;
     this.dataStats = dataStats;
     this.usesV2Pages = usesV2Pages;
@@ -83,8 +82,7 @@ public class EncodingStats {
 
     // this modifies the set, so copy it
     Set<Encoding> encodings = new HashSet<>(dataStats.keySet());
-    if (!encodings.remove(RLE_DICTIONARY) &&
-        !encodings.remove(PLAIN_DICTIONARY)) {
+    if (!encodings.remove(RLE_DICTIONARY) && !encodings.remove(PLAIN_DICTIONARY)) {
       return true; // not dictionary encoded
     }
 
@@ -101,7 +99,8 @@ public class EncodingStats {
   }
 
   /**
-   * Used to build {@link EncodingStats} from metadata or to accumulate stats as pages are written.
+   * Used to build {@link EncodingStats} from metadata or to accumulate stats as
+   * pages are written.
    */
   public static class Builder {
     private final Map<Encoding, AtomicInteger> dictStats = new LinkedHashMap<>();
@@ -125,8 +124,7 @@ public class EncodingStats {
     }
 
     public Builder addDictEncoding(Encoding encoding, int numPages) {
-      dictStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0))
-          .addAndGet(numPages);
+      dictStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0)).addAndGet(numPages);
       return this;
     }
 
@@ -142,16 +140,13 @@ public class EncodingStats {
     }
 
     public Builder addDataEncoding(Encoding encoding, int numPages) {
-      dataStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0))
-      .addAndGet(numPages);
+      dataStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0)).addAndGet(numPages);
       return this;
     }
 
     public EncodingStats build() {
-      return new EncodingStats(
-          Collections.unmodifiableMap(new LinkedHashMap<>(dictStats)),
-          Collections.unmodifiableMap(new LinkedHashMap<>(dataStats)),
-          usesV2Pages);
+      return new EncodingStats(Collections.unmodifiableMap(new LinkedHashMap<>(dictStats)),
+          Collections.unmodifiableMap(new LinkedHashMap<>(dataStats)), usesV2Pages);
     }
   }
 }

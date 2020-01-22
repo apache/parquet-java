@@ -44,8 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Read support for Pig Tuple
- * a Pig MetaDataBlock is expected in the initialization call
+ * Read support for Pig Tuple a Pig MetaDataBlock is expected in the
+ * initialization call
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
   static final String PARQUET_PIG_SCHEMA = "parquet.pig.schema";
@@ -71,7 +71,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   static RequiredFieldList getRequiredFields(Configuration configuration) {
     String requiredFieldString = configuration.get(PARQUET_PIG_REQUIRED_FIELDS);
 
-    if(requiredFieldString == null) {
+    if (requiredFieldString == null) {
       return null;
     }
 
@@ -141,12 +141,13 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   }
 
   private static FieldSchema union(FieldSchema mergedFieldSchema, FieldSchema newFieldSchema) {
-    if (!mergedFieldSchema.alias.equals(newFieldSchema.alias)
-        || mergedFieldSchema.type != newFieldSchema.type) {
-      throw new IncompatibleSchemaModificationException("Incompatible Pig schema change: " + mergedFieldSchema + " can not accept");
+    if (!mergedFieldSchema.alias.equals(newFieldSchema.alias) || mergedFieldSchema.type != newFieldSchema.type) {
+      throw new IncompatibleSchemaModificationException(
+          "Incompatible Pig schema change: " + mergedFieldSchema + " can not accept");
     }
     try {
-      return new FieldSchema(mergedFieldSchema.alias, union(mergedFieldSchema.schema, newFieldSchema.schema), mergedFieldSchema.type);
+      return new FieldSchema(mergedFieldSchema.alias, union(mergedFieldSchema.schema, newFieldSchema.schema),
+          mergedFieldSchema.type);
     } catch (FrontendException e) {
       throw new SchemaConversionException(e);
     }
@@ -163,17 +164,15 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     } else {
 
       // project the file schema according to the requested Pig schema
-      MessageType parquetRequestedSchema = new PigSchemaConverter(columnIndexAccess).filter(initContext.getFileSchema(), pigSchema, requiredFields);
+      MessageType parquetRequestedSchema = new PigSchemaConverter(columnIndexAccess).filter(initContext.getFileSchema(),
+          pigSchema, requiredFields);
       return new ReadContext(parquetRequestedSchema);
     }
   }
 
   @Override
-  public RecordMaterializer<Tuple> prepareForRead(
-      Configuration configuration,
-      Map<String, String> keyValueMetaData,
-      MessageType fileSchema,
-      ReadContext readContext) {
+  public RecordMaterializer<Tuple> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData,
+      MessageType fileSchema, ReadContext readContext) {
     MessageType requestedSchema = readContext.getRequestedSchema();
     Schema requestedPigSchema = getPigSchema(configuration);
 

@@ -53,7 +53,7 @@ public class ConcatenatingByteArrayCollector extends BytesInput {
   }
 
   /**
-   * @param prefix  a prefix to be used for every new line in the string
+   * @param prefix a prefix to be used for every new line in the string
    * @return a text representation of the memory usage of this structure
    */
   public String memUsageString(String prefix) {

@@ -64,17 +64,10 @@ public class TestParquetWriterNewPage {
     }
     fs.mkdirs(root);
     MessageType schema = parseMessageType(
-        "message test { "
-        + "required binary binary_field; "
-        + "required int32 int32_field; "
-        + "required int64 int64_field; "
-        + "required boolean boolean_field; "
-        + "required float float_field; "
-        + "required double double_field; "
-        + "required fixed_len_byte_array(3) flba_field; "
-        + "required int96 int96_field; "
-        + "optional binary null_field; "
-        + "} ");
+        "message test { " + "required binary binary_field; " + "required int32 int32_field; "
+            + "required int64 int64_field; " + "required boolean boolean_field; " + "required float float_field; "
+            + "required double double_field; " + "required fixed_len_byte_array(3) flba_field; "
+            + "required int96 int96_field; " + "optional binary null_field; " + "} ");
     GroupWriteSupport.setSchema(schema, conf);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
     Map<String, Encoding> expected = new HashMap<String, Encoding>();
@@ -85,20 +78,12 @@ public class TestParquetWriterNewPage {
     for (int modulo : asList(10, 1000)) {
       for (WriterVersion version : WriterVersion.values()) {
         Path file = new Path(root, version.name() + "_" + modulo);
-        ParquetWriter<Group> writer = new ParquetWriter<Group>(
-            file,
-            new GroupWriteSupport(),
-            UNCOMPRESSED, 1024, 1024, 512, true, false, version, conf);
+        ParquetWriter<Group> writer = new ParquetWriter<Group>(file, new GroupWriteSupport(), UNCOMPRESSED, 1024, 1024,
+            512, true, false, version, conf);
         for (int i = 0; i < 1000; i++) {
-          writer.write(
-              f.newGroup()
-              .append("binary_field", "test" + (i % modulo))
-              .append("int32_field", 32)
-              .append("int64_field", 64l)
-              .append("boolean_field", true)
-              .append("float_field", 1.0f)
-              .append("double_field", 2.0d)
-              .append("flba_field", "foo")
+          writer.write(f.newGroup().append("binary_field", "test" + (i % modulo)).append("int32_field", 32)
+              .append("int64_field", 64l).append("boolean_field", true).append("float_field", 1.0f)
+              .append("double_field", 2.0d).append("flba_field", "foo")
               .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
         }
         writer.close();
@@ -113,8 +98,7 @@ public class TestParquetWriterNewPage {
           assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
           assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
           assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
-          assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field",
-              0));
+          assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field", 0));
           assertEquals(0, group.getFieldRepetitionCount("null_field"));
         }
         reader.close();
@@ -124,8 +108,7 @@ public class TestParquetWriterNewPage {
             if (column.getPath().toDotString().equals("binary_field")) {
               String key = modulo + "-" + version;
               Encoding expectedEncoding = expected.get(key);
-              assertTrue(
-                  key + ":" + column.getEncodings() + " should contain " + expectedEncoding,
+              assertTrue(key + ":" + column.getEncodings() + " should contain " + expectedEncoding,
                   column.getEncodings().contains(expectedEncoding));
             }
           }

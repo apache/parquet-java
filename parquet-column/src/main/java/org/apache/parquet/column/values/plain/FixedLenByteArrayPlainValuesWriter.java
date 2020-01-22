@@ -41,7 +41,6 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   private LittleEndianDataOutputStream out;
   private int length;
   private ByteBufferAllocator allocator;
-  
 
   public FixedLenByteArrayPlainValuesWriter(int length, int initialSize, int pageSize, ByteBufferAllocator allocator) {
     this.length = length;
@@ -53,8 +52,8 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   @Override
   public final void writeBytes(Binary v) {
     if (v.length() != length) {
-      throw new IllegalArgumentException("Fixed Binary size " + v.length() +
-          " does not match field type length " + length);
+      throw new IllegalArgumentException(
+          "Fixed Binary size " + v.length() + " does not match field type length " + length);
     }
     try {
       v.writeTo(out);

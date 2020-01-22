@@ -36,9 +36,11 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.ArrayWritable;
 
 /**
- * The ArrayWritableObjectInspector will inspect an ArrayWritable, considering it as a Hive struct.
+ * The ArrayWritableObjectInspector will inspect an ArrayWritable, considering
+ * it as a Hive struct.
  * <p>
- * It can also inspect a List if Hive decides to inspect the result of an inspection.
+ * It can also inspect a List if Hive decides to inspect the result of an
+ * inspection.
  */
 public class ArrayWritableObjectInspector extends SettableStructObjectInspector {
 
@@ -88,7 +90,7 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
       final TypeInfo keyTypeInfo = ((MapTypeInfo) typeInfo).getMapKeyTypeInfo();
       final TypeInfo valueTypeInfo = ((MapTypeInfo) typeInfo).getMapValueTypeInfo();
       if (keyTypeInfo.equals(TypeInfoFactory.stringTypeInfo) || keyTypeInfo.equals(TypeInfoFactory.byteTypeInfo)
-              || keyTypeInfo.equals(TypeInfoFactory.shortTypeInfo)) {
+          || keyTypeInfo.equals(TypeInfoFactory.shortTypeInfo)) {
         return new DeepParquetHiveMapInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
       } else {
         return new StandardParquetHiveMapInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
@@ -131,9 +133,11 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
       return arr.get()[((StructFieldImpl) fieldRef).getIndex()];
     }
 
-    //since setStructFieldData and create return a list, getStructFieldData should be able to 
-    //handle list data. This is required when table serde is ParquetHiveSerDe and partition serde
-    //is something else.
+    // since setStructFieldData and create return a list, getStructFieldData should
+    // be able to
+    // handle list data. This is required when table serde is ParquetHiveSerDe and
+    // partition serde
+    // is something else.
     if (data instanceof List) {
       return ((List) data).get(((StructFieldImpl) fieldRef).getIndex());
     }

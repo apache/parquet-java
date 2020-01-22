@@ -28,17 +28,19 @@ import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * Parquet currently has two ways to specify a filter for dropping records at read time.
- * The first way, that only supports filtering records during record assembly, is found
- * in {@link org.apache.parquet.filter}. The new API (found in {@link org.apache.parquet.filter2}) supports
- * also filtering entire rowgroups of records without reading them at all.
+ * Parquet currently has two ways to specify a filter for dropping records at
+ * read time. The first way, that only supports filtering records during record
+ * assembly, is found in {@link org.apache.parquet.filter}. The new API (found
+ * in {@link org.apache.parquet.filter2}) supports also filtering entire
+ * rowgroups of records without reading them at all.
  * <p>
  * This class defines a common interface that both of these filters share,
- * {@link Filter}. A Filter can be either an {@link UnboundRecordFilter} from the old API, or
- * a {@link FilterPredicate} from the new API, or a sentinel no-op filter.
+ * {@link Filter}. A Filter can be either an {@link UnboundRecordFilter} from
+ * the old API, or a {@link FilterPredicate} from the new API, or a sentinel
+ * no-op filter.
  * <p>
- * Having this common interface simplifies passing a filter through the read path of parquet's
- * codebase.
+ * Having this common interface simplifies passing a filter through the read
+ * path of parquet's codebase.
  */
 public class FilterCompat {
   private static final Logger LOG = LoggerFactory.getLogger(FilterCompat.class);
@@ -49,7 +51,9 @@ public class FilterCompat {
    */
   public static interface Visitor<T> {
     T visit(FilterPredicateCompat filterPredicateCompat);
+
     T visit(UnboundRecordFilterCompat unboundRecordFilterCompat);
+
     T visit(NoOpFilter noOpFilter);
   }
 
@@ -61,9 +65,9 @@ public class FilterCompat {
   public static final Filter NOOP = new NoOpFilter();
 
   /**
-   * Given a FilterPredicate, return a Filter that wraps it.
-   * This method also logs the filter being used and rewrites
-   * the predicate to not include the not() operator.
+   * Given a FilterPredicate, return a Filter that wraps it. This method also logs
+   * the filter being used and rewrites the predicate to not include the not()
+   * operator.
    *
    * @param filterPredicate a filter predicate
    * @return a filter for the given predicate
@@ -94,16 +98,18 @@ public class FilterCompat {
   }
 
   /**
-   * Given either a FilterPredicate or the class of an UnboundRecordFilter, or neither (but not both)
-   * return a Filter that wraps whichever was provided.
+   * Given either a FilterPredicate or the class of an UnboundRecordFilter, or
+   * neither (but not both) return a Filter that wraps whichever was provided.
    * <p>
-   * Either filterPredicate or unboundRecordFilterClass must be null, or an exception is thrown.
+   * Either filterPredicate or unboundRecordFilterClass must be null, or an
+   * exception is thrown.
    * <p>
    * If both are null, the no op filter will be returned.
    *
    * @param filterPredicate a filter predicate, or null
    * @param unboundRecordFilter an unbound record filter, or null
-   * @return a Filter wrapping either the predicate or the unbound record filter (from the old API)
+   * @return a Filter wrapping either the predicate or the unbound record filter
+   * (from the old API)
    */
   public static Filter get(FilterPredicate filterPredicate, UnboundRecordFilter unboundRecordFilter) {
     checkArgument(filterPredicate == null || unboundRecordFilter == null,
@@ -158,7 +164,8 @@ public class FilterCompat {
 
   // sentinel no op filter
   public static final class NoOpFilter implements Filter {
-    private NoOpFilter() {}
+    private NoOpFilter() {
+    }
 
     @Override
     public <R> R accept(Visitor<R> visitor) {

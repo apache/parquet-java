@@ -29,7 +29,8 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
 
 /**
- * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
+ * Writes (repetition level, definition level, value) triplets and deals with
+ * writing pages to the underlying layer.
  */
 final class ColumnWriterV1 extends ColumnWriterBase {
 
@@ -50,13 +51,8 @@ final class ColumnWriterV1 extends ColumnWriterBase {
   @Override
   void writePage(int rowCount, int valueCount, Statistics<?> statistics, ValuesWriter repetitionLevels,
       ValuesWriter definitionLevels, ValuesWriter values) throws IOException {
-    pageWriter.writePage(
-        concat(repetitionLevels.getBytes(), definitionLevels.getBytes(), values.getBytes()),
-        valueCount,
-        rowCount,
-        statistics,
-        repetitionLevels.getEncoding(),
-        definitionLevels.getEncoding(),
+    pageWriter.writePage(concat(repetitionLevels.getBytes(), definitionLevels.getBytes(), values.getBytes()),
+        valueCount, rowCount, statistics, repetitionLevels.getEncoding(), definitionLevels.getEncoding(),
         values.getEncoding());
   }
 }

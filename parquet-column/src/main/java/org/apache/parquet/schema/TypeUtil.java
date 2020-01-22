@@ -24,8 +24,7 @@ public class TypeUtil {
       @Override
       public void visit(GroupType groupType) {
         if (groupType.getFieldCount() <= 0) {
-          throw new InvalidSchemaException(
-              "Cannot write a schema with an empty group: " + groupType);
+          throw new InvalidSchemaException("Cannot write a schema with an empty group: " + groupType);
         }
         for (Type type : groupType.getFields()) {
           type.accept(this);

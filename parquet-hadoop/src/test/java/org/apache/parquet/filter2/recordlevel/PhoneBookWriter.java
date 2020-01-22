@@ -38,21 +38,10 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
 public class PhoneBookWriter {
-  private static final String schemaString =
-      "message user {\n"
-          + "  required int64 id;\n"
-          + "  optional binary name (UTF8);\n"
-          + "  optional group location {\n"
-          + "    optional double lon;\n"
-          + "    optional double lat;\n"
-          + "  }\n"
-          + "  optional group phoneNumbers {\n"
-          + "    repeated group phone {\n"
-          + "      required int64 number;\n"
-          + "      optional binary kind (UTF8);\n"
-          + "    }\n"
-          + "  }\n"
-          + "}\n";
+  private static final String schemaString = "message user {\n" + "  required int64 id;\n"
+      + "  optional binary name (UTF8);\n" + "  optional group location {\n" + "    optional double lon;\n"
+      + "    optional double lat;\n" + "  }\n" + "  optional group phoneNumbers {\n" + "    repeated group phone {\n"
+      + "      required int64 number;\n" + "      optional binary kind (UTF8);\n" + "    }\n" + "  }\n" + "}\n";
 
   private static final MessageType schema = MessageTypeParser.parseMessageType(schemaString);
 
@@ -75,13 +64,17 @@ public class PhoneBookWriter {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       Location location = (Location) o;
 
-      if (lat != null ? !lat.equals(location.lat) : location.lat != null) return false;
-      if (lon != null ? !lon.equals(location.lon) : location.lon != null) return false;
+      if (lat != null ? !lat.equals(location.lat) : location.lat != null)
+        return false;
+      if (lon != null ? !lon.equals(location.lon) : location.lon != null)
+        return false;
 
       return true;
     }
@@ -118,13 +111,17 @@ public class PhoneBookWriter {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       PhoneNumber that = (PhoneNumber) o;
 
-      if (number != that.number) return false;
-      if (kind != null ? !kind.equals(that.kind) : that.kind != null) return false;
+      if (number != that.number)
+        return false;
+      if (kind != null ? !kind.equals(that.kind) : that.kind != null)
+        return false;
 
       return true;
     }
@@ -173,15 +170,21 @@ public class PhoneBookWriter {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       User user = (User) o;
 
-      if (id != user.id) return false;
-      if (location != null ? !location.equals(user.location) : user.location != null) return false;
-      if (name != null ? !name.equals(user.name) : user.name != null) return false;
-      if (phoneNumbers != null ? !phoneNumbers.equals(user.phoneNumbers) : user.phoneNumbers != null) return false;
+      if (id != user.id)
+        return false;
+      if (location != null ? !location.equals(user.location) : user.location != null)
+        return false;
+      if (name != null ? !name.equals(user.name) : user.name != null)
+        return false;
+      if (phoneNumbers != null ? !phoneNumbers.equals(user.phoneNumbers) : user.phoneNumbers != null)
+        return false;
 
       return true;
     }
@@ -319,10 +322,7 @@ public class PhoneBookWriter {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
-    return ParquetReader.builder(new GroupReadSupport(), file)
-        .withConf(conf)
-        .withFilter(filter)
-        .build();
+    return ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).withFilter(filter).build();
   }
 
   public static List<Group> readFile(File f, Filter filter) throws IOException {

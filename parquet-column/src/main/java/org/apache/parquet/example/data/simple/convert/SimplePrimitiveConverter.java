@@ -33,6 +33,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.io.api.PrimitiveConverter#addBinary(Binary)
    */
   @Override
@@ -42,6 +43,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.io.api.PrimitiveConverter#addBoolean(boolean)
    */
   @Override
@@ -51,6 +53,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.io.api.PrimitiveConverter#addDouble(double)
    */
   @Override
@@ -60,6 +63,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.io.api.PrimitiveConverter#addFloat(float)
    */
   @Override
@@ -69,6 +73,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.io.api.PrimitiveConverter#addInt(int)
    */
   @Override
@@ -78,6 +83,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.io.api.PrimitiveConverter#addLong(long)
    */
   @Override

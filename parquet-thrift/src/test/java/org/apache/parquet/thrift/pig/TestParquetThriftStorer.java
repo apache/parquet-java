@@ -53,14 +53,15 @@ public class TestParquetThriftStorer {
     for (int i = 0; i < rows; i++) {
       list.add(tuple("bob", "roberts" + i));
     }
-    data.set("in", "fn:chararray, ln:chararray", list );
+    data.set("in", "fn:chararray, ln:chararray", list);
     pigServer.deleteFile(out);
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
-    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetThriftStorer.class.getName()+"('" + Name.class.getName() + "');");
+    pigServer.registerQuery("Store A into '" + out + "' using " + ParquetThriftStorer.class.getName() + "('"
+        + Name.class.getName() + "');");
     execBatch(pigServer);
 
-    pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
+    pigServer.registerQuery("B = LOAD '" + out + "' USING " + ParquetLoader.class.getName() + "();");
     pigServer.registerQuery("Store B into 'out' using mock.Storage();");
     execBatch(pigServer);
 

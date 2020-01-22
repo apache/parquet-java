@@ -31,8 +31,8 @@ import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.io.WritableUtils;
 
 /**
- * This file is taken from a patch to hive 0.11
- * Issue : https://issues.apache.org/jira/browse/HIVE-2693
+ * This file is taken from a patch to hive 0.11 Issue :
+ * https://issues.apache.org/jira/browse/HIVE-2693
  *
  */
 public class BigDecimalWritable implements WritableComparable<BigDecimalWritable> {
@@ -134,7 +134,7 @@ public class BigDecimalWritable implements WritableComparable<BigDecimalWritable
 
     // 'equals' and 'compareTo' are not compatible with BigDecimals. We want
     // compareTo which returns true iff the numbers are equal (e.g.: 3.14 is
-        // the same as 3.140). 'Equals' returns true iff equal and the same
+    // the same as 3.140). 'Equals' returns true iff equal and the same
     // scale
     // is set in the decimals (e.g.: 3.14 is not the same as 3.140)
     return getBigDecimal().compareTo(bdw.getBigDecimal()) == 0;

@@ -25,10 +25,10 @@ import java.util.List;
 import org.apache.parquet.io.InvalidRecordException;
 
 /**
- * Represents the declared type for a field in a schema.
- * The Type object represents both the actual underlying type of the object
- * (eg a primitive or group) as well as its attributes such as whether it is
- * repeated, required, or optional.
+ * Represents the declared type for a field in a schema. The Type object
+ * represents both the actual underlying type of the object (eg a primitive or
+ * group) as well as its attributes such as whether it is repeated, required, or
+ * optional.
  */
 abstract public class Type {
 
@@ -44,6 +44,7 @@ abstract public class Type {
 
     /**
      * For bean serialization, used by Cascading 3.
+     * 
      * @return this type's id
      * @deprecated use {@link #intValue()} instead.
      */
@@ -58,7 +59,7 @@ abstract public class Type {
 
     @Override
     public boolean equals(Object obj) {
-      return (obj instanceof ID) && ((ID)obj).id == id;
+      return (obj instanceof ID) && ((ID) obj).id == id;
     }
 
     @Override
@@ -102,15 +103,13 @@ abstract public class Type {
       public boolean isMoreRestrictiveThan(Repetition other) {
         return false;
       }
-    }
-    ;
+    };
 
     /**
      * @param other a repetition to test
      * @return true if it is strictly more restrictive than other
      */
     abstract public boolean isMoreRestrictiveThan(Repetition other);
-
 
     /**
      * @param repetitions repetitions to traverse
@@ -152,7 +151,8 @@ abstract public class Type {
   /**
    * @param name the name of the type
    * @param repetition OPTIONAL, REPEATED, REQUIRED
-   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema
+   * conversion (LIST, MAP, ...)
    */
   @Deprecated
   public Type(String name, Repetition repetition, OriginalType originalType) {
@@ -162,7 +162,8 @@ abstract public class Type {
   /**
    * @param name the name of the type
    * @param repetition OPTIONAL, REPEATED, REQUIRED
-   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema
+   * conversion (LIST, MAP, ...)
    * @param id (optional) the id of the fields.
    */
   Type(String name, Repetition repetition, OriginalType originalType, ID id) {
@@ -173,7 +174,8 @@ abstract public class Type {
     super();
     this.name = checkNotNull(name, "name");
     this.repetition = checkNotNull(repetition, "repetition");
-    this.logicalTypeAnnotation = originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType, decimalMetadata);
+    this.logicalTypeAnnotation = originalType == null ? null
+        : LogicalTypeAnnotation.fromOriginalType(originalType, decimalMetadata);
     this.id = id;
   }
 
@@ -248,7 +250,7 @@ abstract public class Type {
     if (isPrimitive()) {
       throw new ClassCastException(this + " is not a group");
     }
-    return (GroupType)this;
+    return (GroupType) this;
   }
 
   /**
@@ -259,11 +261,12 @@ abstract public class Type {
     if (!isPrimitive()) {
       throw new ClassCastException(this + " is not primitive");
     }
-    return (PrimitiveType)this;
+    return (PrimitiveType) this;
   }
 
   /**
    * Writes a string representation to the provided StringBuilder
+   * 
    * @param sb the StringBuilder to write itself to
    * @param indent indentation level
    */
@@ -271,6 +274,7 @@ abstract public class Type {
 
   /**
    * Visits this type with the given visitor
+   * 
    * @param visitor the visitor to visit this type
    */
   abstract public void accept(TypeVisitor visitor);
@@ -286,7 +290,7 @@ abstract public class Type {
     int c = repetition.hashCode();
     c = 31 * c + name.hashCode();
     if (logicalTypeAnnotation != null) {
-      c = 31 * c +  logicalTypeAnnotation.hashCode();
+      c = 31 * c + logicalTypeAnnotation.hashCode();
     }
     if (id != null) {
       c = 31 * c + id.hashCode();
@@ -295,12 +299,8 @@ abstract public class Type {
   }
 
   protected boolean equals(Type other) {
-    return
-        name.equals(other.name)
-        && repetition == other.repetition
-        && eqOrBothNull(repetition, other.repetition)
-        && eqOrBothNull(id, other.id)
-        && eqOrBothNull(logicalTypeAnnotation, other.logicalTypeAnnotation);
+    return name.equals(other.name) && repetition == other.repetition && eqOrBothNull(repetition, other.repetition)
+        && eqOrBothNull(id, other.id) && eqOrBothNull(logicalTypeAnnotation, other.logicalTypeAnnotation);
   }
 
   @Override
@@ -308,7 +308,7 @@ abstract public class Type {
     if (!(other instanceof Type) || other == null) {
       return false;
     }
-    return equals((Type)other);
+    return equals((Type) other);
   }
 
   protected boolean eqOrBothNull(Object o1, Object o2) {
@@ -349,8 +349,7 @@ abstract public class Type {
   }
 
   void checkContains(Type subType) {
-    if (!this.name.equals(subType.name)
-        || this.repetition != subType.repetition) {
+    if (!this.name.equals(subType.name) || this.repetition != subType.repetition) {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }
   }
@@ -362,6 +361,6 @@ abstract public class Type {
    * @param <T> the type returned by the converter
    * @return the converted tree
    */
-   abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);
+  abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);
 
 }

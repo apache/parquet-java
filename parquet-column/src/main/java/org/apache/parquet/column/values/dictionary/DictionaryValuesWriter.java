@@ -58,13 +58,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Will attempt to encode values using a dictionary and fall back to plain encoding
- *  if the dictionary gets too big
+ * Will attempt to encode values using a dictionary and fall back to plain
+ * encoding if the dictionary gets too big
  */
 public abstract class DictionaryValuesWriter extends ValuesWriter implements RequiresFallback {
   private static final Logger LOG = LoggerFactory.getLogger(DictionaryValuesWriter.class);
 
-  /* max entries allowed for the dictionary will fail over to plain encoding if reached */
+  /*
+   * max entries allowed for the dictionary will fail over to plain encoding if
+   * reached
+   */
   private static final int MAX_DICTIONARY_ENTRIES = Integer.MAX_VALUE - 1;
   private static final int MIN_INITIAL_SLAB_SIZE = 64;
 
@@ -74,7 +77,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   /* encoding to label the dictionary page */
   protected final Encoding encodingForDictionaryPage;
 
-  /* maximum size in bytes allowed for the dictionary will fail over to plain encoding if reached */
+  /*
+   * maximum size in bytes allowed for the dictionary will fail over to plain
+   * encoding if reached
+   */
   protected final int maxDictionaryByteSize;
 
   /* will become true if the dictionary becomes too big */
@@ -83,10 +89,16 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   /* current size in bytes the dictionary will take once serialized */
   protected int dictionaryByteSize;
 
-  /* size in bytes of the dictionary at the end of last dictionary encoded page (in case the current page falls back to PLAIN) */
+  /*
+   * size in bytes of the dictionary at the end of last dictionary encoded page
+   * (in case the current page falls back to PLAIN)
+   */
   protected int lastUsedDictionaryByteSize;
 
-  /* size in items of the dictionary at the end of last dictionary encoded page (in case the current page falls back to PLAIN) */
+  /*
+   * size in items of the dictionary at the end of last dictionary encoded page
+   * (in case the current page falls back to PLAIN)
+   */
   protected int lastUsedDictionarySize;
 
   /* dictionary encoded values */
@@ -96,11 +108,14 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   protected boolean firstPage = true;
 
   protected ByteBufferAllocator allocator;
-  /* Track the list of writers used so they can be appropriately closed when necessary
-     (currently used for off-heap memory which is not garbage collected) */
+  /*
+   * Track the list of writers used so they can be appropriately closed when
+   * necessary (currently used for off-heap memory which is not garbage collected)
+   */
   private List<RunLengthBitPackingHybridEncoder> encoders = new ArrayList<>();
 
-  protected DictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
+  protected DictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage,
+      Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
     this.allocator = allocator;
     this.maxDictionaryByteSize = maxDictionaryByteSize;
     this.encodingForDataPage = encodingForDataPage;
@@ -108,16 +123,17 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   }
 
   protected DictionaryPage dictPage(ValuesWriter dictPageWriter) {
-    DictionaryPage ret = new DictionaryPage(dictPageWriter.getBytes(), lastUsedDictionarySize, encodingForDictionaryPage);
+    DictionaryPage ret = new DictionaryPage(dictPageWriter.getBytes(), lastUsedDictionarySize,
+        encodingForDictionaryPage);
     dictPageWriter.close();
     return ret;
   }
 
   @Override
   public boolean shouldFallBack() {
-    // if the dictionary reaches the max byte size or the values can not be encoded on 4 bytes anymore.
-    return dictionaryByteSize > maxDictionaryByteSize
-        || getDictionarySize() > MAX_DICTIONARY_ENTRIES;
+    // if the dictionary reaches the max byte size or the values can not be encoded
+    // on 4 bytes anymore.
+    return dictionaryByteSize > maxDictionaryByteSize || getDictionarySize() > MAX_DICTIONARY_ENTRIES;
   }
 
   @Override
@@ -155,11 +171,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     int maxDicId = getDictionarySize() - 1;
     LOG.debug("max dic id {}", maxDicId);
     int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
-    int initialSlabSize =
-        CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_INITIAL_SLAB_SIZE, maxDictionaryByteSize, 10);
+    int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_INITIAL_SLAB_SIZE,
+        maxDictionaryByteSize, 10);
 
-    RunLengthBitPackingHybridEncoder encoder =
-        new RunLengthBitPackingHybridEncoder(bitWidth, initialSlabSize, maxDictionaryByteSize, this.allocator);
+    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, initialSlabSize,
+        maxDictionaryByteSize, this.allocator);
     encoders.add(encoder);
     IntIterator iterator = encodedValues.iterator();
     try {
@@ -220,16 +236,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
   @Override
   public String memUsageString(String prefix) {
-    return String.format(
-        "%s DictionaryValuesWriter{\n"
-          + "%s\n"
-          + "%s\n"
-        + "%s}\n",
-        prefix,
-        prefix + " dict:" + dictionaryByteSize,
-        prefix + " values:" + String.valueOf(encodedValues.size() * 4),
-        prefix
-        );
+    return String.format("%s DictionaryValuesWriter{\n" + "%s\n" + "%s\n" + "%s}\n", prefix,
+        prefix + " dict:" + dictionaryByteSize, prefix + " values:" + String.valueOf(encodedValues.size() * 4), prefix);
   }
 
   public static class PlainBinaryDictionaryValuesWriter extends DictionaryValuesWriter {
@@ -237,7 +245,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     /* type specific dictionary content */
     protected Object2IntMap<Binary> binaryDictionaryContent = new Object2IntLinkedOpenHashMap<>();
 
-    public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
+    public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage,
+        Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       binaryDictionaryContent.defaultReturnValue(-1);
     }
@@ -258,7 +267,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize,
+            allocator);
         Iterator<Binary> binaryIterator = binaryDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -282,13 +292,13 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
     @Override
     public void fallBackDictionaryEncodedData(ValuesWriter writer) {
-      //build reverse dictionary
+      // build reverse dictionary
       Binary[] reverseDictionary = new Binary[getDictionarySize()];
       for (Object2IntMap.Entry<Binary> entry : binaryDictionaryContent.object2IntEntrySet()) {
         reverseDictionary[entry.getIntValue()] = entry.getKey();
       }
 
-      //fall back to plain encoding
+      // fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
@@ -301,7 +311,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
     private final int length;
 
-    public PlainFixedLenArrayDictionaryValuesWriter(int maxDictionaryByteSize, int length, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
+    public PlainFixedLenArrayDictionaryValuesWriter(int maxDictionaryByteSize, int length, Encoding encodingForDataPage,
+        Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       this.length = length;
     }
@@ -321,7 +332,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        FixedLenByteArrayPlainValuesWriter dictionaryEncoder = new FixedLenByteArrayPlainValuesWriter(length, lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
+        FixedLenByteArrayPlainValuesWriter dictionaryEncoder = new FixedLenByteArrayPlainValuesWriter(length,
+            lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
         Iterator<Binary> binaryIterator = binaryDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -339,7 +351,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     /* type specific dictionary content */
     private Long2IntMap longDictionaryContent = new Long2IntLinkedOpenHashMap();
 
-    public PlainLongDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
+    public PlainLongDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage,
+        Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       longDictionaryContent.defaultReturnValue(-1);
     }
@@ -359,7 +372,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize,
+            allocator);
         LongIterator longIterator = longDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -382,7 +396,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
     @Override
     public void fallBackDictionaryEncodedData(ValuesWriter writer) {
-      //build reverse dictionary
+      // build reverse dictionary
       long[] reverseDictionary = new long[getDictionarySize()];
       ObjectIterator<Long2IntMap.Entry> entryIterator = longDictionaryContent.long2IntEntrySet().iterator();
       while (entryIterator.hasNext()) {
@@ -390,7 +404,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         reverseDictionary[entry.getIntValue()] = entry.getLongKey();
       }
 
-      //fall back to plain encoding
+      // fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
@@ -404,7 +418,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     /* type specific dictionary content */
     private Double2IntMap doubleDictionaryContent = new Double2IntLinkedOpenHashMap();
 
-    public PlainDoubleDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
+    public PlainDoubleDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage,
+        Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       doubleDictionaryContent.defaultReturnValue(-1);
     }
@@ -424,7 +439,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize,
+            allocator);
         DoubleIterator doubleIterator = doubleDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -447,7 +463,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
     @Override
     public void fallBackDictionaryEncodedData(ValuesWriter writer) {
-      //build reverse dictionary
+      // build reverse dictionary
       double[] reverseDictionary = new double[getDictionarySize()];
       ObjectIterator<Double2IntMap.Entry> entryIterator = doubleDictionaryContent.double2IntEntrySet().iterator();
       while (entryIterator.hasNext()) {
@@ -455,7 +471,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         reverseDictionary[entry.getIntValue()] = entry.getDoubleKey();
       }
 
-      //fall back to plain encoding
+      // fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
@@ -469,7 +485,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     /* type specific dictionary content */
     private Int2IntMap intDictionaryContent = new Int2IntLinkedOpenHashMap();
 
-    public PlainIntegerDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
+    public PlainIntegerDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage,
+        Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       intDictionaryContent.defaultReturnValue(-1);
     }
@@ -489,7 +506,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize,
+            allocator);
         it.unimi.dsi.fastutil.ints.IntIterator intIterator = intDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -512,7 +530,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
     @Override
     public void fallBackDictionaryEncodedData(ValuesWriter writer) {
-      //build reverse dictionary
+      // build reverse dictionary
       int[] reverseDictionary = new int[getDictionarySize()];
       ObjectIterator<Int2IntMap.Entry> entryIterator = intDictionaryContent.int2IntEntrySet().iterator();
       while (entryIterator.hasNext()) {
@@ -520,7 +538,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         reverseDictionary[entry.getIntValue()] = entry.getIntKey();
       }
 
-      //fall back to plain encoding
+      // fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
@@ -534,7 +552,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     /* type specific dictionary content */
     private Float2IntMap floatDictionaryContent = new Float2IntLinkedOpenHashMap();
 
-    public PlainFloatDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
+    public PlainFloatDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage,
+        Encoding encodingForDictionaryPage, ByteBufferAllocator allocator) {
       super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage, allocator);
       floatDictionaryContent.defaultReturnValue(-1);
     }
@@ -554,7 +573,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage toDictPageAndClose() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize,
+            allocator);
         FloatIterator floatIterator = floatDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -577,7 +597,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
     @Override
     public void fallBackDictionaryEncodedData(ValuesWriter writer) {
-      //build reverse dictionary
+      // build reverse dictionary
       float[] reverseDictionary = new float[getDictionarySize()];
       ObjectIterator<Float2IntMap.Entry> entryIterator = floatDictionaryContent.float2IntEntrySet().iterator();
       while (entryIterator.hasNext()) {
@@ -585,7 +605,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         reverseDictionary[entry.getIntValue()] = entry.getFloatKey();
       }
 
-      //fall back to plain encoding
+      // fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();

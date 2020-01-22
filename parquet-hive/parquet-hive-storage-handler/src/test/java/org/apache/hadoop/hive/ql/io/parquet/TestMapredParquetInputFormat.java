@@ -34,9 +34,7 @@ public class TestMapredParquetInputFormat {
   @SuppressWarnings("unchecked")
   @Test
   public void testConstructorWithParquetInputFormat() {
-    new MapredParquetInputFormat(
-        (ParquetInputFormat<ArrayWritable>) mock(ParquetInputFormat.class)
-        );
+    new MapredParquetInputFormat((ParquetInputFormat<ArrayWritable>) mock(ParquetInputFormat.class));
   }
 
 }

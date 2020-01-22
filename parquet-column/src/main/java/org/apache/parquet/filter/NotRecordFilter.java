@@ -30,15 +30,16 @@ public final class NotRecordFilter implements RecordFilter {
 
   /**
    * Returns builder for creating an and filter.
+   * 
    * @param filter The filter to invert.
    * @return a not record filter
    */
-  public static final UnboundRecordFilter not( final UnboundRecordFilter filter) {
-    Preconditions.checkNotNull( filter, "filter" );
+  public static final UnboundRecordFilter not(final UnboundRecordFilter filter) {
+    Preconditions.checkNotNull(filter, "filter");
     return new UnboundRecordFilter() {
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {
-        return new NotRecordFilter( filter.bind(readers) );
+        return new NotRecordFilter(filter.bind(readers));
       }
     };
   }
@@ -46,7 +47,7 @@ public final class NotRecordFilter implements RecordFilter {
   /**
    * Private constructor, use NotRecordFilter.not() instead.
    */
-  private NotRecordFilter( RecordFilter boundFilter) {
+  private NotRecordFilter(RecordFilter boundFilter) {
     this.boundFilter = boundFilter;
   }
 

@@ -32,7 +32,8 @@ public class IntStatistics extends Statistics<Integer> {
   private int min;
 
   /**
-   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   * @deprecated will be removed in 2.0.0. Use
+   * {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
    */
   @Deprecated
   public IntStatistics() {
@@ -62,7 +63,7 @@ public class IntStatistics extends Statistics<Integer> {
 
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
-    IntStatistics intStats = (IntStatistics)stats;
+    IntStatistics intStats = (IntStatistics) stats;
     if (!this.hasNonNullValue()) {
       initializeStats(intStats.getMin(), intStats.getMax());
     } else {
@@ -98,14 +99,18 @@ public class IntStatistics extends Statistics<Integer> {
   }
 
   public void updateStats(int min_value, int max_value) {
-    if (comparator().compare(min, min_value) > 0) { min = min_value; }
-    if (comparator().compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) {
+      min = min_value;
+    }
+    if (comparator().compare(max, max_value) < 0) {
+      max = max_value;
+    }
   }
 
   public void initializeStats(int min_value, int max_value) {
-      min = min_value;
-      max = max_value;
-      this.markAsNotEmpty();
+    min = min_value;
+    max = max_value;
+    this.markAsNotEmpty();
   }
 
   @Override

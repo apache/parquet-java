@@ -45,13 +45,14 @@ public class MemPageWriter implements PageWriter {
   private long totalValueCount = 0;
 
   @Override
-  public void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
-      throws IOException {
+  public void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding,
+      Encoding dlEncoding, Encoding valuesEncoding) throws IOException {
     if (valueCount == 0) {
       throw new ParquetEncodingException("illegal page of 0 values");
     }
     memSize += bytesInput.size();
-    pages.add(new DataPageV1(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
+    pages.add(new DataPageV1(BytesInput.copy(bytesInput), valueCount, (int) bytesInput.size(), statistics, rlEncoding,
+        dlEncoding, valuesEncoding));
     totalValueCount += valueCount;
     LOG.debug("page written for {} bytes and {} records", bytesInput.size(), valueCount);
   }
@@ -63,15 +64,16 @@ public class MemPageWriter implements PageWriter {
   }
 
   @Override
-  public void writePageV2(int rowCount, int nullCount, int valueCount,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data, Statistics<?> statistics) throws IOException {
+  public void writePageV2(int rowCount, int nullCount, int valueCount, BytesInput repetitionLevels,
+      BytesInput definitionLevels, Encoding dataEncoding, BytesInput data, Statistics<?> statistics)
+      throws IOException {
     if (valueCount == 0) {
       throw new ParquetEncodingException("illegal page of 0 values");
     }
     long size = repetitionLevels.size() + definitionLevels.size() + data.size();
     memSize += size;
-    pages.add(DataPageV2.uncompressed(rowCount, nullCount, valueCount, copy(repetitionLevels), copy(definitionLevels), dataEncoding, copy(data), statistics));
+    pages.add(DataPageV2.uncompressed(rowCount, nullCount, valueCount, copy(repetitionLevels), copy(definitionLevels),
+        dataEncoding, copy(data), statistics));
     totalValueCount += valueCount;
     LOG.debug("page written for {} bytes and {} records", size, valueCount);
   }
@@ -106,7 +108,8 @@ public class MemPageWriter implements PageWriter {
     }
     this.memSize += dictionaryPage.getBytes().size();
     this.dictionaryPage = dictionaryPage.copy();
-    LOG.debug("dictionary page written for {} bytes and {} records", dictionaryPage.getBytes().size(), dictionaryPage.getDictionarySize());
+    LOG.debug("dictionary page written for {} bytes and {} records", dictionaryPage.getBytes().size(),
+        dictionaryPage.getDictionarySize());
   }
 
   @Override

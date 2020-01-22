@@ -45,11 +45,8 @@ public class DelegatingReadSupport<T> extends ReadSupport<T> {
   }
 
   @Override
-  public RecordMaterializer<T> prepareForRead(
-      Configuration configuration,
-      Map<String, String> keyValueMetaData,
-      MessageType fileSchema,
-      ReadSupport.ReadContext readContext) {
+  public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData,
+      MessageType fileSchema, ReadSupport.ReadContext readContext) {
     return delegate.prepareForRead(configuration, keyValueMetaData, fileSchema, readContext);
   }
 

@@ -97,18 +97,10 @@ public class TestColumnIndexFiltering {
   private static final List<User> DATA = Collections.unmodifiableList(generateData(10000));
   private static final Path FILE_V1 = createTempFile();
   private static final Path FILE_V2 = createTempFile();
-  private static final MessageType SCHEMA_WITHOUT_NAME = Types.buildMessage()
-      .required(INT64).named("id")
-      .optionalGroup()
-        .addField(optional(DOUBLE).named("lon"))
-        .addField(optional(DOUBLE).named("lat"))
-        .named("location")
-      .optionalGroup()
-        .repeatedGroup()
-          .addField(required(INT64).named("number"))
-          .addField(optional(BINARY).as(stringType()).named("kind"))
-          .named("phone")
-        .named("phoneNumbers")
+  private static final MessageType SCHEMA_WITHOUT_NAME = Types.buildMessage().required(INT64).named("id")
+      .optionalGroup().addField(optional(DOUBLE).named("lon")).addField(optional(DOUBLE).named("lat")).named("location")
+      .optionalGroup().repeatedGroup().addField(required(INT64).named("number"))
+      .addField(optional(BINARY).as(stringType()).named("kind")).named("phone").named("phoneNumbers")
       .named("user_without_name");
 
   @Parameters
@@ -214,22 +206,16 @@ public class TestColumnIndexFiltering {
 
   private List<User> readUsers(Filter filter, boolean useOtherFiltering, boolean useColumnIndexFilter)
       throws IOException {
-    return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file)
-        .withFilter(filter)
-        .useDictionaryFilter(useOtherFiltering)
-        .useStatsFilter(useOtherFiltering)
-        .useRecordFilter(useOtherFiltering)
+    return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file).withFilter(filter)
+        .useDictionaryFilter(useOtherFiltering).useStatsFilter(useOtherFiltering).useRecordFilter(useOtherFiltering)
         .useColumnIndexFilter(useColumnIndexFilter));
   }
 
-  private List<User> readUsersWithProjection(Filter filter, MessageType schema, boolean useOtherFiltering, boolean useColumnIndexFilter) throws IOException {
-    return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file)
-        .withFilter(filter)
-        .useDictionaryFilter(useOtherFiltering)
-        .useStatsFilter(useOtherFiltering)
-        .useRecordFilter(useOtherFiltering)
-        .useColumnIndexFilter(useColumnIndexFilter)
-        .set(ReadSupport.PARQUET_READ_SCHEMA, schema.toString()));
+  private List<User> readUsersWithProjection(Filter filter, MessageType schema, boolean useOtherFiltering,
+      boolean useColumnIndexFilter) throws IOException {
+    return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file).withFilter(filter)
+        .useDictionaryFilter(useOtherFiltering).useStatsFilter(useOtherFiltering).useRecordFilter(useOtherFiltering)
+        .useColumnIndexFilter(useColumnIndexFilter).set(ReadSupport.PARQUET_READ_SCHEMA, schema.toString()));
   }
 
   // Assumes that both lists are in the same order
@@ -250,8 +236,7 @@ public class TestColumnIndexFiltering {
     assertFalse("Not all expected elements are in the actual list. E.g.: " + exp, expIt.hasNext());
   }
 
-  private void assertCorrectFiltering(Predicate<User> expectedFilter, FilterPredicate actualFilter)
-      throws IOException {
+  private void assertCorrectFiltering(Predicate<User> expectedFilter, FilterPredicate actualFilter) throws IOException {
     // Check with only column index based filtering
     List<User> result = readUsers(actualFilter, false);
 
@@ -260,30 +245,24 @@ public class TestColumnIndexFiltering {
         100 * result.size() / DATA.size());
     // Asserts that all the required records are in the result
     assertContains(DATA.stream().filter(expectedFilter), result);
-    // Asserts that all the retrieved records are in the file (validating non-matching records)
+    // Asserts that all the retrieved records are in the file (validating
+    // non-matching records)
     assertContains(result.stream(), DATA);
 
-    // Check with all the filtering filtering to ensure the result contains exactly the required values
+    // Check with all the filtering filtering to ensure the result contains exactly
+    // the required values
     result = readUsers(actualFilter, true);
     assertEquals(DATA.stream().filter(expectedFilter).collect(Collectors.toList()), result);
   }
 
   @BeforeClass
   public static void createFile() throws IOException {
-    int pageSize = DATA.size() / 10;     // Ensure that several pages will be created
+    int pageSize = DATA.size() / 10; // Ensure that several pages will be created
     int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
-    PhoneBookWriter.write(ExampleParquetWriter.builder(FILE_V1)
-        .withWriteMode(OVERWRITE)
-        .withRowGroupSize(rowGroupSize)
-        .withPageSize(pageSize)
-        .withWriterVersion(WriterVersion.PARQUET_1_0),
-        DATA);
-    PhoneBookWriter.write(ExampleParquetWriter.builder(FILE_V2)
-        .withWriteMode(OVERWRITE)
-        .withRowGroupSize(rowGroupSize)
-        .withPageSize(pageSize)
-        .withWriterVersion(WriterVersion.PARQUET_2_0),
-        DATA);
+    PhoneBookWriter.write(ExampleParquetWriter.builder(FILE_V1).withWriteMode(OVERWRITE).withRowGroupSize(rowGroupSize)
+        .withPageSize(pageSize).withWriterVersion(WriterVersion.PARQUET_1_0), DATA);
+    PhoneBookWriter.write(ExampleParquetWriter.builder(FILE_V2).withWriteMode(OVERWRITE).withRowGroupSize(rowGroupSize)
+        .withPageSize(pageSize).withWriterVersion(WriterVersion.PARQUET_2_0), DATA);
   }
 
   @AfterClass
@@ -294,15 +273,10 @@ public class TestColumnIndexFiltering {
 
   @Test
   public void testSimpleFiltering() throws IOException {
-    assertCorrectFiltering(
-        record -> record.getId() == 1234,
-        eq(longColumn("id"), 1234l));
-    assertCorrectFiltering(
-        record -> "miller".equals(record.getName()),
+    assertCorrectFiltering(record -> record.getId() == 1234, eq(longColumn("id"), 1234l));
+    assertCorrectFiltering(record -> "miller".equals(record.getName()),
         eq(binaryColumn("name"), Binary.fromString("miller")));
-    assertCorrectFiltering(
-        record -> record.getName() == null,
-        eq(binaryColumn("name"), null));
+    assertCorrectFiltering(record -> record.getName() == null, eq(binaryColumn("name"), null));
   }
 
   @Test
@@ -327,27 +301,21 @@ public class TestColumnIndexFiltering {
 
   @Test
   public void testComplexFiltering() throws IOException {
-    assertCorrectFiltering(
-        record -> {
-          Location loc = record.getLocation();
-          Double lat = loc == null ? null : loc.getLat();
-          Double lon = loc == null ? null : loc.getLon();
-          return lat != null && lon != null && 37 <= lat && lat <= 70 && -21 <= lon && lon <= 35;
-        },
-        and(and(gtEq(doubleColumn("location.lat"), 37.0), ltEq(doubleColumn("location.lat"), 70.0)),
-            and(gtEq(doubleColumn("location.lon"), -21.0), ltEq(doubleColumn("location.lon"), 35.0))));
-    assertCorrectFiltering(
-        record -> {
-          Location loc = record.getLocation();
-          return loc == null || (loc.getLat() == null && loc.getLon() == null);
-        },
-        and(eq(doubleColumn("location.lat"), null), eq(doubleColumn("location.lon"), null)));
-    assertCorrectFiltering(
-        record -> {
-          String name = record.getName();
-          return name != null && name.compareTo("thomas") < 0 && record.getId() <= 3 * DATA.size() / 4;
-        },
-        and(lt(binaryColumn("name"), Binary.fromString("thomas")), ltEq(longColumn("id"), 3l * DATA.size() / 4)));
+    assertCorrectFiltering(record -> {
+      Location loc = record.getLocation();
+      Double lat = loc == null ? null : loc.getLat();
+      Double lon = loc == null ? null : loc.getLon();
+      return lat != null && lon != null && 37 <= lat && lat <= 70 && -21 <= lon && lon <= 35;
+    }, and(and(gtEq(doubleColumn("location.lat"), 37.0), ltEq(doubleColumn("location.lat"), 70.0)),
+        and(gtEq(doubleColumn("location.lon"), -21.0), ltEq(doubleColumn("location.lon"), 35.0))));
+    assertCorrectFiltering(record -> {
+      Location loc = record.getLocation();
+      return loc == null || (loc.getLat() == null && loc.getLon() == null);
+    }, and(eq(doubleColumn("location.lat"), null), eq(doubleColumn("location.lon"), null)));
+    assertCorrectFiltering(record -> {
+      String name = record.getName();
+      return name != null && name.compareTo("thomas") < 0 && record.getId() <= 3 * DATA.size() / 4;
+    }, and(lt(binaryColumn("name"), Binary.fromString("thomas")), ltEq(longColumn("id"), 3l * DATA.size() / 4)));
   }
 
   public static class NameStartsWithVowel extends UserDefinedPredicate<Binary> {
@@ -367,14 +335,14 @@ public class TestColumnIndexFiltering {
         return false;
       }
       switch (str.charAt(0)) {
-        case 'a':
-        case 'e':
-        case 'i':
-        case 'o':
-        case 'u':
-          return true;
-        default:
-          return false;
+      case 'a':
+      case 'e':
+      case 'i':
+      case 'o':
+      case 'u':
+        return true;
+      default:
+        return false;
       }
     }
 
@@ -388,12 +356,10 @@ public class TestColumnIndexFiltering {
       Comparator<Binary> cmp = statistics.getComparator();
       Binary min = statistics.getMin();
       Binary max = statistics.getMax();
-      return cmp.compare(max, A) < 0
-          || (cmp.compare(min, B) >= 0 && cmp.compare(max, E) < 0)
+      return cmp.compare(max, A) < 0 || (cmp.compare(min, B) >= 0 && cmp.compare(max, E) < 0)
           || (cmp.compare(min, F) >= 0 && cmp.compare(max, I) < 0)
           || (cmp.compare(min, J) >= 0 && cmp.compare(max, O) < 0)
-          || (cmp.compare(min, P) >= 0 && cmp.compare(max, U) < 0)
-          || cmp.compare(min, V) >= 0;
+          || (cmp.compare(min, P) >= 0 && cmp.compare(max, U) < 0) || cmp.compare(min, V) >= 0;
     }
 
     @Override
@@ -446,48 +412,41 @@ public class TestColumnIndexFiltering {
             userDefined(longColumn("id"), new IsDivisibleBy(234))));
     assertCorrectFiltering(
         record -> !(NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0),
-            not(or(userDefined(binaryColumn("name"), NameStartsWithVowel.class),
-                userDefined(longColumn("id"), new IsDivisibleBy(234)))));
+        not(or(userDefined(binaryColumn("name"), NameStartsWithVowel.class),
+            userDefined(longColumn("id"), new IsDivisibleBy(234)))));
   }
 
   @Test
   public void testFilteringWithMissingColumns() throws IOException {
     // Missing column filter is always true
     assertEquals(DATA, readUsers(notEq(binaryColumn("not-existing-binary"), Binary.EMPTY), true));
-    assertCorrectFiltering(
-        record -> record.getId() == 1234,
-        and(eq(longColumn("id"), 1234l),
-            eq(longColumn("not-existing-long"), null)));
-    assertCorrectFiltering(
-        record -> "miller".equals(record.getName()),
+    assertCorrectFiltering(record -> record.getId() == 1234,
+        and(eq(longColumn("id"), 1234l), eq(longColumn("not-existing-long"), null)));
+    assertCorrectFiltering(record -> "miller".equals(record.getName()),
         and(eq(binaryColumn("name"), Binary.fromString("miller")),
             invert(userDefined(binaryColumn("not-existing-binary"), NameStartsWithVowel.class))));
 
     // Missing column filter is always false
     assertEquals(emptyList(), readUsers(lt(longColumn("not-existing-long"), 0l), true));
-    assertCorrectFiltering(
-        record -> "miller".equals(record.getName()),
+    assertCorrectFiltering(record -> "miller".equals(record.getName()),
         or(eq(binaryColumn("name"), Binary.fromString("miller")),
             gtEq(binaryColumn("not-existing-binary"), Binary.EMPTY)));
-    assertCorrectFiltering(
-        record -> record.getId() == 1234,
-        or(eq(longColumn("id"), 1234l),
-            userDefined(longColumn("not-existing-long"), new IsDivisibleBy(1))));
+    assertCorrectFiltering(record -> record.getId() == 1234,
+        or(eq(longColumn("id"), 1234l), userDefined(longColumn("not-existing-long"), new IsDivisibleBy(1))));
   }
 
   @Test
   public void testFilteringWithProjection() throws IOException {
-    // All rows shall be retrieved because all values in column 'name' shall be handled as null values
-    assertEquals(
-        DATA.stream().map(user -> user.cloneWithName(null)).collect(toList()),
+    // All rows shall be retrieved because all values in column 'name' shall be
+    // handled as null values
+    assertEquals(DATA.stream().map(user -> user.cloneWithName(null)).collect(toList()),
         readUsersWithProjection(FilterCompat.get(eq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, true, true));
 
-    // Column index filter shall drop all pages because all values in column 'name' shall be handled as null values
-    assertEquals(
-        emptyList(),
+    // Column index filter shall drop all pages because all values in column 'name'
+    // shall be handled as null values
+    assertEquals(emptyList(),
         readUsersWithProjection(FilterCompat.get(notEq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, false, true));
-    assertEquals(
-        emptyList(),
+    assertEquals(emptyList(),
         readUsersWithProjection(FilterCompat.get(userDefined(binaryColumn("name"), NameStartsWithVowel.class)),
             SCHEMA_WITHOUT_NAME, false, true));
   }

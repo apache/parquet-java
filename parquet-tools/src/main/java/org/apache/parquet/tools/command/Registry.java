@@ -22,10 +22,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class Registry {
-  public static Map<String,Class<? extends Command>> registry;
+  public static Map<String, Class<? extends Command>> registry;
 
   static {
-    registry = new LinkedHashMap<String,Class<? extends Command>>();
+    registry = new LinkedHashMap<String, Class<? extends Command>>();
     registry.put("cat", CatCommand.class);
     registry.put("head", HeadCommand.class);
     registry.put("schema", ShowSchemaCommand.class);
@@ -37,9 +37,9 @@ public final class Registry {
     registry.put("column-index", ColumnIndexCommand.class);
   }
 
-  public static Map<String,Command> allCommands() {
-    Map<String,Command> results = new LinkedHashMap<String,Command>();
-    for (Map.Entry<String,Class<? extends Command>> entry : registry.entrySet()) {
+  public static Map<String, Command> allCommands() {
+    Map<String, Command> results = new LinkedHashMap<String, Command>();
+    for (Map.Entry<String, Class<? extends Command>> entry : registry.entrySet()) {
       try {
         results.put(entry.getKey(), entry.getValue().newInstance());
       } catch (Exception ex) {

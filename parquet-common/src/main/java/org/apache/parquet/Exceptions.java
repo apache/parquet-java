@@ -25,12 +25,11 @@ public class Exceptions {
    *
    * @param t an exception instance
    * @param excClass an exception class t may be an instance of
-   * @param <E> the type of exception that will be thrown if throwable is an instance
+   * @param <E> the type of exception that will be thrown if throwable is an
+   * instance
    * @throws E if t is an instance of E
    */
-  public static <E extends Exception> void throwIfInstance(Throwable t,
-                                                           Class<E> excClass)
-      throws E {
+  public static <E extends Exception> void throwIfInstance(Throwable t, Class<E> excClass) throws E {
     if (excClass.isAssignableFrom(t.getClass())) {
       // the throwable is already an exception, so return it
       throw excClass.cast(t);

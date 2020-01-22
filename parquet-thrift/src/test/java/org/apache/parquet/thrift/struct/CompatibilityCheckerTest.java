@@ -64,11 +64,11 @@ public class CompatibilityCheckerTest {
    */
   @Test
   public void testReuirementChange() {
-    //required can become optional or default
+    // required can become optional or default
     verifyCompatible(StructV1.class, OptionalStructV1.class, true);
     verifyCompatible(StructV1.class, DefaultStructV1.class, true);
 
-    //optional/deafult can not become required
+    // optional/deafult can not become required
     verifyCompatible(OptionalStructV1.class, StructV1.class, false);
     verifyCompatible(DefaultStructV1.class, StructV1.class, false);
   }
@@ -83,15 +83,15 @@ public class CompatibilityCheckerTest {
 
   @Test
   public void testMap() {
-    //can add optional field
+    // can add optional field
     verifyCompatible(MapStructV1.class, MapStructV2.class, true);
     verifyCompatible(MapValueStructV1.class, MapValueStructV2.class, true);
 
-    //should not delete field
+    // should not delete field
     verifyCompatible(MapStructV2.class, MapStructV1.class, false);
     verifyCompatible(MapValueStructV2.class, MapValueStructV1.class, false);
 
-    //should not add required field
+    // should not add required field
     verifyCompatible(MapStructV2.class, MapAddRequiredStructV1.class, false);
 
   }
@@ -111,7 +111,8 @@ public class CompatibilityCheckerTest {
   @Test
   public void testEmptyStruct() {
     CompatibilityReport report = getCompatibilityReport(NestedEmptyStruct.class, NestedEmptyStruct.class);
-    assertEquals("encountered an empty struct: required_empty\nencountered an empty struct: optional_empty",report.prettyMessages());
+    assertEquals("encountered an empty struct: required_empty\nencountered an empty struct: optional_empty",
+        report.prettyMessages());
     assertTrue(report.hasEmptyStruct());
   }
 

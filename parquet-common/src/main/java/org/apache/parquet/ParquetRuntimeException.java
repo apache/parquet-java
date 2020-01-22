@@ -18,8 +18,6 @@
  */
 package org.apache.parquet;
 
-import java.io.Closeable;
-import java.io.IOException;
 
 /**
  * The parent class for all runtime exceptions

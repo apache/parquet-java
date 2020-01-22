@@ -21,9 +21,9 @@ package org.apache.parquet.filter;
 import org.apache.parquet.column.ColumnReader;
 
 /**
- * Builder for a record filter. Idea is that each filter provides a create function
- * which returns an unbound filter. This only becomes a filter when it is bound to the actual
- * columns.
+ * Builder for a record filter. Idea is that each filter provides a create
+ * function which returns an unbound filter. This only becomes a filter when it
+ * is bound to the actual columns.
  */
 public interface UnboundRecordFilter {
 
@@ -33,5 +33,5 @@ public interface UnboundRecordFilter {
    * @param readers an iterable of readers to bind this filter to
    * @return this unbound filter as a filter bound to the readers
    */
-  RecordFilter bind( Iterable<ColumnReader> readers);
+  RecordFilter bind(Iterable<ColumnReader> readers);
 }

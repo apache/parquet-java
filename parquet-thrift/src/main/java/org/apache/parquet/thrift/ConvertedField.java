@@ -25,10 +25,12 @@ import org.apache.parquet.thrift.projection.FieldsPath;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * This is the return value for the recursion done in {@link ThriftSchemaConvertVisitor}
- * It represents a field that has been converted from a {@link org.apache.parquet.thrift.struct.ThriftType}
- * to a {@link org.apache.parquet.schema.MessageType}, as well as whether this field is being
- * projected away, kept, or kept only because we cannot safely drop all of its fields.
+ * This is the return value for the recursion done in
+ * {@link ThriftSchemaConvertVisitor} It represents a field that has been
+ * converted from a {@link org.apache.parquet.thrift.struct.ThriftType} to a
+ * {@link org.apache.parquet.schema.MessageType}, as well as whether this field
+ * is being projected away, kept, or kept only because we cannot safely drop all
+ * of its fields.
  *
  * This interface is essentially a union of {keep, drop, sentinelUnion}
  */
@@ -42,12 +44,15 @@ public interface ConvertedField {
   FieldsPath path();
 
   boolean isKeep();
+
   Keep asKeep();
 
   boolean isDrop();
+
   Drop asDrop();
 
   boolean isSentinelUnion();
+
   SentinelUnion asSentinelUnion();
 
   static abstract class ConvertedFieldBase implements ConvertedField {
@@ -94,7 +99,8 @@ public interface ConvertedField {
   }
 
   /**
-   * Signals that the user explicitly requested either this field or one of its children.
+   * Signals that the user explicitly requested either this field or one of its
+   * children.
    */
   public static final class Keep extends ConvertedFieldBase {
     private final Type type;
@@ -120,9 +126,9 @@ public interface ConvertedField {
   }
 
   /**
-   * Signals that the user did not explicitly request this field nor its children, but
-   * we carry the converted type info anyway in case it is not possible to drop this union
-   * entirely.
+   * Signals that the user did not explicitly request this field nor its children,
+   * but we carry the converted type info anyway in case it is not possible to
+   * drop this union entirely.
    */
   public static final class SentinelUnion extends ConvertedFieldBase {
     private final Type type;
@@ -166,4 +172,3 @@ public interface ConvertedField {
     }
   }
 }
-

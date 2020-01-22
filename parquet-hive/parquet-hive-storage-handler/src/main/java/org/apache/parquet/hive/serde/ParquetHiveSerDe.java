@@ -19,10 +19,9 @@
 package org.apache.parquet.hive.serde;
 
 /**
- * Deprecated name of the parquet-hive output format. This class exists
- * simply to provide backwards compatibility with users who specified
- * this name in the Hive metastore. All users should now use
- * STORED AS PARQUET
+ * Deprecated name of the parquet-hive output format. This class exists simply
+ * to provide backwards compatibility with users who specified this name in the
+ * Hive metastore. All users should now use STORED AS PARQUET
  */
 @Deprecated
 public class ParquetHiveSerDe extends org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe {

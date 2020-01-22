@@ -25,7 +25,8 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableByteObjec
 import org.apache.hadoop.io.IntWritable;
 
 /**
- * The ParquetByteInspector can inspect both ByteWritables and IntWritables into bytes.
+ * The ParquetByteInspector can inspect both ByteWritables and IntWritables into
+ * bytes.
  *
  */
 public class ParquetByteInspector extends AbstractPrimitiveJavaObjectInspector implements SettableByteObjectInspector {

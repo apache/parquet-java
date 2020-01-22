@@ -33,11 +33,13 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWrite
 import org.apache.parquet.io.ParquetEncodingException;
 
 /**
- * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
+ * Writes (repetition level, definition level, value) triplets and deals with
+ * writing pages to the underlying layer.
  */
 final class ColumnWriterV2 extends ColumnWriterBase {
 
-  // Extending the original implementation to not to write the size of the data as the original writer would
+  // Extending the original implementation to not to write the size of the data as
+  // the original writer would
   private static class RLEWriterForV2 extends RunLengthBitPackingHybridValuesWriter {
     public RLEWriterForV2(RunLengthBitPackingHybridEncoder encoder) {
       super(encoder);
@@ -72,17 +74,11 @@ final class ColumnWriterV2 extends ColumnWriterBase {
   @Override
   void writePage(int rowCount, int valueCount, Statistics<?> statistics, ValuesWriter repetitionLevels,
       ValuesWriter definitionLevels, ValuesWriter values) throws IOException {
-    // TODO: rework this API. The bytes shall be retrieved before the encoding (encoding might be different otherwise)
+    // TODO: rework this API. The bytes shall be retrieved before the encoding
+    // (encoding might be different otherwise)
     BytesInput bytes = values.getBytes();
     Encoding encoding = values.getEncoding();
-    pageWriter.writePageV2(
-        rowCount,
-        Math.toIntExact(statistics.getNumNulls()),
-        valueCount,
-        repetitionLevels.getBytes(),
-        definitionLevels.getBytes(),
-        encoding,
-        bytes,
-        statistics);
+    pageWriter.writePageV2(rowCount, Math.toIntExact(statistics.getNumNulls()), valueCount, repetitionLevels.getBytes(),
+        definitionLevels.getBytes(), encoding, bytes, statistics);
   }
 }

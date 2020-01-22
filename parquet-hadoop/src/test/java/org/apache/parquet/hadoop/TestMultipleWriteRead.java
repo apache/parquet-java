@@ -33,7 +33,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -71,17 +70,16 @@ import org.junit.Test;
 import com.google.common.io.Files;
 
 /**
- * Tests writing/reading multiple files in the same time (using multiple threads). Readers/writers do not support
- * concurrency but the API shall support using separate reader/writer instances to read/write parquet files in different
- * threads. (Of course, simultaneous writing to the same file is not supported.)
+ * Tests writing/reading multiple files in the same time (using multiple
+ * threads). Readers/writers do not support concurrency but the API shall
+ * support using separate reader/writer instances to read/write parquet files in
+ * different threads. (Of course, simultaneous writing to the same file is not
+ * supported.)
  */
 public class TestMultipleWriteRead {
-  private static final MessageType SCHEMA = Types.buildMessage()
-      .required(INT32).named("id")
-      .required(BINARY).as(stringType()).named("name")
-      .requiredList().requiredElement(INT64).as(intType(64, false)).named("phone_numbers")
-      .optional(BINARY).as(stringType()).named("comment")
-      .named("msg");
+  private static final MessageType SCHEMA = Types.buildMessage().required(INT32).named("id").required(BINARY)
+      .as(stringType()).named("name").requiredList().requiredElement(INT64).as(intType(64, false))
+      .named("phone_numbers").optional(BINARY).as(stringType()).named("comment").named("msg");
   private static final Comparator<Binary> BINARY_COMPARATOR = Types.required(BINARY).as(stringType()).named("dummy")
       .comparator();
 
@@ -143,8 +141,7 @@ public class TestMultipleWriteRead {
   private Path writeFile(Iterable<Group> data) throws IOException {
     Path file = new Path(tmpDir, "testMultipleReadWrite_" + UUID.randomUUID() + ".parquet");
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
-        .config(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, SCHEMA.toString())
-        .build()) {
+        .config(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, SCHEMA.toString()).build()) {
       for (Group group : data) {
         writer.write(group);
       }
@@ -161,9 +158,7 @@ public class TestMultipleWriteRead {
   }
 
   private void validateFile(Path file, Filter filter, Stream<Group> data) throws IOException {
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
-        .withFilter(filter)
-        .build()) {
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withFilter(filter).build()) {
       for (Iterator<Group> it = data.iterator(); it.hasNext();) {
         assertEquals(it.next().toString(), reader.read().toString());
       }
@@ -182,12 +177,8 @@ public class TestMultipleWriteRead {
 
   private void validateFileWithComplexFilter(Path file, List<Group> data) throws IOException {
     Binary binaryValueB = fromString("b");
-    Filter filter = FilterCompat.get(
-        and(
-            gtEq(intColumn("id"), 0),
-            and(
-                lt(binaryColumn("name"), binaryValueB),
-                notEq(binaryColumn("comment"), null))));
+    Filter filter = FilterCompat.get(and(gtEq(intColumn("id"), 0),
+        and(lt(binaryColumn("name"), binaryValueB), notEq(binaryColumn("comment"), null))));
     Predicate<Group> predicate = group -> group.getInteger("id", 0) >= 0
         && BINARY_COMPARATOR.compare(group.getBinary("name", 0), binaryValueB) < 0
         && group.getFieldRepetitionCount("comment") > 0;
@@ -202,7 +193,8 @@ public class TestMultipleWriteRead {
       data.add(Stream.generate(new DataGenerator(i)).limit(10000 - i * 1000).collect(Collectors.toList()));
     }
 
-    // Writes (and reads back the data to validate) the random values using 6 threads
+    // Writes (and reads back the data to validate) the random values using 6
+    // threads
     List<Future<Path>> futureFiles = new ArrayList<>();
     ExecutorService exec = Executors.newFixedThreadPool(6);
     for (List<Group> d : data) {

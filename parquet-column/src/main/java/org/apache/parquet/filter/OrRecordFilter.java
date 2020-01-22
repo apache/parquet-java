@@ -31,17 +31,18 @@ public final class OrRecordFilter implements RecordFilter {
 
   /**
    * Returns builder for creating an and filter.
+   * 
    * @param filter1 The first filter to check.
    * @param filter2 The second filter to check.
    * @return an or record filter
    */
-  public static final UnboundRecordFilter or( final UnboundRecordFilter filter1, final UnboundRecordFilter filter2 ) {
-    Preconditions.checkNotNull( filter1, "filter1" );
-    Preconditions.checkNotNull( filter2, "filter2" );
+  public static final UnboundRecordFilter or(final UnboundRecordFilter filter1, final UnboundRecordFilter filter2) {
+    Preconditions.checkNotNull(filter1, "filter1");
+    Preconditions.checkNotNull(filter2, "filter2");
     return new UnboundRecordFilter() {
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {
-        return new OrRecordFilter( filter1.bind(readers), filter2.bind( readers) );
+        return new OrRecordFilter(filter1.bind(readers), filter2.bind(readers));
       }
     };
   }
@@ -49,7 +50,7 @@ public final class OrRecordFilter implements RecordFilter {
   /**
    * Private constructor, use OrRecordFilter.or() instead.
    */
-  private OrRecordFilter( RecordFilter boundFilter1, RecordFilter boundFilter2 ) {
+  private OrRecordFilter(RecordFilter boundFilter1, RecordFilter boundFilter2) {
     this.boundFilter1 = boundFilter1;
     this.boundFilter2 = boundFilter2;
   }

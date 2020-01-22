@@ -66,17 +66,13 @@ public class TestFiltersWithMissingColumns {
     File file = temp.newFile("test.parquet");
     this.path = new Path(file.toString());
 
-    MessageType type = Types.buildMessage()
-        .required(INT64).named("id")
-        .required(BINARY).as(UTF8).named("data")
+    MessageType type = Types.buildMessage().required(INT64).named("id").required(BINARY).as(UTF8).named("data")
         .named("test");
 
     SimpleGroupFactory factory = new SimpleGroupFactory(type);
 
-    ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-        .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
-        .withType(type)
-        .build();
+    ParquetWriter<Group> writer = ExampleParquetWriter.builder(path).withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
+        .withType(type).build();
 
     try {
       for (long i = 0; i < 1000; i += 1) {
@@ -103,153 +99,63 @@ public class TestFiltersWithMissingColumns {
   @Test
   public void testAndMissingColumnFilter() throws Exception {
     // missing column filter is true
-    assertEquals(500, countFilteredRecords(path, and(
-        lt(longColumn("id"), 500L),
-        eq(binaryColumn("missing"), null)
-    )));
-    assertEquals(500, countFilteredRecords(path, and(
-        lt(longColumn("id"), 500L),
-        notEq(binaryColumn("missing"), fromString("any"))
-    )));
+    assertEquals(500, countFilteredRecords(path, and(lt(longColumn("id"), 500L), eq(binaryColumn("missing"), null))));
+    assertEquals(500,
+        countFilteredRecords(path, and(lt(longColumn("id"), 500L), notEq(binaryColumn("missing"), fromString("any")))));
 
-    assertEquals(500, countFilteredRecords(path, and(
-        eq(binaryColumn("missing"), null),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(500, countFilteredRecords(path, and(
-        notEq(binaryColumn("missing"), fromString("any")),
-        lt(longColumn("id"), 500L)
-    )));
+    assertEquals(500, countFilteredRecords(path, and(eq(binaryColumn("missing"), null), lt(longColumn("id"), 500L))));
+    assertEquals(500,
+        countFilteredRecords(path, and(notEq(binaryColumn("missing"), fromString("any")), lt(longColumn("id"), 500L))));
 
     // missing column filter is false
-    assertEquals(0, countFilteredRecords(path, and(
-        lt(longColumn("id"), 500L),
-        eq(binaryColumn("missing"), fromString("any"))
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        lt(longColumn("id"), 500L),
-        notEq(binaryColumn("missing"), null)
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        lt(longColumn("id"), 500L),
-        lt(doubleColumn("missing"), 33.33)
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        lt(longColumn("id"), 500L),
-        ltEq(doubleColumn("missing"), 33.33)
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        lt(longColumn("id"), 500L),
-        gt(doubleColumn("missing"), 33.33)
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        lt(longColumn("id"), 500L),
-        gtEq(doubleColumn("missing"), 33.33)
-    )));
+    assertEquals(0,
+        countFilteredRecords(path, and(lt(longColumn("id"), 500L), eq(binaryColumn("missing"), fromString("any")))));
+    assertEquals(0, countFilteredRecords(path, and(lt(longColumn("id"), 500L), notEq(binaryColumn("missing"), null))));
+    assertEquals(0, countFilteredRecords(path, and(lt(longColumn("id"), 500L), lt(doubleColumn("missing"), 33.33))));
+    assertEquals(0, countFilteredRecords(path, and(lt(longColumn("id"), 500L), ltEq(doubleColumn("missing"), 33.33))));
+    assertEquals(0, countFilteredRecords(path, and(lt(longColumn("id"), 500L), gt(doubleColumn("missing"), 33.33))));
+    assertEquals(0, countFilteredRecords(path, and(lt(longColumn("id"), 500L), gtEq(doubleColumn("missing"), 33.33))));
 
-    assertEquals(0, countFilteredRecords(path, and(
-        eq(binaryColumn("missing"), fromString("any")),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        notEq(binaryColumn("missing"), null),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        lt(doubleColumn("missing"), 33.33),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        ltEq(doubleColumn("missing"), 33.33),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        gt(doubleColumn("missing"), 33.33),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(0, countFilteredRecords(path, and(
-        gtEq(doubleColumn("missing"), 33.33),
-        lt(longColumn("id"), 500L)
-    )));
+    assertEquals(0,
+        countFilteredRecords(path, and(eq(binaryColumn("missing"), fromString("any")), lt(longColumn("id"), 500L))));
+    assertEquals(0, countFilteredRecords(path, and(notEq(binaryColumn("missing"), null), lt(longColumn("id"), 500L))));
+    assertEquals(0, countFilteredRecords(path, and(lt(doubleColumn("missing"), 33.33), lt(longColumn("id"), 500L))));
+    assertEquals(0, countFilteredRecords(path, and(ltEq(doubleColumn("missing"), 33.33), lt(longColumn("id"), 500L))));
+    assertEquals(0, countFilteredRecords(path, and(gt(doubleColumn("missing"), 33.33), lt(longColumn("id"), 500L))));
+    assertEquals(0, countFilteredRecords(path, and(gtEq(doubleColumn("missing"), 33.33), lt(longColumn("id"), 500L))));
   }
 
   @Test
   public void testOrMissingColumnFilter() throws Exception {
     // missing column filter is false
-    assertEquals(500, countFilteredRecords(path, or(
-        lt(longColumn("id"), 500L),
-        eq(binaryColumn("missing"), fromString("any"))
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        lt(longColumn("id"), 500L),
-        notEq(binaryColumn("missing"), null)
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        lt(longColumn("id"), 500L),
-        lt(doubleColumn("missing"), 33.33)
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        lt(longColumn("id"), 500L),
-        ltEq(doubleColumn("missing"), 33.33)
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        lt(longColumn("id"), 500L),
-        gt(doubleColumn("missing"), 33.33)
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        lt(longColumn("id"), 500L),
-        gtEq(doubleColumn("missing"), 33.33)
-    )));
+    assertEquals(500,
+        countFilteredRecords(path, or(lt(longColumn("id"), 500L), eq(binaryColumn("missing"), fromString("any")))));
+    assertEquals(500, countFilteredRecords(path, or(lt(longColumn("id"), 500L), notEq(binaryColumn("missing"), null))));
+    assertEquals(500, countFilteredRecords(path, or(lt(longColumn("id"), 500L), lt(doubleColumn("missing"), 33.33))));
+    assertEquals(500, countFilteredRecords(path, or(lt(longColumn("id"), 500L), ltEq(doubleColumn("missing"), 33.33))));
+    assertEquals(500, countFilteredRecords(path, or(lt(longColumn("id"), 500L), gt(doubleColumn("missing"), 33.33))));
+    assertEquals(500, countFilteredRecords(path, or(lt(longColumn("id"), 500L), gtEq(doubleColumn("missing"), 33.33))));
 
-    assertEquals(500, countFilteredRecords(path, or(
-        eq(binaryColumn("missing"), fromString("any")),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        notEq(binaryColumn("missing"), null),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        lt(doubleColumn("missing"), 33.33),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        ltEq(doubleColumn("missing"), 33.33),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        gt(doubleColumn("missing"), 33.33),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(500, countFilteredRecords(path, or(
-        gtEq(doubleColumn("missing"), 33.33),
-        lt(longColumn("id"), 500L)
-    )));
+    assertEquals(500,
+        countFilteredRecords(path, or(eq(binaryColumn("missing"), fromString("any")), lt(longColumn("id"), 500L))));
+    assertEquals(500, countFilteredRecords(path, or(notEq(binaryColumn("missing"), null), lt(longColumn("id"), 500L))));
+    assertEquals(500, countFilteredRecords(path, or(lt(doubleColumn("missing"), 33.33), lt(longColumn("id"), 500L))));
+    assertEquals(500, countFilteredRecords(path, or(ltEq(doubleColumn("missing"), 33.33), lt(longColumn("id"), 500L))));
+    assertEquals(500, countFilteredRecords(path, or(gt(doubleColumn("missing"), 33.33), lt(longColumn("id"), 500L))));
+    assertEquals(500, countFilteredRecords(path, or(gtEq(doubleColumn("missing"), 33.33), lt(longColumn("id"), 500L))));
 
     // missing column filter is false
-    assertEquals(1000, countFilteredRecords(path, or(
-        lt(longColumn("id"), 500L),
-        eq(binaryColumn("missing"), null)
-    )));
-    assertEquals(1000, countFilteredRecords(path, or(
-        lt(longColumn("id"), 500L),
-        notEq(binaryColumn("missing"), fromString("any"))
-    )));
+    assertEquals(1000, countFilteredRecords(path, or(lt(longColumn("id"), 500L), eq(binaryColumn("missing"), null))));
+    assertEquals(1000,
+        countFilteredRecords(path, or(lt(longColumn("id"), 500L), notEq(binaryColumn("missing"), fromString("any")))));
 
-    assertEquals(1000, countFilteredRecords(path, or(
-        eq(binaryColumn("missing"), null),
-        lt(longColumn("id"), 500L)
-    )));
-    assertEquals(1000, countFilteredRecords(path, or(
-        notEq(binaryColumn("missing"), fromString("any")),
-        lt(longColumn("id"), 500L)
-    )));
+    assertEquals(1000, countFilteredRecords(path, or(eq(binaryColumn("missing"), null), lt(longColumn("id"), 500L))));
+    assertEquals(1000,
+        countFilteredRecords(path, or(notEq(binaryColumn("missing"), fromString("any")), lt(longColumn("id"), 500L))));
   }
 
-  public static long countFilteredRecords(Path path, FilterPredicate pred) throws IOException{
-    ParquetReader<Group> reader = ParquetReader
-        .builder(new GroupReadSupport(), path)
-        .withFilter(FilterCompat.get(pred))
+  public static long countFilteredRecords(Path path, FilterPredicate pred) throws IOException {
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).withFilter(FilterCompat.get(pred))
         .build();
 
     long count = 0;

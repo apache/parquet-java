@@ -43,12 +43,13 @@ public class TestAbstractParquetMapInspector extends TestCase {
       throw new UnsupportedOperationException("Should not be called");
     }
   }
+
   private TestableAbstractParquetMapInspector inspector;
 
   @Override
   public void setUp() {
     inspector = new TestableAbstractParquetMapInspector(PrimitiveObjectInspectorFactory.javaIntObjectInspector,
-            PrimitiveObjectInspectorFactory.javaIntObjectInspector);
+        PrimitiveObjectInspectorFactory.javaIntObjectInspector);
   }
 
   @Test
@@ -73,13 +74,13 @@ public class TestAbstractParquetMapInspector extends TestCase {
 
   @Test
   public void testRegularMap() {
-    final Writable[] entry1 = new Writable[]{new IntWritable(0), new IntWritable(1)};
-    final Writable[] entry2 = new Writable[]{new IntWritable(2), new IntWritable(3)};
+    final Writable[] entry1 = new Writable[] { new IntWritable(0), new IntWritable(1) };
+    final Writable[] entry2 = new Writable[] { new IntWritable(2), new IntWritable(3) };
 
-    final ArrayWritable internalMap = new ArrayWritable(ArrayWritable.class, new Writable[]{
-      new ArrayWritable(Writable.class, entry1), new ArrayWritable(Writable.class, entry2)});
+    final ArrayWritable internalMap = new ArrayWritable(ArrayWritable.class,
+        new Writable[] { new ArrayWritable(Writable.class, entry1), new ArrayWritable(Writable.class, entry2) });
 
-    final ArrayWritable map = new ArrayWritable(ArrayWritable.class, new Writable[]{internalMap});
+    final ArrayWritable map = new ArrayWritable(ArrayWritable.class, new Writable[] { internalMap });
 
     final Map<Writable, Writable> expected = new HashMap<Writable, Writable>();
     expected.put(new IntWritable(0), new IntWritable(1));

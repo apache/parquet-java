@@ -105,11 +105,13 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
     double dMin = (double) min;
     double dMax = (double) max;
     if (Double.isNaN(dMin) || Double.isNaN(dMax)) {
-      // Invalidate this column index in case of NaN as the sorting order of values is undefined for this case
+      // Invalidate this column index in case of NaN as the sorting order of values is
+      // undefined for this case
       invalid = true;
     }
 
-    // Sorting order is undefined for -0.0 so let min = -0.0 and max = +0.0 to ensure that no 0.0 values are skipped
+    // Sorting order is undefined for -0.0 so let min = -0.0 and max = +0.0 to
+    // ensure that no 0.0 values are skipped
     if (Double.compare(dMin, +0.0) == 0) {
       dMin = -0.0;
     }

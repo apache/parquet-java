@@ -29,11 +29,10 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 /**
- * A {@link URLStreamHandler} for handling Hadoop filesystem URLs,
- * most commonly those with the <i>hdfs</i> scheme.
+ * A {@link URLStreamHandler} for handling Hadoop filesystem URLs, most commonly
+ * those with the <i>hdfs</i> scheme.
  */
-public class HadoopFileSystemURLStreamHandler extends URLStreamHandler
-    implements Configurable {
+public class HadoopFileSystemURLStreamHandler extends URLStreamHandler implements Configurable {
 
   private static Configuration defaultConf = new Configuration();
 
@@ -66,9 +65,11 @@ public class HadoopFileSystemURLStreamHandler extends URLStreamHandler
     public HadoopFileSystemURLConnection(URL url) {
       super(url);
     }
+
     @Override
     public void connect() throws IOException {
     }
+
     @Override
     public InputStream getInputStream() throws IOException {
       Path path = new Path(url.toExternalForm());

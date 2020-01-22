@@ -33,8 +33,9 @@ import org.apache.thrift.protocol.TType;
 public class ProtocolReadToWrite implements ProtocolPipe {
 
   /**
-   * reads one record from in and writes it to out
-   * exceptions are not recoverable as record might be halfway written
+   * reads one record from in and writes it to out exceptions are not recoverable
+   * as record might be halfway written
+   * 
    * @param in input protocol
    * @param out output protocol
    * @throws TException if there is an error while reading or writing
@@ -44,8 +45,7 @@ public class ProtocolReadToWrite implements ProtocolPipe {
     readOneStruct(in, out);
   }
 
-  void readOneValue(TProtocol in, TProtocol out, byte type)
-      throws TException {
+  void readOneValue(TProtocol in, TProtocol out, byte type) throws TException {
     switch (type) {
     case TType.LIST:
       readOneList(in, out);
@@ -73,7 +73,8 @@ public class ProtocolReadToWrite implements ProtocolPipe {
     case TType.I16:
       out.writeI16(in.readI16());
       break;
-    case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32 field
+    case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written
+                     // as a i32 field
     case TType.I32:
       out.writeI32(in.readI32());
       break;
@@ -132,8 +133,8 @@ public class ProtocolReadToWrite implements ProtocolPipe {
     out.writeListEnd();
   }
 
-  private void readCollectionElements(TProtocol in, TProtocol out,
-      final int size, final byte elemType) throws TException {
+  private void readCollectionElements(TProtocol in, TProtocol out, final int size, final byte elemType)
+      throws TException {
     for (int i = 0; i < size; i++) {
       readOneValue(in, out, elemType);
     }

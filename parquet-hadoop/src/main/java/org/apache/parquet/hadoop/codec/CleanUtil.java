@@ -27,15 +27,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A Helper class which use reflections to clean up DirectBuffer. It's implemented for
- * better compatibility with both java8 and java9+, because the Cleaner class is moved to
- * another place since java9+.
+ * A Helper class which use reflections to clean up DirectBuffer. It's
+ * implemented for better compatibility with both java8 and java9+, because the
+ * Cleaner class is moved to another place since java9+.
  *
  * Strongly inspired by:
  * https://github.com/apache/tomcat/blob/master/java/org/apache/tomcat/util/buf/ByteBufferUtils.java
  */
-public class CleanUtil
-{
+public class CleanUtil {
   private static final Logger logger = LoggerFactory.getLogger(CleanUtil.class);
 
   private static final Object unsafe;
@@ -43,8 +42,7 @@ public class CleanUtil
   private static final Method cleanMethod;
   private static final Method invokeCleanerMethod;
 
-  private static final int majorVersion =
-    Integer.parseInt(System.getProperty("java.version").split("\\D+")[0]);
+  private static final int majorVersion = Integer.parseInt(System.getProperty("java.version").split("\\D+")[0]);
 
   static {
     final ByteBuffer tempBuffer = ByteBuffer.allocateDirect(0);
@@ -60,9 +58,8 @@ public class CleanUtil
         unsafeLocal = theUnsafe.get(null);
         invokeCleanerMethodLocal = clazz.getMethod("invokeCleaner", ByteBuffer.class);
         invokeCleanerMethodLocal.invoke(unsafeLocal, tempBuffer);
-      } catch (IllegalAccessException | IllegalArgumentException
-        | InvocationTargetException | NoSuchMethodException | SecurityException
-        | ClassNotFoundException | NoSuchFieldException e) {
+      } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException
+          | SecurityException | ClassNotFoundException | NoSuchFieldException e) {
         logger.warn("Cannot use direct ByteBuffer cleaner, memory leaking may occur", e);
         unsafeLocal = null;
         invokeCleanerMethodLocal = null;
@@ -74,8 +71,8 @@ public class CleanUtil
         final Object cleanerObject = cleanerMethodLocal.invoke(tempBuffer);
         cleanMethodLocal = cleanerObject.getClass().getMethod("clean");
         cleanMethodLocal.invoke(cleanerObject);
-      } catch (NoSuchMethodException | SecurityException | IllegalAccessException |
-        IllegalArgumentException | InvocationTargetException e) {
+      } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+          | InvocationTargetException e) {
         logger.warn("Cannot use direct ByteBuffer cleaner, memory leaking may occur", e);
         cleanerMethodLocal = null;
         cleanMethodLocal = null;
@@ -95,15 +92,13 @@ public class CleanUtil
     if (cleanMethod != null) {
       try {
         cleanMethod.invoke(cleanerMethod.invoke(buf));
-      } catch (IllegalAccessException | IllegalArgumentException
-        | InvocationTargetException | SecurityException e) {
+      } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
         logger.warn("Error while cleaning up the DirectBuffer", e);
       }
     } else if (invokeCleanerMethod != null) {
       try {
         invokeCleanerMethod.invoke(unsafe, buf);
-      } catch (IllegalAccessException | IllegalArgumentException
-        | InvocationTargetException | SecurityException e) {
+      } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
         logger.warn("Error while cleaning up the DirectBuffer", e);
       }
     }

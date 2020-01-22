@@ -33,8 +33,8 @@ import org.apache.parquet.schema.MessageType;
  */
 public class InitContext {
 
-  private final Map<String,Set<String>> keyValueMetadata;
-  private Map<String,String> mergedKeyValueMetadata;
+  private final Map<String, Set<String>> keyValueMetadata;
+  private Map<String, String> mergedKeyValueMetadata;
   private final Configuration configuration;
   private final MessageType fileSchema;
 
@@ -43,10 +43,7 @@ public class InitContext {
    * @param keyValueMetadata extra metadata from file footers
    * @param fileSchema the merged schema from the files
    */
-  public InitContext(
-      Configuration configuration,
-      Map<String, Set<String>> keyValueMetadata,
-      MessageType fileSchema) {
+  public InitContext(Configuration configuration, Map<String, Set<String>> keyValueMetadata, MessageType fileSchema) {
     super();
     this.keyValueMetadata = keyValueMetadata;
     this.configuration = configuration;
@@ -54,8 +51,9 @@ public class InitContext {
   }
 
   /**
-   * If there is a conflicting value when reading from multiple files,
-   * an exception will be thrown
+   * If there is a conflicting value when reading from multiple files, an
+   * exception will be thrown
+   * 
    * @return the merged key values metadata form the file footers
    */
   @Deprecated
@@ -64,7 +62,8 @@ public class InitContext {
       Map<String, String> mergedKeyValues = new HashMap<String, String>();
       for (Entry<String, Set<String>> entry : keyValueMetadata.entrySet()) {
         if (entry.getValue().size() > 1) {
-          throw new RuntimeException("could not merge metadata: key " + entry.getKey() + " has conflicting values: " + entry.getValue());
+          throw new RuntimeException(
+              "could not merge metadata: key " + entry.getKey() + " has conflicting values: " + entry.getValue());
         }
         mergedKeyValues.put(entry.getKey(), entry.getValue().iterator().next());
       }
@@ -82,6 +81,7 @@ public class InitContext {
 
   /**
    * this is the union of all the schemas when reading multiple files.
+   * 
    * @return the schema of the files being read
    */
   public MessageType getFileSchema() {
@@ -90,6 +90,7 @@ public class InitContext {
 
   /**
    * each key is associated with the list of distinct values found in footers
+   * 
    * @return the merged metadata from the footer of the file
    */
   public Map<String, Set<String>> getKeyValueMetadata() {

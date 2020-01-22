@@ -106,14 +106,14 @@ public enum Encoding {
   },
 
   /**
-   * Actually a combination of bit packing and run length encoding.
-   * TODO: Should we rename this to be more clear?
+   * Actually a combination of bit packing and run length encoding. TODO: Should
+   * we rename this to be more clear?
    */
   RLE {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       int bitWidth = BytesUtils.getWidthFromMaxInt(getMaxLevel(descriptor, valuesType));
-      if(bitWidth == 0) {
+      if (bitWidth == 0) {
         return new ZeroIntegerValuesReader();
       }
       return new RunLengthBitPackingHybridValuesReader(bitWidth);
@@ -133,12 +133,14 @@ public enum Encoding {
   },
 
   /**
-   * @deprecated now replaced by RLE_DICTIONARY for the data page encoding and PLAIN for the dictionary page encoding
+   * @deprecated now replaced by RLE_DICTIONARY for the data page encoding and
+   * PLAIN for the dictionary page encoding
    */
   @Deprecated
   PLAIN_DICTIONARY {
     @Override
-    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType,
+        Dictionary dictionary) {
       return RLE_DICTIONARY.getDictionaryBasedValuesReader(descriptor, valuesType, dictionary);
     }
 
@@ -161,7 +163,7 @@ public enum Encoding {
   DELTA_BINARY_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      if(descriptor.getType() != INT32 && descriptor.getType() != INT64) {
+      if (descriptor.getType() != INT32 && descriptor.getType() != INT64) {
         throw new ParquetDecodingException("Encoding DELTA_BINARY_PACKED is only supported for type INT32 and INT64");
       }
       return new DeltaBinaryPackingValuesReader();
@@ -169,13 +171,12 @@ public enum Encoding {
   },
 
   /**
-   * Encoding for byte arrays to separate the length values and the data. The lengths
-   * are encoded using DELTA_BINARY_PACKED
+   * Encoding for byte arrays to separate the length values and the data. The
+   * lengths are encoded using DELTA_BINARY_PACKED
    */
   DELTA_LENGTH_BYTE_ARRAY {
     @Override
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       if (descriptor.getType() != BINARY) {
         throw new ParquetDecodingException("Encoding DELTA_LENGTH_BYTE_ARRAY is only supported for type BINARY");
       }
@@ -184,15 +185,15 @@ public enum Encoding {
   },
 
   /**
-   * Incremental-encoded byte array. Prefix lengths are encoded using DELTA_BINARY_PACKED.
-   * Suffixes are stored as delta length byte arrays.
+   * Incremental-encoded byte array. Prefix lengths are encoded using
+   * DELTA_BINARY_PACKED. Suffixes are stored as delta length byte arrays.
    */
   DELTA_BYTE_ARRAY {
     @Override
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       if (descriptor.getType() != BINARY && descriptor.getType() != FIXED_LEN_BYTE_ARRAY) {
-        throw new ParquetDecodingException("Encoding DELTA_BYTE_ARRAY is only supported for type BINARY and FIXED_LEN_BYTE_ARRAY");
+        throw new ParquetDecodingException(
+            "Encoding DELTA_BYTE_ARRAY is only supported for type BINARY and FIXED_LEN_BYTE_ARRAY");
       }
       return new DeltaByteArrayReader();
     }
@@ -204,7 +205,8 @@ public enum Encoding {
   RLE_DICTIONARY {
 
     @Override
-    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType,
+        Dictionary dictionary) {
       switch (descriptor.getType()) {
       case BINARY:
       case FIXED_LEN_BYTE_ARRAY:
@@ -236,7 +238,7 @@ public enum Encoding {
       maxLevel = descriptor.getMaxDefinitionLevel();
       break;
     case VALUES:
-      if(descriptor.getType() == BOOLEAN) {
+      if (descriptor.getType() == BOOLEAN) {
         maxLevel = 1;
         break;
       }
@@ -255,10 +257,12 @@ public enum Encoding {
 
   /**
    * initializes a dictionary from a page
+   * 
    * @param descriptor the column descriptor for the dictionary-encoded column
    * @param dictionaryPage a dictionary page
    * @return the corresponding dictionary
-   * @throws IOException if there is an exception while reading the dictionary page
+   * @throws IOException if there is an exception while reading the dictionary
+   * page
    * @throws UnsupportedOperationException if the encoding is not dictionary based
    */
   public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
@@ -274,7 +278,8 @@ public enum Encoding {
    * @throws UnsupportedOperationException if the encoding is dictionary based
    */
   public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-    throw new UnsupportedOperationException("Error decoding " + descriptor + ". " + this.name() + " is dictionary based");
+    throw new UnsupportedOperationException(
+        "Error decoding " + descriptor + ". " + this.name() + " is dictionary based");
   }
 
   /**
@@ -286,7 +291,8 @@ public enum Encoding {
    * @return the proper values reader for the given column
    * @throws UnsupportedOperationException if the encoding is not dictionary based
    */
-  public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+  public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType,
+      Dictionary dictionary) {
     throw new UnsupportedOperationException(this.name() + " is not dictionary based");
   }
 

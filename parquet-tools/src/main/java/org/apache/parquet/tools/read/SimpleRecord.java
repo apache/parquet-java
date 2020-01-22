@@ -39,9 +39,9 @@ public class SimpleRecord {
   }
 
   public void add(String name, Object value) {
-    values.add(new NameValue(name,value));
+    values.add(new NameValue(name, value));
   }
-  
+
   public List<NameValue> getValues() {
     return Collections.unmodifiableList(values);
   }
@@ -51,7 +51,7 @@ public class SimpleRecord {
   }
 
   public void prettyPrint() {
-    prettyPrint(new PrintWriter(System.out,true));
+    prettyPrint(new PrintWriter(System.out, true));
   }
 
   public void prettyPrint(PrintWriter out) {
@@ -72,28 +72,28 @@ public class SimpleRecord {
         out.print(new BinaryNode((byte[]) val).asText());
       } else if (short[].class == val.getClass()) {
         out.print(" = ");
-        out.print(Arrays.toString((short[])val));
+        out.print(Arrays.toString((short[]) val));
       } else if (int[].class == val.getClass()) {
         out.print(" = ");
-        out.print(Arrays.toString((int[])val));
+        out.print(Arrays.toString((int[]) val));
       } else if (long[].class == val.getClass()) {
         out.print(" = ");
-        out.print(Arrays.toString((long[])val));
+        out.print(Arrays.toString((long[]) val));
       } else if (float[].class == val.getClass()) {
         out.print(" = ");
-        out.print(Arrays.toString((float[])val));
+        out.print(Arrays.toString((float[]) val));
       } else if (double[].class == val.getClass()) {
         out.print(" = ");
-        out.print(Arrays.toString((double[])val));
+        out.print(Arrays.toString((double[]) val));
       } else if (boolean[].class == val.getClass()) {
         out.print(" = ");
-        out.print(Arrays.toString((boolean[])val));
+        out.print(Arrays.toString((boolean[]) val));
       } else if (val.getClass().isArray()) {
         out.print(" = ");
-        out.print(Arrays.deepToString((Object[])val));
+        out.print(Arrays.deepToString((Object[]) val));
       } else if (SimpleRecord.class.isAssignableFrom(val.getClass())) {
         out.println(":");
-        ((SimpleRecord)val).prettyPrint(out, depth+1);
+        ((SimpleRecord) val).prettyPrint(out, depth + 1);
         continue;
       } else {
         out.print(" = ");
@@ -150,4 +150,3 @@ public class SimpleRecord {
     }
   }
 }
-

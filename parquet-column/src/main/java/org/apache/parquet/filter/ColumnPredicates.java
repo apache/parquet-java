@@ -23,9 +23,9 @@ import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.api.Binary;
 
 /**
- * ColumnPredicates class provides checks for column values. Factory methods
- * are provided for standard predicates which wrap the job of getting the
- * correct value from the column.
+ * ColumnPredicates class provides checks for column values. Factory methods are
+ * provided for standard predicates which wrap the job of getting the correct
+ * value from the column.
  */
 public class ColumnPredicates {
 
@@ -33,7 +33,7 @@ public class ColumnPredicates {
     boolean apply(ColumnReader input);
   }
 
-  public static interface PredicateFunction <T> {
+  public static interface PredicateFunction<T> {
     boolean functionToApply(T input);
   }
 
@@ -60,7 +60,7 @@ public class ColumnPredicates {
   }
 
   public static Predicate equalTo(final String target) {
-    Preconditions.checkNotNull(target,"target");
+    Preconditions.checkNotNull(target, "target");
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
@@ -73,7 +73,7 @@ public class ColumnPredicates {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-          return fn.functionToApply(input.getBinary().toStringUsingUTF8());
+        return fn.functionToApply(input.getBinary().toStringUsingUTF8());
       }
     };
   }
@@ -159,7 +159,7 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToBoolean (final BooleanPredicateFunction fn) {
+  public static Predicate applyFunctionToBoolean(final BooleanPredicateFunction fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
@@ -169,7 +169,7 @@ public class ColumnPredicates {
   }
 
   public static <E extends Enum> Predicate equalTo(final E target) {
-    Preconditions.checkNotNull(target,"target");
+    Preconditions.checkNotNull(target, "target");
     final String targetAsString = target.name();
     return new Predicate() {
       @Override
@@ -179,11 +179,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToBinary (final PredicateFunction<Binary> fn) {
+  public static Predicate applyFunctionToBinary(final PredicateFunction<Binary> fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	  return fn.functionToApply(input.getBinary());
+        return fn.functionToApply(input.getBinary());
       }
     };
   }

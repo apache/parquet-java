@@ -58,8 +58,7 @@ public class ParquetProperties {
   private static final int MIN_SLAB_SIZE = 64;
 
   public enum WriterVersion {
-    PARQUET_1_0 ("v1"),
-    PARQUET_2_0 ("v2");
+    PARQUET_1_0("v1"), PARQUET_2_0("v2");
 
     private final String shortName;
 
@@ -93,13 +92,12 @@ public class ParquetProperties {
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
 
-  private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
-                            int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
-                            ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, int pageRowCountLimit,
-                            boolean pageWriteChecksumEnabled, int statisticsTruncateLength) {
+  private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict,
+      int minRowCountForPageSizeCheck, int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck,
+      ByteBufferAllocator allocator, ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength,
+      int pageRowCountLimit, boolean pageWriteChecksumEnabled, int statisticsTruncateLength) {
     this.pageSizeThreshold = pageSize;
-    this.initialSlabSize = CapacityByteArrayOutputStream
-      .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
+    this.initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
@@ -127,8 +125,8 @@ public class ParquetProperties {
     if (maxLevel == 0) {
       return new DevNullValuesWriter();
     } else {
-      return new RunLengthBitPackingHybridValuesWriter(
-          getWidthFromMaxInt(maxLevel), MIN_SLAB_SIZE, pageSizeThreshold, allocator);
+      return new RunLengthBitPackingHybridValuesWriter(getWidthFromMaxInt(maxLevel), MIN_SLAB_SIZE, pageSizeThreshold,
+          allocator);
     }
   }
 
@@ -141,8 +139,8 @@ public class ParquetProperties {
   }
 
   private RunLengthBitPackingHybridEncoder newLevelEncoder(int maxLevel) {
-    return new RunLengthBitPackingHybridEncoder(
-        getWidthFromMaxInt(maxLevel), MIN_SLAB_SIZE, pageSizeThreshold, allocator);
+    return new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(maxLevel), MIN_SLAB_SIZE, pageSizeThreshold,
+        allocator);
   }
 
   public ValuesWriter newValuesWriter(ColumnDescriptor path) {
@@ -173,8 +171,7 @@ public class ParquetProperties {
     return allocator;
   }
 
-  public ColumnWriteStore newColumnWriteStore(MessageType schema,
-                                              PageWriteStore pageStore) {
+  public ColumnWriteStore newColumnWriteStore(MessageType schema, PageWriteStore pageStore) {
     switch (writerVersion) {
     case PARQUET_1_0:
       return new ColumnWriteStoreV1(schema, pageStore, this);
@@ -264,8 +261,7 @@ public class ParquetProperties {
      * @return this builder for method chaining.
      */
     public Builder withPageSize(int pageSize) {
-      Preconditions.checkArgument(pageSize > 0,
-          "Invalid page size (negative): %s", pageSize);
+      Preconditions.checkArgument(pageSize > 0, "Invalid page size (negative): %s", pageSize);
       this.pageSize = pageSize;
       return this;
     }
@@ -288,8 +284,8 @@ public class ParquetProperties {
      * @return this builder for method chaining.
      */
     public Builder withDictionaryPageSize(int dictionaryPageSize) {
-      Preconditions.checkArgument(dictionaryPageSize > 0,
-          "Invalid dictionary page size (negative): %s", dictionaryPageSize);
+      Preconditions.checkArgument(dictionaryPageSize > 0, "Invalid dictionary page size (negative): %s",
+          dictionaryPageSize);
       this.dictPageSize = dictionaryPageSize;
       return this;
     }
@@ -306,20 +302,19 @@ public class ParquetProperties {
     }
 
     public Builder withMinRowCountForPageSizeCheck(int min) {
-      Preconditions.checkArgument(min > 0,
-          "Invalid row count for page size check (negative): %s", min);
+      Preconditions.checkArgument(min > 0, "Invalid row count for page size check (negative): %s", min);
       this.minRowCountForPageSizeCheck = min;
       return this;
     }
 
     public Builder withMaxRowCountForPageSizeCheck(int max) {
-      Preconditions.checkArgument(max > 0,
-          "Invalid row count for page size check (negative): %s", max);
+      Preconditions.checkArgument(max > 0, "Invalid row count for page size check (negative): %s", max);
       this.maxRowCountForPageSizeCheck = max;
       return this;
     }
 
-    // Do not attempt to predict next size check.  Prevents issues with rows that vary significantly in size.
+    // Do not attempt to predict next size check. Prevents issues with rows that
+    // vary significantly in size.
     public Builder estimateRowCountForPageSizeCheck(boolean estimateNextSizeCheck) {
       this.estimateNextSizeCheck = estimateNextSizeCheck;
       return this;
@@ -338,13 +333,15 @@ public class ParquetProperties {
     }
 
     public Builder withColumnIndexTruncateLength(int length) {
-      Preconditions.checkArgument(length > 0, "Invalid column index min/max truncate length (negative or zero) : %s", length);
+      Preconditions.checkArgument(length > 0, "Invalid column index min/max truncate length (negative or zero) : %s",
+          length);
       this.columnIndexTruncateLength = length;
       return this;
     }
 
     public Builder withStatisticsTruncateLength(int length) {
-      Preconditions.checkArgument(length > 0, "Invalid statistics min/max truncate length (negative or zero) : %s", length);
+      Preconditions.checkArgument(length > 0, "Invalid statistics min/max truncate length (negative or zero) : %s",
+          length);
       this.statisticsTruncateLength = length;
       return this;
     }
@@ -361,14 +358,16 @@ public class ParquetProperties {
     }
 
     public ParquetProperties build() {
-      ParquetProperties properties =
-        new ParquetProperties(writerVersion, pageSize, dictPageSize,
-          enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength,
-          pageRowCountLimit, pageWriteChecksumEnabled, statisticsTruncateLength);
-      // we pass a constructed but uninitialized factory to ParquetProperties above as currently
-      // creation of ValuesWriters is invoked from within ParquetProperties. In the future
-      // we'd like to decouple that and won't need to pass an object to properties and then pass the
+      ParquetProperties properties = new ParquetProperties(writerVersion, pageSize, dictPageSize, enableDict,
+          minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck, estimateNextSizeCheck, allocator,
+          valuesWriterFactory, columnIndexTruncateLength, pageRowCountLimit, pageWriteChecksumEnabled,
+          statisticsTruncateLength);
+      // we pass a constructed but uninitialized factory to ParquetProperties above as
+      // currently
+      // creation of ValuesWriters is invoked from within ParquetProperties. In the
+      // future
+      // we'd like to decouple that and won't need to pass an object to properties and
+      // then pass the
       // properties to the object.
       valuesWriterFactory.initialize(properties);
 

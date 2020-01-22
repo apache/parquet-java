@@ -39,7 +39,6 @@ public class PathGlobPatternTest {
     assertTrue(g.matches("a/asd/b"));
     assertTrue(g.matches("a/asd/ss/b"));
 
-
   }
 
   @Test

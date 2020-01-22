@@ -61,7 +61,7 @@ public class TestFieldsPath {
 
     paths = PrimitivePathVisitor.visit(structInMap, ".");
     assertEquals(Arrays.asList("name", "names.key", "names.value.name.first_name", "names.value.name.last_name",
-            "names.value.phones.key", "names.value.phones.value", "name_to_id.key", "name_to_id.value"), paths);
+        "names.value.phones.key", "names.value.phones.value", "name_to_id.key", "name_to_id.value"), paths);
 
     paths = PrimitivePathVisitor.visit(structInMap, "/");
     assertEquals(Arrays.asList("name", "names/key", "names/value/name/first_name", "names/value/name/last_name",

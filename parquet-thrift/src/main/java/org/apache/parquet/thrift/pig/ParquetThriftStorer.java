@@ -33,9 +33,8 @@ import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.io.ParquetEncodingException;
 
 /**
- * To store in Pig using a thrift class
- * usage:
- * STORE 'foo' USING parquet.thrift.pig.ParquetThriftStorer('my.thrift.Class');
+ * To store in Pig using a thrift class usage: STORE 'foo' USING
+ * parquet.thrift.pig.ParquetThriftStorer('my.thrift.Class');
  */
 public class ParquetThriftStorer extends StoreFunc {
 
@@ -45,7 +44,8 @@ public class ParquetThriftStorer extends StoreFunc {
 
   public ParquetThriftStorer(String[] params) {
     if (params == null || params.length != 1) {
-      throw new IllegalArgumentException("required the thrift class name in parameter. Got " + Arrays.toString(params) + " instead");
+      throw new IllegalArgumentException(
+          "required the thrift class name in parameter. Got " + Arrays.toString(params) + " instead");
     }
     className = params[0];
   }

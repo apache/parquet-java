@@ -31,8 +31,7 @@ public interface PageReadStore {
 
   /**
    *
-   * @param descriptor
-   *          the descriptor of the column
+   * @param descriptor the descriptor of the column
    * @return the page reader for that column
    */
   PageReader getPageReader(ColumnDescriptor descriptor);
@@ -44,11 +43,11 @@ public interface PageReadStore {
   long getRowCount();
 
   /**
-   * Returns the indexes of the rows to be read/built if the related data is available. All the rows which index is not
-   * returned shall be skipped.
+   * Returns the indexes of the rows to be read/built if the related data is
+   * available. All the rows which index is not returned shall be skipped.
    *
-   * @return the optional of the incremental iterator of the row indexes or an empty optional if the related data is not
-   *         available
+   * @return the optional of the incremental iterator of the row indexes or an
+   * empty optional if the related data is not available
    */
   default Optional<PrimitiveIterator.OfLong> getRowIndexes() {
     return Optional.empty();

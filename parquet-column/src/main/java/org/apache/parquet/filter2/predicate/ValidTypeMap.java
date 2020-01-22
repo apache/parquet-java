@@ -28,17 +28,18 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
- * Contains all valid mappings from class -&gt; parquet type (and vice versa) for use in
- * {@link FilterPredicate}s
+ * Contains all valid mappings from class -&gt; parquet type (and vice versa)
+ * for use in {@link FilterPredicate}s
  *
- * This is a bit ugly, but it allows us to provide good error messages at runtime
- * when there are type mismatches.
+ * This is a bit ugly, but it allows us to provide good error messages at
+ * runtime when there are type mismatches.
  *
- * TODO: this has some overlap with {@link PrimitiveTypeName#javaType}
- * TODO: (https://issues.apache.org/jira/browse/PARQUET-30)
+ * TODO: this has some overlap with {@link PrimitiveTypeName#javaType} TODO:
+ * (https://issues.apache.org/jira/browse/PARQUET-30)
  */
 public class ValidTypeMap {
-  private ValidTypeMap() { }
+  private ValidTypeMap() {
+  }
 
   // classToParquetType and parquetTypeToClass are used as a bi-directional map
   private static final Map<Class<?>, Set<PrimitiveTypeName>> classToParquetType = new HashMap<>();
@@ -62,7 +63,7 @@ public class ValidTypeMap {
   }
 
   static {
-    for (PrimitiveTypeName t: PrimitiveTypeName.values()) {
+    for (PrimitiveTypeName t : PrimitiveTypeName.values()) {
       Class<?> c = t.javaType;
 
       if (c.isPrimitive()) {
@@ -74,8 +75,8 @@ public class ValidTypeMap {
   }
 
   /**
-   * Asserts that foundColumn was declared as a type that is compatible with the type for this column found
-   * in the schema of the parquet file.
+   * Asserts that foundColumn was declared as a type that is compatible with the
+   * type for this column found in the schema of the parquet file.
    *
    * @throws java.lang.IllegalArgumentException if the types do not align
    *
@@ -91,18 +92,12 @@ public class ValidTypeMap {
 
     if (validTypeDescriptors == null) {
       StringBuilder message = new StringBuilder();
-      message
-          .append("Column ")
-          .append(columnPath.toDotString())
-          .append(" was declared as type: ")
-          .append(foundColumnType.getName())
-          .append(" which is not supported in FilterPredicates.");
+      message.append("Column ").append(columnPath.toDotString()).append(" was declared as type: ")
+          .append(foundColumnType.getName()).append(" which is not supported in FilterPredicates.");
 
       Set<Class<?>> supportedTypes = parquetTypeToClass.get(primitiveType);
       if (supportedTypes != null) {
-        message
-          .append(" Supported types for this column are: ")
-          .append(supportedTypes);
+        message.append(" Supported types for this column are: ").append(supportedTypes);
       } else {
         message.append(" There are no supported types for columns of " + primitiveType);
       }
@@ -111,17 +106,10 @@ public class ValidTypeMap {
 
     if (!validTypeDescriptors.contains(primitiveType)) {
       StringBuilder message = new StringBuilder();
-      message
-          .append("FilterPredicate column: ")
-          .append(columnPath.toDotString())
-          .append("'s declared type (")
-          .append(foundColumnType.getName())
-          .append(") does not match the schema found in file metadata. Column ")
-          .append(columnPath.toDotString())
-          .append(" is of type: ")
-          .append(primitiveType)
-          .append("\nValid types for this column are: ")
-          .append(parquetTypeToClass.get(primitiveType));
+      message.append("FilterPredicate column: ").append(columnPath.toDotString()).append("'s declared type (")
+          .append(foundColumnType.getName()).append(") does not match the schema found in file metadata. Column ")
+          .append(columnPath.toDotString()).append(" is of type: ").append(primitiveType)
+          .append("\nValid types for this column are: ").append(parquetTypeToClass.get(primitiveType));
       throw new IllegalArgumentException(message.toString());
     }
   }

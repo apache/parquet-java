@@ -30,47 +30,43 @@ import org.apache.parquet.io.api.Binary;
 public class Utils {
   private static Random randomLen = new Random();
   private static RandomStr randomStr = new RandomStr(randomLen);
-  
+
   public static String[] getRandomStringSamples(int numSamples, int maxLength) {
     String[] samples = new String[numSamples];
-    
-    for (int i=0; i < numSamples; i++) {
+
+    for (int i = 0; i < numSamples; i++) {
       int len = randomLen.nextInt(maxLength);
       samples[i] = randomStr.get(len);
     }
-    
+
     return samples;
   }
-  
-  public static void writeInts(ValuesWriter writer, int[] ints)
-      throws IOException {
-    for(int i=0; i < ints.length; i++) {
+
+  public static void writeInts(ValuesWriter writer, int[] ints) throws IOException {
+    for (int i = 0; i < ints.length; i++) {
       writer.writeInteger(ints[i]);
     }
   }
 
-  public static void writeData(ValuesWriter writer, String[] strings)
-      throws IOException {
-    for(int i=0; i < strings.length; i++) {
+  public static void writeData(ValuesWriter writer, String[] strings) throws IOException {
+    for (int i = 0; i < strings.length; i++) {
       writer.writeBytes(Binary.fromString(strings[i]));
     }
   }
 
-  public static Binary[] readData(ValuesReader reader, ByteBufferInputStream stream, int length)
-      throws IOException {
+  public static Binary[] readData(ValuesReader reader, ByteBufferInputStream stream, int length) throws IOException {
     Binary[] bins = new Binary[length];
     reader.initFromPage(length, stream);
-    for(int i=0; i < length; i++) {
+    for (int i = 0; i < length; i++) {
       bins[i] = reader.readBytes();
     }
     return bins;
   }
 
-  public static int[] readInts(ValuesReader reader, ByteBufferInputStream stream, int length)
-      throws IOException {
+  public static int[] readInts(ValuesReader reader, ByteBufferInputStream stream, int length) throws IOException {
     int[] ints = new int[length];
     reader.initFromPage(length, stream);
-    for(int i=0; i < length; i++) {
+    for (int i = 0; i < length; i++) {
       ints[i] = reader.readInteger();
     }
     return ints;

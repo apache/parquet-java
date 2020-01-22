@@ -38,14 +38,14 @@ public final class MessageType extends GroupType {
     super(Repetition.REPEATED, name, fields);
   }
 
- /**
-  *
-  * @param name the name of the type
-  * @param fields the fields contained by this message
-  */
- public MessageType(String name, List<Type> fields) {
-   super(Repetition.REPEATED, name, fields);
- }
+  /**
+   *
+   * @param name the name of the type
+   * @param fields the fields contained by this message
+   */
+  public MessageType(String name, List<Type> fields) {
+    super(Repetition.REPEATED, name, fields);
+  }
 
   /**
    * {@inheritDoc}
@@ -60,9 +60,8 @@ public final class MessageType extends GroupType {
    */
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
-    sb.append("message ")
-        .append(getName())
-        .append(getLogicalTypeAnnotation() == null ? "" : " (" + getLogicalTypeAnnotation().toString() +")")
+    sb.append("message ").append(getName())
+        .append(getLogicalTypeAnnotation() == null ? "" : " (" + getLogicalTypeAnnotation().toString() + ")")
         .append(" {\n");
     membersDisplayString(sb, "  ");
     sb.append("}\n");
@@ -70,23 +69,23 @@ public final class MessageType extends GroupType {
 
   /**
    * @param path an array of strings representing the name path in this type
-   * @return the max repetition level that might be needed to encode the
-   * type at 'path'.
+   * @return the max repetition level that might be needed to encode the type at
+   * 'path'.
    */
-  public int getMaxRepetitionLevel(String ... path) {
+  public int getMaxRepetitionLevel(String... path) {
     return getMaxRepetitionLevel(path, 0) - 1;
   }
 
   /**
    * @param path an array of strings representing the name path in this type
-   * @return the max repetition level that might be needed to encode the
-   * type at 'path'.
+   * @return the max repetition level that might be needed to encode the type at
+   * 'path'.
    */
-  public int getMaxDefinitionLevel(String ... path) {
+  public int getMaxDefinitionLevel(String... path) {
     return getMaxDefinitionLevel(path, 0) - 1;
   }
 
-  public Type getType(String ... path) {
+  public Type getType(String... path) {
     return getType(path, 0);
   }
 
@@ -107,11 +106,7 @@ public final class MessageType extends GroupType {
     for (String[] path : paths) {
       // TODO: optimize this
       PrimitiveType primitiveType = getType(path).asPrimitiveType();
-      columns.add(new ColumnDescriptor(
-                      path,
-                      primitiveType,
-                      getMaxRepetitionLevel(path),
-                      getMaxDefinitionLevel(path)));
+      columns.add(new ColumnDescriptor(path, primitiveType, getMaxRepetitionLevel(path), getMaxDefinitionLevel(path)));
     }
     return columns;
   }

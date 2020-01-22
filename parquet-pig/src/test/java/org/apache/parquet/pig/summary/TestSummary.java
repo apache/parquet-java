@@ -42,17 +42,10 @@ public class TestSummary {
   private static final TupleFactory tf = TupleFactory.getInstance();
   private static final BagFactory bf = BagFactory.getInstance();
 
-  private static final DataBag TEST_BAG = b(
-      t(b(t(1l), t(2l, m("foo", "bar")), t(3))),
-      t(b(t(1l), t(1l), t(3, "blah"))),
-      t(b(t(1l), t(2l), t(2, "bloh"))),
-      t(b(t(1l), t(2, "bloh"))),
-      t(b(t("foo"), t(2, "bloh"))),
-      t(b(t(b(t("bar"))), t(2, "bloh"))),
-      t(b(t(b(t("bar"))), t(1l, m("foo", "bar", "baz", "buz")), t(2, "bloh"))),
-      t(),
-      t(null, null)
-      );
+  private static final DataBag TEST_BAG = b(t(b(t(1l), t(2l, m("foo", "bar")), t(3))), t(b(t(1l), t(1l), t(3, "blah"))),
+      t(b(t(1l), t(2l), t(2, "bloh"))), t(b(t(1l), t(2, "bloh"))), t(b(t("foo"), t(2, "bloh"))),
+      t(b(t(b(t("bar"))), t(2, "bloh"))), t(b(t(b(t("bar"))), t(1l, m("foo", "bar", "baz", "buz")), t(2, "bloh"))), t(),
+      t(null, null));
 
   public static Tuple t(Object... objects) {
     return tf.newTuple(Arrays.asList(objects));
@@ -65,7 +58,7 @@ public class TestSummary {
   public static Map<String, Object> m(Object... objects) {
     Map<String, Object> m = new HashMap<String, Object>();
     for (int i = 0; i < objects.length; i += 2) {
-      m.put((String)objects[i], objects[i + 1]);
+      m.put((String) objects[i], objects[i + 1]);
     }
     return m;
   }
@@ -76,7 +69,6 @@ public class TestSummary {
     String result = summary.exec(t(TEST_BAG));
     validate(result, 1);
   }
-
 
   @Test
   public void testAlgebraic() throws IOException {
@@ -95,13 +87,13 @@ public class TestSummary {
           mapOut.add(exec);
         }
         Tuple exec = intermediate1.exec(t(mapOut));
-        validate((String)exec.get(0), 1);
+        validate((String) exec.get(0), 1);
         combinedMapOut.add(exec);
       }
       combinedRedIn.add(intermediate2.exec(t(combinedMapOut)));
     }
     String result = finall.exec(t(combinedRedIn));
-    validate(result, 5*5);
+    validate(result, 5 * 5);
 
   }
 
@@ -111,10 +103,8 @@ public class TestSummary {
     assertEquals(9 * factor, s.getCount());
     assertEquals(1 * factor, s.getFields().get(0).getNull().longValue());
     assertEquals(7 * factor, s.getFields().get(0).getBag().getCount());
-    assertEquals(18 * factor,
-        s.getFields().get(0).getBag().getContent().getTuple().getFields().get(0).getCount());
-    MapSummaryData map =
-        s.getFields().get(0).getBag().getContent().getTuple().getFields().get(1).getMap();
+    assertEquals(18 * factor, s.getFields().get(0).getBag().getContent().getTuple().getFields().get(0).getCount());
+    MapSummaryData map = s.getFields().get(0).getBag().getContent().getTuple().getFields().get(1).getMap();
     assertEquals(2 * factor, map.getCount());
     assertEquals(3 * factor, map.getKey().getCount());
   }
@@ -129,10 +119,10 @@ public class TestSummary {
     }
     data.set("in", "a:chararray, a1:chararray, b:int, c:{t:(a2:chararray, b2:[])}", list);
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
-    pigServer.registerQuery("B = FOREACH (GROUP A ALL) GENERATE "+Summary.class.getName()+"(A);");
+    pigServer.registerQuery("B = FOREACH (GROUP A ALL) GENERATE " + Summary.class.getName() + "(A);");
     pigServer.registerQuery("STORE B INTO 'out' USING mock.Storage();");
     System.out.println(data.get("out").get(0).get(0));
-    TupleSummaryData s = SummaryData.fromJSON((String)data.get("out").get(0).get(0), TupleSummaryData.class);
+    TupleSummaryData s = SummaryData.fromJSON((String) data.get("out").get(0).get(0), TupleSummaryData.class);
     System.out.println(s);
   }
 
@@ -145,13 +135,13 @@ public class TestSummary {
     for (int i = 0; i < 10; i++) {
       list.add(t("a", i - 9));
     }
-    
+
     data.set("in", "a:chararray, b:int", list);
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.registerQuery("B = FOREACH (GROUP A ALL) GENERATE " + Summary.class.getName() + "(A);");
     pigServer.registerQuery("STORE B INTO 'out' USING mock.Storage();");
     TupleSummaryData s = SummaryData.fromJSON((String) data.get("out").get(0).get(0), TupleSummaryData.class);
-    System.out.println(s);	  
+    System.out.println(s);
     assertEquals(0, s.getFields().get(1).getNumber().getValue().getMax(), 0);
   }
 

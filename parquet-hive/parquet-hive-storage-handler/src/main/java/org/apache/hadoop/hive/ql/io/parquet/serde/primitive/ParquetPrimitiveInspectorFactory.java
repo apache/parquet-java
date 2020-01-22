@@ -17,10 +17,12 @@
  * under the License.
  */
 package org.apache.hadoop.hive.ql.io.parquet.serde.primitive;
+
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.ParquetStringInspector;
 
 /**
- * The ParquetPrimitiveInspectorFactory allows us to be sure that the same object is inspected by the same inspector.
+ * The ParquetPrimitiveInspectorFactory allows us to be sure that the same
+ * object is inspected by the same inspector.
  *
  */
 public class ParquetPrimitiveInspectorFactory {

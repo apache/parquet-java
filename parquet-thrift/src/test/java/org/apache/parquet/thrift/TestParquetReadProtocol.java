@@ -91,15 +91,14 @@ public class TestParquetReadProtocol {
   @Test
   public void testOneOfEach() throws TException {
     final List<Byte> bytes = new ArrayList<Byte>();
-    bytes.add((byte)1);
+    bytes.add((byte) 1);
     final List<Short> shorts = new ArrayList<Short>();
-    shorts.add((short)1);
+    shorts.add((short) 1);
     final List<Long> longs = new ArrayList<Long>();
-    longs.add((long)1);
-    OneOfEach a = new OneOfEach(
-        true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
-        ByteBuffer.wrap("a".getBytes()), bytes, shorts, longs);
-   validate(a);
+    longs.add((long) 1);
+    OneOfEach a = new OneOfEach(true, false, (byte) 8, (short) 16, (int) 32, (long) 64, (double) 1234, "string", "å",
+        false, ByteBuffer.wrap("a".getBytes()), bytes, shorts, longs);
+    validate(a);
   }
 
   @Test
@@ -107,26 +106,15 @@ public class TestParquetReadProtocol {
     final PhoneNumber phoneNumber = new PhoneNumber("5555555555");
     phoneNumber.type = MOBILE;
     List<Person> persons = Arrays.asList(
-        new Person(
-            new Name("john", "johson"),
-            1,
-            "john@johnson.org",
-            Arrays.asList(phoneNumber)
-            ),
-        new Person(
-            new Name("jack", "jackson"),
-            2,
-            "jack@jackson.org",
-            Arrays.asList(new PhoneNumber("5555555556"))
-            )
-        );
+        new Person(new Name("john", "johson"), 1, "john@johnson.org", Arrays.asList(phoneNumber)),
+        new Person(new Name("jack", "jackson"), 2, "jack@jackson.org", Arrays.asList(new PhoneNumber("5555555556"))));
     AddressBook expected = new AddressBook(persons);
     validate(expected);
   }
 
   @Test
   public void testMap() throws Exception {
-        final Map<String, String> map = new HashMap<String, String>();
+    final Map<String, String> map = new HashMap<String, String>();
     map.put("foo", "bar");
     TestMap testMap = new TestMap("map_name", map);
     validate(testMap);
@@ -141,19 +129,16 @@ public class TestParquetReadProtocol {
     validate(testMap);
   }
 
-  private <T extends TBase<?,?>> void validate(T expected) throws TException {
+  private <T extends TBase<?, ?>> void validate(T expected) throws TException {
     @SuppressWarnings("unchecked")
-    final Class<T> thriftClass = (Class<T>)expected.getClass();
+    final Class<T> thriftClass = (Class<T>) expected.getClass();
     final MemPageStore memPageStore = new MemPageStore(1);
     final ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType schema = schemaConverter.convert(thriftClass);
     LOG.info("{}", schema);
     final MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     final ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore,
-        ParquetProperties.builder()
-            .withPageSize(10000)
-            .withDictionaryEncoding(false)
-            .build());
+        ParquetProperties.builder().withPageSize(10000).withDictionaryEncoding(false).build());
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     final StructType thriftType = schemaConverter.toStructType(thriftClass);
     ParquetWriteProtocol parquetWriteProtocol = new ParquetWriteProtocol(recordWriter, columnIO, thriftType);

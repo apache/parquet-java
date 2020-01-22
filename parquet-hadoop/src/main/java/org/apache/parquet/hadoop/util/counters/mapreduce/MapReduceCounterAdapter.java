@@ -39,6 +39,6 @@ public class MapReduceCounterAdapter implements ICounter {
 
   @Override
   public long getCount() {
-    return adaptee.getValue();  //To change body of implemented methods use File | Settings | File Templates.
+    return adaptee.getValue(); // To change body of implemented methods use File | Settings | File Templates.
   }
 }

@@ -29,7 +29,8 @@ import org.apache.parquet.schema.MessageType;
 
 public class SimpleReadSupport extends ReadSupport<SimpleRecord> {
   @Override
-  public RecordMaterializer<SimpleRecord> prepareForRead(Configuration conf, Map<String,String> metaData, MessageType schema, ReadContext context) {
+  public RecordMaterializer<SimpleRecord> prepareForRead(Configuration conf, Map<String, String> metaData,
+      MessageType schema, ReadContext context) {
     return new SimpleRecordMaterializer(schema);
   }
 
@@ -38,4 +39,3 @@ public class SimpleReadSupport extends ReadSupport<SimpleRecord> {
     return new ReadContext(context.getFileSchema());
   }
 }
-

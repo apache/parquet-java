@@ -49,7 +49,7 @@ public class TestColumnReaderImpl {
     @Override
     public void addBinary(Binary value) {
       assertEquals("bar" + count % 10, value.toStringUsingUTF8());
-      ++ count;
+      ++count;
     }
   }
 
@@ -58,10 +58,8 @@ public class TestColumnReaderImpl {
     MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
     ColumnDescriptor col = schema.getColumns().get(0);
     MemPageWriter pageWriter = new MemPageWriter();
-    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter,
-        ParquetProperties.builder()
-            .withDictionaryPageSize(1024).withWriterVersion(PARQUET_2_0)
-            .withPageSize(2048).build());
+    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter, ParquetProperties.builder()
+        .withDictionaryPageSize(1024).withWriterVersion(PARQUET_2_0).withPageSize(2048).build());
     for (int i = 0; i < rows; i++) {
       columnWriterV2.write(Binary.fromString("bar" + i % 10), 0, 0);
       if ((i + 1) % 1000 == 0) {
@@ -75,13 +73,14 @@ public class TestColumnReaderImpl {
     int rowCount = 0;
     for (DataPage dataPage : pages) {
       valueCount += dataPage.getValueCount();
-      rowCount += ((DataPageV2)dataPage).getRowCount();
+      rowCount += ((DataPageV2) dataPage).getRowCount();
     }
     assertEquals(rows, rowCount);
     assertEquals(rows, valueCount);
     MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage());
     ValidatingConverter converter = new ValidatingConverter();
-    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
+    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter,
+        VersionParser.parse(Version.FULL_VERSION));
     for (int i = 0; i < rows; i++) {
       assertEquals(0, columnReader.getCurrentRepetitionLevel());
       assertEquals(0, columnReader.getCurrentDefinitionLevel());
@@ -96,10 +95,8 @@ public class TestColumnReaderImpl {
     MessageType schema = MessageTypeParser.parseMessageType("message test { optional binary foo; }");
     ColumnDescriptor col = schema.getColumns().get(0);
     MemPageWriter pageWriter = new MemPageWriter();
-    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter,
-        ParquetProperties.builder()
-            .withDictionaryPageSize(1024).withWriterVersion(PARQUET_2_0)
-            .withPageSize(2048).build());
+    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter, ParquetProperties.builder()
+        .withDictionaryPageSize(1024).withWriterVersion(PARQUET_2_0).withPageSize(2048).build());
     for (int i = 0; i < rows; i++) {
       columnWriterV2.writeNull(0, 0);
       if ((i + 1) % 1000 == 0) {
@@ -113,13 +110,14 @@ public class TestColumnReaderImpl {
     int rowCount = 0;
     for (DataPage dataPage : pages) {
       valueCount += dataPage.getValueCount();
-      rowCount += ((DataPageV2)dataPage).getRowCount();
+      rowCount += ((DataPageV2) dataPage).getRowCount();
     }
     assertEquals(rows, rowCount);
     assertEquals(rows, valueCount);
     MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage());
     ValidatingConverter converter = new ValidatingConverter();
-    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
+    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter,
+        VersionParser.parse(Version.FULL_VERSION));
     for (int i = 0; i < rows; i++) {
       assertEquals(0, columnReader.getCurrentRepetitionLevel());
       assertEquals(0, columnReader.getCurrentDefinitionLevel());

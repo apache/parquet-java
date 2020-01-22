@@ -32,14 +32,14 @@ import org.apache.parquet.io.ParquetEncodingException;
  */
 public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingValuesWriter {
   /**
-   * max bitwidth for a mini block, it is used to allocate miniBlockByteBuffer which is
-   * reused between flushes.
+   * max bitwidth for a mini block, it is used to allocate miniBlockByteBuffer
+   * which is reused between flushes.
    */
   private static final int MAX_BITWIDTH = 64;
 
   /**
-   * stores delta values starting from the 2nd value written(1st value is stored in header).
-   * It's reused between flushes
+   * stores delta values starting from the 2nd value written(1st value is stored
+   * in header). It's reused between flushes
    */
   private long[] deltaBlockBuffer;
 
@@ -54,20 +54,18 @@ public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingVal
   private long previousValue = 0;
 
   /**
-   * min delta is written to the beginning of each block.
-   * it's zig-zag encoded. The deltas stored in each block is actually the difference to min delta,
-   * therefore are all positive
-   * it will be reset after each flush
+   * min delta is written to the beginning of each block. it's zig-zag encoded.
+   * The deltas stored in each block is actually the difference to min delta,
+   * therefore are all positive it will be reset after each flush
    */
   private long minDeltaInCurrentBlock = Long.MAX_VALUE;
 
-  public DeltaBinaryPackingValuesWriterForLong(
-      int slabSize, int pageSize, ByteBufferAllocator allocator) {
+  public DeltaBinaryPackingValuesWriterForLong(int slabSize, int pageSize, ByteBufferAllocator allocator) {
     this(DEFAULT_NUM_BLOCK_VALUES, DEFAULT_NUM_MINIBLOCKS, slabSize, pageSize, allocator);
   }
 
-  public DeltaBinaryPackingValuesWriterForLong(int blockSizeInValues, int miniBlockNum, 
-      int slabSize, int pageSize, ByteBufferAllocator allocator) {
+  public DeltaBinaryPackingValuesWriterForLong(int blockSizeInValues, int miniBlockNum, int slabSize, int pageSize,
+      ByteBufferAllocator allocator) {
     super(blockSizeInValues, miniBlockNum, slabSize, pageSize, allocator);
     deltaBlockBuffer = new long[config.blockSizeInValues];
     miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
@@ -83,9 +81,12 @@ public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingVal
       return;
     }
 
-    // Calculate delta. The possible overflow is accounted for. The algorithm is correct because
-    // Java long is working as a modalar ring with base 2^64 and because of the plus and minus
-    // properties of a ring. http://en.wikipedia.org/wiki/Modular_arithmetic#Integers_modulo_n
+    // Calculate delta. The possible overflow is accounted for. The algorithm is
+    // correct because
+    // Java long is working as a modalar ring with base 2^64 and because of the plus
+    // and minus
+    // properties of a ring.
+    // http://en.wikipedia.org/wiki/Modular_arithmetic#Integers_modulo_n
     long delta = v - previousValue;
     previousValue = v;
 
@@ -101,7 +102,8 @@ public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingVal
   }
 
   private void flushBlockBuffer() {
-    // since we store the min delta, the deltas will be converted to be the difference to min delta
+    // since we store the min delta, the deltas will be converted to be the
+    // difference to min delta
     // and all positive
     for (int i = 0; i < deltaValuesToFlush; i++) {
       deltaBlockBuffer[i] = deltaBlockBuffer[i] - minDeltaInCurrentBlock;
@@ -122,10 +124,12 @@ public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingVal
       // TODO: should this cache the packer?
       BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(currentBitWidth);
       int miniBlockStart = i * config.miniBlockSizeInValues;
-      // pack values into the miniblock buffer, 8 at a time to get exactly currentBitWidth bytes
+      // pack values into the miniblock buffer, 8 at a time to get exactly
+      // currentBitWidth bytes
       for (int j = miniBlockStart; j < (i + 1) * config.miniBlockSizeInValues; j += 8) {
         // mini block is atomic in terms of flushing
-        // This may write more values when reach to the end of data writing to last mini block,
+        // This may write more values when reach to the end of data writing to last mini
+        // block,
         // since it may not be aligned to miniblock,
         // but doesn't matter. The reader uses total count to see if reached the end.
         packer.pack8Values(deltaBlockBuffer, j, miniBlockByteBuffer, blockOffset);
@@ -147,7 +151,8 @@ public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingVal
   }
 
   /**
-   * iterate through values in each mini block and calculate the bitWidths of max values.
+   * iterate through values in each mini block and calculate the bitWidths of max
+   * values.
    *
    * @param miniBlocksToFlush number of miniblocks
    */
@@ -156,7 +161,8 @@ public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingVal
       long mask = 0;
       int miniStart = miniBlockIndex * config.miniBlockSizeInValues;
 
-      //The end of current mini block could be the end of current block(deltaValuesToFlush) buffer when data is not aligned to mini block
+      // The end of current mini block could be the end of current
+      // block(deltaValuesToFlush) buffer when data is not aligned to mini block
       int miniEnd = Math.min((miniBlockIndex + 1) * config.miniBlockSizeInValues, deltaValuesToFlush);
 
       for (int i = miniStart; i < miniEnd; i++) {
@@ -167,21 +173,20 @@ public class DeltaBinaryPackingValuesWriterForLong extends DeltaBinaryPackingVal
   }
 
   /**
-   * getBytes will trigger flushing block buffer, DO NOT write after getBytes() is called without calling reset()
+   * getBytes will trigger flushing block buffer, DO NOT write after getBytes() is
+   * called without calling reset()
    *
    * @return a BytesInput that contains the encoded page data
    */
   @Override
   public BytesInput getBytes() {
-    // The Page Header should include: blockSizeInValues, numberOfMiniBlocks, totalValueCount
+    // The Page Header should include: blockSizeInValues, numberOfMiniBlocks,
+    // totalValueCount
     if (deltaValuesToFlush != 0) {
       flushBlockBuffer();
     }
-    return BytesInput.concat(
-            config.toBytesInput(),
-            BytesInput.fromUnsignedVarInt(totalValueCount),
-            BytesInput.fromZigZagVarLong(firstValue),
-            BytesInput.from(baos));
+    return BytesInput.concat(config.toBytesInput(), BytesInput.fromUnsignedVarInt(totalValueCount),
+        BytesInput.fromZigZagVarLong(firstValue), BytesInput.from(baos));
   }
 
   @Override

@@ -33,7 +33,7 @@ import java.util.Random;
 public class SmallRangeWritingBenchmarkTest extends RandomWritingBenchmarkTest {
   @BeforeClass
   public static void prepare() {
-    Random random=new Random();
+    Random random = new Random();
     data = new int[100000 * blockSize];
     for (int i = 0; i < data.length; i++) {
       data[i] = random.nextInt(2) - 1;
@@ -42,7 +42,7 @@ public class SmallRangeWritingBenchmarkTest extends RandomWritingBenchmarkTest {
 
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
-  public void writeRLEWithSmallBitWidthTest(){
+  public void writeRLEWithSmallBitWidthTest() {
     ValuesWriter writer = new RunLengthBitPackingHybridValuesWriter(2, 100, 20000, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }

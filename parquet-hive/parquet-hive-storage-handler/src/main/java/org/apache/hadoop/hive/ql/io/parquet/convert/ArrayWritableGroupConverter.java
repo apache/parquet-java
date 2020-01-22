@@ -34,8 +34,7 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
   private Writable currentValue;
   private Writable[] mapPairContainer;
 
-  public ArrayWritableGroupConverter(final GroupType groupType, final HiveGroupConverter parent,
-      final int index) {
+  public ArrayWritableGroupConverter(final GroupType groupType, final HiveGroupConverter parent, final int index) {
     this.parent = parent;
     this.index = index;
     int count = groupType.getFieldCount();
@@ -72,8 +71,8 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
   @Override
   protected void set(final int index, final Writable value) {
     if (index != 0 && mapPairContainer == null || index > 1) {
-      throw new ParquetDecodingException("Repeated group can only have one or two fields for maps." +
-        " Not allowed to set for the index : " + index);
+      throw new ParquetDecodingException(
+          "Repeated group can only have one or two fields for maps." + " Not allowed to set for the index : " + index);
     }
 
     if (isMap) {

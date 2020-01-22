@@ -42,86 +42,46 @@ public class WriteBenchmarks {
 
   @Setup(Level.Iteration)
   public void setup() {
-    //clean existing test data at the beginning of each iteration
+    // clean existing test data at the beginning of each iteration
     dataGenerator.cleanup();
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void write1MRowsDefaultBlockAndPageSizeUncompressed()
-          throws IOException
-  {
-    dataGenerator.generateData(file_1M,
-                               configuration,
-                               PARQUET_2_0,
-                               BLOCK_SIZE_DEFAULT,
-                               PAGE_SIZE_DEFAULT,
-                               FIXED_LEN_BYTEARRAY_SIZE,
-                               UNCOMPRESSED,
-                               ONE_MILLION);
+  public void write1MRowsDefaultBlockAndPageSizeUncompressed() throws IOException {
+    dataGenerator.generateData(file_1M, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT,
+        FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void write1MRowsBS256MPS4MUncompressed()
-          throws IOException
-  {
-    dataGenerator.generateData(file_1M_BS256M_PS4M,
-                               configuration,
-                               PARQUET_2_0,
-                               BLOCK_SIZE_256M,
-                               PAGE_SIZE_4M,
-                               FIXED_LEN_BYTEARRAY_SIZE,
-                               UNCOMPRESSED,
-                               ONE_MILLION);
+  public void write1MRowsBS256MPS4MUncompressed() throws IOException {
+    dataGenerator.generateData(file_1M_BS256M_PS4M, configuration, PARQUET_2_0, BLOCK_SIZE_256M, PAGE_SIZE_4M,
+        FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void write1MRowsBS256MPS8MUncompressed()
-          throws IOException
-  {
-    dataGenerator.generateData(file_1M_BS256M_PS8M,
-                               configuration,
-                               PARQUET_2_0,
-                               BLOCK_SIZE_256M,
-                               PAGE_SIZE_8M,
-                               FIXED_LEN_BYTEARRAY_SIZE,
-                               UNCOMPRESSED,
-                               ONE_MILLION);
+  public void write1MRowsBS256MPS8MUncompressed() throws IOException {
+    dataGenerator.generateData(file_1M_BS256M_PS8M, configuration, PARQUET_2_0, BLOCK_SIZE_256M, PAGE_SIZE_8M,
+        FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void write1MRowsBS512MPS4MUncompressed()
-          throws IOException
-  {
-    dataGenerator.generateData(file_1M_BS512M_PS4M,
-                               configuration,
-                               PARQUET_2_0,
-                               BLOCK_SIZE_512M,
-                               PAGE_SIZE_4M,
-                               FIXED_LEN_BYTEARRAY_SIZE,
-                               UNCOMPRESSED,
-                               ONE_MILLION);
+  public void write1MRowsBS512MPS4MUncompressed() throws IOException {
+    dataGenerator.generateData(file_1M_BS512M_PS4M, configuration, PARQUET_2_0, BLOCK_SIZE_512M, PAGE_SIZE_4M,
+        FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void write1MRowsBS512MPS8MUncompressed()
-          throws IOException
-  {
-    dataGenerator.generateData(file_1M_BS512M_PS8M,
-                               configuration,
-                               PARQUET_2_0,
-                               BLOCK_SIZE_512M,
-                               PAGE_SIZE_8M,
-                               FIXED_LEN_BYTEARRAY_SIZE,
-                               UNCOMPRESSED,
-                               ONE_MILLION);
+  public void write1MRowsBS512MPS8MUncompressed() throws IOException {
+    dataGenerator.generateData(file_1M_BS512M_PS8M, configuration, PARQUET_2_0, BLOCK_SIZE_512M, PAGE_SIZE_8M,
+        FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
   }
 
-  //TODO how to handle lzo jar?
+  // TODO how to handle lzo jar?
 //  @Benchmark
 //  public void write1MRowsDefaultBlockAndPageSizeLZO()
 //          throws IOException
@@ -138,31 +98,15 @@ public class WriteBenchmarks {
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void write1MRowsDefaultBlockAndPageSizeSNAPPY()
-          throws IOException
-  {
-    dataGenerator.generateData(file_1M_SNAPPY,
-                               configuration,
-                               PARQUET_2_0,
-                               BLOCK_SIZE_DEFAULT,
-                               PAGE_SIZE_DEFAULT,
-                               FIXED_LEN_BYTEARRAY_SIZE,
-                               SNAPPY,
-                               ONE_MILLION);
+  public void write1MRowsDefaultBlockAndPageSizeSNAPPY() throws IOException {
+    dataGenerator.generateData(file_1M_SNAPPY, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT,
+        FIXED_LEN_BYTEARRAY_SIZE, SNAPPY, ONE_MILLION);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void write1MRowsDefaultBlockAndPageSizeGZIP()
-          throws IOException
-  {
-    dataGenerator.generateData(file_1M_GZIP,
-                               configuration,
-                               PARQUET_2_0,
-                               BLOCK_SIZE_DEFAULT,
-                               PAGE_SIZE_DEFAULT,
-                               FIXED_LEN_BYTEARRAY_SIZE,
-                               GZIP,
-                               ONE_MILLION);
+  public void write1MRowsDefaultBlockAndPageSizeGZIP() throws IOException {
+    dataGenerator.generateData(file_1M_GZIP, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT,
+        FIXED_LEN_BYTEARRAY_SIZE, GZIP, ONE_MILLION);
   }
 }

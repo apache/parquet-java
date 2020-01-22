@@ -133,7 +133,8 @@ public abstract class BinaryTruncator {
       return null;
     }
 
-    // Truncates the buffer to length or less so the remaining bytes form a valid UTF-8 string
+    // Truncates the buffer to length or less so the remaining bytes form a valid
+    // UTF-8 string
     private byte[] truncateUtf8(ByteBuffer buffer, int length) {
       assert length < buffer.remaining();
       ByteBuffer newBuffer = buffer.slice();
@@ -149,7 +150,8 @@ public abstract class BinaryTruncator {
       return array;
     }
 
-    // Trying to increment the bytes from the last one to the beginning until the bytes form a valid UTF-8 string
+    // Trying to increment the bytes from the last one to the beginning until the
+    // bytes form a valid UTF-8 string
     private byte[] incrementUtf8(byte[] array) {
       if (array == null) {
         return null;
@@ -161,12 +163,12 @@ public abstract class BinaryTruncator {
         while (++inc != 0) { // Until overflow: 0xFF -> 0x00
           array[i] = inc;
           switch (validator.checkValidity(buffer)) {
-            case VALID:
-              return array;
-            case UNMAPPABLE:
-              continue; // Increment the i byte once more
-            case MALFORMED:
-              break; // Stop incrementing the i byte; go to the i-1
+          case VALID:
+            return array;
+          case UNMAPPABLE:
+            continue; // Increment the i byte once more
+          case MALFORMED:
+            break; // Stop incrementing the i byte; go to the i-1
           }
           break; // MALFORMED
         }
@@ -181,37 +183,37 @@ public abstract class BinaryTruncator {
       return NO_OP_TRUNCATOR;
     }
     switch (type.getPrimitiveTypeName()) {
-      case INT96:
-        return NO_OP_TRUNCATOR;
-      case BINARY:
-      case FIXED_LEN_BYTE_ARRAY:
-        LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
-        if (logicalTypeAnnotation == null) {
-          return DEFAULT_UTF8_TRUNCATOR;
+    case INT96:
+      return NO_OP_TRUNCATOR;
+    case BINARY:
+    case FIXED_LEN_BYTE_ARRAY:
+      LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+      if (logicalTypeAnnotation == null) {
+        return DEFAULT_UTF8_TRUNCATOR;
+      }
+      return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<BinaryTruncator>() {
+        @Override
+        public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
+          return Optional.of(DEFAULT_UTF8_TRUNCATOR);
         }
-        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<BinaryTruncator>() {
-          @Override
-          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
-            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
-          }
 
-          @Override
-          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
-            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
-          }
+        @Override
+        public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
+          return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+        }
 
-          @Override
-          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
-            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
-          }
+        @Override
+        public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
+          return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+        }
 
-          @Override
-          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
-            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
-          }
-        }).orElse(NO_OP_TRUNCATOR);
-      default:
-        throw new IllegalArgumentException("No truncator is available for the type: " + type);
+        @Override
+        public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
+          return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+        }
+      }).orElse(NO_OP_TRUNCATOR);
+    default:
+      throw new IllegalArgumentException("No truncator is available for the type: " + type);
     }
   }
 

@@ -37,20 +37,16 @@ import org.apache.parquet.tools.util.PrettyPrintWriter;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 
 public class ShowSchemaCommand extends ArgsOnlyCommand {
-  public static final String[] USAGE = new String[] {
-    "<input>",
-    "where <input> is the parquet file containing the schema to show"
-  };
+  public static final String[] USAGE = new String[] { "<input>",
+      "where <input> is the parquet file containing the schema to show" };
 
   public static final Options OPTIONS;
   static {
     OPTIONS = new Options();
-    Option help = OptionBuilder.withLongOpt("detailed")
-                               .withDescription("Show detailed information about the schema.")
-                               .create('d');
+    Option help = OptionBuilder.withLongOpt("detailed").withDescription("Show detailed information about the schema.")
+        .create('d');
     Option originalType = OptionBuilder.withLongOpt("originalType")
-      .withDescription("Print logical types in OriginalType representation.")
-      .create('o');
+        .withDescription("Print logical types in OriginalType representation.").create('o');
     OPTIONS.addOption(help);
     OPTIONS.addOption(originalType);
   }

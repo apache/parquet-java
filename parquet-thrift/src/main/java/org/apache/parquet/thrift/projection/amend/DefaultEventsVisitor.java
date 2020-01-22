@@ -35,15 +35,16 @@ import java.util.List;
  * Create a dummy events for all required fields according to thrift definition
  */
 class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
-  List<ParquetProtocol> dummyEvents= new ArrayList<ParquetProtocol>();
+  List<ParquetProtocol> dummyEvents = new ArrayList<ParquetProtocol>();
+
   @Override
   public Void visit(ThriftType.MapType mapType, Void v) {
-     dummyEvents.add(new ParquetProtocol("readMapBegin()") {
-       @Override
-       public TMap readMapBegin() throws TException {
-         return new TMap();
-       }
-     });
+    dummyEvents.add(new ParquetProtocol("readMapBegin()") {
+      @Override
+      public TMap readMapBegin() throws TException {
+        return new TMap();
+      }
+    });
 
     dummyEvents.add(new ParquetProtocol("readMapEnd()") {
       @Override
@@ -71,7 +72,6 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
     return null;
   }
 
-
   @Override
   public Void visit(final ThriftType.ListType listType, Void v) {
     dummyEvents.add(new ParquetProtocol("readListBegin()") {
@@ -96,7 +96,7 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
     List<ThriftField> children = structType.getChildren();
     for (ThriftField child : children) {
       dummyEvents.add(new ReadFieldBeginProtocol(child));
-      child.getType().accept(this, null); //currently will create all the attributes in struct, it's safer
+      child.getType().accept(this, null); // currently will create all the attributes in struct, it's safer
       dummyEvents.add(DefaultProtocolEventsGenerator.READ_FIELD_END);
     }
     dummyEvents.add(DefaultProtocolEventsGenerator.READ_FIELD_STOP);
@@ -126,7 +126,6 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
     });
     return null;
   }
-
 
   @Override
   public Void visit(ThriftType.ByteType byteType, Void v) {
@@ -198,8 +197,9 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
 
     public StructBeginProtocol(String structName) {
       super("readStructBegin()");
-      this.structName=structName;
+      this.structName = structName;
     }
+
     @Override
     public TStruct readStructBegin() throws TException {
       return new TStruct(structName);

@@ -40,8 +40,7 @@ public class AvroCSVReader<E> implements Iterator<E>, Iterable<E>, Closeable {
   private String[] next = null;
   private E record = null;
 
-  public AvroCSVReader(InputStream stream, CSVProperties props,
-                       Schema schema, Class<E> type, boolean reuseRecords) {
+  public AvroCSVReader(InputStream stream, CSVProperties props, Schema schema, Class<E> type, boolean reuseRecords) {
     this.reader = AvroCSV.newReader(stream, props);
     this.reuseRecords = reuseRecords;
 
@@ -54,11 +53,9 @@ public class AvroCSVReader<E> implements Iterator<E>, Iterable<E>, Closeable {
       header = Lists.newArrayList(next);
     } else if (props.header != null) {
       try {
-        header = Lists.newArrayList(
-            AvroCSV.newParser(props).parseLine(props.header));
+        header = Lists.newArrayList(AvroCSV.newParser(props).parseLine(props.header));
       } catch (IOException e) {
-        throw new RuntimeIOException(
-            "Failed to parse header from properties: " + props.header, e);
+        throw new RuntimeIOException("Failed to parse header from properties: " + props.header, e);
       }
     }
 

@@ -26,7 +26,6 @@ import org.junit.Test;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.Callable;
 
 import static org.apache.parquet.hadoop.util.MockHadoopInputStream.TEST_ARRAY;
 
@@ -71,8 +70,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(8, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
   }
 
   @Test
@@ -82,11 +80,10 @@ public class TestHadoop2ByteBufferReads {
     FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     final MockBufferReader reader = new MockBufferReader(hadoopStream);
 
-    TestUtils.assertThrows("Should throw EOFException",
-        EOFException.class, () -> {
-          H2SeekableInputStream.readFully(reader, readBuffer);
-          return null;
-        });
+    TestUtils.assertThrows("Should throw EOFException", EOFException.class, () -> {
+      H2SeekableInputStream.readFully(reader, readBuffer);
+      return null;
+    });
 
     // NOTE: This behavior differs from readFullyHeapBuffer because direct uses
     // several read operations that will read up to the end of the input. This
@@ -116,8 +113,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -136,8 +132,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -158,8 +153,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 
   @Test
@@ -179,8 +173,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(7, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
 
     readBuffer.position(7);
     readBuffer.limit(10);
@@ -189,8 +182,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -212,8 +204,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(7, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
 
     readBuffer.position(7);
     readBuffer.limit(10);
@@ -222,8 +213,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 
   @Test
@@ -242,8 +232,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(8, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
   }
 
   @Test
@@ -253,11 +242,10 @@ public class TestHadoop2ByteBufferReads {
     FSDataInputStream hadoopStream = new FSDataInputStream(new MockHadoopInputStream());
     final MockBufferReader reader = new MockBufferReader(hadoopStream);
 
-    TestUtils.assertThrows("Should throw EOFException",
-        EOFException.class, () -> {
-          H2SeekableInputStream.readFully(reader, readBuffer);
-          return null;
-        });
+    TestUtils.assertThrows("Should throw EOFException", EOFException.class, () -> {
+      H2SeekableInputStream.readFully(reader, readBuffer);
+      return null;
+    });
 
     // NOTE: This behavior differs from readFullyHeapBuffer because direct uses
     // several read operations that will read up to the end of the input. This
@@ -287,8 +275,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -307,8 +294,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -329,8 +315,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 
   @Test
@@ -350,8 +335,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(7, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
 
     readBuffer.position(7);
     readBuffer.limit(10);
@@ -360,8 +344,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -383,8 +366,7 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(7, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
 
     readBuffer.position(7);
     readBuffer.limit(10);
@@ -393,7 +375,6 @@ public class TestHadoop2ByteBufferReads {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 }

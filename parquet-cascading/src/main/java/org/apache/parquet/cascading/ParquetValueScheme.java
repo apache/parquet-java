@@ -41,14 +41,15 @@ import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * A Cascading Scheme that returns a simple Tuple with a single value, the "value" object
- * coming out of the underlying InputFormat.
+ * A Cascading Scheme that returns a simple Tuple with a single value, the
+ * "value" object coming out of the underlying InputFormat.
  *
- * This is an abstract class; implementations are expected to set up their Input/Output Formats
- * correctly in the respective Init methods.
+ * This is an abstract class; implementations are expected to set up their
+ * Input/Output Formats correctly in the respective Init methods.
  */
-@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being superseded with parquet-cascading3 for Cascading 3.x
-public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
+@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being
+            // superseded with parquet-cascading3 for Cascading 3.x
+public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]> {
 
   public static final class Config<T> implements Serializable {
     private final FilterPredicate filterPredicate;
@@ -56,7 +57,8 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     private final String strictProjectionString;
     private final Class<T> klass;
 
-    private Config(Class<T> klass, FilterPredicate filterPredicate, String deprecatedProjectionString, String strictProjectionString) {
+    private Config(Class<T> klass, FilterPredicate filterPredicate, String deprecatedProjectionString,
+        String strictProjectionString) {
       this.filterPredicate = filterPredicate;
       this.deprecatedProjectionString = deprecatedProjectionString;
       this.strictProjectionString = strictProjectionString;
@@ -88,20 +90,24 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     }
 
     public Config<T> withFilterPredicate(FilterPredicate f) {
-      return new Config<T>(this.klass, checkNotNull(f, "filterPredicate"), this.deprecatedProjectionString, this.strictProjectionString);
+      return new Config<T>(this.klass, checkNotNull(f, "filterPredicate"), this.deprecatedProjectionString,
+          this.strictProjectionString);
     }
 
     @Deprecated
     public Config<T> withProjectionString(String p) {
-      return new Config<T>(this.klass, this.filterPredicate, checkNotNull(p, "projectionString"), this.strictProjectionString);
+      return new Config<T>(this.klass, this.filterPredicate, checkNotNull(p, "projectionString"),
+          this.strictProjectionString);
     }
 
     public Config<T> withStrictProjectionString(String p) {
-      return new Config<T>(this.klass, this.filterPredicate, this.deprecatedProjectionString, checkNotNull(p, "projectionString"));
+      return new Config<T>(this.klass, this.filterPredicate, this.deprecatedProjectionString,
+          checkNotNull(p, "projectionString"));
     }
 
     public Config<T> withRecordClass(Class<T> klass) {
-      return new Config<T>(checkNotNull(klass, "recordClass"), this.filterPredicate, this.deprecatedProjectionString, this.strictProjectionString);
+      return new Config<T>(checkNotNull(klass, "recordClass"), this.filterPredicate, this.deprecatedProjectionString,
+          this.strictProjectionString);
     }
   }
 
@@ -138,8 +144,10 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
       ParquetInputFormat.setFilterPredicate(jobConf, this.config.filterPredicate);
     }
   }
+
   @Override
-  public void sourceConfInit(FlowProcess<JobConf> jobConfFlowProcess, Tap<JobConf, RecordReader, OutputCollector> jobConfRecordReaderOutputCollectorTap, final JobConf jobConf) {
+  public void sourceConfInit(FlowProcess<JobConf> jobConfFlowProcess,
+      Tap<JobConf, RecordReader, OutputCollector> jobConfRecordReaderOutputCollectorTap, final JobConf jobConf) {
     setPredicatePushdown(jobConf);
     setProjectionPushdown(jobConf);
     setStrictProjectionPushdown(jobConf);
@@ -154,14 +162,17 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
 
   @SuppressWarnings("unchecked")
   @Override
-  public boolean source(FlowProcess<JobConf> fp, SourceCall<Object[], RecordReader> sc)
-      throws IOException {
+  public boolean source(FlowProcess<JobConf> fp, SourceCall<Object[], RecordReader> sc) throws IOException {
     Container<T> value = (Container<T>) sc.getInput().createValue();
     boolean hasNext = sc.getInput().next(null, value);
-    if (!hasNext) { return false; }
+    if (!hasNext) {
+      return false;
+    }
 
     // Skip nulls
-    if (value == null) { return true; }
+    if (value == null) {
+      return true;
+    }
 
     sc.getIncomingEntry().setTuple(new Tuple(value.get()));
     return true;
@@ -169,12 +180,12 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
 
   @SuppressWarnings("unchecked")
   @Override
-  public void sink(FlowProcess<JobConf> fp, SinkCall<Object[], OutputCollector> sc)
-      throws IOException {
+  public void sink(FlowProcess<JobConf> fp, SinkCall<Object[], OutputCollector> sc) throws IOException {
     TupleEntry tuple = sc.getOutgoingEntry();
 
     if (tuple.size() != 1) {
-      throw new RuntimeException("ParquetValueScheme expects tuples with an arity of exactly 1, but found " + tuple.getFields());
+      throw new RuntimeException(
+          "ParquetValueScheme expects tuples with an arity of exactly 1, but found " + tuple.getFields());
     }
 
     T value = (T) tuple.getObject(0);

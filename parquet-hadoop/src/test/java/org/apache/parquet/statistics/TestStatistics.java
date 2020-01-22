@@ -70,7 +70,7 @@ import static org.junit.Assert.assertEquals;
 
 public class TestStatistics {
   private static final int MEGABYTE = 1 << 20;
-  private static final long RANDOM_SEED = 1441990701846L; //System.currentTimeMillis();
+  private static final long RANDOM_SEED = 1441990701846L; // System.currentTimeMillis();
 
   public static class DataGenerationContext {
     public static abstract class WriteContext {
@@ -83,7 +83,8 @@ public class TestStatistics {
       protected final boolean enableValidation;
       protected final ParquetProperties.WriterVersion version;
 
-      public WriteContext(File path, MessageType schema, int blockSize, int pageSize, boolean enableDictionary, boolean enableValidation, ParquetProperties.WriterVersion version) throws IOException {
+      public WriteContext(File path, MessageType schema, int blockSize, int pageSize, boolean enableDictionary,
+          boolean enableValidation, ParquetProperties.WriterVersion version) throws IOException {
         this.path = path;
         this.fsPath = new Path(path.toString());
         this.schema = schema;
@@ -95,6 +96,7 @@ public class TestStatistics {
       }
 
       public abstract void write(ParquetWriter<Group> writer) throws IOException;
+
       public abstract void test() throws IOException;
     }
 
@@ -113,9 +115,8 @@ public class TestStatistics {
       ParquetProperties.WriterVersion writerVersion = context.version;
       CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-      ParquetWriter<Group> writer = new ParquetWriter<Group>(context.fsPath,
-          groupWriteSupport, codec, blockSize, pageSize, dictionaryPageSize,
-          enableDictionary, enableValidation, writerVersion, configuration);
+      ParquetWriter<Group> writer = new ParquetWriter<Group>(context.fsPath, groupWriteSupport, codec, blockSize,
+          pageSize, dictionaryPageSize, enableDictionary, enableValidation, writerVersion, configuration);
 
       context.write(writer);
       writer.close();
@@ -194,8 +195,7 @@ public class TestStatistics {
     }
   }
 
-  private static PrimitiveConverter getValidatingConverter(
-      final DataPage page, PrimitiveTypeName type) {
+  private static PrimitiveConverter getValidatingConverter(final DataPage page, PrimitiveTypeName type) {
     return type.convert(new PrimitiveType.PrimitiveTypeNameConverter<PrimitiveConverter, RuntimeException>() {
       @Override
       public PrimitiveConverter convertFLOAT(PrimitiveTypeName primitiveTypeName) {
@@ -292,16 +292,13 @@ public class TestStatistics {
       PrimitiveConverter converter = getValidatingConverter(page, desc.getType());
       Statistics<?> stats = getStatisticsFromPageHeader(page);
 
-      assertEquals("Statistics does not use the proper comparator",
-          desc.getPrimitiveType().comparator().getClass(),
+      assertEquals("Statistics does not use the proper comparator", desc.getPrimitiveType().comparator().getClass(),
           stats.comparator().getClass());
 
       if (stats.isEmpty()) {
         // stats are empty if num nulls = 0 and there are no non-null values
         // this happens if stats are not written (e.g., when stats are too big)
-        System.err.println(String.format(
-            "No stats written for page=%s col=%s",
-            page, Arrays.toString(desc.getPath())));
+        System.err.println(String.format("No stats written for page=%s col=%s", page, Arrays.toString(desc.getPath())));
         return;
       }
 
@@ -318,11 +315,8 @@ public class TestStatistics {
 
       Assert.assertEquals(numNulls, stats.getNumNulls());
 
-      System.err.println(String.format(
-          "Validated stats min=%s max=%s nulls=%d for page=%s col=%s",
-          stats.minAsString(),
-          stats.maxAsString(), stats.getNumNulls(), page,
-          Arrays.toString(desc.getPath())));
+      System.err.println(String.format("Validated stats min=%s max=%s nulls=%d for page=%s col=%s", stats.minAsString(),
+          stats.maxAsString(), stats.getNumNulls(), page, Arrays.toString(desc.getPath())));
     }
   }
 
@@ -334,7 +328,8 @@ public class TestStatistics {
 
     private final List<RandomValueGenerator<?>> randomGenerators;
 
-    public DataContext(long seed, File path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
+    public DataContext(long seed, File path, int blockSize, int pageSize, boolean enableDictionary,
+        ParquetProperties.WriterVersion version) throws IOException {
       super(path, buildSchema(seed), blockSize, pageSize, enableDictionary, true, version);
 
       this.random = new Random(seed);
@@ -342,14 +337,10 @@ public class TestStatistics {
 
       int fixedLength = schema.getType("fixed-binary").asPrimitiveType().getTypeLength();
 
-      randomGenerators = Arrays.<RandomValueGenerator<?>>asList(
-          new RandomValues.IntGenerator(random.nextLong()),
-          new RandomValues.LongGenerator(random.nextLong()),
-          new RandomValues.Int96Generator(random.nextLong()),
-          new RandomValues.FloatGenerator(random.nextLong()),
-          new RandomValues.DoubleGenerator(random.nextLong()),
-          new RandomValues.StringGenerator(random.nextLong()),
-          new RandomValues.BinaryGenerator(random.nextLong()),
+      randomGenerators = Arrays.<RandomValueGenerator<?>>asList(new RandomValues.IntGenerator(random.nextLong()),
+          new RandomValues.LongGenerator(random.nextLong()), new RandomValues.Int96Generator(random.nextLong()),
+          new RandomValues.FloatGenerator(random.nextLong()), new RandomValues.DoubleGenerator(random.nextLong()),
+          new RandomValues.StringGenerator(random.nextLong()), new RandomValues.BinaryGenerator(random.nextLong()),
           new RandomValues.FixedGenerator(random.nextLong(), fixedLength),
           new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
           new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
@@ -366,18 +357,12 @@ public class TestStatistics {
           new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
           new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
           new RandomValues.FixedGenerator(random.nextLong(), fixedLength),
-          new RandomValues.BinaryGenerator(random.nextLong()),
-          new RandomValues.StringGenerator(random.nextLong()),
-          new RandomValues.StringGenerator(random.nextLong()),
-          new RandomValues.StringGenerator(random.nextLong()),
-          new RandomValues.BinaryGenerator(random.nextLong()),
-          new RandomValues.IntGenerator(random.nextLong()),
-          new RandomValues.IntGenerator(random.nextLong()),
-          new RandomValues.LongGenerator(random.nextLong()),
-          new RandomValues.LongGenerator(random.nextLong()),
-          new RandomValues.LongGenerator(random.nextLong()),
-          new RandomValues.FixedGenerator(random.nextLong(), 12)
-      );
+          new RandomValues.BinaryGenerator(random.nextLong()), new RandomValues.StringGenerator(random.nextLong()),
+          new RandomValues.StringGenerator(random.nextLong()), new RandomValues.StringGenerator(random.nextLong()),
+          new RandomValues.BinaryGenerator(random.nextLong()), new RandomValues.IntGenerator(random.nextLong()),
+          new RandomValues.IntGenerator(random.nextLong()), new RandomValues.LongGenerator(random.nextLong()),
+          new RandomValues.LongGenerator(random.nextLong()), new RandomValues.LongGenerator(random.nextLong()),
+          new RandomValues.FixedGenerator(random.nextLong(), 12));
     }
 
     private static MessageType buildSchema(long seed) {
@@ -388,14 +373,10 @@ public class TestStatistics {
       int binaryPrecision = calculatePrecision(16);
       int binaryScale = binaryPrecision / 4;
 
-      return new MessageType("schema",
-          new PrimitiveType(OPTIONAL, INT32, "i32"),
-          new PrimitiveType(OPTIONAL, INT64, "i64"),
-          new PrimitiveType(OPTIONAL, INT96, "i96"),
-          new PrimitiveType(OPTIONAL, FLOAT, "sngl"),
-          new PrimitiveType(OPTIONAL, DOUBLE, "dbl"),
-          new PrimitiveType(OPTIONAL, BINARY, "strings"),
-          new PrimitiveType(OPTIONAL, BINARY, "binary"),
+      return new MessageType("schema", new PrimitiveType(OPTIONAL, INT32, "i32"),
+          new PrimitiveType(OPTIONAL, INT64, "i64"), new PrimitiveType(OPTIONAL, INT96, "i96"),
+          new PrimitiveType(OPTIONAL, FLOAT, "sngl"), new PrimitiveType(OPTIONAL, DOUBLE, "dbl"),
+          new PrimitiveType(OPTIONAL, BINARY, "strings"), new PrimitiveType(OPTIONAL, BINARY, "binary"),
           new PrimitiveType(OPTIONAL, FIXED_LEN_BYTE_ARRAY, fixedBinaryLength, "fixed-binary"),
           new PrimitiveType(REQUIRED, INT32, "unconstrained-i32"),
           new PrimitiveType(REQUIRED, INT64, "unconstrained-i64"),
@@ -424,8 +405,7 @@ public class TestStatistics {
           Types.optional(INT64).as(OriginalType.TIME_MICROS).named("time-micros"),
           Types.optional(INT64).as(OriginalType.TIMESTAMP_MILLIS).named("timestamp-millis"),
           Types.optional(INT64).as(OriginalType.TIMESTAMP_MICROS).named("timestamp-micros"),
-          Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(OriginalType.INTERVAL).named("interval")
-      );
+          Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(OriginalType.INTERVAL).named("interval"));
     }
 
     private static int calculatePrecision(int byteCnt) {
@@ -474,13 +454,10 @@ public class TestStatistics {
     @Override
     public void test() throws IOException {
       Configuration configuration = new Configuration();
-      ParquetMetadata metadata = ParquetFileReader.readFooter(configuration,
-          super.fsPath, ParquetMetadataConverter.NO_FILTER);
-      ParquetFileReader reader = new ParquetFileReader(configuration,
-        metadata.getFileMetaData(),
-        super.fsPath,
-        metadata.getBlocks(),
-        metadata.getFileMetaData().getSchema().getColumns());
+      ParquetMetadata metadata = ParquetFileReader.readFooter(configuration, super.fsPath,
+          ParquetMetadataConverter.NO_FILTER);
+      ParquetFileReader reader = new ParquetFileReader(configuration, metadata.getFileMetaData(), super.fsPath,
+          metadata.getBlocks(), metadata.getFileMetaData().getSchema().getColumns());
 
       PageStatsValidator validator = new PageStatsValidator();
 
@@ -503,19 +480,18 @@ public class TestStatistics {
 
     Random random = new Random(RANDOM_SEED);
 
-    int blockSize =(random.nextInt(54) + 10) * MEGABYTE;
+    int blockSize = (random.nextInt(54) + 10) * MEGABYTE;
     int pageSize = (random.nextInt(10) + 1) * MEGABYTE;
 
     List<DataContext> contexts = Arrays.asList(
-        new DataContext(random.nextLong(), file, blockSize,
-            pageSize, false, ParquetProperties.WriterVersion.PARQUET_1_0),
-        new DataContext(random.nextLong(), file, blockSize,
-            pageSize, true, ParquetProperties.WriterVersion.PARQUET_1_0),
-        new DataContext(random.nextLong(), file, blockSize,
-            pageSize, false, ParquetProperties.WriterVersion.PARQUET_2_0),
-        new DataContext(random.nextLong(), file, blockSize,
-            pageSize, true, ParquetProperties.WriterVersion.PARQUET_2_0)
-    );
+        new DataContext(random.nextLong(), file, blockSize, pageSize, false,
+            ParquetProperties.WriterVersion.PARQUET_1_0),
+        new DataContext(random.nextLong(), file, blockSize, pageSize, true,
+            ParquetProperties.WriterVersion.PARQUET_1_0),
+        new DataContext(random.nextLong(), file, blockSize, pageSize, false,
+            ParquetProperties.WriterVersion.PARQUET_2_0),
+        new DataContext(random.nextLong(), file, blockSize, pageSize, true,
+            ParquetProperties.WriterVersion.PARQUET_2_0));
 
     for (DataContext test : contexts) {
       DataGenerationContext.writeAndTest(test);

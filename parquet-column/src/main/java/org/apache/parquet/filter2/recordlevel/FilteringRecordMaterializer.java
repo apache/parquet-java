@@ -35,11 +35,12 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * A pass-through proxy for a {@link RecordMaterializer} that updates a {@link IncrementallyUpdatedFilterPredicate}
- * as it receives concrete values for the current record. If, after the record assembly signals that
- * there are no more values, the predicate indicates that this record should be dropped, {@link #getCurrentRecord()}
- * returns null to signal that this record is being skipped.
- * Otherwise, the record is retrieved from the delegate.
+ * A pass-through proxy for a {@link RecordMaterializer} that updates a
+ * {@link IncrementallyUpdatedFilterPredicate} as it receives concrete values
+ * for the current record. If, after the record assembly signals that there are
+ * no more values, the predicate indicates that this record should be dropped,
+ * {@link #getCurrentRecord()} returns null to signal that this record is being
+ * skipped. Otherwise, the record is retrieved from the delegate.
  */
 public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   // the real record materializer
@@ -51,9 +52,7 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   // the predicate
   private final IncrementallyUpdatedFilterPredicate filterPredicate;
 
-  public FilteringRecordMaterializer(
-      RecordMaterializer<T> delegate,
-      List<PrimitiveColumnIO> columnIOs,
+  public FilteringRecordMaterializer(RecordMaterializer<T> delegate, List<PrimitiveColumnIO> columnIOs,
       Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn,
       IncrementallyUpdatedFilterPredicate filterPredicate) {
 
@@ -66,14 +65,12 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<>();
 
     for (PrimitiveColumnIO c : columnIOs) {
-      List<Integer> indexFieldPath = Arrays.stream(c.getIndexFieldPath())
-          .boxed().collect(Collectors.toList());
+      List<Integer> indexFieldPath = Arrays.stream(c.getIndexFieldPath()).boxed().collect(Collectors.toList());
       columnIOsByIndexFieldPath.put(indexFieldPath, c);
     }
 
     // create a proxy for the delegate's root converter
-    this.rootConverter = new FilteringGroupConverter(
-        delegate.getRootConverter(), Collections.emptyList(),
+    this.rootConverter = new FilteringGroupConverter(delegate.getRootConverter(), Collections.emptyList(),
         valueInspectorsByColumn, columnIOsByIndexFieldPath);
   }
 

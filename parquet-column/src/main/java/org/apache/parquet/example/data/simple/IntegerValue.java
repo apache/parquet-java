@@ -20,7 +20,6 @@ package org.apache.parquet.example.data.simple;
 
 import org.apache.parquet.io.api.RecordConsumer;
 
-
 public class IntegerValue extends Primitive {
 
   private final int value;

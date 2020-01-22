@@ -77,11 +77,7 @@ public class TestLruCache {
     SimpleValue notAsCurrentValue = new SimpleValue(true, false);
     cache.put(DEFAULT_KEY, currentValue);
     cache.put(DEFAULT_KEY, notAsCurrentValue);
-    assertEquals(
-            "The existing value in the cache was overwritten",
-            currentValue,
-            cache.getCurrentValue(DEFAULT_KEY)
-    );
+    assertEquals("The existing value in the cache was overwritten", currentValue, cache.getCurrentValue(DEFAULT_KEY));
   }
 
   @Test
@@ -104,11 +100,8 @@ public class TestLruCache {
     assertEquals(1, cache.size());
     cache.put(DEFAULT_KEY, currentValue);
     assertEquals(1, cache.size());
-    assertEquals(
-            "The existing value in the cache was NOT overwritten",
-            currentValue,
-            cache.getCurrentValue(DEFAULT_KEY)
-    );
+    assertEquals("The existing value in the cache was NOT overwritten", currentValue,
+        cache.getCurrentValue(DEFAULT_KEY));
   }
 
   @Test

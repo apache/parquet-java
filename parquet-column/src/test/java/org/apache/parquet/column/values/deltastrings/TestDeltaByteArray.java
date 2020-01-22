@@ -32,11 +32,11 @@ import org.apache.parquet.io.api.Binary;
 
 public class TestDeltaByteArray {
 
-  static String[] values = {"parquet-mr", "parquet", "parquet-format"};
+  static String[] values = { "parquet-mr", "parquet", "parquet-format" };
   static String[] randvalues = Utils.getRandomStringSamples(10000, 32);
 
   @Test
-  public void testSerialization () throws Exception {
+  public void testSerialization() throws Exception {
     DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
@@ -86,16 +86,18 @@ public class TestDeltaByteArray {
     Assert.assertEquals(7, bin[2]);
   }
 
-  private void assertReadWrite(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
+  private void assertReadWrite(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals)
+      throws Exception {
     Utils.writeData(writer, vals);
     Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), vals.length);
 
-    for(int i = 0; i< bin.length ; i++) {
+    for (int i = 0; i < bin.length; i++) {
       Assert.assertEquals(Binary.fromString(vals[i]), bin[i]);
     }
   }
 
-  private void assertReadWriteWithSkip(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
+  private void assertReadWriteWithSkip(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals)
+      throws Exception {
     Utils.writeData(writer, vals);
 
     reader.initFromPage(vals.length, writer.getBytes().toInputStream());
@@ -105,7 +107,8 @@ public class TestDeltaByteArray {
     }
   }
 
-  private void assertReadWriteWithSkipN(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
+  private void assertReadWriteWithSkipN(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals)
+      throws Exception {
     Utils.writeData(writer, vals);
 
     reader.initFromPage(vals.length, writer.getBytes().toInputStream());

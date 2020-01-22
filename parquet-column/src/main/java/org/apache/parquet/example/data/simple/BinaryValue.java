@@ -21,7 +21,6 @@ package org.apache.parquet.example.data.simple;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 
-
 public class BinaryValue extends Primitive {
 
   private final Binary binary;

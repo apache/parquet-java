@@ -26,17 +26,14 @@ import static org.junit.Assert.assertEquals;
 
 public class TestBytesInput {
 
-	@Test
-	public void testWriteInt() throws Throwable {
-		int[] testVals = {
-				Integer.MIN_VALUE,
-				Integer.MAX_VALUE,
-				0, 100, 1000, 0xdaedbeef};
-		for (Integer testVal : testVals) {
-			BytesInput varInt = BytesInput.fromUnsignedVarInt(testVal);
-			byte[] rno = varInt.toByteArray();
-			int i = BytesUtils.readUnsignedVarInt(new ByteArrayInputStream(rno));
-			assertEquals((int) testVal, i);
-		}
-	}
+  @Test
+  public void testWriteInt() throws Throwable {
+    int[] testVals = { Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 100, 1000, 0xdaedbeef };
+    for (Integer testVal : testVals) {
+      BytesInput varInt = BytesInput.fromUnsignedVarInt(testVal);
+      byte[] rno = varInt.toByteArray();
+      int i = BytesUtils.readUnsignedVarInt(new ByteArrayInputStream(rno));
+      assertEquals((int) testVal, i);
+    }
+  }
 }

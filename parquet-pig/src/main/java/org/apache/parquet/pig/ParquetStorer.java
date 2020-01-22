@@ -40,12 +40,12 @@ import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.io.ParquetEncodingException;
 
 /**
- * A pig storer implementation for the Parquet file format.
- * see {@link ParquetOutputFormat} for available parameters.
+ * A pig storer implementation for the Parquet file format. see
+ * {@link ParquetOutputFormat} for available parameters.
  *
- * It uses a TupleWriteSupport to write Tuples into the ParquetOutputFormat
- * The Pig schema is automatically converted to the Parquet schema using {@link PigSchemaConverter}
- * and stored in the file
+ * It uses a TupleWriteSupport to write Tuples into the ParquetOutputFormat The
+ * Pig schema is automatically converted to the Parquet schema using
+ * {@link PigSchemaConverter} and stored in the file
  */
 public class ParquetStorer extends StoreFunc implements StoreMetadata {
 
@@ -57,8 +57,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
 
   private Properties getProperties() {
     UDFContext udfc = UDFContext.getUDFContext();
-    Properties p =
-        udfc.getUDFProperties(this.getClass(), new String[]{ signature });
+    Properties p = udfc.getUDFProperties(this.getClass(), new String[] { signature });
     return p;
   }
 
@@ -137,16 +136,14 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
    * {@inheritDoc}
    */
   @Override
-  public void storeSchema(ResourceSchema schema, String location, Job job)
-      throws IOException {
+  public void storeSchema(ResourceSchema schema, String location, Job job) throws IOException {
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void storeStatistics(ResourceStatistics resourceStatistics, String location, Job job)
-      throws IOException {
+  public void storeStatistics(ResourceStatistics resourceStatistics, String location, Job job) throws IOException {
   }
 
 }

@@ -55,15 +55,12 @@ import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
 public class TestInputOutputFormatWithPadding {
-  public static final String FILE_CONTENT = "" +
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ," +
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ," +
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  public static final String FILE_CONTENT = "" + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
+      + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
+      + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-  public static MessageType PARQUET_TYPE = Types.buildMessage()
-      .required(BINARY).as(UTF8).named("uuid")
-      .required(BINARY).as(UTF8).named("char")
-      .named("FormatTestObject");
+  public static MessageType PARQUET_TYPE = Types.buildMessage().required(BINARY).as(UTF8).named("uuid").required(BINARY)
+      .as(UTF8).named("char").named("FormatTestObject");
 
   /**
    * ParquetInputFormat that will not split the input file (easier validation)
@@ -77,15 +74,15 @@ public class TestInputOutputFormatWithPadding {
 
   public static class Writer extends Mapper<LongWritable, Text, Void, Group> {
     public static final SimpleGroupFactory GROUP_FACTORY = new SimpleGroupFactory(PARQUET_TYPE);
+
     @Override
-    protected void map(LongWritable key, Text value, Context context)
-        throws IOException, InterruptedException {
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
       // writes each character of the line with a UUID
       String line = value.toString();
       for (int i = 0; i < line.length(); i += 1) {
         Group group = GROUP_FACTORY.newGroup();
         group.add(0, Binary.fromString(UUID.randomUUID().toString()));
-        group.add(1, Binary.fromString(line.substring(i, i+1)));
+        group.add(1, Binary.fromString(line.substring(i, i + 1)));
         context.write(null, group);
       }
     }
@@ -93,8 +90,7 @@ public class TestInputOutputFormatWithPadding {
 
   public static class Reader extends Mapper<Void, Group, LongWritable, Text> {
     @Override
-    protected void map(Void key, Group value, Context context)
-        throws IOException, InterruptedException {
+    protected void map(Void key, Group value, Context context) throws IOException, InterruptedException {
       context.write(null, new Text(value.getString("char", 0)));
     }
   }
@@ -153,11 +149,10 @@ public class TestInputOutputFormatWithPadding {
 
     // make sure padding was added
     File parquetFile = getDataFile(tempFolder);
-    ParquetMetadata footer = ParquetFileReader.readFooter(conf,
-        new Path(parquetFile.toString()), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata footer = ParquetFileReader.readFooter(conf, new Path(parquetFile.toString()),
+        ParquetMetadataConverter.NO_FILTER);
     for (BlockMetaData block : footer.getBlocks()) {
-      Assert.assertTrue("Block should start at a multiple of the block size",
-          block.getStartingPos() % 1024 == 0);
+      Assert.assertTrue("Block should start at a multiple of the block size", block.getStartingPos() % 1024 == 0);
     }
 
     {
@@ -182,8 +177,7 @@ public class TestInputOutputFormatWithPadding {
       contentBuilder.append(line);
     }
     String reconstructed = contentBuilder.toString();
-    Assert.assertEquals("Should match written file content",
-        FILE_CONTENT, reconstructed);
+    Assert.assertEquals("Should match written file content", FILE_CONTENT, reconstructed);
 
     HadoopOutputFile.getBlockFileSystems().remove("file");
   }

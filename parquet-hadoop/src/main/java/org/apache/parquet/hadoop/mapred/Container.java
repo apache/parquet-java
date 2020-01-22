@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop.mapred;
 
 /**
  * A simple container of objects that you can get and set.
+ * 
  * @param <T> the Java type of the object held by this container
  */
 public class Container<T> {

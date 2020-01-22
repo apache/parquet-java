@@ -46,12 +46,12 @@ public class TestLemireBitPacking {
         {
           packUnpack(packer.newIntPacker(i), values, unpacked);
           LOG.debug("int based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
-          Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
+          Assert.assertArrayEquals(packer.name() + " width " + i, values, unpacked);
         }
         {
           packUnpack(packer.newBytePacker(i), values, unpacked);
           LOG.debug("byte based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
-          Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
+          Assert.assertArrayEquals(packer.name() + " width " + i, values, unpacked);
         }
       }
     }
@@ -72,7 +72,7 @@ public class TestLemireBitPacking {
   private int[] generateValues(int bitWidth) {
     int[] values = new int[32];
     for (int j = 0; j < values.length; j++) {
-      values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, bitWidth);
+      values[j] = (int) (Math.random() * 100000) % (int) Math.pow(2, bitWidth);
     }
     LOG.debug("Input:  {}", TestBitPacking.toString(values));
     return values;
@@ -96,8 +96,8 @@ public class TestLemireBitPacking {
       for (int v : packed) {
         lemireOut.write((v >>> 24) & 0xFF);
         lemireOut.write((v >>> 16) & 0xFF);
-        lemireOut.write((v >>>  8) & 0xFF);
-        lemireOut.write((v >>>  0) & 0xFF);
+        lemireOut.write((v >>> 8) & 0xFF);
+        lemireOut.write((v >>> 0) & 0xFF);
       }
       final byte[] packedByLemireAsBytes = lemireOut.toByteArray();
       LOG.debug("Lemire: {}", TestBitPacking.toString(packedByLemireAsBytes));
@@ -112,7 +112,8 @@ public class TestLemireBitPacking {
       LOG.debug("Manual: {}", TestBitPacking.toString(packedManualAsBytes));
 
       // unpack manual
-      final BitPackingReader reader = BitPacking.createBitPackingReader(i, new ByteArrayInputStream(packedByLemireAsBytes), 32);
+      final BitPackingReader reader = BitPacking.createBitPackingReader(i,
+          new ByteArrayInputStream(packedByLemireAsBytes), 32);
       for (int j = 0; j < unpacked.length; j++) {
         unpacked[j] = reader.read();
       }

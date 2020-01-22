@@ -70,15 +70,15 @@ public class TestCorruptThriftRecords {
   public static StructWithAStructThatLooksLikeUnionV2 makeValid(int i) {
     AStructThatLooksLikeUnionV2 validUnion = new AStructThatLooksLikeUnionV2();
     switch (i % 3) {
-      case 0:
-        validUnion.setALong(new ALong(17L));
-        break;
-      case 1:
-        validUnion.setANewBool(new ABool(false));
-        break;
-      case 2:
-        validUnion.setAString(new AString("bar"));
-        break;
+    case 0:
+      validUnion.setALong(new ALong(17L));
+      break;
+    case 1:
+      validUnion.setANewBool(new ABool(false));
+      break;
+    case 2:
+      validUnion.setAString(new AString("bar"));
+      break;
     }
     return new StructWithAStructThatLooksLikeUnionV2("foo" + i, validUnion);
   }
@@ -86,15 +86,15 @@ public class TestCorruptThriftRecords {
   public static StructWithUnionV2 makeExpectedValid(int i) {
     UnionV2 validUnion = new UnionV2();
     switch (i % 3) {
-      case 0:
-        validUnion.setALong(new ALong(17L));
-        break;
-      case 1:
-        validUnion.setANewBool(new ABool(false));
-        break;
-      case 2:
-        validUnion.setAString(new AString("bar"));
-        break;
+    case 0:
+      validUnion.setALong(new ALong(17L));
+      break;
+    case 1:
+      validUnion.setANewBool(new ABool(false));
+      break;
+    case 2:
+      validUnion.setAString(new AString("bar"));
+      break;
     }
     return new StructWithUnionV2("foo" + i, validUnion);
   }
@@ -125,21 +125,19 @@ public class TestCorruptThriftRecords {
     assertEquals(expected, found);
   }
 
-  private Path writeFileWithCorruptRecords(int numCorrupt, List<StructWithUnionV2> collectExpectedRecords) throws Exception {
+  private Path writeFileWithCorruptRecords(int numCorrupt, List<StructWithUnionV2> collectExpectedRecords)
+      throws Exception {
     // generate a file with records that are corrupt according to thrift
     // by writing some structs that when interpreted as unions will be
     // unreadable
     Path outputPath = new Path(new File(tempDir.getRoot(), "corrupt_out").getAbsolutePath());
     ParquetWriter<StructWithAStructThatLooksLikeUnionV2> writer = new ThriftParquetWriter<StructWithAStructThatLooksLikeUnionV2>(
-        outputPath,
-        StructWithAStructThatLooksLikeUnionV2.class,
-        CompressionCodecName.UNCOMPRESSED
-    );
+        outputPath, StructWithAStructThatLooksLikeUnionV2.class, CompressionCodecName.UNCOMPRESSED);
 
     int numRecords = 0;
 
     for (int i = 0; i < 100; i++) {
-      StructWithAStructThatLooksLikeUnionV2 valid  = makeValid(numRecords);
+      StructWithAStructThatLooksLikeUnionV2 valid = makeValid(numRecords);
       StructWithUnionV2 expected = makeExpectedValid(numRecords);
       numRecords++;
       collectExpectedRecords.add(expected);
@@ -151,7 +149,7 @@ public class TestCorruptThriftRecords {
     }
 
     for (int i = 0; i < 100; i++) {
-      StructWithAStructThatLooksLikeUnionV2 valid  = makeValid(numRecords);
+      StructWithAStructThatLooksLikeUnionV2 valid = makeValid(numRecords);
       StructWithUnionV2 expected = makeExpectedValid(numRecords);
       numRecords++;
       collectExpectedRecords.add(expected);

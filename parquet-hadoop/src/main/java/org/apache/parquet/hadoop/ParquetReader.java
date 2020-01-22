@@ -45,8 +45,8 @@ import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.io.InputFile;
 
 /**
- * Read records from a Parquet file.
- * TODO: too many constructors (https://issues.apache.org/jira/browse/PARQUET-39)
+ * Read records from a Parquet file. TODO: too many constructors
+ * (https://issues.apache.org/jira/browse/PARQUET-39)
  */
 public class ParquetReader<T> implements Closeable {
 
@@ -87,7 +87,8 @@ public class ParquetReader<T> implements Closeable {
    * @deprecated use {@link #builder(ReadSupport, Path)}
    */
   @Deprecated
-  public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter unboundRecordFilter) throws IOException {
+  public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter unboundRecordFilter)
+      throws IOException {
     this(new Configuration(), file, readSupport, FilterCompat.get(unboundRecordFilter));
   }
 
@@ -100,24 +101,19 @@ public class ParquetReader<T> implements Closeable {
    * @deprecated use {@link #builder(ReadSupport, Path)}
    */
   @Deprecated
-  public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport, UnboundRecordFilter unboundRecordFilter) throws IOException {
+  public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport,
+      UnboundRecordFilter unboundRecordFilter) throws IOException {
     this(conf, file, readSupport, FilterCompat.get(unboundRecordFilter));
   }
 
-  private ParquetReader(Configuration conf,
-                        Path file,
-                        ReadSupport<T> readSupport,
-                        FilterCompat.Filter filter) throws IOException {
+  private ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport, FilterCompat.Filter filter)
+      throws IOException {
     this(Collections.singletonList((InputFile) HadoopInputFile.fromPath(file, conf)),
-        HadoopReadOptions.builder(conf)
-            .withRecordFilter(checkNotNull(filter, "filter"))
-            .build(),
-        readSupport);
+        HadoopReadOptions.builder(conf).withRecordFilter(checkNotNull(filter, "filter")).build(), readSupport);
   }
 
-  private ParquetReader(List<InputFile> files,
-                        ParquetReadOptions options,
-                        ReadSupport<T> readSupport) throws IOException {
+  private ParquetReader(List<InputFile> files, ParquetReadOptions options, ReadSupport<T> readSupport)
+      throws IOException {
     this.readSupport = readSupport;
     this.options = options;
     this.filesIterator = files.iterator();
@@ -214,7 +210,8 @@ public class ParquetReader<T> implements Closeable {
     public Builder<T> withConf(Configuration conf) {
       this.conf = checkNotNull(conf, "conf");
 
-      // previous versions didn't use the builder, so may set filter before conf. this maintains
+      // previous versions didn't use the builder, so may set filter before conf. this
+      // maintains
       // compatibility for filter. other options are reset by a new conf.
       this.optionsBuilder = HadoopReadOptions.builder(conf);
       if (filter != null) {
@@ -320,10 +317,8 @@ public class ParquetReader<T> implements Closeable {
         FileStatus stat = fs.getFileStatus(path);
 
         if (stat.isFile()) {
-          return new ParquetReader<>(
-              Collections.singletonList((InputFile) HadoopInputFile.fromStatus(stat, conf)),
-              options,
-              getReadSupport());
+          return new ParquetReader<>(Collections.singletonList((InputFile) HadoopInputFile.fromStatus(stat, conf)),
+              options, getReadSupport());
 
         } else {
           List<InputFile> files = new ArrayList<>();

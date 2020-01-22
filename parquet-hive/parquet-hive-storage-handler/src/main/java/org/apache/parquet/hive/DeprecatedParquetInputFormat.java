@@ -24,10 +24,9 @@ import org.apache.hadoop.io.ArrayWritable;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 
 /**
- * Deprecated name of the parquet-hive input format. This class exists
- * simply to provide backwards compatibility with users who specified
- * this name in the Hive metastore. All users should now use
- * STORED AS PARQUET
+ * Deprecated name of the parquet-hive input format. This class exists simply to
+ * provide backwards compatibility with users who specified this name in the
+ * Hive metastore. All users should now use STORED AS PARQUET
  */
 @Deprecated
 public class DeprecatedParquetInputFormat extends MapredParquetInputFormat {

@@ -27,11 +27,11 @@ import org.apache.parquet.thrift.struct.ThriftType;
 /**
  * Read support for Scrooge
  */
-public class ScroogeReadSupport extends ThriftReadSupport{
+public class ScroogeReadSupport extends ThriftReadSupport {
 
   /**
-   * used from hadoop
-   * the configuration must contain a "parquet.thrift.read.class" setting
+   * used from hadoop the configuration must contain a "parquet.thrift.read.class"
+   * setting
    */
   public ScroogeReadSupport() {
   }

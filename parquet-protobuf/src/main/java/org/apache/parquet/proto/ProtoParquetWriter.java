@@ -22,7 +22,6 @@ import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 import java.io.IOException;
@@ -35,50 +34,51 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
   /**
    * Create a new {@link ProtoParquetWriter}.
    *
-   * @param file                 The file name to write to.
-   * @param protoMessage         Protobuf message class
-   * @param compressionCodecName Compression code to use, or CompressionCodecName.UNCOMPRESSED
-   * @param blockSize            HDFS block size
-   * @param pageSize             See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
+   * @param file The file name to write to.
+   * @param protoMessage Protobuf message class
+   * @param compressionCodecName Compression code to use, or
+   * CompressionCodecName.UNCOMPRESSED
+   * @param blockSize HDFS block size
+   * @param pageSize See parquet write up. Blocks are subdivided into pages for
+   * alignment and other purposes.
    * @throws IOException if there is an error while writing
    */
-  public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
-                            CompressionCodecName compressionCodecName, int blockSize,
-                            int pageSize) throws IOException {
-    super(file, new ProtoWriteSupport(protoMessage),
-            compressionCodecName, blockSize, pageSize);
+  public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage, CompressionCodecName compressionCodecName,
+      int blockSize, int pageSize) throws IOException {
+    super(file, new ProtoWriteSupport(protoMessage), compressionCodecName, blockSize, pageSize);
   }
 
   /**
    * Create a new {@link ProtoParquetWriter}.
    *
-   * @param file                 The file name to write to.
-   * @param protoMessage         Protobuf message class
-   * @param compressionCodecName Compression code to use, or CompressionCodecName.UNCOMPRESSED
-   * @param blockSize            HDFS block size
-   * @param pageSize             See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
-   * @param enableDictionary     Whether to use a dictionary to compress columns.
-   * @param validating           to turn on validation using the schema
+   * @param file The file name to write to.
+   * @param protoMessage Protobuf message class
+   * @param compressionCodecName Compression code to use, or
+   * CompressionCodecName.UNCOMPRESSED
+   * @param blockSize HDFS block size
+   * @param pageSize See parquet write up. Blocks are subdivided into pages for
+   * alignment and other purposes.
+   * @param enableDictionary Whether to use a dictionary to compress columns.
+   * @param validating to turn on validation using the schema
    * @throws IOException if there is an error while writing
    */
-  public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
-                            CompressionCodecName compressionCodecName, int blockSize,
-                            int pageSize, boolean enableDictionary, boolean validating) throws IOException {
-    super(file, new ProtoWriteSupport(protoMessage),
-            compressionCodecName, blockSize, pageSize, enableDictionary, validating);
+  public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage, CompressionCodecName compressionCodecName,
+      int blockSize, int pageSize, boolean enableDictionary, boolean validating) throws IOException {
+    super(file, new ProtoWriteSupport(protoMessage), compressionCodecName, blockSize, pageSize, enableDictionary,
+        validating);
   }
 
   /**
-   * Create a new {@link ProtoParquetWriter}. The default block size is 50 MB.The default
-   * page size is 1 MB.  Default compression is no compression. (Inherited from {@link ParquetWriter})
+   * Create a new {@link ProtoParquetWriter}. The default block size is 50 MB.The
+   * default page size is 1 MB. Default compression is no compression. (Inherited
+   * from {@link ParquetWriter})
    *
    * @param file The file name to write to.
-   * @param protoMessage         Protobuf message class
+   * @param protoMessage Protobuf message class
    * @throws IOException if there is an error while writing
    */
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage) throws IOException {
-    this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
-            DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
+    this(file, protoMessage, CompressionCodecName.UNCOMPRESSED, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
 
 }

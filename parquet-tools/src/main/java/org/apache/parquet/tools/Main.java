@@ -46,17 +46,12 @@ public class Main {
 
   static {
     OPTIONS = new Options();
-    Option help = OptionBuilder.withLongOpt("help")
-                               .withDescription("Show this help string")
-                               .create('h');
+    Option help = OptionBuilder.withLongOpt("help").withDescription("Show this help string").create('h');
 
-    Option ncol = OptionBuilder.withLongOpt("no-color")
-                               .withDescription("Disable color output even if supported")
-                               .create();
+    Option ncol = OptionBuilder.withLongOpt("no-color").withDescription("Disable color output even if supported")
+        .create();
 
-    Option debg = OptionBuilder.withLongOpt("debug")
-                               .withDescription("Enable debug output")
-                               .create();
+    Option debg = OptionBuilder.withLongOpt("debug").withDescription("Enable debug output").create();
 
     OPTIONS.addOption(help);
     OPTIONS.addOption(ncol);
@@ -113,7 +108,7 @@ public class Main {
 
   public static void showUsage(String name, Command command) {
     HelpFormatter format = new HelpFormatter();
-    PrintWriter err = new PrintWriter(Main.err,true);
+    PrintWriter err = new PrintWriter(Main.err, true);
 
     Options options = command.getOptions();
     showUsage(format, err, "parquet-" + name, command);
@@ -121,15 +116,16 @@ public class Main {
 
   public static void showUsage() {
     HelpFormatter format = new HelpFormatter();
-    PrintWriter err = new PrintWriter(Main.err,true);
-    Map<String,Command> all = Registry.allCommands();
+    PrintWriter err = new PrintWriter(Main.err, true);
+    Map<String, Command> all = Registry.allCommands();
 
     boolean first = true;
-    for (Map.Entry<String,Command> entry : all.entrySet()) {
+    for (Map.Entry<String, Command> entry : all.entrySet()) {
       String name = entry.getKey();
       Command command = entry.getValue();
 
-      if (!first) err.println();
+      if (!first)
+        err.println();
       first = false;
 
       showUsage(format, err, "parquet-tools " + name, command);
@@ -153,8 +149,7 @@ public class Main {
     if (usage) {
       if (name == null && command == null) {
         showUsage();
-      }
-      else {
+      } else {
         showUsage(name, command);
       }
     }
@@ -172,15 +167,24 @@ public class Main {
 
     PrintStream VoidStream = new PrintStream(new OutputStream() {
       @Override
-      public void write(int b) throws IOException {}
+      public void write(int b) throws IOException {
+      }
+
       @Override
-      public void write(byte[] b) throws IOException {}
+      public void write(byte[] b) throws IOException {
+      }
+
       @Override
-      public void write(byte[] b, int off, int len) throws IOException {}
+      public void write(byte[] b, int off, int len) throws IOException {
+      }
+
       @Override
-      public void flush() throws IOException {}
+      public void flush() throws IOException {
+      }
+
       @Override
-      public void close() throws IOException {}
+      public void close() throws IOException {
+      }
     });
     System.setOut(VoidStream);
     System.setErr(VoidStream);
@@ -222,10 +226,12 @@ public class Main {
 
       command.execute(cmd);
     } catch (ParseException ex) {
-      if (debug) ex.printStackTrace(Main.err);
+      if (debug)
+        ex.printStackTrace(Main.err);
       die("Invalid arguments: " + ex.getMessage(), true, name, command);
     } catch (Throwable th) {
-      if (debug) th.printStackTrace(Main.err);
+      if (debug)
+        th.printStackTrace(Main.err);
       die(th, false, name, command);
     }
   }

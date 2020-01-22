@@ -43,12 +43,11 @@ public class SnappyCompressor implements Compressor {
   private boolean finishCalled = false;
 
   /**
-   * Fills specified buffer with compressed data. Returns actual number
-   * of bytes of compressed data. A return value of 0 indicates that
-   * needsInput() should be called in order to determine if more input
-   * data is required.
+   * Fills specified buffer with compressed data. Returns actual number of bytes
+   * of compressed data. A return value of 0 indicates that needsInput() should be
+   * called in order to determine if more input data is required.
    *
-   * @param buffer   Buffer for the compressed data
+   * @param buffer Buffer for the compressed data
    * @param off Start offset of the data
    * @param len Size of the buffer
    * @return The actual number of bytes of compressed data.
@@ -83,16 +82,16 @@ public class SnappyCompressor implements Compressor {
 
     // Return compressed output up to 'len'
     int numBytes = Math.min(len, outputBuffer.remaining());
-    outputBuffer.get(buffer, off, numBytes);    
+    outputBuffer.get(buffer, off, numBytes);
     bytesWritten += numBytes;
-    return numBytes;	    
+    return numBytes;
   }
 
   @Override
-  public synchronized void setInput(byte[] buffer, int off, int len) {  
+  public synchronized void setInput(byte[] buffer, int off, int len) {
     SnappyUtil.validateBuffer(buffer, off, len);
-    
-    Preconditions.checkArgument(!outputBuffer.hasRemaining(), 
+
+    Preconditions.checkArgument(!outputBuffer.hasRemaining(),
         "Output buffer should be empty. Caller must call compress()");
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
@@ -138,7 +137,8 @@ public class SnappyCompressor implements Compressor {
   }
 
   @Override
-  // We want to compress all the input in one go so we always need input until it is
+  // We want to compress all the input in one go so we always need input until it
+  // is
   // all consumed.
   public synchronized boolean needsInput() {
     return !finishCalled;
@@ -146,7 +146,7 @@ public class SnappyCompressor implements Compressor {
 
   @Override
   public void reinit(Configuration c) {
-    reset();		
+    reset();
   }
 
   @Override
@@ -161,6 +161,6 @@ public class SnappyCompressor implements Compressor {
 
   @Override
   public void setDictionary(byte[] dictionary, int off, int len) {
-    // No-op		
+    // No-op
   }
 }

@@ -37,7 +37,6 @@ import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 
-
 /**
  * Representation of a Primitive type
  */
@@ -74,14 +73,12 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader) {
         recordConsumer.addLong(columnReader.getLong());
       }
 
       @Override
-      public void addValueToPrimitiveConverter(
-          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+      public void addValueToPrimitiveConverter(PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addLong(columnReader.getLong());
       }
 
@@ -98,12 +95,13 @@ public final class PrimitiveType extends Type {
         return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<PrimitiveComparator>() {
           @Override
           public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
-            return intLogicalType.isSigned() ?
-              of(PrimitiveComparator.SIGNED_INT64_COMPARATOR) : of(PrimitiveComparator.UNSIGNED_INT64_COMPARATOR);
+            return intLogicalType.isSigned() ? of(PrimitiveComparator.SIGNED_INT64_COMPARATOR)
+                : of(PrimitiveComparator.UNSIGNED_INT64_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+          public Optional<PrimitiveComparator> visit(
+              LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
           }
 
@@ -113,10 +111,12 @@ public final class PrimitiveType extends Type {
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+          public Optional<PrimitiveComparator> visit(
+              LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
             return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
           }
-        }).orElseThrow(() -> new ShouldNeverHappenException("No comparator logic implemented for INT64 logical type: " + logicalType));
+        }).orElseThrow(() -> new ShouldNeverHappenException(
+            "No comparator logic implemented for INT64 logical type: " + logicalType));
       }
     },
     INT32("getInteger", Integer.TYPE) {
@@ -126,14 +126,12 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader) {
         recordConsumer.addInteger(columnReader.getInteger());
       }
 
       @Override
-      public void addValueToPrimitiveConverter(
-          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+      public void addValueToPrimitiveConverter(PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addInt(columnReader.getInteger());
       }
 
@@ -153,12 +151,13 @@ public final class PrimitiveType extends Type {
             if (intLogicalType.getBitWidth() == 64) {
               return empty();
             }
-            return intLogicalType.isSigned() ?
-              of(PrimitiveComparator.SIGNED_INT32_COMPARATOR) : of(PrimitiveComparator.UNSIGNED_INT32_COMPARATOR);
+            return intLogicalType.isSigned() ? of(PrimitiveComparator.SIGNED_INT32_COMPARATOR)
+                : of(PrimitiveComparator.UNSIGNED_INT32_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+          public Optional<PrimitiveComparator> visit(
+              LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             return of(PrimitiveComparator.SIGNED_INT32_COMPARATOR);
           }
 
@@ -174,8 +173,8 @@ public final class PrimitiveType extends Type {
             }
             return empty();
           }
-        }).orElseThrow(
-          () -> new ShouldNeverHappenException("No comparator logic implemented for INT32 logical type: " + logicalType));
+        }).orElseThrow(() -> new ShouldNeverHappenException(
+            "No comparator logic implemented for INT32 logical type: " + logicalType));
       }
     },
     BOOLEAN("getBoolean", Boolean.TYPE) {
@@ -185,14 +184,12 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader) {
         recordConsumer.addBoolean(columnReader.getBoolean());
       }
 
       @Override
-      public void addValueToPrimitiveConverter(
-          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+      public void addValueToPrimitiveConverter(PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addBoolean(columnReader.getBoolean());
       }
 
@@ -213,14 +210,12 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader) {
         recordConsumer.addBinary(columnReader.getBinary());
       }
 
       @Override
-      public void addValueToPrimitiveConverter(
-          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+      public void addValueToPrimitiveConverter(PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addBinary(columnReader.getBinary());
       }
 
@@ -236,12 +231,14 @@ public final class PrimitiveType extends Type {
         }
         return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<PrimitiveComparator>() {
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+          public Optional<PrimitiveComparator> visit(
+              LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             return of(PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
+          public Optional<PrimitiveComparator> visit(
+              LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
             return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
           }
 
@@ -259,7 +256,8 @@ public final class PrimitiveType extends Type {
           public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
             return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
           }
-        }).orElseThrow(() -> new ShouldNeverHappenException("No comparator logic implemented for BINARY logical type: " + logicalType));
+        }).orElseThrow(() -> new ShouldNeverHappenException(
+            "No comparator logic implemented for BINARY logical type: " + logicalType));
       }
     },
     FLOAT("getFloat", Float.TYPE) {
@@ -269,14 +267,12 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader) {
         recordConsumer.addFloat(columnReader.getFloat());
       }
 
       @Override
-      public void addValueToPrimitiveConverter(
-          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+      public void addValueToPrimitiveConverter(PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addFloat(columnReader.getFloat());
       }
 
@@ -297,14 +293,12 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader) {
         recordConsumer.addDouble(columnReader.getDouble());
       }
 
       @Override
-      public void addValueToPrimitiveConverter(
-          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+      public void addValueToPrimitiveConverter(PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addDouble(columnReader.getDouble());
       }
 
@@ -323,14 +317,14 @@ public final class PrimitiveType extends Type {
       public String toString(ColumnReader columnReader) {
         return Arrays.toString(columnReader.getBinary().getBytesUnsafe());
       }
+
       @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader) {
         recordConsumer.addBinary(columnReader.getBinary());
       }
+
       @Override
-      public void addValueToPrimitiveConverter(
-          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+      public void addValueToPrimitiveConverter(PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addBinary(columnReader.getBinary());
       }
 
@@ -351,14 +345,12 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader) {
         recordConsumer.addBinary(columnReader.getBinary());
       }
 
       @Override
-      public void addValueToPrimitiveConverter(
-          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+      public void addValueToPrimitiveConverter(PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addBinary(columnReader.getBinary());
       }
 
@@ -375,16 +367,18 @@ public final class PrimitiveType extends Type {
 
         return logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<PrimitiveComparator>() {
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
+          public Optional<PrimitiveComparator> visit(
+              LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             return of(PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR);
           }
 
           @Override
-          public Optional<PrimitiveComparator> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
+          public Optional<PrimitiveComparator> visit(
+              LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
             return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
           }
         }).orElseThrow(() -> new ShouldNeverHappenException(
-          "No comparator logic implemented for FIXED_LEN_BYTE_ARRAY logical type: " + logicalType));
+            "No comparator logic implemented for FIXED_LEN_BYTE_ARRAY logical type: " + logicalType));
       }
     };
 
@@ -397,22 +391,24 @@ public final class PrimitiveType extends Type {
     }
 
     /**
-     * reads the value from the columnReader with the appropriate accessor and returns a String representation
+     * reads the value from the columnReader with the appropriate accessor and
+     * returns a String representation
+     * 
      * @param columnReader where to read
      * @return a string
      */
     abstract public String toString(ColumnReader columnReader);
 
     /**
-     * reads the value from the columnReader with the appropriate accessor and writes it to the recordConsumer
+     * reads the value from the columnReader with the appropriate accessor and
+     * writes it to the recordConsumer
+     * 
      * @param recordConsumer where to write
      * @param columnReader where to read from
      */
-    abstract public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-        ColumnReader columnReader);
+    abstract public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader);
 
-    abstract public void addValueToPrimitiveConverter(
-        PrimitiveConverter primitiveConverter, ColumnReader columnReader);
+    abstract public void addValueToPrimitiveConverter(PrimitiveConverter primitiveConverter, ColumnReader columnReader);
 
     abstract public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E;
 
@@ -436,7 +432,8 @@ public final class PrimitiveType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
-   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
+   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise
+   * (XXX)
    * @param name the name of the type
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name) {
@@ -447,13 +444,13 @@ public final class PrimitiveType extends Type {
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
-   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema
+   * convertion (LIST, MAP, ...)
    *
    * @deprecated will be removed in 2.0.0; use builders in {@link Types} instead
    */
   @Deprecated
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-                       String name, OriginalType originalType) {
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name, OriginalType originalType) {
     this(repetition, primitive, 0, name, originalType, null, null);
   }
 
@@ -461,12 +458,14 @@ public final class PrimitiveType extends Type {
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
-   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
-   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise
+   * (XXX)
+   * @param originalType (optional) the original type to help with cross schema
+   * conversion (LIST, MAP, ...)
    */
   @Deprecated
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-                       int length, String name, OriginalType originalType) {
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name,
+      OriginalType originalType) {
     this(repetition, primitive, length, name, originalType, null, null);
   }
 
@@ -482,14 +481,12 @@ public final class PrimitiveType extends Type {
    * @deprecated will be removed in 2.0.0; use builders in {@link Types} instead
    */
   @Deprecated
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-                       int length, String name, OriginalType originalType,
-                       DecimalMetadata decimalMeta, ID id) {
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name,
+      OriginalType originalType, DecimalMetadata decimalMeta, ID id) {
     this(repetition, primitive, length, name, originalType, decimalMeta, id, null);
   }
 
-  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-      int length, String name, OriginalType originalType,
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name, OriginalType originalType,
       DecimalMetadata decimalMeta, ID id, ColumnOrder columnOrder) {
     super(name, repetition, originalType, decimalMeta, id);
     this.primitive = primitive;
@@ -504,19 +501,18 @@ public final class PrimitiveType extends Type {
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }
 
-  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-                       String name, LogicalTypeAnnotation logicalTypeAnnotation) {
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name,
+      LogicalTypeAnnotation logicalTypeAnnotation) {
     this(repetition, primitive, 0, name, logicalTypeAnnotation, null, null);
   }
 
-  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-                       int length, String name, LogicalTypeAnnotation logicalTypeAnnotation, ID id) {
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name,
+      LogicalTypeAnnotation logicalTypeAnnotation, ID id) {
     this(repetition, primitive, length, name, logicalTypeAnnotation, id, null);
   }
 
-  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-                int length, String name, LogicalTypeAnnotation logicalTypeAnnotation,
-                ID id, ColumnOrder columnOrder) {
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name,
+      LogicalTypeAnnotation logicalTypeAnnotation, ID id, ColumnOrder columnOrder) {
     super(name, repetition, logicalTypeAnnotation, id);
     this.primitive = primitive;
     this.length = length;
@@ -528,9 +524,10 @@ public final class PrimitiveType extends Type {
     }
 
     if (columnOrder == null) {
-      columnOrder = primitive == PrimitiveTypeName.INT96 || logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation
-        ? ColumnOrder.undefined()
-        : ColumnOrder.typeDefined();
+      columnOrder = primitive == PrimitiveTypeName.INT96
+          || logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation
+              ? ColumnOrder.undefined()
+              : ColumnOrder.typeDefined();
     }
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }
@@ -542,7 +539,7 @@ public final class PrimitiveType extends Type {
     }
     if (getLogicalTypeAnnotation() != null) {
       Preconditions.checkArgument(getLogicalTypeAnnotation().isValidColumnOrder(columnOrder),
-        "The column order {} is not supported by {} ({})", columnOrder, primitive, getLogicalTypeAnnotation());
+          "The column order {} is not supported by {} ({})", columnOrder, primitive, getLogicalTypeAnnotation());
     }
     return columnOrder;
   }
@@ -600,9 +597,7 @@ public final class PrimitiveType extends Type {
    */
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
-    sb.append(indent)
-        .append(getRepetition().name().toLowerCase(Locale.ENGLISH))
-        .append(" ")
+    sb.append(indent).append(getRepetition().name().toLowerCase(Locale.ENGLISH)).append(" ")
         .append(primitive.name().toLowerCase());
     if (primitive == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
       sb.append("(" + length + ")");
@@ -617,12 +612,14 @@ public final class PrimitiveType extends Type {
     }
   }
 
-  @Override @Deprecated
+  @Override
+  @Deprecated
   protected int typeHashCode() {
     return hashCode();
   }
 
-  @Override @Deprecated
+  @Override
+  @Deprecated
   protected boolean typeEquals(Type other) {
     return equals(other);
   }
@@ -636,11 +633,8 @@ public final class PrimitiveType extends Type {
       return false;
     }
     PrimitiveType otherPrimitive = other.asPrimitiveType();
-    return super.equals(other)
-        && primitive == otherPrimitive.getPrimitiveTypeName()
-        && length == otherPrimitive.length
-        && columnOrder.equals(otherPrimitive.columnOrder)
-        && eqOrBothNull(decimalMeta, otherPrimitive.decimalMeta);
+    return super.equals(other) && primitive == otherPrimitive.getPrimitiveTypeName() && length == otherPrimitive.length
+        && columnOrder.equals(otherPrimitive.columnOrder) && eqOrBothNull(decimalMeta, otherPrimitive.decimalMeta);
   }
 
   /**
@@ -663,7 +657,7 @@ public final class PrimitiveType extends Type {
     if (path.length != i) {
       throw new InvalidRecordException("Arrived at primitive node, path invalid");
     }
-    return isRepetition(Repetition.REPEATED)? 1 : 0;
+    return isRepetition(Repetition.REPEATED) ? 1 : 0;
   }
 
   @Override
@@ -677,7 +671,8 @@ public final class PrimitiveType extends Type {
   @Override
   public Type getType(String[] path, int i) {
     if (path.length != i) {
-      throw new InvalidRecordException("Arrived at primitive node at index " + i + " , path invalid: " + Arrays.toString(path));
+      throw new InvalidRecordException(
+          "Arrived at primitive node at index " + i + " , path invalid: " + Arrays.toString(path));
     }
     return this;
   }
@@ -731,9 +726,10 @@ public final class PrimitiveType extends Type {
     }
 
     if (strict) {
-      // Can't merge primitive fields of different type names or different original types
-      if (!primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName()) ||
-        !Objects.equals(getLogicalTypeAnnotation(), toMerge.getLogicalTypeAnnotation())) {
+      // Can't merge primitive fields of different type names or different original
+      // types
+      if (!primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())
+          || !Objects.equals(getLogicalTypeAnnotation(), toMerge.getLogicalTypeAnnotation())) {
         reportSchemaMergeError(toMerge);
       }
 
@@ -760,9 +756,10 @@ public final class PrimitiveType extends Type {
   }
 
   /**
-   * Returns the {@link Type} specific comparator for properly comparing values. The natural ordering of the values
-   * might not proper in certain cases (e.g. {@code UINT_32} requires unsigned comparison of {@code int} values while
-   * the natural ordering is signed.)
+   * Returns the {@link Type} specific comparator for properly comparing values.
+   * The natural ordering of the values might not proper in certain cases (e.g.
+   * {@code UINT_32} requires unsigned comparison of {@code int} values while the
+   * natural ordering is signed.)
    *
    * @param <T> the type of values compared by the returned PrimitiveComparator
    * @return a PrimitiveComparator for values of this type
@@ -780,11 +777,13 @@ public final class PrimitiveType extends Type {
   }
 
   /**
-   * @return the {@link Type} specific stringifier for generating the proper string representation of the values.
+   * @return the {@link Type} specific stringifier for generating the proper
+   * string representation of the values.
    */
   @SuppressWarnings("unchecked")
   public PrimitiveStringifier stringifier() {
     LogicalTypeAnnotation logicalTypeAnnotation = getLogicalTypeAnnotation();
-    return logicalTypeAnnotation == null ? PrimitiveStringifier.DEFAULT_STRINGIFIER : logicalTypeAnnotation.valueStringifier(this);
+    return logicalTypeAnnotation == null ? PrimitiveStringifier.DEFAULT_STRINGIFIER
+        : logicalTypeAnnotation.valueStringifier(this);
   }
 }

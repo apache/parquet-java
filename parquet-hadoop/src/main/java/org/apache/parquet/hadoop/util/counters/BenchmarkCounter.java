@@ -25,7 +25,8 @@ import org.apache.parquet.hadoop.util.counters.mapred.MapRedCounterLoader;
 import org.apache.parquet.hadoop.util.counters.mapreduce.MapReduceCounterLoader;
 
 /**
- * Encapsulate counter operations, compatible with Hadoop1/2, mapred/mapreduce API
+ * Encapsulate counter operations, compatible with Hadoop1/2, mapred/mapreduce
+ * API
  */
 public class BenchmarkCounter {
 
@@ -64,7 +65,8 @@ public class BenchmarkCounter {
 
   private static void loadCounters() {
     bytesReadCounter = getCounterWhenFlagIsSet(COUNTER_GROUP_NAME, BYTES_READ_COUNTER_NAME, ENABLE_BYTES_READ_COUNTER);
-    totalBytesCounter = getCounterWhenFlagIsSet(COUNTER_GROUP_NAME, BYTES_TOTAL_COUNTER_NAME, ENABLE_BYTES_TOTAL_COUNTER);
+    totalBytesCounter = getCounterWhenFlagIsSet(COUNTER_GROUP_NAME, BYTES_TOTAL_COUNTER_NAME,
+        ENABLE_BYTES_TOTAL_COUNTER);
     timeCounter = getCounterWhenFlagIsSet(COUNTER_GROUP_NAME, TIME_READ_COUNTER_NAME, ENABLE_TIME_READ_COUNTER);
   }
 
@@ -99,7 +101,7 @@ public class BenchmarkCounter {
   public static class NullCounter implements ICounter {
     @Override
     public void increment(long val) {
-      //do nothing
+      // do nothing
     }
 
     @Override
@@ -108,5 +110,3 @@ public class BenchmarkCounter {
     }
   }
 }
-
-

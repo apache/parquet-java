@@ -33,7 +33,8 @@ class EmptyRecordReader<T> extends RecordReader<T> {
 
   public EmptyRecordReader(RecordMaterializer<T> recordMaterializer) {
     this.recordMaterializer = recordMaterializer;
-    this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
+    this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer),
+                                                                 // validating, root.getType());
   }
 
   /**

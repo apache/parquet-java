@@ -40,5 +40,6 @@ class KeepOnlyFirstPrimitiveFilter implements FieldProjectionFilter {
   }
 
   @Override
-  public void assertNoUnmatchedPatterns() throws ThriftProjectionException { }
+  public void assertNoUnmatchedPatterns() throws ThriftProjectionException {
+  }
 }

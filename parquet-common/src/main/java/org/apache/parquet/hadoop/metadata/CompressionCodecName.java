@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop.metadata;
 
-
 import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.hadoop.codec.CompressionCodecNotSupportedException;
 import java.util.Locale;
@@ -33,10 +32,10 @@ public enum CompressionCodecName {
   ZSTD("org.apache.hadoop.io.compress.ZStandardCodec", CompressionCodec.ZSTD, ".zstd");
 
   public static CompressionCodecName fromConf(String name) {
-     if (name == null) {
-       return UNCOMPRESSED;
-     }
-     return valueOf(name.toUpperCase(Locale.ENGLISH));
+    if (name == null) {
+      return UNCOMPRESSED;
+    }
+    return valueOf(name.toUpperCase(Locale.ENGLISH));
   }
 
   public static CompressionCodecName fromCompressionCodec(Class<?> clazz) {
@@ -65,7 +64,8 @@ public enum CompressionCodecName {
   private final CompressionCodec parquetCompressionCodec;
   private final String extension;
 
-  private CompressionCodecName(String hadoopCompressionCodecClass, CompressionCodec parquetCompressionCodec, String extension) {
+  private CompressionCodecName(String hadoopCompressionCodecClass, CompressionCodec parquetCompressionCodec,
+      String extension) {
     this.hadoopCompressionCodecClass = hadoopCompressionCodecClass;
     this.parquetCompressionCodec = parquetCompressionCodec;
     this.extension = extension;
@@ -77,7 +77,7 @@ public enum CompressionCodecName {
 
   public Class getHadoopCompressionCodecClass() {
     String codecClassName = getHadoopCompressionCodecClassName();
-    if (codecClassName==null) {
+    if (codecClassName == null) {
       return null;
     }
     try {

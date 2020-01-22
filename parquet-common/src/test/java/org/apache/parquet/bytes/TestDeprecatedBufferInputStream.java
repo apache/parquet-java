@@ -43,8 +43,7 @@ public class TestDeprecatedBufferInputStream extends TestByteBufferInputStreams 
 
   @Parameters
   public static List<Object[]> parameters() {
-    return Arrays.asList(
-        new Object[] { TestSingleBufferInputStream.DATA, null },
+    return Arrays.asList(new Object[] { TestSingleBufferInputStream.DATA, null },
         new Object[] { TestSingleBufferInputStream.DATA, 0 },
         new Object[] { ByteBuffer.wrap(new byte[] { -1, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
             15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34 }), 4 },
@@ -66,8 +65,7 @@ public class TestDeprecatedBufferInputStream extends TestByteBufferInputStreams 
   @Override
   protected void checkOriginalData() {
     Assert.assertEquals("Position should not change", 0, data.position());
-    Assert.assertEquals("Limit should not change",
-        data.array().length, data.limit());
+    Assert.assertEquals("Limit should not change", data.array().length, data.limit());
   }
 
   @Test
@@ -88,8 +86,7 @@ public class TestDeprecatedBufferInputStream extends TestByteBufferInputStreams 
     int i = 0;
 
     ByteBuffer one = buffers.get(0);
-    Assert.assertSame("Should use the same backing array",
-        one.array(), data.array());
+    Assert.assertSame("Should use the same backing array", one.array(), data.array());
     Assert.assertEquals(8, one.remaining());
     Assert.assertEquals(0, one.position());
     Assert.assertEquals(8, one.limit());
@@ -98,8 +95,7 @@ public class TestDeprecatedBufferInputStream extends TestByteBufferInputStreams 
     }
 
     ByteBuffer two = buffers.get(1);
-    Assert.assertSame("Should use the same backing array",
-        two.array(), data.array());
+    Assert.assertSame("Should use the same backing array", two.array(), data.array());
     Assert.assertEquals(8, two.remaining());
     Assert.assertEquals(8, two.position());
     Assert.assertEquals(16, two.limit());
@@ -109,8 +105,7 @@ public class TestDeprecatedBufferInputStream extends TestByteBufferInputStreams 
 
     // three is a copy of part of the 4th buffer
     ByteBuffer three = buffers.get(2);
-    Assert.assertSame("Should use the same backing array",
-        three.array(), data.array());
+    Assert.assertSame("Should use the same backing array", three.array(), data.array());
     Assert.assertEquals(8, three.remaining());
     Assert.assertEquals(16, three.position());
     Assert.assertEquals(24, three.limit());
@@ -120,8 +115,7 @@ public class TestDeprecatedBufferInputStream extends TestByteBufferInputStreams 
 
     // four should be a copy of the next 8 bytes
     ByteBuffer four = buffers.get(3);
-    Assert.assertSame("Should use the same backing array",
-        four.array(), data.array());
+    Assert.assertSame("Should use the same backing array", four.array(), data.array());
     Assert.assertEquals(8, four.remaining());
     Assert.assertEquals(24, four.position());
     Assert.assertEquals(32, four.limit());
@@ -131,8 +125,7 @@ public class TestDeprecatedBufferInputStream extends TestByteBufferInputStreams 
 
     // five should be a copy of the next 8 bytes
     ByteBuffer five = buffers.get(4);
-    Assert.assertSame("Should use the same backing array",
-        five.array(), data.array());
+    Assert.assertSame("Should use the same backing array", five.array(), data.array());
     Assert.assertEquals(3, five.remaining());
     Assert.assertEquals(32, five.position());
     Assert.assertEquals(35, five.limit());

@@ -28,11 +28,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * There was a bug (PARQUET-251) that caused the statistics metadata
- * for binary columns to be corrupted in the write path.
+ * There was a bug (PARQUET-251) that caused the statistics metadata for binary
+ * columns to be corrupted in the write path.
  *
- * This class is used to detect whether a file was written with this bug,
- * and thus it's statistics should be ignored / not trusted.
+ * This class is used to detect whether a file was written with this bug, and
+ * thus it's statistics should be ignored / not trusted.
  */
 public class CorruptStatistics {
   private static final AtomicBoolean alreadyLogged = new AtomicBoolean(false);
@@ -40,19 +40,23 @@ public class CorruptStatistics {
   private static final Logger LOG = LoggerFactory.getLogger(CorruptStatistics.class);
 
   // the version in which the bug described by jira: PARQUET-251 was fixed
-  // the bug involved writing invalid binary statistics, so stats written prior to this
+  // the bug involved writing invalid binary statistics, so stats written prior to
+  // this
   // fix must be ignored / assumed invalid
   private static final SemanticVersion PARQUET_251_FIXED_VERSION = new SemanticVersion(1, 8, 0);
-  private static final SemanticVersion CDH_5_PARQUET_251_FIXED_START = new SemanticVersion(1, 5, 0, null, "cdh5.5.0", null);
+  private static final SemanticVersion CDH_5_PARQUET_251_FIXED_START = new SemanticVersion(1, 5, 0, null, "cdh5.5.0",
+      null);
   private static final SemanticVersion CDH_5_PARQUET_251_FIXED_END = new SemanticVersion(1, 5, 0);
 
   /**
-   * Decides if the statistics from a file created by createdBy (the created_by field from parquet format)
-   * should be ignored because they are potentially corrupt.
+   * Decides if the statistics from a file created by createdBy (the created_by
+   * field from parquet format) should be ignored because they are potentially
+   * corrupt.
    *
    * @param createdBy the created-by string from a file footer
    * @param columnType the type of the column that this is checking
-   * @return true if the statistics may be invalid and should be ignored, false otherwise
+   * @return true if the statistics may be invalid and should be ignored, false
+   * otherwise
    */
   public static boolean shouldIgnoreStatistics(String createdBy, PrimitiveTypeName columnType) {
 
@@ -83,11 +87,9 @@ public class CorruptStatistics {
 
       SemanticVersion semver = SemanticVersion.parse(version.version);
 
-      if (semver.compareTo(PARQUET_251_FIXED_VERSION) < 0 &&
-          !(semver.compareTo(CDH_5_PARQUET_251_FIXED_START) >= 0 &&
-              semver.compareTo(CDH_5_PARQUET_251_FIXED_END) < 0)) {
-        warnOnce("Ignoring statistics because this file was created prior to "
-            + PARQUET_251_FIXED_VERSION
+      if (semver.compareTo(PARQUET_251_FIXED_VERSION) < 0 && !(semver.compareTo(CDH_5_PARQUET_251_FIXED_START) >= 0
+          && semver.compareTo(CDH_5_PARQUET_251_FIXED_END) < 0)) {
+        warnOnce("Ignoring statistics because this file was created prior to " + PARQUET_251_FIXED_VERSION
             + ", see PARQUET-251");
         return true;
       }
@@ -95,7 +97,8 @@ public class CorruptStatistics {
       // this file was created after the fix
       return false;
     } catch (RuntimeException | SemanticVersionParseException | VersionParseException e) {
-      // couldn't parse the created_by field, log what went wrong, don't trust the stats,
+      // couldn't parse the created_by field, log what went wrong, don't trust the
+      // stats,
       // but don't make this fatal.
       warnParseErrorOnce(createdBy, e);
       return true;
@@ -103,13 +106,13 @@ public class CorruptStatistics {
   }
 
   private static void warnParseErrorOnce(String createdBy, Throwable e) {
-    if(!alreadyLogged.getAndSet(true)) {
+    if (!alreadyLogged.getAndSet(true)) {
       LOG.warn("Ignoring statistics because created_by could not be parsed (see PARQUET-251): " + createdBy, e);
     }
   }
 
   private static void warnOnce(String message) {
-    if(!alreadyLogged.getAndSet(true)) {
+    if (!alreadyLogged.getAndSet(true)) {
       LOG.warn(message);
     }
   }

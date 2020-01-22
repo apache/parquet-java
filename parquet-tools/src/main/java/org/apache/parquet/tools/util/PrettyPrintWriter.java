@@ -44,32 +44,34 @@ public class PrettyPrintWriter extends PrintWriter {
 
   private static final String RESET = "\u001B[0m";
 
-  public static final String MODE_OFF         = "0";
-  public static final String MODE_BOLD        = "1";
-  public static final String MODE_UNDER       = "4";
-  public static final String MODE_BLINK       = "5";
-  public static final String MODE_REVERSE     = "7";
-  public static final String MODE_CONCEALED   = "8";
+  public static final String MODE_OFF = "0";
+  public static final String MODE_BOLD = "1";
+  public static final String MODE_UNDER = "4";
+  public static final String MODE_BLINK = "5";
+  public static final String MODE_REVERSE = "7";
+  public static final String MODE_CONCEALED = "8";
 
-  public static final String FG_COLOR_BLACK   = "30";
-  public static final String FG_COLOR_RED     = "31";
-  public static final String FG_COLOR_GREEN   = "32";
-  public static final String FG_COLOR_YELLOW  = "33";
-  public static final String FG_COLOR_BLUE    = "34";
+  public static final String FG_COLOR_BLACK = "30";
+  public static final String FG_COLOR_RED = "31";
+  public static final String FG_COLOR_GREEN = "32";
+  public static final String FG_COLOR_YELLOW = "33";
+  public static final String FG_COLOR_BLUE = "34";
   public static final String FG_COLOR_MAGENTA = "35";
-  public static final String FG_COLOR_CYAN    = "36";
-  public static final String FG_COLOR_WHITE   = "37";
+  public static final String FG_COLOR_CYAN = "36";
+  public static final String FG_COLOR_WHITE = "37";
 
-  public static final String BG_COLOR_BLACK   = "40";
-  public static final String BG_COLOR_RED     = "41";
-  public static final String BG_COLOR_GREEN   = "42";
-  public static final String BG_COLOR_YELLOW  = "43";
-  public static final String BG_COLOR_BLUE    = "44";
+  public static final String BG_COLOR_BLACK = "40";
+  public static final String BG_COLOR_RED = "41";
+  public static final String BG_COLOR_GREEN = "42";
+  public static final String BG_COLOR_YELLOW = "43";
+  public static final String BG_COLOR_BLUE = "44";
   public static final String BG_COLOR_MAGENTA = "45";
-  public static final String BG_COLOR_CYAN    = "46";
-  public static final String BG_COLOR_WHITE   = "47";
+  public static final String BG_COLOR_CYAN = "46";
+  public static final String BG_COLOR_WHITE = "47";
 
-  public enum WhiteSpaceHandler { ELIMINATE_NEWLINES, COLLAPSE_WHITESPACE }
+  public enum WhiteSpaceHandler {
+    ELIMINATE_NEWLINES, COLLAPSE_WHITESPACE
+  }
 
   static {
     int consoleWidth = 80;
@@ -87,18 +89,16 @@ public class PrettyPrintWriter extends PrintWriter {
     if (colors != null && !colors.isEmpty()) {
       try {
         numColors = Integer.parseInt(colors);
-        if (numColors < 0) numColors = 0;
+        if (numColors < 0)
+          numColors = 0;
       } catch (Exception exa) {
       }
     }
 
     String termout = System.getenv("TERMOUT");
     if (termout != null && !termout.isEmpty()) {
-      if (!"y".equalsIgnoreCase(termout) &&
-          !"yes".equalsIgnoreCase(termout) &&
-          !"t".equalsIgnoreCase(termout) &&
-          !"true".equalsIgnoreCase(termout) &&
-          !"on".equalsIgnoreCase(termout)) {
+      if (!"y".equalsIgnoreCase(termout) && !"yes".equalsIgnoreCase(termout) && !"t".equalsIgnoreCase(termout)
+          && !"true".equalsIgnoreCase(termout) && !"on".equalsIgnoreCase(termout)) {
         consoleWidth = Integer.MAX_VALUE;
         numColors = 0;
       }
@@ -139,11 +139,9 @@ public class PrettyPrintWriter extends PrintWriter {
   private String colorBackground;
   private String tabs;
 
-  private PrettyPrintWriter(OutputStream out, boolean autoFlush,
-    boolean autoColumn, boolean autoCrop, Span appendToLongLine,
-    int consoleWidth, int tabWidth, char columnSeparator,
-    int maxColumns, int columnPadding, long maxBufferedLines, 
-    boolean flushOnTab, WhiteSpaceHandler whiteSpaceHandler) {
+  private PrettyPrintWriter(OutputStream out, boolean autoFlush, boolean autoColumn, boolean autoCrop,
+      Span appendToLongLine, int consoleWidth, int tabWidth, char columnSeparator, int maxColumns, int columnPadding,
+      long maxBufferedLines, boolean flushOnTab, WhiteSpaceHandler whiteSpaceHandler) {
     super(out, autoFlush && !autoColumn);
     this.autoColumn = autoColumn;
     this.autoCrop = autoCrop;
@@ -174,7 +172,8 @@ public class PrettyPrintWriter extends PrintWriter {
   public void setTabLevel(int level) {
     this.tabLevel = level;
     this.tabs = Strings.repeat(" ", tabWidth * level);
-    if (flushOnTab) flushColumns();
+    if (flushOnTab)
+      flushColumns();
   }
 
   public void incrementTabLevel() {
@@ -211,7 +210,8 @@ public class PrettyPrintWriter extends PrintWriter {
     for (Line line : buffer) {
       for (int last = 0, idx = 0; last < line.length() && idx < columns; ++idx) {
         int pos = line.indexOf(columnSeparator, last);
-        if (pos < 0) break;
+        if (pos < 0)
+          break;
 
         int wid = pos - last + 1 + columnPadding;
         if (wid > widths[idx]) {
@@ -231,10 +231,11 @@ public class PrettyPrintWriter extends PrintWriter {
       int width = widths[i];
 
       int idx = line.indexOf(columnSeparator, last);
-      if (idx < 0) break;
+      if (idx < 0)
+        break;
 
-      if ((idx+1) <= width) {
-        line.spaceOut(width - (idx+1), idx+1);
+      if ((idx + 1) <= width) {
+        line.spaceOut(width - (idx + 1), idx + 1);
       }
 
       last = line.firstNonWhiteSpace(idx + 1);
@@ -244,7 +245,7 @@ public class PrettyPrintWriter extends PrintWriter {
   }
 
   public void flushColumns() {
-      flushColumns(false);
+    flushColumns(false);
   }
 
   private void flushColumns(boolean preserveLast) {
@@ -290,12 +291,14 @@ public class PrettyPrintWriter extends PrintWriter {
 
     Line addback = null;
     if (preserveLast) {
-        addback = buffer.get(size - 1);
+      addback = buffer.get(size - 1);
     }
 
     buffer.clear();
-    if (addback != null) buffer.add(addback);
-    else buffer.add(new Line());
+    if (addback != null)
+      buffer.add(addback);
+    else
+      buffer.add(new Line());
   }
 
   private void flushIfNeeded() {
@@ -343,17 +346,18 @@ public class PrettyPrintWriter extends PrintWriter {
     if (whiteSpaceHandler != null) {
       boolean endswith = s.endsWith(LINE_SEP);
       switch (whiteSpaceHandler) {
-        case ELIMINATE_NEWLINES:
-          s = s.replaceAll("\\r\\n|\\r|\\n", " ");
-          break;
+      case ELIMINATE_NEWLINES:
+        s = s.replaceAll("\\r\\n|\\r|\\n", " ");
+        break;
 
-        case COLLAPSE_WHITESPACE:
-          s = s.replaceAll("\\s+", " ");
-          break;
+      case COLLAPSE_WHITESPACE:
+        s = s.replaceAll("\\s+", " ");
+        break;
       }
 
       mayHaveNewlines = endswith;
-      if (endswith) s = s + LINE_SEP;
+      if (endswith)
+        s = s + LINE_SEP;
     }
 
     if (!mayHaveNewlines) {
@@ -472,14 +476,20 @@ public class PrettyPrintWriter extends PrintWriter {
 
   @Override
   public PrintWriter append(CharSequence csq) {
-    if (csq == null) { print("null"); return this; }
+    if (csq == null) {
+      print("null");
+      return this;
+    }
     return append(csq, 0, csq.length());
   }
 
   @Override
   public PrintWriter append(CharSequence csq, int start, int end) {
-    if (csq == null) { print("null"); return this; }
-    print(csq.subSequence(start,end).toString());
+    if (csq == null) {
+      print("null");
+      return this;
+    }
+    print(csq.subSequence(start, end).toString());
     return this;
   }
 
@@ -532,7 +542,8 @@ public class PrettyPrintWriter extends PrintWriter {
   }
 
   public void rule(char c) {
-    if (tabs.length() >= consoleWidth) return;
+    if (tabs.length() >= consoleWidth)
+      return;
 
     int width = consoleWidth;
     if (width == Integer.MAX_VALUE) {
@@ -543,6 +554,7 @@ public class PrettyPrintWriter extends PrintWriter {
   }
 
   public boolean acceptColorModification = true;
+
   public PrettyPrintWriter iff(boolean predicate) {
     if (!predicate && acceptColorModification) {
       resetColor();
@@ -559,134 +571,155 @@ public class PrettyPrintWriter extends PrintWriter {
   }
 
   public PrettyPrintWriter black() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorForeground = FG_COLOR_BLACK;
     return this;
   }
 
   public PrettyPrintWriter red() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorForeground = FG_COLOR_RED;
     return this;
   }
 
   public PrettyPrintWriter green() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorForeground = FG_COLOR_GREEN;
     return this;
   }
 
   public PrettyPrintWriter yellow() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorForeground = FG_COLOR_YELLOW;
     return this;
   }
 
   public PrettyPrintWriter blue() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorForeground = FG_COLOR_BLUE;
     return this;
   }
 
   public PrettyPrintWriter magenta() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorForeground = FG_COLOR_MAGENTA;
     return this;
   }
 
   public PrettyPrintWriter cyan() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorForeground = FG_COLOR_CYAN;
     return this;
   }
 
   public PrettyPrintWriter white() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorForeground = FG_COLOR_WHITE;
     return this;
   }
 
   public PrettyPrintWriter bgblack() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorBackground = BG_COLOR_BLACK;
     return this;
   }
 
   public PrettyPrintWriter bgred() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorBackground = BG_COLOR_RED;
     return this;
   }
 
   public PrettyPrintWriter bggreen() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorBackground = BG_COLOR_GREEN;
     return this;
   }
 
   public PrettyPrintWriter bgyellow() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorBackground = BG_COLOR_YELLOW;
     return this;
   }
 
   public PrettyPrintWriter bgblue() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorBackground = BG_COLOR_BLUE;
     return this;
   }
 
   public PrettyPrintWriter bgmagenta() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorBackground = BG_COLOR_MAGENTA;
     return this;
   }
 
   public PrettyPrintWriter bgcyan() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorBackground = BG_COLOR_CYAN;
     return this;
   }
 
   public PrettyPrintWriter bgwhite() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorBackground = BG_COLOR_WHITE;
     return this;
   }
 
-
   public PrettyPrintWriter bold() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorMode = MODE_BOLD;
     return this;
   }
 
   public PrettyPrintWriter blink() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorMode = MODE_BLINK;
     return this;
   }
 
   public PrettyPrintWriter concealed() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorMode = MODE_CONCEALED;
     return this;
   }
 
   public PrettyPrintWriter off() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorMode = MODE_OFF;
     return this;
   }
 
   public PrettyPrintWriter underscore() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorMode = MODE_UNDER;
     return this;
   }
 
   public PrettyPrintWriter reverse() {
-    if (!acceptColorModification) return this;
+    if (!acceptColorModification)
+      return this;
     colorMode = MODE_REVERSE;
     return this;
   }
@@ -792,17 +825,18 @@ public class PrettyPrintWriter extends PrintWriter {
     }
 
     public Builder withMaxBufferedLines(long maxBufferedLines) {
-        this.maxBufferedLines = maxBufferedLines;
-        return this;
+      this.maxBufferedLines = maxBufferedLines;
+      return this;
     }
 
     public Builder withFlushOnTab() {
-        this.flushOnTab = true;
-        return this;
+      this.flushOnTab = true;
+      return this;
     }
 
     public PrettyPrintWriter build() {
-      return new PrettyPrintWriter(out, autoFlush, autoColumn, autoCrop, appendToLongLine, consoleWidth, tabWidth, columnSeparator, maxColumns, columnPadding, maxBufferedLines, flushOnTab, whiteSpaceHandler);
+      return new PrettyPrintWriter(out, autoFlush, autoColumn, autoCrop, appendToLongLine, consoleWidth, tabWidth,
+          columnSeparator, maxColumns, columnPadding, maxBufferedLines, flushOnTab, whiteSpaceHandler);
     }
   }
 
@@ -823,7 +857,7 @@ public class PrettyPrintWriter extends PrintWriter {
   }
 
   public static Span mkspan(String span) {
-      return new Span(span);
+    return new Span(span);
   }
 
   public static Span mkspan(String span, String color) {
@@ -868,7 +902,7 @@ public class PrettyPrintWriter extends PrintWriter {
         spans.add(span);
         return;
       }
-      
+
       Span last = spans.get(spans.size() - 1);
       if (last.canAppend(span)) {
         last.append(span);
@@ -894,7 +928,8 @@ public class PrettyPrintWriter extends PrintWriter {
         }
 
         int idx = span.indexOf(ch, start);
-        if (idx >= 0) return offset + idx;
+        if (idx >= 0)
+          return offset + idx;
 
         offset += span.length() - start;
         start = 0;
@@ -985,7 +1020,7 @@ public class PrettyPrintWriter extends PrintWriter {
         removeTo++;
       }
 
-      span = span.substring(0,start) + Strings.repeat(" ", width) + span.substring(removeTo);
+      span = span.substring(0, start) + Strings.repeat(" ", width) + span.substring(removeTo);
     }
 
     public int countCharacter(char ch) {
@@ -1002,11 +1037,12 @@ public class PrettyPrintWriter extends PrintWriter {
     public void trimTo(int width, Span appendToLongLine) {
       if (appendToLongLine != null && !appendToLongLine.isEmpty()) {
         int shortten = appendToLongLine.length();
-        if (shortten > width) shortten = width;
+        if (shortten > width)
+          shortten = width;
 
         span = span.substring(0, width - shortten) + appendToLongLine;
       } else {
-        span = span.substring(0, width+1);
+        span = span.substring(0, width + 1);
       }
     }
 
@@ -1017,9 +1053,11 @@ public class PrettyPrintWriter extends PrintWriter {
     }
 
     public void toString(StringBuilder builder) {
-      if (color != null) builder.append(color);
+      if (color != null)
+        builder.append(color);
       builder.append(span);
-      if (color != null) builder.append(RESET);
+      if (color != null)
+        builder.append(RESET);
     }
 
     public void append(Span other) {
@@ -1027,8 +1065,10 @@ public class PrettyPrintWriter extends PrintWriter {
     }
 
     public boolean canAppend(Span other) {
-      if (color == null && other == null) return true;
-      if (color == null && other != null) return false;
+      if (color == null && other == null)
+        return true;
+      if (color == null && other != null)
+        return false;
       return color.equals(other);
     }
   }

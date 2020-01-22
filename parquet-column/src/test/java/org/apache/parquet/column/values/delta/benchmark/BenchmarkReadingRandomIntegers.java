@@ -58,10 +58,9 @@ public class BenchmarkReadingRandomIntegers {
       data[i] = random.nextInt(100) - 200;
     }
 
-    ValuesWriter delta = new DeltaBinaryPackingValuesWriterForInteger(
-        blockSize, miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
-    ValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(
-        32, 100, 20000, new DirectByteBufferAllocator());
+    ValuesWriter delta = new DeltaBinaryPackingValuesWriterForInteger(blockSize, miniBlockNum, 100, 20000,
+        new DirectByteBufferAllocator());
+    ValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(32, 100, 20000, new DirectByteBufferAllocator());
 
     for (int i = 0; i < data.length; i++) {
       delta.writeInteger(data[i]);
@@ -99,4 +98,3 @@ public class BenchmarkReadingRandomIntegers {
   }
 
 }
-

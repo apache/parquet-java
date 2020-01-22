@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.io.api;
 
-
 /**
  * converter for group nodes
  */
@@ -35,14 +34,15 @@ abstract public class GroupConverter extends Converter {
   }
 
   /**
-   * called at initialization based on schema
-   * must consistently return the same object
+   * called at initialization based on schema must consistently return the same
+   * object
+   * 
    * @param fieldIndex index of the field in this group
    * @return the corresponding converter
    */
   abstract public Converter getConverter(int fieldIndex);
 
-  /** runtime calls  **/
+  /** runtime calls **/
 
   /** called at the beginning of the group managed by this converter */
   abstract public void start();

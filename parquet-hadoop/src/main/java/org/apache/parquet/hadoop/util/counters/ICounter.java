@@ -23,6 +23,7 @@ package org.apache.parquet.hadoop.util.counters;
  */
 public interface ICounter {
   public void increment(long val);
+
   public long getCount();
 
 }

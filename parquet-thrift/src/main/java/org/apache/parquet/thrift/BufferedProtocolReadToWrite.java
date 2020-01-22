@@ -32,7 +32,6 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
-import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
@@ -45,17 +44,19 @@ import org.apache.parquet.thrift.struct.ThriftTypeID;
 
 /**
  * Class to read from one protocol in a buffer and then write to another one
- * When there is an exception during reading, it's a skippable exception.
- * When schema is not compatible, the {@link SkippableException} will be thrown.
+ * When there is an exception during reading, it's a skippable exception. When
+ * schema is not compatible, the {@link SkippableException} will be thrown.
  * <p>
- * When there are fields in the data that are not defined in the schema, the fields will be ignored and the handler will
- * be notified through {@link FieldIgnoredHandler#handleFieldIgnored(org.apache.thrift.protocol.TField)}
+ * When there are fields in the data that are not defined in the schema, the
+ * fields will be ignored and the handler will be notified through
+ * {@link FieldIgnoredHandler#handleFieldIgnored(org.apache.thrift.protocol.TField)}
  * and {@link FieldIgnoredHandler#handleRecordHasFieldIgnored()}
  */
 public class BufferedProtocolReadToWrite implements ProtocolPipe {
 
   private interface Action {
     void write(TProtocol out) throws TException;
+
     String toDebugString();
   }
 
@@ -77,6 +78,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeFieldEnd();
     }
+
     @Override
     public String toDebugString() {
       return ";";
@@ -88,6 +90,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeMapEnd();
     }
+
     @Override
     public String toDebugString() {
       return "]";
@@ -99,6 +102,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeListEnd();
     }
+
     @Override
     public String toDebugString() {
       return "}";
@@ -110,12 +114,13 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeSetEnd();
     }
+
     @Override
     public String toDebugString() {
       return "*}";
     }
   };
-  //error handler is global
+  // error handler is global
   private final FieldIgnoredHandler errorHandler;
   private final StructType thriftType;
 
@@ -130,22 +135,23 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   }
 
   /**
-   * Reads one record from in and writes it to out.
-   * Exceptions encountered during reading are treated as skippable exceptions,
-   * {@link FieldIgnoredHandler} will be notified when registered.
+   * Reads one record from in and writes it to out. Exceptions encountered during
+   * reading are treated as skippable exceptions, {@link FieldIgnoredHandler} will
+   * be notified when registered.
    *
-   * @param in  input protocol
+   * @param in input protocol
    * @param out output protocol
-   * @throws org.apache.thrift.TException         when an error happened while writing. Those are usually not recoverable
+   * @throws org.apache.thrift.TException when an error happened while writing.
+   * Those are usually not recoverable
    */
   @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
     List<Action> buffer = new ArrayList<Action>(1);
-    try{
-        boolean hasFieldsIgnored = readOneStruct(in, buffer, thriftType);
-        if (hasFieldsIgnored) {
-          notifyRecordHasFieldIgnored();
-        }
+    try {
+      boolean hasFieldsIgnored = readOneStruct(in, buffer, thriftType);
+      if (hasFieldsIgnored) {
+        notifyRecordHasFieldIgnored();
+      }
     } catch (Exception e) {
       throw new SkippableException(error("Error while reading", buffer), e);
     }
@@ -180,26 +186,29 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   }
 
   /**
-   * @return true when all value is consumed, false when some values is ignored due to the field is not defined in expectedType
+   * @return true when all value is consumed, false when some values is ignored
+   * due to the field is not defined in expectedType
    * @throws TException
    */
-  private boolean readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType) throws TException {
+  private boolean readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType)
+      throws TException {
     if (expectedType != null && expectedType.getType().getSerializedThriftType() != type) {
-      throw new DecodingSchemaMismatchException("the data type does not match the expected thrift structure: expected " + expectedType + " got " + typeName(type));
+      throw new DecodingSchemaMismatchException("the data type does not match the expected thrift structure: expected "
+          + expectedType + " got " + typeName(type));
     }
     boolean hasFieldsIgnored = false;
     switch (type) {
     case TType.LIST:
-      hasFieldsIgnored = readOneList(in, buffer, (ListType)expectedType);
+      hasFieldsIgnored = readOneList(in, buffer, (ListType) expectedType);
       break;
     case TType.MAP:
-      hasFieldsIgnored = readOneMap(in, buffer, (MapType)expectedType);
+      hasFieldsIgnored = readOneMap(in, buffer, (MapType) expectedType);
       break;
     case TType.SET:
-      hasFieldsIgnored = readOneSet(in, buffer, (SetType)expectedType);
+      hasFieldsIgnored = readOneSet(in, buffer, (SetType) expectedType);
       break;
     case TType.STRUCT:
-      hasFieldsIgnored = readOneStruct(in, buffer, (StructType)expectedType);
+      hasFieldsIgnored = readOneStruct(in, buffer, (StructType) expectedType);
       break;
     case TType.STOP:
       break;
@@ -219,10 +228,11 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       final short s = in.readI16();
       writeShortAction(buffer, s);
       break;
-    case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32 field
+    case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written
+                     // as a i32 field
     case TType.I32:
       final int i = in.readI32();
-      checkEnum(expectedType,i);
+      checkEnum(expectedType, i);
       writeIntAction(buffer, i);
       break;
     case TType.I64:
@@ -372,7 +382,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         hasFieldsIgnored |= true;
         continue;
       }
-      
+
       childFieldsPresent++;
 
       buffer.add(new Action() {
@@ -401,46 +411,47 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
 
   private void handleUnrecognizedField(TField field, StructType type, TProtocol in) throws TException {
     switch (type.getStructOrUnionType()) {
-      case STRUCT:
-        // this is an unrecognized field in a struct, not a union
-        notifyIgnoredFieldsOfRecord(field);
-        //read the value and ignore it, NullProtocol will do nothing
-        new ProtocolReadToWrite().readOneValue(in, new NullProtocol(), field.type);
-        break;
-      case UNION:
-        // this is a union with an unrecognized member -- this is fatal for this record
-        // in the write path, because it will be unreadable in the read path.
-        // throwing here means we will either skip this record entirely, or fail completely.
-        throw new DecodingSchemaMismatchException("Unrecognized union member with id: "
-            + field.id + " for struct:\n" + type);
-      case UNKNOWN:
-        throw unknownStructOrUnion(type);
-      default:
-        throw unrecognizedStructOrUnion(type.getStructOrUnionType());
+    case STRUCT:
+      // this is an unrecognized field in a struct, not a union
+      notifyIgnoredFieldsOfRecord(field);
+      // read the value and ignore it, NullProtocol will do nothing
+      new ProtocolReadToWrite().readOneValue(in, new NullProtocol(), field.type);
+      break;
+    case UNION:
+      // this is a union with an unrecognized member -- this is fatal for this record
+      // in the write path, because it will be unreadable in the read path.
+      // throwing here means we will either skip this record entirely, or fail
+      // completely.
+      throw new DecodingSchemaMismatchException(
+          "Unrecognized union member with id: " + field.id + " for struct:\n" + type);
+    case UNKNOWN:
+      throw unknownStructOrUnion(type);
+    default:
+      throw unrecognizedStructOrUnion(type.getStructOrUnionType());
     }
   }
 
   private void assertUnionHasExactlyOneChild(StructType type, int childFieldsPresent) {
     switch (type.getStructOrUnionType()) {
-      case STRUCT:
-        // nothing to do
-        break;
-      case UNION:
-        // childFieldsPresent must == 1
-        if (childFieldsPresent != 1) {
+    case STRUCT:
+      // nothing to do
+      break;
+    case UNION:
+      // childFieldsPresent must == 1
+      if (childFieldsPresent != 1) {
 
-          if (childFieldsPresent == 0) {
-            throw new DecodingSchemaMismatchException("Cannot write a TUnion with no set value in :\n" + type);
-          } else {
-            throw new DecodingSchemaMismatchException("Cannot write a TUnion with more than 1 set value in :\n" + type);
-          }
-
+        if (childFieldsPresent == 0) {
+          throw new DecodingSchemaMismatchException("Cannot write a TUnion with no set value in :\n" + type);
+        } else {
+          throw new DecodingSchemaMismatchException("Cannot write a TUnion with more than 1 set value in :\n" + type);
         }
-        break;
-      case UNKNOWN:
-        throw unknownStructOrUnion(type);
-      default:
-        throw unrecognizedStructOrUnion(type.getStructOrUnionType());
+
+      }
+      break;
+    case UNKNOWN:
+      throw unknownStructOrUnion(type);
+    default:
+      throw unrecognizedStructOrUnion(type.getStructOrUnionType());
     }
   }
 
@@ -449,7 +460,8 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   }
 
   // we should never reach here in the write path -- this only happens if the
-  // deprecated constructor of StructType is used, which should only be used in the
+  // deprecated constructor of StructType is used, which should only be used in
+  // the
   // read path.
   private static ShouldNeverHappenException unknownStructOrUnion(StructType type) {
     return new ShouldNeverHappenException("This should never happen! "
@@ -493,7 +505,8 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       }
     });
 
-    boolean hasFieldsIgnored = readCollectionElements(in, set.size, set.elemType, buffer, expectedType.getValues().getType());
+    boolean hasFieldsIgnored = readCollectionElements(in, set.size, set.elemType, buffer,
+        expectedType.getValues().getType());
     in.readSetEnd();
     buffer.add(SET_END);
     return hasFieldsIgnored;
@@ -512,14 +525,15 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         return "<e=" + list.elemType + ", s=" + list.size + ">{";
       }
     });
-    boolean hasFieldsIgnored = readCollectionElements(in, list.size, list.elemType, buffer, expectedType.getValues().getType());
+    boolean hasFieldsIgnored = readCollectionElements(in, list.size, list.elemType, buffer,
+        expectedType.getValues().getType());
     in.readListEnd();
     buffer.add(LIST_END);
     return hasFieldsIgnored;
   }
 
-  private boolean readCollectionElements(TProtocol in,
-                                         final int size, final byte elemType, List<Action> buffer, ThriftType expectedType) throws TException {
+  private boolean readCollectionElements(TProtocol in, final int size, final byte elemType, List<Action> buffer,
+      ThriftType expectedType) throws TException {
     boolean hasFieldIgnored = false;
     for (int i = 0; i < size; i++) {
       hasFieldIgnored |= readOneValue(in, elemType, buffer, expectedType);
@@ -528,14 +542,15 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   }
 
   /**
-   * In thrift enum values are written as ints, this method checks if the enum index is defined.
+   * In thrift enum values are written as ints, this method checks if the enum
+   * index is defined.
    *
    * @param expectedType
    * @param i
    */
   private void checkEnum(ThriftType expectedType, int i) {
     if (expectedType.getType() == ThriftTypeID.ENUM) {
-      ThriftType.EnumType expectedEnumType = (ThriftType.EnumType)expectedType;
+      ThriftType.EnumType expectedEnumType = (ThriftType.EnumType) expectedType;
       if (expectedEnumType.getEnumValueById(i) == null) {
         throw new DecodingSchemaMismatchException("can not find index " + i + " in enum " + expectedType);
       }
@@ -543,7 +558,8 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   }
 
   /**
-   * NullProtocol does nothing when writing to it, used for ignoring unrecognized fields.
+   * NullProtocol does nothing when writing to it, used for ignoring unrecognized
+   * fields.
    */
   class NullProtocol extends TProtocol {
 

@@ -53,8 +53,7 @@ public class Schemas {
   }
 
   public static Schema fromAvro(InputStream in) throws IOException {
-    GenericDatumReader<GenericRecord> datumReader =
-        new GenericDatumReader<GenericRecord>();
+    GenericDatumReader<GenericRecord> datumReader = new GenericDatumReader<GenericRecord>();
     DataFileStream<GenericRecord> stream = null;
     boolean threw = true;
 
@@ -74,19 +73,16 @@ public class Schemas {
 
     ParquetMetadata footer = ParquetFileReader.readFooter(fs.getConf(), path);
 
-    String schemaString = footer.getFileMetaData()
-        .getKeyValueMetaData().get("parquet.avro.schema");
+    String schemaString = footer.getFileMetaData().getKeyValueMetaData().get("parquet.avro.schema");
     if (schemaString == null) {
       // try the older property
-      schemaString = footer.getFileMetaData()
-          .getKeyValueMetaData().get("avro.schema");
+      schemaString = footer.getFileMetaData().getKeyValueMetaData().get("avro.schema");
     }
 
     if (schemaString != null) {
       return new Schema.Parser().parse(schemaString);
     } else {
-      return new AvroSchemaConverter()
-          .convert(footer.getFileMetaData().getSchema());
+      return new AvroSchemaConverter().convert(footer.getFileMetaData().getSchema());
     }
   }
 
@@ -191,18 +187,18 @@ public class Schemas {
    */
   public static Schema merge(Schema left, Schema right) {
     Schema merged = mergeOnly(left, right);
-    Preconditions.checkState(merged != null,
-        "Cannot merge %s and %s", left, right);
+    Preconditions.checkState(merged != null, "Cannot merge %s and %s", left, right);
     return merged;
   }
 
   /**
    * Merges two {@link Schema} instances or returns {@code null}.
    * <p>
-   * The two schemas are merged if they are the same type. Records are merged
-   * if the two records have the same name or have no names but have a
-   * significant number of shared fields.
+   * The two schemas are merged if they are the same type. Records are merged if
+   * the two records have the same name or have no names but have a significant
+   * number of shared fields.
    * <p>
+   * 
    * @see {@link #mergeOrUnion} to return a union when a merge is not possible.
    *
    * @param left a {@code Schema}
@@ -221,8 +217,8 @@ public class Schemas {
    * Creates a union of two {@link Schema} instances.
    * <p>
    * If either {@code Schema} is a union, this will attempt to merge the other
-   * schema with the types contained in that union before adding more types to
-   * the union that is produced.
+   * schema with the types contained in that union before adding more types to the
+   * union that is produced.
    * <p>
    * If both schemas are not unions, no merge is attempted.
    *
@@ -279,10 +275,11 @@ public class Schemas {
   /**
    * Merges two {@link Schema} instances or returns {@code null}.
    * <p>
-   * The two schemas are merged if they are the same type. Records are merged
-   * if the two records have the same name or have no names but have a
-   * significant number of shared fields.
+   * The two schemas are merged if they are the same type. Records are merged if
+   * the two records have the same name or have no names but have a significant
+   * number of shared fields.
    * <p>
+   * 
    * @see {@link #mergeOrUnion} to return a union when a merge is not possible.
    *
    * @param left a {@code Schema}
@@ -296,25 +293,25 @@ public class Schemas {
 
     // handle primitive type promotion; doesn't promote integers to floats
     switch (left.getType()) {
-      case INT:
-        if (right.getType() == Schema.Type.LONG) {
-          return right;
-        }
-        break;
-      case LONG:
-        if (right.getType() == Schema.Type.INT) {
-          return left;
-        }
-        break;
-      case FLOAT:
-        if (right.getType() == Schema.Type.DOUBLE) {
-          return right;
-        }
-        break;
-      case DOUBLE:
-        if (right.getType() == Schema.Type.FLOAT) {
-          return left;
-        }
+    case INT:
+      if (right.getType() == Schema.Type.LONG) {
+        return right;
+      }
+      break;
+    case LONG:
+      if (right.getType() == Schema.Type.INT) {
+        return left;
+      }
+      break;
+    case FLOAT:
+      if (right.getType() == Schema.Type.DOUBLE) {
+        return right;
+      }
+      break;
+    case DOUBLE:
+      if (right.getType() == Schema.Type.FLOAT) {
+        return left;
+      }
     }
 
     // any other cases where the types don't match must be combined by a union
@@ -323,54 +320,42 @@ public class Schemas {
     }
 
     switch (left.getType()) {
-      case UNION:
-        return union(left, right);
-      case RECORD:
-        if (left.getName() == null && right.getName() == null &&
-            fieldSimilarity(left, right) < SIMILARITY_THRESH) {
-          return null;
-        } else if (!Objects.equal(left.getName(), right.getName())) {
-          return null;
-        }
+    case UNION:
+      return union(left, right);
+    case RECORD:
+      if (left.getName() == null && right.getName() == null && fieldSimilarity(left, right) < SIMILARITY_THRESH) {
+        return null;
+      } else if (!Objects.equal(left.getName(), right.getName())) {
+        return null;
+      }
 
-        Schema combinedRecord = Schema.createRecord(
-            coalesce(left.getName(), right.getName()),
-            coalesce(left.getDoc(), right.getDoc()),
-            coalesce(left.getNamespace(), right.getNamespace()),
-            false
-        );
-        combinedRecord.setFields(mergeFields(left, right));
+      Schema combinedRecord = Schema.createRecord(coalesce(left.getName(), right.getName()),
+          coalesce(left.getDoc(), right.getDoc()), coalesce(left.getNamespace(), right.getNamespace()), false);
+      combinedRecord.setFields(mergeFields(left, right));
 
-        return combinedRecord;
+      return combinedRecord;
 
-      case MAP:
-        return Schema.createMap(
-            mergeOrUnion(left.getValueType(), right.getValueType()));
+    case MAP:
+      return Schema.createMap(mergeOrUnion(left.getValueType(), right.getValueType()));
 
-      case ARRAY:
-        return Schema.createArray(
-            mergeOrUnion(left.getElementType(), right.getElementType()));
+    case ARRAY:
+      return Schema.createArray(mergeOrUnion(left.getElementType(), right.getElementType()));
 
-      case ENUM:
-        if (!Objects.equal(left.getName(), right.getName())) {
-          return null;
-        }
-        Set<String> symbols = Sets.newLinkedHashSet();
-        symbols.addAll(left.getEnumSymbols());
-        symbols.addAll(right.getEnumSymbols());
-        return Schema.createEnum(
-            left.getName(),
-            coalesce(left.getDoc(), right.getDoc()),
-            coalesce(left.getNamespace(), right.getNamespace()),
-            ImmutableList.copyOf(symbols)
-        );
+    case ENUM:
+      if (!Objects.equal(left.getName(), right.getName())) {
+        return null;
+      }
+      Set<String> symbols = Sets.newLinkedHashSet();
+      symbols.addAll(left.getEnumSymbols());
+      symbols.addAll(right.getEnumSymbols());
+      return Schema.createEnum(left.getName(), coalesce(left.getDoc(), right.getDoc()),
+          coalesce(left.getNamespace(), right.getNamespace()), ImmutableList.copyOf(symbols));
 
-      default:
-        // all primitives are handled before the switch by the equality check.
-        // schemas that reach this point are not primitives and also not any of
-        // the above known types.
-        throw new UnsupportedOperationException(
-            "Unknown schema type: " + left.getType());
+    default:
+      // all primitives are handled before the switch by the equality check.
+      // schemas that reach this point are not primitives and also not any of
+      // the above known types.
+      throw new UnsupportedOperationException("Unknown schema type: " + left.getType());
     }
   }
 
@@ -415,20 +400,14 @@ public class Schemas {
     for (Schema.Field leftField : left.getFields()) {
       Schema.Field rightField = right.getField(leftField.name());
       if (rightField != null) {
-        fields.add(new Schema.Field(
-            leftField.name(),
-            mergeOrUnion(leftField.schema(), rightField.schema()),
-            coalesce(leftField.doc(), rightField.doc()),
-            coalesce(leftField.defaultVal(), rightField.defaultVal())
-        ));
+        fields.add(new Schema.Field(leftField.name(), mergeOrUnion(leftField.schema(), rightField.schema()),
+            coalesce(leftField.doc(), rightField.doc()), coalesce(leftField.defaultVal(), rightField.defaultVal())));
       } else {
         if (leftField.defaultVal() != null) {
           fields.add(copy(leftField));
         } else {
-          fields.add(new Schema.Field(
-              leftField.name(), nullableForDefault(leftField.schema()),
-              leftField.doc(), NULL_DEFAULT
-          ));
+          fields.add(new Schema.Field(leftField.name(), nullableForDefault(leftField.schema()), leftField.doc(),
+              NULL_DEFAULT));
         }
       }
     }
@@ -438,10 +417,8 @@ public class Schemas {
         if (rightField.defaultVal() != null) {
           fields.add(copy(rightField));
         } else {
-          fields.add(new Schema.Field(
-              rightField.name(), nullableForDefault(rightField.schema()),
-              rightField.doc(), NULL_DEFAULT
-          ));
+          fields.add(new Schema.Field(rightField.name(), nullableForDefault(rightField.schema()), rightField.doc(),
+              NULL_DEFAULT));
         }
       }
     }
@@ -450,8 +427,8 @@ public class Schemas {
   }
 
   /**
-   * Creates a new field with the same name, schema, doc, and default value as
-   * the incoming schema.
+   * Creates a new field with the same name, schema, doc, and default value as the
+   * incoming schema.
    * <p>
    * Fields cannot be used in more than one record (not Immutable?).
    *
@@ -459,8 +436,7 @@ public class Schemas {
    * @return a copy of the field
    */
   public static Schema.Field copy(Schema.Field field) {
-    return new Schema.Field(
-        field.name(), field.schema(), field.doc(), field.defaultVal());
+    return new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal());
   }
 
   private static float fieldSimilarity(Schema left, Schema right) {
@@ -482,6 +458,7 @@ public class Schemas {
   }
 
   private static float SIMILARITY_THRESH = 0.3f;
+
   private static float hmean(float left, float right) {
     return (2.0f * left * right) / (left + right);
   }

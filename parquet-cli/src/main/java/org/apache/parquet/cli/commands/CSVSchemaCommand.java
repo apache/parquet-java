@@ -33,74 +33,62 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Set;
 
-@Parameters(commandDescription="Build a schema from a CSV data sample")
+@Parameters(commandDescription = "Build a schema from a CSV data sample")
 public class CSVSchemaCommand extends BaseCommand {
 
   public CSVSchemaCommand(Logger console) {
     super(console);
   }
 
-  @Parameter(description="<sample csv path>")
+  @Parameter(description = "<sample csv path>")
   List<String> samplePaths;
 
-  @Parameter(names={"-o", "--output"}, description="Save schema avsc to path")
+  @Parameter(names = { "-o", "--output" }, description = "Save schema avsc to path")
   String outputPath = null;
 
-  @Parameter(names={"--class", "--record-name"}, required = true,
-      description="A name or class for the result schema")
+  @Parameter(names = { "--class",
+      "--record-name" }, required = true, description = "A name or class for the result schema")
   String recordName = null;
 
-  @Parameter(names="--minimize",
-      description="Minimize schema file size by eliminating white space")
-  boolean minimize=false;
+  @Parameter(names = "--minimize", description = "Minimize schema file size by eliminating white space")
+  boolean minimize = false;
 
-  @Parameter(names="--delimiter", description="Delimiter character")
+  @Parameter(names = "--delimiter", description = "Delimiter character")
   String delimiter = ",";
 
-  @Parameter(names="--escape", description="Escape character")
+  @Parameter(names = "--escape", description = "Escape character")
   String escape = "\\";
 
-  @Parameter(names="--quote", description="Quote character")
+  @Parameter(names = "--quote", description = "Quote character")
   String quote = "\"";
 
-  @Parameter(names="--no-header", description="Don't use first line as CSV header")
+  @Parameter(names = "--no-header", description = "Don't use first line as CSV header")
   boolean noHeader = false;
 
-  @Parameter(names="--skip-lines", description="Lines to skip before CSV start")
+  @Parameter(names = "--skip-lines", description = "Lines to skip before CSV start")
   int linesToSkip = 0;
 
-  @Parameter(names="--charset", description="Character set name", hidden = true)
+  @Parameter(names = "--charset", description = "Character set name", hidden = true)
   String charsetName = Charset.defaultCharset().displayName();
 
-  @Parameter(names="--header",
-      description="Line to use as a header. Must match the CSV settings.")
+  @Parameter(names = "--header", description = "Line to use as a header. Must match the CSV settings.")
   String header;
 
-  @Parameter(names="--require",
-      description="Do not allow null values for the given field")
+  @Parameter(names = "--require", description = "Do not allow null values for the given field")
   List<String> requiredFields;
 
   @Override
   public int run() throws IOException {
-    Preconditions.checkArgument(samplePaths != null && !samplePaths.isEmpty(),
-        "Sample CSV path is required");
-    Preconditions.checkArgument(samplePaths.size() == 1,
-        "Only one CSV sample can be given");
+    Preconditions.checkArgument(samplePaths != null && !samplePaths.isEmpty(), "Sample CSV path is required");
+    Preconditions.checkArgument(samplePaths.size() == 1, "Only one CSV sample can be given");
 
     if (header != null) {
       // if a header is given on the command line, do assume one is in the file
       noHeader = true;
     }
 
-    CSVProperties props = new CSVProperties.Builder()
-        .delimiter(delimiter)
-        .escape(escape)
-        .quote(quote)
-        .header(header)
-        .hasHeader(!noHeader)
-        .linesToSkip(linesToSkip)
-        .charset(charsetName)
-        .build();
+    CSVProperties props = new CSVProperties.Builder().delimiter(delimiter).escape(escape).quote(quote).header(header)
+        .hasHeader(!noHeader).linesToSkip(linesToSkip).charset(charsetName).build();
 
     Set<String> required = ImmutableSet.of();
     if (requiredFields != null) {
@@ -108,9 +96,7 @@ public class CSVSchemaCommand extends BaseCommand {
     }
 
     // assume fields are nullable by default, users can easily change this
-    String sampleSchema = AvroCSV
-        .inferNullableSchema(
-            recordName, open(samplePaths.get(0)), props, required)
+    String sampleSchema = AvroCSV.inferNullableSchema(recordName, open(samplePaths.get(0)), props, required)
         .toString(!minimize);
 
     output(sampleSchema, console, outputPath);
@@ -120,12 +106,8 @@ public class CSVSchemaCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
-        "# Print the schema for samples.csv to standard out:",
-        "samples.csv --record-name Sample",
-        "# Write schema to sample.avsc:",
-        "samples.csv -o sample.avsc --record-name Sample"
-    );
+    return Lists.newArrayList("# Print the schema for samples.csv to standard out:", "samples.csv --record-name Sample",
+        "# Write schema to sample.avsc:", "samples.csv -o sample.avsc --record-name Sample");
   }
 
 }

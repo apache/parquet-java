@@ -21,11 +21,12 @@ package org.apache.parquet.io.api;
 import org.apache.parquet.io.ParquetDecodingException;
 
 /**
- * Top-level class which should be implemented in order to materialize objects from
- * a stream of Parquet data.
+ * Top-level class which should be implemented in order to materialize objects
+ * from a stream of Parquet data.
  * 
- * Each record will be wrapped by {@link GroupConverter#start()} and {@link GroupConverter#end()},
- * between which the appropriate fields will be materialized.
+ * Each record will be wrapped by {@link GroupConverter#start()} and
+ * {@link GroupConverter#end()}, between which the appropriate fields will be
+ * materialized.
  *
  * @param <T> the materialized object class
  */
@@ -33,14 +34,16 @@ abstract public class RecordMaterializer<T> {
 
   /**
    * @return the result of the conversion
-   * @throws RecordMaterializationException to signal that a record cannot be materialized, but can be skipped
+   * @throws RecordMaterializationException to signal that a record cannot be
+   * materialized, but can be skipped
    */
   abstract public T getCurrentRecord();
 
   /**
    * Called if {@link #getCurrentRecord()} isn't going to be called.
    */
-  public void skipCurrentRecord() { }
+  public void skipCurrentRecord() {
+  }
 
   /**
    * @return the root converter for this tree
@@ -48,10 +51,12 @@ abstract public class RecordMaterializer<T> {
   abstract public GroupConverter getRootConverter();
 
   /**
-   * This exception signals that the current record is cannot be converted from parquet columns to a materialized
-   * record, but can be skipped if requested. This exception should be used to signal errors like a union with no
-   * set values, or an error in converting parquet primitive values to a materialized record. It should not
-   * be used to signal unrecoverable errors, like a data column being corrupt or unreadable.
+   * This exception signals that the current record is cannot be converted from
+   * parquet columns to a materialized record, but can be skipped if requested.
+   * This exception should be used to signal errors like a union with no set
+   * values, or an error in converting parquet primitive values to a materialized
+   * record. It should not be used to signal unrecoverable errors, like a data
+   * column being corrupt or unreadable.
    */
   public static class RecordMaterializationException extends ParquetDecodingException {
     public RecordMaterializationException() {

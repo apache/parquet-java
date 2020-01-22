@@ -74,7 +74,7 @@ public class BinaryWritable implements Writable {
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof BinaryWritable) {
-      final BinaryWritable other = (BinaryWritable)obj;
+      final BinaryWritable other = (BinaryWritable) obj;
       return binary.equals(other.binary);
     }
     return false;

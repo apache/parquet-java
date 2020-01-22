@@ -25,10 +25,12 @@ import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 /**
- * {@link Comparator} implementation that also supports the comparison of the related primitive type to avoid the
- * performance penalty of boxing/unboxing. The {@code compare} methods for the not supported primitive types throw
- * {@link UnsupportedOperationException}.
- * {@link Serializable} implementation that may be a UserDefinedPredicate defined this Comparator is their member variable.
+ * {@link Comparator} implementation that also supports the comparison of the
+ * related primitive type to avoid the performance penalty of boxing/unboxing.
+ * The {@code compare} methods for the not supported primitive types throw
+ * {@link UnsupportedOperationException}. {@link Serializable} implementation
+ * that may be a UserDefinedPredicate defined this Comparator is their member
+ * variable.
  */
 public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializable {
 
@@ -104,7 +106,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   static final PrimitiveComparator<Integer> UNSIGNED_INT32_COMPARATOR = new IntComparator() {
     @Override
     public int compare(int i1, int i2) {
-      // Implemented based on com.google.common.primitives.UnsignedInts.compare(int, int)
+      // Implemented based on com.google.common.primitives.UnsignedInts.compare(int,
+      // int)
       return Integer.compare(i1 ^ Integer.MIN_VALUE, i2 ^ Integer.MIN_VALUE);
     }
 
@@ -136,7 +139,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   static final PrimitiveComparator<Long> UNSIGNED_INT64_COMPARATOR = new LongComparator() {
     @Override
     public int compare(long l1, long l2) {
-      // Implemented based on com.google.common.primitives.UnsignedLongs.compare(long, long)
+      // Implemented based on com.google.common.primitives.UnsignedLongs.compare(long,
+      // long)
       return Long.compare(l1 ^ Long.MIN_VALUE, l2 ^ Long.MIN_VALUE);
     }
 
@@ -223,8 +227,9 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   };
 
   /*
-   * This comparator is for comparing two signed decimal values represented in twos-complement binary. In case of the
-   * binary length of one value is shorter than the other it will be padded by the corresponding prefix (0xFF for
+   * This comparator is for comparing two signed decimal values represented in
+   * twos-complement binary. In case of the binary length of one value is shorter
+   * than the other it will be padded by the corresponding prefix (0xFF for
    * negative, 0x00 for positive values).
    */
   static final PrimitiveComparator<Binary> BINARY_AS_SIGNED_INTEGER_COMPARATOR = new BinaryComparator() {
@@ -257,7 +262,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
         p1 += lengthDiff;
       }
 
-      // The beginning of the longer buffer equals to the padding or the lengths are equal
+      // The beginning of the longer buffer equals to the padding or the lengths are
+      // equal
       if (result == 0) {
         result = compare(Math.min(l1, l2), b1, p1, b2, p2);
       }

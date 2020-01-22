@@ -55,8 +55,9 @@ public class TestValidTypeMap {
     }
   }
 
-  public static Column<InvalidColumnType> invalidColumn =
-      new Column<InvalidColumnType>(ColumnPath.get("invalid.column"), InvalidColumnType.class) { };
+  public static Column<InvalidColumnType> invalidColumn = new Column<InvalidColumnType>(
+      ColumnPath.get("invalid.column"), InvalidColumnType.class) {
+  };
 
   @Test
   public void testValidTypes() {
@@ -77,8 +78,7 @@ public class TestValidTypeMap {
       fail("This should throw!");
     } catch (IllegalArgumentException e) {
       assertEquals("FilterPredicate column: int.column's declared type (java.lang.Integer) does not match the "
-          + "schema found in file metadata. Column int.column is of type: "
-          + "DOUBLE\n"
+          + "schema found in file metadata. Column int.column is of type: " + "DOUBLE\n"
           + "Valid types for this column are: [class java.lang.Double]", e.getMessage());
     }
   }

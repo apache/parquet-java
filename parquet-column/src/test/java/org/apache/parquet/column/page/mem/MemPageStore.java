@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
 public class MemPageStore implements PageReadStore, PageWriteStore {
   private static final Logger LOG = LoggerFactory.getLogger(MemPageStore.class);
 

@@ -53,8 +53,7 @@ import org.slf4j.LoggerFactory;
 public class TestBinaryTruncator {
 
   private static final Logger LOG = LoggerFactory.getLogger(TestBinaryTruncator.class);
-  private static final PrimitiveStringifier HEXA_STRINGIFIER = Types.required(BINARY)
-      .named("dummy_type").stringifier();
+  private static final PrimitiveStringifier HEXA_STRINGIFIER = Types.required(BINARY).named("dummy_type").stringifier();
   private static final Random RANDOM = new Random(42);
   private static final CharsetDecoder UTF8_DECODER = StandardCharsets.UTF_8.newDecoder();
   static {
@@ -96,53 +95,33 @@ public class TestBinaryTruncator {
     assertEquals(Binary.fromString("abc"), truncator.truncateMin(Binary.fromString("abcdef"), 3));
     assertEquals(Binary.fromString("abd"), truncator.truncateMax(Binary.fromString("abcdef"), 3));
 
-    // Truncate 1-2 bytes characters; the target length is "inside" a UTF-8 character
+    // Truncate 1-2 bytes characters; the target length is "inside" a UTF-8
+    // character
     assertEquals(Binary.fromString("árvízt"), truncator.truncateMin(Binary.fromString("árvíztűrő"), 9));
     assertEquals(Binary.fromString("árvízu"), truncator.truncateMax(Binary.fromString("árvíztűrő"), 9));
 
     // Truncate highest UTF-8 values -> unable to increment
-    assertEquals(
-        Binary.fromString(
-            UTF8_1BYTE_MAX_CHAR
-                + UTF8_2BYTES_MAX_CHAR),
-        truncator.truncateMin(Binary.fromString(
-            UTF8_1BYTE_MAX_CHAR
-                + UTF8_2BYTES_MAX_CHAR
-                + UTF8_3BYTES_MAX_CHAR
-                + UTF8_4BYTES_MAX_CHAR),
+    assertEquals(Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR),
+        truncator.truncateMin(
+            Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR + UTF8_3BYTES_MAX_CHAR + UTF8_4BYTES_MAX_CHAR),
             5));
     assertEquals(
-        Binary.fromString(
-            UTF8_1BYTE_MAX_CHAR
-                + UTF8_2BYTES_MAX_CHAR
-                + UTF8_3BYTES_MAX_CHAR
-                + UTF8_4BYTES_MAX_CHAR),
-        truncator.truncateMax(Binary.fromString(
-            UTF8_1BYTE_MAX_CHAR
-                + UTF8_2BYTES_MAX_CHAR
-                + UTF8_3BYTES_MAX_CHAR
-                + UTF8_4BYTES_MAX_CHAR),
+        Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR + UTF8_3BYTES_MAX_CHAR + UTF8_4BYTES_MAX_CHAR),
+        truncator.truncateMax(
+            Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR + UTF8_3BYTES_MAX_CHAR + UTF8_4BYTES_MAX_CHAR),
             5));
 
-    // Truncate highest UTF-8 values at the end -> increment the first possible character
-    assertEquals(
-        Binary.fromString(
-            UTF8_1BYTE_MAX_CHAR
-                + UTF8_2BYTES_MAX_CHAR
-                + "b"
-                + UTF8_3BYTES_MAX_CHAR),
+    // Truncate highest UTF-8 values at the end -> increment the first possible
+    // character
+    assertEquals(Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR + "b" + UTF8_3BYTES_MAX_CHAR),
         truncator.truncateMax(Binary.fromString(
-            UTF8_1BYTE_MAX_CHAR
-                + UTF8_2BYTES_MAX_CHAR
-                + "a"
-                + UTF8_3BYTES_MAX_CHAR
-                + UTF8_4BYTES_MAX_CHAR),
-            10));
+            UTF8_1BYTE_MAX_CHAR + UTF8_2BYTES_MAX_CHAR + "a" + UTF8_3BYTES_MAX_CHAR + UTF8_4BYTES_MAX_CHAR), 10));
 
     // Truncate invalid UTF-8 values -> truncate without validity check
     assertEquals(binary(0xFF, 0xFE, 0xFD), truncator.truncateMin(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3));
     assertEquals(binary(0xFF, 0xFE, 0xFE), truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA), 3));
-    assertEquals(binary(0xFF, 0xFE, 0xFE, 0x00, 0x00), truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFF, 0xFF, 0xFF), 5));
+    assertEquals(binary(0xFF, 0xFE, 0xFE, 0x00, 0x00),
+        truncator.truncateMax(binary(0xFF, 0xFE, 0xFD, 0xFF, 0xFF, 0xFF), 5));
   }
 
   @Test
@@ -172,28 +151,19 @@ public class TestBinaryTruncator {
     // Edge case: zero length -> unable to truncate
     checkContract(truncator, comparator, Binary.fromString(""), false, false);
     // Edge case: containing only UTF-8 max characters -> unable to truncate for max
-    checkContract(truncator, comparator, Binary.fromString(
-        UTF8_1BYTE_MAX_CHAR +
-            UTF8_4BYTES_MAX_CHAR +
-            UTF8_3BYTES_MAX_CHAR +
-            UTF8_4BYTES_MAX_CHAR +
-            UTF8_2BYTES_MAX_CHAR +
-            UTF8_3BYTES_MAX_CHAR +
-            UTF8_3BYTES_MAX_CHAR +
-            UTF8_1BYTE_MAX_CHAR +
-            UTF8_2BYTES_MAX_CHAR +
-            UTF8_3BYTES_MAX_CHAR +
-            UTF8_4BYTES_MAX_CHAR),
+    checkContract(truncator, comparator,
+        Binary.fromString(UTF8_1BYTE_MAX_CHAR + UTF8_4BYTES_MAX_CHAR + UTF8_3BYTES_MAX_CHAR + UTF8_4BYTES_MAX_CHAR
+            + UTF8_2BYTES_MAX_CHAR + UTF8_3BYTES_MAX_CHAR + UTF8_3BYTES_MAX_CHAR + UTF8_1BYTE_MAX_CHAR
+            + UTF8_2BYTES_MAX_CHAR + UTF8_3BYTES_MAX_CHAR + UTF8_4BYTES_MAX_CHAR),
         strict, false);
     // Edge case: non-UTF-8; max bytes -> unable to truncate for max
-    checkContract(
-        truncator, comparator,
-        binary(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF),
-        strict, false);
+    checkContract(truncator, comparator, binary(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF), strict,
+        false);
   }
 
   // Checks the contract of truncator
-  // strict means actual truncation is required and the truncated value is a valid UTF-8 string
+  // strict means actual truncation is required and the truncated value is a valid
+  // UTF-8 string
   private void checkContract(BinaryTruncator truncator, Comparator<Binary> comparator, Binary value, boolean strictMin,
       boolean strictMax) {
     int length = value.length();
@@ -211,9 +181,11 @@ public class TestBinaryTruncator {
       checkMaxContract(truncator, comparator, value, random(1, length - 1), strictMax);
     }
 
-    // Edge case: possible to truncate min value to 0 length if original value is not empty
+    // Edge case: possible to truncate min value to 0 length if original value is
+    // not empty
     checkMinContract(truncator, comparator, value, 0, strictMin);
-    // Edge case: impossible to truncate max value to 0 length -> returning the original value
+    // Edge case: impossible to truncate max value to 0 length -> returning the
+    // original value
     assertSame(value, truncator.truncateMax(value, 0));
   }
 

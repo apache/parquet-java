@@ -38,15 +38,17 @@ abstract public class Page {
     return compressedSize;
   }
 
- /**
-  * @return the uncompressed size of the page when the bytes are compressed
-  */
+  /**
+   * @return the uncompressed size of the page when the bytes are compressed
+   */
   public int getUncompressedSize() {
     return uncompressedSize;
   }
 
-  // Note: the following field is only used for testing purposes and are NOT used in checksum
-  // verification. There crc value here will merely be a copy of the actual crc field read in
+  // Note: the following field is only used for testing purposes and are NOT used
+  // in checksum
+  // verification. There crc value here will merely be a copy of the actual crc
+  // field read in
   // ParquetFileReader.Chunk.readAllPages()
   private OptionalInt crc = OptionalInt.empty();
 

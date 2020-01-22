@@ -38,12 +38,13 @@ public class EnumStat {
     }
 
     public void add() {
-      ++ count;
+      ++count;
     }
 
     public String getValue() {
       return value;
     }
+
     public void setValue(String value) {
       this.value = value;
     }
@@ -51,6 +52,7 @@ public class EnumStat {
     public int getCount() {
       return count;
     }
+
     public void setCount(int count) {
       this.count = count;
     }

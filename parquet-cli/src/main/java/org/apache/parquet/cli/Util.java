@@ -46,7 +46,6 @@ import static org.apache.parquet.column.Encoding.RLE;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import static org.apache.parquet.format.Encoding.DELTA_LENGTH_BYTE_ARRAY;
 
-
 public class Util {
 
   private static final long KB = 1024;
@@ -106,8 +105,8 @@ public class Util {
     if (stats == null) {
       return "no stats";
     }
-    return String.format("min: %s max: %s nulls: %d/%d",
-        humanReadable(stats.minAsString(), 30), humanReadable(stats.maxAsString(), 30), stats.getNumNulls(), count);
+    return String.format("min: %s max: %s nulls: %d/%d", humanReadable(stats.minAsString(), 30),
+        humanReadable(stats.maxAsString(), 30), stats.getNumNulls(), count);
   }
 
   public static String humanReadable(String str, int len) {
@@ -139,47 +138,47 @@ public class Util {
 
   public static String shortCodec(CompressionCodecName codec) {
     switch (codec) {
-      case UNCOMPRESSED:
-        return "_";
-      case SNAPPY:
-        return "S";
-      case GZIP:
-        return "G";
-      case LZO:
-        return "L";
-      case BROTLI:
-        return "B";
-      case LZ4:
-        return "4";
-      case ZSTD:
-        return "Z";
-      default:
-        return "?";
+    case UNCOMPRESSED:
+      return "_";
+    case SNAPPY:
+      return "S";
+    case GZIP:
+      return "G";
+    case LZO:
+      return "L";
+    case BROTLI:
+      return "B";
+    case LZ4:
+      return "4";
+    case ZSTD:
+      return "Z";
+    default:
+      return "?";
     }
   }
 
   public static String encodingAsString(Encoding encoding, boolean isDict) {
     switch (encoding) {
-      case PLAIN:
-        return "_";
-      case PLAIN_DICTIONARY:
-        // data pages use RLE, dictionary pages use plain
-        return isDict ? "_" : "R";
-      case RLE_DICTIONARY:
-        return "R";
-      case DELTA_BINARY_PACKED:
-      case DELTA_LENGTH_BYTE_ARRAY:
-      case DELTA_BYTE_ARRAY:
-        return "D";
-      default:
-        return "?";
+    case PLAIN:
+      return "_";
+    case PLAIN_DICTIONARY:
+      // data pages use RLE, dictionary pages use plain
+      return isDict ? "_" : "R";
+    case RLE_DICTIONARY:
+      return "R";
+    case DELTA_BINARY_PACKED:
+    case DELTA_LENGTH_BYTE_ARRAY:
+    case DELTA_BYTE_ARRAY:
+      return "D";
+    default:
+      return "?";
     }
   }
 
   public static String encodingStatsAsString(EncodingStats encodingStats) {
     StringBuilder sb = new StringBuilder();
     if (encodingStats.hasDictionaryPages()) {
-      for (Encoding encoding: encodingStats.getDictionaryEncodings()) {
+      for (Encoding encoding : encodingStats.getDictionaryEncodings()) {
         sb.append(encodingAsString(encoding, true));
       }
       sb.append(" ");
@@ -194,9 +193,8 @@ public class Util {
     if (encodings.contains(PLAIN)) {
       sb.append("_");
     }
-    if (encodings.contains(DELTA_BYTE_ARRAY) ||
-        encodings.contains(DELTA_BINARY_PACKED) ||
-        encodings.contains(DELTA_LENGTH_BYTE_ARRAY)) {
+    if (encodings.contains(DELTA_BYTE_ARRAY) || encodings.contains(DELTA_BINARY_PACKED)
+        || encodings.contains(DELTA_LENGTH_BYTE_ARRAY)) {
       sb.append("D");
     }
 
@@ -227,9 +225,8 @@ public class Util {
       if (encodings.contains(PLAIN)) {
         sb.append("_");
       }
-      if (encodings.contains(DELTA_BYTE_ARRAY) ||
-          encodings.contains(DELTA_BINARY_PACKED) ||
-          encodings.contains(DELTA_LENGTH_BYTE_ARRAY)) {
+      if (encodings.contains(DELTA_BYTE_ARRAY) || encodings.contains(DELTA_BINARY_PACKED)
+          || encodings.contains(DELTA_LENGTH_BYTE_ARRAY)) {
         sb.append("D");
       }
     }
@@ -240,8 +237,7 @@ public class Util {
 
   public static ColumnDescriptor descriptor(String column, MessageType schema) {
     String[] path = Iterables.toArray(DOT.split(column), String.class);
-    Preconditions.checkArgument(schema.containsPath(path),
-        "Schema doesn't have column: " + column);
+    Preconditions.checkArgument(schema.containsPath(path), "Schema doesn't have column: " + column);
     return schema.getColumnDescription(path);
   }
 
@@ -262,8 +258,7 @@ public class Util {
 
   public static PrimitiveType primitive(String column, MessageType schema) {
     String[] path = Iterables.toArray(DOT.split(column), String.class);
-    Preconditions.checkArgument(schema.containsPath(path),
-        "Schema doesn't have column: " + column);
+    Preconditions.checkArgument(schema.containsPath(path), "Schema doesn't have column: " + column);
     return primitive(schema, path);
   }
 

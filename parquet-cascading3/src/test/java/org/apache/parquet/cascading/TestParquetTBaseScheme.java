@@ -68,18 +68,19 @@ public class TestParquetTBaseScheme {
     Path path = new Path(parquetOutputPath);
     JobConf jobConf = new JobConf();
     final FileSystem fs = path.getFileSystem(jobConf);
-    if (fs.exists(path)) fs.delete(path, true);
+    if (fs.exists(path))
+      fs.delete(path, true);
 
-    Scheme sourceScheme = new TextLine( new Fields( "first", "last" ) );
+    Scheme sourceScheme = new TextLine(new Fields("first", "last"));
     Tap source = new Hfs(sourceScheme, txtInputPath);
 
     Scheme sinkScheme = new ParquetTBaseScheme(Name.class);
     Tap sink = new Hfs(sinkScheme, parquetOutputPath);
 
-    Pipe assembly = new Pipe( "namecp" );
+    Pipe assembly = new Pipe("namecp");
     assembly = new Each(assembly, new PackThriftFunction());
     HadoopFlowConnector hadoopFlowConnector = new HadoopFlowConnector();
-    Flow flow  = hadoopFlowConnector.connect("namecp", source, sink, assembly);
+    Flow flow = hadoopFlowConnector.connect("namecp", source, sink, assembly);
 
     flow.complete();
 
@@ -103,33 +104,35 @@ public class TestParquetTBaseScheme {
 
     Path path = new Path(txtOutputPath);
     final FileSystem fs = path.getFileSystem(new Configuration());
-    if (fs.exists(path)) fs.delete(path, true);
+    if (fs.exists(path))
+      fs.delete(path, true);
 
     Tap source = new Hfs(sourceScheme, parquetInputPath);
 
     Scheme sinkScheme = new TextLine(new Fields("first", "last"));
     Tap sink = new Hfs(sinkScheme, txtOutputPath);
 
-    Pipe assembly = new Pipe( "namecp" );
+    Pipe assembly = new Pipe("namecp");
     assembly = new Each(assembly, new UnpackThriftFunction());
-    Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+    Flow flow = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
 
     flow.complete();
-    String result = FileUtils.readFileToString(new File(txtOutputPath+"/part-00000"));
+    String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
     assertEquals("Alice\tPractice\nBob\tHope\nCharlie\tHorse\n", result);
   }
 
-
   private void createFileForRead() throws Exception {
-    final Path fileToCreate = new Path(parquetInputPath+"/names.parquet");
+    final Path fileToCreate = new Path(parquetInputPath + "/names.parquet");
 
     final Configuration conf = new Configuration();
     final FileSystem fs = fileToCreate.getFileSystem(conf);
-    if (fs.exists(fileToCreate)) fs.delete(fileToCreate, true);
+    if (fs.exists(fileToCreate))
+      fs.delete(fileToCreate, true);
 
     TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
-    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, Name.class);
+    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate,
+        ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, Name.class);
 
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));

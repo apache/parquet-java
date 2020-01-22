@@ -32,7 +32,8 @@ public class FloatStatistics extends Statistics<Float> {
   private float min;
 
   /**
-   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   * @deprecated will be removed in 2.0.0. Use
+   * {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
    */
   @Deprecated
   public FloatStatistics() {
@@ -63,7 +64,7 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
-    FloatStatistics floatStats = (FloatStatistics)stats;
+    FloatStatistics floatStats = (FloatStatistics) stats;
     if (!this.hasNonNullValue()) {
       initializeStats(floatStats.getMin(), floatStats.getMax());
     } else {
@@ -99,14 +100,18 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   public void updateStats(float min_value, float max_value) {
-    if (comparator().compare(min, min_value) > 0) { min = min_value; }
-    if (comparator().compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) {
+      min = min_value;
+    }
+    if (comparator().compare(max, max_value) < 0) {
+      max = max_value;
+    }
   }
 
   public void initializeStats(float min_value, float max_value) {
-      min = min_value;
-      max = max_value;
-      this.markAsNotEmpty();
+    min = min_value;
+    max = max_value;
+    this.markAsNotEmpty();
   }
 
   @Override

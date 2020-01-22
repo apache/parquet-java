@@ -28,8 +28,9 @@ import org.apache.parquet.io.ParquetEncodingException;
 import java.io.IOException;
 
 /**
- * Write integers with delta encoding and binary packing
- * The format is as follows:
+ * Write integers with delta encoding and binary packing The format is as
+ * follows:
+ * 
  * <pre>
  *   {@code
  *     delta-binary-packing: <page-header> <block>*
@@ -42,7 +43,8 @@ import java.io.IOException;
  *   }
  * </pre>
  * <p>
- * The algorithm and format is inspired by D. Lemire's paper: http://lemire.me/blog/archives/2012/09/12/fast-integer-compression-decoding-billions-of-integers-per-second/
+ * The algorithm and format is inspired by D. Lemire's paper:
+ * http://lemire.me/blog/archives/2012/09/12/fast-integer-compression-decoding-billions-of-integers-per-second/
  */
 public abstract class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
@@ -65,15 +67,15 @@ public abstract class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   protected int totalValueCount = 0;
 
   /**
-   * a pointer to deltaBlockBuffer indicating the end of deltaBlockBuffer
-   * the number of values in the deltaBlockBuffer that haven't flushed to baos
-   * it will be reset after each flush
+   * a pointer to deltaBlockBuffer indicating the end of deltaBlockBuffer the
+   * number of values in the deltaBlockBuffer that haven't flushed to baos it will
+   * be reset after each flush
    */
   protected int deltaValuesToFlush = 0;
 
   /**
-   * bytes buffer for a mini block, it is reused for each mini block.
-   * Therefore the size of biggest miniblock with bitwith of MAX_BITWITH is allocated
+   * bytes buffer for a mini block, it is reused for each mini block. Therefore
+   * the size of biggest miniblock with bitwith of MAX_BITWITH is allocated
    */
   protected byte[] miniBlockByteBuffer;
 
@@ -82,7 +84,8 @@ public abstract class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     this(DEFAULT_NUM_BLOCK_VALUES, DEFAULT_NUM_MINIBLOCKS, slabSize, pageSize, allocator);
   }
 
-  public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize, int pageSize, ByteBufferAllocator allocator) {
+  public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize, int pageSize,
+      ByteBufferAllocator allocator) {
     this.config = new DeltaBinaryPackingConfig(blockSizeInValues, miniBlockNum);
     bitWidths = new int[config.miniBlockNumInABlock];
     baos = new CapacityByteArrayOutputStream(slabSize, pageSize, allocator);

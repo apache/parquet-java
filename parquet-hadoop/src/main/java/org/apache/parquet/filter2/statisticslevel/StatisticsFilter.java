@@ -43,21 +43,23 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * Applies a {@link org.apache.parquet.filter2.predicate.FilterPredicate} to statistics about a group of
- * records.
+ * Applies a {@link org.apache.parquet.filter2.predicate.FilterPredicate} to
+ * statistics about a group of records.
  *
- * Note: the supplied predicate must not contain any instances of the not() operator as this is not
- * supported by this filter.
+ * Note: the supplied predicate must not contain any instances of the not()
+ * operator as this is not supported by this filter.
  *
- * the supplied predicate should first be run through {@link org.apache.parquet.filter2.predicate.LogicalInverseRewriter} to rewrite it
- * in a form that doesn't make use of the not() operator.
+ * the supplied predicate should first be run through
+ * {@link org.apache.parquet.filter2.predicate.LogicalInverseRewriter} to
+ * rewrite it in a form that doesn't make use of the not() operator.
  *
  * the supplied predicate should also have already been run through
- * {@link org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator}
- * to make sure it is compatible with the schema of this file.
+ * {@link org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator} to
+ * make sure it is compatible with the schema of this file.
  *
- * Returns true if all the records represented by the statistics in the provided column metadata can be dropped.
- *         false otherwise (including when it is not known, which is often the case).
+ * Returns true if all the records represented by the statistics in the provided
+ * column metadata can be dropped. false otherwise (including when it is not
+ * known, which is often the case).
  */
 // TODO: this belongs in the parquet-column project, but some of the classes here need to be moved too
 // TODO: (https://issues.apache.org/jira/browse/PARQUET-38)
@@ -357,7 +359,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
         "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
   }
 
-  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
+  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud,
+      boolean inverted) {
     Column<T> filterColumn = ud.getColumn();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
@@ -393,9 +396,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    org.apache.parquet.filter2.predicate.Statistics<T> udpStats =
-      new org.apache.parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax(),
-        stats.comparator());
+    org.apache.parquet.filter2.predicate.Statistics<T> udpStats = new org.apache.parquet.filter2.predicate.Statistics<T>(
+        stats.genericGetMin(), stats.genericGetMax(), stats.comparator());
 
     if (inverted) {
       return udp.inverseCanDrop(udpStats);

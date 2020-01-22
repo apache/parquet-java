@@ -30,7 +30,6 @@ import org.apache.parquet.column.values.bitpacking.Packer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * Encodes values using a combination of run length encoding and bit packing,
  * according to the following grammar:
@@ -51,11 +50,13 @@ import org.slf4j.LoggerFactory;
  * repeated-value := value that is repeated, using a fixed-width of round-up-to-next-byte(bit-width)
  * }
  * </pre>
- * NOTE: this class is only responsible for creating and returning the {@code <encoded-data>}
- *       portion of the above grammar. The {@code <length>} portion is done by
- *       {@link RunLengthBitPackingHybridValuesWriter}
+ * 
+ * NOTE: this class is only responsible for creating and returning the
+ * {@code <encoded-data>} portion of the above grammar. The {@code <length>}
+ * portion is done by {@link RunLengthBitPackingHybridValuesWriter}
  * <p>
- * Only supports positive values (including 0) // TODO: is that ok? Should we make a signed version?
+ * Only supports positive values (including 0) // TODO: is that ok? Should we
+ * make a signed version?
  */
 public class RunLengthBitPackingHybridEncoder {
   private static final Logger LOG = LoggerFactory.getLogger(RunLengthBitPackingHybridEncoder.class);
@@ -65,14 +66,13 @@ public class RunLengthBitPackingHybridEncoder {
   private final CapacityByteArrayOutputStream baos;
 
   /**
-   * The bit width used for bit-packing and for writing
-   * the repeated-value
+   * The bit width used for bit-packing and for writing the repeated-value
    */
   private final int bitWidth;
 
   /**
-   * Values that are bit packed 8 at at a time are packed into this
-   * buffer, which is then written to baos
+   * Values that are bit packed 8 at at a time are packed into this buffer, which
+   * is then written to baos
    */
   private final byte[] packBuffer;
 
@@ -82,8 +82,8 @@ public class RunLengthBitPackingHybridEncoder {
   private int previousValue;
 
   /**
-   * We buffer 8 values at a time, and either bit pack them
-   * or discard them after writing a rle-run
+   * We buffer 8 values at a time, and either bit pack them or discard them after
+   * writing a rle-run
    */
   private final int[] bufferedValues;
   private int numBufferedValues;
@@ -94,30 +94,29 @@ public class RunLengthBitPackingHybridEncoder {
   private int repeatCount;
 
   /**
-   * How many groups of 8 values have been written
-   * to the current bit-packed-run
+   * How many groups of 8 values have been written to the current bit-packed-run
    */
   private int bitPackedGroupCount;
 
   /**
-   * A "pointer" to a single byte in baos,
-   * which we use as our bit-packed-header. It's really
-   * the logical index of the byte in baos.
+   * A "pointer" to a single byte in baos, which we use as our bit-packed-header.
+   * It's really the logical index of the byte in baos.
    *
-   * We are only using one byte for this header,
-   * which limits us to writing 504 values per bit-packed-run.
+   * We are only using one byte for this header, which limits us to writing 504
+   * values per bit-packed-run.
    *
-   * MSB must be 0 for varint encoding, LSB must be 1 to signify
-   * that this is a bit-packed-header leaves 6 bits to write the
-   * number of 8-groups -> (2^6 - 1) * 8 = 504
+   * MSB must be 0 for varint encoding, LSB must be 1 to signify that this is a
+   * bit-packed-header leaves 6 bits to write the number of 8-groups -> (2^6 - 1)
+   * * 8 = 504
    */
   private long bitPackedRunHeaderPointer;
 
   private boolean toBytesCalled;
 
-  public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    LOG.debug("Encoding: RunLengthBitPackingHybridEncoder with "
-      + "bithWidth: {} initialCapacity {}", bitWidth, initialCapacity);
+  public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity, int pageSize,
+      ByteBufferAllocator allocator) {
+    LOG.debug("Encoding: RunLengthBitPackingHybridEncoder with " + "bithWidth: {} initialCapacity {}", bitWidth,
+        initialCapacity);
 
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
 
@@ -208,8 +207,8 @@ public class RunLengthBitPackingHybridEncoder {
   }
 
   /**
-   * If we are currently writing a bit-packed-run, update the
-   * bit-packed-header and consider this run to be over
+   * If we are currently writing a bit-packed-run, update the bit-packed-header
+   * and consider this run to be over
    *
    * does nothing if we're not currently writing a bit-packed run
    */
@@ -246,18 +245,18 @@ public class RunLengthBitPackingHybridEncoder {
     // reset the repeat count
     repeatCount = 0;
 
-    // throw away all the buffered values, they were just repeats and they've been written
+    // throw away all the buffered values, they were just repeats and they've been
+    // written
     numBufferedValues = 0;
   }
 
   public BytesInput toBytes() throws IOException {
-    Preconditions.checkArgument(!toBytesCalled,
-        "You cannot call toBytes() more than once without calling reset()");
+    Preconditions.checkArgument(!toBytesCalled, "You cannot call toBytes() more than once without calling reset()");
 
     // write anything that is buffered / queued up for an rle-run
     if (repeatCount >= 8) {
       writeRleRun();
-    } else if(numBufferedValues > 0) {
+    } else if (numBufferedValues > 0) {
       for (int i = numBufferedValues; i < 8; i++) {
         bufferedValues[i] = 0;
       }

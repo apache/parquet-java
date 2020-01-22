@@ -19,7 +19,8 @@
 package org.apache.parquet.schema;
 
 /**
- * @deprecated use {@link org.apache.parquet.schema.LogicalTypeAnnotation.DecimalLogicalTypeAnnotation}
+ * @deprecated use
+ * {@link org.apache.parquet.schema.LogicalTypeAnnotation.DecimalLogicalTypeAnnotation}
  * with proper precision and scale parameters instead
  */
 @Deprecated
@@ -42,13 +43,17 @@ public class DecimalMetadata {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o)
+      return true;
+    if (o == null || getClass() != o.getClass())
+      return false;
 
     DecimalMetadata that = (DecimalMetadata) o;
 
-    if (precision != that.precision) return false;
-    if (scale != that.scale) return false;
+    if (precision != that.precision)
+      return false;
+    if (scale != that.scale)
+      return false;
 
     return true;
   }

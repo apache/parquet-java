@@ -17,6 +17,7 @@
  * under the License.
  */
 package org.apache.parquet.thrift;
+
 import java.util.*;
 
 import org.apache.parquet.hadoop.BadConfigurationException;
@@ -49,9 +50,10 @@ public class ThriftMetaData {
 
   /**
    * Get the Thrift Class encoded in the metadata.
+   * 
    * @return Thrift Class encoded in the metadata.
-   * @throws BadConfigurationException if the encoded class does not
-   * extend TBase or is not available in the current classloader.
+   * @throws BadConfigurationException if the encoded class does not extend TBase
+   * or is not available in the current classloader.
    */
   public Class<?> getThriftClass() {
     if (thriftClass == null) {
@@ -83,11 +85,10 @@ public class ThriftMetaData {
   /**
    * Reads ThriftMetadata from the parquet file footer.
    *
-   * @param extraMetaData  extraMetaData field of the parquet footer
+   * @param extraMetaData extraMetaData field of the parquet footer
    * @return the ThriftMetaData used to write a data file
    */
-  public static ThriftMetaData fromExtraMetaData(
-      Map<String, String> extraMetaData) {
+  public static ThriftMetaData fromExtraMetaData(Map<String, String> extraMetaData) {
     final String thriftClassName = extraMetaData.get(THRIFT_CLASS);
     final String thriftDescriptorString = extraMetaData.get(THRIFT_DESCRIPTOR);
     if (thriftClassName == null || thriftDescriptorString == null) {
@@ -115,7 +116,7 @@ public class ThriftMetaData {
 
   private static StructType parseDescriptor(String json) {
     try {
-      return (StructType)ThriftType.fromJSON(json);
+      return (StructType) ThriftType.fromJSON(json);
     } catch (RuntimeException e) {
       throw new BadConfigurationException("Could not read the thrift descriptor " + json, e);
     }
@@ -123,6 +124,7 @@ public class ThriftMetaData {
 
   /**
    * generates a map of key values to store in the footer
+   * 
    * @return the key values
    */
   public Map<String, String> toExtraMetaData() {

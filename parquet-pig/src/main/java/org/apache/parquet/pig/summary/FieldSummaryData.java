@@ -25,8 +25,8 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 
 /**
- * summary data for one field of a tuple
- * usually only one the *Summary member if set
+ * summary data for one field of a tuple usually only one the *Summary member if
+ * set
  */
 public class FieldSummaryData extends SummaryData {
 

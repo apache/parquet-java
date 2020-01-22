@@ -48,8 +48,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * DeprecatedParquetInputFormat is used by cascading. It initializes the recordReader using an initialize method with
- * different parameters than ParquetInputFormat
+ * DeprecatedParquetInputFormat is used by cascading. It initializes the
+ * recordReader using an initialize method with different parameters than
+ * ParquetInputFormat
  */
 public class DeprecatedInputFormatTest {
   final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
@@ -66,18 +67,13 @@ public class DeprecatedInputFormatTest {
   public void setUp() {
     conf = new Configuration();
     jobConf = new JobConf();
-    writeSchema = "message example {\n" +
-            "required int32 line;\n" +
-            "required binary content;\n" +
-            "}";
+    writeSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
 
-    readSchema = "message example {\n" +
-            "required int32 line;\n" +
-            "required binary content;\n" +
-            "}";
+    readSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
   }
 
-  private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
+  private void runMapReduceJob(CompressionCodecName codec)
+      throws IOException, ClassNotFoundException, InterruptedException {
 
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
@@ -91,10 +87,7 @@ public class DeprecatedInputFormatTest {
       ExampleOutputFormat.setOutputPath(writeJob, parquetPath);
       writeJob.setOutputFormatClass(ExampleOutputFormat.class);
       writeJob.setMapperClass(ReadMapper.class);
-      ExampleOutputFormat.setSchema(
-              writeJob,
-              MessageTypeParser.parseMessageType(
-                      writeSchema));
+      ExampleOutputFormat.setSchema(writeJob, MessageTypeParser.parseMessageType(writeSchema));
       writeJob.submit();
       waitForJob(writeJob);
     }
@@ -116,9 +109,10 @@ public class DeprecatedInputFormatTest {
     runMapReduceJob(CompressionCodecName.GZIP);
     assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytesread").getValue() > 0L);
     assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytestotal").getValue() > 0L);
-    assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytesread").getValue()
-            == mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytestotal").getValue());
-    //not testing the time read counter since it could be zero due to the size of data is too small
+    assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytesread").getValue() == mapRedJob
+        .getCounters().getGroup("parquet").getCounterForName("bytestotal").getValue());
+    // not testing the time read counter since it could be zero due to the size of
+    // data is too small
   }
 
   @Test
@@ -151,19 +145,20 @@ public class DeprecatedInputFormatTest {
     }
 
     protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-      Group group = factory.newGroup()
-              .append("line", (int) key.get())
-              .append("content", value.toString());
+      Group group = factory.newGroup().append("line", (int) key.get()).append("content", value.toString());
       context.write(null, group);
     }
   }
 
-  public static class DeprecatedWriteMapper implements org.apache.hadoop.mapred.Mapper<Void, Container<Group>, LongWritable, Text> {
+  public static class DeprecatedWriteMapper
+      implements org.apache.hadoop.mapred.Mapper<Void, Container<Group>, LongWritable, Text> {
 
     @Override
-    public void map(Void aVoid, Container<Group> valueContainer, OutputCollector<LongWritable, Text> longWritableTextOutputCollector, Reporter reporter) throws IOException {
+    public void map(Void aVoid, Container<Group> valueContainer,
+        OutputCollector<LongWritable, Text> longWritableTextOutputCollector, Reporter reporter) throws IOException {
       Group value = valueContainer.get();
-      longWritableTextOutputCollector.collect(new LongWritable(value.getInteger("line", 0)), new Text(value.getString("content", 0)));
+      longWritableTextOutputCollector.collect(new LongWritable(value.getInteger("line", 0)),
+          new Text(value.getString("content", 0)));
     }
 
     @Override

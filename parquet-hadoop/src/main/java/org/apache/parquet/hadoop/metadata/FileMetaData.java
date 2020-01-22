@@ -26,7 +26,6 @@ import java.util.Map;
 
 import org.apache.parquet.schema.MessageType;
 
-
 /**
  * File level meta data (Schema, codec, ...)
  */
@@ -60,7 +59,7 @@ public final class FileMetaData implements Serializable {
 
   @Override
   public String toString() {
-    return "FileMetaData{schema: "+schema+ ", metadata: " + keyValueMetaData + "}";
+    return "FileMetaData{schema: " + schema + ", metadata: " + keyValueMetaData + "}";
   }
 
   /**

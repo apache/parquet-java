@@ -23,8 +23,11 @@ import org.apache.commons.cli.Options;
 
 public interface Command {
   Options getOptions();
+
   boolean supportsExtraArgs();
+
   String[] getUsageDescription();
+
   String getCommandDescription();
 
   void execute(CommandLine options) throws Exception;

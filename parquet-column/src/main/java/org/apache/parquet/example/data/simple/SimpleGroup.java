@@ -27,7 +27,6 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.Type;
 
-
 public class SimpleGroup extends Group {
 
   private final GroupType schema;
@@ -38,7 +37,7 @@ public class SimpleGroup extends Group {
     this.schema = schema;
     this.data = new List[schema.getFields().size()];
     for (int i = 0; i < schema.getFieldCount(); i++) {
-       this.data[i] = new ArrayList<>();
+      this.data[i] = new ArrayList<>();
     }
   }
 
@@ -61,7 +60,7 @@ public class SimpleGroup extends Group {
             if (value == null) {
               result += ": NULL\n";
             } else if (value instanceof Group) {
-              result += "\n" + ((SimpleGroup)value).toString(indent+"  ");
+              result += "\n" + ((SimpleGroup) value).toString(indent + "  ");
             } else {
               result += ": " + value.toString() + "\n";
             }
@@ -81,7 +80,7 @@ public class SimpleGroup extends Group {
 
   @Override
   public Group getGroup(int fieldIndex, int index) {
-    return (Group)getValue(fieldIndex, index);
+    return (Group) getValue(fieldIndex, index);
   }
 
   private Object getValue(int fieldIndex, int index) {
@@ -89,21 +88,23 @@ public class SimpleGroup extends Group {
     try {
       list = data[fieldIndex];
     } catch (IndexOutOfBoundsException e) {
-      throw new RuntimeException("not found " + fieldIndex + "(" + schema.getFieldName(fieldIndex) + ") in group:\n" + this);
+      throw new RuntimeException(
+          "not found " + fieldIndex + "(" + schema.getFieldName(fieldIndex) + ") in group:\n" + this);
     }
     try {
       return list.get(index);
     } catch (IndexOutOfBoundsException e) {
-      throw new RuntimeException("not found " + fieldIndex + "(" + schema.getFieldName(fieldIndex) + ") element number " + index + " in group:\n" + this);
+      throw new RuntimeException("not found " + fieldIndex + "(" + schema.getFieldName(fieldIndex) + ") element number "
+          + index + " in group:\n" + this);
     }
   }
 
   private void add(int fieldIndex, Primitive value) {
     Type type = schema.getType(fieldIndex);
     List<Object> list = data[fieldIndex];
-    if (!type.isRepetition(Type.Repetition.REPEATED)
-        && !list.isEmpty()) {
-      throw new IllegalStateException("field "+fieldIndex+" (" + type.getName() + ") can not have more than one value: " + list);
+    if (!type.isRepetition(Type.Repetition.REPEATED) && !list.isEmpty()) {
+      throw new IllegalStateException(
+          "field " + fieldIndex + " (" + type.getName() + ") can not have more than one value: " + list);
     }
     list.add(value);
   }
@@ -121,46 +122,46 @@ public class SimpleGroup extends Group {
 
   @Override
   public String getString(int fieldIndex, int index) {
-    return ((BinaryValue)getValue(fieldIndex, index)).getString();
+    return ((BinaryValue) getValue(fieldIndex, index)).getString();
   }
 
   @Override
   public int getInteger(int fieldIndex, int index) {
-    return ((IntegerValue)getValue(fieldIndex, index)).getInteger();
+    return ((IntegerValue) getValue(fieldIndex, index)).getInteger();
   }
 
   @Override
   public long getLong(int fieldIndex, int index) {
-    return ((LongValue)getValue(fieldIndex, index)).getLong();
+    return ((LongValue) getValue(fieldIndex, index)).getLong();
   }
 
   @Override
   public double getDouble(int fieldIndex, int index) {
-    return ((DoubleValue)getValue(fieldIndex, index)).getDouble();
+    return ((DoubleValue) getValue(fieldIndex, index)).getDouble();
   }
 
   @Override
   public float getFloat(int fieldIndex, int index) {
-    return ((FloatValue)getValue(fieldIndex, index)).getFloat();
+    return ((FloatValue) getValue(fieldIndex, index)).getFloat();
   }
 
   @Override
   public boolean getBoolean(int fieldIndex, int index) {
-    return ((BooleanValue)getValue(fieldIndex, index)).getBoolean();
+    return ((BooleanValue) getValue(fieldIndex, index)).getBoolean();
   }
 
   @Override
   public Binary getBinary(int fieldIndex, int index) {
-    return ((BinaryValue)getValue(fieldIndex, index)).getBinary();
+    return ((BinaryValue) getValue(fieldIndex, index)).getBinary();
   }
 
   public NanoTime getTimeNanos(int fieldIndex, int index) {
-    return NanoTime.fromInt96((Int96Value)getValue(fieldIndex, index));
+    return NanoTime.fromInt96((Int96Value) getValue(fieldIndex, index));
   }
 
   @Override
   public Binary getInt96(int fieldIndex, int index) {
-    return ((Int96Value)getValue(fieldIndex, index)).getInt96();
+    return ((Int96Value) getValue(fieldIndex, index)).getInt96();
   }
 
   @Override
@@ -191,16 +192,15 @@ public class SimpleGroup extends Group {
   @Override
   public void add(int fieldIndex, Binary value) {
     switch (getType().getType(fieldIndex).asPrimitiveType().getPrimitiveTypeName()) {
-      case BINARY:
-      case FIXED_LEN_BYTE_ARRAY:
-        add(fieldIndex, new BinaryValue(value));
-        break;
-      case INT96:
-        add(fieldIndex, new Int96Value(value));
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            getType().asPrimitiveType().getName() + " not supported for Binary");
+    case BINARY:
+    case FIXED_LEN_BYTE_ARRAY:
+      add(fieldIndex, new BinaryValue(value));
+      break;
+    case INT96:
+      add(fieldIndex, new Int96Value(value));
+      break;
+    default:
+      throw new UnsupportedOperationException(getType().asPrimitiveType().getName() + " not supported for Binary");
     }
   }
 
@@ -226,7 +226,7 @@ public class SimpleGroup extends Group {
 
   @Override
   public void writeValue(int field, int index, RecordConsumer recordConsumer) {
-    ((Primitive)getValue(field, index)).writeValue(recordConsumer);
+    ((Primitive) getValue(field, index)).writeValue(recordConsumer);
   }
 
 }

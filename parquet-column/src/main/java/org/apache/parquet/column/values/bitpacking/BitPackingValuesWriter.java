@@ -33,7 +33,8 @@ import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 import org.apache.parquet.io.ParquetEncodingException;
 
 /**
- * a column writer that packs the ints in the number of bits required based on the maximum size.
+ * a column writer that packs the ints in the number of bits required based on
+ * the maximum size.
  */
 public class BitPackingValuesWriter extends ValuesWriter {
 
@@ -59,6 +60,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.values.ValuesWriter#writeInteger(int)
    */
   @Override
@@ -72,6 +74,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.values.ValuesWriter#getBufferedSize()
    */
   @Override
@@ -81,6 +84,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.values.ValuesWriter#getBytes()
    */
   @Override
@@ -95,6 +99,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.values.ValuesWriter#reset()
    */
   @Override
@@ -110,6 +115,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.values.ValuesWriter#getAllocatedSize()
    */
   @Override

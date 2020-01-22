@@ -33,10 +33,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
 public class TestColumnChunkMetaData {
 
-
   @Test
   public void testConversionBig() {
-    long big = (long)Integer.MAX_VALUE + 1;
+    long big = (long) Integer.MAX_VALUE + 1;
 
     ColumnChunkMetaData md = newMD(big);
     assertTrue(md instanceof IntColumnChunkMetaData);
@@ -54,7 +53,7 @@ public class TestColumnChunkMetaData {
 
   @Test
   public void testConversionVeryBig() {
-    long veryBig = (long)Integer.MAX_VALUE * 3;
+    long veryBig = (long) Integer.MAX_VALUE * 3;
 
     ColumnChunkMetaData md = newMD(veryBig);
     assertTrue(md instanceof LongColumnChunkMetaData);
@@ -76,8 +75,7 @@ public class TestColumnChunkMetaData {
     ColumnPath p = ColumnPath.get("foo");
     CompressionCodecName c = CompressionCodecName.GZIP;
     BinaryStatistics s = new BinaryStatistics();
-    ColumnChunkMetaData md = ColumnChunkMetaData.get(p, t, c, e, s,
-                                                     big, 0, 0, 0, 0);
+    ColumnChunkMetaData md = ColumnChunkMetaData.get(p, t, c, e, s, big, 0, 0, 0, 0);
     return md;
   }
 }

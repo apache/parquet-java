@@ -39,7 +39,7 @@ public final class DummyRecordConverter extends RecordMaterializer<Object> {
   private GroupConverter root;
 
   public DummyRecordConverter(MessageType schema) {
-    this.root = (GroupConverter)schema.convertWith(new TypeConverter<Converter>() {
+    this.root = (GroupConverter) schema.convertWith(new TypeConverter<Converter>() {
 
       @Override
       public Converter convertPrimitiveType(List<GroupType> path, PrimitiveType primitiveType) {
@@ -49,22 +49,27 @@ public final class DummyRecordConverter extends RecordMaterializer<Object> {
           public void addBinary(Binary value) {
             a = value;
           }
+
           @Override
           public void addBoolean(boolean value) {
             a = value;
           }
+
           @Override
           public void addDouble(double value) {
             a = value;
           }
+
           @Override
           public void addFloat(float value) {
             a = value;
           }
+
           @Override
           public void addInt(int value) {
             a = value;
           }
+
           @Override
           public void addLong(long value) {
             a = value;

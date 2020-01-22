@@ -25,10 +25,12 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableShortObje
 import org.apache.hadoop.io.IntWritable;
 
 /**
- * The ParquetShortInspector can inspect both ShortWritables and IntWritables into shorts.
+ * The ParquetShortInspector can inspect both ShortWritables and IntWritables
+ * into shorts.
  *
  */
-public class ParquetShortInspector extends AbstractPrimitiveJavaObjectInspector implements SettableShortObjectInspector {
+public class ParquetShortInspector extends AbstractPrimitiveJavaObjectInspector
+    implements SettableShortObjectInspector {
 
   ParquetShortInspector() {
     super(PrimitiveObjectInspectorUtils.shortTypeEntry);

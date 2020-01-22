@@ -22,7 +22,8 @@ package org.apache.parquet;
  * Utility for parameter validation
  */
 public final class Preconditions {
-  private Preconditions() { }
+  private Preconditions() {
+  }
 
   /**
    * @param o the param to check
@@ -41,11 +42,9 @@ public final class Preconditions {
   /**
    * Precondition-style validation that throws {@link IllegalArgumentException}.
    *
-   * @param isValid
-   *          {@code true} if valid, {@code false} if an exception should be
-   *          thrown
-   * @param message
-   *          A String message for the exception.
+   * @param isValid {@code true} if valid, {@code false} if an exception should be
+   * thrown
+   * @param message A String message for the exception.
    * @throws IllegalArgumentException if {@code isValid} is false
    */
   public static void checkArgument(boolean isValid, String message) throws IllegalArgumentException {
@@ -57,31 +56,24 @@ public final class Preconditions {
   /**
    * Precondition-style validation that throws {@link IllegalArgumentException}.
    *
-   * @param isValid
-   *          {@code true} if valid, {@code false} if an exception should be
-   *          thrown
-   * @param message
-   *          A String message for the exception.
-   * @param args
-   *          Objects used to fill in {@code %s} placeholders in the message
+   * @param isValid {@code true} if valid, {@code false} if an exception should be
+   * thrown
+   * @param message A String message for the exception.
+   * @param args Objects used to fill in {@code %s} placeholders in the message
    * @throws IllegalArgumentException if {@code isValid} is false
    */
-  public static void checkArgument(boolean isValid, String message, Object... args)
-      throws IllegalArgumentException {
+  public static void checkArgument(boolean isValid, String message, Object... args) throws IllegalArgumentException {
     if (!isValid) {
-      throw new IllegalArgumentException(
-          String.format(String.valueOf(message), strings(args)));
+      throw new IllegalArgumentException(String.format(String.valueOf(message), strings(args)));
     }
   }
 
   /**
    * Precondition-style validation that throws {@link IllegalStateException}.
    *
-   * @param isValid
-   *          {@code true} if valid, {@code false} if an exception should be
-   *          thrown
-   * @param message
-   *          A String message for the exception.
+   * @param isValid {@code true} if valid, {@code false} if an exception should be
+   * thrown
+   * @param message A String message for the exception.
    * @throws IllegalStateException if {@code isValid} is false
    */
   public static void checkState(boolean isValid, String message) throws IllegalStateException {
@@ -93,20 +85,15 @@ public final class Preconditions {
   /**
    * Precondition-style validation that throws {@link IllegalStateException}.
    *
-   * @param isValid
-   *          {@code true} if valid, {@code false} if an exception should be
-   *          thrown
-   * @param message
-   *          A String message for the exception.
-   * @param args
-   *          Objects used to fill in {@code %s} placeholders in the message
+   * @param isValid {@code true} if valid, {@code false} if an exception should be
+   * thrown
+   * @param message A String message for the exception.
+   * @param args Objects used to fill in {@code %s} placeholders in the message
    * @throws IllegalStateException if {@code isValid} is false
    */
-  public static void checkState(boolean isValid, String message, Object... args)
-      throws IllegalStateException {
+  public static void checkState(boolean isValid, String message, Object... args) throws IllegalStateException {
     if (!isValid) {
-      throw new IllegalStateException(
-          String.format(String.valueOf(message), strings(args)));
+      throw new IllegalStateException(String.format(String.valueOf(message), strings(args)));
     }
   }
 

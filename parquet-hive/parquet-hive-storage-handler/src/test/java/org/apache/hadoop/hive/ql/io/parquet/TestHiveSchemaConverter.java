@@ -59,64 +59,40 @@ public class TestHiveSchemaConverter {
     return columnTypes;
   }
 
-  private void testConversion(final String columnNamesStr, final String columnsTypeStr, final String expectedSchema) throws Exception {
+  private void testConversion(final String columnNamesStr, final String columnsTypeStr, final String expectedSchema)
+      throws Exception {
     final List<String> columnNames = createHiveColumnsFrom(columnNamesStr);
     final List<TypeInfo> columnTypes = createHiveTypeInfoFrom(columnsTypeStr);
     final MessageType messageTypeFound = HiveSchemaConverter.convert(columnNames, columnTypes);
     final MessageType expectedMT = MessageTypeParser.parseMessageType(expectedSchema);
-    assertEquals("converting " + columnNamesStr + ": " + columnsTypeStr + " to " + expectedSchema, expectedMT, messageTypeFound);
+    assertEquals("converting " + columnNamesStr + ": " + columnsTypeStr + " to " + expectedSchema, expectedMT,
+        messageTypeFound);
   }
 
   @Test
   public void testSimpleType() throws Exception {
-    testConversion(
-            "a,b,c",
-            "int,double,boolean",
-            "message hive_schema {\n"
-            + "  optional int32 a;\n"
-            + "  optional double b;\n"
-            + "  optional boolean c;\n"
-            + "}\n");
+    testConversion("a,b,c", "int,double,boolean", "message hive_schema {\n" + "  optional int32 a;\n"
+        + "  optional double b;\n" + "  optional boolean c;\n" + "}\n");
   }
 
   @Test
   public void testArray() throws Exception {
-    testConversion("arrayCol",
-            "array<int>",
-            "message hive_schema {\n"
-            + "  optional group arrayCol (LIST) {\n"
-            + "    repeated group bag {\n"
-            + "      optional int32 array_element;\n"
-            + "    }\n"
-            + "  }\n"
-            + "}\n");
+    testConversion("arrayCol", "array<int>", "message hive_schema {\n" + "  optional group arrayCol (LIST) {\n"
+        + "    repeated group bag {\n" + "      optional int32 array_element;\n" + "    }\n" + "  }\n" + "}\n");
   }
 
   @Test
   public void testStruct() throws Exception {
-    testConversion("structCol",
-            "struct<a:int,b:double,c:boolean>",
-            "message hive_schema {\n"
-            + "  optional group structCol {\n"
-            + "    optional int32 a;\n"
-            + "    optional double b;\n"
-            + "    optional boolean c;\n"
-            + "  }\n"
-            + "}\n");
+    testConversion("structCol", "struct<a:int,b:double,c:boolean>",
+        "message hive_schema {\n" + "  optional group structCol {\n" + "    optional int32 a;\n"
+            + "    optional double b;\n" + "    optional boolean c;\n" + "  }\n" + "}\n");
   }
 
   @Test
   public void testMap() throws Exception {
-    testConversion("mapCol",
-            "map<string,string>",
-            "message hive_schema {\n"
-            + "  optional group mapCol (MAP) {\n"
-            + "    repeated group map (MAP_KEY_VALUE) {\n"
-            + "      required binary key;\n"
-            + "      optional binary value;\n"
-            + "    }\n"
-            + "  }\n"
-            + "}\n");
+    testConversion("mapCol", "map<string,string>",
+        "message hive_schema {\n" + "  optional group mapCol (MAP) {\n" + "    repeated group map (MAP_KEY_VALUE) {\n"
+            + "      required binary key;\n" + "      optional binary value;\n" + "    }\n" + "  }\n" + "}\n");
   }
 
   @Test
@@ -126,16 +102,18 @@ public class TestHiveSchemaConverter {
     final List<String> columnNames = createHiveColumnsFrom(hiveColumnNames);
     final List<TypeInfo> columnTypes = createHiveTypeInfoFrom(hiveColumnTypes);
     final MessageType messageTypeFound = HiveSchemaConverter.convert(columnNames, columnTypes);
-    // this messageType only has one optional field, whose name is mapCol, original Type is MAP
+    // this messageType only has one optional field, whose name is mapCol, original
+    // Type is MAP
     assertEquals(1, messageTypeFound.getFieldCount());
     org.apache.parquet.schema.Type topLevel = messageTypeFound.getFields().get(0);
-    assertEquals("mapCol",topLevel.getName());
+    assertEquals("mapCol", topLevel.getName());
     assertEquals(OriginalType.MAP, topLevel.getOriginalType());
     assertEquals(Repetition.OPTIONAL, topLevel.getRepetition());
 
     assertEquals(1, topLevel.asGroupType().getFieldCount());
     org.apache.parquet.schema.Type secondLevel = topLevel.asGroupType().getFields().get(0);
-    //there is one repeated field for mapCol, the field name is "map" and its original Type is MAP_KEY_VALUE;
+    // there is one repeated field for mapCol, the field name is "map" and its
+    // original Type is MAP_KEY_VALUE;
     assertEquals("map", secondLevel.getName());
     assertEquals(OriginalType.MAP_KEY_VALUE, secondLevel.getOriginalType());
     assertEquals(Repetition.REPEATED, secondLevel.getRepetition());

@@ -19,8 +19,7 @@
 package org.apache.parquet.io.api;
 
 /**
- * Represent a tree of converters
- * that materializes tuples
+ * Represent a tree of converters that materializes tuples
  */
 public abstract class Converter {
 

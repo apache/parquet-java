@@ -44,8 +44,8 @@ import java.util.List;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 /**
- * Given a thrift class, this class converts it to parquet schema,
- * a {@link FieldProjectionFilter} can be specified for projection pushdown.
+ * Given a thrift class, this class converts it to parquet schema, a
+ * {@link FieldProjectionFilter} can be specified for projection pushdown.
  */
 public class ThriftSchemaConverter {
   private final FieldProjectionFilter fieldProjectionFilter;
@@ -63,8 +63,8 @@ public class ThriftSchemaConverter {
   }
 
   /**
-   * struct is assumed to contain valid structOrUnionType metadata when used with this method.
-   * This method may throw if structOrUnionType is unknown.
+   * struct is assumed to contain valid structOrUnionType metadata when used with
+   * this method. This method may throw if structOrUnionType is unknown.
    *
    * Use convertWithoutProjection below to convert a StructType to MessageType
    *
@@ -78,8 +78,8 @@ public class ThriftSchemaConverter {
   }
 
   /**
-   * struct is not required to have known structOrUnionType, which is useful
-   * for converting a StructType from an (older) file schema to a MessageType
+   * struct is not required to have known structOrUnionType, which is useful for
+   * converting a StructType from an (older) file schema to a MessageType
    *
    * @param struct the thrift type descriptor
    * @return the struct as a Parquet message type
@@ -88,7 +88,7 @@ public class ThriftSchemaConverter {
     return ThriftSchemaConvertVisitor.convert(struct, FieldProjectionFilter.ALL_COLUMNS, false);
   }
 
-  public static <T extends TBase<?,?>> StructOrUnionType structOrUnionType(Class<T> klass) {
+  public static <T extends TBase<?, ?>> StructOrUnionType structOrUnionType(Class<T> klass) {
     return TUnion.class.isAssignableFrom(klass) ? StructOrUnionType.UNION : StructOrUnionType.STRUCT;
   }
 
@@ -101,10 +101,8 @@ public class ThriftSchemaConverter {
     List<Field> fields = struct.getFields();
     List<ThriftField> children = new ArrayList<ThriftField>(fields.size());
     for (Field field : fields) {
-      Requirement req =
-          field.getFieldMetaData() == null ?
-              Requirement.OPTIONAL :
-              Requirement.fromType(field.getFieldMetaData().requirementType);
+      Requirement req = field.getFieldMetaData() == null ? Requirement.OPTIONAL
+          : Requirement.fromType(field.getFieldMetaData().requirementType);
       children.add(toThriftField(field.getName(), field, req));
     }
     return new StructType(children, structOrUnionType(struct.getThriftClass()));
@@ -112,10 +110,9 @@ public class ThriftSchemaConverter {
 
   /**
    * Returns whether the given type is the element type of a list or is a
-   * synthetic group with one field that is the element type. This is
-   * determined by checking whether the type can be a synthetic group and by
-   * checking whether a potential synthetic group matches the expected
-   * ThriftField.
+   * synthetic group with one field that is the element type. This is determined
+   * by checking whether the type can be a synthetic group and by checking whether
+   * a potential synthetic group matches the expected ThriftField.
    * <p>
    * This method never guesses because the expected ThriftField is known.
    *
@@ -123,11 +120,9 @@ public class ThriftSchemaConverter {
    * @param thriftElement the expected Schema for list elements
    * @return {@code true} if the repeatedType is the element schema
    */
-  static boolean isListElementType(Type repeatedType,
-                                   ThriftField thriftElement) {
-    if (repeatedType.isPrimitive() ||
-        (repeatedType.asGroupType().getFieldCount() != 1) ||
-        (repeatedType.asGroupType().getType(0).isRepetition(REPEATED))) {
+  static boolean isListElementType(Type repeatedType, ThriftField thriftElement) {
+    if (repeatedType.isPrimitive() || (repeatedType.asGroupType().getFieldCount() != 1)
+        || (repeatedType.asGroupType().getType(0).isRepetition(REPEATED))) {
       // The repeated type must be the element type because it is an invalid
       // synthetic wrapper. Must be a group with one optional or required field
       return true;
@@ -146,66 +141,64 @@ public class ThriftSchemaConverter {
   private static ThriftField toThriftField(String name, Field field, ThriftField.Requirement requirement) {
     ThriftType type;
     switch (ThriftTypeID.fromByte(field.getType())) {
-      case STOP:
-      case VOID:
-      default:
-        throw new UnsupportedOperationException("can't convert type of " + field);
-      case BOOL:
-        type = new BoolType();
-        break;
-      case BYTE:
-        type = new ByteType();
-        break;
-      case DOUBLE:
-        type = new DoubleType();
-        break;
-      case I16:
-        type = new I16Type();
-        break;
-      case I32:
-        type = new I32Type();
-        break;
-      case I64:
-        type = new I64Type();
-        break;
-      case STRING:
-        StringType stringType = new StringType();
-        FieldMetaData fieldMetaData = field.getFieldMetaData();
-        // There is no real binary type (see THRIFT-1920) in Thrift,
-        // binary data is represented by String type with an additional binary flag.
-        if (fieldMetaData != null && fieldMetaData.valueMetaData.isBinary()) {
-          stringType.setBinary(true);
-        }
-        type = stringType;
-        break;
-      case STRUCT:
-        type = toStructType(field.gettStructDescriptor());
-        break;
-      case MAP:
-        final Field mapKeyField = field.getMapKeyField();
-        final Field mapValueField = field.getMapValueField();
-        type = new ThriftType.MapType(
-            toThriftField(mapKeyField.getName(), mapKeyField, requirement),
-            toThriftField(mapValueField.getName(), mapValueField, requirement));
-        break;
-      case SET:
-        final Field setElemField = field.getSetElemField();
-        type = new ThriftType.SetType(toThriftField(setElemField.getName(), setElemField, requirement));
-        break;
-      case LIST:
-        final Field listElemField = field.getListElemField();
-        type = new ThriftType.ListType(toThriftField(listElemField.getName(), listElemField, requirement));
-        break;
-      case ENUM:
-        Collection<TEnum> enumValues = field.getEnumValues();
-        List<EnumValue> values = new ArrayList<ThriftType.EnumValue>();
-        for (TEnum tEnum : enumValues) {
-          values.add(new EnumValue(tEnum.getValue(), tEnum.toString()));
-        }
-        type = new EnumType(values);
-        break;
+    case STOP:
+    case VOID:
+    default:
+      throw new UnsupportedOperationException("can't convert type of " + field);
+    case BOOL:
+      type = new BoolType();
+      break;
+    case BYTE:
+      type = new ByteType();
+      break;
+    case DOUBLE:
+      type = new DoubleType();
+      break;
+    case I16:
+      type = new I16Type();
+      break;
+    case I32:
+      type = new I32Type();
+      break;
+    case I64:
+      type = new I64Type();
+      break;
+    case STRING:
+      StringType stringType = new StringType();
+      FieldMetaData fieldMetaData = field.getFieldMetaData();
+      // There is no real binary type (see THRIFT-1920) in Thrift,
+      // binary data is represented by String type with an additional binary flag.
+      if (fieldMetaData != null && fieldMetaData.valueMetaData.isBinary()) {
+        stringType.setBinary(true);
+      }
+      type = stringType;
+      break;
+    case STRUCT:
+      type = toStructType(field.gettStructDescriptor());
+      break;
+    case MAP:
+      final Field mapKeyField = field.getMapKeyField();
+      final Field mapValueField = field.getMapValueField();
+      type = new ThriftType.MapType(toThriftField(mapKeyField.getName(), mapKeyField, requirement),
+          toThriftField(mapValueField.getName(), mapValueField, requirement));
+      break;
+    case SET:
+      final Field setElemField = field.getSetElemField();
+      type = new ThriftType.SetType(toThriftField(setElemField.getName(), setElemField, requirement));
+      break;
+    case LIST:
+      final Field listElemField = field.getListElemField();
+      type = new ThriftType.ListType(toThriftField(listElemField.getName(), listElemField, requirement));
+      break;
+    case ENUM:
+      Collection<TEnum> enumValues = field.getEnumValues();
+      List<EnumValue> values = new ArrayList<ThriftType.EnumValue>();
+      for (TEnum tEnum : enumValues) {
+        values.add(new EnumValue(tEnum.getValue(), tEnum.toString()));
+      }
+      type = new EnumType(values);
+      break;
     }
     return new ThriftField(name, field.getId(), requirement, type);
   }
 }
-

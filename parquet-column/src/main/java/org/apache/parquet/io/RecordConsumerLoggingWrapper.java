@@ -29,159 +29,161 @@ import java.util.Arrays;
  * This class can be used to wrap an actual RecordConsumer and log all calls
  */
 public class RecordConsumerLoggingWrapper extends RecordConsumer {
-    private static final Logger LOG = LoggerFactory.getLogger(RecordConsumerLoggingWrapper.class);
+  private static final Logger LOG = LoggerFactory.getLogger(RecordConsumerLoggingWrapper.class);
 
-    private final RecordConsumer delegate;
+  private final RecordConsumer delegate;
 
-    int indent = 0;
+  int indent = 0;
 
-    /**
-     * all calls a delegate to the wrapped delegate
-     * @param delegate a wrapped record consumer that does the real work
-     */
-    public RecordConsumerLoggingWrapper(RecordConsumer delegate) {
-      this.delegate = delegate;
+  /**
+   * all calls a delegate to the wrapped delegate
+   * 
+   * @param delegate a wrapped record consumer that does the real work
+   */
+  public RecordConsumerLoggingWrapper(RecordConsumer delegate) {
+    this.delegate = delegate;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void startField(String field, int index) {
+    logOpen(field);
+    delegate.startField(field, index);
+  }
+
+  private void logOpen(String field) {
+    log("<{}>", field);
+  }
+
+  private String indent() {
+    StringBuilder result = new StringBuilder();
+    for (int i = 0; i < indent; i++) {
+      result.append("  ");
     }
+    return result.toString();
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void startField(String field, int index) {
-      logOpen(field);
-      delegate.startField(field, index);
+  private void log(Object value, Object... parameters) {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(indent() + value, parameters);
     }
+  }
 
-    private void logOpen(String field) {
-      log("<{}>", field);
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void startGroup() {
+    ++indent;
+    log("<!-- start group -->");
+    delegate.startGroup();
+  }
 
-    private String indent() {
-      StringBuilder result = new StringBuilder();
-      for (int i = 0; i < indent; i++) {
-        result.append("  ");
-      }
-      return result.toString();
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void addInteger(int value) {
+    log(value);
+    delegate.addInteger(value);
+  }
 
-    private void log(Object value, Object ... parameters) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(indent() + value, parameters);
-      }
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void addLong(long value) {
+    log(value);
+    delegate.addLong(value);
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void startGroup() {
-      ++indent;
-      log("<!-- start group -->");
-      delegate.startGroup();
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void addBoolean(boolean value) {
+    log(value);
+    delegate.addBoolean(value);
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addInteger(int value) {
-      log(value);
-      delegate.addInteger(value);
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void addBinary(Binary value) {
+    if (LOG.isDebugEnabled())
+      log(Arrays.toString(value.getBytesUnsafe()));
+    delegate.addBinary(value);
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addLong(long value) {
-      log(value);
-      delegate.addLong(value);
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void addFloat(float value) {
+    log(value);
+    delegate.addFloat(value);
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addBoolean(boolean value) {
-      log(value);
-      delegate.addBoolean(value);
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void addDouble(double value) {
+    log(value);
+    delegate.addDouble(value);
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addBinary(Binary value) {
-      if (LOG.isDebugEnabled()) log(Arrays.toString(value.getBytesUnsafe()));
-      delegate.addBinary(value);
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() {
+    log("<!-- flush -->");
+    delegate.flush();
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addFloat(float value) {
-      log(value);
-      delegate.addFloat(value);
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void endGroup() {
+    log("<!-- end group -->");
+    --indent;
+    delegate.endGroup();
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addDouble(double value) {
-      log(value);
-      delegate.addDouble(value);
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void endField(String field, int index) {
+    logClose(field);
+    delegate.endField(field, index);
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void flush() {
-      log("<!-- flush -->");
-      delegate.flush();
-    }
+  private void logClose(String field) {
+    log("</{}>", field);
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void endGroup() {
-      log("<!-- end group -->");
-      --indent;
-      delegate.endGroup();
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void startMessage() {
+    log("<!-- start message -->");
+    delegate.startMessage();
+  }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void endField(String field, int index) {
-      logClose(field);
-      delegate.endField(field, index);
-    }
-
-    private void logClose(String field) {
-      log("</{}>", field);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void startMessage() {
-      log("<!-- start message -->");
-      delegate.startMessage();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void endMessage() {
-      delegate.endMessage();
-      log("<!-- end message -->");
-    }
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void endMessage() {
+    delegate.endMessage();
+    log("<!-- end message -->");
+  }
 
 }

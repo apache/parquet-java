@@ -59,10 +59,8 @@ public class TestTupleRecordConsumer {
   @Test
   public void testArtSchema() throws ExecException, ParserException {
 
-    String pigSchemaString =
-            "DocId:long, " +
-            "Links:(Backward:{(long)}, Forward:{(long)}), " +
-            "Name:{(Language:{(Code:chararray,Country:chararray)}, Url:chararray)}";
+    String pigSchemaString = "DocId:long, " + "Links:(Backward:{(long)}, Forward:{(long)}), "
+        + "Name:{(Language:{(Code:chararray,Country:chararray)}, Url:chararray)}";
 
     SimpleGroup g = new SimpleGroup(getMessageType(pigSchemaString));
     g.add("DocId", 1l);
@@ -90,7 +88,7 @@ public class TestTupleRecordConsumer {
 
   @Test
   public void testMaps() throws ExecException, ParserException {
-        String pigSchemaString = "a: [(b: chararray)]";
+    String pigSchemaString = "a: [(b: chararray)]";
     SimpleGroup g = new SimpleGroup(getMessageType(pigSchemaString));
     Group map = g.addGroup("a");
     map.addGroup("map").append("key", "foo").addGroup("value").append("b", "foo");
@@ -103,10 +101,10 @@ public class TestTupleRecordConsumer {
   public void testComplexSchema() throws Exception {
 
     String pigSchemaString = "a:chararray, b:{t:(c:chararray, d:chararray)}";
-    Tuple t0 = tuple("a"+0, bag(tuple("o", "b"), tuple("o1", "b1")));
-    Tuple t1 = tuple("a"+1, bag(tuple("o", "b"), tuple("o", "b"), tuple("o", "b"), tuple("o", "b")));
-    Tuple t2 = tuple("a"+2, bag(tuple("o", "b"), tuple("o", null), tuple(null, "b"), tuple(null, null)));
-    Tuple t3 = tuple("a"+3, null);
+    Tuple t0 = tuple("a" + 0, bag(tuple("o", "b"), tuple("o1", "b1")));
+    Tuple t1 = tuple("a" + 1, bag(tuple("o", "b"), tuple("o", "b"), tuple("o", "b"), tuple("o", "b")));
+    Tuple t2 = tuple("a" + 2, bag(tuple("o", "b"), tuple("o", null), tuple(null, "b"), tuple(null, null)));
+    Tuple t3 = tuple("a" + 3, null);
     testFromTuple(pigSchemaString, Arrays.asList(t0, t1, t2, t3));
 
   }
@@ -115,10 +113,28 @@ public class TestTupleRecordConsumer {
   public void testMapSchema() throws Exception {
 
     String pigSchemaString = "a:chararray, b:[(c:chararray, d:chararray)]";
-    Tuple t0 = tuple("a"+0, new HashMap() {{put("foo", tuple("o", "b"));}});
-    Tuple t1 = tuple("a"+1, new HashMap() {{put("foo", tuple("o", "b")); put("foo", tuple("o", "b")); put("foo", tuple("o", "b")); put("foo", tuple("o", "b"));}});
-    Tuple t2 = tuple("a"+2, new HashMap() {{put("foo", tuple("o", "b")); put("foo", tuple("o", null)); put("foo", tuple(null, "b")); put("foo", tuple(null, null));}});
-    Tuple t3 = tuple("a"+3, null);
+    Tuple t0 = tuple("a" + 0, new HashMap() {
+      {
+        put("foo", tuple("o", "b"));
+      }
+    });
+    Tuple t1 = tuple("a" + 1, new HashMap() {
+      {
+        put("foo", tuple("o", "b"));
+        put("foo", tuple("o", "b"));
+        put("foo", tuple("o", "b"));
+        put("foo", tuple("o", "b"));
+      }
+    });
+    Tuple t2 = tuple("a" + 2, new HashMap() {
+      {
+        put("foo", tuple("o", "b"));
+        put("foo", tuple("o", null));
+        put("foo", tuple(null, "b"));
+        put("foo", tuple(null, null));
+      }
+    });
+    Tuple t3 = tuple("a" + 3, null);
     testFromTuple(pigSchemaString, Arrays.asList(t0, t1, t2, t3));
 
   }
@@ -146,7 +162,8 @@ public class TestTupleRecordConsumer {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType schema = getMessageType(pigSchemaString);
     RecordMaterializer<Tuple> pigRecordConsumer = newPigRecordConsumer(pigSchemaString);
-    GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(new ConverterConsumer(pigRecordConsumer.getRootConverter(), schema)), schema);
+    GroupWriter groupWriter = new GroupWriter(
+        new RecordConsumerLoggingWrapper(new ConverterConsumer(pigRecordConsumer.getRootConverter(), schema)), schema);
 
     for (Group group : input) {
       groupWriter.write(group);
@@ -173,12 +190,12 @@ public class TestTupleRecordConsumer {
     }
   }
 
-  private <T> TupleWriteSupport newTupleWriter(String pigSchemaString, RecordMaterializer<T> recordConsumer) throws ParserException {
+  private <T> TupleWriteSupport newTupleWriter(String pigSchemaString, RecordMaterializer<T> recordConsumer)
+      throws ParserException {
     TupleWriteSupport tupleWriter = TupleWriteSupport.fromPigSchema(pigSchemaString);
     tupleWriter.init(null);
-    tupleWriter.prepareForWrite(
-        new ConverterConsumer(recordConsumer.getRootConverter(), tupleWriter.getParquetSchema())
-        );
+    tupleWriter
+        .prepareForWrite(new ConverterConsumer(recordConsumer.getRootConverter(), tupleWriter.getParquetSchema()));
     return tupleWriter;
   }
 

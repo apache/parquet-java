@@ -66,7 +66,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private long totalValueCount;
     private int pageCount;
 
-    // repetition and definition level encodings are used only for v1 pages and don't change
+    // repetition and definition level encodings are used only for v1 pages and
+    // don't change
     private Set<Encoding> rlEncodings = new HashSet<Encoding>();
     private Set<Encoding> dlEncodings = new HashSet<Encoding>();
     private List<Encoding> dataEncodings = new ArrayList<Encoding>();
@@ -79,11 +80,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private final CRC32 crc;
     boolean pageWriteChecksumEnabled;
 
-    private ColumnChunkPageWriter(ColumnDescriptor path,
-                                  BytesCompressor compressor,
-                                  ByteBufferAllocator allocator,
-                                  int columnIndexTruncateLength,
-                                  boolean pageWriteChecksumEnabled) {
+    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, ByteBufferAllocator allocator,
+        int columnIndexTruncateLength, boolean pageWriteChecksumEnabled) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
@@ -98,7 +96,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     @Deprecated
     public void writePage(BytesInput bytesInput, int valueCount, Statistics<?> statistics, Encoding rlEncoding,
         Encoding dlEncoding, Encoding valuesEncoding) throws IOException {
-      // Setting the builders to the no-op ones so no column/offset indexes will be written for this column chunk
+      // Setting the builders to the no-op ones so no column/offset indexes will be
+      // written for this column chunk
       columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
       offsetIndexBuilder = OffsetIndexBuilder.getNoOpBuilder();
 
@@ -106,55 +105,36 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     @Override
-    public void writePage(BytesInput bytes,
-                          int valueCount,
-                          int rowCount,
-                          Statistics statistics,
-                          Encoding rlEncoding,
-                          Encoding dlEncoding,
-                          Encoding valuesEncoding) throws IOException {
+    public void writePage(BytesInput bytes, int valueCount, int rowCount, Statistics statistics, Encoding rlEncoding,
+        Encoding dlEncoding, Encoding valuesEncoding) throws IOException {
       long uncompressedSize = bytes.size();
       if (uncompressedSize > Integer.MAX_VALUE) {
         throw new ParquetEncodingException(
-            "Cannot write page larger than Integer.MAX_VALUE bytes: " +
-                uncompressedSize);
+            "Cannot write page larger than Integer.MAX_VALUE bytes: " + uncompressedSize);
       }
       BytesInput compressedBytes = compressor.compress(bytes);
       long compressedSize = compressedBytes.size();
       if (compressedSize > Integer.MAX_VALUE) {
         throw new ParquetEncodingException(
-            "Cannot write compressed page larger than Integer.MAX_VALUE bytes: "
-                + compressedSize);
+            "Cannot write compressed page larger than Integer.MAX_VALUE bytes: " + compressedSize);
       }
       tempOutputStream.reset();
       if (pageWriteChecksumEnabled) {
         crc.reset();
         crc.update(compressedBytes.toByteArray());
-        parquetMetadataConverter.writeDataPageV1Header(
-          (int)uncompressedSize,
-          (int)compressedSize,
-          valueCount,
-          rlEncoding,
-          dlEncoding,
-          valuesEncoding,
-          (int) crc.getValue(),
-          tempOutputStream);
+        parquetMetadataConverter.writeDataPageV1Header((int) uncompressedSize, (int) compressedSize, valueCount,
+            rlEncoding, dlEncoding, valuesEncoding, (int) crc.getValue(), tempOutputStream);
       } else {
-        parquetMetadataConverter.writeDataPageV1Header(
-          (int)uncompressedSize,
-          (int)compressedSize,
-          valueCount,
-          rlEncoding,
-          dlEncoding,
-          valuesEncoding,
-          tempOutputStream);
+        parquetMetadataConverter.writeDataPageV1Header((int) uncompressedSize, (int) compressedSize, valueCount,
+            rlEncoding, dlEncoding, valuesEncoding, tempOutputStream);
       }
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
       this.pageCount += 1;
 
-      // Copying the statistics if it is not initialized yet so we have the correct typed one
+      // Copying the statistics if it is not initialized yet so we have the correct
+      // typed one
       if (totalStatistics == null) {
         totalStatistics = statistics.copy();
       } else {
@@ -173,35 +153,25 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     @Override
-    public void writePageV2(
-        int rowCount, int nullCount, int valueCount,
-        BytesInput repetitionLevels, BytesInput definitionLevels,
-        Encoding dataEncoding, BytesInput data,
-        Statistics<?> statistics) throws IOException {
+    public void writePageV2(int rowCount, int nullCount, int valueCount, BytesInput repetitionLevels,
+        BytesInput definitionLevels, Encoding dataEncoding, BytesInput data, Statistics<?> statistics)
+        throws IOException {
       int rlByteLength = toIntWithCheck(repetitionLevels.size());
       int dlByteLength = toIntWithCheck(definitionLevels.size());
-      int uncompressedSize = toIntWithCheck(
-          data.size() + repetitionLevels.size() + definitionLevels.size()
-      );
+      int uncompressedSize = toIntWithCheck(data.size() + repetitionLevels.size() + definitionLevels.size());
       // TODO: decide if we compress
       BytesInput compressedData = compressor.compress(data);
-      int compressedSize = toIntWithCheck(
-          compressedData.size() + repetitionLevels.size() + definitionLevels.size()
-      );
+      int compressedSize = toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size());
       tempOutputStream.reset();
-      parquetMetadataConverter.writeDataPageV2Header(
-          uncompressedSize, compressedSize,
-          valueCount, nullCount, rowCount,
-          dataEncoding,
-          rlByteLength,
-          dlByteLength,
-          tempOutputStream);
+      parquetMetadataConverter.writeDataPageV2Header(uncompressedSize, compressedSize, valueCount, nullCount, rowCount,
+          dataEncoding, rlByteLength, dlByteLength, tempOutputStream);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
       this.pageCount += 1;
 
-      // Copying the statistics if it is not initialized yet so we have the correct typed one
+      // Copying the statistics if it is not initialized yet so we have the correct
+      // typed one
       if (totalStatistics == null) {
         totalStatistics = statistics.copy();
       } else {
@@ -214,22 +184,15 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       // by concatenating before collecting instead of collecting twice,
       // we only allocate one buffer to copy into instead of multiple.
       buf.collect(
-          BytesInput.concat(
-              BytesInput.from(tempOutputStream),
-              repetitionLevels,
-              definitionLevels,
-              compressedData)
-      );
+          BytesInput.concat(BytesInput.from(tempOutputStream), repetitionLevels, definitionLevels, compressedData));
       dataEncodings.add(dataEncoding);
     }
 
     private int toIntWithCheck(long size) {
       if (size > Integer.MAX_VALUE) {
-        throw new ParquetEncodingException(
-            "Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " +
-                size);
+        throw new ParquetEncodingException("Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " + size);
       }
-      return (int)size;
+      return (int) size;
     }
 
     @Override
@@ -238,28 +201,16 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
-      writer.writeColumnChunk(
-          path,
-          totalValueCount,
-          compressor.getCodecName(),
-          dictionaryPage,
-          buf,
-          uncompressedLength,
-          compressedLength,
-          totalStatistics,
-          columnIndexBuilder,
-          offsetIndexBuilder,
-          rlEncodings,
-          dlEncodings,
+      writer.writeColumnChunk(path, totalValueCount, compressor.getCodecName(), dictionaryPage, buf, uncompressedLength,
+          compressedLength, totalStatistics, columnIndexBuilder, offsetIndexBuilder, rlEncodings, dlEncodings,
           dataEncodings);
       if (LOG.isDebugEnabled()) {
-        LOG.debug(
-            String.format(
-                "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
-                buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, new HashSet<Encoding>(dataEncodings))
-                + (dictionaryPage != null ? String.format(
-                ", dic { %,d entries, %,dB raw, %,dB comp}",
-                dictionaryPage.getDictionarySize(), dictionaryPage.getUncompressedSize(), dictionaryPage.getDictionarySize())
+        LOG.debug(String.format("written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
+            buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount,
+            new HashSet<Encoding>(dataEncodings))
+            + (dictionaryPage != null
+                ? String.format(", dic { %,d entries, %,dB raw, %,dB comp}", dictionaryPage.getDictionarySize(),
+                    dictionaryPage.getUncompressedSize(), dictionaryPage.getDictionarySize())
                 : ""));
       }
       rlEncodings.clear();
@@ -279,9 +230,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
         throw new ParquetEncodingException("Only one dictionary page is allowed");
       }
       BytesInput dictionaryBytes = dictionaryPage.getBytes();
-      int uncompressedSize = (int)dictionaryBytes.size();
+      int uncompressedSize = (int) dictionaryBytes.size();
       BytesInput compressedBytes = compressor.compress(dictionaryBytes);
-      this.dictionaryPage = new DictionaryPage(BytesInput.copy(compressedBytes), uncompressedSize, dictionaryPage.getDictionarySize(), dictionaryPage.getEncoding());
+      this.dictionaryPage = new DictionaryPage(BytesInput.copy(compressedBytes), uncompressedSize,
+          dictionaryPage.getDictionarySize(), dictionaryPage.getEncoding());
     }
 
     @Override
@@ -295,16 +247,17 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   private final MessageType schema;
 
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
-                                   int columnIndexTruncateLength) {
+      int columnIndexTruncateLength) {
     this(compressor, schema, allocator, columnIndexTruncateLength,
-      ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
 
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
       int columnIndexTruncateLength, boolean pageWriteChecksumEnabled) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled));
+      writers.put(path,
+          new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled));
     }
   }
 

@@ -52,20 +52,18 @@ public class PageChecksumReadBenchmarks {
   private PageChecksumDataGenerator pageChecksumDataGenerator = new PageChecksumDataGenerator();
 
   /**
-   * This needs to be done exactly once.  To avoid needlessly regenerating the files for reading, they aren't cleaned
-   * as part of the benchmark.  If the files exist, a message will be printed and they will not be regenerated.
+   * This needs to be done exactly once. To avoid needlessly regenerating the
+   * files for reading, they aren't cleaned as part of the benchmark. If the files
+   * exist, a message will be printed and they will not be regenerated.
    */
   @Setup(Level.Trial)
   public void setup() {
     pageChecksumDataGenerator.generateAll();
   }
 
-  private void readFile(Path file, int nRows, boolean verifyChecksums, Blackhole blackhole)
-    throws IOException {
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
-        .withConf(configuration)
-        .usePageChecksumVerification(verifyChecksums)
-        .build()) {
+  private void readFile(Path file, int nRows, boolean verifyChecksums, Blackhole blackhole) throws IOException {
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withConf(configuration)
+        .usePageChecksumVerification(verifyChecksums).build()) {
       for (int i = 0; i < nRows; i++) {
         Group group = reader.read();
         blackhole.consume(group.getLong("long_field", 0));

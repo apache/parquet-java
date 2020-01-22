@@ -34,8 +34,7 @@ public class TestPreconditions {
       Preconditions.checkArgument(false, "Test message: %s %s", 12, null);
       Assert.fail("Should throw exception when isValid is false");
     } catch (IllegalArgumentException e) {
-      Assert.assertEquals("Should format message",
-          "Test message: 12 null", e.getMessage());
+      Assert.assertEquals("Should format message", "Test message: 12 null", e.getMessage());
     }
   }
 
@@ -51,8 +50,7 @@ public class TestPreconditions {
       Preconditions.checkState(false, "Test message: %s %s", 12, null);
       Assert.fail("Should throw exception when isValid is false");
     } catch (IllegalStateException e) {
-      Assert.assertEquals("Should format message",
-          "Test message: 12 null", e.getMessage());
+      Assert.assertEquals("Should format message", "Test message: 12 null", e.getMessage());
     }
   }
 }

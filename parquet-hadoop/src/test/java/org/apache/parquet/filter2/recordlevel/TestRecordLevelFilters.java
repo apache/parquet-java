@@ -70,21 +70,18 @@ public class TestRecordLevelFilters {
 
     users.add(new User(27, "thing2", Arrays.asList(new PhoneNumber(1111111111L, "home")), null));
 
-    users.add(new User(28, "popular", Arrays.asList(
-        new PhoneNumber(1111111111L, "home"),
-        new PhoneNumber(2222222222L, null),
-        new PhoneNumber(3333333333L, "mobile")
-    ), null));
+    users.add(new User(28, "popular", Arrays.asList(new PhoneNumber(1111111111L, "home"),
+        new PhoneNumber(2222222222L, null), new PhoneNumber(3333333333L, "mobile")), null));
 
     users.add(new User(30, null, Arrays.asList(new PhoneNumber(1111111111L, "home")), null));
 
     for (int i = 100; i < 200; i++) {
       Location location = null;
       if (i % 3 == 1) {
-        location = new Location((double)i, (double)i*2);
+        location = new Location((double) i, (double) i * 2);
       }
       if (i % 3 == 2) {
-        location = new Location((double)i, null);
+        location = new Location((double) i, null);
       }
       users.add(new User(i, "p" + i, Arrays.asList(new PhoneNumber(i, "cell")), location));
     }
@@ -96,7 +93,7 @@ public class TestRecordLevelFilters {
   private static List<User> users;
 
   @BeforeClass
-  public static void setup() throws IOException{
+  public static void setup() throws IOException {
     users = makeUsers();
     phonebookFile = PhoneBookWriter.writeToFile(users);
   }
@@ -120,7 +117,7 @@ public class TestRecordLevelFilters {
     assertEquals(expected.size(), found.size());
     Iterator<Group> expectedIter = expected.iterator();
     Iterator<Group> foundIter = found.iterator();
-    while(expectedIter.hasNext()) {
+    while (expectedIter.hasNext()) {
       assertEquals(expectedIter.next().toString(), foundIter.next().toString());
     }
   }
@@ -182,7 +179,7 @@ public class TestRecordLevelFilters {
       return false;
     }
   }
-  
+
   public static class SetInFilter extends UserDefinedPredicate<Long> implements Serializable {
 
     private HashSet<Long> hSet;
@@ -226,16 +223,16 @@ public class TestRecordLevelFilters {
       }
     });
   }
-  
+
   @Test
   public void testUserDefinedByInstance() throws Exception {
     LongColumn name = longColumn("id");
 
     final HashSet<Long> h = new HashSet<Long>();
-    h.add(20L); 
+    h.add(20L);
     h.add(27L);
     h.add(28L);
-    
+
     FilterPredicate pred = userDefined(name, new SetInFilter(h));
 
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));

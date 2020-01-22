@@ -34,13 +34,17 @@ public interface CompressionCodecFactory {
 
   interface BytesInputCompressor {
     BytesInput compress(BytesInput bytes) throws IOException;
+
     CompressionCodecName getCodecName();
+
     void release();
   }
 
   interface BytesInputDecompressor {
     BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
+
     void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException;
+
     void release();
   }
 

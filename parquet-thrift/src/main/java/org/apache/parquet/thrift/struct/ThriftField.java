@@ -24,8 +24,7 @@ import org.apache.thrift.TFieldRequirementType;
 
 public class ThriftField {
   public static enum Requirement {
-    REQUIRED(TFieldRequirementType.REQUIRED),
-    OPTIONAL(TFieldRequirementType.OPTIONAL),
+    REQUIRED(TFieldRequirementType.REQUIRED), OPTIONAL(TFieldRequirementType.OPTIONAL),
     DEFAULT(TFieldRequirementType.DEFAULT);
 
     private final byte requirement;
@@ -54,7 +53,8 @@ public class ThriftField {
   private final ThriftType type;
 
   @JsonCreator
-  public ThriftField(@JsonProperty("name") String name, @JsonProperty("fieldId") short fieldId, @JsonProperty("requirement") Requirement requirement, @JsonProperty("type") ThriftType type) {
+  public ThriftField(@JsonProperty("name") String name, @JsonProperty("fieldId") short fieldId,
+      @JsonProperty("requirement") Requirement requirement, @JsonProperty("type") ThriftType type) {
     super();
     this.name = name;
     this.fieldId = fieldId;
@@ -97,15 +97,21 @@ public class ThriftField {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof ThriftField)) return false;
+    if (this == o)
+      return true;
+    if (!(o instanceof ThriftField))
+      return false;
 
     ThriftField that = (ThriftField) o;
 
-    if (fieldId != that.fieldId) return false;
-    if (!name.equals(that.name)) return false;
-    if (requirement != that.requirement) return false;
-    if (!type.equals(that.type)) return false;
+    if (fieldId != that.fieldId)
+      return false;
+    if (!name.equals(that.name))
+      return false;
+    if (requirement != that.requirement)
+      return false;
+    if (!type.equals(that.type))
+      return false;
 
     return true;
   }

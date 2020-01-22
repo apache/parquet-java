@@ -51,8 +51,8 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
   public static final String PARQUET_COLUMN_INDEX_ACCESS = "parquet.column.index.access";
 
   /**
-   * From a string which columns names (including hive column), return a list
-   * of string columns
+   * From a string which columns names (including hive column), return a list of
+   * string columns
    *
    * @param columns comma separated list of columns
    * @return list with virtual columns removed
@@ -60,9 +60,11 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
   private static List<String> getColumns(final String columns) {
     return (new HiveBindingFactory()).create().getColumns(columns);
   }
+
   /**
    *
-   * It creates the readContext for Parquet side with the requested schema during the init phase.
+   * It creates the readContext for Parquet side with the requested schema during
+   * the init phase.
    *
    * @param configuration needed to get the wanted columns
    * @param keyValueMetaData // unused
@@ -97,8 +99,8 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
       for (final Integer idx : indexColumnsWanted) {
         typeListWanted.add(tableSchema.getType(listColumns.get(idx)));
       }
-      requestedSchemaByUser = resolveSchemaAccess(new MessageType(fileSchema.getName(),
-              typeListWanted), fileSchema, configuration);
+      requestedSchemaByUser = resolveSchemaAccess(new MessageType(fileSchema.getName(), typeListWanted), fileSchema,
+          configuration);
 
       return new ReadContext(requestedSchemaByUser, contextMetadata);
     } else {
@@ -114,36 +116,36 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
    * @param configuration // unused
    * @param keyValueMetaData string map of metadata
    * @param fileSchema // unused
-   * @param readContext containing the requested schema and the schema of the hive table
+   * @param readContext containing the requested schema and the schema of the hive
+   * table
    * @return Record Materialize for Hive
    */
   @Override
   public RecordMaterializer<ArrayWritable> prepareForRead(final Configuration configuration,
       final Map<String, String> keyValueMetaData, final MessageType fileSchema,
-          final org.apache.parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+      final org.apache.parquet.hadoop.api.ReadSupport.ReadContext readContext) {
     final Map<String, String> metadata = readContext.getReadSupportMetadata();
     if (metadata == null) {
-      throw new IllegalStateException("ReadContext not initialized properly. " +
-        "Don't know the Hive Schema.");
+      throw new IllegalStateException("ReadContext not initialized properly. " + "Don't know the Hive Schema.");
     }
-    final MessageType tableSchema = resolveSchemaAccess(MessageTypeParser.
-        parseMessageType(metadata.get(HIVE_SCHEMA_KEY)), fileSchema, configuration);
+    final MessageType tableSchema = resolveSchemaAccess(
+        MessageTypeParser.parseMessageType(metadata.get(HIVE_SCHEMA_KEY)), fileSchema, configuration);
 
     return new DataWritableRecordConverter(readContext.getRequestedSchema(), tableSchema);
   }
 
   /**
-  * Determine the file column names based on the position within the requested columns and
-  * use that as the requested schema.
-  */
+   * Determine the file column names based on the position within the requested
+   * columns and use that as the requested schema.
+   */
   private MessageType resolveSchemaAccess(MessageType requestedSchema, MessageType fileSchema,
-          Configuration configuration) {
-    if(configuration.getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false)) {
+      Configuration configuration) {
+    if (configuration.getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false)) {
       final List<String> listColumns = getColumns(configuration.get(IOConstants.COLUMNS));
 
       List<Type> requestedTypes = new ArrayList<Type>();
 
-      for(Type t : requestedSchema.getFields()) {
+      for (Type t : requestedSchema.getFields()) {
         int index = listColumns.indexOf(t.getName());
         requestedTypes.add(fileSchema.getType(index));
       }

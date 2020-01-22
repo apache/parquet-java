@@ -83,13 +83,16 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
   }
 
   public static void readFully(Reader reader, ByteBuffer buf) throws IOException {
-    // unfortunately the Hadoop APIs seem to not have a 'readFully' equivalent for the byteBuffer read
-    // calls. The read(ByteBuffer) call might read fewer than byteBuffer.hasRemaining() bytes. Thus we
+    // unfortunately the Hadoop APIs seem to not have a 'readFully' equivalent for
+    // the byteBuffer read
+    // calls. The read(ByteBuffer) call might read fewer than
+    // byteBuffer.hasRemaining() bytes. Thus we
     // have to loop to ensure we read them.
     while (buf.hasRemaining()) {
       int readCount = reader.read(buf);
       if (readCount == -1) {
-        // this is probably a bug in the ParquetReader. We shouldn't have called readFully with a buffer
+        // this is probably a bug in the ParquetReader. We shouldn't have called
+        // readFully with a buffer
         // that has more remaining than the amount of data in the stream.
         throw new EOFException("Reached the end of stream. Still have: " + buf.remaining() + " bytes left");
       }

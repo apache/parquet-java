@@ -32,6 +32,7 @@ import org.apache.parquet.schema.Type;
 
 /**
  * The mapping between an Arrow and a Parquet schema
+ * 
  * @see SchemaConverter
  */
 public class SchemaMapping {
@@ -56,7 +57,8 @@ public class SchemaMapping {
   }
 
   /**
-   * @return mapping between individual fields of each of the 2 schemas (should be the same width)
+   * @return mapping between individual fields of each of the 2 schemas (should be
+   * the same width)
    */
   public List<TypeMapping> getChildren() {
     return children;
@@ -64,13 +66,18 @@ public class SchemaMapping {
 
   /**
    * To traverse a schema mapping
+   * 
    * @param <T> the Java return type of the visitor
    */
   public interface TypeMappingVisitor<T> {
     T visit(PrimitiveTypeMapping primitiveTypeMapping);
+
     T visit(StructTypeMapping structTypeMapping);
+
     T visit(UnionTypeMapping unionTypeMapping);
+
     T visit(ListTypeMapping listTypeMapping);
+
     T visit(RepeatedTypeMapping repeatedTypeMapping);
   }
 

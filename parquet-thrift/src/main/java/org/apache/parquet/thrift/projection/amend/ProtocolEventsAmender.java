@@ -27,7 +27,8 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import java.util.*;
 
 /**
- * fill in default value for required fields in TProtocols after projection is specified.
+ * fill in default value for required fields in TProtocols after projection is
+ * specified.
  */
 public class ProtocolEventsAmender {
   List<TProtocol> rootEvents;
@@ -38,8 +39,8 @@ public class ProtocolEventsAmender {
   }
 
   /**
-   * Given a thrift definition, protocols events, it checks all the required fields,
-   * and create default value if a required field is missing
+   * Given a thrift definition, protocols events, it checks all the required
+   * fields, and create default value if a required field is missing
    *
    * @param recordThriftType the Thrift Struct definition for events
    * @return a list of events
@@ -91,24 +92,25 @@ public class ProtocolEventsAmender {
 
   private void checkField(byte type, Iterator<TProtocol> eventIter, ThriftField fieldDefinition) throws TException {
     switch (type) {
-      case TType.STRUCT:
-        checkStruct(eventIter, (ThriftType.StructType) fieldDefinition.getType());
-        return;
-      case TType.LIST:
-        checkList(eventIter, fieldDefinition);
-        return;
-      case TType.MAP:
-        checkMap(eventIter, fieldDefinition);
-        return;
-      case TType.SET:
-        checkSet(eventIter, fieldDefinition);
-        return;
+    case TType.STRUCT:
+      checkStruct(eventIter, (ThriftType.StructType) fieldDefinition.getType());
+      return;
+    case TType.LIST:
+      checkList(eventIter, fieldDefinition);
+      return;
+    case TType.MAP:
+      checkMap(eventIter, fieldDefinition);
+      return;
+    case TType.SET:
+      checkSet(eventIter, fieldDefinition);
+      return;
     }
     checkPrimitiveField(type, eventIter);
   }
 
   /**
-   * check each element of the Set, make sure all the element contain required fields
+   * check each element of the Set, make sure all the element contain required
+   * fields
    *
    * @param eventIter
    * @param setFieldDefinition
@@ -131,9 +133,9 @@ public class ProtocolEventsAmender {
 
     int mapSize = thriftMap.size;
     for (int i = 0; i < mapSize; i++) {
-      //readkey
+      // readkey
       checkField(thriftMap.keyType, eventIter, keyFieldForWriting);
-      //readValue
+      // readValue
       checkField(thriftMap.valueType, eventIter, valueFieldForWriting);
     }
     acceptProtocol(eventIter.next()).readMapEnd();

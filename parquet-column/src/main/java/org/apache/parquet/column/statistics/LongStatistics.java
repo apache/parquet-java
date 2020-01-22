@@ -32,7 +32,8 @@ public class LongStatistics extends Statistics<Long> {
   private long min;
 
   /**
-   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   * @deprecated will be removed in 2.0.0. Use
+   * {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
    */
   @Deprecated
   public LongStatistics() {
@@ -62,7 +63,7 @@ public class LongStatistics extends Statistics<Long> {
 
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
-    LongStatistics longStats = (LongStatistics)stats;
+    LongStatistics longStats = (LongStatistics) stats;
     if (!this.hasNonNullValue()) {
       initializeStats(longStats.getMin(), longStats.getMax());
     } else {
@@ -98,14 +99,18 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   public void updateStats(long min_value, long max_value) {
-    if (comparator().compare(min, min_value) > 0) { min = min_value; }
-    if (comparator().compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) {
+      min = min_value;
+    }
+    if (comparator().compare(max, max_value) < 0) {
+      max = max_value;
+    }
   }
 
   public void initializeStats(long min_value, long max_value) {
-      min = min_value;
-      max = max_value;
-      this.markAsNotEmpty();
+    min = min_value;
+    max = max_value;
+    this.markAsNotEmpty();
   }
 
   @Override

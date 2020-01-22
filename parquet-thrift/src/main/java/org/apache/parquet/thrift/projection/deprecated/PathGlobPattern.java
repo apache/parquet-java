@@ -24,10 +24,11 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * Enhanced version of GlobPattern class that is defined in hadoop with extra capability of matching
- * full path separated by '/', and double star matching
+ * Enhanced version of GlobPattern class that is defined in hadoop with extra
+ * capability of matching full path separated by '/', and double star matching
  *
- * This is used for parsing values assigned to ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY
+ * This is used for parsing values assigned to
+ * ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY
  */
 @Deprecated
 public class PathGlobPattern {
@@ -92,72 +93,72 @@ public class PathGlobPattern {
       char c = glob.charAt(i);
 
       switch (c) {
-        case BACKSLASH:
-          if (++i >= len) {
-            error("Missing escaped character", glob, i);
-          }
-          regex.append(c).append(glob.charAt(i));
-          continue;
-        case '.':
-        case '$':
-        case '(':
-        case ')':
-        case '|':
-        case '+':
-          // escape regex special chars that are not glob special chars
-          regex.append(BACKSLASH);
-          break;
-        case '*':
-          if (i + 1 < len && glob.charAt(i + 1) == '*') {
-            regex.append('.');
-            i++;
-            break;
-          }
-          regex.append("[^" + PATH_SEPARATOR + "]");
-          hasWildcard = true;
-          break;
-        case '?':
+      case BACKSLASH:
+        if (++i >= len) {
+          error("Missing escaped character", glob, i);
+        }
+        regex.append(c).append(glob.charAt(i));
+        continue;
+      case '.':
+      case '$':
+      case '(':
+      case ')':
+      case '|':
+      case '+':
+        // escape regex special chars that are not glob special chars
+        regex.append(BACKSLASH);
+        break;
+      case '*':
+        if (i + 1 < len && glob.charAt(i + 1) == '*') {
           regex.append('.');
-          hasWildcard = true;
-          continue;
-        case '{': // start of a group
-          regex.append("(?:"); // non-capturing
-          curlyOpen++;
-          hasWildcard = true;
-          continue;
-        case ',':
-          regex.append(curlyOpen > 0 ? '|' : c);
-          continue;
-        case '}':
-          if (curlyOpen > 0) {
-            // end of a group
-            curlyOpen--;
-            regex.append(")");
-            continue;
-          }
+          i++;
           break;
-        case '[':
-          if (setOpen > 0) {
-            error("Unclosed character class", glob, i);
-          }
-          setOpen++;
-          hasWildcard = true;
-          break;
-        case '^': // ^ inside [...] can be unescaped
-          if (setOpen == 0) {
-            regex.append(BACKSLASH);
-          }
-          break;
-        case '!': // [! needs to be translated to [^
-          regex.append(setOpen > 0 && '[' == glob.charAt(i - 1) ? '^' : '!');
+        }
+        regex.append("[^" + PATH_SEPARATOR + "]");
+        hasWildcard = true;
+        break;
+      case '?':
+        regex.append('.');
+        hasWildcard = true;
+        continue;
+      case '{': // start of a group
+        regex.append("(?:"); // non-capturing
+        curlyOpen++;
+        hasWildcard = true;
+        continue;
+      case ',':
+        regex.append(curlyOpen > 0 ? '|' : c);
+        continue;
+      case '}':
+        if (curlyOpen > 0) {
+          // end of a group
+          curlyOpen--;
+          regex.append(")");
           continue;
-        case ']':
-          // Many set errors like [][] could not be easily detected here,
-          // as []], []-] and [-] are all valid POSIX glob and java regex.
-          // We'll just let the regex compiler do the real work.
-          setOpen = 0;
-          break;
-        default:
+        }
+        break;
+      case '[':
+        if (setOpen > 0) {
+          error("Unclosed character class", glob, i);
+        }
+        setOpen++;
+        hasWildcard = true;
+        break;
+      case '^': // ^ inside [...] can be unescaped
+        if (setOpen == 0) {
+          regex.append(BACKSLASH);
+        }
+        break;
+      case '!': // [! needs to be translated to [^
+        regex.append(setOpen > 0 && '[' == glob.charAt(i - 1) ? '^' : '!');
+        continue;
+      case ']':
+        // Many set errors like [][] could not be easily detected here,
+        // as []], []-] and [-] are all valid POSIX glob and java regex.
+        // We'll just let the regex compiler do the real work.
+        setOpen = 0;
+        break;
+      default:
       }
       regex.append(c);
     }

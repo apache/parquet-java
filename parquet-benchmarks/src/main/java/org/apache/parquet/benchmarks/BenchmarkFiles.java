@@ -25,28 +25,33 @@ public class BenchmarkFiles {
   public static final Configuration configuration = new Configuration();
 
   public static final String TARGET_DIR = "target/tests/ParquetBenchmarks";
-  public static final Path targetDir = new Path(TARGET_DIR );
+  public static final Path targetDir = new Path(TARGET_DIR);
 
   public static final Path file_1M = new Path(TARGET_DIR + "/PARQUET-1M");
 
-  //different block and page sizes
+  // different block and page sizes
   public static final Path file_1M_BS256M_PS4M = new Path(TARGET_DIR + "/PARQUET-1M-BS256M_PS4M");
   public static final Path file_1M_BS256M_PS8M = new Path(TARGET_DIR + "/PARQUET-1M-BS256M_PS8M");
   public static final Path file_1M_BS512M_PS4M = new Path(TARGET_DIR + "/PARQUET-1M-BS512M_PS4M");
   public static final Path file_1M_BS512M_PS8M = new Path(TARGET_DIR + "/PARQUET-1M-BS512M_PS8M");
 
-  //different compression codecs
+  // different compression codecs
 //  public final Path parquetFile_1M_LZO = new Path("target/tests/ParquetBenchmarks/PARQUET-1M-LZO");
   public static final Path file_1M_SNAPPY = new Path(TARGET_DIR + "/PARQUET-1M-SNAPPY");
   public static final Path file_1M_GZIP = new Path(TARGET_DIR + "/PARQUET-1M-GZIP");
 
   // Page checksum files
-  public static final Path file_100K_CHECKSUMS_UNCOMPRESSED = new Path(TARGET_DIR + "/PARQUET-100K-CHECKSUMS-UNCOMPRESSED");
-  public static final Path file_100K_NOCHECKSUMS_UNCOMPRESSED = new Path(TARGET_DIR + "/PARQUET-100K-NOCHECKSUMS-UNCOMPRESSED");
+  public static final Path file_100K_CHECKSUMS_UNCOMPRESSED = new Path(
+      TARGET_DIR + "/PARQUET-100K-CHECKSUMS-UNCOMPRESSED");
+  public static final Path file_100K_NOCHECKSUMS_UNCOMPRESSED = new Path(
+      TARGET_DIR + "/PARQUET-100K-NOCHECKSUMS-UNCOMPRESSED");
   public static final Path file_1M_CHECKSUMS_UNCOMPRESSED = new Path(TARGET_DIR + "/PARQUET-1M-CHECKSUMS-UNCOMPRESSED");
-  public static final Path file_1M_NOCHECKSUMS_UNCOMPRESSED = new Path(TARGET_DIR + "/PARQUET-1M-NOCHECKSUMS-UNCOMPRESSED");
-  public static final Path file_10M_CHECKSUMS_UNCOMPRESSED = new Path(TARGET_DIR + "/PARQUET-10M-CHECKSUMS-UNCOMPRESSED");
-  public static final Path file_10M_NOCHECKSUMS_UNCOMPRESSED = new Path(TARGET_DIR + "/PARQUET-10M-NOCHECKSUMS-UNCOMPRESSED");
+  public static final Path file_1M_NOCHECKSUMS_UNCOMPRESSED = new Path(
+      TARGET_DIR + "/PARQUET-1M-NOCHECKSUMS-UNCOMPRESSED");
+  public static final Path file_10M_CHECKSUMS_UNCOMPRESSED = new Path(
+      TARGET_DIR + "/PARQUET-10M-CHECKSUMS-UNCOMPRESSED");
+  public static final Path file_10M_NOCHECKSUMS_UNCOMPRESSED = new Path(
+      TARGET_DIR + "/PARQUET-10M-NOCHECKSUMS-UNCOMPRESSED");
 
   public static final Path file_100K_CHECKSUMS_GZIP = new Path(TARGET_DIR + "/PARQUET-100K-CHECKSUMS-GZIP");
   public static final Path file_100K_NOCHECKSUMS_GZIP = new Path(TARGET_DIR + "/PARQUET-100K-NOCHECKSUMS-GZIP");

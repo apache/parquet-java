@@ -22,7 +22,8 @@ import org.apache.parquet.hadoop.thrift.ParquetThriftInputFormat;
 
 /**
  * Use this class to read Scrooge records from parquet file
- * @param <T>  Type of Scrooge records to read
+ * 
+ * @param <T> Type of Scrooge records to read
  */
 public class ParquetScroogeInputFormat<T> extends ParquetThriftInputFormat<T> {
   public ParquetScroogeInputFormat() {

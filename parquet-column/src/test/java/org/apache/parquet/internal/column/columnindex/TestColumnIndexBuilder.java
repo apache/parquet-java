@@ -254,24 +254,10 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 0, 3, 3, 0, 4, 2, 0);
     assertCorrectNullPages(columnIndex, true, false, false, true, false, true, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
-        null,
-        decimalBinary("1234567890.12"),
-        decimalBinary("-234.23"),
-        null,
-        decimalBinary("2348978.45"),
-        null,
-        null,
-        decimalBinary("87656273"));
-    assertCorrectValues(columnIndex.getMinValues(),
-        null,
-        decimalBinary("-0.17"),
-        decimalBinary("-234.23"),
-        null,
-        decimalBinary("-9999293.23"),
-        null,
-        null,
-        decimalBinary("87656273"));
+    assertCorrectValues(columnIndex.getMaxValues(), null, decimalBinary("1234567890.12"), decimalBinary("-234.23"),
+        null, decimalBinary("2348978.45"), null, null, decimalBinary("87656273"));
+    assertCorrectValues(columnIndex.getMinValues(), null, decimalBinary("-0.17"), decimalBinary("-234.23"), null,
+        decimalBinary("-9999293.23"), null, null, decimalBinary("87656273"));
     assertCorrectFiltering(columnIndex, eq(col, decimalBinary("0.0")), 1, 4);
     assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 5, 6);
     assertCorrectFiltering(columnIndex, notEq(col, decimalBinary("87656273")), 0, 1, 2, 3, 4, 5, 6);
@@ -299,24 +285,10 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 4, 0, 0, 2, 0, 2, 3, 3);
     assertCorrectNullPages(columnIndex, true, false, false, true, false, true, false, true);
-    assertCorrectValues(columnIndex.getMaxValues(),
-        null,
-        decimalBinary("-234.23"),
-        decimalBinary("87656273"),
-        null,
-        decimalBinary("87656273"),
-        null,
-        decimalBinary("1234567890.12"),
-        null);
-    assertCorrectValues(columnIndex.getMinValues(),
-        null,
-        decimalBinary("-9999293.23"),
-        decimalBinary("-0.17"),
-        null,
-        decimalBinary("87656273"),
-        null,
-        decimalBinary("1234567890.12"),
-        null);
+    assertCorrectValues(columnIndex.getMaxValues(), null, decimalBinary("-234.23"), decimalBinary("87656273"), null,
+        decimalBinary("87656273"), null, decimalBinary("1234567890.12"), null);
+    assertCorrectValues(columnIndex.getMinValues(), null, decimalBinary("-9999293.23"), decimalBinary("-0.17"), null,
+        decimalBinary("87656273"), null, decimalBinary("1234567890.12"), null);
     assertCorrectFiltering(columnIndex, eq(col, decimalBinary("87656273")), 2, 4);
     assertCorrectFiltering(columnIndex, eq(col, null), 0, 3, 5, 6, 7);
     assertCorrectFiltering(columnIndex, notEq(col, decimalBinary("87656273")), 0, 1, 2, 3, 5, 6, 7);
@@ -344,24 +316,10 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 3, 2, 3, 4, 0, 0, 2, 0);
     assertCorrectNullPages(columnIndex, true, true, false, true, false, false, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
-        null,
-        null,
-        decimalBinary("1234567890.12"),
-        null,
-        decimalBinary("1234567890.12"),
-        decimalBinary("987656273"),
-        null,
-        decimalBinary("-234.23"));
-    assertCorrectValues(columnIndex.getMinValues(),
-        null,
-        null,
-        decimalBinary("1234567890.12"),
-        null,
-        decimalBinary("87656273"),
-        decimalBinary("-0.17"),
-        null,
-        decimalBinary("-9999293.23"));
+    assertCorrectValues(columnIndex.getMaxValues(), null, null, decimalBinary("1234567890.12"), null,
+        decimalBinary("1234567890.12"), decimalBinary("987656273"), null, decimalBinary("-234.23"));
+    assertCorrectValues(columnIndex.getMinValues(), null, null, decimalBinary("1234567890.12"), null,
+        decimalBinary("87656273"), decimalBinary("-0.17"), null, decimalBinary("-9999293.23"));
     assertCorrectFiltering(columnIndex, eq(col, decimalBinary("1234567890.12")), 2, 4);
     assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 6);
     assertCorrectFiltering(columnIndex, notEq(col, decimalBinary("0.0")), 0, 1, 2, 3, 4, 5, 6, 7);
@@ -397,24 +355,10 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 5, 2, 0, 1, 0, 2);
     assertCorrectNullPages(columnIndex, true, false, true, true, false, false, false, true);
-    assertCorrectValues(columnIndex.getMaxValues(),
-        null,
-        stringBinary("Slartibartfast"),
-        null,
-        null,
-        stringBinary("Prefect"),
-        stringBinary("Trilian"),
-        stringBinary("Beeblebrox"),
-        null);
-    assertCorrectValues(columnIndex.getMinValues(),
-        null,
-        stringBinary("Jeltz"),
-        null,
-        null,
-        stringBinary("Beeblebrox"),
-        stringBinary("Dent"),
-        stringBinary("Beeblebrox"),
-        null);
+    assertCorrectValues(columnIndex.getMaxValues(), null, stringBinary("Slartibartfast"), null, null,
+        stringBinary("Prefect"), stringBinary("Trilian"), stringBinary("Beeblebrox"), null);
+    assertCorrectValues(columnIndex.getMinValues(), null, stringBinary("Jeltz"), null, null, stringBinary("Beeblebrox"),
+        stringBinary("Dent"), stringBinary("Beeblebrox"), null);
     assertCorrectFiltering(columnIndex, eq(col, stringBinary("Marvin")), 1, 4, 5);
     assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 5, 7);
     assertCorrectFiltering(columnIndex, notEq(col, stringBinary("Beeblebrox")), 0, 1, 2, 3, 4, 5, 7);
@@ -442,24 +386,10 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 5, 0, 1, 2, 0, 2);
     assertCorrectNullPages(columnIndex, false, true, true, false, false, true, false, true);
-    assertCorrectValues(columnIndex.getMaxValues(),
-        stringBinary("Dent"),
-        null,
-        null,
-        stringBinary("Jeltz"),
-        stringBinary("Prefect"),
-        null,
-        stringBinary("Slartibartfast"),
-        null);
-    assertCorrectValues(columnIndex.getMinValues(),
-        stringBinary("Beeblebrox"),
-        null,
-        null,
-        stringBinary("Dent"),
-        stringBinary("Dent"),
-        null,
-        stringBinary("Slartibartfast"),
-        null);
+    assertCorrectValues(columnIndex.getMaxValues(), stringBinary("Dent"), null, null, stringBinary("Jeltz"),
+        stringBinary("Prefect"), null, stringBinary("Slartibartfast"), null);
+    assertCorrectValues(columnIndex.getMinValues(), stringBinary("Beeblebrox"), null, null, stringBinary("Dent"),
+        stringBinary("Dent"), null, stringBinary("Slartibartfast"), null);
     assertCorrectFiltering(columnIndex, eq(col, stringBinary("Jeltz")), 3, 4);
     assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 4, 5, 7);
     assertCorrectFiltering(columnIndex, notEq(col, stringBinary("Slartibartfast")), 0, 1, 2, 3, 4, 5, 7);
@@ -487,24 +417,10 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 0, 5, 1, 0, 2, 2, 2);
     assertCorrectNullPages(columnIndex, true, false, true, false, false, true, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
-        null,
-        stringBinary("Slartibartfast"),
-        null,
-        stringBinary("Prefect"),
-        stringBinary("Dent"),
-        null,
-        null,
-        stringBinary("Dent"));
-    assertCorrectValues(columnIndex.getMinValues(),
-        null,
-        stringBinary("Slartibartfast"),
-        null,
-        stringBinary("Jeltz"),
-        stringBinary("Dent"),
-        null,
-        null,
-        stringBinary("Beeblebrox"));
+    assertCorrectValues(columnIndex.getMaxValues(), null, stringBinary("Slartibartfast"), null, stringBinary("Prefect"),
+        stringBinary("Dent"), null, null, stringBinary("Dent"));
+    assertCorrectValues(columnIndex.getMinValues(), null, stringBinary("Slartibartfast"), null, stringBinary("Jeltz"),
+        stringBinary("Dent"), null, null, stringBinary("Beeblebrox"));
     assertCorrectFiltering(columnIndex, eq(col, stringBinary("Marvin")), 3);
     assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 5, 6, 7);
     assertCorrectFiltering(columnIndex, notEq(col, stringBinary("Dent")), 0, 1, 2, 3, 5, 6, 7);
@@ -519,98 +435,37 @@ public class TestColumnIndexBuilder {
 
   @Test
   public void testStaticBuildBinary() {
-    ColumnIndex columnIndex = ColumnIndexBuilder.build(
-        Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
-        BoundaryOrder.ASCENDING,
-        asList(true, true, false, false, true, false, true, false),
+    ColumnIndex columnIndex = ColumnIndexBuilder.build(Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
+        BoundaryOrder.ASCENDING, asList(true, true, false, false, true, false, true, false),
         asList(1l, 2l, 3l, 4l, 5l, 6l, 7l, 8l),
-        toBBList(
-            null,
-            null,
-            stringBinary("Beeblebrox"),
-            stringBinary("Dent"),
-            null,
-            stringBinary("Jeltz"),
-            null,
+        toBBList(null, null, stringBinary("Beeblebrox"), stringBinary("Dent"), null, stringBinary("Jeltz"), null,
             stringBinary("Slartibartfast")),
-        toBBList(
-            null,
-            null,
-            stringBinary("Dent"),
-            stringBinary("Dent"),
-            null,
-            stringBinary("Prefect"),
-            null,
+        toBBList(null, null, stringBinary("Dent"), stringBinary("Dent"), null, stringBinary("Prefect"), null,
             stringBinary("Slartibartfast")));
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 1, 2, 3, 4, 5, 6, 7, 8);
     assertCorrectNullPages(columnIndex, true, true, false, false, true, false, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
-        null,
-        null,
-        stringBinary("Dent"),
-        stringBinary("Dent"),
-        null,
-        stringBinary("Prefect"),
-        null,
-        stringBinary("Slartibartfast"));
-    assertCorrectValues(columnIndex.getMinValues(),
-        null,
-        null,
-        stringBinary("Beeblebrox"),
-        stringBinary("Dent"),
-        null,
-        stringBinary("Jeltz"),
-        null,
-        stringBinary("Slartibartfast"));
+    assertCorrectValues(columnIndex.getMaxValues(), null, null, stringBinary("Dent"), stringBinary("Dent"), null,
+        stringBinary("Prefect"), null, stringBinary("Slartibartfast"));
+    assertCorrectValues(columnIndex.getMinValues(), null, null, stringBinary("Beeblebrox"), stringBinary("Dent"), null,
+        stringBinary("Jeltz"), null, stringBinary("Slartibartfast"));
   }
 
   @Test
   public void testFilterWithoutNullCounts() {
-    ColumnIndex columnIndex = ColumnIndexBuilder.build(
-        Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
-        BoundaryOrder.ASCENDING,
-        asList(true, true, false, false, true, false, true, false),
-        null,
-        toBBList(
-            null,
-            null,
-            stringBinary("Beeblebrox"),
-            stringBinary("Dent"),
-            null,
-            stringBinary("Jeltz"),
-            null,
+    ColumnIndex columnIndex = ColumnIndexBuilder.build(Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
+        BoundaryOrder.ASCENDING, asList(true, true, false, false, true, false, true, false), null,
+        toBBList(null, null, stringBinary("Beeblebrox"), stringBinary("Dent"), null, stringBinary("Jeltz"), null,
             stringBinary("Slartibartfast")),
-        toBBList(
-            null,
-            null,
-            stringBinary("Dent"),
-            stringBinary("Dent"),
-            null,
-            stringBinary("Prefect"),
-            null,
+        toBBList(null, null, stringBinary("Dent"), stringBinary("Dent"), null, stringBinary("Prefect"), null,
             stringBinary("Slartibartfast")));
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertNull(columnIndex.getNullCounts());
     assertCorrectNullPages(columnIndex, true, true, false, false, true, false, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
-        null,
-        null,
-        stringBinary("Dent"),
-        stringBinary("Dent"),
-        null,
-        stringBinary("Prefect"),
-        null,
-        stringBinary("Slartibartfast"));
-    assertCorrectValues(columnIndex.getMinValues(),
-        null,
-        null,
-        stringBinary("Beeblebrox"),
-        stringBinary("Dent"),
-        null,
-        stringBinary("Jeltz"),
-        null,
-        stringBinary("Slartibartfast"));
+    assertCorrectValues(columnIndex.getMaxValues(), null, null, stringBinary("Dent"), stringBinary("Dent"), null,
+        stringBinary("Prefect"), null, stringBinary("Slartibartfast"));
+    assertCorrectValues(columnIndex.getMinValues(), null, null, stringBinary("Beeblebrox"), stringBinary("Dent"), null,
+        stringBinary("Jeltz"), null, stringBinary("Slartibartfast"));
 
     BinaryColumn col = binaryColumn("test_col");
     assertCorrectFiltering(columnIndex, eq(col, stringBinary("Dent")), 2, 3);
@@ -702,13 +557,9 @@ public class TestColumnIndexBuilder {
 
   @Test
   public void testStaticBuildBoolean() {
-    ColumnIndex columnIndex = ColumnIndexBuilder.build(
-        Types.required(BOOLEAN).named("test_boolean"),
-        BoundaryOrder.DESCENDING,
-        asList(false, true, false, true, false, true),
-        asList(9l, 8l, 7l, 6l, 5l, 0l),
-        toBBList(false, null, false, null, true, null),
-        toBBList(true, null, false, null, true, null));
+    ColumnIndex columnIndex = ColumnIndexBuilder.build(Types.required(BOOLEAN).named("test_boolean"),
+        BoundaryOrder.DESCENDING, asList(false, true, false, true, false, true), asList(9l, 8l, 7l, 6l, 5l, 0l),
+        toBBList(false, null, false, null, true, null), toBBList(true, null, false, null, true, null));
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 9, 8, 7, 6, 5, 0);
     assertCorrectNullPages(columnIndex, false, true, false, true, false, true);
@@ -832,13 +683,9 @@ public class TestColumnIndexBuilder {
 
   @Test
   public void testStaticBuildDouble() {
-    ColumnIndex columnIndex = ColumnIndexBuilder.build(
-        Types.required(DOUBLE).named("test_double"),
-        BoundaryOrder.UNORDERED,
-        asList(false, false, false, false, false, false),
-        asList(0l, 1l, 2l, 3l, 4l, 5l),
-        toBBList(-1.0, -2.0, -3.0, -4.0, -5.0, -6.0),
-        toBBList(1.0, 2.0, 3.0, 4.0, 5.0, 6.0));
+    ColumnIndex columnIndex = ColumnIndexBuilder.build(Types.required(DOUBLE).named("test_double"),
+        BoundaryOrder.UNORDERED, asList(false, false, false, false, false, false), asList(0l, 1l, 2l, 3l, 4l, 5l),
+        toBBList(-1.0, -2.0, -3.0, -4.0, -5.0, -6.0), toBBList(1.0, 2.0, 3.0, 4.0, 5.0, 6.0));
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 0, 1, 2, 3, 4, 5);
     assertCorrectNullPages(columnIndex, false, false, false, false, false, false);
@@ -962,13 +809,9 @@ public class TestColumnIndexBuilder {
 
   @Test
   public void testStaticBuildFloat() {
-    ColumnIndex columnIndex = ColumnIndexBuilder.build(
-        Types.required(FLOAT).named("test_float"),
-        BoundaryOrder.ASCENDING,
-        asList(true, true, true, false, false, false),
-        asList(9l, 8l, 7l, 6l, 0l, 0l),
-        toBBList(null, null, null, -3.0f, -2.0f, 0.1f),
-        toBBList(null, null, null, -2.0f, 0.0f, 6.0f));
+    ColumnIndex columnIndex = ColumnIndexBuilder.build(Types.required(FLOAT).named("test_float"),
+        BoundaryOrder.ASCENDING, asList(true, true, true, false, false, false), asList(9l, 8l, 7l, 6l, 0l, 0l),
+        toBBList(null, null, null, -3.0f, -2.0f, 0.1f), toBBList(null, null, null, -2.0f, 0.0f, 6.0f));
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 9, 8, 7, 6, 0, 0);
     assertCorrectNullPages(columnIndex, true, true, true, false, false, false);
@@ -1075,13 +918,9 @@ public class TestColumnIndexBuilder {
 
   @Test
   public void testStaticBuildInt32() {
-    ColumnIndex columnIndex = ColumnIndexBuilder.build(
-        Types.required(INT32).named("test_int32"),
-        BoundaryOrder.DESCENDING,
-        asList(false, false, false, true, true, true),
-        asList(0l, 10l, 0l, 3l, 5l, 7l),
-        toBBList(10, 8, 6, null, null, null),
-        toBBList(9, 7, 5, null, null, null));
+    ColumnIndex columnIndex = ColumnIndexBuilder.build(Types.required(INT32).named("test_int32"),
+        BoundaryOrder.DESCENDING, asList(false, false, false, true, true, true), asList(0l, 10l, 0l, 3l, 5l, 7l),
+        toBBList(10, 8, 6, null, null, null), toBBList(9, 7, 5, null, null, null));
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 0, 10, 0, 3, 5, 7);
     assertCorrectNullPages(columnIndex, false, false, false, true, true, true);
@@ -1285,13 +1124,9 @@ public class TestColumnIndexBuilder {
 
   @Test
   public void testStaticBuildInt64() {
-    ColumnIndex columnIndex = ColumnIndexBuilder.build(
-        Types.required(INT64).named("test_int64"),
-        BoundaryOrder.UNORDERED,
-        asList(true, false, true, false, true, false),
-        asList(1l, 2l, 3l, 4l, 5l, 6l),
-        toBBList(null, 2l, null, 4l, null, 9l),
-        toBBList(null, 3l, null, 15l, null, 10l));
+    ColumnIndex columnIndex = ColumnIndexBuilder.build(Types.required(INT64).named("test_int64"),
+        BoundaryOrder.UNORDERED, asList(true, false, true, false, true, false), asList(1l, 2l, 3l, 4l, 5l, 6l),
+        toBBList(null, 2l, null, 4l, null, 9l), toBBList(null, 3l, null, 15l, null, 10l));
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 1, 2, 3, 4, 5, 6);
     assertCorrectNullPages(columnIndex, true, false, true, false, true, false);
@@ -1504,28 +1339,28 @@ public class TestColumnIndexBuilder {
           continue;
         }
         switch (type.getPrimitiveTypeName()) {
-          case BINARY:
-          case FIXED_LEN_BYTE_ARRAY:
-          case INT96:
-            stats.updateStats((Binary) value);
-            break;
-          case BOOLEAN:
-            stats.updateStats((boolean) value);
-            break;
-          case DOUBLE:
-            stats.updateStats((double) value);
-            break;
-          case FLOAT:
-            stats.updateStats((float) value);
-            break;
-          case INT32:
-            stats.updateStats((int) value);
-            break;
-          case INT64:
-            stats.updateStats((long) value);
-            break;
-          default:
-            fail("Unsupported value type for stats: " + value.getClass());
+        case BINARY:
+        case FIXED_LEN_BYTE_ARRAY:
+        case INT96:
+          stats.updateStats((Binary) value);
+          break;
+        case BOOLEAN:
+          stats.updateStats((boolean) value);
+          break;
+        case DOUBLE:
+          stats.updateStats((double) value);
+          break;
+        case FLOAT:
+          stats.updateStats((float) value);
+          break;
+        case INT32:
+          stats.updateStats((int) value);
+          break;
+        case INT64:
+          stats.updateStats((long) value);
+          break;
+        default:
+          fail("Unsupported value type for stats: " + value.getClass());
         }
       }
       if (stats.hasNonNullValue()) {

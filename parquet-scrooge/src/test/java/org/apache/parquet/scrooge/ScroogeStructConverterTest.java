@@ -55,16 +55,18 @@ import static org.junit.Assert.assertEquals;
 public class ScroogeStructConverterTest {
 
   /**
-   * Convert ThriftStructs from a thrift class and a scrooge class, assert
-   * they are the same
+   * Convert ThriftStructs from a thrift class and a scrooge class, assert they
+   * are the same
+   * 
    * @param scroogeClass
    */
   private void shouldConvertConsistentlyWithThriftStructConverter(Class scroogeClass) throws ClassNotFoundException {
-      Class<? extends TBase<?, ?>> thriftClass = (Class<? extends TBase<?, ?>>)Class.forName(scroogeClass.getName().replaceFirst("org.apache.parquet.scrooge.test", "org.apache.parquet.thrift.test"));
-      ThriftType.StructType structFromThriftSchemaConverter = ThriftSchemaConverter.toStructType(thriftClass);
-      ThriftType.StructType structFromScroogeSchemaConverter = new ScroogeStructConverter().convert(scroogeClass);
+    Class<? extends TBase<?, ?>> thriftClass = (Class<? extends TBase<?, ?>>) Class.forName(
+        scroogeClass.getName().replaceFirst("org.apache.parquet.scrooge.test", "org.apache.parquet.thrift.test"));
+    ThriftType.StructType structFromThriftSchemaConverter = ThriftSchemaConverter.toStructType(thriftClass);
+    ThriftType.StructType structFromScroogeSchemaConverter = new ScroogeStructConverter().convert(scroogeClass);
 
-      assertEquals(toParquetSchema(structFromThriftSchemaConverter), toParquetSchema(structFromScroogeSchemaConverter));
+    assertEquals(toParquetSchema(structFromThriftSchemaConverter), toParquetSchema(structFromScroogeSchemaConverter));
   }
 
   private MessageType toParquetSchema(ThriftType.StructType struct) {

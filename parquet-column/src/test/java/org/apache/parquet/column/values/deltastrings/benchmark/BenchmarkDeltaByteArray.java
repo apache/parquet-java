@@ -31,7 +31,6 @@ import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
-import org.apache.parquet.io.api.Binary;
 
 import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
 import com.carrotsearch.junitbenchmarks.BenchmarkRule;
@@ -47,10 +46,9 @@ public class BenchmarkDeltaByteArray {
 
   static String[] values = Utils.getRandomStringSamples(1000000, 32);
   static String[] sortedVals;
-  static
-  {
-   sortedVals = Arrays.copyOf(values, values.length);
-   Arrays.sort(sortedVals);
+  static {
+    sortedVals = Arrays.copyOf(values, values.length);
+    Arrays.sort(sortedVals);
   }
 
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)

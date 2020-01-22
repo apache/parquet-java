@@ -36,17 +36,13 @@ import org.apache.parquet.tools.read.SimpleRecord;
 import org.apache.parquet.tools.json.JsonRecordFormatter;
 
 public class CatCommand extends ArgsOnlyCommand {
-  public static final String[] USAGE = new String[] {
-    "<input>",
-    "where <input> is the parquet file to print to stdout"
-  };
+  public static final String[] USAGE = new String[] { "<input>",
+      "where <input> is the parquet file to print to stdout" };
 
   public static final Options OPTIONS;
   static {
     OPTIONS = new Options();
-    Option help = OptionBuilder.withLongOpt("json")
-                               .withDescription("Show records in JSON format.")
-                               .create('j');
+    Option help = OptionBuilder.withLongOpt("json").withDescription("Show records in JSON format.").create('j');
     OPTIONS.addOption(help);
   }
 
@@ -81,7 +77,8 @@ public class CatCommand extends ArgsOnlyCommand {
       PrintWriter writer = new PrintWriter(Main.out, true);
       reader = ParquetReader.builder(new SimpleReadSupport(), new Path(input)).build();
       ParquetMetadata metadata = ParquetFileReader.readFooter(new Configuration(), new Path(input));
-      JsonRecordFormatter.JsonGroupFormatter formatter = JsonRecordFormatter.fromSchema(metadata.getFileMetaData().getSchema());
+      JsonRecordFormatter.JsonGroupFormatter formatter = JsonRecordFormatter
+          .fromSchema(metadata.getFileMetaData().getSchema());
 
       for (SimpleRecord value = reader.read(); value != null; value = reader.read()) {
         if (options.hasOption('j')) {

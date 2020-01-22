@@ -26,7 +26,6 @@ import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -39,9 +38,9 @@ import java.io.IOException;
 @State(Scope.Benchmark)
 public class ReadBenchmarks {
 
-  private void read(Path parquetFile, int nRows, Blackhole blackhole) throws IOException
-  {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), parquetFile).withConf(configuration).build();
+  private void read(Path parquetFile, int nRows, Blackhole blackhole) throws IOException {
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), parquetFile).withConf(configuration)
+        .build();
     for (int i = 0; i < nRows; i++) {
       Group group = reader.read();
       blackhole.consume(group.getBinary("binary_field", 0));
@@ -57,8 +56,9 @@ public class ReadBenchmarks {
   }
 
   /**
-   * This needs to be done exactly once.  To avoid needlessly regenerating the files for reading, they aren't cleaned
-   * as part of the benchmark.  If the files exist, a message will be printed and they will not be regenerated.
+   * This needs to be done exactly once. To avoid needlessly regenerating the
+   * files for reading, they aren't cleaned as part of the benchmark. If the files
+   * exist, a message will be printed and they will not be regenerated.
    */
   @Setup(Level.Trial)
   public void generateFilesForRead() {
@@ -67,45 +67,35 @@ public class ReadBenchmarks {
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsDefaultBlockAndPageSizeUncompressed(Blackhole blackhole)
-          throws IOException
-  {
+  public void read1MRowsDefaultBlockAndPageSizeUncompressed(Blackhole blackhole) throws IOException {
     read(file_1M, ONE_MILLION, blackhole);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsBS256MPS4MUncompressed(Blackhole blackhole)
-          throws IOException
-  {
+  public void read1MRowsBS256MPS4MUncompressed(Blackhole blackhole) throws IOException {
     read(file_1M_BS256M_PS4M, ONE_MILLION, blackhole);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsBS256MPS8MUncompressed(Blackhole blackhole)
-          throws IOException
-  {
+  public void read1MRowsBS256MPS8MUncompressed(Blackhole blackhole) throws IOException {
     read(file_1M_BS256M_PS8M, ONE_MILLION, blackhole);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsBS512MPS4MUncompressed(Blackhole blackhole)
-          throws IOException
-  {
+  public void read1MRowsBS512MPS4MUncompressed(Blackhole blackhole) throws IOException {
     read(file_1M_BS512M_PS4M, ONE_MILLION, blackhole);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsBS512MPS8MUncompressed(Blackhole blackhole)
-          throws IOException
-  {
+  public void read1MRowsBS512MPS8MUncompressed(Blackhole blackhole) throws IOException {
     read(file_1M_BS512M_PS8M, ONE_MILLION, blackhole);
   }
 
-  //TODO how to handle lzo jar?
+  // TODO how to handle lzo jar?
 //  @Benchmark
 //  public void read1MRowsDefaultBlockAndPageSizeLZO(Blackhole blackhole)
 //          throws IOException
@@ -115,17 +105,13 @@ public class ReadBenchmarks {
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsDefaultBlockAndPageSizeSNAPPY(Blackhole blackhole)
-          throws IOException
-  {
+  public void read1MRowsDefaultBlockAndPageSizeSNAPPY(Blackhole blackhole) throws IOException {
     read(file_1M_SNAPPY, ONE_MILLION, blackhole);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
-  public void read1MRowsDefaultBlockAndPageSizeGZIP(Blackhole blackhole)
-          throws IOException
-  {
+  public void read1MRowsDefaultBlockAndPageSizeGZIP(Blackhole blackhole) throws IOException {
     read(file_1M_GZIP, ONE_MILLION, blackhole);
   }
 }

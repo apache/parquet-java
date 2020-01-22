@@ -34,18 +34,20 @@ import org.slf4j.LoggerFactory;
  * This class provides fluent builders that produce Parquet schema Types.
  * <p>
  * The most basic use is to build primitive types:
+ * 
  * <pre>
- *   Types.required(INT64).named("id");
- *   Types.optional(INT32).named("number");
+ * Types.required(INT64).named("id");
+ * Types.optional(INT32).named("number");
  * </pre>
  * <p>
  * The required({@link PrimitiveTypeName}) factory method produces a primitive
  * type builder, and the {@link PrimitiveBuilder#named(String)} builds the
  * {@link PrimitiveType}. Between {@code required} and {@code named}, other
  * builder methods can be used to add type annotations or other type metadata:
+ * 
  * <pre>
- *   Types.required(BINARY).as(UTF8).named("username");
- *   Types.optional(FIXED_LEN_BYTE_ARRAY).length(20).named("sha1");
+ * Types.required(BINARY).as(UTF8).named("username");
+ * Types.optional(FIXED_LEN_BYTE_ARRAY).length(20).named("sha1");
  * </pre>
  * <p>
  * Optional types are built using {@link #optional(PrimitiveTypeName)} to get
@@ -55,16 +57,14 @@ import org.slf4j.LoggerFactory;
  * version) to return a group builder. Group builders provide {@code required}
  * and {@code optional} to add primitive types, which return primitive builders
  * like the versions above.
+ * 
  * <pre>
- *   // This produces:
- *   // required group User {
- *   //   required int64 id;
- *   //   optional binary email (UTF8);
- *   // }
- *   Types.requiredGroup()
- *            .required(INT64).named("id")
- *            .optional(BINARY).as(UTF8).named("email")
- *        .named("User")
+ * // This produces:
+ * // required group User {
+ * // required int64 id;
+ * // optional binary email (UTF8);
+ * // }
+ * Types.requiredGroup().required(INT64).named("id").optional(BINARY).as(UTF8).named("email").named("User")
  * </pre>
  * <p>
  * When {@code required} is called on a group builder, the builder it returns
@@ -75,36 +75,32 @@ import org.slf4j.LoggerFactory;
  * Sub-groups can be created using {@code requiredGroup()} to get a group
  * builder that will create the group type, add it to the parent builder, and
  * return the parent builder for more fields.
+ * 
  * <pre>
- *   // required group User {
- *   //   required int64 id;
- *   //   optional binary email (UTF8);
- *   //   optional group address {
- *   //     required binary street (UTF8);
- *   //     required int32 zipcode;
- *   //   }
- *   // }
- *   Types.requiredGroup()
- *            .required(INT64).named("id")
- *            .optional(BINARY).as(UTF8).named("email")
- *            .optionalGroup()
- *                .required(BINARY).as(UTF8).named("street")
- *                .required(INT32).named("zipcode")
- *            .named("address")
- *        .named("User")
+ * // required group User {
+ * // required int64 id;
+ * // optional binary email (UTF8);
+ * // optional group address {
+ * // required binary street (UTF8);
+ * // required int32 zipcode;
+ * // }
+ * // }
+ * Types.requiredGroup().required(INT64).named("id").optional(BINARY).as(UTF8).named("email").optionalGroup()
+ *     .required(BINARY).as(UTF8).named("street").required(INT32).named("zipcode").named("address").named("User")
  * </pre>
  * <p>
- * Maps are built similarly, using {@code requiredMap()} (or the  {@link #optionalMap()}
- * version) to return a map builder. Map builders provide {@code key} to add
- * a primitive as key or a {@code groupKey} to add a group as key. {@code key()}
- * returns a MapKey builder, which extends a primitive builder. On the other hand,
- * {@code groupKey()} returns a MapGroupKey builder, which extends a group builder.
- * A key in a map is always required.
+ * Maps are built similarly, using {@code requiredMap()} (or the
+ * {@link #optionalMap()} version) to return a map builder. Map builders provide
+ * {@code key} to add a primitive as key or a {@code groupKey} to add a group as
+ * key. {@code key()} returns a MapKey builder, which extends a primitive
+ * builder. On the other hand, {@code groupKey()} returns a MapGroupKey builder,
+ * which extends a group builder. A key in a map is always required.
  * <p>
- * Once a key is built, a primitive map value can be built using {@code requiredValue()}
- * (or the optionalValue() version) that returns MapValue builder. A group map value
- * can be built using {@code requiredGroupValue()} (or the optionalGroupValue()
- * version) that returns MapGroupValue builder.
+ * Once a key is built, a primitive map value can be built using
+ * {@code requiredValue()} (or the optionalValue() version) that returns
+ * MapValue builder. A group map value can be built using
+ * {@code requiredGroupValue()} (or the optionalGroupValue() version) that
+ * returns MapGroupValue builder.
  *
  * <pre>
  *   // required group zipMap (MAP) {
@@ -155,35 +151,29 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Message types are built using {@link #buildMessage()} and function just like
  * group builders.
+ * 
  * <pre>
- *   // message User {
- *   //   required int64 id;
- *   //   optional binary email (UTF8);
- *   //   optional group address {
- *   //     required binary street (UTF8);
- *   //     required int32 zipcode;
- *   //   }
- *   // }
- *   Types.buildMessage()
- *            .required(INT64).named("id")
- *            .optional(BINARY).as(UTF8).named("email")
- *            .optionalGroup()
- *                .required(BINARY).as(UTF8).named("street")
- *                .required(INT32).named("zipcode")
- *            .named("address")
- *        .named("User")
+ * // message User {
+ * // required int64 id;
+ * // optional binary email (UTF8);
+ * // optional group address {
+ * // required binary street (UTF8);
+ * // required int32 zipcode;
+ * // }
+ * // }
+ * Types.buildMessage().required(INT64).named("id").optional(BINARY).as(UTF8).named("email").optionalGroup()
+ *     .required(BINARY).as(UTF8).named("street").required(INT32).named("zipcode").named("address").named("User")
  * </pre>
  * <p>
- * These builders enforce consistency checks based on the specifications in
- * the parquet-format documentation. For example, if DECIMAL is used to annotate
- * a FIXED_LEN_BYTE_ARRAY that is not long enough for its maximum precision,
- * these builders will throw an IllegalArgumentException:
+ * These builders enforce consistency checks based on the specifications in the
+ * parquet-format documentation. For example, if DECIMAL is used to annotate a
+ * FIXED_LEN_BYTE_ARRAY that is not long enough for its maximum precision, these
+ * builders will throw an IllegalArgumentException:
+ * 
  * <pre>
- *   // throws IllegalArgumentException with message:
- *   // "FIXED(4) is not long enough to store 10 digits"
- *   Types.required(FIXED_LEN_BYTE_ARRAY).length(4)
- *        .as(DECIMAL).precision(10)
- *        .named("badDecimal");
+ * // throws IllegalArgumentException with message:
+ * // "FIXED(4) is not long enough to store 10 digits"
+ * Types.required(FIXED_LEN_BYTE_ARRAY).length(4).as(DECIMAL).precision(10).named("badDecimal");
  * </pre>
  */
 public class Types {
@@ -192,8 +182,8 @@ public class Types {
   /**
    * A base builder for {@link Type} objects.
    *
-   * @param <P> The type that this builder will return from
-   *          {@link #named(String)} when the type is built.
+   * @param <P> The type that this builder will return from {@link #named(String)}
+   * when the type is built.
    */
   public abstract static class Builder<THIS extends Builder, P> {
     protected final P parent;
@@ -205,9 +195,9 @@ public class Types {
     private boolean repetitionAlreadySet = false;
 
     /**
-     * Construct a type builder that returns a "parent" object when the builder
-     * is finished. The {@code parent} will be returned by
-     * {@link #named(String)} so that builders can be chained.
+     * Construct a type builder that returns a "parent" object when the builder is
+     * finished. The {@code parent} will be returned by {@link #named(String)} so
+     * that builders can be chained.
      *
      * @param parent a non-null object to return from {@link #named(String)}
      */
@@ -217,9 +207,9 @@ public class Types {
     }
 
     /**
-     * Construct a type builder that returns the {@link Type} that was built
-     * when the builder is finished. The {@code returnClass} must be the
-     * expected {@code Type} class.
+     * Construct a type builder that returns the {@link Type} that was built when
+     * the builder is finished. The {@code returnClass} must be the expected
+     * {@code Type} class.
      *
      * @param returnClass a {@code Type} to return from {@link #named(String)}
      */
@@ -233,8 +223,7 @@ public class Types {
     protected abstract THIS self();
 
     protected final THIS repetition(Type.Repetition repetition) {
-      Preconditions.checkArgument(!repetitionAlreadySet,
-          "Repetition has already been set");
+      Preconditions.checkArgument(!repetitionAlreadySet, "Repetition has already been set");
       Preconditions.checkNotNull(repetition, "Repetition cannot be null");
       this.repetition = repetition;
       this.repetitionAlreadySet = true;
@@ -245,15 +234,15 @@ public class Types {
      * Adds a type annotation ({@link OriginalType}) to the type being built.
      * <p>
      * Type annotations are used to extend the types that parquet can store, by
-     * specifying how the primitive types should be interpreted. This keeps the
-     * set of primitive types to a minimum and reuses parquet's efficient
-     * encodings. For example, strings are stored as byte arrays (binary) with
-     * a UTF8 annotation.
+     * specifying how the primitive types should be interpreted. This keeps the set
+     * of primitive types to a minimum and reuses parquet's efficient encodings. For
+     * example, strings are stored as byte arrays (binary) with a UTF8 annotation.
      *
      * @param type an {@code OriginalType}
      * @return this builder for method chaining
      *
-     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding logical type instead
+     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding
+     * logical type instead
      */
     @Deprecated
     public THIS as(OriginalType type) {
@@ -264,13 +253,13 @@ public class Types {
     protected boolean newLogicalTypeSet;
 
     /**
-     * Adds a type annotation ({@link LogicalTypeAnnotation}) to the type being built.
+     * Adds a type annotation ({@link LogicalTypeAnnotation}) to the type being
+     * built.
      * <p>
      * Type annotations are used to extend the types that parquet can store, by
-     * specifying how the primitive types should be interpreted. This keeps the
-     * set of primitive types to a minimum and reuses parquet's efficient
-     * encodings. For example, strings are stored as byte arrays (binary) with
-     * a UTF8 annotation.
+     * specifying how the primitive types should be interpreted. This keeps the set
+     * of primitive types to a minimum and reuses parquet's efficient encodings. For
+     * example, strings are stored as byte arrays (binary) with a UTF8 annotation.
      *
      * @param type an {@code {@link LogicalTypeAnnotation}}
      * @return this builder for method chaining
@@ -284,7 +273,8 @@ public class Types {
     /**
      * adds an id annotation to the type being built.
      * <p>
-     * ids are used to capture the original id when converting from models using ids (thrift, protobufs)
+     * ids are used to capture the original id when converting from models using ids
+     * (thrift, protobufs)
      *
      * @param id the id of the field
      * @return this builder for method chaining
@@ -301,8 +291,8 @@ public class Types {
      * {@code Type} that was built. If returning a parent object that is a
      * GroupBuilder, the constructed type will be added to it as a field.
      * <p>
-     * <em>Note:</em> Any configuration for this type builder should be done
-     * before calling this method.
+     * <em>Note:</em> Any configuration for this type builder should be done before
+     * calling this method.
      *
      * @param name a name for the constructed type
      * @return the parent {@code GroupBuilder} or the constructed {@code Type}
@@ -323,24 +313,21 @@ public class Types {
         // the constructor check guarantees that returnClass is a Type
         return returnClass.cast(type);
       } else {
-        throw new IllegalStateException(
-            "[BUG] Parent and return type are null: must override named");
+        throw new IllegalStateException("[BUG] Parent and return type are null: must override named");
       }
     }
 
-    protected OriginalType getOriginalType () {
+    protected OriginalType getOriginalType() {
       return logicalTypeAnnotation == null ? null : logicalTypeAnnotation.toOriginalType();
     }
   }
 
-  public abstract static class
-      BasePrimitiveBuilder<P, THIS extends BasePrimitiveBuilder<P, THIS>>
+  public abstract static class BasePrimitiveBuilder<P, THIS extends BasePrimitiveBuilder<P, THIS>>
       extends Builder<THIS, P> {
     private static final Logger LOGGER = LoggerFactory.getLogger(BasePrimitiveBuilder.class);
     private static final long MAX_PRECISION_INT32 = maxPrecision(4);
     private static final long MAX_PRECISION_INT64 = maxPrecision(8);
-    private static final String LOGICAL_TYPES_DOC_URL =
-        "https://github.com/apache/parquet-format/blob/master/LogicalTypes.md";
+    private static final String LOGICAL_TYPES_DOC_URL = "https://github.com/apache/parquet-format/blob/master/LogicalTypes.md";
     private final PrimitiveTypeName primitiveType;
     private int length = NOT_SET;
     private int precision = NOT_SET;
@@ -377,14 +364,15 @@ public class Types {
     /**
      * Adds the precision for a DECIMAL.
      * <p>
-     * This value is required for decimals and must be less than or equal to
-     * the maximum number of base-10 digits in the underlying type. A 4-byte
-     * fixed, for example, can store up to 9 base-10 digits.
+     * This value is required for decimals and must be less than or equal to the
+     * maximum number of base-10 digits in the underlying type. A 4-byte fixed, for
+     * example, can store up to 9 base-10 digits.
      *
      * @param precision an int precision value for the DECIMAL
      * @return this builder for method chaining
      *
-     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding decimal type instead
+     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding
+     * decimal type instead
      */
     @Deprecated
     public THIS precision(int precision) {
@@ -396,17 +384,18 @@ public class Types {
     /**
      * Adds the scale for a DECIMAL.
      * <p>
-     * This value must be less than the maximum precision of the type and must
-     * be a positive number. If not set, the default scale is 0.
+     * This value must be less than the maximum precision of the type and must be a
+     * positive number. If not set, the default scale is 0.
      * <p>
-     * The scale specifies the number of digits of the underlying unscaled
-     * that are to the right of the decimal point. The decimal interpretation
-     * of values in this column is: {@code value*10^(-scale)}.
+     * The scale specifies the number of digits of the underlying unscaled that are
+     * to the right of the decimal point. The decimal interpretation of values in
+     * this column is: {@code value*10^(-scale)}.
      *
      * @param scale an int scale value for the DECIMAL
      * @return this builder for method chaining
      *
-     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding decimal type instead
+     * @deprecated use {@link #as(LogicalTypeAnnotation)} with the corresponding
+     * decimal type instead
      */
     @Deprecated
     public THIS scale(int scale) {
@@ -418,12 +407,13 @@ public class Types {
     /**
      * Adds the column order for the primitive type.
      * <p>
-     * In case of not set the default column order is {@link ColumnOrderName#TYPE_DEFINED_ORDER} except the type
-     * {@link PrimitiveTypeName#INT96} and the types annotated by {@link OriginalType#INTERVAL} where the default column
-     * order is {@link ColumnOrderName#UNDEFINED}.
+     * In case of not set the default column order is
+     * {@link ColumnOrderName#TYPE_DEFINED_ORDER} except the type
+     * {@link PrimitiveTypeName#INT96} and the types annotated by
+     * {@link OriginalType#INTERVAL} where the default column order is
+     * {@link ColumnOrderName#UNDEFINED}.
      *
-     * @param columnOrder
-     *          the column order for the primitive type
+     * @param columnOrder the column order for the primitive type
      * @return this builder for method chaining
      */
     public THIS columnOrder(ColumnOrder columnOrder) {
@@ -434,8 +424,7 @@ public class Types {
     @Override
     protected PrimitiveType build(String name) {
       if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitiveType) {
-        Preconditions.checkArgument(length > 0,
-            "Invalid FIXED_LEN_BYTE_ARRAY length: " + length);
+        Preconditions.checkArgument(length > 0, "Invalid FIXED_LEN_BYTE_ARRAY length: " + length);
       }
 
       DecimalMetadata meta = decimalMetadata();
@@ -464,31 +453,23 @@ public class Types {
           @Override
           public Optional<Boolean> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
             Preconditions.checkState(
-                (primitiveType == PrimitiveTypeName.INT32) ||
-                (primitiveType == PrimitiveTypeName.INT64) ||
-                (primitiveType == PrimitiveTypeName.BINARY) ||
-                (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY),
-                "DECIMAL can only annotate INT32, INT64, BINARY, and FIXED"
-            );
+                (primitiveType == PrimitiveTypeName.INT32) || (primitiveType == PrimitiveTypeName.INT64)
+                    || (primitiveType == PrimitiveTypeName.BINARY)
+                    || (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY),
+                "DECIMAL can only annotate INT32, INT64, BINARY, and FIXED");
             if (primitiveType == PrimitiveTypeName.INT32) {
-              Preconditions.checkState(
-                  meta.getPrecision() <= MAX_PRECISION_INT32,
-                  "INT32 cannot store " + meta.getPrecision() + " digits " +
-                      "(max " + MAX_PRECISION_INT32 + ")");
+              Preconditions.checkState(meta.getPrecision() <= MAX_PRECISION_INT32,
+                  "INT32 cannot store " + meta.getPrecision() + " digits " + "(max " + MAX_PRECISION_INT32 + ")");
             } else if (primitiveType == PrimitiveTypeName.INT64) {
-              Preconditions.checkState(
-                  meta.getPrecision() <= MAX_PRECISION_INT64,
-                  "INT64 cannot store " + meta.getPrecision() + " digits " +
-                  "(max " + MAX_PRECISION_INT64 + ")");
+              Preconditions.checkState(meta.getPrecision() <= MAX_PRECISION_INT64,
+                  "INT64 cannot store " + meta.getPrecision() + " digits " + "(max " + MAX_PRECISION_INT64 + ")");
               if (meta.getPrecision() <= MAX_PRECISION_INT32) {
-                LOGGER.warn("Decimal with {} digits is stored in an INT64, but fits in an INT32. See {}.",
-                            precision, LOGICAL_TYPES_DOC_URL);
+                LOGGER.warn("Decimal with {} digits is stored in an INT64, but fits in an INT32. See {}.", precision,
+                    LOGICAL_TYPES_DOC_URL);
               }
             } else if (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
-              Preconditions.checkState(
-                  meta.getPrecision() <= maxPrecision(length),
-                  "FIXED(" + length + ") cannot store " + meta.getPrecision() +
-                  " digits (max " + maxPrecision(length) + ")");
+              Preconditions.checkState(meta.getPrecision() <= maxPrecision(length), "FIXED(" + length
+                  + ") cannot store " + meta.getPrecision() + " digits (max " + maxPrecision(length) + ")");
             }
             return Optional.of(true);
           }
@@ -503,15 +484,15 @@ public class Types {
           public Optional<Boolean> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
             LogicalTypeAnnotation.TimeUnit unit = timeLogicalType.getUnit();
             switch (unit) {
-              case MILLIS:
-                checkInt32PrimitiveType(timeLogicalType);
-                break;
-              case MICROS:
-              case NANOS:
-                checkInt64PrimitiveType(timeLogicalType);
-                break;
-              default:
-                throw new RuntimeException("Invalid time unit: " + unit);
+            case MILLIS:
+              checkInt32PrimitiveType(timeLogicalType);
+              break;
+            case MICROS:
+            case NANOS:
+              checkInt64PrimitiveType(timeLogicalType);
+              break;
+            default:
+              throw new RuntimeException("Invalid time unit: " + unit);
             }
             return Optional.of(true);
           }
@@ -520,16 +501,16 @@ public class Types {
           public Optional<Boolean> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intLogicalType) {
             int bitWidth = intLogicalType.getBitWidth();
             switch (bitWidth) {
-              case 8:
-              case 16:
-              case 32:
-                checkInt32PrimitiveType(intLogicalType);
-                break;
-              case 64:
-                checkInt64PrimitiveType(intLogicalType);
-                break;
-              default:
-                throw new RuntimeException("Invalid bit width: " + bitWidth);
+            case 8:
+            case 16:
+            case 32:
+              checkInt32PrimitiveType(intLogicalType);
+              break;
+            case 64:
+              checkInt64PrimitiveType(intLogicalType);
+              break;
+            default:
+              throw new RuntimeException("Invalid bit width: " + bitWidth);
             }
             return Optional.of(true);
           }
@@ -542,37 +523,33 @@ public class Types {
 
           @Override
           public Optional<Boolean> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
-            Preconditions.checkState(
-                (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
-                (length == 12),
+            Preconditions.checkState((primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) && (length == 12),
                 "INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
             return Optional.of(true);
           }
 
           @Override
           public Optional<Boolean> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
-            Preconditions.checkState(
-                primitiveType == PrimitiveTypeName.BINARY,
-                "ENUM can only annotate binary fields");
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.BINARY, "ENUM can only annotate binary fields");
             return Optional.of(true);
           }
 
           private void checkBinaryPrimitiveType(LogicalTypeAnnotation logicalTypeAnnotation) {
-            Preconditions.checkState(
-                primitiveType == PrimitiveTypeName.BINARY,
-              logicalTypeAnnotation.toString() + " can only annotate binary fields");
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.BINARY,
+                logicalTypeAnnotation.toString() + " can only annotate binary fields");
           }
 
           private void checkInt32PrimitiveType(LogicalTypeAnnotation logicalTypeAnnotation) {
             Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
-              logicalTypeAnnotation.toString() + " can only annotate INT32");
+                logicalTypeAnnotation.toString() + " can only annotate INT32");
           }
 
           private void checkInt64PrimitiveType(LogicalTypeAnnotation logicalTypeAnnotation) {
             Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,
-              logicalTypeAnnotation.toString() + " can only annotate INT64");
+                logicalTypeAnnotation.toString() + " can only annotate INT64");
           }
-        }).orElseThrow(() -> new IllegalStateException(logicalTypeAnnotation + " can not be applied to a primitive type"));
+        }).orElseThrow(
+            () -> new IllegalStateException(logicalTypeAnnotation + " can not be applied to a primitive type"));
       }
 
       if (newLogicalTypeSet) {
@@ -583,11 +560,10 @@ public class Types {
     }
 
     private static long maxPrecision(int numBytes) {
-      return Math.round(                      // convert double to long
-          Math.floor(Math.log10(              // number of base-10 digits
-              Math.pow(2, 8 * numBytes - 1) - 1)  // max value stored in numBytes
-          )
-      );
+      return Math.round( // convert double to long
+          Math.floor(Math.log10( // number of base-10 digits
+              Math.pow(2, 8 * numBytes - 1) - 1) // max value stored in numBytes
+          ));
     }
 
     protected DecimalMetadata decimalMetadata() {
@@ -597,21 +573,18 @@ public class Types {
         if (newLogicalTypeSet) {
           if (scaleAlreadySet) {
             Preconditions.checkArgument(this.scale == decimalType.getScale(),
-              "Decimal scale should match with the scale of the logical type");
+                "Decimal scale should match with the scale of the logical type");
           }
           if (precisionAlreadySet) {
             Preconditions.checkArgument(this.precision == decimalType.getPrecision(),
-              "Decimal precision should match with the precision of the logical type");
+                "Decimal precision should match with the precision of the logical type");
           }
           scale = decimalType.getScale();
           precision = decimalType.getPrecision();
         }
-        Preconditions.checkArgument(precision > 0,
-            "Invalid DECIMAL precision: " + precision);
-        Preconditions.checkArgument(this.scale >= 0,
-            "Invalid DECIMAL scale: " + this.scale);
-        Preconditions.checkArgument(this.scale <= precision,
-            "Invalid DECIMAL scale: cannot be greater than precision");
+        Preconditions.checkArgument(precision > 0, "Invalid DECIMAL precision: " + precision);
+        Preconditions.checkArgument(this.scale >= 0, "Invalid DECIMAL scale: " + this.scale);
+        Preconditions.checkArgument(this.scale <= precision, "Invalid DECIMAL scale: cannot be greater than precision");
         meta = new DecimalMetadata(precision, scale);
       }
       return meta;
@@ -621,8 +594,8 @@ public class Types {
   /**
    * A builder for {@link PrimitiveType} objects.
    *
-   * @param <P> The type that this builder will return from
-   *          {@link #named(String)} when the type is built.
+   * @param <P> The type that this builder will return from {@link #named(String)}
+   * when the type is built.
    */
   public static class PrimitiveBuilder<P> extends BasePrimitiveBuilder<P, PrimitiveBuilder<P>> {
 
@@ -640,8 +613,7 @@ public class Types {
     }
   }
 
-  public abstract static class BaseGroupBuilder<P, THIS extends BaseGroupBuilder<P, THIS>>
-      extends Builder<THIS, P> {
+  public abstract static class BaseGroupBuilder<P, THIS extends BaseGroupBuilder<P, THIS>> extends Builder<THIS, P> {
     protected final List<Type> fields;
 
     private BaseGroupBuilder(P parent) {
@@ -657,10 +629,8 @@ public class Types {
     @Override
     protected abstract THIS self();
 
-    public PrimitiveBuilder<THIS> primitive(
-        PrimitiveTypeName type, Type.Repetition repetition) {
-      return new PrimitiveBuilder<> (self(), type)
-          .repetition(repetition);
+    public PrimitiveBuilder<THIS> primitive(PrimitiveTypeName type, Type.Repetition repetition) {
+      return new PrimitiveBuilder<>(self(), type).repetition(repetition);
     }
 
     /**
@@ -668,13 +638,11 @@ public class Types {
      * {@code type}.
      *
      * @param type a {@link PrimitiveTypeName}
-     * @return a primitive builder for {@code type} that will return this
-     *          builder for additional fields.
+     * @return a primitive builder for {@code type} that will return this builder
+     * for additional fields.
      */
-    public PrimitiveBuilder<THIS> required(
-        PrimitiveTypeName type) {
-      return new PrimitiveBuilder<>(self(), type)
-          .repetition(Type.Repetition.REQUIRED);
+    public PrimitiveBuilder<THIS> required(PrimitiveTypeName type) {
+      return new PrimitiveBuilder<>(self(), type).repetition(Type.Repetition.REQUIRED);
     }
 
     /**
@@ -682,13 +650,11 @@ public class Types {
      * {@code type}.
      *
      * @param type a {@link PrimitiveTypeName}
-     * @return a primitive builder for {@code type} that will return this
-     *          builder for additional fields.
+     * @return a primitive builder for {@code type} that will return this builder
+     * for additional fields.
      */
-    public PrimitiveBuilder<THIS> optional(
-        PrimitiveTypeName type) {
-      return new PrimitiveBuilder<>(self(), type)
-          .repetition(Type.Repetition.OPTIONAL);
+    public PrimitiveBuilder<THIS> optional(PrimitiveTypeName type) {
+      return new PrimitiveBuilder<>(self(), type).repetition(Type.Repetition.OPTIONAL);
     }
 
     /**
@@ -696,51 +662,42 @@ public class Types {
      * {@code type}.
      *
      * @param type a {@link PrimitiveTypeName}
-     * @return a primitive builder for {@code type} that will return this
-     *          builder for additional fields.
+     * @return a primitive builder for {@code type} that will return this builder
+     * for additional fields.
      */
-    public PrimitiveBuilder<THIS> repeated(
-        PrimitiveTypeName type) {
-      return new PrimitiveBuilder<>(self(), type)
-          .repetition(Type.Repetition.REPEATED);
+    public PrimitiveBuilder<THIS> repeated(PrimitiveTypeName type) {
+      return new PrimitiveBuilder<>(self(), type).repetition(Type.Repetition.REPEATED);
     }
 
     public GroupBuilder<THIS> group(Type.Repetition repetition) {
-      return new GroupBuilder<>(self())
-          .repetition(repetition);
+      return new GroupBuilder<>(self()).repetition(repetition);
     }
 
     /**
      * Returns a {@link GroupBuilder} to build a required sub-group.
      *
-     * @return a group builder that will return this builder for additional
-     *          fields.
+     * @return a group builder that will return this builder for additional fields.
      */
     public GroupBuilder<THIS> requiredGroup() {
-      return new GroupBuilder<>(self())
-          .repetition(Type.Repetition.REQUIRED);
+      return new GroupBuilder<>(self()).repetition(Type.Repetition.REQUIRED);
     }
 
     /**
      * Returns a {@link GroupBuilder} to build an optional sub-group.
      *
-     * @return a group builder that will return this builder for additional
-     *          fields.
+     * @return a group builder that will return this builder for additional fields.
      */
     public GroupBuilder<THIS> optionalGroup() {
-      return new GroupBuilder<>(self())
-          .repetition(Type.Repetition.OPTIONAL);
+      return new GroupBuilder<>(self()).repetition(Type.Repetition.OPTIONAL);
     }
 
     /**
      * Returns a {@link GroupBuilder} to build a repeated sub-group.
      *
-     * @return a group builder that will return this builder for additional
-     *          fields.
+     * @return a group builder that will return this builder for additional fields.
      */
     public GroupBuilder<THIS> repeatedGroup() {
-      return new GroupBuilder<>(self())
-          .repetition(Type.Repetition.REPEATED);
+      return new GroupBuilder<>(self()).repetition(Type.Repetition.REPEATED);
     }
 
     /**
@@ -774,19 +731,16 @@ public class Types {
       }
     }
 
-    public MapBuilder<THIS> map(
-        Type.Repetition repetition) {
+    public MapBuilder<THIS> map(Type.Repetition repetition) {
       return new MapBuilder<>(self()).repetition(repetition);
     }
 
     public MapBuilder<THIS> requiredMap() {
-      return new MapBuilder<>(self())
-          .repetition(Type.Repetition.REQUIRED);
+      return new MapBuilder<>(self()).repetition(Type.Repetition.REQUIRED);
     }
 
     public MapBuilder<THIS> optionalMap() {
-      return new MapBuilder<>(self())
-          .repetition(Type.Repetition.OPTIONAL);
+      return new MapBuilder<>(self()).repetition(Type.Repetition.OPTIONAL);
     }
 
     public ListBuilder<THIS> list(Type.Repetition repetition) {
@@ -805,8 +759,8 @@ public class Types {
   /**
    * A builder for {@link GroupType} objects.
    *
-   * @param <P> The type that this builder will return from
-   *          {@link #named(String)} when the type is built.
+   * @param <P> The type that this builder will return from {@link #named(String)}
+   * when the type is built.
    */
   public static class GroupBuilder<P> extends BaseGroupBuilder<P, GroupBuilder<P>> {
 
@@ -824,13 +778,11 @@ public class Types {
     }
   }
 
-  public abstract static class BaseMapBuilder<P, THIS extends BaseMapBuilder<P, THIS>>
-      extends Builder<THIS, P> {
-    private static final Type STRING_KEY = Types
-        .required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("key");
+  public abstract static class BaseMapBuilder<P, THIS extends BaseMapBuilder<P, THIS>> extends Builder<THIS, P> {
+    private static final Type STRING_KEY = Types.required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("key");
 
-    public static class KeyBuilder<MP, M extends BaseMapBuilder<MP, M>> extends
-        BasePrimitiveBuilder<MP, KeyBuilder<MP, M>> {
+    public static class KeyBuilder<MP, M extends BaseMapBuilder<MP, M>>
+        extends BasePrimitiveBuilder<MP, KeyBuilder<MP, M>> {
       private final M mapBuilder;
 
       public KeyBuilder(M mapBuilder, PrimitiveTypeName type) {
@@ -839,8 +791,7 @@ public class Types {
         repetition(Type.Repetition.REQUIRED);
       }
 
-      public ValueBuilder<MP, M> value(PrimitiveTypeName type,
-                                       Type.Repetition repetition) {
+      public ValueBuilder<MP, M> value(PrimitiveTypeName type, Type.Repetition repetition) {
         mapBuilder.setKeyType(build("key"));
         return new ValueBuilder<>(mapBuilder, type).repetition(repetition);
       }
@@ -946,8 +897,7 @@ public class Types {
         return this;
       }
 
-      public ValueBuilder<MP, M> value(PrimitiveTypeName type,
-                                       Type.Repetition repetition) {
+      public ValueBuilder<MP, M> value(PrimitiveTypeName type, Type.Repetition repetition) {
         mapBuilder.setKeyType(build("key"));
         return new ValueBuilder<>(mapBuilder, type).repetition(repetition);
       }
@@ -1076,14 +1026,12 @@ public class Types {
     }
 
     protected void setKeyType(Type keyType) {
-      Preconditions.checkState(this.keyType == null,
-          "Only one key type can be built with a MapBuilder");
+      Preconditions.checkState(this.keyType == null, "Only one key type can be built with a MapBuilder");
       this.keyType = keyType;
     }
 
     protected void setValueType(Type valueType) {
-      Preconditions.checkState(this.valueType == null,
-          "Only one key type can be built with a ValueBuilder");
+      Preconditions.checkState(this.valueType == null, "Only one key type can be built with a ValueBuilder");
       this.valueType = valueType;
     }
 
@@ -1114,8 +1062,7 @@ public class Types {
       return new GroupKeyBuilder<>(self());
     }
 
-    public ValueBuilder<P, THIS> value(PrimitiveTypeName type,
-                                       Type.Repetition repetition) {
+    public ValueBuilder<P, THIS> value(PrimitiveTypeName type, Type.Repetition repetition) {
       return new ValueBuilder<>(self(), type).repetition(repetition);
     }
 
@@ -1170,8 +1117,7 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(logicalTypeAnnotation == null,
-          "MAP is already a logical type and can't be changed.");
+      Preconditions.checkState(logicalTypeAnnotation == null, "MAP is already a logical type and can't be changed.");
       if (keyType == null) {
         keyType = STRING_KEY;
       }
@@ -1182,13 +1128,9 @@ public class Types {
       }
 
       if (valueType != null) {
-        return builder
-            .repeatedGroup().addFields(keyType, valueType).named("map")
-            .named(name);
+        return builder.repeatedGroup().addFields(keyType, valueType).named("map").named(name);
       } else {
-        return builder
-            .repeatedGroup().addFields(keyType).named("map")
-            .named(name);
+        return builder.repeatedGroup().addFields(keyType).named("map").named(name);
       }
     }
   }
@@ -1208,8 +1150,7 @@ public class Types {
     }
   }
 
-  public abstract static class BaseListBuilder<P, THIS extends BaseListBuilder<P, THIS>>
-      extends Builder<THIS, P> {
+  public abstract static class BaseListBuilder<P, THIS extends BaseListBuilder<P, THIS>> extends Builder<THIS, P> {
     private Type elementType = null;
     private P parent;
 
@@ -1223,8 +1164,7 @@ public class Types {
     }
 
     public THIS setElementType(Type elementType) {
-      Preconditions.checkState(this.elementType == null,
-          "Only one element can be built with a ListBuilder");
+      Preconditions.checkState(this.elementType == null, "Only one element can be built with a ListBuilder");
       this.elementType = elementType;
       return self();
     }
@@ -1320,8 +1260,7 @@ public class Types {
 
     @Override
     protected Type build(String name) {
-      Preconditions.checkState(logicalTypeAnnotation == null,
-          "LIST is already the logical type and can't be changed");
+      Preconditions.checkState(logicalTypeAnnotation == null, "LIST is already the logical type and can't be changed");
       Preconditions.checkNotNull(elementType, "List element type");
 
       GroupBuilder<GroupType> builder = buildGroup(repetition).as(OriginalType.LIST);
@@ -1329,13 +1268,10 @@ public class Types {
         builder.id(id.intValue());
       }
 
-      return builder
-          .repeatedGroup().addFields(elementType).named("list")
-          .named(name);
+      return builder.repeatedGroup().addFields(elementType).named("list").named(name);
     }
 
-    public ElementBuilder<P, THIS> element(PrimitiveTypeName type,
-                                           Type.Repetition repetition) {
+    public ElementBuilder<P, THIS> element(PrimitiveTypeName type, Type.Repetition repetition) {
       return new ElementBuilder<>(self(), type).repetition(repetition);
     }
 
@@ -1435,10 +1371,8 @@ public class Types {
     return new MessageTypeBuilder();
   }
 
-  public static PrimitiveBuilder<PrimitiveType> primitive(PrimitiveTypeName type,
-                                                          Type.Repetition repetition) {
-    return new PrimitiveBuilder<>(PrimitiveType.class, type)
-        .repetition(repetition);
+  public static PrimitiveBuilder<PrimitiveType> primitive(PrimitiveTypeName type, Type.Repetition repetition) {
+    return new PrimitiveBuilder<>(PrimitiveType.class, type).repetition(repetition);
   }
 
   /**
@@ -1448,8 +1382,7 @@ public class Types {
    * @return a {@link PrimitiveBuilder}
    */
   public static PrimitiveBuilder<PrimitiveType> required(PrimitiveTypeName type) {
-    return new PrimitiveBuilder<>(PrimitiveType.class, type)
-        .repetition(Type.Repetition.REQUIRED);
+    return new PrimitiveBuilder<>(PrimitiveType.class, type).repetition(Type.Repetition.REQUIRED);
   }
 
   /**
@@ -1459,8 +1392,7 @@ public class Types {
    * @return a {@link PrimitiveBuilder}
    */
   public static PrimitiveBuilder<PrimitiveType> optional(PrimitiveTypeName type) {
-    return new PrimitiveBuilder<>(PrimitiveType.class, type)
-        .repetition(Type.Repetition.OPTIONAL);
+    return new PrimitiveBuilder<>(PrimitiveType.class, type).repetition(Type.Repetition.OPTIONAL);
   }
 
   /**
@@ -1470,12 +1402,10 @@ public class Types {
    * @return a {@link PrimitiveBuilder}
    */
   public static PrimitiveBuilder<PrimitiveType> repeated(PrimitiveTypeName type) {
-    return new PrimitiveBuilder<>(PrimitiveType.class, type)
-        .repetition(Type.Repetition.REPEATED);
+    return new PrimitiveBuilder<>(PrimitiveType.class, type).repetition(Type.Repetition.REPEATED);
   }
 
-  public static GroupBuilder<GroupType> buildGroup(
-      Type.Repetition repetition) {
+  public static GroupBuilder<GroupType> buildGroup(Type.Repetition repetition) {
     return new GroupBuilder<>(GroupType.class).repetition(repetition);
   }
 
@@ -1485,8 +1415,7 @@ public class Types {
    * @return a {@link GroupBuilder}
    */
   public static GroupBuilder<GroupType> requiredGroup() {
-    return new GroupBuilder<>(GroupType.class)
-        .repetition(Type.Repetition.REQUIRED);
+    return new GroupBuilder<>(GroupType.class).repetition(Type.Repetition.REQUIRED);
   }
 
   /**
@@ -1495,8 +1424,7 @@ public class Types {
    * @return a {@link GroupBuilder}
    */
   public static GroupBuilder<GroupType> optionalGroup() {
-    return new GroupBuilder<>(GroupType.class)
-        .repetition(Type.Repetition.OPTIONAL);
+    return new GroupBuilder<>(GroupType.class).repetition(Type.Repetition.OPTIONAL);
   }
 
   /**
@@ -1505,10 +1433,8 @@ public class Types {
    * @return a {@link GroupBuilder}
    */
   public static GroupBuilder<GroupType> repeatedGroup() {
-    return new GroupBuilder<>(GroupType.class)
-        .repetition(Type.Repetition.REPEATED);
+    return new GroupBuilder<>(GroupType.class).repetition(Type.Repetition.REPEATED);
   }
-
 
   public static MapBuilder<GroupType> map(Type.Repetition repetition) {
     return new MapBuilder<>(GroupType.class).repetition(repetition);

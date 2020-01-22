@@ -60,7 +60,7 @@ class DictionaryPageReader implements DictionaryPageReadStore {
    * @param block The target BlockMetaData
    *
    * @throws NullPointerException if {@code reader} or {@code block} is
-   *           {@code null}
+   * {@code null}
    */
   DictionaryPageReader(ParquetFileReader reader, BlockMetaData block) {
     this.reader = Objects.requireNonNull(reader);
@@ -75,8 +75,8 @@ class DictionaryPageReader implements DictionaryPageReadStore {
   /**
    * Sets this reader's row group's page store. When a row group is set, this
    * reader will delegate to that row group to return dictionary pages. This
-   * avoids seeking and re-reading dictionary bytes after this reader's row
-   * group is loaded into memory.
+   * avoids seeking and re-reading dictionary bytes after this reader's row group
+   * is loaded into memory.
    *
    * @param rowGroup a ColumnChunkPageReadStore for this reader's row group
    */
@@ -94,14 +94,12 @@ class DictionaryPageReader implements DictionaryPageReadStore {
     String dotPath = String.join(".", descriptor.getPath());
     ColumnChunkMetaData column = columns.get(dotPath);
     if (column == null) {
-      throw new ParquetDecodingException(
-          "Failed to load dictionary, unknown column: " + dotPath);
+      throw new ParquetDecodingException("Failed to load dictionary, unknown column: " + dotPath);
     }
 
     return dictionaryPageCache.computeIfAbsent(dotPath, key -> {
       try {
-        final DictionaryPage dict =
-            hasDictionaryPage(column) ? reader.readDictionary(column) : null;
+        final DictionaryPage dict = hasDictionaryPage(column) ? reader.readDictionary(column) : null;
 
         // Copy the dictionary to ensure it can be reused if it is returned
         // more than once. This can happen when a DictionaryFilter has two or
@@ -113,10 +111,9 @@ class DictionaryPageReader implements DictionaryPageReadStore {
     }).orElse(null);
   }
 
-  private static DictionaryPage reusableCopy(DictionaryPage dict)
-      throws IOException {
-    return new DictionaryPage(BytesInput.from(dict.getBytes().toByteArray()),
-        dict.getDictionarySize(), dict.getEncoding());
+  private static DictionaryPage reusableCopy(DictionaryPage dict) throws IOException {
+    return new DictionaryPage(BytesInput.from(dict.getBytes().toByteArray()), dict.getDictionarySize(),
+        dict.getEncoding());
   }
 
   private boolean hasDictionaryPage(ColumnChunkMetaData column) {

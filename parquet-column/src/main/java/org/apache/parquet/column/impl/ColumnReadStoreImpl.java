@@ -54,9 +54,8 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
    * @param schema the schema we are reading
    * @param createdBy writer version string from the Parquet file being read
    */
-  public ColumnReadStoreImpl(PageReadStore pageReadStore,
-                             GroupConverter recordConverter,
-                             MessageType schema, String createdBy) {
+  public ColumnReadStoreImpl(PageReadStore pageReadStore, GroupConverter recordConverter, MessageType schema,
+      String createdBy) {
     super();
     this.pageReadStore = pageReadStore;
     this.recordConverter = recordConverter;

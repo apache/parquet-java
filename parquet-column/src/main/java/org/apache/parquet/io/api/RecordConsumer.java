@@ -18,12 +18,11 @@
  */
 package org.apache.parquet.io.api;
 
-
 /**
  *
- * Abstraction for writing records
- * It decouples the striping algorithm from the actual record model
- * example:
+ * Abstraction for writing records It decouples the striping algorithm from the
+ * actual record model example:
+ * 
  * <pre>
  * startMessage()
  *  startField("A", 0)
@@ -41,6 +40,7 @@ package org.apache.parquet.io.api;
  * </pre>
  *
  * would produce the following message:
+ * 
  * <pre>
  * {
  *   A: [1, 2]
@@ -63,8 +63,9 @@ abstract public class RecordConsumer {
   abstract public void endMessage();
 
   /**
-   * start of a field in a group or message
-   * if the field is repeated the field is started only once and all values added in between start and end
+   * start of a field in a group or message if the field is repeated the field is
+   * started only once and all values added in between start and end
+   * 
    * @param field name of the field
    * @param index of the field in the group or message
    */
@@ -72,6 +73,7 @@ abstract public class RecordConsumer {
 
   /**
    * end of a field in a group or message
+   * 
    * @param field name of the field
    * @param index of the field in the group or message
    */
@@ -89,45 +91,50 @@ abstract public class RecordConsumer {
 
   /**
    * add an int value in the current field
+   * 
    * @param value an int value
    */
   abstract public void addInteger(int value);
 
   /**
    * add a long value in the current field
+   * 
    * @param value a long value
    */
   abstract public void addLong(long value);
 
   /**
    * add a boolean value in the current field
+   * 
    * @param value a boolean value
    */
   abstract public void addBoolean(boolean value);
 
   /**
    * add a binary value in the current field
+   * 
    * @param value a binary value
    */
   abstract public void addBinary(Binary value);
 
   /**
    * add a float value in the current field
+   * 
    * @param value a float value
    */
   abstract public void addFloat(float value);
 
   /**
    * add a double value in the current field
+   * 
    * @param value a double value
    */
   abstract public void addDouble(double value);
 
   /**
-   * NoOps by default
-   * Subclass class can implement its own flushing logic
+   * NoOps by default Subclass class can implement its own flushing logic
    */
-  //TODO: make this abstract in 2.0
+  // TODO: make this abstract in 2.0
   public void flush() {
   }
 

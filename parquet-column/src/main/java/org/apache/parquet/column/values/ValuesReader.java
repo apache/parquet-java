@@ -28,36 +28,38 @@ import org.apache.parquet.io.api.Binary;
 /**
  * Base class to implement an encoding for a given column type.
  *
- * A ValuesReader is provided with a page (byte-buffer) and is responsible
- * for deserializing the primitive values stored in that page.
+ * A ValuesReader is provided with a page (byte-buffer) and is responsible for
+ * deserializing the primitive values stored in that page.
  *
- * Given that pages are homogeneous (store only a single type), typical subclasses
- * will only override one of the read*() methods.
+ * Given that pages are homogeneous (store only a single type), typical
+ * subclasses will only override one of the read*() methods.
  */
 public abstract class ValuesReader {
 
-  // To be used to maintain the deprecated behavior of getNextOffset(); -1 means undefined
+  // To be used to maintain the deprecated behavior of getNextOffset(); -1 means
+  // undefined
   private int actualOffset = -1;
   private int nextOffset;
 
   /**
    * Called to initialize the column reader from a part of a page.
    *
-   * The underlying implementation knows how much data to read, so a length
-   * is not provided.
+   * The underlying implementation knows how much data to read, so a length is not
+   * provided.
    *
    * Each page may contain several sections:
    * <ul>
-   *  <li> repetition levels column
-   *  <li> definition levels column
-   *  <li> data column
+   * <li>repetition levels column
+   * <li>definition levels column
+   * <li>data column
    * </ul>
    *
-   * This function is called with 'offset' pointing to the beginning of one of these sections,
-   * and should return the offset to the section following it.
+   * This function is called with 'offset' pointing to the beginning of one of
+   * these sections, and should return the offset to the section following it.
    *
    * @param valueCount count of values in this page
-   * @param page the array to read from containing the page data (repetition levels, definition levels, data)
+   * @param page the array to read from containing the page data (repetition
+   * levels, definition levels, data)
    * @param offset where to start reading from in the page
    *
    * @throws IOException
@@ -76,10 +78,12 @@ public abstract class ValuesReader {
   }
 
   /**
-   * Same functionality as method of the same name that takes a ByteBuffer instead of a byte[].
+   * Same functionality as method of the same name that takes a ByteBuffer instead
+   * of a byte[].
    *
-   * This method is only provided for backward compatibility and will be removed in a future release.
-   * Please update any code using it as soon as possible.
+   * This method is only provided for backward compatibility and will be removed
+   * in a future release. Please update any code using it as soon as possible.
+   * 
    * @see #initFromPage(int, ByteBuffer, int)
    */
   @Deprecated
@@ -91,20 +95,21 @@ public abstract class ValuesReader {
    * Called to initialize the column reader from a part of a page.
    *
    * Implementations must consume all bytes from the input stream, leaving the
-   * stream ready to read the next section of data. The underlying
-   * implementation knows how much data to read, so a length is not provided.
+   * stream ready to read the next section of data. The underlying implementation
+   * knows how much data to read, so a length is not provided.
    *
    * Each page may contain several sections:
    * <ul>
-   *  <li> repetition levels column
-   *  <li> definition levels column
-   *  <li> data column
+   * <li>repetition levels column
+   * <li>definition levels column
+   * <li>data column
    * </ul>
    *
    * @param valueCount count of values in this page
    * @param in an input stream containing the page data at the correct offset
    *
-   * @throws IOException if there is an exception while reading from the input stream
+   * @throws IOException if there is an exception while reading from the input
+   * stream
    */
   public void initFromPage(int valueCount, ByteBufferInputStream in) throws IOException {
     if (actualOffset != -1) {
@@ -117,6 +122,7 @@ public abstract class ValuesReader {
 
   /**
    * Called to return offset of the next section
+   * 
    * @return offset of the next section
    * @deprecated Will be removed in 2.0.0
    */
@@ -137,6 +143,7 @@ public abstract class ValuesReader {
 
   /**
    * usable when the encoding is dictionary based
+   * 
    * @return the id of the next value from the page
    */
   public int readValueDictionaryId() {
@@ -193,8 +200,7 @@ public abstract class ValuesReader {
   /**
    * Skips the next n values in the page
    *
-   * @param n
-   *          the number of values to be skipped
+   * @param n the number of values to be skipped
    */
   public void skip(int n) {
     for (int i = 0; i < n; ++i) {
@@ -202,4 +208,3 @@ public abstract class ValuesReader {
     }
   }
 }
-

@@ -27,10 +27,11 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
-public class TBaseRecordConverter<T extends TBase<?,?>> extends ThriftRecordConverter<T> {
+public class TBaseRecordConverter<T extends TBase<?, ?>> extends ThriftRecordConverter<T> {
 
   /**
    * This is for compatibility only.
+   * 
    * @param thriftClass a thrift class
    * @param requestedParquetSchema the requested Parquet schema
    * @param thriftType the thrift type
@@ -41,19 +42,20 @@ public class TBaseRecordConverter<T extends TBase<?,?>> extends ThriftRecordConv
     this(thriftClass, requestedParquetSchema, thriftType, null);
   }
 
-  public TBaseRecordConverter(final Class<T> thriftClass, MessageType requestedParquetSchema, StructType thriftType, Configuration conf) {
+  public TBaseRecordConverter(final Class<T> thriftClass, MessageType requestedParquetSchema, StructType thriftType,
+      Configuration conf) {
     super(new ThriftReader<T>() {
       @Override
       public T readOneRecord(TProtocol protocol) throws TException {
-          try {
-            T thriftObject = thriftClass.newInstance();
-            thriftObject.read(protocol);
-            return thriftObject;
-          } catch (InstantiationException e) {
-            throw new ParquetDecodingException("Could not instantiate Thrift " + thriftClass, e);
-          } catch (IllegalAccessException e) {
-            throw new ParquetDecodingException("Thrift class or constructor not public " + thriftClass, e);
-          }
+        try {
+          T thriftObject = thriftClass.newInstance();
+          thriftObject.read(protocol);
+          return thriftObject;
+        } catch (InstantiationException e) {
+          throw new ParquetDecodingException("Could not instantiate Thrift " + thriftClass, e);
+        } catch (IllegalAccessException e) {
+          throw new ParquetDecodingException("Thrift class or constructor not public " + thriftClass, e);
+        }
       }
     }, thriftClass.getSimpleName(), requestedParquetSchema, thriftType, conf);
   }

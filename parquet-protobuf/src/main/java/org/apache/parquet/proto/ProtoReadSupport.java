@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-
 public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProtoReadSupport.class);
@@ -45,10 +44,10 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
   }
 
   /**
-   * Set name of protobuf class to be used for reading data.
-   * If no class is set, value from file header is used.
-   * Note that the value in header is present only if the file was written
-   * using parquet-protobuf project, it will fail otherwise.
+   * Set name of protobuf class to be used for reading data. If no class is set,
+   * value from file header is used. Note that the value in header is present only
+   * if the file was written using parquet-protobuf project, it will fail
+   * otherwise.
    *
    * @param configuration a configuration
    * @param protobufClass a fully-qualified protobuf class name
@@ -73,7 +72,8 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
   }
 
   @Override
-  public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
+  public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData,
+      MessageType fileSchema, ReadContext readContext) {
     String headerProtoClass = keyValueMetaData.get(PB_CLASS);
     String configuredProtoClass = configuration.get(PB_CLASS);
 
@@ -92,6 +92,5 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
     Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);
     return new ProtoRecordMaterializer(requestedSchema, protobufClass);
   }
-
 
 }

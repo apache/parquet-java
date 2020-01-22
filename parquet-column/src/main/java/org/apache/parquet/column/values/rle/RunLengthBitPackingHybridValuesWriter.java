@@ -30,7 +30,8 @@ import org.apache.parquet.io.ParquetEncodingException;
 public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
   protected final RunLengthBitPackingHybridEncoder encoder;
 
-  public RunLengthBitPackingHybridValuesWriter(int bitWidth, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
+  public RunLengthBitPackingHybridValuesWriter(int bitWidth, int initialCapacity, int pageSize,
+      ByteBufferAllocator allocator) {
     this(new RunLengthBitPackingHybridEncoder(bitWidth, initialCapacity, pageSize, allocator));
   }
 

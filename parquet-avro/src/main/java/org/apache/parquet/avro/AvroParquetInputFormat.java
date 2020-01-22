@@ -19,7 +19,6 @@
 package org.apache.parquet.avro;
 
 import org.apache.avro.Schema;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.util.ContextUtil;
@@ -36,51 +35,58 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
 
   /**
    * Set the subset of columns to read (projection pushdown). Specified as an Avro
-   * schema, the requested projection is converted into a Parquet schema for Parquet
-   * column projection.
+   * schema, the requested projection is converted into a Parquet schema for
+   * Parquet column projection.
    * <p>
    * This is useful if the full schema is large and you only want to read a few
    * columns, since it saves time by not reading unused columns.
    * <p>
-   * If a requested projection is set, then the Avro schema used for reading
-   * must be compatible with the projection. For instance, if a column is not included
-   * in the projection then it must either not be included or be optional in the read
-   * schema. Use {@link #setAvroReadSchema(org.apache.hadoop.mapreduce.Job,
-   * org.apache.avro.Schema)} to set a read schema, if needed.
+   * If a requested projection is set, then the Avro schema used for reading must
+   * be compatible with the projection. For instance, if a column is not included
+   * in the projection then it must either not be included or be optional in the
+   * read schema. Use
+   * {@link #setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)}
+   * to set a read schema, if needed.
+   * 
    * @param job a job
    * @param requestedProjection the requested projection schema
-   * @see #setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
-   * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see #setAvroReadSchema(org.apache.hadoop.mapreduce.Job,
+   * org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job,
+   * org.apache.avro.Schema)
    */
   public static void setRequestedProjection(Job job, Schema requestedProjection) {
-    AvroReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job),
-        requestedProjection);
+    AvroReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job), requestedProjection);
   }
 
   /**
-   * Override the Avro schema to use for reading. If not set, the Avro schema used for
-   * writing is used.
+   * Override the Avro schema to use for reading. If not set, the Avro schema used
+   * for writing is used.
    * <p>
-   * Differences between the read and write schemas are resolved using
-   * <a href="http://avro.apache.org/docs/current/spec.html#Schema+Resolution">Avro's schema resolution rules</a>.
+   * Differences between the read and write schemas are resolved using <a href=
+   * "http://avro.apache.org/docs/current/spec.html#Schema+Resolution">Avro's
+   * schema resolution rules</a>.
+   * 
    * @param job a job
    * @param avroReadSchema the requested schema
-   * @see #setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
-   * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see #setRequestedProjection(org.apache.hadoop.mapreduce.Job,
+   * org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job,
+   * org.apache.avro.Schema)
    */
   public static void setAvroReadSchema(Job job, Schema avroReadSchema) {
     AvroReadSupport.setAvroReadSchema(ContextUtil.getConfiguration(job), avroReadSchema);
   }
 
   /**
-   * Uses an instance of the specified {@link AvroDataSupplier} class to control how the
-   * {@link org.apache.avro.specific.SpecificData} instance that is used to find
-   * Avro specific records is created.
+   * Uses an instance of the specified {@link AvroDataSupplier} class to control
+   * how the {@link org.apache.avro.specific.SpecificData} instance that is used
+   * to find Avro specific records is created.
+   * 
    * @param job a job
    * @param supplierClass an avro data supplier class
    */
-  public static void setAvroDataSupplier(Job job,
-      Class<? extends AvroDataSupplier> supplierClass) {
+  public static void setAvroDataSupplier(Job job, Class<? extends AvroDataSupplier> supplierClass) {
     AvroReadSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job), supplierClass);
   }
 }

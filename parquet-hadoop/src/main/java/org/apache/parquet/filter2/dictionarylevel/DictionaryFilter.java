@@ -44,7 +44,6 @@ import java.util.function.IntFunction;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
-
 /**
  * Applies filters based on the contents of column dictionaries.
  */
@@ -54,7 +53,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
-  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
+  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns,
+      DictionaryPageReadStore dictionaries) {
     checkNotNull(pred, "pred");
     checkNotNull(columns, "columns");
     return pred.accept(new DictionaryFilter(columns, dictionaries));
@@ -115,7 +115,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     for (int i = 0; i <= dict.getMaxId(); i++) {
       dictSet.add((T) dictValueProvider.apply(i));
     }
-    
+
     return dictSet;
   }
 
@@ -189,8 +189,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-      boolean mayContainNull = (meta.getStatistics() == null
-          || !meta.getStatistics().isNumNullsSet()
+      boolean mayContainNull = (meta.getStatistics() == null || !meta.getStatistics().isNumNullsSet()
           || meta.getStatistics().getNumNulls() > 0);
       if (dictSet != null && dictSet.size() == 1 && dictSet.contains(value) && !mayContainNull) {
         return BLOCK_CANNOT_MATCH;
@@ -382,7 +381,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
         "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
   }
 
-  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
+  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud,
+      boolean inverted) {
     Column<T> filterColumn = ud.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
@@ -408,7 +408,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
       for (T entry : dictSet) {
         boolean keep = udp.keep(entry);
-        if ((keep && !inverted) || (!keep && inverted)) return BLOCK_MIGHT_MATCH;
+        if ((keep && !inverted) || (!keep && inverted))
+          return BLOCK_MIGHT_MATCH;
       }
       return BLOCK_CANNOT_MATCH;
     } catch (IOException e) {

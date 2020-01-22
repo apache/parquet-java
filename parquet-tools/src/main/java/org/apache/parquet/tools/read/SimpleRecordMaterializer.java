@@ -39,4 +39,3 @@ public class SimpleRecordMaterializer extends RecordMaterializer<SimpleRecord> {
     return root;
   }
 }
-

@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.values.delta;
 
-
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -43,13 +42,11 @@ class DeltaBinaryPackingConfig {
   }
 
   public static DeltaBinaryPackingConfig readConfig(InputStream in) throws IOException {
-    return new DeltaBinaryPackingConfig(BytesUtils.readUnsignedVarInt(in),
-            BytesUtils.readUnsignedVarInt(in));
+    return new DeltaBinaryPackingConfig(BytesUtils.readUnsignedVarInt(in), BytesUtils.readUnsignedVarInt(in));
   }
 
   public BytesInput toBytesInput() {
-    return BytesInput.concat(
-            BytesInput.fromUnsignedVarInt(blockSizeInValues),
-            BytesInput.fromUnsignedVarInt(miniBlockNumInABlock));
+    return BytesInput.concat(BytesInput.fromUnsignedVarInt(blockSizeInValues),
+        BytesInput.fromUnsignedVarInt(miniBlockNumInABlock));
   }
 }

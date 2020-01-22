@@ -42,4 +42,3 @@ public class ThriftProjectionException extends ParquetRuntimeException {
     super(cause);
   }
 }
-

@@ -89,7 +89,8 @@ public class TestParquetSerDe extends TestCase {
     }
   }
 
-  private void deserializeAndSerializeLazySimple(final ParquetHiveSerDe serDe, final ArrayWritable t) throws SerDeException {
+  private void deserializeAndSerializeLazySimple(final ParquetHiveSerDe serDe, final ArrayWritable t)
+      throws SerDeException {
 
     // Get the row structure
     final StructObjectInspector oi = (StructObjectInspector) serDe.getObjectInspector();
@@ -102,7 +103,8 @@ public class TestParquetSerDe extends TestCase {
 
     // Serialize
     final ArrayWritable serializedArr = (ArrayWritable) serDe.serialize(row, oi);
-    assertEquals("size correct after serialization", serDe.getSerDeStats().getRawDataSize(), serializedArr.get().length);
+    assertEquals("size correct after serialization", serDe.getSerDeStats().getRawDataSize(),
+        serializedArr.get().length);
     assertTrue("serialized object should be equal to starting object", arrayWritableEquals(t, serializedArr));
   }
 

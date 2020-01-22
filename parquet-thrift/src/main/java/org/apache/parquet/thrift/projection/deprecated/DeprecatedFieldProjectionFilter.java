@@ -27,8 +27,8 @@ import org.apache.parquet.thrift.projection.FieldProjectionFilter;
 import org.apache.parquet.thrift.projection.ThriftProjectionException;
 
 /**
- * Filter thrift attributes using glob syntax.
- * This is used for parsing values assigned to ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY
+ * Filter thrift attributes using glob syntax. This is used for parsing values
+ * assigned to ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY
  */
 @Deprecated
 public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
@@ -36,8 +36,8 @@ public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
   private final List<PathGlobPatternStatus> filterPatterns;
 
   /**
-   * Class for remembering if a glob pattern has matched anything.
-   * If there is an invalid glob pattern that matches nothing, it should throw.
+   * Class for remembering if a glob pattern has matched anything. If there is an
+   * invalid glob pattern that matches nothing, it should throw.
    */
   @Deprecated
   private static class PathGlobPatternStatus {
@@ -94,8 +94,8 @@ public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
     }
 
     if (!unmatched.isEmpty()) {
-      StringBuilder message =
-          new StringBuilder("The following projection patterns did not match any columns in this schema:\n");
+      StringBuilder message = new StringBuilder(
+          "The following projection patterns did not match any columns in this schema:\n");
       for (PathGlobPattern p : unmatched) {
         message.append(p);
         message.append('\n');

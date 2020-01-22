@@ -33,7 +33,8 @@ import static org.junit.Assert.fail;
  * Serialization utils copied from:
  * https://github.com/kevinweil/elephant-bird/blob/master/core/src/test/java/com/twitter/elephantbird/util/TestHadoopUtils.java
  *
- * TODO: Refactor elephant-bird so that we can depend on utils like this without extra baggage.
+ * TODO: Refactor elephant-bird so that we can depend on utils like this without
+ * extra baggage.
  */
 public class TestSerializationUtil {
 

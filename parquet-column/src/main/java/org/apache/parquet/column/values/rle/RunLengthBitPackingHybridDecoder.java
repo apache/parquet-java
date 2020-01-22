@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.values.rle;
 
-
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,12 +31,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Decodes values written in the grammar described in {@link RunLengthBitPackingHybridEncoder}
+ * Decodes values written in the grammar described in
+ * {@link RunLengthBitPackingHybridEncoder}
  */
 public class RunLengthBitPackingHybridDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(RunLengthBitPackingHybridDecoder.class);
 
-  private static enum MODE { RLE, PACKED }
+  private static enum MODE {
+    RLE, PACKED
+  }
 
   private final int bitWidth;
   private final BytePacker packer;
@@ -61,7 +63,7 @@ public class RunLengthBitPackingHybridDecoder {
     if (currentCount == 0) {
       readNext();
     }
-    -- currentCount;
+    --currentCount;
     int result;
     switch (mode) {
     case RLE:
@@ -92,8 +94,9 @@ public class RunLengthBitPackingHybridDecoder {
       LOG.debug("reading {} values BIT PACKED", currentCount);
       currentBuffer = new int[currentCount]; // TODO: reuse a buffer
       byte[] bytes = new byte[numGroups * bitWidth];
-      // At the end of the file RLE data though, there might not be that many bytes left.
-      int bytesToRead = (int)Math.ceil(currentCount * bitWidth / 8.0);
+      // At the end of the file RLE data though, there might not be that many bytes
+      // left.
+      int bytesToRead = (int) Math.ceil(currentCount * bitWidth / 8.0);
       bytesToRead = Math.min(bytesToRead, in.available());
       new DataInputStream(in).readFully(bytes, 0, bytesToRead);
       for (int valueIndex = 0, byteIndex = 0; valueIndex < currentCount; valueIndex += 8, byteIndex += bitWidth) {

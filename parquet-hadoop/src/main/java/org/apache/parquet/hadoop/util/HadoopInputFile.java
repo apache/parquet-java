@@ -33,14 +33,12 @@ public class HadoopInputFile implements InputFile {
   private final FileStatus stat;
   private final Configuration conf;
 
-  public static HadoopInputFile fromPath(Path path, Configuration conf)
-      throws IOException {
+  public static HadoopInputFile fromPath(Path path, Configuration conf) throws IOException {
     FileSystem fs = path.getFileSystem(conf);
     return new HadoopInputFile(fs, fs.getFileStatus(path), conf);
   }
 
-  public static HadoopInputFile fromStatus(FileStatus stat, Configuration conf)
-      throws IOException {
+  public static HadoopInputFile fromStatus(FileStatus stat, Configuration conf) throws IOException {
     FileSystem fs = stat.getPath().getFileSystem(conf);
     return new HadoopInputFile(fs, stat, conf);
   }

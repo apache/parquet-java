@@ -54,10 +54,10 @@ public class CodecFactory implements CompressionCodecFactory {
    * Create a new codec factory.
    *
    * @param configuration used to pass compression codec configuration information
-   * @param pageSize the expected page size, does not set a hard limit, currently just
-   *                 used to set the initial size of the output stream used when
-   *                 compressing a buffer. If this factory is only used to construct
-   *                 decompressors this parameter has no impact on the function of the factory
+   * @param pageSize the expected page size, does not set a hard limit, currently
+   * just used to set the initial size of the output stream used when compressing
+   * a buffer. If this factory is only used to construct decompressors this
+   * parameter has no impact on the function of the factory
    */
   public CodecFactory(Configuration configuration, int pageSize) {
     this.configuration = configuration;
@@ -65,25 +65,24 @@ public class CodecFactory implements CompressionCodecFactory {
   }
 
   /**
-   * Create a codec factory that will provide compressors and decompressors
-   * that will work natively with ByteBuffers backed by direct memory.
+   * Create a codec factory that will provide compressors and decompressors that
+   * will work natively with ByteBuffers backed by direct memory.
    *
    * @param config configuration options for different compression codecs
    * @param allocator an allocator for creating result buffers during compression
-   *                  and decompression, must provide buffers backed by Direct
-   *                  memory and return true for the isDirect() method
-   *                  on the ByteBufferAllocator interface
+   * and decompression, must provide buffers backed by Direct memory and return
+   * true for the isDirect() method on the ByteBufferAllocator interface
    * @param pageSize the default page size. This does not set a hard limit on the
-   *                 size of buffers that can be compressed, but performance may
-   *                 be improved by setting it close to the expected size of buffers
-   *                 (in the case of parquet, pages) that will be compressed. This
-   *                 setting is unused in the case of decompressing data, as parquet
-   *                 always records the uncompressed size of a buffer. If this
-   *                 CodecFactory is only going to be used for decompressors, this
-   *                 parameter will not impact the function of the factory.
+   * size of buffers that can be compressed, but performance may be improved by
+   * setting it close to the expected size of buffers (in the case of parquet,
+   * pages) that will be compressed. This setting is unused in the case of
+   * decompressing data, as parquet always records the uncompressed size of a
+   * buffer. If this CodecFactory is only going to be used for decompressors, this
+   * parameter will not impact the function of the factory.
    * @return a configured direct codec factory
    */
-  public static CodecFactory createDirectCodecFactory(Configuration config, ByteBufferAllocator allocator, int pageSize) {
+  public static CodecFactory createDirectCodecFactory(Configuration config, ByteBufferAllocator allocator,
+      int pageSize) {
     return new DirectCodecFactory(config, allocator, pageSize);
   }
 
@@ -115,7 +114,8 @@ public class CodecFactory implements CompressionCodecFactory {
     }
 
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException {
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+        throws IOException {
       ByteBuffer decompressed = decompress(BytesInput.from(input), uncompressedSize).toByteBuffer();
       output.put(decompressed);
     }
@@ -212,8 +212,7 @@ public class CodecFactory implements CompressionCodecFactory {
 
   /**
    *
-   * @param codecName
-   *          the requested codec
+   * @param codecName the requested codec
    * @return the corresponding hadoop codec. null if UNCOMPRESSED
    */
   protected CompressionCodec getCodec(CompressionCodecName codecName) {
@@ -249,22 +248,29 @@ public class CodecFactory implements CompressionCodecFactory {
   }
 
   /**
-   * @deprecated will be removed in 2.0.0; use CompressionCodecFactory.BytesInputCompressor instead.
+   * @deprecated will be removed in 2.0.0; use
+   * CompressionCodecFactory.BytesInputCompressor instead.
    */
   @Deprecated
   public static abstract class BytesCompressor implements CompressionCodecFactory.BytesInputCompressor {
     public abstract BytesInput compress(BytesInput bytes) throws IOException;
+
     public abstract CompressionCodecName getCodecName();
+
     public abstract void release();
   }
 
   /**
-   * @deprecated will be removed in 2.0.0; use CompressionCodecFactory.BytesInputDecompressor instead.
+   * @deprecated will be removed in 2.0.0; use
+   * CompressionCodecFactory.BytesInputDecompressor instead.
    */
   @Deprecated
   public static abstract class BytesDecompressor implements CompressionCodecFactory.BytesInputDecompressor {
     public abstract BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
-    public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException;
+
+    public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+        throws IOException;
+
     public abstract void release();
   }
 }

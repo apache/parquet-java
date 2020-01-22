@@ -32,7 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * a column reader that packs the ints in the number of bits required based on the maximum size.
+ * a column reader that packs the ints in the number of bits required based on
+ * the maximum size.
  */
 public class BitPackingValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(BitPackingValuesReader.class);
@@ -50,6 +51,7 @@ public class BitPackingValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.values.ValuesReader#readInteger()
    */
   @Override
@@ -63,7 +65,9 @@ public class BitPackingValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, ByteBufferInputStream)
+   * 
+   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int,
+   * ByteBufferInputStream)
    */
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {

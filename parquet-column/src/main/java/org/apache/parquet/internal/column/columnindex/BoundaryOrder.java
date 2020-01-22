@@ -24,8 +24,9 @@ import java.util.PrimitiveIterator.OfInt;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder.ColumnIndexBase;
 
 /**
- * Enum for {@link org.apache.parquet.format.BoundaryOrder}. It also contains the implementations of searching for
- * matching page indexes for column index based filtering.
+ * Enum for {@link org.apache.parquet.format.BoundaryOrder}. It also contains
+ * the implementations of searching for matching page indexes for column index
+ * based filtering.
  */
 public enum BoundaryOrder {
   UNORDERED {
@@ -39,29 +40,25 @@ public enum BoundaryOrder {
     @Override
     PrimitiveIterator.OfInt gt(ColumnIndexBase<?>.ValueComparator comparator) {
       return IndexIterator.filterTranslate(comparator.arrayLength(),
-          arrayIndex -> comparator.compareValueToMax(arrayIndex) < 0,
-          comparator::translate);
+          arrayIndex -> comparator.compareValueToMax(arrayIndex) < 0, comparator::translate);
     }
 
     @Override
     PrimitiveIterator.OfInt gtEq(ColumnIndexBase<?>.ValueComparator comparator) {
       return IndexIterator.filterTranslate(comparator.arrayLength(),
-          arrayIndex -> comparator.compareValueToMax(arrayIndex) <= 0,
-          comparator::translate);
+          arrayIndex -> comparator.compareValueToMax(arrayIndex) <= 0, comparator::translate);
     }
 
     @Override
     PrimitiveIterator.OfInt lt(ColumnIndexBase<?>.ValueComparator comparator) {
       return IndexIterator.filterTranslate(comparator.arrayLength(),
-          arrayIndex -> comparator.compareValueToMin(arrayIndex) > 0,
-          comparator::translate);
+          arrayIndex -> comparator.compareValueToMin(arrayIndex) > 0, comparator::translate);
     }
 
     @Override
     PrimitiveIterator.OfInt ltEq(ColumnIndexBase<?>.ValueComparator comparator) {
       return IndexIterator.filterTranslate(comparator.arrayLength(),
-          arrayIndex -> comparator.compareValueToMin(arrayIndex) >= 0,
-          comparator::translate);
+          arrayIndex -> comparator.compareValueToMin(arrayIndex) >= 0, comparator::translate);
     }
 
     @Override
@@ -168,11 +165,8 @@ public enum BoundaryOrder {
       if (bounds == null) {
         return IndexIterator.all(comparator);
       }
-      return IndexIterator.filterTranslate(
-          length,
-          i -> i < bounds.lower || i > bounds.upper || comparator.compareValueToMin(i) != 0
-              || comparator.compareValueToMax(i) != 0,
-          comparator::translate);
+      return IndexIterator.filterTranslate(length, i -> i < bounds.lower || i > bounds.upper
+          || comparator.compareValueToMin(i) != 0 || comparator.compareValueToMax(i) != 0, comparator::translate);
     }
 
     private Bounds findBounds(ColumnIndexBase<?>.ValueComparator comparator) {
@@ -307,11 +301,8 @@ public enum BoundaryOrder {
       if (bounds == null) {
         return IndexIterator.all(comparator);
       }
-      return IndexIterator.filterTranslate(
-          length,
-          i -> i < bounds.lower || i > bounds.upper || comparator.compareValueToMin(i) != 0
-              || comparator.compareValueToMax(i) != 0,
-          comparator::translate);
+      return IndexIterator.filterTranslate(length, i -> i < bounds.lower || i > bounds.upper
+          || comparator.compareValueToMin(i) != 0 || comparator.compareValueToMax(i) != 0, comparator::translate);
     }
 
     private Bounds findBounds(ColumnIndexBase<?>.ValueComparator comparator) {

@@ -46,7 +46,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
 
   @Override
   public int readInteger() {
-    ++ decodedPosition;
+    ++decodedPosition;
     if (decodedPosition == decoded.length) {
       try {
         if (in.available() < bitWidth) {
@@ -68,12 +68,10 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream)
-      throws IOException {
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     int effectiveBitLength = valueCount * bitWidth;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength); // ceil
-    LOG.debug("reading {} bytes for {} values of size {} bits.",
-        length, valueCount, bitWidth);
+    LOG.debug("reading {} bytes for {} values of size {} bits.", length, valueCount, bitWidth);
     // work-around for null values. this will not happen for repetition or
     // definition levels (never null), but will happen when valueCount has not
     // been adjusted for null values in the data.

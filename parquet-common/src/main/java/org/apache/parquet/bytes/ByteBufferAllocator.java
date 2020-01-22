@@ -24,8 +24,8 @@ public interface ByteBufferAllocator {
   ByteBuffer allocate(int size);
 
   /**
-   * For RefCounted implementations using direct memory, the release method
-   * needs to be called to free references to the allocated memory.
+   * For RefCounted implementations using direct memory, the release method needs
+   * to be called to free references to the allocated memory.
    *
    * @param b a ByteBuffer
    */
@@ -34,7 +34,8 @@ public interface ByteBufferAllocator {
   /**
    * Indicates if this allocator will produce ByteBuffers backed by direct memory.
    *
-   * @return true if direct memory backed buffers will be created by this allocator, else false
+   * @return true if direct memory backed buffers will be created by this
+   * allocator, else false
    */
   boolean isDirect();
 }

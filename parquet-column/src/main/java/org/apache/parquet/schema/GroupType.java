@@ -59,7 +59,8 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
-   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema
+   * conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
   @Deprecated
@@ -70,7 +71,8 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
-   * @param logicalTypeAnnotation (optional) the logical type to help with cross schema conversion (LIST, MAP, ...)
+   * @param logicalTypeAnnotation (optional) the logical type to help with cross
+   * schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
   GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, Type... fields) {
@@ -80,7 +82,8 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
-   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema
+   * conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
   @Deprecated
@@ -91,7 +94,8 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
-   * @param logicalTypeAnnotation (optional) the logical type to help with cross schema conversion (LIST, MAP, ...)
+   * @param logicalTypeAnnotation (optional) the logical type to help with cross
+   * schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
   GroupType(Repetition repetition, String name, LogicalTypeAnnotation logicalTypeAnnotation, List<Type> fields) {
@@ -101,7 +105,8 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
-   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema
+   * conversion (LIST, MAP, ...)
    * @param fields the contained fields
    * @param id the id of the field
    */
@@ -150,6 +155,7 @@ public class GroupType extends Type {
 
   /**
    * returns the name of the corresponding field
+   * 
    * @param index the index of the desired field in this type
    * @return the name of the field at this index
    */
@@ -218,6 +224,7 @@ public class GroupType extends Type {
 
   /**
    * appends a display string for of the members of this group to sb
+   * 
    * @param sb where to append
    * @param indent the indentation level
    */
@@ -236,16 +243,11 @@ public class GroupType extends Type {
    */
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
-    sb.append(indent)
-        .append(getRepetition().name().toLowerCase(Locale.ENGLISH))
-        .append(" group ")
-        .append(getName())
-        .append(getLogicalTypeAnnotation() == null ? "" : " (" + getLogicalTypeAnnotation().toString() +")")
-        .append(getId() == null ? "" : " = " + getId())
-        .append(" {\n");
+    sb.append(indent).append(getRepetition().name().toLowerCase(Locale.ENGLISH)).append(" group ").append(getName())
+        .append(getLogicalTypeAnnotation() == null ? "" : " (" + getLogicalTypeAnnotation().toString() + ")")
+        .append(getId() == null ? "" : " = " + getId()).append(" {\n");
     membersDisplayString(sb, indent + "  ");
-    sb.append(indent)
-        .append("}");
+    sb.append(indent).append("}");
   }
 
   /**
@@ -256,12 +258,14 @@ public class GroupType extends Type {
     visitor.visit(this);
   }
 
-  @Override @Deprecated
+  @Override
+  @Deprecated
   protected int typeHashCode() {
     return hashCode();
   }
 
-  @Override @Deprecated
+  @Override
+  @Deprecated
   protected boolean typeEquals(Type other) {
     return equals(other);
   }
@@ -279,10 +283,8 @@ public class GroupType extends Type {
    */
   @Override
   protected boolean equals(Type otherType) {
-    return
-        !otherType.isPrimitive()
-        && super.equals(otherType)
-        && Objects.equals(getLogicalTypeAnnotation(),otherType.getLogicalTypeAnnotation())
+    return !otherType.isPrimitive() && super.equals(otherType)
+        && Objects.equals(getLogicalTypeAnnotation(), otherType.getLogicalTypeAnnotation())
         && getFields().equals(otherType.asGroupType().getFields());
   }
 
@@ -374,13 +376,17 @@ public class GroupType extends Type {
   @Override
   protected Type union(Type toMerge, boolean strict) {
     if (toMerge.isPrimitive()) {
-      throw new IncompatibleSchemaModificationException("can not merge primitive type " + toMerge + " into group type " + this);
+      throw new IncompatibleSchemaModificationException(
+          "can not merge primitive type " + toMerge + " into group type " + this);
     }
-    return new GroupType(toMerge.getRepetition(), getName(), toMerge.getLogicalTypeAnnotation(), mergeFields(toMerge.asGroupType()), getId());
+    return new GroupType(toMerge.getRepetition(), getName(), toMerge.getLogicalTypeAnnotation(),
+        mergeFields(toMerge.asGroupType()), getId());
   }
 
   /**
-   * produces the list of fields resulting from merging toMerge into the fields of this
+   * produces the list of fields resulting from merging toMerge into the fields of
+   * this
+   * 
    * @param toMerge the group containing the fields to merge
    * @return the merged list
    */
@@ -389,7 +395,9 @@ public class GroupType extends Type {
   }
 
   /**
-   * produces the list of fields resulting from merging toMerge into the fields of this
+   * produces the list of fields resulting from merging toMerge into the fields of
+   * this
+   * 
    * @param toMerge the group containing the fields to merge
    * @param strict should schema primitive types match
    * @return the merged list
@@ -401,8 +409,10 @@ public class GroupType extends Type {
       Type merged;
       if (toMerge.containsField(type.getName())) {
         Type fieldToMerge = toMerge.getType(type.getName());
-        if (type.getLogicalTypeAnnotation() != null && !type.getLogicalTypeAnnotation().equals(fieldToMerge.getLogicalTypeAnnotation())) {
-          throw new IncompatibleSchemaModificationException("cannot merge logical type " + fieldToMerge.getLogicalTypeAnnotation() + " into " + type.getLogicalTypeAnnotation());
+        if (type.getLogicalTypeAnnotation() != null
+            && !type.getLogicalTypeAnnotation().equals(fieldToMerge.getLogicalTypeAnnotation())) {
+          throw new IncompatibleSchemaModificationException("cannot merge logical type "
+              + fieldToMerge.getLogicalTypeAnnotation() + " into " + type.getLogicalTypeAnnotation());
         }
         merged = type.union(fieldToMerge, strict);
       } else {

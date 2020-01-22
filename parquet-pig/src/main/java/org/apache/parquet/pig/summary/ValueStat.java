@@ -60,5 +60,4 @@ public class ValueStat {
     this.max = max;
   }
 
-
 }

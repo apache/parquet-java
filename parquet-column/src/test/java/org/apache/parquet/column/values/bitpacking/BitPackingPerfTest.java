@@ -27,8 +27,7 @@ import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 /**
- * Improvable micro benchmark for bitpacking
- * run with: -verbose:gc -Xmx2g -Xms2g
+ * Improvable micro benchmark for bitpacking run with: -verbose:gc -Xmx2g -Xms2g
  */
 public class BitPackingPerfTest {
 
@@ -37,7 +36,7 @@ public class BitPackingPerfTest {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     BitPackingWriter w = BitPacking.getBitPackingWriter(1, baos);
     long t0 = System.currentTimeMillis();
-    for (int i = 0 ; i < COUNT; ++i) {
+    for (int i = 0; i < COUNT; ++i) {
       w.write(i % 2);
     }
     w.finish();
@@ -50,16 +49,17 @@ public class BitPackingPerfTest {
     for (int l = 0; l < 5; l++) {
       long s = manual(bytes, result);
       long b = generated(bytes, result);
-      float ratio = (float)b/s;
-      System.out.println("                                             " + ratio + (ratio < 1 ? " < 1 => GOOD" : " >= 1 => BAD"));
+      float ratio = (float) b / s;
+      System.out.println(
+          "                                             " + ratio + (ratio < 1 ? " < 1 => GOOD" : " >= 1 => BAD"));
     }
   }
 
   private static void verify(int[] result) {
     int error = 0;
-    for (int i = 0 ; i < result.length; ++i) {
+    for (int i = 0; i < result.length; ++i) {
       if (result[i] != i % 2) {
-        error ++;
+        error++;
       }
     }
     if (error != 0) {
@@ -67,18 +67,15 @@ public class BitPackingPerfTest {
     }
   }
 
-  private static long manual(byte[] bytes, int[] result)
-      throws IOException {
+  private static long manual(byte[] bytes, int[] result) throws IOException {
     return readNTimes(bytes, result, new BitPackingValuesReader(1));
   }
 
-  private static long generated(byte[] bytes, int[] result)
-      throws IOException {
+  private static long generated(byte[] bytes, int[] result) throws IOException {
     return readNTimes(bytes, result, new ByteBitPackingValuesReader(1, Packer.BIG_ENDIAN));
   }
 
-  private static long readNTimes(byte[] bytes, int[] result, ValuesReader r)
-      throws IOException {
+  private static long readNTimes(byte[] bytes, int[] result, ValuesReader r) throws IOException {
     System.out.println();
     long t = 0;
     int N = 10;
@@ -94,10 +91,9 @@ public class BitPackingPerfTest {
       long t3 = System.nanoTime();
       t += t3 - t2;
     }
-    System.out.println("> read in " + t/1000 + "µs " + (N * result.length / (t / 1000)) + " values per µs");
+    System.out.println("> read in " + t / 1000 + "µs " + (N * result.length / (t / 1000)) + " values per µs");
     verify(result);
     return t;
   }
 
 }
-

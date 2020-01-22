@@ -34,7 +34,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Write lengths of byte-arrays using delta encoding, followed by concatenated byte-arrays
+ * Write lengths of byte-arrays using delta encoding, followed by concatenated
+ * byte-arrays
+ * 
  * <pre>
  *   {@code
  *   delta-length-byte-array : length* byte-array*
@@ -53,10 +55,8 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   public DeltaLengthByteArrayValuesWriter(int initialSize, int pageSize, ByteBufferAllocator allocator) {
     arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize, allocator);
     out = new LittleEndianDataOutputStream(arrayOut);
-    lengthWriter = new DeltaBinaryPackingValuesWriterForInteger(
-        DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,
-        DeltaBinaryPackingValuesWriter.DEFAULT_NUM_MINIBLOCKS,
-        initialSize, pageSize, allocator);
+    lengthWriter = new DeltaBinaryPackingValuesWriterForInteger(DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,
+        DeltaBinaryPackingValuesWriter.DEFAULT_NUM_MINIBLOCKS, initialSize, pageSize, allocator);
   }
 
   @Override
@@ -112,4 +112,3 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
     return arrayOut.memUsageString(lengthWriter.memUsageString(prefix) + " DELTA_LENGTH_BYTE_ARRAY");
   }
 }
-

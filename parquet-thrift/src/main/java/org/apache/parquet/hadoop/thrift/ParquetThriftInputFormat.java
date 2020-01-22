@@ -31,7 +31,9 @@ public class ParquetThriftInputFormat<T> extends ParquetInputFormat<T> {
   }
 
   /**
-   * ScroogeReadSupport can be used when reading scrooge records out of parquet file
+   * ScroogeReadSupport can be used when reading scrooge records out of parquet
+   * file
+   * 
    * @param readSupportClass a read support class
    */
   protected ParquetThriftInputFormat(Class readSupportClass) {
@@ -39,10 +41,12 @@ public class ParquetThriftInputFormat<T> extends ParquetInputFormat<T> {
   }
 
   /**
-   * Call this method when setting up your Hadoop job if reading into a Thrift object
-   * that is not encoded into the parquet-serialized thrift metadata (for example,
-   * writing with Apache Thrift, but reading back into Twitter Scrooge version of
-   * the same thrift definition, or a different but compatible Apache Thrift class).
+   * Call this method when setting up your Hadoop job if reading into a Thrift
+   * object that is not encoded into the parquet-serialized thrift metadata (for
+   * example, writing with Apache Thrift, but reading back into Twitter Scrooge
+   * version of the same thrift definition, or a different but compatible Apache
+   * Thrift class).
+   * 
    * @param conf a mapred jobconf
    * @param klass a thrift class
    * @param <T> the Java type of records the configured ReadSupport will produce
@@ -52,15 +56,17 @@ public class ParquetThriftInputFormat<T> extends ParquetInputFormat<T> {
   }
 
   /**
-   * Call this method when setting up your Hadoop job if reading into a Thrift object
-   * that is not encoded into the parquet-serialized thrift metadata (for example,
-   * writing with Apache Thrift, but reading back into Twitter Scrooge version of
-   * the same thrift definition, or a different but compatible Apache Thrift class).
+   * Call this method when setting up your Hadoop job if reading into a Thrift
+   * object that is not encoded into the parquet-serialized thrift metadata (for
+   * example, writing with Apache Thrift, but reading back into Twitter Scrooge
+   * version of the same thrift definition, or a different but compatible Apache
+   * Thrift class).
+   * 
    * @param conf a configuration
    * @param klass a thrift class
    * @param <T> the Java type of records the configured ReadSupport will produce
    */
-  public static  <T> void setThriftClass(Configuration conf, Class<T> klass) {
+  public static <T> void setThriftClass(Configuration conf, Class<T> klass) {
     conf.set(ThriftReadSupport.THRIFT_READ_CLASS_KEY, klass.getName());
   }
 }

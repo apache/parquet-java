@@ -43,7 +43,8 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
     return new Builder<T>(file);
   }
 
-  /** Create a new {@link AvroParquetWriter}.
+  /**
+   * Create a new {@link AvroParquetWriter}.
    *
    * @param file a file path
    * @param avroSchema a schema for the write
@@ -53,34 +54,36 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
    * @throws IOException if there is an error while writing
    */
   @Deprecated
-  public AvroParquetWriter(Path file, Schema avroSchema,
-      CompressionCodecName compressionCodecName, int blockSize,
+  public AvroParquetWriter(Path file, Schema avroSchema, CompressionCodecName compressionCodecName, int blockSize,
       int pageSize) throws IOException {
-    super(file, AvroParquetWriter.<T>writeSupport(avroSchema, SpecificData.get()),
-	      compressionCodecName, blockSize, pageSize);
+    super(file, AvroParquetWriter.<T>writeSupport(avroSchema, SpecificData.get()), compressionCodecName, blockSize,
+        pageSize);
   }
 
-  /** Create a new {@link AvroParquetWriter}.
+  /**
+   * Create a new {@link AvroParquetWriter}.
    *
    * @param file The file name to write to.
    * @param avroSchema The schema to write with.
-   * @param compressionCodecName Compression code to use, or CompressionCodecName.UNCOMPRESSED
+   * @param compressionCodecName Compression code to use, or
+   * CompressionCodecName.UNCOMPRESSED
    * @param blockSize the block size threshold.
-   * @param pageSize See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
+   * @param pageSize See parquet write up. Blocks are subdivided into pages for
+   * alignment and other purposes.
    * @param enableDictionary Whether to use a dictionary to compress columns.
    * @throws IOException if there is an error while writing
    */
   @Deprecated
-  public AvroParquetWriter(Path file, Schema avroSchema,
-                           CompressionCodecName compressionCodecName, int blockSize,
-                           int pageSize, boolean enableDictionary) throws IOException {
-    super(file, AvroParquetWriter.<T>writeSupport(avroSchema, SpecificData.get()),
-        compressionCodecName, blockSize, pageSize, enableDictionary,
-        DEFAULT_IS_VALIDATING_ENABLED);
+  public AvroParquetWriter(Path file, Schema avroSchema, CompressionCodecName compressionCodecName, int blockSize,
+      int pageSize, boolean enableDictionary) throws IOException {
+    super(file, AvroParquetWriter.<T>writeSupport(avroSchema, SpecificData.get()), compressionCodecName, blockSize,
+        pageSize, enableDictionary, DEFAULT_IS_VALIDATING_ENABLED);
   }
 
-  /** Create a new {@link AvroParquetWriter}. The default block size is 50 MB.The default
-   *  page size is 1 MB.  Default compression is no compression. (Inherited from {@link ParquetWriter})
+  /**
+   * Create a new {@link AvroParquetWriter}. The default block size is 50 MB.The
+   * default page size is 1 MB. Default compression is no compression. (Inherited
+   * from {@link ParquetWriter})
    *
    * @param file The file name to write to.
    * @param avroSchema The schema to write with.
@@ -88,31 +91,28 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
    */
   @Deprecated
   public AvroParquetWriter(Path file, Schema avroSchema) throws IOException {
-    this(file, avroSchema, CompressionCodecName.UNCOMPRESSED,
-        DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
+    this(file, avroSchema, CompressionCodecName.UNCOMPRESSED, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
 
-  /** Create a new {@link AvroParquetWriter}.
+  /**
+   * Create a new {@link AvroParquetWriter}.
    *
    * @param file The file name to write to.
    * @param avroSchema The schema to write with.
-   * @param compressionCodecName Compression code to use, or CompressionCodecName.UNCOMPRESSED
+   * @param compressionCodecName Compression code to use, or
+   * CompressionCodecName.UNCOMPRESSED
    * @param blockSize the block size threshold.
-   * @param pageSize See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
+   * @param pageSize See parquet write up. Blocks are subdivided into pages for
+   * alignment and other purposes.
    * @param enableDictionary Whether to use a dictionary to compress columns.
    * @param conf The Configuration to use.
    * @throws IOException if there is an error while writing
    */
   @Deprecated
-  public AvroParquetWriter(Path file, Schema avroSchema,
-                           CompressionCodecName compressionCodecName,
-                           int blockSize, int pageSize, boolean enableDictionary,
-                           Configuration conf) throws IOException {
-    this(file,
-        AvroParquetWriter.<T>writeSupport(conf, avroSchema, SpecificData.get()),
-        compressionCodecName, blockSize, pageSize,
-        enableDictionary, DEFAULT_IS_VALIDATING_ENABLED, DEFAULT_WRITER_VERSION,
-        conf);
+  public AvroParquetWriter(Path file, Schema avroSchema, CompressionCodecName compressionCodecName, int blockSize,
+      int pageSize, boolean enableDictionary, Configuration conf) throws IOException {
+    this(file, AvroParquetWriter.<T>writeSupport(conf, avroSchema, SpecificData.get()), compressionCodecName, blockSize,
+        pageSize, enableDictionary, DEFAULT_IS_VALIDATING_ENABLED, DEFAULT_WRITER_VERSION, conf);
   }
 
   /**
@@ -120,34 +120,28 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
    *
    * @param file The file name to write to.
    * @param writeSupport The schema to write with.
-   * @param compressionCodecName Compression code to use, or CompressionCodecName.UNCOMPRESSED
+   * @param compressionCodecName Compression code to use, or
+   * CompressionCodecName.UNCOMPRESSED
    * @param blockSize the block size threshold.
-   * @param pageSize See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
+   * @param pageSize See parquet write up. Blocks are subdivided into pages for
+   * alignment and other purposes.
    * @param enableDictionary Whether to use a dictionary to compress columns.
    * @param conf The Configuration to use.
    * @throws IOException
    */
-  AvroParquetWriter(Path file, WriteSupport<T> writeSupport,
-                           CompressionCodecName compressionCodecName,
-                           int blockSize, int pageSize, boolean enableDictionary,
-                           boolean enableValidation, WriterVersion writerVersion,
-                           Configuration conf)
+  AvroParquetWriter(Path file, WriteSupport<T> writeSupport, CompressionCodecName compressionCodecName, int blockSize,
+      int pageSize, boolean enableDictionary, boolean enableValidation, WriterVersion writerVersion, Configuration conf)
       throws IOException {
-    super(file, writeSupport, compressionCodecName, blockSize, pageSize,
-        pageSize, enableDictionary, enableValidation, writerVersion, conf);
+    super(file, writeSupport, compressionCodecName, blockSize, pageSize, pageSize, enableDictionary, enableValidation,
+        writerVersion, conf);
   }
 
-  private static <T> WriteSupport<T> writeSupport(Schema avroSchema,
-                                                  GenericData model) {
-    return new AvroWriteSupport<T>(
-        new AvroSchemaConverter().convert(avroSchema), avroSchema, model);
+  private static <T> WriteSupport<T> writeSupport(Schema avroSchema, GenericData model) {
+    return new AvroWriteSupport<T>(new AvroSchemaConverter().convert(avroSchema), avroSchema, model);
   }
 
-  private static <T> WriteSupport<T> writeSupport(Configuration conf,
-                                                  Schema avroSchema,
-                                                  GenericData model) {
-    return new AvroWriteSupport<T>(
-        new AvroSchemaConverter(conf).convert(avroSchema), avroSchema, model);
+  private static <T> WriteSupport<T> writeSupport(Configuration conf, Schema avroSchema, GenericData model) {
+    return new AvroWriteSupport<T>(new AvroSchemaConverter(conf).convert(avroSchema), avroSchema, model);
   }
 
   public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {

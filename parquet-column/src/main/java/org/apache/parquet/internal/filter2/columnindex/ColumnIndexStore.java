@@ -24,12 +24,14 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 
 /**
- * Provides the {@link ColumnIndex} and {@link OffsetIndex} objects for a row-group.
+ * Provides the {@link ColumnIndex} and {@link OffsetIndex} objects for a
+ * row-group.
  */
 public interface ColumnIndexStore {
 
   /**
-   * Exception thrown in case of an offset index is missing for any of the columns.
+   * Exception thrown in case of an offset index is missing for any of the
+   * columns.
    */
   public static class MissingOffsetIndexException extends ParquetRuntimeException {
     public MissingOffsetIndexException(ColumnPath path) {
@@ -38,18 +40,16 @@ public interface ColumnIndexStore {
   }
 
   /**
-   * @param column
-   *          the path of the column
-   * @return the column index for the column-chunk in the row-group or {@code null} if no column index is available
+   * @param column the path of the column
+   * @return the column index for the column-chunk in the row-group or
+   * {@code null} if no column index is available
    */
   ColumnIndex getColumnIndex(ColumnPath column);
 
   /**
-   * @param column
-   *          the path of the column
+   * @param column the path of the column
    * @return the offset index for the column-chunk in the row-group
-   * @throws MissingOffsetIndexException
-   *           if the related offset index is missing
+   * @throws MissingOffsetIndexException if the related offset index is missing
    */
   OffsetIndex getOffsetIndex(ColumnPath column) throws MissingOffsetIndexException;
 }

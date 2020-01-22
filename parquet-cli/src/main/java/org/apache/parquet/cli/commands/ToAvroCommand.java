@@ -42,7 +42,7 @@ import java.util.List;
 import static org.apache.avro.generic.GenericData.Record;
 import static org.apache.parquet.cli.util.Expressions.filterSchema;
 
-@Parameters(commandDescription="Create an Avro file from a data file")
+@Parameters(commandDescription = "Create an Avro file from a data file")
 public class ToAvroCommand extends BaseCommand {
 
   public ToAvroCommand(Logger console) {
@@ -52,35 +52,25 @@ public class ToAvroCommand extends BaseCommand {
   @Parameter(description = "<file>")
   List<String> targets;
 
-  @Parameter(
-      names={"-o", "--output"},
-      description="Output file path",
-      required=true)
+  @Parameter(names = { "-o", "--output" }, description = "Output file path", required = true)
   String outputPath = null;
 
-  @Parameter(names = {"-s", "--schema"},
-      description = "The file containing an Avro schema for the output file")
+  @Parameter(names = { "-s", "--schema" }, description = "The file containing an Avro schema for the output file")
   String avroSchemaFile;
 
-  @Parameter(
-      names = {"-c", "--column", "--columns"},
-      description = "List of columns")
+  @Parameter(names = { "-c", "--column", "--columns" }, description = "List of columns")
   List<String> columns;
 
-  @Parameter(names = {"--compression-codec"},
-      description = "A compression codec name.")
+  @Parameter(names = { "--compression-codec" }, description = "A compression codec name.")
   String compressionCodecName = "GZIP";
 
-  @Parameter(
-      names={"--overwrite"},
-      description="Overwrite the output file if it exists")
+  @Parameter(names = { "--overwrite" }, description = "Overwrite the output file if it exists")
   boolean overwrite = false;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(targets != null && targets.size() == 1,
-        "A data file is required.");
+    Preconditions.checkArgument(targets != null && targets.size() == 1, "A data file is required.");
 
     String source = targets.get(0);
 
@@ -109,7 +99,7 @@ public class ToAvroCommand extends BaseCommand {
     DatumWriter<Record> datumWriter = new GenericDatumWriter<>(schema);
     try (DataFileWriter<Record> fileWriter = new DataFileWriter<>(datumWriter)) {
       fileWriter.setCodec(codecFactory);
-      try (DataFileWriter<Record> writer=fileWriter.create(projection, create(outputPath))) {
+      try (DataFileWriter<Record> writer = fileWriter.create(projection, create(outputPath))) {
         for (Record record : reader) {
           writer.append(record);
           count += 1;
@@ -129,13 +119,8 @@ public class ToAvroCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
-        "# Create an Avro file from a Parquet file",
-        "sample.parquet sample.avro",
-        "# Create an Avro file in HDFS from a local JSON file",
-        "path/to/sample.json hdfs:/user/me/sample.parquet",
-        "# Create an Avro file from data in S3",
-        "s3:/data/path/sample.parquet sample.avro"
-    );
+    return Lists.newArrayList("# Create an Avro file from a Parquet file", "sample.parquet sample.avro",
+        "# Create an Avro file in HDFS from a local JSON file", "path/to/sample.json hdfs:/user/me/sample.parquet",
+        "# Create an Avro file from data in S3", "s3:/data/path/sample.parquet sample.avro");
   }
 }

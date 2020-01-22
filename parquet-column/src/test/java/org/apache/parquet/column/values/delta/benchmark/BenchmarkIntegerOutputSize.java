@@ -27,9 +27,9 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWrite
 import org.junit.Test;
 
 public class BenchmarkIntegerOutputSize {
-  public static int blockSize=128;
-  public static int miniBlockNum=4;
-  public static int dataSize=10000 * blockSize;
+  public static int blockSize = 128;
+  public static int miniBlockNum = 4;
+  public static int dataSize = 10000 * blockSize;
 
   private interface IntFunc {
     public int getIntValue();
@@ -37,71 +37,71 @@ public class BenchmarkIntegerOutputSize {
 
   @Test
   public void testBigNumbers() {
-    final Random r=new Random();
+    final Random r = new Random();
     testRandomIntegers(new IntFunc() {
       @Override
       public int getIntValue() {
         return r.nextInt();
       }
-    },32);
+    }, 32);
   }
 
   @Test
   public void testRangedNumbersWithSmallVariations() {
-    final Random r=new Random();
+    final Random r = new Random();
     testRandomIntegers(new IntFunc() {
       @Override
       public int getIntValue() {
-        return 1000+r.nextInt(20);
+        return 1000 + r.nextInt(20);
       }
-    },10);
+    }, 10);
   }
 
   @Test
   public void testSmallNumbersWithSmallVariations() {
-    final Random r=new Random();
+    final Random r = new Random();
     testRandomIntegers(new IntFunc() {
       @Override
       public int getIntValue() {
-        return 40+r.nextInt(20);
+        return 40 + r.nextInt(20);
       }
-    },6);
+    }, 6);
   }
 
   @Test
   public void testSmallNumberVariation() {
-      final Random r=new Random();
-      testRandomIntegers(new IntFunc() {
-        @Override
-        public int getIntValue() {
-          return r.nextInt(20)-10;
-        }
-      },4);
+    final Random r = new Random();
+    testRandomIntegers(new IntFunc() {
+      @Override
+      public int getIntValue() {
+        return r.nextInt(20) - 10;
+      }
+    }, 4);
   }
 
-  public void testRandomIntegers(IntFunc func,int bitWidth) {
-    DeltaBinaryPackingValuesWriter delta = new DeltaBinaryPackingValuesWriterForInteger(
-        blockSize,miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
-    RunLengthBitPackingHybridValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(
-        bitWidth, 100, 20000, new DirectByteBufferAllocator());
+  public void testRandomIntegers(IntFunc func, int bitWidth) {
+    DeltaBinaryPackingValuesWriter delta = new DeltaBinaryPackingValuesWriterForInteger(blockSize, miniBlockNum, 100,
+        20000, new DirectByteBufferAllocator());
+    RunLengthBitPackingHybridValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(bitWidth, 100, 20000,
+        new DirectByteBufferAllocator());
     for (int i = 0; i < dataSize; i++) {
       int v = func.getIntValue();
       delta.writeInteger(v);
       rle.writeInteger(v);
     }
-    System.out.println("delta size: "+delta.getBytes().size());
-    System.out.println("estimated size"+estimatedSize());
-    System.out.println("rle size: "+rle.getBytes().size());
+    System.out.println("delta size: " + delta.getBytes().size());
+    System.out.println("estimated size" + estimatedSize());
+    System.out.println("rle size: " + rle.getBytes().size());
   }
 
-  private double estimatedSize(){
+  private double estimatedSize() {
     int miniBlockSize = blockSize / miniBlockNum;
     double miniBlockFlushed = Math.ceil(((double) dataSize - 1) / miniBlockSize);
     double blockFlushed = Math.ceil(((double) dataSize - 1) / blockSize);
-    double estimatedSize = 4 * 5 //blockHeader
-            + 4 * miniBlockFlushed * miniBlockSize //data(aligned to miniBlock)
-            + blockFlushed * miniBlockNum //bitWidth of mini blocks
-            + (5.0 * blockFlushed);//min delta for each block
+    double estimatedSize = 4 * 5 // blockHeader
+        + 4 * miniBlockFlushed * miniBlockSize // data(aligned to miniBlock)
+        + blockFlushed * miniBlockNum // bitWidth of mini blocks
+        + (5.0 * blockFlushed);// min delta for each block
     return estimatedSize;
   }
 }

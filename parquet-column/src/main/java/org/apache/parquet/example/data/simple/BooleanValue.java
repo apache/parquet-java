@@ -23,6 +23,7 @@ import org.apache.parquet.io.api.RecordConsumer;
 public class BooleanValue extends Primitive {
 
   private final boolean bool;
+
   public BooleanValue(boolean bool) {
     this.bool = bool;
   }

@@ -117,7 +117,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
       case DataType.BAG:
         Type bagType = fieldType.asGroupType().getType(0);
         FieldSchema pigBagInnerType = pigType.schema.getField(0);
-        DataBag bag = (DataBag)t.get(i);
+        DataBag bag = (DataBag) t.get(i);
         recordConsumer.startGroup();
         if (bag.size() > 0) {
           recordConsumer.startField(bagType.getName(), 0);
@@ -138,15 +138,17 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
         Type mapType = fieldType.asGroupType().getType(0);
         FieldSchema pigMapInnerType = pigType.schema.getField(0);
         @SuppressWarnings("unchecked") // I know
-        Map<String, Object> map = (Map<String, Object>)t.get(i);
+        Map<String, Object> map = (Map<String, Object>) t.get(i);
         recordConsumer.startGroup();
         if (map.size() > 0) {
           recordConsumer.startField(mapType.getName(), 0);
           Set<Entry<String, Object>> entrySet = map.entrySet();
           for (Entry<String, Object> entry : entrySet) {
             recordConsumer.startGroup();
-            Schema keyValueSchema = new Schema(Arrays.asList(new FieldSchema("key", DataType.CHARARRAY), new FieldSchema("value", pigMapInnerType.schema, pigMapInnerType.type)));
-            writeTuple(mapType.asGroupType(), keyValueSchema, TF.newTuple(Arrays.asList(entry.getKey(), entry.getValue())));
+            Schema keyValueSchema = new Schema(Arrays.asList(new FieldSchema("key", DataType.CHARARRAY),
+                new FieldSchema("value", pigMapInnerType.schema, pigMapInnerType.type)));
+            writeTuple(mapType.asGroupType(), keyValueSchema,
+                TF.newTuple(Arrays.asList(entry.getKey(), entry.getValue())));
             recordConsumer.endGroup();
           }
           recordConsumer.endField(mapType.getName(), 0);
@@ -169,28 +171,29 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
         case BINARY:
           byte[] bytes;
           if (pigType.type == DataType.BYTEARRAY) {
-            bytes = ((DataByteArray)t.get(i)).get();
+            bytes = ((DataByteArray) t.get(i)).get();
           } else if (pigType.type == DataType.CHARARRAY) {
-            bytes = ((String)t.get(i)).getBytes("UTF-8");
+            bytes = ((String) t.get(i)).getBytes("UTF-8");
           } else {
-            throw new UnsupportedOperationException("can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
+            throw new UnsupportedOperationException(
+                "can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
           }
           recordConsumer.addBinary(Binary.fromReusedByteArray(bytes));
           break;
         case BOOLEAN:
-          recordConsumer.addBoolean((Boolean)t.get(i));
+          recordConsumer.addBoolean((Boolean) t.get(i));
           break;
         case INT32:
-          recordConsumer.addInteger(((Number)t.get(i)).intValue());
+          recordConsumer.addInteger(((Number) t.get(i)).intValue());
           break;
         case INT64:
-          recordConsumer.addLong(((Number)t.get(i)).longValue());
+          recordConsumer.addLong(((Number) t.get(i)).longValue());
           break;
         case DOUBLE:
-          recordConsumer.addDouble(((Number)t.get(i)).doubleValue());
+          recordConsumer.addDouble(((Number) t.get(i)).doubleValue());
           break;
         case FLOAT:
-          recordConsumer.addFloat(((Number)t.get(i)).floatValue());
+          recordConsumer.addFloat(((Number) t.get(i)).floatValue());
           break;
         default:
           throw new UnsupportedOperationException(type.asPrimitiveType().getPrimitiveTypeName().name());
@@ -198,11 +201,12 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
       } else {
         assert pigType.type == DataType.TUPLE;
         recordConsumer.startGroup();
-        writeTuple(type.asGroupType(), pigType.schema, (Tuple)t.get(i));
+        writeTuple(type.asGroupType(), pigType.schema, (Tuple) t.get(i));
         recordConsumer.endGroup();
       }
     } catch (Exception e) {
-      throw new ParquetEncodingException("can not write value at " + i + " in tuple " + t + " from type '" + pigType + "' to type '" + type +"'", e);
+      throw new ParquetEncodingException(
+          "can not write value at " + i + " in tuple " + t + " from type '" + pigType + "' to type '" + type + "'", e);
     }
   }
 

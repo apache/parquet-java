@@ -55,18 +55,18 @@ public class TestParquetStorer {
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
     for (int i = 0; i < rows; i++) {
-      list.add(tuple("a"+i));
+      list.add(tuple("a" + i));
     }
-    data.set("in", "a:chararray", list );
+    data.set("in", "a:chararray", list);
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '" + out + "' using " + ParquetStorer.class.getName() + "();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
     }
 
-    pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
+    pigServer.registerQuery("B = LOAD '" + out + "' USING " + ParquetLoader.class.getName() + "();");
     pigServer.registerQuery("Store B into 'out' using mock.Storage();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
@@ -77,7 +77,7 @@ public class TestParquetStorer {
     assertEquals(rows, result.size());
     int i = 0;
     for (Tuple tuple : result) {
-      assertEquals("a"+i, tuple.get(0));
+      assertEquals("a" + i, tuple.get(0));
       ++i;
     }
   }
@@ -93,11 +93,11 @@ public class TestParquetStorer {
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list1 = new ArrayList<Tuple>();
     for (int i = 0; i < rows; i++) {
-      list1.add(tuple("a"+i));
+      list1.add(tuple("a" + i));
     }
     Collection<Tuple> list2 = new ArrayList<Tuple>();
     for (int i = 0; i < rows; i++) {
-      list2.add(tuple("b"+i));
+      list2.add(tuple("b" + i));
     }
     data.set("a", "a:chararray", list1);
     data.set("b", "b:chararray", list2);
@@ -105,13 +105,13 @@ public class TestParquetStorer {
     pigServer.registerQuery("A = LOAD 'a' USING mock.Storage();");
     pigServer.registerQuery("B = LOAD 'b' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"/a' using "+ParquetStorer.class.getName()+"();");
-    pigServer.registerQuery("Store B into '"+out+"/b' using "+ParquetStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '" + out + "/a' using " + ParquetStorer.class.getName() + "();");
+    pigServer.registerQuery("Store B into '" + out + "/b' using " + ParquetStorer.class.getName() + "();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
     }
 
-    pigServer.registerQuery("B = LOAD '"+out+"/*' USING "+ParquetLoader.class.getName()+"();");
+    pigServer.registerQuery("B = LOAD '" + out + "/*' USING " + ParquetLoader.class.getName() + "();");
     pigServer.registerQuery("Store B into 'out' using mock.Storage();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
@@ -166,18 +166,18 @@ public class TestParquetStorer {
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
     for (int i = 0; i < rows; i++) {
-      list.add(Storage.tuple("a"+i));
+      list.add(Storage.tuple("a" + i));
     }
-    data.set("in", "a:chararray", list );
+    data.set("in", "a:chararray", list);
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '" + out + "' using " + ParquetStorer.class.getName() + "();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
     }
 
-    pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
+    pigServer.registerQuery("B = LOAD '" + out + "' USING " + ParquetLoader.class.getName() + "();");
     pigServer.registerQuery("Store B into 'out' using mock.Storage();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
@@ -188,7 +188,7 @@ public class TestParquetStorer {
     assertEquals(rows, result.size());
     int i = 0;
     for (Tuple tuple : result) {
-      assertEquals("a"+i, tuple.get(0));
+      assertEquals("a" + i, tuple.get(0));
       ++i;
     }
 
@@ -201,29 +201,29 @@ public class TestParquetStorer {
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
     for (int i = 0; i < 1000; i++) {
-      list.add(tuple("a"+i, bag(tuple("o", "b"))));
+      list.add(tuple("a" + i, bag(tuple("o", "b"))));
     }
     for (int i = 10; i < 2000; i++) {
-      list.add(tuple("a"+i, bag(tuple("o", "b"), tuple("o", "b"), tuple("o", "b"), tuple("o", "b"))));
+      list.add(tuple("a" + i, bag(tuple("o", "b"), tuple("o", "b"), tuple("o", "b"), tuple("o", "b"))));
     }
     for (int i = 20; i < 3000; i++) {
-      list.add(tuple("a"+i, bag(tuple("o", "b"), tuple("o", null), tuple(null, "b"), tuple(null, null))));
+      list.add(tuple("a" + i, bag(tuple("o", "b"), tuple("o", null), tuple(null, "b"), tuple(null, null))));
     }
     for (int i = 30; i < 4000; i++) {
-      list.add(tuple("a"+i, null));
+      list.add(tuple("a" + i, null));
     }
-    Collections.shuffle((List<?>)list);
-    data.set("in", "a:chararray, b:{t:(c:chararray, d:chararray)}", list );
+    Collections.shuffle((List<?>) list);
+    data.set("in", "a:chararray, b:{t:(c:chararray, d:chararray)}", list);
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '" + out + "' using " + ParquetStorer.class.getName() + "();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
     }
 
     {
-      pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
+      pigServer.registerQuery("B = LOAD '" + out + "' USING " + ParquetLoader.class.getName() + "();");
       pigServer.registerQuery("Store B into 'out' using mock.Storage();");
       if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
         throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
@@ -232,21 +232,22 @@ public class TestParquetStorer {
       List<Tuple> result = data.get("out");
       assertEquals(list, result);
       final Schema schema = data.getSchema("out");
-      assertEquals("{a:chararray, b:{t:(c:chararray, d:chararray)}}".replaceAll(" ", ""), schema.toString().replaceAll(" ", ""));
+      assertEquals("{a:chararray, b:{t:(c:chararray, d:chararray)}}".replaceAll(" ", ""),
+          schema.toString().replaceAll(" ", ""));
     }
 
     {
-      pigServer.registerQuery("C = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"('a:chararray');");
+      pigServer.registerQuery("C = LOAD '" + out + "' USING " + ParquetLoader.class.getName() + "('a:chararray');");
       pigServer.registerQuery("Store C into 'out2' using mock.Storage();");
       if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
         throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
       }
 
-      final Function<Tuple,Object> grabFirstColumn = new Function<Tuple,Object>() {
+      final Function<Tuple, Object> grabFirstColumn = new Function<Tuple, Object>() {
         @Override
         public Object apply(Tuple input) {
           try {
-              return input.get(0);
+            return input.get(0);
           } catch (ExecException e) {
             throw new RuntimeException(e);
           }

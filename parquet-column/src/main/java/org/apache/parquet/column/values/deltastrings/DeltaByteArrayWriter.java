@@ -27,22 +27,24 @@ import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArra
 import org.apache.parquet.io.api.Binary;
 
 /**
- * Write prefix lengths using delta encoding, followed by suffixes with Delta length byte arrays
+ * Write prefix lengths using delta encoding, followed by suffixes with Delta
+ * length byte arrays
+ * 
  * <pre>
  *   {@code
  *   delta-length-byte-array : prefix-length* suffixes*
  *   }
  * </pre>
  */
-public class DeltaByteArrayWriter extends ValuesWriter{
+public class DeltaByteArrayWriter extends ValuesWriter {
 
   private ValuesWriter prefixLengthWriter;
   private ValuesWriter suffixWriter;
   private byte[] previous;
 
   public DeltaByteArrayWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    this.prefixLengthWriter = 
-        new DeltaBinaryPackingValuesWriterForInteger(128, 4, initialCapacity, pageSize, allocator);
+    this.prefixLengthWriter = new DeltaBinaryPackingValuesWriterForInteger(128, 4, initialCapacity, pageSize,
+        allocator);
     this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity, pageSize, allocator);
     this.previous = new byte[0];
   }
@@ -91,8 +93,10 @@ public class DeltaByteArrayWriter extends ValuesWriter{
     int i = 0;
     byte[] vb = v.getBytes();
     int length = previous.length < vb.length ? previous.length : vb.length;
-    // find the number of matching prefix bytes between this value and the previous one
-    for(i = 0; (i < length) && (previous[i] == vb[i]); i++);
+    // find the number of matching prefix bytes between this value and the previous
+    // one
+    for (i = 0; (i < length) && (previous[i] == vb[i]); i++)
+      ;
     prefixLengthWriter.writeInteger(i);
     suffixWriter.writeBytes(v.slice(i, vb.length - i));
     previous = vb;

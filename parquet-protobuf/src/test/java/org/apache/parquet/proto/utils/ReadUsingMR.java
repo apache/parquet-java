@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-
 /**
  * Reads data from given parquet file using MapReduce job.
  */

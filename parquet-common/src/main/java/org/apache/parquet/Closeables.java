@@ -26,31 +26,39 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Utility for working with {@link java.io.Closeable}ss
+ * 
  * @deprecated will be removed in 2.0.0. Use Java try-with-resource instead.
  */
 @Deprecated
 public final class Closeables {
-  private Closeables() { }
+  private Closeables() {
+  }
 
   private static final Logger LOG = LoggerFactory.getLogger(Closeables.class);
 
   /**
    * Closes a (potentially null) closeable.
+   * 
    * @param c can be null
    * @throws IOException if c.close() throws an IOException.
    */
   public static void close(Closeable c) throws IOException {
-    if (c == null) { return; }
+    if (c == null) {
+      return;
+    }
     c.close();
   }
 
   /**
    * Closes a (potentially null) closeable, swallowing any IOExceptions thrown by
    * c.close(). The exception will be logged.
+   * 
    * @param c can be null
    */
   public static void closeAndSwallowIOExceptions(Closeable c) {
-    if (c == null) { return; }
+    if (c == null) {
+      return;
+    }
     try {
       c.close();
     } catch (IOException e) {

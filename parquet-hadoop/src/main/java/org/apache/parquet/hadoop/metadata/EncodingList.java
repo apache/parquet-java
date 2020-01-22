@@ -42,7 +42,7 @@ public class EncodingList implements Iterable<Encoding> {
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof EncodingList) {
-      List<org.apache.parquet.column.Encoding> other = ((EncodingList)obj).encodings;
+      List<org.apache.parquet.column.Encoding> other = ((EncodingList) obj).encodings;
       final int size = other.size();
       if (size != encodings.size()) {
         return false;

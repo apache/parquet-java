@@ -24,18 +24,20 @@ package org.apache.parquet.column.values.bitpacking;
 public enum Packer {
 
   /**
-   * packers who fill the Least Significant Bit First
-   * int and byte packer have the same result on Big Endian architectures
+   * packers who fill the Least Significant Bit First int and byte packer have the
+   * same result on Big Endian architectures
    */
   BIG_ENDIAN {
     @Override
     public IntPacker newIntPacker(int width) {
       return beIntPackerFactory.newIntPacker(width);
     }
+
     @Override
     public BytePacker newBytePacker(int width) {
       return beBytePackerFactory.newBytePacker(width);
     }
+
     @Override
     public BytePackerForLong newBytePackerForLong(int width) {
       return beBytePackerForLongFactory.newBytePackerForLong(width);
@@ -43,18 +45,20 @@ public enum Packer {
   },
 
   /**
-   * packers who fill the Most Significant Bit first
-   * int and byte packer have the same result on Little Endian architectures
+   * packers who fill the Most Significant Bit first int and byte packer have the
+   * same result on Little Endian architectures
    */
   LITTLE_ENDIAN {
     @Override
     public IntPacker newIntPacker(int width) {
       return leIntPackerFactory.newIntPacker(width);
     }
+
     @Override
     public BytePacker newBytePacker(int width) {
       return leBytePackerFactory.newBytePacker(width);
     }
+
     @Override
     public BytePackerForLong newBytePackerForLong(int width) {
       return leBytePackerForLongFactory.newBytePackerForLong(width);
@@ -62,22 +66,22 @@ public enum Packer {
   };
 
   private static IntPackerFactory getIntPackerFactory(String name) {
-    return (IntPackerFactory)getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
+    return (IntPackerFactory) getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
   }
 
   private static BytePackerFactory getBytePackerFactory(String name) {
-    return (BytePackerFactory)getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
+    return (BytePackerFactory) getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
   }
 
   private static BytePackerForLongFactory getBytePackerForLongFactory(String name) {
-    return (BytePackerForLongFactory)getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
+    return (BytePackerForLongFactory) getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
   }
 
   private static Object getStaticField(String className, String fieldName) {
     try {
       return Class.forName(className).getField(fieldName).get(null);
-    } catch (IllegalArgumentException | IllegalAccessException
-        | NoSuchFieldException | SecurityException | ClassNotFoundException e) {
+    } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException
+        | ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
   }

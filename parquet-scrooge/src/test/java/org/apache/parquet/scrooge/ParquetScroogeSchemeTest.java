@@ -76,23 +76,26 @@ public class ParquetScroogeSchemeTest {
 
   @Test
   public void testWritePrimitveThriftReadScrooge() throws Exception {
-    RequiredPrimitiveFixture toWrite = new RequiredPrimitiveFixture(true, (byte)2, (short)3, 4, (long)5, 6.0, "7");
+    RequiredPrimitiveFixture toWrite = new RequiredPrimitiveFixture(true, (byte) 2, (short) 3, 4, (long) 5, 6.0, "7");
     toWrite.setInfo_string("it's info");
-    verifyScroogeRead(thriftRecords(toWrite), org.apache.parquet.scrooge.test.RequiredPrimitiveFixture.class, "RequiredPrimitiveFixture(true,2,3,4,5,6.0,7,Some(it's info))\n", "**");
+    verifyScroogeRead(thriftRecords(toWrite), org.apache.parquet.scrooge.test.RequiredPrimitiveFixture.class,
+        "RequiredPrimitiveFixture(true,2,3,4,5,6.0,7,Some(it's info))\n", "**");
   }
 
   @Test
   public void testNestedReadingInScrooge() throws Exception {
     Map<String, org.apache.parquet.thrift.test.Phone> phoneMap = new HashMap<String, Phone>();
     phoneMap.put("key1", new org.apache.parquet.thrift.test.Phone("111", "222"));
-    org.apache.parquet.thrift.test.TestPersonWithAllInformation toWrite = new org.apache.parquet.thrift.test.TestPersonWithAllInformation(new org.apache.parquet.thrift.test.Name("first"), new Address("my_street", "my_zip"), phoneMap);
+    org.apache.parquet.thrift.test.TestPersonWithAllInformation toWrite = new org.apache.parquet.thrift.test.TestPersonWithAllInformation(
+        new org.apache.parquet.thrift.test.Name("first"), new Address("my_street", "my_zip"), phoneMap);
     toWrite.setInfo("my_info");
 
     String expected = "TestPersonWithAllInformation(Name(first,None),None,Address(my_street,my_zip),None,Some(my_info),Map(key1 -> Phone(111,222)),None,None)\n";
     verifyScroogeRead(thriftRecords(toWrite), TestPersonWithAllInformation.class, expected, "**");
 
     String expectedProjected = "TestPersonWithAllInformation(Name(first,None),None,Address(my_street,my_zip),None,Some(my_info),Map(),None,None)\n";
-    verifyScroogeRead(thriftRecords(toWrite), TestPersonWithAllInformation.class, expectedProjected, "address/*;info;name/first_name");
+    verifyScroogeRead(thriftRecords(toWrite), TestPersonWithAllInformation.class, expectedProjected,
+        "address/*;info;name/first_name");
   }
 
   private static class ObjectToStringFunction extends BaseOperation implements Function {
@@ -105,14 +108,16 @@ public class ParquetScroogeSchemeTest {
     }
   }
 
-  public <T> void verifyScroogeRead(List<TBase> recordsToWrite, Class<T> readClass, String expectedStr, String projectionFilter) throws Exception {
+  public <T> void verifyScroogeRead(List<TBase> recordsToWrite, Class<T> readClass, String expectedStr,
+      String projectionFilter) throws Exception {
     Configuration conf = new Configuration();
     deleteIfExist(PARQUET_PATH);
     deleteIfExist(TXT_OUTPUT_PATH);
     final Path parquetFile = new Path(PARQUET_PATH);
     writeParquetFile(recordsToWrite, conf, parquetFile);
 
-    Scheme sourceScheme = new ParquetScroogeScheme(new Config().withRecordClass(readClass).withProjectionString(projectionFilter));
+    Scheme sourceScheme = new ParquetScroogeScheme(
+        new Config().withRecordClass(readClass).withProjectionString(projectionFilter));
     Tap source = new Hfs(sourceScheme, PARQUET_PATH);
 
     Scheme sinkScheme = new TextLine(new Fields("first", "last"));
@@ -127,12 +132,14 @@ public class ParquetScroogeSchemeTest {
     assertEquals(expectedStr, result);
   }
 
-  private void writeParquetFile(List<TBase> recordsToWrite, Configuration conf, Path parquetFile) throws IOException, InterruptedException, org.apache.thrift.TException {
-    //create a test file
+  private void writeParquetFile(List<TBase> recordsToWrite, Configuration conf, Path parquetFile)
+      throws IOException, InterruptedException, org.apache.thrift.TException {
+    // create a test file
     final TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     final TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
     Class writeClass = recordsToWrite.get(0).getClass();
-    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, writeClass);
+    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile,
+        ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, writeClass);
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
     for (TBase recordToWrite : recordsToWrite) {
@@ -172,17 +179,18 @@ public class ParquetScroogeSchemeTest {
   private void doWrite() throws Exception {
     Path path = new Path(parquetOutputPath);
     final FileSystem fs = path.getFileSystem(new Configuration());
-    if (fs.exists(path)) fs.delete(path, true);
+    if (fs.exists(path))
+      fs.delete(path, true);
 
-    Scheme sourceScheme = new TextLine( new Fields( "first", "last" ) );
+    Scheme sourceScheme = new TextLine(new Fields("first", "last"));
     Tap source = new Hfs(sourceScheme, txtInputPath);
 
     Scheme sinkScheme = new ParquetScroogeScheme<Name>(Name.class);
     Tap sink = new Hfs(sinkScheme, parquetOutputPath);
 
-    Pipe assembly = new Pipe( "namecp" );
+    Pipe assembly = new Pipe("namecp");
     assembly = new Each(assembly, new PackThriftFunction());
-    Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+    Flow flow = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
 
     flow.complete();
   }
@@ -190,7 +198,8 @@ public class ParquetScroogeSchemeTest {
   private void doRead() throws Exception {
     Path path = new Path(txtOutputPath);
     final FileSystem fs = path.getFileSystem(new Configuration());
-    if (fs.exists(path)) fs.delete(path, true);
+    if (fs.exists(path))
+      fs.delete(path, true);
 
     Scheme sourceScheme = new ParquetScroogeScheme<Name>(Name.class);
     Tap source = new Hfs(sourceScheme, parquetOutputPath);
@@ -198,12 +207,12 @@ public class ParquetScroogeSchemeTest {
     Scheme sinkScheme = new TextLine(new Fields("first", "last"));
     Tap sink = new Hfs(sinkScheme, txtOutputPath);
 
-    Pipe assembly = new Pipe( "namecp" );
+    Pipe assembly = new Pipe("namecp");
     assembly = new Each(assembly, new UnpackThriftFunction());
-    Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+    Flow flow = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
 
     flow.complete();
-    String result = FileUtils.readFileToString(new File(txtOutputPath+"/part-00000"));
+    String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
     assertEquals("0\tAlice\tPractice\n15\tBob\tHope\n24\tCharlie\tHorse\n", result);
   }
 

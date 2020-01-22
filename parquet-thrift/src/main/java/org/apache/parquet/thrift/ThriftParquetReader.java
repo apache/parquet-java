@@ -34,9 +34,10 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * To read a parquet file into thrift objects
+ * 
  * @param <T> the thrift type
  */
-public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> {
+public class ThriftParquetReader<T extends TBase<?, ?>> extends ParquetReader<T> {
 
   /**
    * @param file the file to read
@@ -62,7 +63,9 @@ public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> 
   }
 
   /**
-   * will use the thrift class based on the file metadata if a thrift class information is present
+   * will use the thrift class based on the file metadata if a thrift class
+   * information is present
+   * 
    * @param file the file to read
    * @throws IOException if there is an error while reading
    * @deprecated use {@link #build(Path)}
@@ -73,7 +76,9 @@ public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> 
   }
 
   /**
-   * will use the thrift class based on the file metadata if a thrift class information is present
+   * will use the thrift class based on the file metadata if a thrift class
+   * information is present
+   * 
    * @param conf the configuration
    * @param file the file to read
    * @throws IOException if there is an error while reading
@@ -84,11 +89,11 @@ public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> 
     super(conf, file, new ThriftReadSupport<T>());
   }
 
-  public static <T extends TBase<?,?>> Builder<T> build(Path file) {
+  public static <T extends TBase<?, ?>> Builder<T> build(Path file) {
     return new Builder<T>(file);
   }
 
-  public static class Builder<T extends TBase<?,?>> {
+  public static class Builder<T extends TBase<?, ?>> {
     private final Path file;
     private Configuration conf;
     private Filter filter;
@@ -112,9 +117,8 @@ public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> 
     }
 
     /**
-     * If this is called, the thrift class is used.
-     * If not, will use the thrift class based on the file
-     * metadata if a thrift class information is present.
+     * If this is called, the thrift class is used. If not, will use the thrift
+     * class based on the file metadata if a thrift class information is present.
      *
      * @param thriftClass a thrift class
      * @return this for method chaining

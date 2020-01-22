@@ -47,28 +47,33 @@ public class DataGenerator {
 
   public void generateAll() {
     try {
-      generateData(file_1M, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE,
+          UNCOMPRESSED, ONE_MILLION);
 
-      //generate data for different block and page sizes
-      generateData(file_1M_BS256M_PS4M, configuration, PARQUET_2_0, BLOCK_SIZE_256M, PAGE_SIZE_4M, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
-      generateData(file_1M_BS256M_PS8M, configuration, PARQUET_2_0, BLOCK_SIZE_256M, PAGE_SIZE_8M, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
-      generateData(file_1M_BS512M_PS4M, configuration, PARQUET_2_0, BLOCK_SIZE_512M, PAGE_SIZE_4M, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
-      generateData(file_1M_BS512M_PS8M, configuration, PARQUET_2_0, BLOCK_SIZE_512M, PAGE_SIZE_8M, FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
+      // generate data for different block and page sizes
+      generateData(file_1M_BS256M_PS4M, configuration, PARQUET_2_0, BLOCK_SIZE_256M, PAGE_SIZE_4M,
+          FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M_BS256M_PS8M, configuration, PARQUET_2_0, BLOCK_SIZE_256M, PAGE_SIZE_8M,
+          FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M_BS512M_PS4M, configuration, PARQUET_2_0, BLOCK_SIZE_512M, PAGE_SIZE_4M,
+          FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
+      generateData(file_1M_BS512M_PS8M, configuration, PARQUET_2_0, BLOCK_SIZE_512M, PAGE_SIZE_8M,
+          FIXED_LEN_BYTEARRAY_SIZE, UNCOMPRESSED, ONE_MILLION);
 
-      //generate data for different codecs
+      // generate data for different codecs
 //      generateData(parquetFile_1M_LZO, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, LZO, ONE_MILLION);
-      generateData(file_1M_SNAPPY, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, SNAPPY, ONE_MILLION);
-      generateData(file_1M_GZIP, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, FIXED_LEN_BYTEARRAY_SIZE, GZIP, ONE_MILLION);
-    }
-    catch (IOException e) {
+      generateData(file_1M_SNAPPY, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT,
+          FIXED_LEN_BYTEARRAY_SIZE, SNAPPY, ONE_MILLION);
+      generateData(file_1M_GZIP, configuration, PARQUET_2_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT,
+          FIXED_LEN_BYTEARRAY_SIZE, GZIP, ONE_MILLION);
+    } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
 
   public void generateData(Path outFile, Configuration configuration, ParquetProperties.WriterVersion version,
-                           int blockSize, int pageSize, int fixedLenByteArraySize, CompressionCodecName codec, int nRows)
-          throws IOException
-  {
+      int blockSize, int pageSize, int fixedLenByteArraySize, CompressionCodecName codec, int nRows)
+      throws IOException {
     if (exists(configuration, outFile)) {
       System.out.println("File already exists " + outFile);
       return;
@@ -76,45 +81,30 @@ public class DataGenerator {
 
     System.out.println("Generating data @ " + outFile);
 
-    MessageType schema = parseMessageType(
-            "message test { "
-                    + "required binary binary_field; "
-                    + "required int32 int32_field; "
-                    + "required int64 int64_field; "
-                    + "required boolean boolean_field; "
-                    + "required float float_field; "
-                    + "required double double_field; "
-                    + "required fixed_len_byte_array(" + fixedLenByteArraySize +") flba_field; "
-                    + "required int96 int96_field; "
-                    + "} ");
+    MessageType schema = parseMessageType("message test { " + "required binary binary_field; "
+        + "required int32 int32_field; " + "required int64 int64_field; " + "required boolean boolean_field; "
+        + "required float float_field; " + "required double double_field; " + "required fixed_len_byte_array("
+        + fixedLenByteArraySize + ") flba_field; " + "required int96 int96_field; " + "} ");
 
     GroupWriteSupport.setSchema(schema, configuration);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
-    ParquetWriter<Group> writer = new ParquetWriter<Group>(outFile, new GroupWriteSupport(), codec, blockSize,
-                                                           pageSize, DICT_PAGE_SIZE, true, false, version, configuration);
+    ParquetWriter<Group> writer = new ParquetWriter<Group>(outFile, new GroupWriteSupport(), codec, blockSize, pageSize,
+        DICT_PAGE_SIZE, true, false, version, configuration);
 
-    //generate some data for the fixed len byte array field
+    // generate some data for the fixed len byte array field
     char[] chars = new char[fixedLenByteArraySize];
     Arrays.fill(chars, '*');
 
     for (int i = 0; i < nRows; i++) {
-      writer.write(
-        f.newGroup()
-          .append("binary_field", randomUUID().toString())
-          .append("int32_field", i)
-          .append("int64_field", 64l)
-          .append("boolean_field", true)
-          .append("float_field", 1.0f)
-          .append("double_field", 2.0d)
-          .append("flba_field", new String(chars))
-          .append("int96_field", Binary.fromConstantByteArray(new byte[12]))
-      );
+      writer.write(f.newGroup().append("binary_field", randomUUID().toString()).append("int32_field", i)
+          .append("int64_field", 64l).append("boolean_field", true).append("float_field", 1.0f)
+          .append("double_field", 2.0d).append("flba_field", new String(chars))
+          .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
     }
     writer.close();
   }
 
-  public void cleanup()
-  {
+  public void cleanup() {
     deleteIfExists(configuration, targetDir);
   }
 

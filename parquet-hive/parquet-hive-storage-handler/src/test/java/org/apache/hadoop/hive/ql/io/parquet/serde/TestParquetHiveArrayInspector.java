@@ -64,8 +64,8 @@ public class TestParquetHiveArrayInspector extends TestCase {
   @Test
   public void testRegularList() {
     final ArrayWritable internalList = new ArrayWritable(Writable.class,
-            new Writable[]{new IntWritable(3), new IntWritable(5), new IntWritable(1)});
-    final ArrayWritable list = new ArrayWritable(ArrayWritable.class, new ArrayWritable[]{internalList});
+        new Writable[] { new IntWritable(3), new IntWritable(5), new IntWritable(1) });
+    final ArrayWritable list = new ArrayWritable(ArrayWritable.class, new ArrayWritable[] { internalList });
 
     final List<Writable> expected = new ArrayList<Writable>();
     expected.add(new IntWritable(3));

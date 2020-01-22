@@ -23,9 +23,8 @@ import org.slf4j.LoggerFactory;
 import java.util.logging.Level;
 
 /**
- * Simple wrapper around java.util.logging
- * Adds compile time log level.
- * The compiler removes completely if statements that reference to a false constant
+ * Simple wrapper around java.util.logging Adds compile time log level. The
+ * compiler removes completely if statements that reference to a false constant
  *
  * <code>
  *   if (DEBUG) LOG.debug("removed by the compiler if DEBUG is a false constant")
@@ -61,6 +60,7 @@ public class Log {
 
   /**
    * prints a debug message
+   * 
    * @param m a log message
    */
   public void debug(Object m) {
@@ -73,6 +73,7 @@ public class Log {
 
   /**
    * prints a debug message
+   * 
    * @param m a log message
    * @param t a throwable error
    */
@@ -82,6 +83,7 @@ public class Log {
 
   /**
    * prints an info message
+   * 
    * @param m a log message
    */
   public void info(Object m) {
@@ -94,6 +96,7 @@ public class Log {
 
   /**
    * prints an info message
+   * 
    * @param m a log message
    * @param t a throwable error
    */
@@ -103,6 +106,7 @@ public class Log {
 
   /**
    * prints a warn message
+   * 
    * @param m a log message
    */
   public void warn(Object m) {
@@ -115,6 +119,7 @@ public class Log {
 
   /**
    * prints a warn message
+   * 
    * @param m a log message
    * @param t a throwable error
    */
@@ -124,6 +129,7 @@ public class Log {
 
   /**
    * prints an error message
+   * 
    * @param m a log message
    */
   public void error(Object m) {
@@ -136,6 +142,7 @@ public class Log {
 
   /**
    * prints an error message
+   * 
    * @param m a log message
    * @param t a throwable error
    */

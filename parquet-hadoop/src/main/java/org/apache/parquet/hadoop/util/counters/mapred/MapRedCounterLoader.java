@@ -26,8 +26,8 @@ import org.apache.parquet.hadoop.util.counters.CounterLoader;
 import org.apache.parquet.hadoop.util.counters.ICounter;
 
 /**
- * Concrete factory for counters in mapred API,
- * get a counter using mapred API when the corresponding flag is set, otherwise return a NullCounter
+ * Concrete factory for counters in mapred API, get a counter using mapred API
+ * when the corresponding flag is set, otherwise return a NullCounter
  */
 public class MapRedCounterLoader implements CounterLoader {
   private Reporter reporter;
@@ -47,5 +47,5 @@ public class MapRedCounterLoader implements CounterLoader {
       }
     }
     return new BenchmarkCounter.NullCounter();
-    }
+  }
 }

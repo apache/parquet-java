@@ -37,19 +37,15 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ParquetRecordWriterWrapper implements RecordWriter<Void, ArrayWritable>,
-  FileSinkOperator.RecordWriter {
+public class ParquetRecordWriterWrapper implements RecordWriter<Void, ArrayWritable>, FileSinkOperator.RecordWriter {
 
   public static final Logger LOG = LoggerFactory.getLogger(ParquetRecordWriterWrapper.class);
 
   private final org.apache.hadoop.mapreduce.RecordWriter<Void, ArrayWritable> realWriter;
   private final TaskAttemptContext taskContext;
 
-  public ParquetRecordWriterWrapper(
-      final OutputFormat<Void, ArrayWritable> realOutputFormat,
-      final JobConf jobConf,
-      final String name,
-      final Progressable progress) throws IOException {
+  public ParquetRecordWriterWrapper(final OutputFormat<Void, ArrayWritable> realOutputFormat, final JobConf jobConf,
+      final String name, final Progressable progress) throws IOException {
     try {
       // create a TaskInputOutputContext
       TaskAttemptID taskAttemptID = TaskAttemptID.forName(jobConf.get("mapred.task.id"));
@@ -59,8 +55,8 @@ public class ParquetRecordWriterWrapper implements RecordWriter<Void, ArrayWrita
       taskContext = ContextUtil.newTaskAttemptContext(jobConf, taskAttemptID);
 
       LOG.info("creating real writer to write at {}", name);
-      realWriter = (org.apache.hadoop.mapreduce.RecordWriter<Void, ArrayWritable>)
-          ((ParquetOutputFormat) realOutputFormat).getRecordWriter(taskContext, new Path(name));
+      realWriter = (org.apache.hadoop.mapreduce.RecordWriter<Void, ArrayWritable>) ((ParquetOutputFormat) realOutputFormat)
+          .getRecordWriter(taskContext, new Path(name));
       LOG.info("real writer: {}", realWriter);
     } catch (final InterruptedException e) {
       throw new IOException(e);

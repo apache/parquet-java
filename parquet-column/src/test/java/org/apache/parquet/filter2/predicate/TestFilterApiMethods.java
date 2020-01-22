@@ -62,8 +62,8 @@ public class TestFilterApiMethods {
   private static final DoubleColumn doubleColumn = doubleColumn("x.y.z");
   private static final BinaryColumn binColumn = binaryColumn("a.string.column");
 
-  private static final FilterPredicate predicate =
-      and(not(or(eq(intColumn, 7), notEq(intColumn, 17))), gt(doubleColumn, 100.0));
+  private static final FilterPredicate predicate = and(not(or(eq(intColumn, 7), notEq(intColumn, 17))),
+      gt(doubleColumn, 100.0));
 
   @Test
   public void testFilterPredicateCreation() {
@@ -96,8 +96,7 @@ public class TestFilterApiMethods {
   public void testToString() {
     FilterPredicate pred = or(predicate, notEq(binColumn, Binary.fromString("foobarbaz")));
     assertEquals("or(and(not(or(eq(a.b.c, 7), noteq(a.b.c, 17))), gt(x.y.z, 100.0)), "
-        + "noteq(a.string.column, Binary{\"foobarbaz\"}))",
-        pred.toString());
+        + "noteq(a.string.column, Binary{\"foobarbaz\"}))", pred.toString());
   }
 
   @Test
@@ -111,9 +110,11 @@ public class TestFilterApiMethods {
   }
 
   @Test
-  public void testSerializable() throws Exception {    
+  public void testSerializable() throws Exception {
     BinaryColumn binary = binaryColumn("foo");
-    FilterPredicate p = and(or(and(userDefined(intColumn, DummyUdp.class), predicate), eq(binary, Binary.fromString("hi"))), userDefined(longColumn, new IsMultipleOf(7)));
+    FilterPredicate p = and(
+        or(and(userDefined(intColumn, DummyUdp.class), predicate), eq(binary, Binary.fromString("hi"))),
+        userDefined(longColumn, new IsMultipleOf(7)));
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
     oos.writeObject(p);
@@ -126,7 +127,7 @@ public class TestFilterApiMethods {
 
   public static class IsMultipleOf extends UserDefinedPredicate<Long> implements Serializable {
 
-    private long of; 
+    private long of;
 
     public IsMultipleOf(long of) {
       this.of = of;
@@ -149,21 +150,23 @@ public class TestFilterApiMethods {
     public boolean inverseCanDrop(Statistics<Long> statistics) {
       return false;
     }
-    
+
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       IsMultipleOf that = (IsMultipleOf) o;
       return this.of == that.of;
     }
-    
+
     @Override
     public int hashCode() {
       return new Long(of).hashCode();
     }
-    
+
     @Override
     public String toString() {
       return "IsMultipleOf(" + of + ")";

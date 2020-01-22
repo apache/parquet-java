@@ -34,18 +34,14 @@ import org.apache.parquet.tools.read.SimpleRecord;
 public class HeadCommand extends ArgsOnlyCommand {
   private static final long DEFAULT = 5;
 
-  public static final String[] USAGE = new String[] {
-    "<input>",
-    "where <input> is the parquet file to print to stdout"
-  };
+  public static final String[] USAGE = new String[] { "<input>",
+      "where <input> is the parquet file to print to stdout" };
 
   public static final Options OPTIONS;
   static {
     OPTIONS = new Options();
     Option help = OptionBuilder.withLongOpt("records")
-                               .withDescription("The number of records to show (default: " + DEFAULT + ")")
-                               .hasOptionalArg()
-                               .create('n');
+        .withDescription("The number of records to show (default: " + DEFAULT + ")").hasOptionalArg().create('n');
     OPTIONS.addOption(help);
   }
 

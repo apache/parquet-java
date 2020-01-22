@@ -45,39 +45,24 @@ import org.apache.parquet.tools.Main;
  * parquet-tools command to print column and offset indexes.
  */
 public class ColumnIndexCommand extends ArgsOnlyCommand {
-  public static final String[] USAGE = new String[] {
-      "<input>",
-      "where <input> is the parquet file to print the column and offset indexes for"
-  };
+  public static final String[] USAGE = new String[] { "<input>",
+      "where <input> is the parquet file to print the column and offset indexes for" };
 
   public static final Options OPTIONS;
   static {
     OPTIONS = new Options();
-    OPTIONS.addOption(Option.builder("c")
-        .longOpt("column")
-        .desc("Shows the column/offset indexes for the given column only; "
-            + "multiple columns shall be separated by commas")
-        .hasArg()
-        .build());
-    OPTIONS.addOption(Option.builder("r")
-        .longOpt("row-group")
+    OPTIONS.addOption(Option.builder("c").longOpt("column").desc(
+        "Shows the column/offset indexes for the given column only; " + "multiple columns shall be separated by commas")
+        .hasArg().build());
+    OPTIONS.addOption(Option.builder("r").longOpt("row-group")
         .desc("Shows the column/offset indexes for the given row-groups only; "
             + "multiple row-groups shall be speparated by commas; "
             + "row-groups are referenced by their indexes from 0")
-        .hasArg()
-        .build());
-    OPTIONS.addOption(Option.builder("i")
-        .longOpt("column-index")
-        .desc("Shows the column indexes; "
-            + "active by default unless -o is used")
-        .hasArg(false)
-        .build());
-    OPTIONS.addOption(Option.builder("o")
-        .longOpt("offset-index")
-        .desc("Shows the offset indexes; "
-            + "active by default unless -i is used")
-        .hasArg(false)
-        .build());
+        .hasArg().build());
+    OPTIONS.addOption(Option.builder("i").longOpt("column-index")
+        .desc("Shows the column indexes; " + "active by default unless -o is used").hasArg(false).build());
+    OPTIONS.addOption(Option.builder("o").longOpt("offset-index")
+        .desc("Shows the offset indexes; " + "active by default unless -i is used").hasArg(false).build());
   }
 
   public ColumnIndexCommand() {

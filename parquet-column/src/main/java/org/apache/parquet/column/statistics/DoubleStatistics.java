@@ -32,7 +32,8 @@ public class DoubleStatistics extends Statistics<Double> {
   private double min;
 
   /**
-   * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
+   * @deprecated will be removed in 2.0.0. Use
+   * {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
    */
   @Deprecated
   public DoubleStatistics() {
@@ -62,7 +63,7 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
-    DoubleStatistics doubleStats = (DoubleStatistics)stats;
+    DoubleStatistics doubleStats = (DoubleStatistics) stats;
     if (!this.hasNonNullValue()) {
       initializeStats(doubleStats.getMin(), doubleStats.getMax());
     } else {
@@ -98,14 +99,18 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   public void updateStats(double min_value, double max_value) {
-    if (comparator().compare(min, min_value) > 0) { min = min_value; }
-    if (comparator().compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) {
+      min = min_value;
+    }
+    if (comparator().compare(max, max_value) < 0) {
+      max = max_value;
+    }
   }
 
   public void initializeStats(double min_value, double max_value) {
-      min = min_value;
-      max = max_value;
-      this.markAsNotEmpty();
+    min = min_value;
+    max = max_value;
+    this.markAsNotEmpty();
   }
 
   @Override

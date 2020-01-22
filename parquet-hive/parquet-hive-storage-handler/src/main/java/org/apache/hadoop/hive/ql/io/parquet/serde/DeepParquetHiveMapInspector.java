@@ -26,12 +26,14 @@ import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
 
 /**
- * The DeepParquetHiveMapInspector will inspect an ArrayWritable, considering it as a Hive map.
+ * The DeepParquetHiveMapInspector will inspect an ArrayWritable, considering it
+ * as a Hive map.
  * <p>
- * It can also inspect a Map if Hive decides to inspect the result of an inspection.
+ * It can also inspect a Map if Hive decides to inspect the result of an
+ * inspection.
  * <p>
- * When trying to access elements from the map it will iterate over all keys, inspecting them and comparing them to the
-  * desired key.
+ * When trying to access elements from the map it will iterate over all keys,
+ * inspecting them and comparing them to the desired key.
  */
 public class DeepParquetHiveMapInspector extends AbstractParquetMapInspector {
 
@@ -58,7 +60,7 @@ public class DeepParquetHiveMapInspector extends AbstractParquetMapInspector {
         final ArrayWritable mapObj = (ArrayWritable) obj;
         final Writable[] arr = mapObj.get();
         if (key.equals(arr[0]) || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveJavaObject(arr[0]))
-                || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveWritableObject(arr[0]))) {
+            || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveWritableObject(arr[0]))) {
           return arr[1];
         }
       }
@@ -75,7 +77,7 @@ public class DeepParquetHiveMapInspector extends AbstractParquetMapInspector {
 
       for (final Map.Entry<?, ?> entry : map.entrySet()) {
         if (key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveJavaObject(entry.getKey()))
-                || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveWritableObject(entry.getKey()))) {
+            || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveWritableObject(entry.getKey()))) {
           return entry.getValue();
         }
       }

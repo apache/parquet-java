@@ -25,12 +25,12 @@ import java.util.regex.Pattern;
 import static org.apache.parquet.Preconditions.checkArgument;
 
 /**
- * Parses a parquet Version string
- * Tolerates missing semver and buildhash
+ * Parses a parquet Version string Tolerates missing semver and buildhash
  * (semver and build hash may be null)
  */
 public class VersionParser {
-  // example: parquet-mr version 1.8.0rc2-SNAPSHOT (build ddb469afac70404ea63b72ed2f07a911a8592ff7)
+  // example: parquet-mr version 1.8.0rc2-SNAPSHOT (build
+  // ddb469afac70404ea63b72ed2f07a911a8592ff7)
   public static final String FORMAT = "(.*?)\\s+version\\s*(?:([^(]*?)\\s*(?:\\(\\s*build\\s*([^)]*?)\\s*\\))?)?";
   public static final Pattern PATTERN = Pattern.compile(FORMAT);
 
@@ -71,15 +71,19 @@ public class VersionParser {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       ParsedVersion version = (ParsedVersion) o;
 
       if (appBuildHash != null ? !appBuildHash.equals(version.appBuildHash) : version.appBuildHash != null)
         return false;
-      if (application != null ? !application.equals(version.application) : version.application != null) return false;
-      if (this.version != null ? !this.version.equals(version.version) : version.version != null) return false;
+      if (application != null ? !application.equals(version.application) : version.application != null)
+        return false;
+      if (this.version != null ? !this.version.equals(version.version) : version.version != null)
+        return false;
 
       return true;
     }
@@ -94,18 +98,15 @@ public class VersionParser {
 
     @Override
     public String toString() {
-      return "ParsedVersion(" +
-          "application=" + application +
-          ", semver=" + version +
-          ", appBuildHash=" + appBuildHash +
-          ')';
+      return "ParsedVersion(" + "application=" + application + ", semver=" + version + ", appBuildHash=" + appBuildHash
+          + ')';
     }
   }
 
   public static ParsedVersion parse(String createdBy) throws VersionParseException {
     Matcher matcher = PATTERN.matcher(createdBy);
 
-    if(!matcher.matches()){
+    if (!matcher.matches()) {
       throw new VersionParseException("Could not parse created_by: " + createdBy + " using format: " + FORMAT);
     }
 

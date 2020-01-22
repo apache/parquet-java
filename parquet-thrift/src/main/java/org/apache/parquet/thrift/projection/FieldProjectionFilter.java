@@ -18,10 +18,10 @@
  */
 package org.apache.parquet.thrift.projection;
 
-
 /**
- * A field projection filter decides whether a thrift field (column) should
- * be included when reading thrift data. It is used to implement projection push down.
+ * A field projection filter decides whether a thrift field (column) should be
+ * included when reading thrift data. It is used to implement projection push
+ * down.
  *
  * See {@link StrictFieldProjectionFilter} and
  * {@link org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter}
@@ -29,8 +29,8 @@ package org.apache.parquet.thrift.projection;
 public interface FieldProjectionFilter {
 
   /**
-   * Decide whether to keep the field (column) represented by path.
-   * This path always represents a primitive (leaf node) path.
+   * Decide whether to keep the field (column) represented by path. This path
+   * always represents a primitive (leaf node) path.
    *
    * @param path the path to the field (column)
    * @return true to keep, false to discard (project out)
@@ -38,10 +38,12 @@ public interface FieldProjectionFilter {
   boolean keep(FieldsPath path);
 
   /**
-   * Should throw a ThriftProjectionException if this FieldProjectionFilter has remaining patterns / columns
-   * that didn't match any of paths passed to {@link #keep(FieldsPath)}.
+   * Should throw a ThriftProjectionException if this FieldProjectionFilter has
+   * remaining patterns / columns that didn't match any of paths passed to
+   * {@link #keep(FieldsPath)}.
    *
-   * Will be called once after all paths have been passed to {@link #keep(FieldsPath)}.
+   * Will be called once after all paths have been passed to
+   * {@link #keep(FieldsPath)}.
    */
   void assertNoUnmatchedPatterns() throws ThriftProjectionException;
 

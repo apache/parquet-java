@@ -50,7 +50,10 @@ import static org.apache.parquet.filter.PagedRecordFilter.page;
 
 public class TestFiltered {
 
-  /* Class that implements applyFunction filter for long. Checks for long greater than 15. */
+  /*
+   * Class that implements applyFunction filter for long. Checks for long greater
+   * than 15.
+   */
   public class LongGreaterThan15Predicate implements LongPredicateFunction {
     @Override
     public boolean functionToApply(long input) {
@@ -58,7 +61,10 @@ public class TestFiltered {
     }
   }
 
-  /* Class that implements applyFunction filter for string. Checks for string ending in 'A'. */
+  /*
+   * Class that implements applyFunction filter for string. Checks for string
+   * ending in 'A'.
+   */
   public class StringEndsWithAPredicate implements PredicateFunction<String> {
     @Override
     public boolean functionToApply(String input) {
@@ -83,20 +89,19 @@ public class TestFiltered {
 
   @Test
   public void testFilterOnInteger() {
-    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 1);
 
     // Get first record
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter, FilterCompat.get(column("DocId", equalTo(10l))));
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>) columnIO
+        .getRecordReader(memPageStore, recordConverter, FilterCompat.get(column("DocId", equalTo(10l))));
 
     readOne(recordReader, "r2 filtered out", r1);
 
     // Get second record
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("DocId", equalTo(20l))));
+    recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(memPageStore, recordConverter,
+        FilterCompat.get(column("DocId", equalTo(20l))));
 
     readOne(recordReader, "r1 filtered out", r2);
 
@@ -104,51 +109,47 @@ public class TestFiltered {
 
   @Test
   public void testApplyFunctionFilterOnLong() {
-    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 1);
 
     // Get first record
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("DocId", equalTo(10l))));
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>) columnIO
+        .getRecordReader(memPageStore, recordConverter, FilterCompat.get(column("DocId", equalTo(10l))));
 
     readOne(recordReader, "r2 filtered out", r1);
 
     // Get second record
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("DocId", applyFunctionToLong(new LongGreaterThan15Predicate()))));
+    recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(memPageStore, recordConverter,
+        FilterCompat.get(column("DocId", applyFunctionToLong(new LongGreaterThan15Predicate()))));
 
     readOne(recordReader, "r1 filtered out", r2);
   }
 
   @Test
   public void testFilterOnString() {
-    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 1);
 
     // First try matching against the A url in record 1
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("Name.Url", equalTo("http://A"))));
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>) columnIO
+        .getRecordReader(memPageStore, recordConverter, FilterCompat.get(column("Name.Url", equalTo("http://A"))));
 
     readOne(recordReader, "r2 filtered out", r1);
 
-    // Second try matching against the B url in record 1 - it should fail as we only match
+    // Second try matching against the B url in record 1 - it should fail as we only
+    // match
     // against the first instance of a
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("Name.Url", equalTo("http://B"))));
+    recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(memPageStore, recordConverter,
+        FilterCompat.get(column("Name.Url", equalTo("http://B"))));
 
     List<Group> all = readAll(recordReader);
-    assertEquals("There should be no matching records: " + all , 0, all.size());
+    assertEquals("There should be no matching records: " + all, 0, all.size());
 
     // Finally try matching against the C url in record 2
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("Name.Url", equalTo("http://C"))));
+    recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(memPageStore, recordConverter,
+        FilterCompat.get(column("Name.Url", equalTo("http://C"))));
 
     readOne(recordReader, "r1 filtered out", r2);
 
@@ -156,30 +157,29 @@ public class TestFiltered {
 
   @Test
   public void testApplyFunctionFilterOnString() {
-    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 1);
 
     // First try matching against the A url in record 1
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("Name.Url", applyFunctionToString(new StringEndsWithAPredicate()))));
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(
+        memPageStore, recordConverter,
+        FilterCompat.get(column("Name.Url", applyFunctionToString(new StringEndsWithAPredicate()))));
 
     readOne(recordReader, "r2 filtered out", r1);
 
-    // Second try matching against the B url in record 1 - it should fail as we only match
+    // Second try matching against the B url in record 1 - it should fail as we only
+    // match
     // against the first instance of a
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("Name.Url", equalTo("http://B"))));
+    recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(memPageStore, recordConverter,
+        FilterCompat.get(column("Name.Url", equalTo("http://B"))));
 
     List<Group> all = readAll(recordReader);
-    assertEquals("There should be no matching records: " + all , 0, all.size());
+    assertEquals("There should be no matching records: " + all, 0, all.size());
 
     // Finally try matching against the C url in record 2
-    recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(column("Name.Url", equalTo("http://C"))));
+    recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(memPageStore, recordConverter,
+        FilterCompat.get(column("Name.Url", equalTo("http://C"))));
 
     readOne(recordReader, "r1 filtered out", r2);
 
@@ -187,30 +187,28 @@ public class TestFiltered {
 
   @Test
   public void testPaged() {
-    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 6);
 
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(page(4, 4)));
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>) columnIO
+        .getRecordReader(memPageStore, recordConverter, FilterCompat.get(page(4, 4)));
 
     List<Group> all = readAll(recordReader);
     assertEquals("expecting records " + all, 4, all.size());
     for (int i = 0; i < all.size(); i++) {
-      assertEquals("expecting record", (i%2 == 0 ? r2 : r1).toString(), all.get(i).toString());
+      assertEquals("expecting record", (i % 2 == 0 ? r2 : r1).toString(), all.get(i).toString());
     }
   }
 
   @Test
   public void testFilteredAndPaged() {
-    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 8);
 
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(and(column("DocId", equalTo(10l)), page(2, 4))));
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(
+        memPageStore, recordConverter, FilterCompat.get(and(column("DocId", equalTo(10l)), page(2, 4))));
 
     List<Group> all = readAll(recordReader);
     assertEquals("expecting 4 records " + all, 4, all.size());
@@ -222,18 +220,17 @@ public class TestFiltered {
 
   @Test
   public void testFilteredOrPaged() {
-    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 8);
 
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(or(column("DocId", equalTo(10l)),
-                column("DocId", equalTo(20l)))));
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>) columnIO.getRecordReader(
+        memPageStore, recordConverter,
+        FilterCompat.get(or(column("DocId", equalTo(10l)), column("DocId", equalTo(20l)))));
 
     List<Group> all = readAll(recordReader);
     assertEquals("expecting 8 records " + all, 16, all.size());
-    for (int i = 0; i < all.size () / 2; i++) {
+    for (int i = 0; i < all.size() / 2; i++) {
       assertEquals("expecting record1", r1.toString(), all.get(2 * i).toString());
       assertEquals("expecting record2", r2.toString(), all.get(2 * i + 1).toString());
     }
@@ -241,13 +238,12 @@ public class TestFiltered {
 
   @Test
   public void testFilteredNotPaged() {
-    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 8);
 
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
-    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
-        columnIO.getRecordReader(memPageStore, recordConverter,
-            FilterCompat.get(not(column("DocId", equalTo(10l)))));
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>) columnIO
+        .getRecordReader(memPageStore, recordConverter, FilterCompat.get(not(column("DocId", equalTo(10l)))));
 
     List<Group> all = readAll(recordReader);
     assertEquals("expecting 8 records " + all, 8, all.size());
@@ -258,16 +254,12 @@ public class TestFiltered {
 
   private MemPageStore writeTestRecords(MessageColumnIO columnIO, int number) {
     MemPageStore memPageStore = new MemPageStore(number * 2);
-    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(
-        memPageStore,
-        ParquetProperties.builder()
-            .withPageSize(800)
-            .withDictionaryEncoding(false)
-            .build());
+    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore,
+        ParquetProperties.builder().withPageSize(800).withDictionaryEncoding(false).build());
 
     RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     GroupWriter groupWriter = new GroupWriter(recordWriter, schema);
-    for ( int i = 0; i < number; i++ ) {
+    for (int i = 0; i < number; i++) {
       groupWriter.write(r1);
       groupWriter.write(r2);
     }

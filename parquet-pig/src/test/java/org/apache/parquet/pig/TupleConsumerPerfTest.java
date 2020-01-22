@@ -20,7 +20,6 @@ package org.apache.parquet.pig;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.pig.backend.executionengine.ExecException;
@@ -52,43 +51,40 @@ public class TupleConsumerPerfTest {
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchema));
 
     MemPageStore memPageStore = new MemPageStore(0);
-    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(
-        memPageStore, ParquetProperties.builder()
-            .withPageSize(50*1024*1024)
-            .withDictionaryEncoding(false)
-            .build());
+    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore,
+        ParquetProperties.builder().withPageSize(50 * 1024 * 1024).withDictionaryEncoding(false).build());
     write(memPageStore, columns, schema, pigSchema);
     columns.flush();
     read(memPageStore, pigSchema, pigSchemaProjected, pigSchemaNoString);
-    System.out.println(columns.getBufferedSize()+" bytes used total");
-    System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
+    System.out.println(columns.getBufferedSize() + " bytes used total");
+    System.out.println("max col size: " + columns.maxColMemSize() + " bytes");
   }
 
   private static String pigSchema(boolean projected, boolean noStrings) {
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < TOP_LEVEL_COLS; i++) {
-      if (i!=0) {
+      if (i != 0) {
         sb.append(", ");
       }
-      sb.append("i"+i+":(");
+      sb.append("i" + i + ":(");
       if (!noStrings) {
-        for (int j = 0; j < (projected ? 2 : 4); j++)  {
-          if (j!=0) {
+        for (int j = 0; j < (projected ? 2 : 4); j++) {
+          if (j != 0) {
             sb.append(", ");
           }
-          sb.append("j"+j+":chararray");
+          sb.append("j" + j + ":chararray");
         }
         sb.append(", ");
       }
-      for (int k = 0; k < (projected ? 2 : 4); k++)  {
-        if (k!=0) {
+      for (int k = 0; k < (projected ? 2 : 4); k++) {
+        if (k != 0) {
           sb.append(", ");
         }
-        sb.append("k"+k+":long");
+        sb.append("k" + k + ":long");
       }
-      for (int l = 0; l < (projected ? 1 : 2); l++)  {
+      for (int l = 0; l < (projected ? 1 : 2); l++) {
         sb.append(", ");
-        sb.append("l"+l+":{t:(v:int)}");
+        sb.append("l" + l + ":{t:(v:int)}");
       }
       sb.append(")");
     }
@@ -100,28 +96,29 @@ public class TupleConsumerPerfTest {
     Tuple t = tf.newTuple(TOP_LEVEL_COLS);
     for (int i = 0; i < TOP_LEVEL_COLS; i++) {
       Tuple ti = tf.newTuple(10);
-      for (int j = 0; j < 4; j++)  {
-        ti.set(j, "foo"+i+","+j);
+      for (int j = 0; j < 4; j++) {
+        ti.set(j, "foo" + i + "," + j);
       }
-      for (int k = 0; k < 4; k++)  {
-        ti.set(4+k, (long)k);
+      for (int k = 0; k < 4; k++) {
+        ti.set(4 + k, (long) k);
       }
-      for (int l = 0; l < 2; l++)  {
+      for (int l = 0; l < 2; l++) {
         DataBag bag = new NonSpillableDataBag();
         for (int m = 0; m < 10; m++) {
-          bag.add(tf.newTuple((Object)new Integer(m)));
+          bag.add(tf.newTuple((Object) new Integer(m)));
         }
-        ti.set(8+l, bag);
+        ti.set(8 + l, bag);
       }
       t.set(i, ti);
     }
     return t;
   }
 
-  private static void read(PageReadStore columns, String pigSchemaString, String pigSchemaProjected, String pigSchemaProjectedNoStrings) throws ParserException {
-      read(columns, pigSchemaString, "read all");
-      read(columns, pigSchemaProjected, "read projected");
-      read(columns, pigSchemaProjectedNoStrings, "read projected no Strings");
+  private static void read(PageReadStore columns, String pigSchemaString, String pigSchemaProjected,
+      String pigSchemaProjectedNoStrings) throws ParserException {
+    read(columns, pigSchemaString, "read all");
+    read(columns, pigSchemaProjected, "read projected");
+    read(columns, pigSchemaProjectedNoStrings, "read projected no Strings");
   }
 
   private static void read(PageReadStore columns, String pigSchemaString, String message) throws ParserException {
@@ -153,7 +150,8 @@ public class TupleConsumerPerfTest {
     return map;
   }
 
-  private static void write(MemPageStore memPageStore, ColumnWriteStoreV1 columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
+  private static void write(MemPageStore memPageStore, ColumnWriteStoreV1 columns, MessageType schema,
+      String pigSchemaString) throws ExecException, ParserException {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleWriteSupport tupleWriter = TupleWriteSupport.fromPigSchema(pigSchemaString);
     tupleWriter.init(null);
@@ -173,7 +171,6 @@ public class TupleConsumerPerfTest {
     return new ColumnIOFactory().getColumnIO(schema);
   }
 
-
   private static void read(RecordReader<Tuple> recordReader, int count, String pigSchemaString) throws ParserException {
 
     long t0 = System.currentTimeMillis();
@@ -185,9 +182,10 @@ public class TupleConsumerPerfTest {
       throw new RuntimeException();
     }
     long t1 = System.currentTimeMillis();
-    long t = t1-t0;
-    float err = (float)100 * 2 / t; // (+/- 1 ms)
-    System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
+    long t = t1 - t0;
+    float err = (float) 100 * 2 / t; // (+/- 1 ms)
+    System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count, t, t == 0 ? 0 : count * 1000 / t,
+        err);
   }
 
   private static void write(MemPageStore memPageStore, TupleWriteSupport tupleWriter, int count) throws ExecException {
@@ -197,10 +195,9 @@ public class TupleConsumerPerfTest {
       tupleWriter.write(tu);
     }
     long t1 = System.currentTimeMillis();
-    long t = t1-t0;
+    long t = t1 - t0;
     memPageStore.addRowCount(count);
-    System.out.printf("written %,9d recs in %,5d ms at %,9d rec/s\n", count, t, t == 0 ? 0 : count * 1000 / t );
+    System.out.printf("written %,9d recs in %,5d ms at %,9d rec/s\n", count, t, t == 0 ? 0 : count * 1000 / t);
   }
-
 
 }

@@ -28,7 +28,6 @@ import org.apache.hadoop.mapred.RecordReader;
 
 import org.apache.parquet.hadoop.ParquetInputFormat;
 
-
 /**
  *
  * A Parquet InputFormat for Hive (with the deprecated package mapred)
@@ -48,10 +47,8 @@ public class MapredParquetInputFormat extends FileInputFormat<Void, ArrayWritabl
 
   @Override
   public org.apache.hadoop.mapred.RecordReader<Void, ArrayWritable> getRecordReader(
-      final org.apache.hadoop.mapred.InputSplit split,
-      final org.apache.hadoop.mapred.JobConf job,
-      final org.apache.hadoop.mapred.Reporter reporter
-      ) throws IOException {
+      final org.apache.hadoop.mapred.InputSplit split, final org.apache.hadoop.mapred.JobConf job,
+      final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
     try {
       return (RecordReader<Void, ArrayWritable>) new ParquetRecordReaderWrapper(realInput, split, job, reporter);
     } catch (final InterruptedException e) {

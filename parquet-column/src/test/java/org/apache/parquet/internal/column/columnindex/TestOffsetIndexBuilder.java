@@ -37,16 +37,8 @@ public class TestOffsetIndexBuilder {
     builder.add(2000, 19);
     builder.add(3000, 27);
     builder.add(1200, 9);
-    assertCorrectValues(builder.build(),
-        0, 1000, 0,
-        1000, 2000, 10,
-        3000, 3000, 29,
-        6000, 1200, 56);
-    assertCorrectValues(builder.build(10000),
-        10000, 1000, 0,
-        11000, 2000, 10,
-        13000, 3000, 29,
-        16000, 1200, 56);
+    assertCorrectValues(builder.build(), 0, 1000, 0, 1000, 2000, 10, 3000, 3000, 29, 6000, 1200, 56);
+    assertCorrectValues(builder.build(10000), 10000, 1000, 0, 11000, 2000, 10, 13000, 3000, 29, 16000, 1200, 56);
   }
 
   @Test
@@ -70,16 +62,9 @@ public class TestOffsetIndexBuilder {
     builder.add(22000, 12000, 100);
     builder.add(48000, 22000, 211);
     builder.add(90000, 30000, 361);
-    assertCorrectValues(builder.build(),
-        1000, 10000, 0,
-        22000, 12000, 100,
-        48000, 22000, 211,
-        90000, 30000, 361);
-    assertCorrectValues(builder.build(100000),
-        101000, 10000, 0,
-        122000, 12000, 100,
-        148000, 22000, 211,
-        190000, 30000, 361);
+    assertCorrectValues(builder.build(), 1000, 10000, 0, 22000, 12000, 100, 48000, 22000, 211, 90000, 30000, 361);
+    assertCorrectValues(builder.build(100000), 101000, 10000, 0, 122000, 12000, 100, 148000, 22000, 211, 190000, 30000,
+        361);
   }
 
   @Test
@@ -98,8 +83,7 @@ public class TestOffsetIndexBuilder {
     int pageCount = offset_size_rowIndex_triplets.length / 3;
     assertEquals("Invalid pageCount", pageCount, offsetIndex.getPageCount());
     for (int i = 0; i < pageCount; ++i) {
-      assertEquals("Invalid offsetIndex at page " + i, offset_size_rowIndex_triplets[3 * i],
-          offsetIndex.getOffset(i));
+      assertEquals("Invalid offsetIndex at page " + i, offset_size_rowIndex_triplets[3 * i], offsetIndex.getOffset(i));
       assertEquals("Invalid compressedPageSize at page " + i, offset_size_rowIndex_triplets[3 * i + 1],
           offsetIndex.getCompressedPageSize(i));
       assertEquals("Invalid firstRowIndex at page " + i, offset_size_rowIndex_triplets[3 * i + 2],

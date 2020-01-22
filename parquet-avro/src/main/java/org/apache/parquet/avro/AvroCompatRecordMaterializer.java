@@ -29,8 +29,7 @@ class AvroCompatRecordMaterializer<T extends IndexedRecord> extends RecordMateri
 
   private AvroIndexedRecordConverter<T> root;
 
-  public AvroCompatRecordMaterializer(MessageType requestedSchema, Schema avroSchema,
-                                      GenericData baseModel) {
+  public AvroCompatRecordMaterializer(MessageType requestedSchema, Schema avroSchema, GenericData baseModel) {
     this.root = new AvroIndexedRecordConverter<T>(requestedSchema, avroSchema, baseModel);
   }
 

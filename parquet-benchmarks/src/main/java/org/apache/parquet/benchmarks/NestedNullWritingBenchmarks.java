@@ -47,12 +47,14 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Benchmark to measure writing nested null values. (See PARQUET-343 for details.)
+ * Benchmark to measure writing nested null values. (See PARQUET-343 for
+ * details.)
  * <p>
- * To execute this benchmark a jar file shall be created of this module. Then the jar file can be executed using the JMH
- * framework.<br>
- * The following one-liner (shall be executed in the parquet-benchmarks submodule) generates result statistics in the
- * file {@code jmh-result.json}. This json might be visualized by using the tool at
+ * To execute this benchmark a jar file shall be created of this module. Then
+ * the jar file can be executed using the JMH framework.<br>
+ * The following one-liner (shall be executed in the parquet-benchmarks
+ * submodule) generates result statistics in the file {@code jmh-result.json}.
+ * This json might be visualized by using the tool at
  * <a href="https://jmh.morethan.io">https://jmh.morethan.io</a>.
  *
  * <pre>
@@ -66,23 +68,10 @@ import org.openjdk.jmh.annotations.Warmup;
 @OutputTimeUnit(MILLISECONDS)
 @State(Benchmark)
 public class NestedNullWritingBenchmarks {
-  private static final MessageType SCHEMA = Types.buildMessage()
-      .optionalList()
-      .optionalElement(INT32)
-      .named("int_list")
-      .optionalList()
-      .optionalListElement()
-      .optionalElement(BINARY)
-      .named("dummy_list")
-      .optionalMap()
-      .key(BINARY)
-      .value(BINARY, OPTIONAL)
-      .named("dummy_map")
-      .optionalGroup()
-      .optional(BINARY).named("dummy_group_value1")
-      .optional(BINARY).named("dummy_group_value2")
-      .optional(BINARY).named("dummy_group_value3")
-      .named("dummy_group")
+  private static final MessageType SCHEMA = Types.buildMessage().optionalList().optionalElement(INT32).named("int_list")
+      .optionalList().optionalListElement().optionalElement(BINARY).named("dummy_list").optionalMap().key(BINARY)
+      .value(BINARY, OPTIONAL).named("dummy_map").optionalGroup().optional(BINARY).named("dummy_group_value1")
+      .optional(BINARY).named("dummy_group_value2").optional(BINARY).named("dummy_group_value3").named("dummy_group")
       .named("msg");
   private static final int RECORD_COUNT = 10_000_000;
   private static final double NULL_RATIO = 0.99;
@@ -139,10 +128,8 @@ public class NestedNullWritingBenchmarks {
   @Benchmark
   public void benchmarkWriting() throws IOException {
     ValueGenerator generator = new ValueGenerator();
-    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(BLACK_HOLE)
-        .withWriteMode(Mode.OVERWRITE)
-        .withType(SCHEMA)
-        .build()) {
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(BLACK_HOLE).withWriteMode(Mode.OVERWRITE)
+        .withType(SCHEMA).build()) {
       for (int i = 0; i < RECORD_COUNT; ++i) {
         writer.write(generator.nextValue());
       }

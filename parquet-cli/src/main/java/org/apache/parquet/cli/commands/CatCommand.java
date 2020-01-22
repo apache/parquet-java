@@ -39,13 +39,10 @@ public class CatCommand extends BaseCommand {
   @Parameter(description = "<file>")
   List<String> sourceFiles;
 
-  @Parameter(names={"-n", "--num-records"},
-      description="The number of records to print")
+  @Parameter(names = { "-n", "--num-records" }, description = "The number of records to print")
   long numRecords;
 
-  @Parameter(
-      names = {"-c", "--column", "--columns"},
-      description = "List of columns")
+  @Parameter(names = { "-c", "--column", "--columns" }, description = "List of columns")
   List<String> columns;
 
   public CatCommand(Logger console, long defaultNumRecords) {
@@ -55,11 +52,8 @@ public class CatCommand extends BaseCommand {
 
   @Override
   public int run() throws IOException {
-    Preconditions.checkArgument(
-        sourceFiles != null && !sourceFiles.isEmpty(),
-        "Missing file name");
-    Preconditions.checkArgument(sourceFiles.size() == 1,
-        "Only one file can be given");
+    Preconditions.checkArgument(sourceFiles != null && !sourceFiles.isEmpty(), "Missing file name");
+    Preconditions.checkArgument(sourceFiles.size() == 1, "Only one file can be given");
 
     final String source = sourceFiles.get(0);
 
@@ -95,12 +89,7 @@ public class CatCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList(
-        "# Show the first 10 records in file \"data.avro\":",
-        "data.avro",
-        "# Show the first 50 records in file \"data.parquet\":",
-        "data.parquet -n 50"
-    );
+    return Lists.newArrayList("# Show the first 10 records in file \"data.avro\":", "data.avro",
+        "# Show the first 50 records in file \"data.parquet\":", "data.parquet -n 50");
   }
 }
-

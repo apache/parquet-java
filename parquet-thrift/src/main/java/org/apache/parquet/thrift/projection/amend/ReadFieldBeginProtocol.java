@@ -31,10 +31,12 @@ public class ReadFieldBeginProtocol extends ParquetProtocol {
   public ReadFieldBeginProtocol(ThriftField missingField) {
     super("readFieldBegin()");
     this.field = missingField;
-    this.thriftType =
-            missingField.getType().getType() == ThriftTypeID.ENUM ?
-                    ThriftTypeID.I32.getThriftType() : // enums are serialized as I32
-                    missingField.getType().getType().getThriftType();
+    this.thriftType = missingField.getType().getType() == ThriftTypeID.ENUM ? ThriftTypeID.I32.getThriftType() : // enums
+                                                                                                                 // are
+                                                                                                                 // serialized
+                                                                                                                 // as
+                                                                                                                 // I32
+        missingField.getType().getType().getThriftType();
   }
 
   @Override

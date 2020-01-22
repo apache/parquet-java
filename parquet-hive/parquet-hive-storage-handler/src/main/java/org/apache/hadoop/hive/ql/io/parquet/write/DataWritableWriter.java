@@ -37,9 +37,8 @@ import org.apache.parquet.schema.Type;
 
 /**
  *
- * DataWritableWriter is a writer,
- * that will read an ArrayWritable and give the data to parquet
- * with the expected schema
+ * DataWritableWriter is a writer, that will read an ArrayWritable and give the
+ * data to parquet with the expected schema
  *
  */
 public class DataWritableWriter {

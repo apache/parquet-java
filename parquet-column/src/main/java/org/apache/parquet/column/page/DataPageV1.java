@@ -42,7 +42,8 @@ public class DataPageV1 extends DataPage {
    * @param dlEncoding the definition level encoding for this page
    * @param valuesEncoding the values encoding for this page
    */
-  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
+  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, Statistics<?> statistics,
+      Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
     super(Math.toIntExact(bytes.size()), uncompressedSize, valueCount);
     this.bytes = bytes;
     this.statistics = statistics;
@@ -112,7 +113,8 @@ public class DataPageV1 extends DataPage {
 
   @Override
   public String toString() {
-    return "Page [bytes.size=" + bytes.size() + ", valueCount=" + getValueCount() + ", uncompressedSize=" + getUncompressedSize() + "]";
+    return "Page [bytes.size=" + bytes.size() + ", valueCount=" + getValueCount() + ", uncompressedSize="
+        + getUncompressedSize() + "]";
   }
 
   @Override

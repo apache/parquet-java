@@ -31,8 +31,7 @@ public class ColumnWriteStoreV1 extends ColumnWriteStoreBase {
   }
 
   @Deprecated
-  public ColumnWriteStoreV1(final PageWriteStore pageWriteStore,
-      final ParquetProperties props) {
+  public ColumnWriteStoreV1(final PageWriteStore pageWriteStore, final ParquetProperties props) {
     super(pageWriteStore, props);
   }
 

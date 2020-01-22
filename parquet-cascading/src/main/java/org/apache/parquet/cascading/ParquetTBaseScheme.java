@@ -33,8 +33,9 @@ import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
 import org.apache.parquet.hadoop.thrift.TBaseWriteSupport;
 import org.apache.parquet.thrift.TBaseRecordConverter;
 
-@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being superseded with parquet-cascading3 for Cascading 3.x
-public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme<T> {
+@Deprecated // The parquet-cascading module depends on Cascading 2.x, and is being
+            // superseded with parquet-cascading3 for Cascading 3.x
+public class ParquetTBaseScheme<T extends TBase<?, ?>> extends ParquetValueScheme<T> {
 
   // In the case of reads, we can read the thrift class from the file metadata
   public ParquetTBaseScheme() {
@@ -58,8 +59,8 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
   }
 
   @Override
-  public void sourceConfInit(FlowProcess<JobConf> fp,
-      Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+  public void sourceConfInit(FlowProcess<JobConf> fp, Tap<JobConf, RecordReader, OutputCollector> tap,
+      JobConf jobConf) {
     super.sourceConfInit(fp, tap, jobConf);
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
@@ -67,11 +68,11 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
   }
 
   @Override
-  public void sinkConfInit(FlowProcess<JobConf> fp,
-      Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+  public void sinkConfInit(FlowProcess<JobConf> fp, Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
 
     if (this.config.getKlass() == null) {
-      throw new IllegalArgumentException("To use ParquetTBaseScheme as a sink, you must specify a thrift class in the constructor");
+      throw new IllegalArgumentException(
+          "To use ParquetTBaseScheme as a sink, you must specify a thrift class in the constructor");
     }
 
     DeprecatedParquetOutputFormat.setAsOutputFormat(jobConf);

@@ -71,13 +71,8 @@ public class TestThriftToParquetFileWriter {
 
   @Test
   public void testWriteFile() throws IOException, InterruptedException, TException {
-    final AddressBook a = new AddressBook(
-        Arrays.asList(
-            new Person(
-                new Name("Bob", "Roberts"),
-                0,
-                "bob.roberts@example.com",
-                Arrays.asList(new PhoneNumber("1234567890")))));
+    final AddressBook a = new AddressBook(Arrays.asList(new Person(new Name("Bob", "Roberts"), 0,
+        "bob.roberts@example.com", Arrays.asList(new PhoneNumber("1234567890")))));
 
     final Path fileToCreate = createFile(a);
 
@@ -85,7 +80,7 @@ public class TestThriftToParquetFileWriter {
 
     Group g = null;
     int i = 0;
-    while((g = reader.read()) != null) {
+    while ((g = reader.read()) != null) {
       assertEquals(a.persons.size(), g.getFieldRepetitionCount("persons"));
       assertEquals(a.persons.get(0).email, g.getGroup("persons", 0).getGroup(0, 0).getString("email", 0));
       // just some sanity check, we're testing the various layers somewhere else
@@ -94,121 +89,121 @@ public class TestThriftToParquetFileWriter {
     assertEquals("read 1 record", 1, i);
 
   }
-    @Test
-    public void testWriteStatistics() throws Exception {
-      //create correct stats small numbers
-      IntStatistics intStatsSmall = new IntStatistics();
-      intStatsSmall.setMinMax(2, 100);
-      LongStatistics longStatsSmall = new LongStatistics();
-      longStatsSmall.setMinMax(-17l,  287L);
-      DoubleStatistics doubleStatsSmall = new DoubleStatistics();
-      doubleStatsSmall.setMinMax(-15.55d, 9.63d);
-      BinaryStatistics binaryStatsSmall = new BinaryStatistics();
-      binaryStatsSmall.setMinMax(Binary.fromString("as"), Binary.fromString("world"));
-      BooleanStatistics boolStats = new BooleanStatistics();
-      boolStats.setMinMax(false, true);
 
-      //write rows to a file
-      Path p = createFile(new RequiredPrimitiveFixture(false, (byte)32, (short)32, 2, 90l, -15.55d, "as"),
-                          new RequiredPrimitiveFixture(false, (byte)100, (short)100, 100, 287l, -9.0d, "world"),
-                          new RequiredPrimitiveFixture(true, (byte)2, (short)2, 9, -17l, 9.63d, "hello"));
-      final Configuration configuration = new Configuration();
-      configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
-      final FileSystem fs = p.getFileSystem(configuration);
-      FileStatus fileStatus = fs.getFileStatus(p);
-      ParquetMetadata footer = ParquetFileReader.readFooter(configuration, p);
-      for(BlockMetaData bmd: footer.getBlocks()) {
-        for(ColumnChunkMetaData cmd: bmd.getColumns()) {
-          switch(cmd.getType()) {
-            case INT32:
-              TestUtils.assertStatsValuesEqual(intStatsSmall, cmd.getStatistics());
-              break;
-            case INT64:
-              TestUtils.assertStatsValuesEqual(longStatsSmall, cmd.getStatistics());
-              break;
-            case DOUBLE:
-              TestUtils.assertStatsValuesEqual(doubleStatsSmall, cmd.getStatistics());
-              break;
-            case BOOLEAN:
-              TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatistics());
-              break;
-            case BINARY:
-              // there is also info_string that has no statistics
-              if(cmd.getPath().toString() == "[test_string]")
-                TestUtils.assertStatsValuesEqual(binaryStatsSmall, cmd.getStatistics());
-              break;
-           }
-        }
-      }
-      //create correct stats large numbers
-      IntStatistics intStatsLarge = new IntStatistics();
-      intStatsLarge.setMinMax(-Integer.MAX_VALUE, Integer.MAX_VALUE);
-      LongStatistics longStatsLarge = new LongStatistics();
-      longStatsLarge.setMinMax(-Long.MAX_VALUE, Long.MAX_VALUE);
-      DoubleStatistics doubleStatsLarge = new DoubleStatistics();
-      doubleStatsLarge.setMinMax(-Double.MAX_VALUE, Double.MAX_VALUE);
-      BinaryStatistics binaryStatsLarge = new BinaryStatistics();
-      binaryStatsLarge.setMinMax(Binary.fromString("some small string"),
-                                 Binary.fromString("some very large string here to test in this function"));
-      //write rows to a file
-      Path p_large = createFile(new RequiredPrimitiveFixture(false, (byte)2, (short)32, -Integer.MAX_VALUE,
-                                                            -Long.MAX_VALUE, -Double.MAX_VALUE, "some small string"),
-                                new RequiredPrimitiveFixture(false, (byte)100, (short)100, Integer.MAX_VALUE,
-                                                             Long.MAX_VALUE, Double.MAX_VALUE,
-                                                            "some very large string here to test in this function"),
-                                new RequiredPrimitiveFixture(true, (byte)2, (short)2, 9, -17l, 9.63d, "hello"));
+  @Test
+  public void testWriteStatistics() throws Exception {
+    // create correct stats small numbers
+    IntStatistics intStatsSmall = new IntStatistics();
+    intStatsSmall.setMinMax(2, 100);
+    LongStatistics longStatsSmall = new LongStatistics();
+    longStatsSmall.setMinMax(-17l, 287L);
+    DoubleStatistics doubleStatsSmall = new DoubleStatistics();
+    doubleStatsSmall.setMinMax(-15.55d, 9.63d);
+    BinaryStatistics binaryStatsSmall = new BinaryStatistics();
+    binaryStatsSmall.setMinMax(Binary.fromString("as"), Binary.fromString("world"));
+    BooleanStatistics boolStats = new BooleanStatistics();
+    boolStats.setMinMax(false, true);
 
-      // make new configuration and create file with new large stats
-      final Configuration configuration_large = new Configuration();
-      configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
-      final FileSystem fs_large = p_large.getFileSystem(configuration_large);
-      FileStatus fileStatus_large = fs_large.getFileStatus(p_large);
-      ParquetMetadata footer_large = ParquetFileReader.readFooter(configuration_large, p_large);
-      for(BlockMetaData bmd: footer_large.getBlocks()) {
-        for(ColumnChunkMetaData cmd: bmd.getColumns()) {
-           switch(cmd.getType()) {
-             case INT32:
-               // testing the correct limits of an int32, there are also byte and short, tested earlier
-               if(cmd.getPath().toString() == "[test_i32]")
-                 TestUtils.assertStatsValuesEqual(intStatsLarge, cmd.getStatistics());
-               break;
-             case INT64:
-               TestUtils.assertStatsValuesEqual(longStatsLarge, cmd.getStatistics());
-               break;
-             case DOUBLE:
-               TestUtils.assertStatsValuesEqual(doubleStatsLarge, cmd.getStatistics());
-               break;
-             case BOOLEAN:
-               TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatistics());
-               break;
-             case BINARY:
-               // there is also info_string that has no statistics
-               if(cmd.getPath().toString() == "[test_string]")
-                 TestUtils.assertStatsValuesEqual(binaryStatsLarge, cmd.getStatistics());
-               break;
-           }
+    // write rows to a file
+    Path p = createFile(new RequiredPrimitiveFixture(false, (byte) 32, (short) 32, 2, 90l, -15.55d, "as"),
+        new RequiredPrimitiveFixture(false, (byte) 100, (short) 100, 100, 287l, -9.0d, "world"),
+        new RequiredPrimitiveFixture(true, (byte) 2, (short) 2, 9, -17l, 9.63d, "hello"));
+    final Configuration configuration = new Configuration();
+    configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
+    final FileSystem fs = p.getFileSystem(configuration);
+    FileStatus fileStatus = fs.getFileStatus(p);
+    ParquetMetadata footer = ParquetFileReader.readFooter(configuration, p);
+    for (BlockMetaData bmd : footer.getBlocks()) {
+      for (ColumnChunkMetaData cmd : bmd.getColumns()) {
+        switch (cmd.getType()) {
+        case INT32:
+          TestUtils.assertStatsValuesEqual(intStatsSmall, cmd.getStatistics());
+          break;
+        case INT64:
+          TestUtils.assertStatsValuesEqual(longStatsSmall, cmd.getStatistics());
+          break;
+        case DOUBLE:
+          TestUtils.assertStatsValuesEqual(doubleStatsSmall, cmd.getStatistics());
+          break;
+        case BOOLEAN:
+          TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatistics());
+          break;
+        case BINARY:
+          // there is also info_string that has no statistics
+          if (cmd.getPath().toString() == "[test_string]")
+            TestUtils.assertStatsValuesEqual(binaryStatsSmall, cmd.getStatistics());
+          break;
         }
       }
     }
+    // create correct stats large numbers
+    IntStatistics intStatsLarge = new IntStatistics();
+    intStatsLarge.setMinMax(-Integer.MAX_VALUE, Integer.MAX_VALUE);
+    LongStatistics longStatsLarge = new LongStatistics();
+    longStatsLarge.setMinMax(-Long.MAX_VALUE, Long.MAX_VALUE);
+    DoubleStatistics doubleStatsLarge = new DoubleStatistics();
+    doubleStatsLarge.setMinMax(-Double.MAX_VALUE, Double.MAX_VALUE);
+    BinaryStatistics binaryStatsLarge = new BinaryStatistics();
+    binaryStatsLarge.setMinMax(Binary.fromString("some small string"),
+        Binary.fromString("some very large string here to test in this function"));
+    // write rows to a file
+    Path p_large = createFile(
+        new RequiredPrimitiveFixture(false, (byte) 2, (short) 32, -Integer.MAX_VALUE, -Long.MAX_VALUE,
+            -Double.MAX_VALUE, "some small string"),
+        new RequiredPrimitiveFixture(false, (byte) 100, (short) 100, Integer.MAX_VALUE, Long.MAX_VALUE,
+            Double.MAX_VALUE, "some very large string here to test in this function"),
+        new RequiredPrimitiveFixture(true, (byte) 2, (short) 2, 9, -17l, 9.63d, "hello"));
+
+    // make new configuration and create file with new large stats
+    final Configuration configuration_large = new Configuration();
+    configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
+    final FileSystem fs_large = p_large.getFileSystem(configuration_large);
+    FileStatus fileStatus_large = fs_large.getFileStatus(p_large);
+    ParquetMetadata footer_large = ParquetFileReader.readFooter(configuration_large, p_large);
+    for (BlockMetaData bmd : footer_large.getBlocks()) {
+      for (ColumnChunkMetaData cmd : bmd.getColumns()) {
+        switch (cmd.getType()) {
+        case INT32:
+          // testing the correct limits of an int32, there are also byte and short, tested
+          // earlier
+          if (cmd.getPath().toString() == "[test_i32]")
+            TestUtils.assertStatsValuesEqual(intStatsLarge, cmd.getStatistics());
+          break;
+        case INT64:
+          TestUtils.assertStatsValuesEqual(longStatsLarge, cmd.getStatistics());
+          break;
+        case DOUBLE:
+          TestUtils.assertStatsValuesEqual(doubleStatsLarge, cmd.getStatistics());
+          break;
+        case BOOLEAN:
+          TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatistics());
+          break;
+        case BINARY:
+          // there is also info_string that has no statistics
+          if (cmd.getPath().toString() == "[test_string]")
+            TestUtils.assertStatsValuesEqual(binaryStatsLarge, cmd.getStatistics());
+          break;
+        }
+      }
+    }
+  }
 
   @Test
   public void testWriteFileListOfMap() throws IOException, InterruptedException, TException {
-    Map<String, String> map1 = new HashMap<String,String>();
+    Map<String, String> map1 = new HashMap<String, String>();
     map1.put("key11", "value11");
     map1.put("key12", "value12");
-    Map<String, String> map2 = new HashMap<String,String>();
+    Map<String, String> map2 = new HashMap<String, String>();
     map2.put("key21", "value21");
-    final TestMapInList listMap = new TestMapInList("listmap",
-        Arrays.asList(map1, map2));
+    final TestMapInList listMap = new TestMapInList("listmap", Arrays.asList(map1, map2));
 
     final Path fileToCreate = createFile(listMap);
 
     ParquetReader<Group> reader = createRecordReader(fileToCreate);
 
     Group g = null;
-    while((g = reader.read()) != null) {
-      assertEquals(listMap.names.size(),
-          g.getGroup("names", 0).getFieldRepetitionCount("names_tuple"));
+    while ((g = reader.read()) != null) {
+      assertEquals(listMap.names.size(), g.getGroup("names", 0).getFieldRepetitionCount("names_tuple"));
       assertEquals(listMap.names.get(0).size(),
           g.getGroup("names", 0).getGroup("names_tuple", 0).getFieldRepetitionCount("map"));
       assertEquals(listMap.names.get(1).size(),
@@ -218,41 +213,40 @@ public class TestThriftToParquetFileWriter {
 
   @Test
   public void testWriteFileMapOfList() throws IOException, InterruptedException, TException {
-    Map<String, List<String>> map = new HashMap<String,List<String>>();
-    map.put("key", Arrays.asList("val1","val2"));
+    Map<String, List<String>> map = new HashMap<String, List<String>>();
+    map.put("key", Arrays.asList("val1", "val2"));
     final TestListInMap mapList = new TestListInMap("maplist", map);
     final Path fileToCreate = createFile(mapList);
 
     ParquetReader<Group> reader = createRecordReader(fileToCreate);
 
     Group g = null;
-    while((g = reader.read()) != null) {
-      assertEquals("key",
-          g.getGroup("names", 0).getGroup("map",0).getBinary("key", 0).toStringUsingUTF8());
+    while ((g = reader.read()) != null) {
+      assertEquals("key", g.getGroup("names", 0).getGroup("map", 0).getBinary("key", 0).toStringUsingUTF8());
       assertEquals(map.get("key").size(),
-          g.getGroup("names", 0).getGroup("map",0).getGroup("value", 0).getFieldRepetitionCount(0));
+          g.getGroup("names", 0).getGroup("map", 0).getGroup("value", 0).getFieldRepetitionCount(0));
     }
   }
 
   @Test
   public void testWriteFileMapOfLists() throws IOException, InterruptedException, TException {
-    Map<List<String>, List<String>> map = new HashMap<List<String>,List<String>>();
-    map.put(Arrays.asList("key1","key2"), Arrays.asList("val1","val2"));
+    Map<List<String>, List<String>> map = new HashMap<List<String>, List<String>>();
+    map.put(Arrays.asList("key1", "key2"), Arrays.asList("val1", "val2"));
     final TestListsInMap mapList = new TestListsInMap("maplists", map);
     final Path fileToCreate = createFile(mapList);
 
     ParquetReader<Group> reader = createRecordReader(fileToCreate);
 
     Group g = null;
-    while((g = reader.read()) != null) {
+    while ((g = reader.read()) != null) {
       assertEquals("key1",
-          g.getGroup("names", 0).getGroup("map",0).getGroup("key", 0).getBinary("key_tuple", 0).toStringUsingUTF8());
+          g.getGroup("names", 0).getGroup("map", 0).getGroup("key", 0).getBinary("key_tuple", 0).toStringUsingUTF8());
       assertEquals("key2",
-          g.getGroup("names", 0).getGroup("map",0).getGroup("key", 0).getBinary("key_tuple", 1).toStringUsingUTF8());
-      assertEquals("val1",
-          g.getGroup("names", 0).getGroup("map",0).getGroup("value", 0).getBinary("value_tuple", 0).toStringUsingUTF8());
-      assertEquals("val2",
-          g.getGroup("names", 0).getGroup("map",0).getGroup("value", 0).getBinary("value_tuple", 1).toStringUsingUTF8());
+          g.getGroup("names", 0).getGroup("map", 0).getGroup("key", 0).getBinary("key_tuple", 1).toStringUsingUTF8());
+      assertEquals("val1", g.getGroup("names", 0).getGroup("map", 0).getGroup("value", 0).getBinary("value_tuple", 0)
+          .toStringUsingUTF8());
+      assertEquals("val2", g.getGroup("names", 0).getGroup("map", 0).getGroup("value", 0).getBinary("value_tuple", 1)
+          .toStringUsingUTF8());
     }
   }
 
@@ -267,8 +261,8 @@ public class TestThriftToParquetFileWriter {
     return new ParquetReader<Group>(parquetFilePath, readSupport);
   }
 
-  private <T extends TBase<?,?>> Path createFile(T... tObjs) throws IOException, InterruptedException, TException  {
-    final Path fileToCreate = new Path("target/test/TestThriftToParquetFileWriter/"+tObjs[0].getClass()+".parquet");
+  private <T extends TBase<?, ?>> Path createFile(T... tObjs) throws IOException, InterruptedException, TException {
+    final Path fileToCreate = new Path("target/test/TestThriftToParquetFileWriter/" + tObjs[0].getClass() + ".parquet");
     LOG.info("File created: {}", fileToCreate.toString());
     Configuration conf = new Configuration();
     final FileSystem fs = fileToCreate.getFileSystem(conf);
@@ -278,9 +272,11 @@ public class TestThriftToParquetFileWriter {
     }
     TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
-    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, (Class<? extends TBase<?, ?>>) tObjs[0].getClass());
+    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate,
+        ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory,
+        (Class<? extends TBase<?, ?>>) tObjs[0].getClass());
 
-    for(T tObj:tObjs) {
+    for (T tObj : tObjs) {
       final ByteArrayOutputStream baos = new ByteArrayOutputStream();
       final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
 

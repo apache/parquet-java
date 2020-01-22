@@ -26,34 +26,40 @@ import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
 
 /**
- * Column index containing min/max and null count values for the pages in a column chunk. It also implements methods of
- * {@link Visitor} to return the indexes of the matching pages. They are used by {@link ColumnIndexFilter}.
+ * Column index containing min/max and null count values for the pages in a
+ * column chunk. It also implements methods of {@link Visitor} to return the
+ * indexes of the matching pages. They are used by {@link ColumnIndexFilter}.
  *
  * @see org.apache.parquet.format.ColumnIndex
  */
 public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
   /**
-   * @return the boundary order of the min/max values; used for converting to the related thrift object
+   * @return the boundary order of the min/max values; used for converting to the
+   * related thrift object
    */
   public BoundaryOrder getBoundaryOrder();
 
   /**
-   * @return the unmodifiable list of null counts; used for converting to the related thrift object
+   * @return the unmodifiable list of null counts; used for converting to the
+   * related thrift object
    */
   public List<Long> getNullCounts();
 
   /**
-   * @return the unmodifiable list of null pages; used for converting to the related thrift object
+   * @return the unmodifiable list of null pages; used for converting to the
+   * related thrift object
    */
   public List<Boolean> getNullPages();
 
   /**
-   * @return the list of the min values as {@link ByteBuffer}s; used for converting to the related thrift object
+   * @return the list of the min values as {@link ByteBuffer}s; used for
+   * converting to the related thrift object
    */
   public List<ByteBuffer> getMinValues();
 
   /**
-   * @return the list of the max values as {@link ByteBuffer}s; used for converting to the related thrift object
+   * @return the list of the max values as {@link ByteBuffer}s; used for
+   * converting to the related thrift object
    */
   public List<ByteBuffer> getMaxValues();
 

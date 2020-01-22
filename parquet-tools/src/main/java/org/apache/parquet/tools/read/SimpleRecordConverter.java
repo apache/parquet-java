@@ -48,7 +48,7 @@ public class SimpleRecordConverter extends GroupConverter {
     this.name = name;
 
     int i = 0;
-    for (Type field: schema.getFields()) {
+    for (Type field : schema.getFields()) {
       converters[i++] = createConverter(field);
     }
   }
@@ -185,4 +185,3 @@ public class SimpleRecordConverter extends GroupConverter {
     }
   }
 }
-

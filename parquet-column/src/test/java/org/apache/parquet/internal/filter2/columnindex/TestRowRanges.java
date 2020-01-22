@@ -75,12 +75,7 @@ public class TestRowRanges {
 
   @Test
   public void testCreate() {
-    RowRanges ranges = buildRanges(
-        1, 2,
-        3, 4,
-        6, 7,
-        7, 10,
-        15, 17);
+    RowRanges ranges = buildRanges(1, 2, 3, 4, 6, 7, 7, 10, 15, 17);
     assertAllRowsEqual(ranges.iterator(), 1, 2, 3, 4, 6, 7, 8, 9, 10, 15, 16, 17);
     assertEquals(12, ranges.rowCount());
     assertTrue(ranges.isOverlapping(4, 5));
@@ -103,17 +98,8 @@ public class TestRowRanges {
 
   @Test
   public void testUnion() {
-    RowRanges ranges1 = buildRanges(
-        2, 5,
-        7, 9,
-        14, 14,
-        20, 24);
-    RowRanges ranges2 = buildRanges(
-        1, 2,
-        4, 5,
-        11, 12,
-        14, 15,
-        21, 22);
+    RowRanges ranges1 = buildRanges(2, 5, 7, 9, 14, 14, 20, 24);
+    RowRanges ranges2 = buildRanges(1, 2, 4, 5, 11, 12, 14, 15, 21, 22);
     RowRanges empty = buildRanges();
     assertAllRowsEqual(union(ranges1, ranges2).iterator(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
     assertAllRowsEqual(union(ranges2, ranges1).iterator(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
@@ -128,18 +114,8 @@ public class TestRowRanges {
 
   @Test
   public void testIntersection() {
-    RowRanges ranges1 = buildRanges(
-        2, 5,
-        7, 9,
-        14, 14,
-        20, 24);
-    RowRanges ranges2 = buildRanges(
-        1, 2,
-        6, 7,
-        9, 9,
-        11, 12,
-        14, 15,
-        21, 22);
+    RowRanges ranges1 = buildRanges(2, 5, 7, 9, 14, 14, 20, 24);
+    RowRanges ranges2 = buildRanges(1, 2, 6, 7, 9, 9, 11, 12, 14, 15, 21, 22);
     RowRanges empty = buildRanges();
     assertAllRowsEqual(intersection(ranges1, ranges2).iterator(), 2, 7, 9, 14, 21, 22);
     assertAllRowsEqual(intersection(ranges2, ranges1).iterator(), 2, 7, 9, 14, 21, 22);

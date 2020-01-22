@@ -50,29 +50,16 @@ public class TestMergeMetadataFiles {
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
 
-  private static final MessageType schema = parseMessageType(
-      "message test { "
-          + "required binary binary_field; "
-          + "required int32 int32_field; "
-          + "required int64 int64_field; "
-          + "required boolean boolean_field; "
-          + "required float float_field; "
-          + "required double double_field; "
-          + "required fixed_len_byte_array(3) flba_field; "
-          + "required int96 int96_field; "
-          + "} ");
+  private static final MessageType schema = parseMessageType("message test { " + "required binary binary_field; "
+      + "required int32 int32_field; " + "required int64 int64_field; " + "required boolean boolean_field; "
+      + "required float float_field; " + "required double double_field; "
+      + "required fixed_len_byte_array(3) flba_field; " + "required int96 int96_field; " + "} ");
 
   // schema1 with a field removed
   private static final MessageType schema2 = parseMessageType(
-      "message test { "
-          + "required binary binary_field; "
-          + "required int32 int32_field; "
-          + "required int64 int64_field; "
-          + "required boolean boolean_field; "
-          + "required float float_field; "
-          + "required double double_field; "
-          + "required fixed_len_byte_array(3) flba_field; "
-          + "} ");
+      "message test { " + "required binary binary_field; " + "required int32 int32_field; "
+          + "required int64 int64_field; " + "required boolean boolean_field; " + "required float float_field; "
+          + "required double double_field; " + "required fixed_len_byte_array(3) flba_field; " + "} ");
 
   private static void writeFile(File out, Configuration conf, boolean useSchema2) throws IOException {
     if (!useSchema2) {
@@ -83,31 +70,23 @@ public class TestMergeMetadataFiles {
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
 
     Map<String, String> extraMetaData = new HashMap<String, String>();
-    extraMetaData.put("schema_num", useSchema2 ? "2" : "1" );
+    extraMetaData.put("schema_num", useSchema2 ? "2" : "1");
 
-    ParquetWriter<Group> writer = ExampleParquetWriter
-        .builder(new Path(out.getAbsolutePath()))
-        .withConf(conf)
-        .withExtraMetaData(extraMetaData)
-        .build();
+    ParquetWriter<Group> writer = ExampleParquetWriter.builder(new Path(out.getAbsolutePath())).withConf(conf)
+        .withExtraMetaData(extraMetaData).build();
 
-      for (int i = 0; i < 1000; i++) {
-        Group g = f.newGroup()
-            .append("binary_field", "test" + i)
-            .append("int32_field", i)
-            .append("int64_field", (long) i)
-            .append("boolean_field", i % 2 == 0)
-            .append("float_field", (float) i)
-            .append("double_field", (double)i)
-            .append("flba_field", "foo");
+    for (int i = 0; i < 1000; i++) {
+      Group g = f.newGroup().append("binary_field", "test" + i).append("int32_field", i).append("int64_field", (long) i)
+          .append("boolean_field", i % 2 == 0).append("float_field", (float) i).append("double_field", (double) i)
+          .append("flba_field", "foo");
 
-        if (!useSchema2) {
-          g = g.append("int96_field", Binary.fromConstantByteArray(new byte[12]));
-        }
-
-        writer.write(g);
+      if (!useSchema2) {
+        g = g.append("int96_field", Binary.fromConstantByteArray(new byte[12]));
       }
-      writer.close();
+
+      writer.write(g);
+    }
+    writer.close();
   }
 
   private static class WrittenFileInfo {
@@ -132,7 +111,8 @@ public class TestMergeMetadataFiles {
       writeFile(new File(root1, i + ".parquet"), conf, true);
     }
 
-    List<Footer> footers = ParquetFileReader.readFooters(conf, rootPath1.getFileSystem(conf).getFileStatus(rootPath1), false);
+    List<Footer> footers = ParquetFileReader.readFooters(conf, rootPath1.getFileSystem(conf).getFileStatus(rootPath1),
+        false);
     ParquetFileWriter.writeMetadataFile(conf, rootPath1, footers, JobSummaryLevel.ALL);
 
     for (int i = 0; i < 7; i++) {
@@ -154,8 +134,10 @@ public class TestMergeMetadataFiles {
   public void testMergeMetadataFiles() throws Exception {
     WrittenFileInfo info = writeFiles(false);
 
-    ParquetMetadata commonMeta1 = ParquetFileReader.readFooter(info.conf, info.commonMetaPath1, ParquetMetadataConverter.NO_FILTER);
-    ParquetMetadata commonMeta2 = ParquetFileReader.readFooter(info.conf, info.commonMetaPath2, ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata commonMeta1 = ParquetFileReader.readFooter(info.conf, info.commonMetaPath1,
+        ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata commonMeta2 = ParquetFileReader.readFooter(info.conf, info.commonMetaPath2,
+        ParquetMetadataConverter.NO_FILTER);
     ParquetMetadata meta1 = ParquetFileReader.readFooter(info.conf, info.metaPath1, ParquetMetadataConverter.NO_FILTER);
     ParquetMetadata meta2 = ParquetFileReader.readFooter(info.conf, info.metaPath2, ParquetMetadataConverter.NO_FILTER);
 
@@ -167,20 +149,23 @@ public class TestMergeMetadataFiles {
     assertFalse(meta2.getBlocks().isEmpty());
     assertEquals(meta1.getFileMetaData().getSchema(), meta2.getFileMetaData().getSchema());
 
-
-    assertEquals(commonMeta1.getFileMetaData().getKeyValueMetaData(), commonMeta2.getFileMetaData().getKeyValueMetaData());
+    assertEquals(commonMeta1.getFileMetaData().getKeyValueMetaData(),
+        commonMeta2.getFileMetaData().getKeyValueMetaData());
     assertEquals(meta1.getFileMetaData().getKeyValueMetaData(), meta2.getFileMetaData().getKeyValueMetaData());
 
     // test file serialization
     Path mergedOut = new Path(new File(temp.getRoot(), "merged_meta").getAbsolutePath());
     Path mergedCommonOut = new Path(new File(temp.getRoot(), "merged_common_meta").getAbsolutePath());
     ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.metaPath1, info.metaPath2), mergedOut, info.conf);
-    ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
+    ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.commonMetaPath1, info.commonMetaPath2),
+        mergedCommonOut, info.conf);
 
     ParquetMetadata mergedMeta = ParquetFileReader.readFooter(info.conf, mergedOut, ParquetMetadataConverter.NO_FILTER);
-    ParquetMetadata mergedCommonMeta = ParquetFileReader.readFooter(info.conf, mergedCommonOut, ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata mergedCommonMeta = ParquetFileReader.readFooter(info.conf, mergedCommonOut,
+        ParquetMetadataConverter.NO_FILTER);
 
-    // ideally we'd assert equality here, but BlockMetaData and it's references don't implement equals
+    // ideally we'd assert equality here, but BlockMetaData and it's references
+    // don't implement equals
     assertEquals(meta1.getBlocks().size() + meta2.getBlocks().size(), mergedMeta.getBlocks().size());
     assertTrue(mergedCommonMeta.getBlocks().isEmpty());
 
@@ -188,7 +173,8 @@ public class TestMergeMetadataFiles {
     assertEquals(commonMeta1.getFileMetaData().getSchema(), mergedCommonMeta.getFileMetaData().getSchema());
 
     assertEquals(meta1.getFileMetaData().getKeyValueMetaData(), mergedMeta.getFileMetaData().getKeyValueMetaData());
-    assertEquals(commonMeta1.getFileMetaData().getKeyValueMetaData(), mergedCommonMeta.getFileMetaData().getKeyValueMetaData());
+    assertEquals(commonMeta1.getFileMetaData().getKeyValueMetaData(),
+        mergedCommonMeta.getFileMetaData().getKeyValueMetaData());
   }
 
   @Test
@@ -204,12 +190,13 @@ public class TestMergeMetadataFiles {
     } catch (RuntimeException e) {
       boolean eq1 = e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [2, 1]");
       boolean eq2 = e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [1, 2]");
-      
+
       assertEquals(eq1 || eq2, true);
     }
 
     try {
-      ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
+      ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.commonMetaPath1, info.commonMetaPath2),
+          mergedCommonOut, info.conf);
       fail("this should throw");
     } catch (RuntimeException e) {
       boolean eq1 = e.getMessage().equals("could not merge metadata: key schema_num has conflicting values: [2, 1]");

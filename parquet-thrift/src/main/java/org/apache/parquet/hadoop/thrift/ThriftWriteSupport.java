@@ -25,26 +25,25 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.RecordConsumer;
 
 /**
- * @deprecated
- * This class is replaced by TBaseWriteSupport.
+ * @deprecated This class is replaced by TBaseWriteSupport.
  */
 @Deprecated
-public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
+public class ThriftWriteSupport<T extends TBase<?, ?>> extends WriteSupport<T> {
   public static final String PARQUET_THRIFT_CLASS = AbstractThriftWriteSupport.PARQUET_THRIFT_CLASS;
 
-  public static <U extends TBase<?,?>> void setThriftClass(Configuration configuration, Class<U> thriftClass) {
+  public static <U extends TBase<?, ?>> void setThriftClass(Configuration configuration, Class<U> thriftClass) {
     TBaseWriteSupport.setThriftClass(configuration, thriftClass);
   }
 
-  public static Class<? extends TBase<?,?>> getThriftClass(Configuration configuration) {
+  public static Class<? extends TBase<?, ?>> getThriftClass(Configuration configuration) {
     return TBaseWriteSupport.getThriftClass(configuration);
   }
 
   private TBaseWriteSupport writeSupport;
 
   /**
-   * used from hadoop
-   * the configuration must contain a thriftClass setting
+   * used from hadoop the configuration must contain a thriftClass setting
+   * 
    * @see ThriftWriteSupport#setThriftClass(Configuration, Class)
    */
   public ThriftWriteSupport() {

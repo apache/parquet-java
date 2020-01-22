@@ -46,7 +46,6 @@ public class TestCorruptScroogeRecords extends TestCorruptThriftRecords {
     ParquetScroogeInputFormat.setInputPaths(job, path);
     ParquetScroogeInputFormat.setThriftClass(job.getConfiguration(), StructWithUnionV2.class);
 
-
     ThriftReadSupport.setRecordConverterClass(job.getConfiguration(), ScroogeRecordConverter.class);
 
     job.setMapperClass(ReadMapper.class);
@@ -55,7 +54,8 @@ public class TestCorruptScroogeRecords extends TestCorruptThriftRecords {
   }
 
   @Override
-  protected void assertEqualsExcepted(List<org.apache.parquet.thrift.test.compat.StructWithUnionV2> expected, List<Object> found) throws Exception {
+  protected void assertEqualsExcepted(List<org.apache.parquet.thrift.test.compat.StructWithUnionV2> expected,
+      List<Object> found) throws Exception {
     List<StructWithUnionV2> scroogeExpected = new ArrayList<StructWithUnionV2>();
     for (org.apache.parquet.thrift.test.compat.StructWithUnionV2 tbase : expected) {
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -65,5 +65,5 @@ public class TestCorruptScroogeRecords extends TestCorruptThriftRecords {
       scroogeExpected.add(StructWithUnionV2$.MODULE$.decode(in));
     }
     assertEquals(scroogeExpected, found);
-   }
+  }
 }

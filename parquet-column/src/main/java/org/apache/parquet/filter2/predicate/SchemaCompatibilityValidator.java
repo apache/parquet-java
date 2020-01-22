@@ -41,18 +41,19 @@ import org.apache.parquet.schema.MessageType;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * Inspects the column types found in the provided {@link FilterPredicate} and compares them
- * to the actual schema found in the parquet file. If the provided predicate's types are
- * not consistent with the file schema, and IllegalArgumentException is thrown.
+ * Inspects the column types found in the provided {@link FilterPredicate} and
+ * compares them to the actual schema found in the parquet file. If the provided
+ * predicate's types are not consistent with the file schema, and
+ * IllegalArgumentException is thrown.
  *
- * Ideally, all this would be checked at compile time, and this class wouldn't be needed.
- * If we can come up with a way to do that, we should.
+ * Ideally, all this would be checked at compile time, and this class wouldn't
+ * be needed. If we can come up with a way to do that, we should.
  *
  * This class is stateful, cannot be reused, and is not thread safe.
  *
  * TODO: detect if a column is optional or required and validate that eq(null)
- * TODO: is not called on required fields (is that too strict?)
- * TODO: (https://issues.apache.org/jira/browse/PARQUET-44)
+ * TODO: is not called on required fields (is that too strict?) TODO:
+ * (https://issues.apache.org/jira/browse/PARQUET-44)
  */
 public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Void> {
 
@@ -67,7 +68,8 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   // column.
   private final Map<ColumnPath, Class<?>> columnTypesEncountered = new HashMap<>();
 
-  // the columns (keyed by path) according to the file's schema. This is the source of truth, and
+  // the columns (keyed by path) according to the file's schema. This is the
+  // source of truth, and
   // we are validating that what the user provided agrees with these.
   private final Map<ColumnPath, ColumnDescriptor> columnsAccordingToSchema = new HashMap<>();
 
@@ -155,10 +157,9 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
 
     Class<?> alreadySeen = columnTypesEncountered.get(path);
     if (alreadySeen != null && !alreadySeen.equals(column.getColumnType())) {
-      throw new IllegalArgumentException("Column: "
-          + path.toDotString()
-          + " was provided with different types in the same predicate."
-          + " Found both: (" + alreadySeen + ", " + column.getColumnType() + ")");
+      throw new IllegalArgumentException(
+          "Column: " + path.toDotString() + " was provided with different types in the same predicate."
+              + " Found both: (" + alreadySeen + ", " + column.getColumnType() + ")");
     }
 
     if (alreadySeen == null) {
@@ -173,8 +174,8 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
     }
 
     if (descriptor.getMaxRepetitionLevel() > 0) {
-      throw new IllegalArgumentException("FilterPredicates do not currently support repeated columns. "
-          + "Column " + path.toDotString() + " is repeated.");
+      throw new IllegalArgumentException("FilterPredicates do not currently support repeated columns. " + "Column "
+          + path.toDotString() + " is repeated.");
     }
 
     ValidTypeMap.assertTypeValid(column, descriptor.getType());

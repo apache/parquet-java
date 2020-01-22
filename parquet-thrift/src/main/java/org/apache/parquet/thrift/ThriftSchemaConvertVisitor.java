@@ -76,7 +76,8 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
   private final boolean doProjection;
   private final boolean keepOneOfEachUnion;
 
-  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection, boolean keepOneOfEachUnion) {
+  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection,
+      boolean keepOneOfEachUnion) {
     this.fieldProjectionFilter = checkNotNull(fieldProjectionFilter, "fieldProjectionFilter");
     this.doProjection = doProjection;
     this.keepOneOfEachUnion = keepOneOfEachUnion;
@@ -137,13 +138,12 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     // as that doesn't make sense when assembling back into a map.
     // NOTE: doProjections prevents us from infinite recursion here.
     if (doProjection) {
-      ConvertedField fullConvKey = keyField
-          .getType()
-          .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion), keyState);
+      ConvertedField fullConvKey = keyField.getType().accept(
+          new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion), keyState);
 
       if (!fullConvKey.asKeep().getType().equals(convertedKey.asKeep().getType())) {
-        throw new ThriftProjectionException("Cannot select only a subset of the fields in a map key, " +
-            "for path " + state.path);
+        throw new ThriftProjectionException(
+            "Cannot select only a subset of the fields in a map key, " + "for path " + state.path);
       }
 
     }
@@ -153,10 +153,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     if (convertedValue.isKeep()) {
       // keep both key and value
 
-      Type mapField = mapType(
-          state.repetition,
-          state.name,
-          convertedKey.asKeep().getType(),
+      Type mapField = mapType(state.repetition, state.name, convertedKey.asKeep().getType(),
           convertedValue.asKeep().getType());
 
       return new Keep(state.path, mapField);
@@ -164,13 +161,10 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
     // keep only the key, not the value
 
-    ConvertedField sentinelValue =
-        valueField.getType().accept(new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true, keepOneOfEachUnion), valueState);
+    ConvertedField sentinelValue = valueField.getType().accept(
+        new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true, keepOneOfEachUnion), valueState);
 
-    Type mapField = mapType(
-        state.repetition,
-        state.name,
-        convertedKey.asKeep().getType(),
+    Type mapField = mapType(state.repetition, state.name, convertedKey.asKeep().getType(),
         sentinelValue.asKeep().getType()); // signals to mapType method to project the value
 
     return new Keep(state.path, mapField);
@@ -184,12 +178,11 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     if (converted.isKeep()) {
       // doProjection prevents an infinite recursion here
       if (isSet && doProjection) {
-        ConvertedField fullConv = listLike
-            .getType()
-            .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion), childState);
+        ConvertedField fullConv = listLike.getType().accept(
+            new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion), childState);
         if (!converted.asKeep().getType().equals(fullConv.asKeep().getType())) {
-          throw new ThriftProjectionException("Cannot select only a subset of the fields in a set, " +
-              "for path " + state.path);
+          throw new ThriftProjectionException(
+              "Cannot select only a subset of the fields in a set, " + "for path " + state.path);
         }
       }
 
@@ -314,7 +307,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   @Override
   public ConvertedField visit(I16Type i16Type, State state) {
-    return visitPrimitiveType(INT32, LogicalTypeAnnotation.intType(16, true),state);
+    return visitPrimitiveType(INT32, LogicalTypeAnnotation.intType(16, true), state);
   }
 
   @Override
@@ -334,27 +327,27 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   private static boolean isUnion(StructOrUnionType s) {
     switch (s) {
-      case STRUCT:
-        return false;
-      case UNION:
-        return true;
-      case UNKNOWN:
-        throw new ShouldNeverHappenException("Encountered UNKNOWN StructOrUnionType");
-      default:
-        throw new ShouldNeverHappenException("Unrecognized type: " + s);
+    case STRUCT:
+      return false;
+    case UNION:
+      return true;
+    case UNKNOWN:
+      throw new ShouldNeverHappenException("Encountered UNKNOWN StructOrUnionType");
+    default:
+      throw new ShouldNeverHappenException("Unrecognized type: " + s);
     }
   }
 
   private Type.Repetition getRepetition(ThriftField thriftField) {
     switch (thriftField.getRequirement()) {
-      case REQUIRED:
-        return REQUIRED;
-      case OPTIONAL:
-        return OPTIONAL;
-      case DEFAULT:
-        return OPTIONAL;
-      default:
-        throw new IllegalArgumentException("unknown requirement type: " + thriftField.getRequirement());
+    case REQUIRED:
+      return REQUIRED;
+    case OPTIONAL:
+      return OPTIONAL;
+    case DEFAULT:
+      return OPTIONAL;
+    default:
+      throw new IllegalArgumentException("unknown requirement type: " + thriftField.getRequirement());
     }
   }
 

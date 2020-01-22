@@ -55,4 +55,3 @@ public class TestSimplePrimitiveRecord {
     Assert.assertEquals("123.123", r.keyToString(new BigDecimal("123.123")));
   }
 }
-

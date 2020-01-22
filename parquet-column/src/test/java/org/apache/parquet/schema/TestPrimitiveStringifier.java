@@ -129,15 +129,13 @@ public class TestPrimitiveStringifier {
         stringifier.stringify(Binary.fromReusedByteArray(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 })));
 
     ByteBuffer buffer = ByteBuffer.allocate(12);
-    assertEquals("interval(0 months, 0 days, 0 millis)",
-        stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
+    assertEquals("interval(0 months, 0 days, 0 millis)", stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
 
     buffer.putInt(0x03000000);
     buffer.putInt(0x06000000);
     buffer.putInt(0x09000000);
     buffer.flip();
-    assertEquals("interval(3 months, 6 days, 9 millis)",
-        stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
+    assertEquals("interval(3 months, 6 days, 9 millis)", stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
 
     buffer.clear();
     buffer.putInt(0xFFFFFFFF);
@@ -179,12 +177,14 @@ public class TestPrimitiveStringifier {
       cal.clear();
       cal.set(2017, Calendar.DECEMBER, 15, 10, 9, 54);
       cal.set(Calendar.MILLISECOND, 120);
-      assertEquals(withZoneString("2017-12-15T10:09:54.120", timezoneAmendment), stringifier.stringify(cal.getTimeInMillis()));
+      assertEquals(withZoneString("2017-12-15T10:09:54.120", timezoneAmendment),
+          stringifier.stringify(cal.getTimeInMillis()));
 
       cal.clear();
       cal.set(1948, Calendar.NOVEMBER, 23, 20, 19, 1);
       cal.set(Calendar.MILLISECOND, 9);
-      assertEquals(withZoneString("1948-11-23T20:19:01.009", timezoneAmendment), stringifier.stringify(cal.getTimeInMillis()));
+      assertEquals(withZoneString("1948-11-23T20:19:01.009", timezoneAmendment),
+          stringifier.stringify(cal.getTimeInMillis()));
 
       checkThrowingUnsupportedException(stringifier, Long.TYPE);
     }
@@ -246,17 +246,25 @@ public class TestPrimitiveStringifier {
       assertEquals(withZoneString("00:00:00.000", timezoneAmendment), stringifier.stringify(0));
       assertEquals(withZoneString("00:00:00.000000", timezoneAmendment), stringifier.stringify(0l));
 
-      assertEquals(withZoneString("12:34:56.789", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, 12, 34, 56, 789)));
-      assertEquals(withZoneString("12:34:56.789012", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, 12, 34, 56, 789012)));
+      assertEquals(withZoneString("12:34:56.789", timezoneAmendment),
+          stringifier.stringify((int) convert(MILLISECONDS, 12, 34, 56, 789)));
+      assertEquals(withZoneString("12:34:56.789012", timezoneAmendment),
+          stringifier.stringify(convert(MICROSECONDS, 12, 34, 56, 789012)));
 
-      assertEquals(withZoneString("-12:34:56.789", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, -12, -34, -56, -789)));
-      assertEquals(withZoneString("-12:34:56.789012", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, -12, -34, -56, -789012)));
+      assertEquals(withZoneString("-12:34:56.789", timezoneAmendment),
+          stringifier.stringify((int) convert(MILLISECONDS, -12, -34, -56, -789)));
+      assertEquals(withZoneString("-12:34:56.789012", timezoneAmendment),
+          stringifier.stringify(convert(MICROSECONDS, -12, -34, -56, -789012)));
 
-      assertEquals(withZoneString("123:12:34.567", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, 123, 12, 34, 567)));
-      assertEquals(withZoneString("12345:12:34.056789", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, 12345, 12, 34, 56789)));
+      assertEquals(withZoneString("123:12:34.567", timezoneAmendment),
+          stringifier.stringify((int) convert(MILLISECONDS, 123, 12, 34, 567)));
+      assertEquals(withZoneString("12345:12:34.056789", timezoneAmendment),
+          stringifier.stringify(convert(MICROSECONDS, 12345, 12, 34, 56789)));
 
-      assertEquals(withZoneString("-123:12:34.567", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, -123, -12, -34, -567)));
-      assertEquals(withZoneString("-12345:12:34.056789", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, -12345, -12, -34, -56789)));
+      assertEquals(withZoneString("-123:12:34.567", timezoneAmendment),
+          stringifier.stringify((int) convert(MILLISECONDS, -123, -12, -34, -567)));
+      assertEquals(withZoneString("-12345:12:34.056789", timezoneAmendment),
+          stringifier.stringify(convert(MICROSECONDS, -12345, -12, -34, -56789)));
 
       checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE);
     }
@@ -269,10 +277,14 @@ public class TestPrimitiveStringifier {
 
       assertEquals(withZoneString("00:00:00.000000000", timezoneAmendment), stringifier.stringify(0l));
 
-      assertEquals(withZoneString("12:34:56.789012987", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, 12, 34, 56, 789012987)));
-      assertEquals(withZoneString("-12:34:56.000789012", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, -12, -34, -56, -789012)));
-      assertEquals(withZoneString("12345:12:34.000056789", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, 12345, 12, 34, 56789)));
-      assertEquals(withZoneString("-12345:12:34.000056789", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, -12345, -12, -34, -56789)));
+      assertEquals(withZoneString("12:34:56.789012987", timezoneAmendment),
+          stringifier.stringify(convert(NANOSECONDS, 12, 34, 56, 789012987)));
+      assertEquals(withZoneString("-12:34:56.000789012", timezoneAmendment),
+          stringifier.stringify(convert(NANOSECONDS, -12, -34, -56, -789012)));
+      assertEquals(withZoneString("12345:12:34.000056789", timezoneAmendment),
+          stringifier.stringify(convert(NANOSECONDS, 12345, 12, 34, 56789)));
+      assertEquals(withZoneString("-12345:12:34.000056789", timezoneAmendment),
+          stringifier.stringify(convert(NANOSECONDS, -12345, -12, -34, -56789)));
 
       checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE);
     }

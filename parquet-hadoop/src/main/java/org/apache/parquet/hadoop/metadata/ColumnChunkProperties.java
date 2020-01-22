@@ -36,11 +36,12 @@ public class ColumnChunkProperties {
    * @param codec the compression codec used for this column
    * @param encodings a set of encodings used by this column
    * @return column chunk properties
-   * @deprecated will be removed in 2.0.0. Use {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, Set)}
-   *             instead.
+   * @deprecated will be removed in 2.0.0. Use
+   * {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, Set)} instead.
    */
   @Deprecated
-  public static ColumnChunkProperties get(ColumnPath path, PrimitiveTypeName type, CompressionCodecName codec, Set<Encoding> encodings) {
+  public static ColumnChunkProperties get(ColumnPath path, PrimitiveTypeName type, CompressionCodecName codec,
+      Set<Encoding> encodings) {
     return get(path, new PrimitiveType(Type.Repetition.OPTIONAL, type, ""), codec, encodings);
   }
 
@@ -54,10 +55,8 @@ public class ColumnChunkProperties {
   private final PrimitiveType type;
   private final Set<Encoding> encodings;
 
-  private ColumnChunkProperties(CompressionCodecName codec,
-                                ColumnPath path,
-                                PrimitiveType type,
-                                Set<Encoding> encodings) {
+  private ColumnChunkProperties(CompressionCodecName codec, ColumnPath path, PrimitiveType type,
+      Set<Encoding> encodings) {
     super();
     this.codec = codec;
     this.path = path;
@@ -75,7 +74,8 @@ public class ColumnChunkProperties {
 
   /**
    * @return the primitive type name for the column
-   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
+   * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()}
+   * instead.
    */
   @Deprecated
   public PrimitiveTypeName getType() {
@@ -96,8 +96,9 @@ public class ColumnChunkProperties {
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof ColumnChunkProperties) {
-      ColumnChunkProperties other = (ColumnChunkProperties)obj;
-      return other.codec == codec && other.path.equals(path) && other.type.equals(type) && equals(other.encodings, encodings);
+      ColumnChunkProperties other = (ColumnChunkProperties) obj;
+      return other.codec == codec && other.path.equals(path) && other.type.equals(type)
+          && equals(other.encodings, encodings);
     }
     return false;
   }

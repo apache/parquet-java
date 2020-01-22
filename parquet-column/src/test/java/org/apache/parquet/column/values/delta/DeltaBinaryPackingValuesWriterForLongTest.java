@@ -45,15 +45,14 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
   public void setUp() {
     blockSize = 128;
     miniBlockNum = 4;
-    writer = new DeltaBinaryPackingValuesWriterForLong(
-        blockSize, miniBlockNum, 100, 200, new DirectByteBufferAllocator());
+    writer = new DeltaBinaryPackingValuesWriterForLong(blockSize, miniBlockNum, 100, 200,
+        new DirectByteBufferAllocator());
     random = new Random(0);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriterForLong(
-        1281, 4, 100, 100, new DirectByteBufferAllocator());
+    new DeltaBinaryPackingValuesWriterForLong(1281, 4, 100, 100, new DirectByteBufferAllocator());
   }
 
   /* When data size is multiple of Block */
@@ -267,10 +266,10 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
 
     double miniBlockFlushed = Math.ceil(((double) length - 1) / miniBlockSize);
     double blockFlushed = Math.ceil(((double) length - 1) / blockSize);
-    double estimatedSize = 3 * 5 + 1 * 10 //blockHeader, 3 * int + 1 * long
-        + 8 * miniBlockFlushed * miniBlockSize //data(aligned to miniBlock)
-        + blockFlushed * miniBlockNum //bitWidth of mini blocks
-        + (10.0 * blockFlushed);//min delta for each block
+    double estimatedSize = 3 * 5 + 1 * 10 // blockHeader, 3 * int + 1 * long
+        + 8 * miniBlockFlushed * miniBlockSize // data(aligned to miniBlock)
+        + blockFlushed * miniBlockNum // bitWidth of mini blocks
+        + (10.0 * blockFlushed);// min delta for each block
     assertTrue(estimatedSize >= page.length);
     reader.initFromPage(100, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
 

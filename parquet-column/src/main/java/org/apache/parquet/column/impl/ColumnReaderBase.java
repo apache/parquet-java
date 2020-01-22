@@ -58,7 +58,8 @@ abstract class ColumnReaderBase implements ColumnReader {
   private static final Logger LOG = LoggerFactory.getLogger(ColumnReaderBase.class);
 
   /**
-   * binds the lower level page decoder to the record converter materializing the records
+   * binds the lower level page decoder to the record converter materializing the
+   * records
    */
   private static abstract class Binding {
 
@@ -75,8 +76,7 @@ abstract class ColumnReaderBase implements ColumnReader {
     /**
      * Skips n values from the underlying page
      *
-     * @param n
-     *          the number of values to be skipped
+     * @param n the number of values to be skipped
      */
     abstract void skip(int n);
 
@@ -163,53 +163,62 @@ abstract class ColumnReaderBase implements ColumnReader {
   private boolean valueRead;
 
   private void bindToDictionary(final Dictionary dictionary) {
-    binding =
-        new Binding() {
-          @Override
-          void read() {
-            dictionaryId = dataColumn.readValueDictionaryId();
-          }
-          @Override
-          public void skip() {
-            dataColumn.skip();
-          }
-          @Override
-          void skip(int n) {
-            dataColumn.skip(n);
-          }
-          @Override
-          public int getDictionaryId() {
-            return dictionaryId;
-          }
-          @Override
-          void writeValue() {
-            converter.addValueFromDictionary(dictionaryId);
-          }
-          @Override
-          public int getInteger() {
-            return dictionary.decodeToInt(dictionaryId);
-          }
-          @Override
-          public boolean getBoolean() {
-            return dictionary.decodeToBoolean(dictionaryId);
-          }
-          @Override
-          public long getLong() {
-            return dictionary.decodeToLong(dictionaryId);
-          }
-          @Override
-          public Binary getBinary() {
-            return dictionary.decodeToBinary(dictionaryId);
-          }
-          @Override
-          public float getFloat() {
-            return dictionary.decodeToFloat(dictionaryId);
-          }
-          @Override
-          public double getDouble() {
-            return dictionary.decodeToDouble(dictionaryId);
-          }
-        };
+    binding = new Binding() {
+      @Override
+      void read() {
+        dictionaryId = dataColumn.readValueDictionaryId();
+      }
+
+      @Override
+      public void skip() {
+        dataColumn.skip();
+      }
+
+      @Override
+      void skip(int n) {
+        dataColumn.skip(n);
+      }
+
+      @Override
+      public int getDictionaryId() {
+        return dictionaryId;
+      }
+
+      @Override
+      void writeValue() {
+        converter.addValueFromDictionary(dictionaryId);
+      }
+
+      @Override
+      public int getInteger() {
+        return dictionary.decodeToInt(dictionaryId);
+      }
+
+      @Override
+      public boolean getBoolean() {
+        return dictionary.decodeToBoolean(dictionaryId);
+      }
+
+      @Override
+      public long getLong() {
+        return dictionary.decodeToLong(dictionaryId);
+      }
+
+      @Override
+      public Binary getBinary() {
+        return dictionary.decodeToBinary(dictionaryId);
+      }
+
+      @Override
+      public float getFloat() {
+        return dictionary.decodeToFloat(dictionaryId);
+      }
+
+      @Override
+      public double getDouble() {
+        return dictionary.decodeToDouble(dictionaryId);
+      }
+    };
   }
 
   private void bind(PrimitiveTypeName type) {
@@ -218,173 +227,209 @@ abstract class ColumnReaderBase implements ColumnReader {
       public Binding convertFLOAT(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           float current;
+
           @Override
           void read() {
             current = dataColumn.readFloat();
           }
+
           @Override
           public void skip() {
             current = 0;
             dataColumn.skip();
           }
+
           @Override
           void skip(int n) {
             current = 0;
             dataColumn.skip(n);
           }
+
           @Override
           public float getFloat() {
             return current;
           }
+
           @Override
           void writeValue() {
             converter.addFloat(current);
           }
         };
       }
+
       @Override
       public Binding convertDOUBLE(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           double current;
+
           @Override
           void read() {
             current = dataColumn.readDouble();
           }
+
           @Override
           public void skip() {
             current = 0;
             dataColumn.skip();
           }
+
           @Override
           void skip(int n) {
             current = 0;
             dataColumn.skip(n);
           }
+
           @Override
           public double getDouble() {
             return current;
           }
+
           @Override
           void writeValue() {
             converter.addDouble(current);
           }
         };
       }
+
       @Override
       public Binding convertINT32(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           int current;
+
           @Override
           void read() {
             current = dataColumn.readInteger();
           }
+
           @Override
           public void skip() {
             current = 0;
             dataColumn.skip();
           }
+
           @Override
           void skip(int n) {
             current = 0;
             dataColumn.skip(n);
           }
+
           @Override
           public int getInteger() {
             return current;
           }
+
           @Override
           void writeValue() {
             converter.addInt(current);
           }
         };
       }
+
       @Override
       public Binding convertINT64(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           long current;
+
           @Override
           void read() {
             current = dataColumn.readLong();
           }
+
           @Override
           public void skip() {
             current = 0;
             dataColumn.skip();
           }
+
           @Override
           void skip(int n) {
             current = 0;
             dataColumn.skip(n);
           }
+
           @Override
           public long getLong() {
             return current;
           }
+
           @Override
           void writeValue() {
             converter.addLong(current);
           }
         };
       }
+
       @Override
       public Binding convertINT96(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return this.convertBINARY(primitiveTypeName);
       }
+
       @Override
-      public Binding convertFIXED_LEN_BYTE_ARRAY(
-          PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+      public Binding convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return this.convertBINARY(primitiveTypeName);
       }
+
       @Override
       public Binding convertBOOLEAN(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           boolean current;
+
           @Override
           void read() {
             current = dataColumn.readBoolean();
           }
+
           @Override
           public void skip() {
             current = false;
             dataColumn.skip();
           }
+
           @Override
           void skip(int n) {
             current = false;
             dataColumn.skip(n);
           }
+
           @Override
           public boolean getBoolean() {
             return current;
           }
+
           @Override
           void writeValue() {
             converter.addBoolean(current);
           }
         };
       }
+
       @Override
       public Binding convertBINARY(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           Binary current;
+
           @Override
           void read() {
             current = dataColumn.readBytes();
           }
+
           @Override
           public void skip() {
             current = null;
             dataColumn.skip();
           }
+
           @Override
           void skip(int n) {
             current = null;
             dataColumn.skip(n);
           }
+
           @Override
           public Binary getBinary() {
             return current;
           }
+
           @Override
           void writeValue() {
             converter.addBinary(current);
@@ -396,12 +441,15 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * creates a reader for triplets
+   * 
    * @param path the descriptor for the corresponding column
    * @param pageReader the underlying store to read from
-   * @param converter a converter that materializes the values in this column in the current record
+   * @param converter a converter that materializes the values in this column in
+   * the current record
    * @param writerVersion writer version string from the Parquet file being read
    */
-  ColumnReaderBase(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter, ParsedVersion writerVersion) {
+  ColumnReaderBase(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter,
+      ParsedVersion writerVersion) {
     this.path = checkNotNull(path, "path");
     this.pageReader = checkNotNull(pageReader, "pageReader");
     this.converter = checkNotNull(converter, "converter");
@@ -432,6 +480,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#writeCurrentValueToConverter()
    */
   @Override
@@ -448,6 +497,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getInteger()
    */
   @Override
@@ -458,6 +508,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getBoolean()
    */
   @Override
@@ -468,6 +519,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getLong()
    */
   @Override
@@ -478,6 +530,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getBinary()
    */
   @Override
@@ -488,6 +541,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getFloat()
    */
   @Override
@@ -498,6 +552,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getDouble()
    */
   @Override
@@ -508,6 +563,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getCurrentRepetitionLevel()
    */
   @Override
@@ -517,6 +573,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getDescriptor()
    */
   @Override
@@ -534,34 +591,29 @@ abstract class ColumnReaderBase implements ColumnReader {
         valueRead = true;
       }
     } catch (RuntimeException e) {
-      if (CorruptDeltaByteArrays.requiresSequentialReads(writerVersion, currentEncoding) &&
-          e instanceof ArrayIndexOutOfBoundsException) {
+      if (CorruptDeltaByteArrays.requiresSequentialReads(writerVersion, currentEncoding)
+          && e instanceof ArrayIndexOutOfBoundsException) {
         // this is probably PARQUET-246, which may happen if reading data with
         // MR because this can't be detected without reading all footers
-        throw new ParquetDecodingException("Read failure possibly due to " +
-            "PARQUET-246: try setting parquet.split.files to false",
-            new ParquetDecodingException(
-                format("Can't read value in column %s at value %d out of %d, " +
-                        "%d out of %d in currentPage. repetition level: " +
-                        "%d, definition level: %d",
-                    path, readValues, totalValueCount,
-                    readValues - (endOfPageValueCount - pageValueCount),
-                    pageValueCount, repetitionLevel, definitionLevel),
-                e));
+        throw new ParquetDecodingException(
+            "Read failure possibly due to " + "PARQUET-246: try setting parquet.split.files to false",
+            new ParquetDecodingException(format(
+                "Can't read value in column %s at value %d out of %d, "
+                    + "%d out of %d in currentPage. repetition level: " + "%d, definition level: %d",
+                path, readValues, totalValueCount, readValues - (endOfPageValueCount - pageValueCount), pageValueCount,
+                repetitionLevel, definitionLevel), e));
       }
-      throw new ParquetDecodingException(
-          format("Can't read value in column %s at value %d out of %d, " +
-                  "%d out of %d in currentPage. repetition level: " +
-                  "%d, definition level: %d",
-              path, readValues, totalValueCount,
-              readValues - (endOfPageValueCount - pageValueCount),
-              pageValueCount, repetitionLevel, definitionLevel),
-          e);
+      throw new ParquetDecodingException(format(
+          "Can't read value in column %s at value %d out of %d, " + "%d out of %d in currentPage. repetition level: "
+              + "%d, definition level: %d",
+          path, readValues, totalValueCount, readValues - (endOfPageValueCount - pageValueCount), pageValueCount,
+          repetitionLevel, definitionLevel), e);
     }
   }
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#skip()
    */
   @Override
@@ -574,6 +626,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getCurrentDefinitionLevel()
    */
   @Override
@@ -610,7 +663,8 @@ abstract class ColumnReaderBase implements ColumnReader {
   }
 
   /*
-   * Returns if current levels / value shall be skipped based on the specified repetition level.
+   * Returns if current levels / value shall be skipped based on the specified
+   * repetition level.
    */
   abstract boolean skipRL(int rl);
 
@@ -623,6 +677,7 @@ abstract class ColumnReaderBase implements ColumnReader {
         readPageV1(dataPageV1);
         return null;
       }
+
       @Override
       public Void visit(DataPageV2 dataPageV2) {
         readPageV2(dataPageV2);
@@ -660,8 +715,8 @@ abstract class ColumnReaderBase implements ColumnReader {
       throw new ParquetDecodingException("could not read page in col " + path, e);
     }
 
-    if (CorruptDeltaByteArrays.requiresSequentialReads(writerVersion, dataEncoding) &&
-        previousReader != null && previousReader instanceof RequiresPreviousReader) {
+    if (CorruptDeltaByteArrays.requiresSequentialReads(writerVersion, dataEncoding) && previousReader != null
+        && previousReader instanceof RequiresPreviousReader) {
       // previous reader can only be set if reading sequentially
       ((RequiresPreviousReader) dataColumn).setPreviousReader(previousReader);
     }
@@ -714,9 +769,7 @@ abstract class ColumnReaderBase implements ColumnReader {
         return new NullIntIterator();
       }
       return new RLEIntIterator(
-          new RunLengthBitPackingHybridDecoder(
-              BytesUtils.getWidthFromMaxInt(maxLevel),
-              bytes.toInputStream()));
+          new RunLengthBitPackingHybridDecoder(BytesUtils.getWidthFromMaxInt(maxLevel), bytes.toInputStream()));
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read levels in page for col " + path, e);
     }
@@ -728,6 +781,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#consume()
    */
   @Override
@@ -738,6 +792,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   /**
    * {@inheritDoc}
+   * 
    * @see org.apache.parquet.column.ColumnReader#getTotalValueCount()
    */
   @Deprecated

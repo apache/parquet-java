@@ -29,12 +29,14 @@ import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.io.api.PrimitiveConverter;
 
 /**
- * A {@link ColumnReader} implementation for utilizing indexes. When filtering using column indexes we might skip
- * reading some pages for different columns. Because the rows are not aligned between the pages of the different columns
- * it might be required to skip some values in this {@link ColumnReader} so we provide only the required values for the
- * higher API ({@link RecordReader}) and they do not need to handle or know about the skipped pages. The values (and the
- * related rl and dl) are skipped based on the iterator of the required row indexes and the first row index of each
- * page.<br>
+ * A {@link ColumnReader} implementation for utilizing indexes. When filtering
+ * using column indexes we might skip reading some pages for different columns.
+ * Because the rows are not aligned between the pages of the different columns
+ * it might be required to skip some values in this {@link ColumnReader} so we
+ * provide only the required values for the higher API ({@link RecordReader})
+ * and they do not need to handle or know about the skipped pages. The values
+ * (and the related rl and dl) are skipped based on the iterator of the required
+ * row indexes and the first row index of each page.<br>
  * For example:
  *
  * <pre>
@@ -54,10 +56,12 @@ import org.apache.parquet.io.api.PrimitiveConverter;
  *      └──────┴──────┴──────┘
  * </pre>
  *
- * The pages 1, 2, 3 in col1 are skipped so we have to skip the rows [20, 79]. Because page 1 in col2 contains values
- * only for the rows [40, 79] we skip this entire page as well. To synchronize the row reading we have to skip the
- * values (and the related rl and dl) for the rows [20, 39] in the end of the page 0 for col2. Similarly, we have to
- * skip values while reading page0 and page1 for col3.
+ * The pages 1, 2, 3 in col1 are skipped so we have to skip the rows [20, 79].
+ * Because page 1 in col2 contains values only for the rows [40, 79] we skip
+ * this entire page as well. To synchronize the row reading we have to skip the
+ * values (and the related rl and dl) for the rows [20, 39] in the end of the
+ * page 0 for col2. Similarly, we have to skip values while reading page0 and
+ * page1 for col3.
  */
 class SynchronizingColumnReader extends ColumnReaderBase {
 

@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hive.internal;
 
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -41,25 +40,23 @@ import org.apache.hadoop.mapred.JobConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
- * Hive 0.12 implementation of {@link org.apache.parquet.hive.HiveBinding HiveBinding}.
- * This class is a copied and slightly modified version of
+ * Hive 0.12 implementation of {@link org.apache.parquet.hive.HiveBinding
+ * HiveBinding}. This class is a copied and slightly modified version of
  * <a href="http://bit.ly/1a4tcrb">ManageJobConfig</a> class.
  */
 public class Hive012Binding extends AbstractHiveBinding {
   private static final Logger LOG = LoggerFactory.getLogger(Hive012Binding.class);
-  private final Map<String, PartitionDesc> pathToPartitionInfo =
-      new LinkedHashMap<String, PartitionDesc>();
+  private final Map<String, PartitionDesc> pathToPartitionInfo = new LinkedHashMap<String, PartitionDesc>();
   /**
-   * MapWork is the Hive object which describes input files,
-   * columns projections, and filters.
+   * MapWork is the Hive object which describes input files, columns projections,
+   * and filters.
    */
   private MapWork mapWork;
 
-
   /**
-   * Initialize the mapWork variable in order to get all the partition and start to update the jobconf
+   * Initialize the mapWork variable in order to get all the partition and start
+   * to update the jobconf
    *
    * @param job
    */
@@ -74,8 +71,8 @@ public class Hive012Binding extends AbstractHiveBinding {
     }
   }
 
-  private void pushProjectionsAndFilters(final JobConf jobConf,
-      final String splitPath, final String splitPathWithNoSchema) {
+  private void pushProjectionsAndFilters(final JobConf jobConf, final String splitPath,
+      final String splitPathWithNoSchema) {
 
     if (mapWork == null) {
       LOG.debug("Not pushing projections and filters because MapWork is null");
@@ -101,8 +98,7 @@ public class Hive012Binding extends AbstractHiveBinding {
     }
 
     for (final String alias : aliases) {
-      final Operator<? extends Serializable> op = mapWork.getAliasToWork().get(
-              alias);
+      final Operator<? extends Serializable> op = mapWork.getAliasToWork().get(alias);
       if (op != null && op instanceof TableScanOperator) {
         final TableScanOperator tableScan = (TableScanOperator) op;
 
@@ -140,20 +136,15 @@ public class Hive012Binding extends AbstractHiveBinding {
 
     final String filterText = filterExpr.getExprString();
     final String filterExprSerialized = Utilities.serializeExpression(filterExpr);
-    jobConf.set(
-            TableScanDesc.FILTER_TEXT_CONF_STR,
-            filterText);
-    jobConf.set(
-            TableScanDesc.FILTER_EXPR_CONF_STR,
-            filterExprSerialized);
+    jobConf.set(TableScanDesc.FILTER_TEXT_CONF_STR, filterText);
+    jobConf.set(TableScanDesc.FILTER_EXPR_CONF_STR, filterExprSerialized);
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public JobConf pushProjectionsAndFilters(JobConf jobConf, Path path)
-      throws IOException {
+  public JobConf pushProjectionsAndFilters(JobConf jobConf, Path path) throws IOException {
     init(jobConf);
     final JobConf cloneJobConf = new JobConf(jobConf);
     final PartitionDesc part = pathToPartitionInfo.get(path.toString());

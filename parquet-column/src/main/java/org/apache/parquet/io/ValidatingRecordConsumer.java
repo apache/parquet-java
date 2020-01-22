@@ -34,8 +34,8 @@ import org.slf4j.LoggerFactory;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 
 /**
- * Wraps a record consumer
- * Validates the record written against the schema and pass down the event to the wrapped consumer
+ * Wraps a record consumer Validates the record written against the schema and
+ * pass down the event to the wrapped consumer
  */
 public class ValidatingRecordConsumer extends RecordConsumer {
   private static final Logger LOG = LoggerFactory.getLogger(ValidatingRecordConsumer.class);
@@ -82,7 +82,8 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   @Override
   public void startField(String field, int index) {
     if (index <= previousField.peek()) {
-      throw new InvalidRecordException("fields must be added in order " + field + " index " + index + " is before previous field " + previousField.peek());
+      throw new InvalidRecordException("fields must be added in order " + field + " index " + index
+          + " is before previous field " + previousField.peek());
     }
     validateMissingFields(index);
     fields.push(index);
@@ -134,7 +135,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * {@inheritDoc}
    */
   @Override
-  public void flush(){
+  public void flush() {
     delegate.flush();
   }
 
@@ -142,21 +143,21 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     Type currentType = types.peek().asGroupType().getType(fields.peek());
     int c = fieldValueCount.pop() + 1;
     fieldValueCount.push(c);
-    LOG.debug("validate {} for {}",p ,currentType.getName());
+    LOG.debug("validate {} for {}", p, currentType.getName());
     switch (currentType.getRepetition()) {
-      case OPTIONAL:
-      case REQUIRED:
-        if (c > 1) {
-          throw new InvalidRecordException("repeated value when the type is not repeated in " + currentType);
-        }
-        break;
-      case REPEATED:
-        break;
-      default:
-        throw new InvalidRecordException("unknown repetition " + currentType.getRepetition() + " in " + currentType);
+    case OPTIONAL:
+    case REQUIRED:
+      if (c > 1) {
+        throw new InvalidRecordException("repeated value when the type is not repeated in " + currentType);
+      }
+      break;
+    case REPEATED:
+      break;
+    default:
+      throw new InvalidRecordException("unknown repetition " + currentType.getRepetition() + " in " + currentType);
     }
     if (!currentType.isPrimitive() || currentType.asPrimitiveType().getPrimitiveTypeName() != p) {
-      throw new InvalidRecordException("expected type " + p + " but got "+ currentType);
+      throw new InvalidRecordException("expected type " + p + " but got " + currentType);
     }
   }
 
@@ -164,30 +165,29 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     Type currentType = types.peek().asGroupType().getType(fields.peek());
     int c = fieldValueCount.pop() + 1;
     fieldValueCount.push(c);
-    if (LOG.isDebugEnabled()) LOG.debug("validate " + Arrays.toString(ptypes) + " for " + currentType.getName());
+    if (LOG.isDebugEnabled())
+      LOG.debug("validate " + Arrays.toString(ptypes) + " for " + currentType.getName());
     switch (currentType.getRepetition()) {
-      case OPTIONAL:
-      case REQUIRED:
-        if (c > 1) {
-          throw new InvalidRecordException("repeated value when the type is not repeated in " + currentType);
-        }
-        break;
-      case REPEATED:
-        break;
-      default:
-        throw new InvalidRecordException("unknown repetition " + currentType.getRepetition() + " in " + currentType);
+    case OPTIONAL:
+    case REQUIRED:
+      if (c > 1) {
+        throw new InvalidRecordException("repeated value when the type is not repeated in " + currentType);
+      }
+      break;
+    case REPEATED:
+      break;
+    default:
+      throw new InvalidRecordException("unknown repetition " + currentType.getRepetition() + " in " + currentType);
     }
     if (!currentType.isPrimitive()) {
-      throw new InvalidRecordException(
-          "expected type in " + Arrays.toString(ptypes) + " but got " + currentType);
+      throw new InvalidRecordException("expected type in " + Arrays.toString(ptypes) + " but got " + currentType);
     }
     for (PrimitiveTypeName p : ptypes) {
       if (currentType.asPrimitiveType().getPrimitiveTypeName() == p) {
         return; // type is valid
       }
     }
-    throw new InvalidRecordException(
-        "expected type in " + Arrays.toString(ptypes) + " but got " + currentType);
+    throw new InvalidRecordException("expected type in " + Arrays.toString(ptypes) + " but got " + currentType);
   }
 
   /**

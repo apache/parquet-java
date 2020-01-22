@@ -84,56 +84,34 @@ public class DictionaryFilterTest {
   private static final Configuration conf = new Configuration();
   private static final Path FILE_V1 = new Path("target/test/TestDictionaryFilter/testParquetFileV1.parquet");
   private static final Path FILE_V2 = new Path("target/test/TestDictionaryFilter/testParquetFileV2.parquet");
-  private static final MessageType schema = parseMessageType(
-      "message test { "
-          + "required binary binary_field; "
-          + "required binary single_value_field; "
-          + "optional binary optional_single_value_field; "
-          + "required fixed_len_byte_array(17) fixed_field (DECIMAL(40,4)); "
-          + "required int32 int32_field; "
-          + "required int64 int64_field; "
-          + "required double double_field; "
-          + "required float float_field; "
-          + "required int32 plain_int32_field; "
-          + "required binary fallback_binary_field; "
-          + "required int96 int96_field; "
-          + "} ");
+  private static final MessageType schema = parseMessageType("message test { " + "required binary binary_field; "
+      + "required binary single_value_field; " + "optional binary optional_single_value_field; "
+      + "required fixed_len_byte_array(17) fixed_field (DECIMAL(40,4)); " + "required int32 int32_field; "
+      + "required int64 int64_field; " + "required double double_field; " + "required float float_field; "
+      + "required int32 plain_int32_field; " + "required binary fallback_binary_field; "
+      + "required int96 int96_field; " + "} ");
 
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
-  private static final int[] intValues = new int[] {
-      -100, 302, 3333333, 7654321, 1234567, -2000, -77775, 0, 75, 22223,
-      77, 22221, -444443, 205, 12, 44444, 889, 66665, -777889, -7,
-      52, 33, -257, 1111, 775, 26};
-  private static final long[] longValues = new long[] {
-      -100L, 302L, 3333333L, 7654321L, 1234567L, -2000L, -77775L, 0L,
-      75L, 22223L, 77L, 22221L, -444443L, 205L, 12L, 44444L, 889L, 66665L,
-      -777889L, -7L, 52L, 33L, -257L, 1111L, 775L, 26L};
+  private static final int[] intValues = new int[] { -100, 302, 3333333, 7654321, 1234567, -2000, -77775, 0, 75, 22223,
+      77, 22221, -444443, 205, 12, 44444, 889, 66665, -777889, -7, 52, 33, -257, 1111, 775, 26 };
+  private static final long[] longValues = new long[] { -100L, 302L, 3333333L, 7654321L, 1234567L, -2000L, -77775L, 0L,
+      75L, 22223L, 77L, 22221L, -444443L, 205L, 12L, 44444L, 889L, 66665L, -777889L, -7L, 52L, 33L, -257L, 1111L, 775L,
+      26L };
   private static final Binary[] DECIMAL_VALUES = new Binary[] {
       toBinary("-9999999999999999999999999999999999999999", 17),
       toBinary("-9999999999999999999999999999999999999998", 17),
       toBinary(BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.ONE), 17),
       toBinary(BigInteger.valueOf(Long.MIN_VALUE), 17),
-      toBinary(BigInteger.valueOf(Long.MIN_VALUE).add(BigInteger.ONE), 17),
-      toBinary("-1", 17),
-      toBinary("0", 17),
+      toBinary(BigInteger.valueOf(Long.MIN_VALUE).add(BigInteger.ONE), 17), toBinary("-1", 17), toBinary("0", 17),
       toBinary(BigInteger.valueOf(Long.MAX_VALUE).subtract(BigInteger.ONE), 17),
       toBinary(BigInteger.valueOf(Long.MAX_VALUE), 17),
       toBinary(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE), 17),
-      toBinary("999999999999999999999999999999999999999", 17),
-      toBinary("9999999999999999999999999999999999999998", 17),
-      toBinary("9999999999999999999999999999999999999999", 17)
-  };
-  private static final Binary[] INT96_VALUES = new Binary[] {
-      toBinary("-9999999999999999999999999999", 12),
-      toBinary("-9999999999999999999999999998", 12),
-      toBinary("-1234567890", 12),
-      toBinary("-1", 12),
-      toBinary("-0", 12),
-      toBinary("1", 12),
-      toBinary("1234567890", 12),
-      toBinary("-9999999999999999999999999998", 12),
-      toBinary("9999999999999999999999999999", 12)
-  };
+      toBinary("999999999999999999999999999999999999999", 17), toBinary("9999999999999999999999999999999999999998", 17),
+      toBinary("9999999999999999999999999999999999999999", 17) };
+  private static final Binary[] INT96_VALUES = new Binary[] { toBinary("-9999999999999999999999999999", 12),
+      toBinary("-9999999999999999999999999998", 12), toBinary("-1234567890", 12), toBinary("-1", 12),
+      toBinary("-0", 12), toBinary("1", 12), toBinary("1234567890", 12), toBinary("-9999999999999999999999999998", 12),
+      toBinary("9999999999999999999999999999", 12) };
 
   private static Binary toBinary(String decimalWithoutScale, int byteCount) {
     return toBinary(new BigInteger(decimalWithoutScale), byteCount);
@@ -153,17 +131,14 @@ public class DictionaryFilterTest {
     for (int i = 0; i < nElements; i++) {
       int index = i % ALPHABET.length();
 
-      Group group = f.newGroup()
-          .append("binary_field", ALPHABET.substring(index, index+1))
-          .append("single_value_field", "sharp")
-          .append("fixed_field", DECIMAL_VALUES[i % DECIMAL_VALUES.length])
+      Group group = f.newGroup().append("binary_field", ALPHABET.substring(index, index + 1))
+          .append("single_value_field", "sharp").append("fixed_field", DECIMAL_VALUES[i % DECIMAL_VALUES.length])
           .append("int32_field", intValues[i % intValues.length])
           .append("int64_field", longValues[i % longValues.length])
           .append("double_field", toDouble(intValues[i % intValues.length]))
-          .append("float_field", toFloat(intValues[i % intValues.length]))
-          .append("plain_int32_field", i)
-          .append("fallback_binary_field", i < (nElements / 2) ?
-              ALPHABET.substring(index, index+1) : UUID.randomUUID().toString())
+          .append("float_field", toFloat(intValues[i % intValues.length])).append("plain_int32_field", i)
+          .append("fallback_binary_field",
+              i < (nElements / 2) ? ALPHABET.substring(index, index + 1) : UUID.randomUUID().toString())
           .append("int96_field", INT96_VALUES[i % INT96_VALUES.length]);
 
       // 10% of the time, leave the field null
@@ -186,15 +161,9 @@ public class DictionaryFilterTest {
   private static void prepareFile(WriterVersion version, Path file) throws IOException {
     GroupWriteSupport.setSchema(schema, conf);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
-    ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
-        .withWriterVersion(version)
-        .withCompressionCodec(GZIP)
-        .withRowGroupSize(1024*1024)
-        .withPageSize(1024)
-        .enableDictionaryEncoding()
-        .withDictionaryPageSize(2*1024)
-        .withConf(conf)
-        .build();
+    ParquetWriter<Group> writer = ExampleParquetWriter.builder(file).withWriterVersion(version)
+        .withCompressionCodec(GZIP).withRowGroupSize(1024 * 1024).withPageSize(1024).enableDictionaryEncoding()
+        .withDictionaryPageSize(2 * 1024).withConf(conf).build();
     writeData(f, writer);
   }
 
@@ -213,7 +182,7 @@ public class DictionaryFilterTest {
 
   @Parameters
   public static Object[] params() {
-    return new Object[] {PARQUET_1_0, PARQUET_2_0};
+    return new Object[] { PARQUET_1_0, PARQUET_2_0 };
   }
 
   List<ColumnChunkMetaData> ccmd;
@@ -261,19 +230,16 @@ public class DictionaryFilterTest {
 
   @SuppressWarnings("deprecation")
   private void testDictionaryEncodedColumnsV1() throws Exception {
-    Set<String> dictionaryEncodedColumns = new HashSet<String>(Arrays.asList(
-        "binary_field", "single_value_field", "optional_single_value_field", "int32_field", "int64_field",
-        "double_field", "float_field", "int96_field"));
+    Set<String> dictionaryEncodedColumns = new HashSet<String>(Arrays.asList("binary_field", "single_value_field",
+        "optional_single_value_field", "int32_field", "int64_field", "double_field", "float_field", "int96_field"));
     for (ColumnChunkMetaData column : ccmd) {
       String name = column.getPath().toDotString();
       if (dictionaryEncodedColumns.contains(name)) {
         assertTrue("Column should be dictionary encoded: " + name,
             column.getEncodings().contains(Encoding.PLAIN_DICTIONARY));
-        assertFalse("Column should not have plain data pages" + name,
-            column.getEncodings().contains(Encoding.PLAIN));
+        assertFalse("Column should not have plain data pages" + name, column.getEncodings().contains(Encoding.PLAIN));
       } else {
-        assertTrue("Column should have plain encoding: " + name,
-            column.getEncodings().contains(Encoding.PLAIN));
+        assertTrue("Column should have plain encoding: " + name, column.getEncodings().contains(Encoding.PLAIN));
         if (name.startsWith("fallback")) {
           assertTrue("Column should have some dictionary encoding: " + name,
               column.getEncodings().contains(Encoding.PLAIN_DICTIONARY));
@@ -286,9 +252,9 @@ public class DictionaryFilterTest {
   }
 
   private void testDictionaryEncodedColumnsV2() throws Exception {
-    Set<String> dictionaryEncodedColumns = new HashSet<String>(Arrays.asList(
-        "binary_field", "single_value_field", "optional_single_value_field", "fixed_field", "int32_field",
-        "int64_field", "double_field", "float_field", "int96_field"));
+    Set<String> dictionaryEncodedColumns = new HashSet<String>(
+        Arrays.asList("binary_field", "single_value_field", "optional_single_value_field", "fixed_field", "int32_field",
+            "int64_field", "double_field", "float_field", "int96_field"));
     for (ColumnChunkMetaData column : ccmd) {
       EncodingStats encStats = column.getEncodingStats();
       String name = column.getPath().toDotString();
@@ -298,8 +264,7 @@ public class DictionaryFilterTest {
         assertFalse("Column should not have non-dictionary encoded pages: " + name,
             encStats.hasNonDictionaryEncodedPages());
       } else {
-        assertTrue("Column should have non-dictionary encoded pages: " + name,
-            encStats.hasNonDictionaryEncodedPages());
+        assertTrue("Column should have non-dictionary encoded pages: " + name, encStats.hasNonDictionaryEncodedPages());
         if (name.startsWith("fallback")) {
           assertTrue("Column should have dictionary pages: " + name, encStats.hasDictionaryPages());
           assertTrue("Column should have dictionary encoded pages: " + name, encStats.hasDictionaryEncodedPages());
@@ -316,14 +281,11 @@ public class DictionaryFilterTest {
     BinaryColumn b = binaryColumn("binary_field");
     FilterPredicate pred = eq(b, Binary.fromString("c"));
 
-    assertFalse("Should not drop block for lower case letters",
-        canDrop(pred, ccmd, dictionaries));
+    assertFalse("Should not drop block for lower case letters", canDrop(pred, ccmd, dictionaries));
 
-    assertTrue("Should drop block for upper case letters",
-        canDrop(eq(b, Binary.fromString("A")), ccmd, dictionaries));
+    assertTrue("Should drop block for upper case letters", canDrop(eq(b, Binary.fromString("A")), ccmd, dictionaries));
 
-    assertFalse("Should not drop block for null",
-        canDrop(eq(b, null), ccmd, dictionaries));
+    assertFalse("Should not drop block for null", canDrop(eq(b, null), ccmd, dictionaries));
   }
 
   @Test
@@ -332,15 +294,12 @@ public class DictionaryFilterTest {
 
     // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
     if (version == PARQUET_2_0) {
-      assertTrue("Should drop block for -2",
-          canDrop(eq(b, toBinary("-2", 17)), ccmd, dictionaries));
+      assertTrue("Should drop block for -2", canDrop(eq(b, toBinary("-2", 17)), ccmd, dictionaries));
     }
 
-    assertFalse("Should not drop block for -1",
-        canDrop(eq(b, toBinary("-1", 17)), ccmd, dictionaries));
+    assertFalse("Should not drop block for -1", canDrop(eq(b, toBinary("-1", 17)), ccmd, dictionaries));
 
-    assertFalse("Should not drop block for null",
-        canDrop(eq(b, null), ccmd, dictionaries));
+    assertFalse("Should not drop block for null", canDrop(eq(b, null), ccmd, dictionaries));
   }
 
   @Test
@@ -348,14 +307,11 @@ public class DictionaryFilterTest {
     BinaryColumn b = binaryColumn("int96_field");
 
     // INT96 ordering is undefined => no filtering shall be done
-    assertFalse("Should not drop block for -2",
-        canDrop(eq(b, toBinary("-2", 12)), ccmd, dictionaries));
+    assertFalse("Should not drop block for -2", canDrop(eq(b, toBinary("-2", 12)), ccmd, dictionaries));
 
-    assertFalse("Should not drop block for -1",
-        canDrop(eq(b, toBinary("-1", 12)), ccmd, dictionaries));
+    assertFalse("Should not drop block for -1", canDrop(eq(b, toBinary("-1", 12)), ccmd, dictionaries));
 
-    assertFalse("Should not drop block for null",
-        canDrop(eq(b, null), ccmd, dictionaries));
+    assertFalse("Should not drop block for null", canDrop(eq(b, null), ccmd, dictionaries));
   }
 
   @Test
@@ -382,8 +338,7 @@ public class DictionaryFilterTest {
     assertFalse("Should not drop block with a known value",
         canDrop(notEq(b, Binary.fromString("B")), ccmd, dictionaries));
 
-    assertFalse("Should not drop block for null",
-        canDrop(notEq(b, null), ccmd, dictionaries));
+    assertFalse("Should not drop block for null", canDrop(notEq(b, null), ccmd, dictionaries));
   }
 
   @Test
@@ -394,13 +349,10 @@ public class DictionaryFilterTest {
       lowest = Math.min(lowest, value);
     }
 
-    assertTrue("Should drop: < lowest value",
-        canDrop(lt(i32, lowest), ccmd, dictionaries));
-    assertFalse("Should not drop: < (lowest value + 1)",
-        canDrop(lt(i32, lowest + 1), ccmd, dictionaries));
+    assertTrue("Should drop: < lowest value", canDrop(lt(i32, lowest), ccmd, dictionaries));
+    assertFalse("Should not drop: < (lowest value + 1)", canDrop(lt(i32, lowest + 1), ccmd, dictionaries));
 
-    assertFalse("Should not drop: contains matching values",
-        canDrop(lt(i32, Integer.MAX_VALUE), ccmd, dictionaries));
+    assertFalse("Should not drop: contains matching values", canDrop(lt(i32, Integer.MAX_VALUE), ccmd, dictionaries));
   }
 
   @Test
@@ -409,12 +361,10 @@ public class DictionaryFilterTest {
 
     // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
     if (version == PARQUET_2_0) {
-    assertTrue("Should drop: < lowest value",
-        canDrop(lt(fixed, DECIMAL_VALUES[0]), ccmd, dictionaries));
+      assertTrue("Should drop: < lowest value", canDrop(lt(fixed, DECIMAL_VALUES[0]), ccmd, dictionaries));
     }
 
-    assertFalse("Should not drop: < 2nd lowest value",
-        canDrop(lt(fixed, DECIMAL_VALUES[1]), ccmd, dictionaries));
+    assertFalse("Should not drop: < 2nd lowest value", canDrop(lt(fixed, DECIMAL_VALUES[1]), ccmd, dictionaries));
   }
 
   @Test
@@ -425,13 +375,10 @@ public class DictionaryFilterTest {
       lowest = Math.min(lowest, value);
     }
 
-    assertTrue("Should drop: <= lowest - 1",
-        canDrop(ltEq(i64, lowest - 1), ccmd, dictionaries));
-    assertFalse("Should not drop: <= lowest",
-        canDrop(ltEq(i64, lowest), ccmd, dictionaries));
+    assertTrue("Should drop: <= lowest - 1", canDrop(ltEq(i64, lowest - 1), ccmd, dictionaries));
+    assertFalse("Should not drop: <= lowest", canDrop(ltEq(i64, lowest), ccmd, dictionaries));
 
-    assertFalse("Should not drop: contains matching values",
-        canDrop(ltEq(i64, Long.MAX_VALUE), ccmd, dictionaries));
+    assertFalse("Should not drop: contains matching values", canDrop(ltEq(i64, Long.MAX_VALUE), ccmd, dictionaries));
   }
 
   @Test
@@ -442,13 +389,10 @@ public class DictionaryFilterTest {
       highest = Math.max(highest, toFloat(value));
     }
 
-    assertTrue("Should drop: > highest value",
-        canDrop(gt(f, highest), ccmd, dictionaries));
-    assertFalse("Should not drop: > (highest value - 1.0)",
-        canDrop(gt(f, highest - 1.0f), ccmd, dictionaries));
+    assertTrue("Should drop: > highest value", canDrop(gt(f, highest), ccmd, dictionaries));
+    assertFalse("Should not drop: > (highest value - 1.0)", canDrop(gt(f, highest - 1.0f), ccmd, dictionaries));
 
-    assertFalse("Should not drop: contains matching values",
-        canDrop(gt(f, Float.MIN_VALUE), ccmd, dictionaries));
+    assertFalse("Should not drop: contains matching values", canDrop(gt(f, Float.MIN_VALUE), ccmd, dictionaries));
   }
 
   @Test
@@ -459,13 +403,10 @@ public class DictionaryFilterTest {
       highest = Math.max(highest, toDouble(value));
     }
 
-    assertTrue("Should drop: >= highest + 0.00000001",
-        canDrop(gtEq(d, highest + 0.00000001), ccmd, dictionaries));
-    assertFalse("Should not drop: >= highest",
-        canDrop(gtEq(d, highest), ccmd, dictionaries));
+    assertTrue("Should drop: >= highest + 0.00000001", canDrop(gtEq(d, highest + 0.00000001), ccmd, dictionaries));
+    assertFalse("Should not drop: >= highest", canDrop(gtEq(d, highest), ccmd, dictionaries));
 
-    assertFalse("Should not drop: contains matching values",
-        canDrop(gtEq(d, Double.MIN_VALUE), ccmd, dictionaries));
+    assertFalse("Should not drop: contains matching values", canDrop(gtEq(d, Double.MIN_VALUE), ccmd, dictionaries));
   }
 
   @Test
@@ -480,14 +421,10 @@ public class DictionaryFilterTest {
     FilterPredicate x = eq(col, Binary.fromString("x"));
     FilterPredicate y = eq(col, Binary.fromString("y"));
 
-    assertTrue("Should drop when either predicate must be false",
-        canDrop(and(B, y), ccmd, dictionaries));
-    assertTrue("Should drop when either predicate must be false",
-        canDrop(and(x, C), ccmd, dictionaries));
-    assertTrue("Should drop when either predicate must be false",
-        canDrop(and(B, C), ccmd, dictionaries));
-    assertFalse("Should not drop when either predicate could be true",
-        canDrop(and(x, y), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(and(B, y), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(and(x, C), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(and(B, C), ccmd, dictionaries));
+    assertFalse("Should not drop when either predicate could be true", canDrop(and(x, y), ccmd, dictionaries));
   }
 
   @Test
@@ -502,16 +439,11 @@ public class DictionaryFilterTest {
     FilterPredicate x = eq(col, Binary.fromString("x"));
     FilterPredicate y = eq(col, Binary.fromString("y"));
 
-    assertFalse("Should not drop when one predicate could be true",
-        canDrop(or(B, y), ccmd, dictionaries));
-    assertFalse("Should not drop when one predicate could be true",
-        canDrop(or(x, C), ccmd, dictionaries));
-    assertTrue("Should drop when both predicates must be false",
-        canDrop(or(B, C), ccmd, dictionaries));
-    assertFalse("Should not drop when one predicate could be true",
-        canDrop(or(x, y), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(or(B, y), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, C), ccmd, dictionaries));
+    assertTrue("Should drop when both predicates must be false", canDrop(or(B, C), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, y), ccmd, dictionaries));
   }
-
 
   @Test
   public void testUdp() throws Exception {
@@ -519,10 +451,10 @@ public class DictionaryFilterTest {
     InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
 
     assertTrue("Should drop block for non-matching UDP",
-      canDrop(userDefined(intColumn("int32_field"), dropabble), ccmd, dictionaries));
+        canDrop(userDefined(intColumn("int32_field"), dropabble), ccmd, dictionaries));
 
     assertFalse("Should not drop block for matching UDP",
-      canDrop(userDefined(intColumn("int32_field"), undroppable), ccmd, dictionaries));
+        canDrop(userDefined(intColumn("int32_field"), undroppable), ccmd, dictionaries));
   }
 
   @Test
@@ -532,21 +464,16 @@ public class DictionaryFilterTest {
     Set<Integer> allValues = ImmutableSet.copyOf(Arrays.asList(ArrayUtils.toObject(intValues)));
     InInt32UDP completeMatch = new InInt32UDP(allValues);
 
-    FilterPredicate inverse =
-      LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), droppable)));
-    FilterPredicate inverse1 =
-      LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), undroppable)));
-    FilterPredicate inverse2 =
-      LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), completeMatch)));
+    FilterPredicate inverse = LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), droppable)));
+    FilterPredicate inverse1 = LogicalInverseRewriter.rewrite(not(userDefined(intColumn("int32_field"), undroppable)));
+    FilterPredicate inverse2 = LogicalInverseRewriter
+        .rewrite(not(userDefined(intColumn("int32_field"), completeMatch)));
 
-    assertFalse("Should not drop block for inverse of non-matching UDP",
-      canDrop(inverse, ccmd, dictionaries));
+    assertFalse("Should not drop block for inverse of non-matching UDP", canDrop(inverse, ccmd, dictionaries));
 
-    assertFalse("Should not drop block for inverse of UDP with some matches",
-      canDrop(inverse1, ccmd, dictionaries));
+    assertFalse("Should not drop block for inverse of UDP with some matches", canDrop(inverse1, ccmd, dictionaries));
 
-    assertTrue("Should drop block for inverse of UDP with all matches",
-      canDrop(inverse2, ccmd, dictionaries));
+    assertTrue("Should drop block for inverse of UDP with all matches", canDrop(inverse2, ccmd, dictionaries));
   }
 
   @Test
@@ -554,14 +481,11 @@ public class DictionaryFilterTest {
     IntColumn plain = intColumn("plain_int32_field");
     DictionaryPageReadStore dictionaryStore = mock(DictionaryPageReadStore.class);
 
-    assertFalse("Should never drop block using plain encoding",
-        canDrop(eq(plain, -10), ccmd, dictionaryStore));
+    assertFalse("Should never drop block using plain encoding", canDrop(eq(plain, -10), ccmd, dictionaryStore));
 
-    assertFalse("Should never drop block using plain encoding",
-        canDrop(lt(plain, -10), ccmd, dictionaryStore));
+    assertFalse("Should never drop block using plain encoding", canDrop(lt(plain, -10), ccmd, dictionaryStore));
 
-    assertFalse("Should never drop block using plain encoding",
-        canDrop(ltEq(plain, -10), ccmd, dictionaryStore));
+    assertFalse("Should never drop block using plain encoding", canDrop(ltEq(plain, -10), ccmd, dictionaryStore));
 
     assertFalse("Should never drop block using plain encoding",
         canDrop(gt(plain, nElements + 10), ccmd, dictionaryStore));
@@ -580,14 +504,11 @@ public class DictionaryFilterTest {
     IntColumn plain = intColumn("fallback_binary_field");
     DictionaryPageReadStore dictionaryStore = mock(DictionaryPageReadStore.class);
 
-    assertFalse("Should never drop block using plain encoding",
-        canDrop(eq(plain, -10), ccmd, dictionaryStore));
+    assertFalse("Should never drop block using plain encoding", canDrop(eq(plain, -10), ccmd, dictionaryStore));
 
-    assertFalse("Should never drop block using plain encoding",
-        canDrop(lt(plain, -10), ccmd, dictionaryStore));
+    assertFalse("Should never drop block using plain encoding", canDrop(lt(plain, -10), ccmd, dictionaryStore));
 
-    assertFalse("Should never drop block using plain encoding",
-        canDrop(ltEq(plain, -10), ccmd, dictionaryStore));
+    assertFalse("Should never drop block using plain encoding", canDrop(ltEq(plain, -10), ccmd, dictionaryStore));
 
     assertFalse("Should never drop block using plain encoding",
         canDrop(gt(plain, nElements + 10), ccmd, dictionaryStore));
@@ -605,11 +526,9 @@ public class DictionaryFilterTest {
   public void testEqMissingColumn() throws Exception {
     BinaryColumn b = binaryColumn("missing_column");
 
-    assertTrue("Should drop block for non-null query",
-        canDrop(eq(b, Binary.fromString("any")), ccmd, dictionaries));
+    assertTrue("Should drop block for non-null query", canDrop(eq(b, Binary.fromString("any")), ccmd, dictionaries));
 
-    assertFalse("Should not drop block null query",
-        canDrop(eq(b, null), ccmd, dictionaries));
+    assertFalse("Should not drop block null query", canDrop(eq(b, null), ccmd, dictionaries));
   }
 
   @Test
@@ -619,8 +538,7 @@ public class DictionaryFilterTest {
     assertFalse("Should not drop block for non-null query",
         canDrop(notEq(b, Binary.fromString("any")), ccmd, dictionaries));
 
-    assertTrue("Should not drop block null query",
-        canDrop(notEq(b, null), ccmd, dictionaries));
+    assertTrue("Should not drop block null query", canDrop(notEq(b, null), ccmd, dictionaries));
   }
 
   @Test
@@ -662,11 +580,10 @@ public class DictionaryFilterTest {
     IntColumn fake = intColumn("missing_column");
 
     assertTrue("Should drop block for null rejecting udp",
-      canDrop(userDefined(fake, nullRejecting), ccmd, dictionaries));
+        canDrop(userDefined(fake, nullRejecting), ccmd, dictionaries));
     assertFalse("Should not drop block for null accepting udp",
-      canDrop(userDefined(fake, nullAccepting), ccmd, dictionaries));
+        canDrop(userDefined(fake, nullAccepting), ccmd, dictionaries));
   }
-
 
   @Test
   public void testInverseUdpMissingColumn() throws Exception {
@@ -675,11 +592,10 @@ public class DictionaryFilterTest {
     IntColumn fake = intColumn("missing_column");
 
     assertTrue("Should drop block for null accepting udp",
-      canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullAccepting))), ccmd, dictionaries));
+        canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullAccepting))), ccmd, dictionaries));
     assertFalse("Should not drop block for null rejecting udp",
-      canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries));
+        canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries));
   }
-
 
   private static final class InInt32UDP extends UserDefinedPredicate<Integer> implements Serializable {
 

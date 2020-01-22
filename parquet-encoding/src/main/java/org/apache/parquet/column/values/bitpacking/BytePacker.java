@@ -23,9 +23,8 @@ import java.nio.ByteBuffer;
 /**
  * Packs and unpacks into bytes
  *
- * packing unpacking treats:
- *  - n values at a time (with n % 8 == 0)
- *  - bitWidth * (n/8) bytes at a time.
+ * packing unpacking treats: - n values at a time (with n % 8 == 0) - bitWidth *
+ * (n/8) bytes at a time.
  */
 public abstract class BytePacker {
 
@@ -36,7 +35,8 @@ public abstract class BytePacker {
   }
 
   /**
-   * @return the width in bits used for encoding, also how many bytes are packed/unpacked at a time by pack8Values/unpack8Values
+   * @return the width in bits used for encoding, also how many bytes are
+   * packed/unpacked at a time by pack8Values/unpack8Values
    */
   public final int getBitWidth() {
     return bitWidth;
@@ -45,6 +45,7 @@ public abstract class BytePacker {
   /**
    * pack 8 values from input at inPos into bitWidth bytes in output at outPos.
    * nextPosition: inPos += 8; outPos += getBitWidth()
+   * 
    * @param input the input values
    * @param inPos where to read from in input
    * @param output the output bytes
@@ -53,8 +54,9 @@ public abstract class BytePacker {
   public abstract void pack8Values(final int[] input, final int inPos, final byte[] output, final int outPos);
 
   /**
-   * pack 32 values from input at inPos into bitWidth * 4 bytes in output at outPos.
-   * nextPosition: inPos += 32; outPos += getBitWidth() * 4
+   * pack 32 values from input at inPos into bitWidth * 4 bytes in output at
+   * outPos. nextPosition: inPos += 32; outPos += getBitWidth() * 4
+   * 
    * @param input the input values
    * @param inPos where to read from in input
    * @param output the output bytes
@@ -65,6 +67,7 @@ public abstract class BytePacker {
   /**
    * unpack bitWidth bytes from input at inPos into 8 values in output at outPos.
    * nextPosition: inPos += getBitWidth(); outPos += 8
+   * 
    * @param input the input bytes
    * @param inPos where to read from in input
    * @param output the output values
@@ -74,6 +77,7 @@ public abstract class BytePacker {
 
   /**
    * Compatibility API
+   * 
    * @param input the input bytes
    * @param inPos where to read from in input
    * @param output the output values
@@ -85,8 +89,9 @@ public abstract class BytePacker {
   }
 
   /**
-   * unpack bitWidth * 4 bytes from input at inPos into 32 values in output at outPos.
-   * nextPosition: inPos += getBitWidth() * 4; outPos += 32
+   * unpack bitWidth * 4 bytes from input at inPos into 32 values in output at
+   * outPos. nextPosition: inPos += getBitWidth() * 4; outPos += 32
+   * 
    * @param input the input bytes
    * @param inPos where to read from in input
    * @param output the output values
@@ -96,6 +101,7 @@ public abstract class BytePacker {
 
   /**
    * Compatibility API
+   * 
    * @param input the input bytes
    * @param inPos where to read from in input
    * @param output the output values

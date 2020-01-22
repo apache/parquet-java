@@ -36,16 +36,18 @@ public class DictionaryPage extends Page {
 
   /**
    * creates an uncompressed page
+   * 
    * @param bytes the content of the page
    * @param dictionarySize the value count in the dictionary
    * @param encoding the encoding used
    */
   public DictionaryPage(BytesInput bytes, int dictionarySize, Encoding encoding) {
-    this(bytes, (int)bytes.size(), dictionarySize, encoding); // TODO: fix sizes long or int
+    this(bytes, (int) bytes.size(), dictionarySize, encoding); // TODO: fix sizes long or int
   }
 
   /**
    * creates a dictionary page
+   * 
    * @param bytes the (possibly compressed) content of the page
    * @param uncompressedSize the size uncompressed
    * @param dictionarySize the value count in the dictionary
@@ -74,11 +76,10 @@ public class DictionaryPage extends Page {
     return new DictionaryPage(BytesInput.copy(bytes), getUncompressedSize(), dictionarySize, encoding);
   }
 
-
   @Override
   public String toString() {
-    return "Page [bytes.size=" + bytes.size() + ", entryCount=" + dictionarySize + ", uncompressedSize=" + getUncompressedSize() + ", encoding=" + encoding + "]";
+    return "Page [bytes.size=" + bytes.size() + ", entryCount=" + dictionarySize + ", uncompressedSize="
+        + getUncompressedSize() + ", encoding=" + encoding + "]";
   }
-
 
 }

@@ -33,6 +33,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
   public RecordConsumer recordConsumer;
   public RecordMaterializer<T> recordMaterializer;
   public ColumnReadStore columnStore;
+
   @Override
   public T read() {
     readOneRecord();
@@ -48,7 +49,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
   private int endIndex;
 
   protected void currentLevel(int currentLevel) {
-    LOG.debug("currentLevel: {}",currentLevel);
+    LOG.debug("currentLevel: {}", currentLevel);
   }
 
   protected void log(String message) {

@@ -38,7 +38,7 @@ public class AvroFileTest extends ParquetFileTest {
     command.compressionCodecName = compressionCodecName;
     command.setConf(new Configuration());
     int exitCode = command.run();
-    assert(exitCode == 0);
+    assert (exitCode == 0);
     return output;
   }
 }

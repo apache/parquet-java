@@ -44,13 +44,14 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
   /**
    * @param dictionaryPage the PLAIN encoded content of the dictionary
-   * @throws IOException if there is an exception while decoding the dictionary page
+   * @throws IOException if there is an exception while decoding the dictionary
+   * page
    */
   protected PlainValuesDictionary(DictionaryPage dictionaryPage) throws IOException {
     super(dictionaryPage.getEncoding());
-    if (dictionaryPage.getEncoding() != PLAIN_DICTIONARY
-        && dictionaryPage.getEncoding() != PLAIN) {
-      throw new ParquetDecodingException("Dictionary data encoding type not supported: " + dictionaryPage.getEncoding());
+    if (dictionaryPage.getEncoding() != PLAIN_DICTIONARY && dictionaryPage.getEncoding() != PLAIN) {
+      throw new ParquetDecodingException(
+          "Dictionary data encoding type not supported: " + dictionaryPage.getEncoding());
     }
   }
 
@@ -64,11 +65,11 @@ public abstract class PlainValuesDictionary extends Dictionary {
     /**
      * Decodes {@link Binary} values from a {@link DictionaryPage}.
      *
-     * Values are read as length-prefixed values with a 4-byte little-endian
-     * length.
+     * Values are read as length-prefixed values with a 4-byte little-endian length.
      *
      * @param dictionaryPage a {@code DictionaryPage} of encoded binary values
-     * @throws IOException if there is an exception while decoding the dictionary page
+     * @throws IOException if there is an exception while decoding the dictionary
+     * page
      */
     public PlainBinaryDictionary(DictionaryPage dictionaryPage) throws IOException {
       this(dictionaryPage, null);
@@ -78,22 +79,25 @@ public abstract class PlainValuesDictionary extends Dictionary {
      * Decodes {@link Binary} values from a {@link DictionaryPage}.
      *
      * If the given {@code length} is null, the values will be read as length-
-     * prefixed values with a 4-byte little-endian length. If length is not
-     * null, it will be used as the length for all fixed-length {@code Binary}
-     * values read from the page.
+     * prefixed values with a 4-byte little-endian length. If length is not null, it
+     * will be used as the length for all fixed-length {@code Binary} values read
+     * from the page.
      *
      * @param dictionaryPage a {@code DictionaryPage} of encoded binary values
      * @param length a fixed length of binary arrays, or null if not fixed
-     * @throws IOException if there is an exception while decoding the dictionary page
+     * @throws IOException if there is an exception while decoding the dictionary
+     * page
      */
     public PlainBinaryDictionary(DictionaryPage dictionaryPage, Integer length) throws IOException {
       super(dictionaryPage);
       final ByteBuffer dictionaryBytes = dictionaryPage.getBytes().toByteBuffer();
       binaryDictionaryContent = new Binary[dictionaryPage.getDictionarySize()];
-      // dictionary values are stored in order: size (4 bytes LE) followed by {size} bytes
+      // dictionary values are stored in order: size (4 bytes LE) followed by {size}
+      // bytes
       int offset = dictionaryBytes.position();
       if (length == null) {
-        // dictionary values are stored in order: size (4 bytes LE) followed by {size} bytes
+        // dictionary values are stored in order: size (4 bytes LE) followed by {size}
+        // bytes
         for (int i = 0; i < binaryDictionaryContent.length; i++) {
           int len = readIntLittleEndian(dictionaryBytes, offset);
           // read the length
@@ -105,12 +109,10 @@ public abstract class PlainValuesDictionary extends Dictionary {
         }
       } else {
         // dictionary values are stored as fixed-length arrays
-        Preconditions.checkArgument(length > 0,
-            "Invalid byte array length: " + length);
+        Preconditions.checkArgument(length > 0, "Invalid byte array length: " + length);
         for (int i = 0; i < binaryDictionaryContent.length; i++) {
           // wrap the content in a Binary
-          binaryDictionaryContent[i] = Binary.fromConstantByteBuffer(
-              dictionaryBytes, offset, length);
+          binaryDictionaryContent[i] = Binary.fromConstantByteBuffer(dictionaryBytes, offset, length);
           // increment to the next value
           offset += length;
         }
@@ -147,7 +149,8 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
     /**
      * @param dictionaryPage a dictionary page of encoded long values
-     * @throws IOException if there is an exception while decoding the dictionary page
+     * @throws IOException if there is an exception while decoding the dictionary
+     * page
      */
     public PlainLongDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
@@ -190,7 +193,8 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
     /**
      * @param dictionaryPage a dictionary page of encoded double values
-     * @throws IOException if there is an exception while decoding the dictionary page
+     * @throws IOException if there is an exception while decoding the dictionary
+     * page
      */
     public PlainDoubleDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
@@ -233,7 +237,8 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
     /**
      * @param dictionaryPage a dictionary page of encoded integer values
-     * @throws IOException if there is an exception while decoding the dictionary page
+     * @throws IOException if there is an exception while decoding the dictionary
+     * page
      */
     public PlainIntegerDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);
@@ -276,7 +281,8 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
     /**
      * @param dictionaryPage a dictionary page of encoded float values
-     * @throws IOException if there is an exception while decoding the dictionary page
+     * @throws IOException if there is an exception while decoding the dictionary
+     * page
      */
     public PlainFloatDictionary(DictionaryPage dictionaryPage) throws IOException {
       super(dictionaryPage);

@@ -37,18 +37,21 @@ import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.schema.MessageType;
 
 /**
- * Base implementation for {@link ColumnWriteStore} to be extended to specialize for V1 and V2 pages.
+ * Base implementation for {@link ColumnWriteStore} to be extended to specialize
+ * for V1 and V2 pages.
  */
 abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
-  // Used to support the deprecated workflow of ColumnWriteStoreV1 (lazy init of ColumnWriters)
+  // Used to support the deprecated workflow of ColumnWriteStoreV1 (lazy init of
+  // ColumnWriters)
   private interface ColumnWriterProvider {
     ColumnWriter getColumnWriter(ColumnDescriptor path);
   }
 
   private final ColumnWriterProvider columnWriterProvider;
 
-  // will flush even if size bellow the threshold by this much to facilitate page alignment
+  // will flush even if size bellow the threshold by this much to facilitate page
+  // alignment
   private static final float THRESHOLD_TOLERANCE_RATIO = 0.1f; // 10 %
 
   private final Map<ColumnDescriptor, ColumnWriterBase> columns;
@@ -59,9 +62,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
   // To be used by the deprecated constructor of ColumnWriteStoreV1
   @Deprecated
-  ColumnWriteStoreBase(
-      final PageWriteStore pageWriteStore,
-      final ParquetProperties props) {
+  ColumnWriteStoreBase(final PageWriteStore pageWriteStore, final ParquetProperties props) {
     this.props = props;
     this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
 
@@ -82,10 +83,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     };
   }
 
-  ColumnWriteStoreBase(
-      MessageType schema,
-      PageWriteStore pageWriteStore,
-      ParquetProperties props) {
+  ColumnWriteStoreBase(MessageType schema, PageWriteStore pageWriteStore, ParquetProperties props) {
     this.props = props;
     this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
@@ -176,7 +174,8 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
   @Override
   public void close() {
-    flush(); // calling flush() here to keep it consistent with the behavior before merging with master
+    flush(); // calling flush() here to keep it consistent with the behavior before merging
+             // with master
     for (ColumnWriterBase memColumn : columns.values()) {
       memColumn.close();
     }
@@ -202,12 +201,11 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
         writer.writePage();
         remainingMem = props.getPageSizeThreshold();
       } else {
-        rowCountForNextRowCountCheck = min(rowCountForNextRowCountCheck, writer.getRowsWrittenSoFar() + pageRowCountLimit);
+        rowCountForNextRowCountCheck = min(rowCountForNextRowCountCheck,
+            writer.getRowsWrittenSoFar() + pageRowCountLimit);
       }
-      long rowsToFillPage =
-          usedMem == 0 ?
-              props.getMaxRowCountForPageSizeCheck()
-              : (long) rows / usedMem * remainingMem;
+      long rowsToFillPage = usedMem == 0 ? props.getMaxRowCountForPageSizeCheck()
+          : (long) rows / usedMem * remainingMem;
       if (rowsToFillPage < minRecordToWait) {
         minRecordToWait = rowsToFillPage;
       }
@@ -218,10 +216,8 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
 
     if (props.estimateNextSizeCheck()) {
       // will check again halfway if between min and max
-      rowCountForNextSizeCheck = rowCount +
-          min(
-              max(minRecordToWait / 2, props.getMinRowCountForPageSizeCheck()),
-              props.getMaxRowCountForPageSizeCheck());
+      rowCountForNextSizeCheck = rowCount + min(max(minRecordToWait / 2, props.getMinRowCountForPageSizeCheck()),
+          props.getMaxRowCountForPageSizeCheck());
     } else {
       rowCountForNextSizeCheck = rowCount + props.getMinRowCountForPageSizeCheck();
     }

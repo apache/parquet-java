@@ -19,8 +19,8 @@
 package org.apache.parquet;
 
 /**
- * Used in code blocks that should be unreachable, but the compiler does
- * not know this, for example the default clause of an exhaustive switch statement.
+ * Used in code blocks that should be unreachable, but the compiler does not
+ * know this, for example the default clause of an exhaustive switch statement.
  */
 public class ShouldNeverHappenException extends ParquetRuntimeException {
   public ShouldNeverHappenException() {

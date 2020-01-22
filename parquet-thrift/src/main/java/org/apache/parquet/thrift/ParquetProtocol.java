@@ -59,10 +59,9 @@ public abstract class ParquetProtocol extends TProtocol {
   }
 
   private TException exception() {
-    String message = name == null ?
-        "in " + getClassInfo() :
-        "when we expected " + name + " in " + getClassInfo();
-    return new TException(new UnsupportedOperationException(new Exception().getStackTrace()[1].getMethodName() + " was called " + message));
+    String message = name == null ? "in " + getClassInfo() : "when we expected " + name + " in " + getClassInfo();
+    return new TException(new UnsupportedOperationException(
+        new Exception().getStackTrace()[1].getMethodName() + " was called " + message));
   }
 
   /** WRITE */

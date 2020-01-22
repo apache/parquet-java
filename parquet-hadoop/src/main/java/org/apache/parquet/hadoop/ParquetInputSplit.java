@@ -42,17 +42,17 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
 /**
- * An input split for the Parquet format
- * It contains the information to read one block of the file.
+ * An input split for the Parquet format It contains the information to read one
+ * block of the file.
  *
- * This class is private to the ParquetInputFormat.
- * Backward compatibility is not maintained.
+ * This class is private to the ParquetInputFormat. Backward compatibility is
+ * not maintained.
+ * 
  * @deprecated will be removed in 2.0.0. use FileInputSplit instead.
  */
 @Private
 @Deprecated
 public class ParquetInputSplit extends FileSplit implements Writable {
-
 
   private long end;
   private long[] rowGroupOffsets;
@@ -61,12 +61,13 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * Writables must have a parameterless constructor
    */
   public ParquetInputSplit() {
-        super(null, 0, 0, new String[0]);
+    super(null, 0, 0, new String[0]);
   }
 
   /**
-   * For compatibility only
-   * use {@link ParquetInputSplit#ParquetInputSplit(Path, long, long, long, String[], long[])}
+   * For compatibility only use
+   * {@link ParquetInputSplit#ParquetInputSplit(Path, long, long, long, String[], long[])}
+   * 
    * @param path a Path
    * @param start split start location
    * @param length split length
@@ -78,15 +79,8 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * @param readSupportMetadata string map of metadata from read support
    */
   @Deprecated
-  public ParquetInputSplit(
-      Path path,
-      long start,
-      long length,
-      String[] hosts,
-      List<BlockMetaData> blocks,
-      String requestedSchema,
-      String fileSchema,
-      Map<String, String> extraMetadata,
+  public ParquetInputSplit(Path path, long start, long length, String[] hosts, List<BlockMetaData> blocks,
+      String requestedSchema, String fileSchema, Map<String, String> extraMetadata,
       Map<String, String> readSupportMetadata) {
     this(path, start, end(blocks, requestedSchema), length, hosts, offsets(blocks));
   }
@@ -120,8 +114,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    */
   @Deprecated
   public List<BlockMetaData> getBlocks() {
-    throw new UnsupportedOperationException(
-        "Splits no longer have row group metadata, see PARQUET-234");
+    throw new UnsupportedOperationException("Splits no longer have row group metadata, see PARQUET-234");
   }
 
   /**
@@ -132,8 +125,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * @throws IOException if there is an error while creating the Parquet split
    */
   static ParquetInputSplit from(FileSplit split) throws IOException {
-    return new ParquetInputSplit(split.getPath(),
-        split.getStart(), split.getStart() + split.getLength(),
+    return new ParquetInputSplit(split.getPath(), split.getStart(), split.getStart() + split.getLength(),
         split.getLength(), split.getLocations(), null);
   }
 
@@ -146,8 +138,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * @throws IOException if there is an error while creating the Parquet split
    */
   static ParquetInputSplit from(org.apache.hadoop.mapred.FileSplit split) throws IOException {
-    return new ParquetInputSplit(split.getPath(),
-        split.getStart(), split.getStart() + split.getLength(),
+    return new ParquetInputSplit(split.getPath(), split.getStart(), split.getStart() + split.getLength(),
         split.getLength(), split.getLocations(), null);
   }
 
@@ -157,11 +148,10 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * @param end the end offset in the file
    * @param length the actual size in bytes that we expect to read
    * @param hosts the hosts with the replicas of this data
-   * @param rowGroupOffsets the offsets of the rowgroups selected if loaded on the client
+   * @param rowGroupOffsets the offsets of the rowgroups selected if loaded on the
+   * client
    */
-  public ParquetInputSplit(
-      Path file, long start, long end, long length, String[] hosts,
-      long[] rowGroupOffsets) {
+  public ParquetInputSplit(Path file, long start, long end, long length, String[] hosts, long[] rowGroupOffsets) {
     super(file, start, length, hosts);
     this.end = end;
     this.rowGroupOffsets = rowGroupOffsets;
@@ -173,8 +163,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    */
   @Deprecated
   String getRequestedSchema() {
-    throw new UnsupportedOperationException(
-        "Splits no longer have the requested schema, see PARQUET-234");
+    throw new UnsupportedOperationException("Splits no longer have the requested schema, see PARQUET-234");
   }
 
   /**
@@ -183,8 +172,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    */
   @Deprecated
   public String getFileSchema() {
-    throw new UnsupportedOperationException(
-        "Splits no longer have the file schema, see PARQUET-234");
+    throw new UnsupportedOperationException("Splits no longer have the file schema, see PARQUET-234");
   }
 
   /**
@@ -196,12 +184,12 @@ public class ParquetInputSplit extends FileSplit implements Writable {
 
   /**
    * @return app specific metadata from the file
-   * @deprecated will be removed in 2.0.0. the file footer is no longer read before creating input splits
+   * @deprecated will be removed in 2.0.0. the file footer is no longer read
+   * before creating input splits
    */
   @Deprecated
   public Map<String, String> getExtraMetadata() {
-    throw new UnsupportedOperationException(
-        "Splits no longer have file metadata, see PARQUET-234");
+    throw new UnsupportedOperationException("Splits no longer have file metadata, see PARQUET-234");
   }
 
   /**
@@ -210,12 +198,12 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    */
   @Deprecated
   Map<String, String> getReadSupportMetadata() {
-    throw new UnsupportedOperationException(
-        "Splits no longer have read-support metadata, see PARQUET-234");
+    throw new UnsupportedOperationException("Splits no longer have read-support metadata, see PARQUET-234");
   }
 
   /**
-   * @return the offsets of the row group selected if this has been determined on the client side
+   * @return the offsets of the row group selected if this has been determined on
+   * the client side
    * @deprecated will be removed in 2.0.0.
    */
   public long[] getRowGroupOffsets() {
@@ -225,21 +213,16 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   @Override
   public String toString() {
     String hosts;
-    try{
-       hosts = Arrays.toString(getLocations());
+    try {
+      hosts = Arrays.toString(getLocations());
     } catch (Exception e) {
       // IOException/InterruptedException could be thrown
       hosts = "(" + e + ")";
     }
 
-    return this.getClass().getSimpleName() + "{" +
-           "part: " + getPath()
-        + " start: " + getStart()
-        + " end: " + getEnd()
-        + " length: " + getLength()
-        + " hosts: " + hosts
-        + (rowGroupOffsets == null ? "" : (" row groups: " + Arrays.toString(rowGroupOffsets)))
-        + "}";
+    return this.getClass().getSimpleName() + "{" + "part: " + getPath() + " start: " + getStart() + " end: " + getEnd()
+        + " length: " + getLength() + " hosts: " + hosts
+        + (rowGroupOffsets == null ? "" : (" row groups: " + Arrays.toString(rowGroupOffsets))) + "}";
   }
 
   /**

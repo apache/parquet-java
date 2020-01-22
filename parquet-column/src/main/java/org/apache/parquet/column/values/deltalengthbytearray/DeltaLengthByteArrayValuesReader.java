@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.values.deltalengthbytearray;
 
-
 import java.io.IOException;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
@@ -42,10 +41,8 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream)
-      throws IOException {
-    LOG.debug("init from page at offset {} for length {}",
-        stream.position(), stream.available());
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
+    LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
     lengthReader.initFromPage(valueCount, stream);
     this.in = stream.remainingStream();
   }

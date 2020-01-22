@@ -23,11 +23,11 @@ package org.apache.parquet;
  */
 @Deprecated
 public final class Ints {
-  private Ints() { }
+  private Ints() {
+  }
 
   /**
-   * Cast value to a an int, or throw an exception
-   * if there is an overflow.
+   * Cast value to a an int, or throw an exception if there is an overflow.
    *
    * @param value a long to be casted to an int
    * @return an int that is == to value

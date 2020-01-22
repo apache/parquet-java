@@ -46,7 +46,6 @@ import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.column.ParquetProperties;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -82,7 +81,8 @@ import org.apache.parquet.bytes.HeapByteBufferAllocator;
 
 public class TestColumnChunkPageWriteStore {
 
-  // OutputFile implementation to expose the PositionOutputStream internally used by the writer
+  // OutputFile implementation to expose the PositionOutputStream internally used
+  // by the writer
   private static class OutputFileForTesting implements OutputFile {
     private PositionOutputStream out;
     private final HadoopOutputFile file;
@@ -143,13 +143,13 @@ public class TestColumnChunkPageWriteStore {
     int v = 3;
     BytesInput definitionLevels = BytesInput.fromInt(d);
     BytesInput repetitionLevels = BytesInput.fromInt(r);
-    Statistics<?> statistics = Statistics.getBuilderForReading(Types.required(PrimitiveTypeName.BINARY).named("test_binary"))
-        .build();
+    Statistics<?> statistics = Statistics
+        .getBuilderForReading(Types.required(PrimitiveTypeName.BINARY).named("test_binary")).build();
     BytesInput data = BytesInput.fromInt(v);
     int rowCount = 5;
     int nullCount = 1;
     statistics.incrementNumNulls(nullCount);
-    statistics.setMinMaxFromBytes(new byte[] {0, 1, 2}, new byte[] {0, 1, 2, 3});
+    statistics.setMinMaxFromBytes(new byte[] { 0, 1, 2 }, new byte[] { 0, 1, 2, 3 });
     long pageOffset;
     long pageSize;
 
@@ -164,10 +164,7 @@ public class TestColumnChunkPageWriteStore {
         ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor(GZIP), schema,
             new HeapByteBufferAllocator(), Integer.MAX_VALUE);
         PageWriter pageWriter = store.getPageWriter(col);
-        pageWriter.writePageV2(
-            rowCount, nullCount, valueCount,
-            repetitionLevels, definitionLevels,
-            dataEncoding, data,
+        pageWriter.writePageV2(rowCount, nullCount, valueCount, repetitionLevels, definitionLevels, dataEncoding, data,
             statistics);
         store.flushToFileWriter(writer);
         pageSize = outputFile.out().getPos() - pageOffset;
@@ -178,11 +175,11 @@ public class TestColumnChunkPageWriteStore {
 
     {
       ParquetMetadata footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
-      ParquetFileReader reader = new ParquetFileReader(
-          conf, footer.getFileMetaData(), file, footer.getBlocks(), schema.getColumns());
+      ParquetFileReader reader = new ParquetFileReader(conf, footer.getFileMetaData(), file, footer.getBlocks(),
+          schema.getColumns());
       PageReadStore rowGroup = reader.readNextRowGroup();
       PageReader pageReader = rowGroup.getPageReader(col);
-      DataPageV2 page = (DataPageV2)pageReader.readPage();
+      DataPageV2 page = (DataPageV2) pageReader.readPage();
       assertEquals(rowCount, page.getRowCount());
       assertEquals(nullCount, page.getNullCount());
       assertEquals(valueCount, page.getValueCount());
@@ -221,22 +218,19 @@ public class TestColumnChunkPageWriteStore {
   public void testColumnOrderV1() throws IOException {
     ParquetFileWriter mockFileWriter = Mockito.mock(ParquetFileWriter.class);
     InOrder inOrder = inOrder(mockFileWriter);
-    MessageType schema = Types.buildMessage()
-        .required(BINARY).as(UTF8).named("a_string")
-        .required(INT32).named("an_int")
-        .required(INT64).named("a_long")
-        .required(FLOAT).named("a_float")
-        .required(DOUBLE).named("a_double")
-        .named("order_test");
+    MessageType schema = Types.buildMessage().required(BINARY).as(UTF8).named("a_string").required(INT32)
+        .named("an_int").required(INT64).named("a_long").required(FLOAT).named("a_float").required(DOUBLE)
+        .named("a_double").named("order_test");
 
     BytesInput fakeData = BytesInput.fromInt(34);
     int fakeCount = 3;
     BinaryStatistics fakeStats = new BinaryStatistics();
 
-    // TODO - look back at this, an allocator was being passed here in the ByteBuffer changes
+    // TODO - look back at this, an allocator was being passed here in the
+    // ByteBuffer changes
     // see comment at this constructor
-    ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
-        compressor(UNCOMPRESSED), schema, new HeapByteBufferAllocator(), Integer.MAX_VALUE);
+    ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor(UNCOMPRESSED), schema,
+        new HeapByteBufferAllocator(), Integer.MAX_VALUE);
 
     for (ColumnDescriptor col : schema.getColumns()) {
       PageWriter pageWriter = store.getPageWriter(col);
@@ -247,20 +241,11 @@ public class TestColumnChunkPageWriteStore {
     store.flushToFileWriter(mockFileWriter);
 
     for (ColumnDescriptor col : schema.getColumns()) {
-      inOrder.verify(mockFileWriter).writeColumnChunk(
-          eq(col),
-          eq((long) fakeCount),
-          eq(UNCOMPRESSED),
-          isNull(DictionaryPage.class),
-          any(),
-          eq(fakeData.size()),
-          eq(fakeData.size()),
-          eq(fakeStats),
+      inOrder.verify(mockFileWriter).writeColumnChunk(eq(col), eq((long) fakeCount), eq(UNCOMPRESSED),
+          isNull(DictionaryPage.class), any(), eq(fakeData.size()), eq(fakeData.size()), eq(fakeStats),
           same(ColumnIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no column index
           same(OffsetIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no offset index
-          any(),
-          any(),
-          any());
+          any(), any(), any());
     }
   }
 

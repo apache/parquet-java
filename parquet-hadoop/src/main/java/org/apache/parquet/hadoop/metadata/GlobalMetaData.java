@@ -30,8 +30,8 @@ import java.util.Set;
 import org.apache.parquet.schema.MessageType;
 
 /**
- * Merged metadata when reading from multiple files.
- * THis is to allow schema evolution
+ * Merged metadata when reading from multiple files. THis is to allow schema
+ * evolution
  */
 public class GlobalMetaData implements Serializable {
   private static final long serialVersionUID = 1L;
@@ -63,7 +63,7 @@ public class GlobalMetaData implements Serializable {
 
   @Override
   public String toString() {
-    return "GlobalMetaData{schema: "+schema+ ", metadata: " + keyValueMetaData + "}";
+    return "GlobalMetaData{schema: " + schema + ", metadata: " + keyValueMetaData + "}";
   }
 
   /**
@@ -81,19 +81,19 @@ public class GlobalMetaData implements Serializable {
   }
 
   /**
-   * Will merge the metadata as if it was coming from a single file.
-   * (for all part files written together this will always work)
-   * If there are conflicting values an exception will be thrown
+   * Will merge the metadata as if it was coming from a single file. (for all part
+   * files written together this will always work) If there are conflicting values
+   * an exception will be thrown
+   * 
    * @return the merged version of this
    */
   public FileMetaData merge() {
-    String createdByString = createdBy.size() == 1 ?
-      createdBy.iterator().next() :
-      createdBy.toString();
+    String createdByString = createdBy.size() == 1 ? createdBy.iterator().next() : createdBy.toString();
     Map<String, String> mergedKeyValues = new HashMap<String, String>();
     for (Entry<String, Set<String>> entry : keyValueMetaData.entrySet()) {
       if (entry.getValue().size() > 1) {
-        throw new RuntimeException("could not merge metadata: key " + entry.getKey() + " has conflicting values: " + entry.getValue());
+        throw new RuntimeException(
+            "could not merge metadata: key " + entry.getKey() + " has conflicting values: " + entry.getValue());
       }
       mergedKeyValues.put(entry.getKey(), entry.getValue().iterator().next());
     }

@@ -26,7 +26,8 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
 
 /**
- * Builder implementation to create {@link OffsetIndex} objects during writing a parquet file.
+ * Builder implementation to create {@link OffsetIndex} objects during writing a
+ * parquet file.
  */
 public class OffsetIndexBuilder {
 
@@ -86,14 +87,16 @@ public class OffsetIndexBuilder {
   private long previousRowCount;
 
   /**
-   * @return a no-op builder that does not collect values and therefore returns {@code null} at {@link #build(long)}
+   * @return a no-op builder that does not collect values and therefore returns
+   * {@code null} at {@link #build(long)}
    */
   public static OffsetIndexBuilder getNoOpBuilder() {
     return NO_OP_BUILDER;
   }
 
   /**
-   * @return an {@link OffsetIndexBuilder} instance to build an {@link OffsetIndex} object
+   * @return an {@link OffsetIndexBuilder} instance to build an
+   * {@link OffsetIndex} object
    */
   public static OffsetIndexBuilder getBuilder() {
     return new OffsetIndexBuilder();
@@ -103,13 +106,11 @@ public class OffsetIndexBuilder {
   }
 
   /**
-   * Adds the specified parameters to this builder. Used by the writers to building up {@link OffsetIndex} objects to be
-   * written to the Parquet file.
+   * Adds the specified parameters to this builder. Used by the writers to
+   * building up {@link OffsetIndex} objects to be written to the Parquet file.
    *
-   * @param compressedPageSize
-   *          the size of the page (including header)
-   * @param rowCount
-   *          the number of rows in the page
+   * @param compressedPageSize the size of the page (including header)
+   * @param rowCount the number of rows in the page
    */
   public void add(int compressedPageSize, long rowCount) {
     add(previousOffset + previousPageSize, compressedPageSize, previousRowIndex + previousRowCount);
@@ -117,15 +118,13 @@ public class OffsetIndexBuilder {
   }
 
   /**
-   * Adds the specified parameters to this builder. Used by the metadata converter to building up {@link OffsetIndex}
-   * objects read from the Parquet file.
+   * Adds the specified parameters to this builder. Used by the metadata converter
+   * to building up {@link OffsetIndex} objects read from the Parquet file.
    *
-   * @param offset
-   *          the offset of the page in the file
-   * @param compressedPageSize
-   *          the size of the page (including header)
-   * @param firstRowIndex
-   *          the index of the first row in the page (within the row group)
+   * @param offset the offset of the page in the file
+   * @param compressedPageSize the size of the page (including header)
+   * @param firstRowIndex the index of the first row in the page (within the row
+   * group)
    */
   public void add(long offset, int compressedPageSize, long firstRowIndex) {
     previousOffset = offset;
@@ -137,22 +136,24 @@ public class OffsetIndexBuilder {
   }
 
   /**
-   * Builds the offset index. Used by the metadata converter to building up {@link OffsetIndex}
-   * objects read from the Parquet file.
+   * Builds the offset index. Used by the metadata converter to building up
+   * {@link OffsetIndex} objects read from the Parquet file.
    *
-   * @return the newly created offset index or {@code null} if the {@link OffsetIndex} object would be empty
+   * @return the newly created offset index or {@code null} if the
+   * {@link OffsetIndex} object would be empty
    */
   public OffsetIndex build() {
     return build(0);
   }
 
   /**
-   * Builds the offset index. Used by the writers to building up {@link OffsetIndex} objects to be
-   * written to the Parquet file.
+   * Builds the offset index. Used by the writers to building up
+   * {@link OffsetIndex} objects to be written to the Parquet file.
    *
-   * @param firstPageOffset
-   *          the actual offset in the file to be used to translate all the collected offsets
-   * @return the newly created offset index or {@code null} if the {@link OffsetIndex} object would be empty
+   * @param firstPageOffset the actual offset in the file to be used to translate
+   * all the collected offsets
+   * @return the newly created offset index or {@code null} if the
+   * {@link OffsetIndex} object would be empty
    */
   public OffsetIndex build(long firstPageOffset) {
     if (compressedPageSizes.isEmpty()) {

@@ -23,9 +23,6 @@ import java.io.StringReader;
 import java.io.StringWriter;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.pig.impl.logicalLayer.FrontendException;
@@ -105,6 +102,7 @@ public abstract class SummaryData {
 
   /**
    * add a single element to the structure
+   * 
    * @param o never null
    */
   public void add(Object o) {
@@ -113,6 +111,7 @@ public abstract class SummaryData {
 
   /**
    * merge the given input into this one
+   * 
    * @param other never null
    */
   public void merge(SummaryData other) {
@@ -126,7 +125,6 @@ public abstract class SummaryData {
   public void setCount(long count) {
     this.count = count;
   }
-
 
   @Override
   public String toString() {

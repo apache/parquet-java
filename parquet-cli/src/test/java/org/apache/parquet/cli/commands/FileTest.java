@@ -36,7 +36,7 @@ public abstract class FileTest {
   static final String BINARY_FIELD = "binary_field";
   static final String FIXED_LEN_BYTE_ARRAY_FIELD = "flba_field";
 
-  static final String[] COLORS = {"RED", "BLUE", "YELLOW", "GREEN", "WHITE"};
+  static final String[] COLORS = { "RED", "BLUE", "YELLOW", "GREEN", "WHITE" };
 
   @Rule
   public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -46,12 +46,10 @@ public abstract class FileTest {
   }
 
   protected static Logger createLogger() {
-    PropertyConfigurator.configure(
-      ParquetFileTest.class.getResource("/cli-logging.properties"));
+    PropertyConfigurator.configure(ParquetFileTest.class.getResource("/cli-logging.properties"));
     Logger console = LoggerFactory.getLogger(ParquetFileTest.class);
-    LogFactory.getFactory().setAttribute(
-      "org.apache.commons.logging.Log",
-      "org.apache.commons.logging.impl.Log4JLogger");
+    LogFactory.getFactory().setAttribute("org.apache.commons.logging.Log",
+        "org.apache.commons.logging.impl.Log4JLogger");
     return console;
   }
 }

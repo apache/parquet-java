@@ -29,15 +29,9 @@ import static org.junit.Assert.assertEquals;
 
 public class GroupReadSupportTest {
 
-  private String fullSchemaStr = "message example {\n" +
-          "required int32 line;\n" +
-          "optional binary content;\n" +
-          "}";
+  private String fullSchemaStr = "message example {\n" + "required int32 line;\n" + "optional binary content;\n" + "}";
 
-  private String partialSchemaStr = "message example {\n" +
-          "required int32 line;\n" +
-          "}";
-
+  private String partialSchemaStr = "message example {\n" + "required int32 line;\n" + "}";
 
   @Test
   public void testInitWithoutSpecifyingRequestSchema() throws Exception {

@@ -60,15 +60,13 @@ public class TestGenericLogicalTypes {
   public static final BigDecimal D1 = new BigDecimal("-34.34");
   public static final BigDecimal D2 = new BigDecimal("117230.00");
 
-
   @BeforeClass
   public static void addDecimalAndUUID() {
     GENERIC.addLogicalTypeConversion(new Conversions.DecimalConversion());
     GENERIC.addLogicalTypeConversion(new Conversions.UUIDConversion());
   }
 
-  private <T> List<T> getFieldValues(Collection<GenericRecord> records, String field,
-                                     Class<T> expectedClass) {
+  private <T> List<T> getFieldValues(Collection<GenericRecord> records, String field, Class<T> expectedClass) {
     List<T> values = new ArrayList<T>();
     for (GenericRecord record : records) {
       values.add(expectedClass.cast(record.get(field)));
@@ -78,8 +76,7 @@ public class TestGenericLogicalTypes {
 
   @Test
   public void testReadUUID() throws IOException {
-    Schema uuidSchema = record("R",
-        field("uuid", LogicalTypes.uuid().addToSchema(Schema.create(STRING))));
+    Schema uuidSchema = record("R", field("uuid", LogicalTypes.uuid().addToSchema(Schema.create(STRING))));
     GenericRecord u1 = instance(uuidSchema, "uuid", UUID.randomUUID());
     GenericRecord u2 = instance(uuidSchema, "uuid", UUID.randomUUID());
 
@@ -88,14 +85,12 @@ public class TestGenericLogicalTypes {
     GenericRecord s2 = instance(stringSchema, "uuid", u2.get("uuid").toString());
 
     File test = write(stringSchema, s1, s2);
-    Assert.assertEquals("Should convert Strings to UUIDs",
-        Arrays.asList(u1, u2), read(GENERIC, uuidSchema, test));
+    Assert.assertEquals("Should convert Strings to UUIDs", Arrays.asList(u1, u2), read(GENERIC, uuidSchema, test));
   }
 
   @Test
   public void testWriteUUIDReadStringSchema() throws IOException {
-    Schema uuidSchema = record("R",
-        field("uuid", LogicalTypes.uuid().addToSchema(Schema.create(STRING))));
+    Schema uuidSchema = record("R", field("uuid", LogicalTypes.uuid().addToSchema(Schema.create(STRING))));
     GenericRecord u1 = instance(uuidSchema, "uuid", UUID.randomUUID());
     GenericRecord u2 = instance(uuidSchema, "uuid", UUID.randomUUID());
 
@@ -106,14 +101,12 @@ public class TestGenericLogicalTypes {
     GenericRecord s2 = instance(stringSchema, "uuid", u2.get("uuid").toString());
 
     File test = write(GENERIC, uuidSchema, u1, u2);
-    Assert.assertEquals("Should read UUIDs as Strings",
-        Arrays.asList(s1, s2), read(GENERIC, stringSchema, test));
+    Assert.assertEquals("Should read UUIDs as Strings", Arrays.asList(s1, s2), read(GENERIC, stringSchema, test));
   }
 
   @Test
   public void testWriteUUIDReadStringMissingLogicalType() throws IOException {
-    Schema uuidSchema = record("R",
-        field("uuid", LogicalTypes.uuid().addToSchema(Schema.create(STRING))));
+    Schema uuidSchema = record("R", field("uuid", LogicalTypes.uuid().addToSchema(Schema.create(STRING))));
     GenericRecord u1 = instance(uuidSchema, "uuid", UUID.randomUUID());
     GenericRecord u2 = instance(uuidSchema, "uuid", UUID.randomUUID());
 
@@ -121,8 +114,8 @@ public class TestGenericLogicalTypes {
     GenericRecord s2 = instance(uuidSchema, "uuid", new Utf8(u2.get("uuid").toString()));
 
     File test = write(GENERIC, uuidSchema, u1, u2);
-    Assert.assertEquals("Should read UUIDs as Strings",
-        Arrays.asList(s1, s2), read(GenericData.get(), uuidSchema, test));
+    Assert.assertEquals("Should read UUIDs as Strings", Arrays.asList(s1, s2),
+        read(GenericData.get(), uuidSchema, test));
   }
 
   @Test
@@ -139,16 +132,15 @@ public class TestGenericLogicalTypes {
     GenericRecord s2 = instance(nullableStringSchema, "uuid", u2.get("uuid").toString());
 
     File test = write(GENERIC, nullableUuidSchema, u1, u2);
-    Assert.assertEquals("Should read UUIDs as Strings",
-        Arrays.asList(s1, s2), read(GENERIC, nullableStringSchema, test));
+    Assert.assertEquals("Should read UUIDs as Strings", Arrays.asList(s1, s2),
+        read(GENERIC, nullableStringSchema, test));
   }
 
   @Test
   public void testReadDecimalFixed() throws IOException {
     Schema fixedSchema = Schema.createFixed("aFixed", null, null, 4);
     Schema fixedRecord = record("R", field("dec", fixedSchema));
-    Schema decimalSchema = DECIMAL_9_2.addToSchema(
-        Schema.createFixed("aFixed", null, null, 4));
+    Schema decimalSchema = DECIMAL_9_2.addToSchema(Schema.createFixed("aFixed", null, null, 4));
     Schema decimalRecord = record("R", field("dec", decimalSchema));
 
     GenericRecord r1 = instance(decimalRecord, "dec", D1);
@@ -158,22 +150,18 @@ public class TestGenericLogicalTypes {
     Conversion<BigDecimal> conversion = new Conversions.DecimalConversion();
 
     // use the conversion directly instead of relying on the write side
-    GenericRecord r1fixed = instance(fixedRecord, "dec",
-        conversion.toFixed(D1, fixedSchema, DECIMAL_9_2));
-    GenericRecord r2fixed = instance(fixedRecord, "dec",
-        conversion.toFixed(D2, fixedSchema, DECIMAL_9_2));
+    GenericRecord r1fixed = instance(fixedRecord, "dec", conversion.toFixed(D1, fixedSchema, DECIMAL_9_2));
+    GenericRecord r2fixed = instance(fixedRecord, "dec", conversion.toFixed(D2, fixedSchema, DECIMAL_9_2));
 
     File test = write(fixedRecord, r1fixed, r2fixed);
-    Assert.assertEquals("Should convert fixed to BigDecimals",
-        expected, read(GENERIC, decimalRecord, test));
+    Assert.assertEquals("Should convert fixed to BigDecimals", expected, read(GENERIC, decimalRecord, test));
   }
 
   @Test
   public void testWriteDecimalFixed() throws IOException {
     Schema fixedSchema = Schema.createFixed("aFixed", null, null, 4);
     Schema fixedRecord = record("R", field("dec", fixedSchema));
-    Schema decimalSchema = DECIMAL_9_2.addToSchema(
-        Schema.createFixed("aFixed", null, null, 4));
+    Schema decimalSchema = DECIMAL_9_2.addToSchema(Schema.createFixed("aFixed", null, null, 4));
     Schema decimalRecord = record("R", field("dec", decimalSchema));
 
     GenericRecord r1 = instance(decimalRecord, "dec", D1);
@@ -182,15 +170,12 @@ public class TestGenericLogicalTypes {
     Conversion<BigDecimal> conversion = new Conversions.DecimalConversion();
 
     // use the conversion directly instead of relying on the write side
-    GenericRecord r1fixed = instance(fixedRecord, "dec",
-        conversion.toFixed(D1, fixedSchema, DECIMAL_9_2));
-    GenericRecord r2fixed = instance(fixedRecord, "dec",
-        conversion.toFixed(D2, fixedSchema, DECIMAL_9_2));
+    GenericRecord r1fixed = instance(fixedRecord, "dec", conversion.toFixed(D1, fixedSchema, DECIMAL_9_2));
+    GenericRecord r2fixed = instance(fixedRecord, "dec", conversion.toFixed(D2, fixedSchema, DECIMAL_9_2));
     List<GenericRecord> expected = Arrays.asList(r1fixed, r2fixed);
 
     File test = write(GENERIC, decimalRecord, r1, r2);
-    Assert.assertEquals("Should read BigDecimals as fixed",
-        expected, read(GENERIC, fixedRecord, test));
+    Assert.assertEquals("Should read BigDecimals as fixed", expected, read(GENERIC, fixedRecord, test));
   }
 
   @Test
@@ -207,14 +192,11 @@ public class TestGenericLogicalTypes {
     Conversion<BigDecimal> conversion = new Conversions.DecimalConversion();
 
     // use the conversion directly instead of relying on the write side
-    GenericRecord r1bytes = instance(bytesRecord, "dec",
-        conversion.toBytes(D1, bytesSchema, DECIMAL_9_2));
-    GenericRecord r2bytes = instance(bytesRecord, "dec",
-        conversion.toBytes(D2, bytesSchema, DECIMAL_9_2));
+    GenericRecord r1bytes = instance(bytesRecord, "dec", conversion.toBytes(D1, bytesSchema, DECIMAL_9_2));
+    GenericRecord r2bytes = instance(bytesRecord, "dec", conversion.toBytes(D2, bytesSchema, DECIMAL_9_2));
 
     File test = write(bytesRecord, r1bytes, r2bytes);
-    Assert.assertEquals("Should convert bytes to BigDecimals",
-        expected, read(GENERIC, decimalRecord, test));
+    Assert.assertEquals("Should convert bytes to BigDecimals", expected, read(GENERIC, decimalRecord, test));
   }
 
   @Test
@@ -230,16 +212,13 @@ public class TestGenericLogicalTypes {
     Conversion<BigDecimal> conversion = new Conversions.DecimalConversion();
 
     // use the conversion directly instead of relying on the write side
-    GenericRecord r1bytes = instance(bytesRecord, "dec",
-        conversion.toBytes(D1, bytesSchema, DECIMAL_9_2));
-    GenericRecord r2bytes = instance(bytesRecord, "dec",
-        conversion.toBytes(D2, bytesSchema, DECIMAL_9_2));
+    GenericRecord r1bytes = instance(bytesRecord, "dec", conversion.toBytes(D1, bytesSchema, DECIMAL_9_2));
+    GenericRecord r2bytes = instance(bytesRecord, "dec", conversion.toBytes(D2, bytesSchema, DECIMAL_9_2));
 
     List<GenericRecord> expected = Arrays.asList(r1bytes, r2bytes);
 
     File test = write(GENERIC, decimalRecord, r1, r2);
-    Assert.assertEquals("Should read BigDecimals as bytes",
-        expected, read(GENERIC, bytesRecord, test));
+    Assert.assertEquals("Should read BigDecimals as bytes", expected, read(GENERIC, bytesRecord, test));
   }
 
   private <D> File write(Schema schema, D... data) throws IOException {

@@ -141,10 +141,12 @@ public abstract class LogicalTypeAnnotation {
   }
 
   /**
-   * Convert this logical type to old logical type representation in parquet-mr (if there's any).
-   * Those logical type implementations, which don't have a corresponding mapping should return null.
+   * Convert this logical type to old logical type representation in parquet-mr
+   * (if there's any). Those logical type implementations, which don't have a
+   * corresponding mapping should return null.
    *
-   * @return the OriginalType representation of the new logical type, or null if there's none
+   * @return the OriginalType representation of the new logical type, or null if
+   * there's none
    */
   @InterfaceAudience.Private
   public abstract OriginalType toOriginalType();
@@ -179,7 +181,8 @@ public abstract class LogicalTypeAnnotation {
   }
 
   /**
-   * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
+   * Helper method to convert the old representation of logical types
+   * (OriginalType) to new logical type.
    */
   @InterfaceAudience.Private
   public static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
@@ -187,54 +190,54 @@ public abstract class LogicalTypeAnnotation {
       return null;
     }
     switch (originalType) {
-      case UTF8:
-        return stringType();
-      case MAP:
-        return mapType();
-      case DECIMAL:
-        int scale = (decimalMetadata == null ? 0 : decimalMetadata.getScale());
-        int precision = (decimalMetadata == null ? 0 : decimalMetadata.getPrecision());
-        return decimalType(scale, precision);
-      case LIST:
-        return listType();
-      case DATE:
-        return dateType();
-      case INTERVAL:
-        return IntervalLogicalTypeAnnotation.getInstance();
-      case TIMESTAMP_MILLIS:
-        return timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
-      case TIMESTAMP_MICROS:
-        return timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
-      case TIME_MILLIS:
-        return timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
-      case TIME_MICROS:
-        return timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
-      case UINT_8:
-        return intType(8, false);
-      case UINT_16:
-        return intType(16, false);
-      case UINT_32:
-        return intType(32, false);
-      case UINT_64:
-        return intType(64, false);
-      case INT_8:
-        return intType(8, true);
-      case INT_16:
-        return intType(16, true);
-      case INT_32:
-        return intType(32, true);
-      case INT_64:
-        return intType(64, true);
-      case ENUM:
-        return enumType();
-      case JSON:
-        return jsonType();
-      case BSON:
-        return bsonType();
-      case MAP_KEY_VALUE:
-        return MapKeyValueTypeAnnotation.getInstance();
-      default:
-        throw new RuntimeException("Can't convert original type to logical type, unknown original type " + originalType);
+    case UTF8:
+      return stringType();
+    case MAP:
+      return mapType();
+    case DECIMAL:
+      int scale = (decimalMetadata == null ? 0 : decimalMetadata.getScale());
+      int precision = (decimalMetadata == null ? 0 : decimalMetadata.getPrecision());
+      return decimalType(scale, precision);
+    case LIST:
+      return listType();
+    case DATE:
+      return dateType();
+    case INTERVAL:
+      return IntervalLogicalTypeAnnotation.getInstance();
+    case TIMESTAMP_MILLIS:
+      return timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+    case TIMESTAMP_MICROS:
+      return timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+    case TIME_MILLIS:
+      return timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+    case TIME_MICROS:
+      return timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+    case UINT_8:
+      return intType(8, false);
+    case UINT_16:
+      return intType(16, false);
+    case UINT_32:
+      return intType(32, false);
+    case UINT_64:
+      return intType(64, false);
+    case INT_8:
+      return intType(8, true);
+    case INT_16:
+      return intType(16, true);
+    case INT_32:
+      return intType(32, true);
+    case INT_64:
+      return intType(64, true);
+    case ENUM:
+      return enumType();
+    case JSON:
+      return jsonType();
+    case BSON:
+      return bsonType();
+    case MAP_KEY_VALUE:
+      return MapKeyValueTypeAnnotation.getInstance();
+    default:
+      throw new RuntimeException("Can't convert original type to logical type, unknown original type " + originalType);
     }
   }
 
@@ -271,10 +274,9 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static IntLogicalTypeAnnotation intType(final int bitWidth, final boolean isSigned) {
-    Preconditions.checkArgument(
-      bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
-      "Invalid bit width for integer logical type, " + bitWidth + " is not allowed, " +
-        "valid bit width values: 8, 16, 32, 64");
+    Preconditions.checkArgument(bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
+        "Invalid bit width for integer logical type, " + bitWidth + " is not allowed, "
+            + "valid bit width values: 8, 16, 32, 64");
     return new IntLogicalTypeAnnotation(bitWidth, isSigned);
   }
 
@@ -538,9 +540,7 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public enum TimeUnit {
-    MILLIS,
-    MICROS,
-    NANOS
+    MILLIS, MICROS, NANOS
   }
 
   public static class TimeLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -556,12 +556,12 @@ public abstract class LogicalTypeAnnotation {
     @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (unit) {
-        case MILLIS:
-          return OriginalType.TIME_MILLIS;
-        case MICROS:
-          return OriginalType.TIME_MICROS;
-        default:
-          return null;
+      case MILLIS:
+        return OriginalType.TIME_MILLIS;
+      case MICROS:
+        return OriginalType.TIME_MICROS;
+      default:
+        return null;
       }
     }
 
@@ -611,13 +611,13 @@ public abstract class LogicalTypeAnnotation {
     @Override
     PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       switch (unit) {
-        case MICROS:
-        case MILLIS:
-          return isAdjustedToUTC ? TIME_UTC_STRINGIFIER : TIME_STRINGIFIER;
-        case NANOS:
-          return isAdjustedToUTC ? TIME_NANOS_UTC_STRINGIFIER : TIME_NANOS_STRINGIFIER;
-        default:
-          return super.valueStringifier(primitiveType);
+      case MICROS:
+      case MILLIS:
+        return isAdjustedToUTC ? TIME_UTC_STRINGIFIER : TIME_STRINGIFIER;
+      case NANOS:
+        return isAdjustedToUTC ? TIME_NANOS_UTC_STRINGIFIER : TIME_NANOS_STRINGIFIER;
+      default:
+        return super.valueStringifier(primitiveType);
       }
     }
   }
@@ -635,12 +635,12 @@ public abstract class LogicalTypeAnnotation {
     @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (unit) {
-        case MILLIS:
-          return OriginalType.TIMESTAMP_MILLIS;
-        case MICROS:
-          return OriginalType.TIMESTAMP_MICROS;
-        default:
-          return null;
+      case MILLIS:
+        return OriginalType.TIMESTAMP_MILLIS;
+      case MICROS:
+        return OriginalType.TIMESTAMP_MICROS;
+      default:
+        return null;
       }
     }
 
@@ -690,21 +690,21 @@ public abstract class LogicalTypeAnnotation {
     @Override
     PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       switch (unit) {
-        case MICROS:
-          return isAdjustedToUTC ? TIMESTAMP_MICROS_UTC_STRINGIFIER : TIMESTAMP_MICROS_STRINGIFIER;
-        case MILLIS:
-          return isAdjustedToUTC ? TIMESTAMP_MILLIS_UTC_STRINGIFIER : TIMESTAMP_MILLIS_STRINGIFIER;
-        case NANOS:
-          return isAdjustedToUTC ? TIMESTAMP_NANOS_UTC_STRINGIFIER : TIMESTAMP_NANOS_STRINGIFIER;
-        default:
-          return super.valueStringifier(primitiveType);
+      case MICROS:
+        return isAdjustedToUTC ? TIMESTAMP_MICROS_UTC_STRINGIFIER : TIMESTAMP_MICROS_STRINGIFIER;
+      case MILLIS:
+        return isAdjustedToUTC ? TIMESTAMP_MILLIS_UTC_STRINGIFIER : TIMESTAMP_MILLIS_STRINGIFIER;
+      case NANOS:
+        return isAdjustedToUTC ? TIMESTAMP_NANOS_UTC_STRINGIFIER : TIMESTAMP_NANOS_STRINGIFIER;
+      default:
+        return super.valueStringifier(primitiveType);
       }
     }
   }
 
   public static class IntLogicalTypeAnnotation extends LogicalTypeAnnotation {
-    private static final Set<Integer> VALID_BIT_WIDTH = Collections.unmodifiableSet(
-      new HashSet<>(asList(8, 16, 32, 64)));
+    private static final Set<Integer> VALID_BIT_WIDTH = Collections
+        .unmodifiableSet(new HashSet<>(asList(8, 16, 32, 64)));
 
     private final int bitWidth;
     private final boolean isSigned;
@@ -721,16 +721,16 @@ public abstract class LogicalTypeAnnotation {
     @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (bitWidth) {
-        case 8:
-          return isSigned ? OriginalType.INT_8 : OriginalType.UINT_8;
-        case 16:
-          return isSigned ? OriginalType.INT_16 : OriginalType.UINT_16;
-        case 32:
-          return isSigned ? OriginalType.INT_32 : OriginalType.UINT_32;
-        case 64:
-          return isSigned ? OriginalType.INT_64 : OriginalType.UINT_64;
-        default:
-          return null;
+      case 8:
+        return isSigned ? OriginalType.INT_8 : OriginalType.UINT_8;
+      case 16:
+        return isSigned ? OriginalType.INT_16 : OriginalType.UINT_16;
+      case 32:
+        return isSigned ? OriginalType.INT_32 : OriginalType.UINT_32;
+      case 64:
+        return isSigned ? OriginalType.INT_64 : OriginalType.UINT_64;
+      default:
+        return null;
       }
     }
 
@@ -861,8 +861,10 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
-  // This logical type annotation is implemented to support backward compatibility with ConvertedType.
-  // The new logical type representation in parquet-format doesn't have any interval type,
+  // This logical type annotation is implemented to support backward compatibility
+  // with ConvertedType.
+  // The new logical type representation in parquet-format doesn't have any
+  // interval type,
   // thus this annotation is mapped to UNKNOWN.
   public static class IntervalLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static IntervalLogicalTypeAnnotation INSTANCE = new IntervalLogicalTypeAnnotation();
@@ -912,8 +914,10 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
-  // This logical type annotation is implemented to support backward compatibility with ConvertedType.
-  // The new logical type representation in parquet-format doesn't have any key-value type,
+  // This logical type annotation is implemented to support backward compatibility
+  // with ConvertedType.
+  // The new logical type representation in parquet-format doesn't have any
+  // key-value type,
   // thus this annotation is mapped to UNKNOWN. This type shouldn't be used.
   public static class MapKeyValueTypeAnnotation extends LogicalTypeAnnotation {
     private static MapKeyValueTypeAnnotation INSTANCE = new MapKeyValueTypeAnnotation();
@@ -955,14 +959,17 @@ public abstract class LogicalTypeAnnotation {
 
   /**
    * Implement this interface to visit a logical type annotation in the schema.
-   * The default implementation for each logical type specific visitor method is empty.
+   * The default implementation for each logical type specific visitor method is
+   * empty.
    * <p>
-   * Example usage: logicalTypeAnnotation.accept(new LogicalTypeAnnotationVisitor() { ... });
+   * Example usage: logicalTypeAnnotation.accept(new
+   * LogicalTypeAnnotationVisitor() { ... });
    *
-   * Every visit method returns {@link Optional#empty()} by default.
-   * It means that for the given logical type no specific action is needed.
-   * Client code can use {@link Optional#orElse(Object)} to return a default value for unhandled types,
-   * or {@link Optional#orElseThrow(Supplier)} to throw exception if omitting a type is not allowed.
+   * Every visit method returns {@link Optional#empty()} by default. It means that
+   * for the given logical type no specific action is needed. Client code can use
+   * {@link Optional#orElse(Object)} to return a default value for unhandled
+   * types, or {@link Optional#orElseThrow(Supplier)} to throw exception if
+   * omitting a type is not allowed.
    */
   public interface LogicalTypeAnnotationVisitor<T> {
     default Optional<T> visit(StringLogicalTypeAnnotation stringLogicalType) {

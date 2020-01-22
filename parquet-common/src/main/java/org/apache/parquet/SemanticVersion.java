@@ -24,9 +24,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Very basic semver parser, only pays attention to major, minor, and patch numbers.
- * Attempts to do a little bit of validation that the version string is valid, but
- * is not a full implementation of the semver spec.
+ * Very basic semver parser, only pays attention to major, minor, and patch
+ * numbers. Attempts to do a little bit of validation that the version string is
+ * valid, but is not a full implementation of the semver spec.
  *
  * NOTE: compareTo only respects major, minor, patch, and whether this is a
  * prerelease version. All prerelease versions are considered equivalent.
@@ -35,7 +35,7 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
   // this is slightly more permissive than the semver format:
   // * it allows a pattern after patch and before -prerelease or +buildinfo
   private static final String FORMAT =
-      // major  . minor  .patch   ???       - prerelease.x + build info
+      // major . minor .patch ??? - prerelease.x + build info
       "^(\\d+)\\.(\\d+)\\.(\\d+)([^-+]*)?(?:-([^+]*))?(?:\\+(.*))?$";
   private static final Pattern PATTERN = Pattern.compile(FORMAT);
 
@@ -169,8 +169,10 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o)
+      return true;
+    if (o == null || getClass() != o.getClass())
+      return false;
 
     SemanticVersion that = (SemanticVersion) o;
     return compareTo(that) == 0;
@@ -219,7 +221,8 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
 
     @Override
     public int compareTo(NumberOrString that) {
-      // Numeric identifiers always have lower precedence than non-numeric identifiers.
+      // Numeric identifiers always have lower precedence than non-numeric
+      // identifiers.
       int cmp = compareBooleans(that.isNumeric, this.isNumeric);
       if (cmp != 0) {
         return cmp;
@@ -230,7 +233,8 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
         return compareIntegers(this.number, that.number);
       }
 
-      // identifiers with letters or hyphens are compared lexically in ASCII sort order
+      // identifiers with letters or hyphens are compared lexically in ASCII sort
+      // order
       return this.original.compareTo(that.original);
     }
 

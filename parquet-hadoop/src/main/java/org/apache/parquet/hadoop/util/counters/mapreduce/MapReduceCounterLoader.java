@@ -19,15 +19,14 @@
 package org.apache.parquet.hadoop.util.counters.mapreduce;
 
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.hadoop.util.counters.CounterLoader;
 import org.apache.parquet.hadoop.util.counters.ICounter;
 
 /**
- * Concrete factory for counters in mapred API,
- * get a counter using mapreduce API when the corresponding flag is set, otherwise return a NullCounter
+ * Concrete factory for counters in mapred API, get a counter using mapreduce
+ * API when the corresponding flag is set, otherwise return a NullCounter
  */
 public class MapReduceCounterLoader implements CounterLoader {
   private TaskAttemptContext context;

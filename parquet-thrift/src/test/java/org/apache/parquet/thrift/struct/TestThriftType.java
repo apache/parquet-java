@@ -32,30 +32,25 @@ public class TestThriftType {
   @Test
   public void testWriteUnionInfo() throws Exception {
     StructType st = new StructType(new LinkedList<ThriftField>(), null);
-    assertEquals("{\n"
-                +"  \"id\" : \"STRUCT\",\n"
-                +"  \"children\" : [ ],\n"
-                +"  \"structOrUnionType\" : \"STRUCT\"\n"
-                +"}", st.toJSON());
+    assertEquals(
+        "{\n" + "  \"id\" : \"STRUCT\",\n" + "  \"children\" : [ ],\n" + "  \"structOrUnionType\" : \"STRUCT\"\n" + "}",
+        st.toJSON());
 
     st = new StructType(new LinkedList<ThriftField>(), StructOrUnionType.UNION);
-    assertEquals("{\n"
-        +"  \"id\" : \"STRUCT\",\n"
-        +"  \"children\" : [ ],\n"
-        +"  \"structOrUnionType\" : \"UNION\"\n"
-        +"}", st.toJSON());
+    assertEquals(
+        "{\n" + "  \"id\" : \"STRUCT\",\n" + "  \"children\" : [ ],\n" + "  \"structOrUnionType\" : \"UNION\"\n" + "}",
+        st.toJSON());
 
     st = new StructType(new LinkedList<ThriftField>(), StructOrUnionType.STRUCT);
-    assertEquals("{\n"
-        +"  \"id\" : \"STRUCT\",\n"
-        +"  \"children\" : [ ],\n"
-        +"  \"structOrUnionType\" : \"STRUCT\"\n"
-        +"}", st.toJSON());
+    assertEquals(
+        "{\n" + "  \"id\" : \"STRUCT\",\n" + "  \"children\" : [ ],\n" + "  \"structOrUnionType\" : \"STRUCT\"\n" + "}",
+        st.toJSON());
   }
 
   @Test
   public void testParseUnionInfo() throws Exception {
-    StructType st = (StructType) StructType.fromJSON("{\"id\": \"STRUCT\", \"children\":[], \"structOrUnionType\": \"UNION\"}");
+    StructType st = (StructType) StructType
+        .fromJSON("{\"id\": \"STRUCT\", \"children\":[], \"structOrUnionType\": \"UNION\"}");
     assertEquals(st.getStructOrUnionType(), StructOrUnionType.UNION);
     st = (StructType) StructType.fromJSON("{\"id\": \"STRUCT\", \"children\":[], \"structOrUnionType\": \"STRUCT\"}");
     assertEquals(st.getStructOrUnionType(), StructOrUnionType.STRUCT);

@@ -32,8 +32,9 @@ public class TupleRecordMaterializer extends RecordMaterializer<Tuple> {
   public TupleRecordMaterializer(GroupType parquetSchema, Schema pigSchema, boolean numbersDefaultToZero) {
     this(parquetSchema, pigSchema, numbersDefaultToZero, false);
   }
-  
-  public TupleRecordMaterializer(GroupType parquetSchema, Schema pigSchema, boolean numbersDefaultToZero, boolean columnIndexAccess) {
+
+  public TupleRecordMaterializer(GroupType parquetSchema, Schema pigSchema, boolean numbersDefaultToZero,
+      boolean columnIndexAccess) {
     this.root = new TupleConverter(parquetSchema, pigSchema, numbersDefaultToZero, columnIndexAccess);
   }
 

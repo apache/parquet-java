@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-
 /**
  * Block metadata stored in the footer and passed in an InputSplit
  */
@@ -36,16 +35,17 @@ public class BlockMetaData {
   public BlockMetaData() {
   }
 
-
   /**
-   * @param path the path to the file containing the data. Or null if same file the metadata was found
+   * @param path the path to the file containing the data. Or null if same file
+   * the metadata was found
    */
   public void setPath(String path) {
     this.path = path;
   }
 
   /**
-   * @return the path relative to the parent of this file where the data is. Or null if it is in the same file.
+   * @return the path relative to the parent of this file where the data is. Or
+   * null if it is in the same file.
    */
   public String getPath() {
     return path;
@@ -102,6 +102,7 @@ public class BlockMetaData {
   public long getStartingPos() {
     return getColumns().get(0).getStartingPos();
   }
+
   @Override
   public String toString() {
     return "BlockMetaData{" + rowCount + ", " + totalByteSize + " " + columns + "}";

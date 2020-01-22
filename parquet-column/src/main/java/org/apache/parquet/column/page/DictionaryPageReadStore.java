@@ -26,8 +26,8 @@ import org.apache.parquet.column.ColumnDescriptor;
 public interface DictionaryPageReadStore {
 
   /**
-   * Returns a {@link DictionaryPage} for the given column descriptor.
-   * The dictionary page bytes are uncompressed.
+   * Returns a {@link DictionaryPage} for the given column descriptor. The
+   * dictionary page bytes are uncompressed.
    *
    * @param descriptor the descriptor of the column
    * @return the DictionaryPage for that column, or null if there isn't one

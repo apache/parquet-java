@@ -36,7 +36,8 @@ public class Statistics<T> {
   /**
    * @param min the min value
    * @param max the max value
-   * @deprecated will be removed in 2.0.0. Use {@link #Statistics(Object, Object, Comparator)} instead
+   * @deprecated will be removed in 2.0.0. Use
+   * {@link #Statistics(Object, Object, Comparator)} instead
    */
   @Deprecated
   public Statistics(T min, T max) {
@@ -50,7 +51,8 @@ public class Statistics<T> {
   /**
    * @param min the min value
    * @param max the max value
-   * @param comparator a comparator to use when comparing values described by this statistics instance
+   * @param comparator a comparator to use when comparing values described by this
+   * statistics instance
    */
   public Statistics(T min, T max, Comparator<T> comparator) {
     this.min = checkNotNull(min, "min");
@@ -83,8 +85,8 @@ public class Statistics<T> {
   }
 
   /**
-   * Returns the comparator to be used to compare two generic values in the proper way (e.g. unsigned comparison for
-   * UINT_32)
+   * Returns the comparator to be used to compare two generic values in the proper
+   * way (e.g. unsigned comparison for UINT_32)
    *
    * @return a comparator for the values described by the statistics instance
    */

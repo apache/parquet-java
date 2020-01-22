@@ -60,13 +60,11 @@ public class TestRowGroupFilter {
     BlockMetaData b3 = makeBlockFromStats(stats3, 303);
     blocks.add(b3);
 
-
     IntStatistics stats4 = new IntStatistics();
     stats4.setMinMax(0, 0);
     stats4.setNumNulls(304);
     BlockMetaData b4 = makeBlockFromStats(stats4, 304);
     blocks.add(b4);
-
 
     IntStatistics stats5 = new IntStatistics();
     stats5.setMinMax(50, 50);

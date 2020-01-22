@@ -43,8 +43,9 @@ public class ColumnIOFactory {
     private int currentRequestedIndex;
     private Type currentRequestedType;
     private boolean strictTypeChecking;
-    
-    private ColumnIOCreatorVisitor(boolean validating, MessageType requestedSchema, String createdBy, boolean strictTypeChecking) {
+
+    private ColumnIOCreatorVisitor(boolean validating, MessageType requestedSchema, String createdBy,
+        boolean strictTypeChecking) {
       this.validating = validating;
       this.requestedSchema = requestedSchema;
       this.createdBy = createdBy;
@@ -88,8 +89,8 @@ public class ColumnIOFactory {
 
     @Override
     public void visit(PrimitiveType primitiveType) {
-      if (!currentRequestedType.isPrimitive() || 
-              (this.strictTypeChecking && currentRequestedType.asPrimitiveType().getPrimitiveTypeName() != primitiveType.getPrimitiveTypeName())) {
+      if (!currentRequestedType.isPrimitive() || (this.strictTypeChecking
+          && currentRequestedType.asPrimitiveType().getPrimitiveTypeName() != primitiveType.getPrimitiveTypeName())) {
         incompatibleSchema(primitiveType, currentRequestedType);
       }
       PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, currentRequestedIndex, leaves.size());
@@ -98,7 +99,9 @@ public class ColumnIOFactory {
     }
 
     private void incompatibleSchema(Type fileType, Type requestedType) {
-      throw new ParquetDecodingException("The requested schema is not compatible with the file schema. incompatible types: " + requestedType + " != " + fileType);
+      throw new ParquetDecodingException(
+          "The requested schema is not compatible with the file schema. incompatible types: " + requestedType + " != "
+              + fileType);
     }
 
     public MessageColumnIO getColumnIO() {
@@ -119,6 +122,7 @@ public class ColumnIOFactory {
 
   /**
    * validation is off by default
+   * 
    * @param createdBy createdBy string for readers
    */
   public ColumnIOFactory(String createdBy) {
@@ -144,16 +148,18 @@ public class ColumnIOFactory {
 
   /**
    * @param requestedSchema the requestedSchema we want to read/write
-   * @param fileSchema the file schema (when reading it can be different from the requested schema)
+   * @param fileSchema the file schema (when reading it can be different from the
+   * requested schema)
    * @return the corresponding serializing/deserializing structure
    */
   public MessageColumnIO getColumnIO(MessageType requestedSchema, MessageType fileSchema) {
     return getColumnIO(requestedSchema, fileSchema, true);
   }
-  
+
   /**
    * @param requestedSchema the requestedSchema we want to read/write
-   * @param fileSchema the file schema (when reading it can be different from the requested schema)
+   * @param fileSchema the file schema (when reading it can be different from the
+   * requested schema)
    * @param strict should file type and requested primitive types match
    * @return the corresponding serializing/deserializing structure
    */

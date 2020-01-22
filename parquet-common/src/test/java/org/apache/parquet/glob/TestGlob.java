@@ -53,20 +53,17 @@ public class TestGlob {
     assertEquals(Arrays.asList("foobar", "foobaz"), Strings.expandGlob("foo{bar,baz}"));
     assertEquals(Arrays.asList("startfooend", "startbarend"), Strings.expandGlob("start{foo,bar}end"));
     assertEquals(Arrays.asList("fooend", "barend"), Strings.expandGlob("{foo,bar}end"));
-    assertEquals(Arrays.asList(
-        "startfooenda", "startfooendb", "startfooendc", "startfooendd",
-        "startbarenda", "startbarendb", "startbarendc", "startbarendd"),
-        Strings.expandGlob("start{foo,bar}end{a,b,c,d}"));
+    assertEquals(Arrays.asList("startfooenda", "startfooendb", "startfooendc", "startfooendd", "startbarenda",
+        "startbarendb", "startbarendc", "startbarendd"), Strings.expandGlob("start{foo,bar}end{a,b,c,d}"));
     assertEquals(Arrays.asList("xa", "xb", "xc", "ya", "yb", "yc"), Strings.expandGlob("{x,y}{a,b,c}"));
     assertEquals(Arrays.asList("x", "y", "z"), Strings.expandGlob("{x,y,z}"));
   }
 
   @Test
   public void testNested() {
-    assertEquals(Arrays.asList(
-            "startoneend", "startpretwopostend", "startprethreepostend",
-            "startfourend", "startfiveend", "a", "b", "foox", "fooy"),
-            Strings.expandGlob("{start{one,pre{two,three}post,{four,five}}end,a,b,foo{x,y}}"));
+    assertEquals(Arrays.asList("startoneend", "startpretwopostend", "startprethreepostend", "startfourend",
+        "startfiveend", "a", "b", "foox", "fooy"),
+        Strings.expandGlob("{start{one,pre{two,three}post,{four,five}}end,a,b,foo{x,y}}"));
   }
 
   @Test
@@ -82,9 +79,7 @@ public class TestGlob {
       Strings.expandGlob("foo,bar");
       fail("This should throw");
     } catch (GlobParseException e) {
-      Assert.assertEquals("Unexpected comma outside of a {} group:\n" +
-          "foo,bar\n" +
-          "---^", e.getMessage());
+      Assert.assertEquals("Unexpected comma outside of a {} group:\n" + "foo,bar\n" + "---^", e.getMessage());
     }
   }
 
@@ -123,7 +118,6 @@ public class TestGlob {
       Assert.assertEquals(expected, e.getMessage().substring(0, expected.length()));
     }
   }
-
 
   @Test
   public void testMismatchedBraces() {

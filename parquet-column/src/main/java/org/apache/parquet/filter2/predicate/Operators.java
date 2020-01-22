@@ -27,11 +27,12 @@ import org.apache.parquet.io.api.Binary;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * These are the operators in a filter predicate expression tree.
- * They are constructed by using the methods in {@link FilterApi}
+ * These are the operators in a filter predicate expression tree. They are
+ * constructed by using the methods in {@link FilterApi}
  */
 public final class Operators {
-  private Operators() { }
+  private Operators() {
+  }
 
   public static abstract class Column<T extends Comparable<T>> implements Serializable {
     private final ColumnPath columnPath;
@@ -59,13 +60,17 @@ public final class Operators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       Column column = (Column) o;
 
-      if (!columnType.equals(column.columnType)) return false;
-      if (!columnPath.equals(column.columnPath)) return false;
+      if (!columnType.equals(column.columnType))
+        return false;
+      if (!columnPath.equals(column.columnPath))
+        return false;
 
       return true;
     }
@@ -78,8 +83,11 @@ public final class Operators {
     }
   }
 
-  public static interface SupportsEqNotEq { } // marker for columns that can be used with eq() and notEq()
-  public static interface SupportsLtGt extends SupportsEqNotEq { } // marker for columns that can be used with lt(), ltEq(), gt(), gtEq()
+  public static interface SupportsEqNotEq {
+  } // marker for columns that can be used with eq() and notEq()
+
+  public static interface SupportsLtGt extends SupportsEqNotEq {
+  } // marker for columns that can be used with lt(), ltEq(), gt(), gtEq()
 
   public static final class IntColumn extends Column<Integer> implements SupportsLtGt {
     IntColumn(ColumnPath columnPath) {
@@ -118,7 +126,7 @@ public final class Operators {
   }
 
   // base class for Eq, NotEq, Lt, Gt, LtEq, GtEq
-  static abstract class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable  {
+  static abstract class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable {
     private final Column<T> column;
     private final T value;
     private final String toString;
@@ -126,7 +134,8 @@ public final class Operators {
     protected ColumnFilterPredicate(Column<T> column, T value) {
       this.column = checkNotNull(column, "column");
 
-      // Eq and NotEq allow value to be null, Lt, Gt, LtEq, GtEq however do not, so they guard against
+      // Eq and NotEq allow value to be null, Lt, Gt, LtEq, GtEq however do not, so
+      // they guard against
       // null in their own constructors.
       this.value = value;
 
@@ -149,13 +158,17 @@ public final class Operators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       ColumnFilterPredicate that = (ColumnFilterPredicate) o;
 
-      if (!column.equals(that.column)) return false;
-      if (value != null ? !value.equals(that.value) : that.value != null) return false;
+      if (!column.equals(that.column))
+        return false;
+      if (value != null ? !value.equals(that.value) : that.value != null)
+        return false;
 
       return true;
     }
@@ -196,7 +209,6 @@ public final class Operators {
     }
   }
 
-
   public static final class Lt<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
     // value cannot be null
@@ -222,7 +234,6 @@ public final class Operators {
       return visitor.visit(this);
     }
   }
-
 
   public static final class Gt<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
@@ -278,13 +289,17 @@ public final class Operators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       BinaryLogicalFilterPredicate that = (BinaryLogicalFilterPredicate) o;
 
-      if (!left.equals(that.left)) return false;
-      if (!right.equals(that.right)) return false;
+      if (!left.equals(that.left))
+        return false;
+      if (!right.equals(that.right))
+        return false;
 
       return true;
     }
@@ -347,8 +362,10 @@ public final class Operators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
       Not not = (Not) o;
       return predicate.equals(not.predicate);
     }
@@ -359,7 +376,8 @@ public final class Operators {
     }
   }
 
-  public static abstract class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+  public static abstract class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>>
+      implements FilterPredicate, Serializable {
     protected final Column<T> column;
 
     UserDefined(Column<T> column) {
@@ -377,12 +395,12 @@ public final class Operators {
       return visitor.visit(this);
     }
   }
-    
-  public static final class UserDefinedByClass<T extends Comparable<T>, U extends UserDefinedPredicate<T>> extends UserDefined<T, U> {
+
+  public static final class UserDefinedByClass<T extends Comparable<T>, U extends UserDefinedPredicate<T>>
+      extends UserDefined<T, U> {
     private final Class<U> udpClass;
     private final String toString;
-    private static final String INSTANTIATION_ERROR_MESSAGE =
-        "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
+    private static final String INSTANTIATION_ERROR_MESSAGE = "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
     UserDefinedByClass(Column<T> column, Class<U> udpClass) {
       super(column);
@@ -390,7 +408,8 @@ public final class Operators {
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
 
-      // defensively try to instantiate the class early to make sure that it's possible
+      // defensively try to instantiate the class early to make sure that it's
+      // possible
       getUserDefinedPredicate();
     }
 
@@ -414,13 +433,17 @@ public final class Operators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       UserDefinedByClass that = (UserDefinedByClass) o;
 
-      if (!column.equals(that.column)) return false;
-      if (!udpClass.equals(that.udpClass)) return false;
+      if (!column.equals(that.column))
+        return false;
+      if (!udpClass.equals(that.udpClass))
+        return false;
 
       return true;
     }
@@ -433,8 +456,9 @@ public final class Operators {
       return result;
     }
   }
-  
-  public static final class UserDefinedByInstance<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> extends UserDefined<T, U> {
+
+  public static final class UserDefinedByInstance<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable>
+      extends UserDefined<T, U> {
     private final String toString;
     private final U udpInstance;
 
@@ -457,13 +481,17 @@ public final class Operators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       UserDefinedByInstance that = (UserDefinedByInstance) o;
 
-      if (!column.equals(that.column)) return false;
-      if (!udpInstance.equals(that.udpInstance)) return false;
+      if (!column.equals(that.column))
+        return false;
+      if (!udpInstance.equals(that.udpInstance))
+        return false;
 
       return true;
     }
@@ -477,9 +505,11 @@ public final class Operators {
     }
   }
 
-  // Represents the inverse of a UserDefined. It is equivalent to not(userDefined), without the use
+  // Represents the inverse of a UserDefined. It is equivalent to
+  // not(userDefined), without the use
   // of the not() operator
-  public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+  public static final class LogicalNotUserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>>
+      implements FilterPredicate, Serializable {
     private final UserDefined<T, U> udp;
     private final String toString;
 
@@ -504,12 +534,15 @@ public final class Operators {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       LogicalNotUserDefined that = (LogicalNotUserDefined) o;
 
-      if (!udp.equals(that.udp)) return false;
+      if (!udp.equals(that.udp))
+        return false;
 
       return true;
     }

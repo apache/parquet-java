@@ -20,11 +20,8 @@ package org.apache.parquet.avro;
 
 import com.google.common.collect.Lists;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.reflect.Nullable;
 import org.apache.avro.reflect.ReflectData;
@@ -58,20 +55,23 @@ import static org.junit.Assert.fail;
 public class TestReflectInputOutputFormat {
   private static final Logger LOG = LoggerFactory.getLogger(TestReflectInputOutputFormat.class);
 
-
   public static class Service {
     private long date;
     private String mechanic;
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       Service service = (Service) o;
 
-      if (date != service.date) return false;
-      if (!mechanic.equals(service.mechanic)) return false;
+      if (date != service.date)
+        return false;
+      if (!mechanic.equals(service.mechanic))
+        return false;
 
       return true;
     }
@@ -95,14 +95,19 @@ public class TestReflectInputOutputFormat {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       Engine engine = (Engine) o;
 
-      if (Float.compare(engine.capacity, capacity) != 0) return false;
-      if (hasTurboCharger != engine.hasTurboCharger) return false;
-      if (type != engine.type) return false;
+      if (Float.compare(engine.capacity, capacity) != 0)
+        return false;
+      if (hasTurboCharger != engine.hasTurboCharger)
+        return false;
+      if (type != engine.type)
+        return false;
 
       return true;
     }
@@ -122,13 +127,17 @@ public class TestReflectInputOutputFormat {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       Stereo stereo = (Stereo) o;
 
-      if (speakers != stereo.speakers) return false;
-      if (!make.equals(stereo.make)) return false;
+      if (speakers != stereo.speakers)
+        return false;
+      if (!make.equals(stereo.make))
+        return false;
 
       return true;
     }
@@ -146,12 +155,15 @@ public class TestReflectInputOutputFormat {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       LeatherTrim that = (LeatherTrim) o;
 
-      if (!colour.equals(that.colour)) return false;
+      if (!colour.equals(that.colour))
+        return false;
 
       return true;
     }
@@ -162,8 +174,9 @@ public class TestReflectInputOutputFormat {
     }
   }
 
-  @Union({Void.class, Stereo.class, LeatherTrim.class})
-  public static class Extra {}
+  @Union({ Void.class, Stereo.class, LeatherTrim.class })
+  public static class Extra {
+  }
 
   public static class Car {
     private long year;
@@ -179,22 +192,31 @@ public class TestReflectInputOutputFormat {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       Car car = (Car) o;
 
-      if (doors != car.doors) return false;
-      if (year != car.year) return false;
-      if (!engine.equals(car.engine)) return false;
-      if (!make.equals(car.make)) return false;
-      if (!model.equals(car.model)) return false;
+      if (doors != car.doors)
+        return false;
+      if (year != car.year)
+        return false;
+      if (!engine.equals(car.engine))
+        return false;
+      if (!make.equals(car.make))
+        return false;
+      if (!model.equals(car.model))
+        return false;
       if (optionalExtra != null ? !optionalExtra.equals(car.optionalExtra) : car.optionalExtra != null)
         return false;
-      if (!registration.equals(car.registration)) return false;
+      if (!registration.equals(car.registration))
+        return false;
       if (serviceHistory != null ? !serviceHistory.equals(car.serviceHistory) : car.serviceHistory != null)
         return false;
-      if (!Arrays.equals(vin, car.vin)) return false;
+      if (!Arrays.equals(vin, car.vin))
+        return false;
 
       return true;
     }
@@ -223,16 +245,21 @@ public class TestReflectInputOutputFormat {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o)
+        return true;
+      if (o == null || getClass() != o.getClass())
+        return false;
 
       ShortCar shortCar = (ShortCar) o;
 
-      if (year != shortCar.year) return false;
-      if (!engine.equals(shortCar.engine)) return false;
+      if (year != shortCar.year)
+        return false;
+      if (!engine.equals(shortCar.engine))
+        return false;
       if (make != null ? !make.equals(shortCar.make) : shortCar.make != null)
         return false;
-      if (!Arrays.equals(vin, shortCar.vin)) return false;
+      if (!Arrays.equals(vin, shortCar.vin))
+        return false;
 
       return true;
     }
@@ -247,9 +274,9 @@ public class TestReflectInputOutputFormat {
     }
   }
 
-  public static final Schema CAR_SCHEMA = ReflectData.get()//AllowNulls.INSTANCE
+  public static final Schema CAR_SCHEMA = ReflectData.get()// AllowNulls.INSTANCE
       .getSchema(Car.class);
-  public static final Schema SHORT_CAR_SCHEMA = ReflectData.get()//AllowNulls.INSTANCE
+  public static final Schema SHORT_CAR_SCHEMA = ReflectData.get()// AllowNulls.INSTANCE
       .getSchema(ShortCar.class);
 
   public static Car nextRecord(int i) {
@@ -284,7 +311,7 @@ public class TestReflectInputOutputFormat {
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, Car> {
     @Override
-    public void run(Context context) throws IOException ,InterruptedException {
+    public void run(Context context) throws IOException, InterruptedException {
       for (int i = 0; i < 10; i++) {
         context.write(null, nextRecord(i));
       }
@@ -293,8 +320,9 @@ public class TestReflectInputOutputFormat {
 
   public static class MyMapper2 extends Mapper<Void, Car, Void, Car> {
     @Override
-    protected void map(Void key, Car car, Context context) throws IOException ,InterruptedException {
-      // Note: Car can be null because of predicate pushdown defined by an UnboundedRecordFilter (see below)
+    protected void map(Void key, Car car, Context context) throws IOException, InterruptedException {
+      // Note: Car can be null because of predicate pushdown defined by an
+      // UnboundedRecordFilter (see below)
       if (car != null) {
         context.write(null, car);
       }
@@ -302,11 +330,9 @@ public class TestReflectInputOutputFormat {
 
   }
 
-  public static class MyMapperShort extends
-      Mapper<Void, ShortCar, Void, ShortCar> {
+  public static class MyMapperShort extends Mapper<Void, ShortCar, Void, ShortCar> {
     @Override
-    protected void map(Void key, ShortCar car, Context context)
-        throws IOException, InterruptedException {
+    protected void map(Void key, ShortCar car, Context context) throws IOException, InterruptedException {
       // Note: Car can be null because of predicate pushdown defined by an
       // UnboundedRecordFilter (see below)
       if (car != null) {
@@ -320,7 +346,8 @@ public class TestReflectInputOutputFormat {
     private final UnboundRecordFilter filter;
 
     public ElectricCarFilter() {
-      filter = ColumnRecordFilter.column("engine.type", ColumnPredicates.equalTo(org.apache.parquet.avro.EngineType.ELECTRIC));
+      filter = ColumnRecordFilter.column("engine.type",
+          ColumnPredicates.equalTo(org.apache.parquet.avro.EngineType.ELECTRIC));
     }
 
     @Override
@@ -374,13 +401,12 @@ public class TestReflectInputOutputFormat {
     AvroParquetInputFormat.setUnboundRecordFilter(job, ElectricCarFilter.class);
 
     // Test schema projection by dropping the optional extras
-    Schema projection = Schema.createRecord(CAR_SCHEMA.getName(),
-        CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(), false);
+    Schema projection = Schema.createRecord(CAR_SCHEMA.getName(), CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(),
+        false);
     List<Schema.Field> fields = Lists.newArrayList();
     for (Schema.Field field : ReflectData.get().getSchema(Car.class).getFields()) {
       if (!"optionalExtra".equals(field.name())) {
-        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultVal(), field.order()));
+        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
@@ -395,15 +421,15 @@ public class TestReflectInputOutputFormat {
 
     waitForJob(job);
 
-    final Path mapperOutput = new Path(outputPath.toString(),
-        "part-m-00000.parquet");
-    try(final AvroParquetReader<Car> out = new AvroParquetReader<Car>(conf, mapperOutput)) {
+    final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
+    try (final AvroParquetReader<Car> out = new AvroParquetReader<Car>(conf, mapperOutput)) {
       Car car;
       Car previousCar = null;
       int lineNumber = 0;
       while ((car = out.read()) != null) {
         if (previousCar != null) {
-          // Testing reference equality here. The "model" field should be dictionary-encoded.
+          // Testing reference equality here. The "model" field should be
+          // dictionary-encoded.
           assertTrue(car.model == previousCar.model);
         }
         // Make sure that predicate push down worked as expected
@@ -434,14 +460,13 @@ public class TestReflectInputOutputFormat {
 
     // Test schema projection by dropping the engine, year, and vin (like ShortCar),
     // but making make optional (unlike ShortCar)
-    Schema projection = Schema.createRecord(CAR_SCHEMA.getName(),
-        CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(), false);
+    Schema projection = Schema.createRecord(CAR_SCHEMA.getName(), CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(),
+        false);
     List<Schema.Field> fields = Lists.newArrayList();
     for (Schema.Field field : CAR_SCHEMA.getFields()) {
       // No make!
       if ("engine".equals(field.name()) || "year".equals(field.name()) || "vin".equals(field.name())) {
-        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultVal(), field.order()));
+        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
@@ -458,14 +483,15 @@ public class TestReflectInputOutputFormat {
     waitForJob(job);
 
     final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
-    try(final AvroParquetReader<ShortCar> out = new AvroParquetReader<ShortCar>(conf, mapperOutput)) {
+    try (final AvroParquetReader<ShortCar> out = new AvroParquetReader<ShortCar>(conf, mapperOutput)) {
       ShortCar car;
       int lineNumber = 0;
       while ((car = out.read()) != null) {
         // Make sure that predicate push down worked as expected
         // Note we use lineNumber * 2 because of predicate push down
         Car expectedCar = nextRecord(lineNumber * 2);
-        // We removed the optional extra field using projection so we shouldn't see it here...
+        // We removed the optional extra field using projection so we shouldn't see it
+        // here...
         assertNull(car.make);
         assertEquals(car.engine, expectedCar.engine);
         assertEquals(car.year, expectedCar.year);

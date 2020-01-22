@@ -23,29 +23,34 @@ import org.apache.parquet.io.api.Binary;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
- * A rewritten version of a {@link org.apache.parquet.filter2.predicate.FilterPredicate} which receives
- * the values for a record's columns one by one and internally tracks whether the predicate is
- * satisfied, unsatisfied, or unknown.
+ * A rewritten version of a
+ * {@link org.apache.parquet.filter2.predicate.FilterPredicate} which receives
+ * the values for a record's columns one by one and internally tracks whether
+ * the predicate is satisfied, unsatisfied, or unknown.
  *
- * This is used to apply a predicate during record assembly, without assembling a second copy of
- * a record, and without building a stack of update events.
+ * This is used to apply a predicate during record assembly, without assembling
+ * a second copy of a record, and without building a stack of update events.
  *
- * IncrementallyUpdatedFilterPredicate is implemented via the visitor pattern, as is
- * {@link org.apache.parquet.filter2.predicate.FilterPredicate}
+ * IncrementallyUpdatedFilterPredicate is implemented via the visitor pattern,
+ * as is {@link org.apache.parquet.filter2.predicate.FilterPredicate}
  */
 public interface IncrementallyUpdatedFilterPredicate {
 
   /**
-   * A Visitor for an {@link IncrementallyUpdatedFilterPredicate}, per the visitor pattern.
+   * A Visitor for an {@link IncrementallyUpdatedFilterPredicate}, per the visitor
+   * pattern.
    */
   public static interface Visitor {
     boolean visit(ValueInspector p);
+
     boolean visit(And and);
+
     boolean visit(Or or);
   }
 
   /**
-   * A {@link IncrementallyUpdatedFilterPredicate} must accept a {@link Visitor}, per the visitor pattern.
+   * A {@link IncrementallyUpdatedFilterPredicate} must accept a {@link Visitor},
+   * per the visitor pattern.
    *
    * @param visitor a Visitor
    * @return the result of this predicate
@@ -53,26 +58,48 @@ public interface IncrementallyUpdatedFilterPredicate {
   boolean accept(Visitor visitor);
 
   /**
-   * This is the leaf node of a filter predicate. It receives the value for the primitive column it represents,
-   * and decides whether or not the predicate represented by this node is satisfied.
+   * This is the leaf node of a filter predicate. It receives the value for the
+   * primitive column it represents, and decides whether or not the predicate
+   * represented by this node is satisfied.
    *
    * It is stateful, and needs to be rest after use.
    */
   public static abstract class ValueInspector implements IncrementallyUpdatedFilterPredicate {
     // package private constructor
-    ValueInspector() { }
+    ValueInspector() {
+    }
 
     private boolean result = false;
     private boolean isKnown = false;
 
     // these methods signal what the value is
-    public void updateNull() { throw new UnsupportedOperationException(); }
-    public void update(int value) { throw new UnsupportedOperationException(); }
-    public void update(long value) { throw new UnsupportedOperationException(); }
-    public void update(double value) { throw new UnsupportedOperationException(); }
-    public void update(float value) { throw new UnsupportedOperationException(); }
-    public void update(boolean value) { throw new UnsupportedOperationException(); }
-    public void update(Binary value) { throw new UnsupportedOperationException(); }
+    public void updateNull() {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(int value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(long value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(double value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(float value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(boolean value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(Binary value) {
+      throw new UnsupportedOperationException();
+    }
 
     /**
      * Reset to clear state and begin evaluating the next record.
@@ -83,14 +110,15 @@ public interface IncrementallyUpdatedFilterPredicate {
     }
 
     /**
-     * Subclasses should call this method to signal that the result of this predicate is known.
+     * Subclasses should call this method to signal that the result of this
+     * predicate is known.
      *
      * @param result the result of this predicate, when it is determined
      */
     protected final void setResult(boolean result) {
       if (isKnown) {
         throw new IllegalStateException("setResult() called on a ValueInspector whose result is already known!"
-          + " Did you forget to call reset()?");
+            + " Did you forget to call reset()?");
       }
       this.result = result;
       this.isKnown = true;
