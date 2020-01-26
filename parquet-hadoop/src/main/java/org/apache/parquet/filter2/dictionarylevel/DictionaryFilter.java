@@ -39,11 +39,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.IntFunction;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
-
 
 /**
  * Applies filters based on the contents of column dictionaries.
@@ -55,8 +53,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
-    checkNotNull(pred, "pred");
-    checkNotNull(columns, "columns");
+    Objects.requireNonNull(pred, "pred cannnot be null");
+    Objects.requireNonNull(columns, "columns cannnot be null");
     return pred.accept(new DictionaryFilter(columns, dictionaries));
   }
 

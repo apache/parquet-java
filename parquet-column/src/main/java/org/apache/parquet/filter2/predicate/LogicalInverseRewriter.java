@@ -31,9 +31,10 @@ import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
+
+import java.util.Objects;
 
 /**
  * Recursively removes all use of the not() operator in a predicate
@@ -50,7 +51,7 @@ public final class LogicalInverseRewriter implements Visitor<FilterPredicate> {
   private static final LogicalInverseRewriter INSTANCE = new LogicalInverseRewriter();
 
   public static FilterPredicate rewrite(FilterPredicate pred) {
-    checkNotNull(pred, "pred");
+    Objects.requireNonNull(pred, "pred cannot be null");
     return pred.accept(INSTANCE);
   }
 

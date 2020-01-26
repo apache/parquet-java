@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
@@ -47,7 +48,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.lang.String.format;
-import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 
@@ -87,7 +87,7 @@ class InternalParquetRecordReader<T> {
    */
   public InternalParquetRecordReader(ReadSupport<T> readSupport, Filter filter) {
     this.readSupport = readSupport;
-    this.filter = checkNotNull(filter, "filter");
+    this.filter = Objects.requireNonNull(filter, "filter cannot be null");
   }
 
   /**

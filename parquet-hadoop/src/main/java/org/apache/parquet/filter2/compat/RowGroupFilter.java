@@ -21,6 +21,7 @@ package org.apache.parquet.filter2.compat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
@@ -32,8 +33,6 @@ import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.schema.MessageType;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * Given a {@link Filter} applies it to a list of BlockMetaData (row groups)
@@ -60,26 +59,26 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
    */
   @Deprecated
   public static List<BlockMetaData> filterRowGroups(Filter filter, List<BlockMetaData> blocks, MessageType schema) {
-    checkNotNull(filter, "filter");
+	  Objects.requireNonNull(filter, "filter cannot be null");
     return filter.accept(new RowGroupFilter(blocks, schema));
   }
 
   public static List<BlockMetaData> filterRowGroups(List<FilterLevel> levels, Filter filter, List<BlockMetaData> blocks, ParquetFileReader reader) {
-    checkNotNull(filter, "filter");
+    Objects.requireNonNull(filter, "filter cannot be null");
     return filter.accept(new RowGroupFilter(levels, blocks, reader));
   }
 
   @Deprecated
   private RowGroupFilter(List<BlockMetaData> blocks, MessageType schema) {
-    this.blocks = checkNotNull(blocks, "blocks");
-    this.schema = checkNotNull(schema, "schema");
+    this.blocks = Objects.requireNonNull(blocks, "blocks cannnot be null");
+    this.schema = Objects.requireNonNull(schema, "schema cannnot be null");
     this.levels = Collections.singletonList(FilterLevel.STATISTICS);
     this.reader = null;
   }
 
   private RowGroupFilter(List<FilterLevel> levels, List<BlockMetaData> blocks, ParquetFileReader reader) {
-    this.blocks = checkNotNull(blocks, "blocks");
-    this.reader = checkNotNull(reader, "reader");
+    this.blocks = Objects.requireNonNull(blocks, "blocks cannnot be null");
+    this.reader = Objects.requireNonNull(reader, "reader cannnot be null");
     this.schema = reader.getFileMetaData().getSchema();
     this.levels = levels;
   }
