@@ -22,6 +22,7 @@ import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 import java.util.function.IntPredicate;
 import java.util.function.IntUnaryOperator;
+import java.util.stream.IntStream;
 
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder.ColumnIndexBase;
 
@@ -29,17 +30,7 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder.ColumnI
  * Iterator implementation for page indexes.
  */
 class IndexIterator implements PrimitiveIterator.OfInt {
-  public static final PrimitiveIterator.OfInt EMPTY = new OfInt() {
-    @Override
-    public boolean hasNext() {
-      return false;
-    }
-
-    @Override
-    public int nextInt() {
-      throw new NoSuchElementException();
-    }
-  };
+  public static final PrimitiveIterator.OfInt EMPTY = IntStream.empty().iterator();
   private int index;
   private final int endIndex;
   private final IntPredicate filter;
