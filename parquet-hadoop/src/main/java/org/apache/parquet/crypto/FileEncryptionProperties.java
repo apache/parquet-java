@@ -23,7 +23,6 @@ package org.apache.parquet.crypto;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,27 +35,20 @@ public class FileEncryptionProperties {
 
   private static final ParquetCipher ALGORITHM_DEFAULT = ParquetCipher.AES_GCM_V1;
   private static final boolean ENCRYPTED_FOOTER_DEFAULT = true;
-
-  private final ParquetCipher parquetCipher;
-  private final byte[] aadPrefix;
+  
   private final EncryptionAlgorithm algorithm;
   private final boolean encryptedFooter;
   private final byte[] footerKey;
   private final byte[] footerKeyMetadata;
   private final byte[] fileAAD;
   private final Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap;
-  private boolean utilized;
-  private final boolean storeAadPrefixInFile;
+
 
 
   private FileEncryptionProperties(ParquetCipher cipher, 
       byte[] footerKey, byte[] footerKeyMetadata, boolean encryptedFooter,
       byte[] aadPrefix, boolean storeAadPrefixInFile,
       Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap) {
-
-    // file encryption properties object can be used for writing only one file.
-    // Upon completion of file writing, the encryption keys in the properties will be wiped out (set to 0 in memory).
-    utilized = false;
 
     if (null == footerKey) {
       throw new IllegalArgumentException("Footer key is null");
@@ -80,7 +72,6 @@ public class FileEncryptionProperties {
       if (!storeAadPrefixInFile) supplyAadPrefix = true;
     }
 
-    this.parquetCipher = cipher;
     this.algorithm = cipher.getEncryptionAlgorithm();
 
     if (algorithm.isSetAES_GCM_V1()) {
@@ -101,16 +92,9 @@ public class FileEncryptionProperties {
     this.footerKeyMetadata = footerKeyMetadata;
     this.encryptedFooter = encryptedFooter;
     this.columnPropertyMap = columnPropertyMap;
-    this.storeAadPrefixInFile = storeAadPrefixInFile;
-    this.aadPrefix = aadPrefix;
   }
 
   /**
-   * New encryption properties object must be created for each encrypted file.
-   * Encryption keys (footer and column) are cloned.
-   * Upon completion of file writing, the cloned encryption keys in the properties will 
-   * be wiped out (array values set to 0).
-   * Caller is responsible for wiping out the input key array. 
    * 
    * @param footerKey Encryption key for file footer and some (or all) columns. 
    * Key length must be either 16, 24 or 32 bytes.
@@ -240,12 +224,6 @@ public class FileEncryptionProperties {
       if (null != this.columnPropertyMap) {
         throw new IllegalArgumentException("Column properties already set");
       }
-      for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : encryptedColumns.entrySet()) {
-        if(entry.getValue().isUtilized()) {
-          throw new IllegalArgumentException("Column properties re-used in another file");
-        }
-        entry.getValue().setUtilized();
-      }
       // Copy the map to make column properties immutable
       this.columnPropertyMap = new HashMap<ColumnPath, ColumnEncryptionProperties>(encryptedColumns);
       return this;
@@ -296,51 +274,5 @@ public class FileEncryptionProperties {
 
   public boolean encryptedFooter() {
     return encryptedFooter;
-  }
-
-  boolean isUtilized() {
-    return utilized;
-  }
-
-  void setUtilized() {
-    utilized = true;
-  }
-
-  void wipeOutEncryptionKeys() {
-    Arrays.fill(footerKey, (byte)0);
-
-    if (null != columnPropertyMap) {
-      for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnPropertyMap.entrySet()) {
-        entry.getValue().wipeOutEncryptionKey();
-      }
-    }
-  }
-
-  /** EncryptionProperties object can be used for writing one file only.
-   * (at the end, keys are wiped out in the memory).
-   * This method allows to clone identical properties for another file, 
-   * with an option to update the aadPrefix (if newAadPrefix is null, 
-   * aadPrefix will not change) 
-   * 
-   * @param newAadPrefix AAD prefix
-   * @return Builder
-   */
-  public FileEncryptionProperties deepClone(byte[] newAadPrefix) {
-
-    byte[] footerKeyBytes = (null == footerKey?null:footerKey.clone());
-    Map<ColumnPath, ColumnEncryptionProperties> columnProps = null;
-    if (null != columnPropertyMap) {
-      columnProps = new HashMap<ColumnPath, ColumnEncryptionProperties>();
-      for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnPropertyMap.entrySet()) {
-        columnProps.put(entry.getKey(), entry.getValue().deepClone());
-      }
-    }
-
-    if (null == newAadPrefix) newAadPrefix = aadPrefix;
-
-    return new FileEncryptionProperties(parquetCipher, 
-        footerKeyBytes, footerKeyMetadata, encryptedFooter,
-        newAadPrefix, storeAadPrefixInFile, 
-        columnProps);
   }
 }

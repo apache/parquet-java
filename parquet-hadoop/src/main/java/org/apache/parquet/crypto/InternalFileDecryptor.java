@@ -26,7 +26,6 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedList;
 
 
 public class InternalFileDecryptor {
@@ -47,15 +46,8 @@ public class InternalFileDecryptor {
   private BlockCipher.Decryptor aesGcmDecryptorWithFooterKey;
   private BlockCipher.Decryptor aesCtrDecryptorWithFooterKey;
   private boolean plaintextFile;
-  private LinkedList<AesCipher> allDecryptors;
-  private boolean wipedOut;
 
   public InternalFileDecryptor(FileDecryptionProperties fileDecryptionProperties) throws IOException {
-
-    if (fileDecryptionProperties.isUtilized()) {
-      throw new IOException("Re-using decryption properties with explicit keys for another file");
-    }
-    fileDecryptionProperties.setUtilized();
     this.fileDecryptionProperties= fileDecryptionProperties;
     checkPlaintextFooterIntegrity = fileDecryptionProperties.checkFooterIntegrity();
     footerKey = fileDecryptionProperties.getFooterKey();
@@ -64,24 +56,16 @@ public class InternalFileDecryptor {
     columnMap = new HashMap<ColumnPath, InternalColumnDecryptionSetup>();
     this.aadPrefixVerifier = fileDecryptionProperties.getAADPrefixVerifier();
     this.plaintextFile = false;
-    allDecryptors = new LinkedList<AesCipher>();
-    wipedOut = false;
   }
   
-  private BlockCipher.Decryptor createDecryptor(AesMode mode, byte[] key) throws IllegalArgumentException, IOException {
-    BlockCipher.Decryptor decryptor = ModuleCipherFactory.getDecryptor(mode, key);
-    allDecryptors.add((AesCipher)decryptor);
-    return decryptor;
-  }
-
   private BlockCipher.Decryptor getThriftModuleDecryptor(byte[] columnKey) throws IOException {
     if (null == columnKey) { // Decryptor with footer key
       if (null == aesGcmDecryptorWithFooterKey) {
-        aesGcmDecryptorWithFooterKey = createDecryptor(AesMode.GCM, footerKey);
+        aesGcmDecryptorWithFooterKey = ModuleCipherFactory.getDecryptor(AesMode.GCM, footerKey);
       }
       return aesGcmDecryptorWithFooterKey;
     } else { // Decryptor with column key
-      return createDecryptor(AesMode.GCM, columnKey);
+      return ModuleCipherFactory.getDecryptor(AesMode.GCM, columnKey);
     }
   }
 
@@ -92,20 +76,17 @@ public class InternalFileDecryptor {
     // AES_GCM_CTR_V1
     if (null == columnKey) { // Decryptor with footer key
       if (null == aesCtrDecryptorWithFooterKey) {
-        aesCtrDecryptorWithFooterKey = createDecryptor(AesMode.CTR, footerKey);
+        aesCtrDecryptorWithFooterKey = ModuleCipherFactory.getDecryptor(AesMode.CTR, footerKey);
       }
       return aesCtrDecryptorWithFooterKey;
     } else { // Decryptor with column key
-      return createDecryptor(AesMode.CTR, columnKey);
+      return ModuleCipherFactory.getDecryptor(AesMode.CTR, columnKey);
     }
   }
 
   public InternalColumnDecryptionSetup getColumnSetup(ColumnPath path) throws IOException {
     if (!fileCryptoMetaDataProcessed) {
       throw new IOException("Haven't parsed the file crypto metadata yet");
-    }
-    if (wipedOut) {
-      throw new IOException("File decryptor is wiped out");
     }
     InternalColumnDecryptionSetup columnDecryptionSetup = columnMap.get(path);
     if (null == columnDecryptionSetup) {
@@ -118,19 +99,12 @@ public class InternalFileDecryptor {
     if (!fileCryptoMetaDataProcessed) {
       throw new IOException("Haven't parsed the file crypto metadata yet");
     }
-    if (wipedOut) {
-      throw new IOException("File decryptor is wiped out");
-    }
     if (!encryptedFooter) return null;
     return getThriftModuleDecryptor(null);
   }
 
   public void setFileCryptoMetaData(EncryptionAlgorithm algorithm, 
       boolean encryptedFooter, byte[] footerKeyMetaData) throws IOException {
-
-    if (wipedOut) {
-      throw new IOException("File decryptor is wiped out");
-    }
 
     // first use of the decryptor
     if (!fileCryptoMetaDataProcessed) {
@@ -210,7 +184,7 @@ public class InternalFileDecryptor {
         }
       }
     } else {
-      // re-use of the decryptor (for the same file, to save footer key KMS interaction). 
+      // re-use of the decryptor 
       // check the crypto metadata.
       if (!this.algorithm.equals(algorithm)) {
         throw new IOException("Decryptor re-use: Different algorithm");
@@ -229,9 +203,6 @@ public class InternalFileDecryptor {
 
     if (!fileCryptoMetaDataProcessed) {
       throw new IOException("Haven't parsed the file crypto metadata yet");
-    }
-    if (wipedOut) {
-      throw new IOException("File decryptor is wiped out");
     }
 
     InternalColumnDecryptionSetup columnDecryptionSetup = columnMap.get(path);
@@ -292,9 +263,6 @@ public class InternalFileDecryptor {
     if (!fileCryptoMetaDataProcessed) {
       throw new IOException("Haven't parsed the file crypto metadata yet");
     }
-    if (wipedOut) {
-      throw new IOException("File decryptor is wiped out");
-    }
     if (encryptedFooter) {
       throw new IOException("Requesting signed footer encryptor in file with encrypted footer");
     }
@@ -315,18 +283,6 @@ public class InternalFileDecryptor {
 
   public boolean plaintextFile() {
     return plaintextFile;
-  }
-
-  public void wipeOutDecryptionKeys() {
-    wipedOut = true;
-    fileDecryptionProperties.wipeOutDecryptionKeys();
-    for (AesCipher decryptor : allDecryptors) {
-      decryptor.wipeOut();
-    }
-  }
-
-  public boolean isWipedOut() {
-    return wipedOut;
   }
 }
 

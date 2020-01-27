@@ -27,7 +27,6 @@ import org.apache.parquet.format.EncryptionAlgorithm;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.LinkedList;
 
 
 public class InternalFileEncryptor {
@@ -43,16 +42,9 @@ public class InternalFileEncryptor {
   private BlockCipher.Encryptor aesGcmEncryptorWithFooterKey;
   private BlockCipher.Encryptor aesCtrEncryptorWithFooterKey;
   private boolean fileCryptoMetaDataCreated;
-  private LinkedList<AesCipher> allEncryptors;
-  private boolean wipedOut;
 
   public InternalFileEncryptor(FileEncryptionProperties fileEncryptionProperties) throws IOException {
-    if (fileEncryptionProperties.isUtilized()) {
-      throw new IOException("Re-using encryption properties for another file");
-    }
-    fileEncryptionProperties.setUtilized();
     this.fileEncryptionProperties = fileEncryptionProperties;
-    allEncryptors = new LinkedList<AesCipher>();
     algorithm = fileEncryptionProperties.getAlgorithm();
     footerKey = fileEncryptionProperties.getFooterKey();
     encryptFooter =  fileEncryptionProperties.encryptedFooter();
@@ -62,20 +54,14 @@ public class InternalFileEncryptor {
     fileCryptoMetaDataCreated = false;
   }
 
-  private BlockCipher.Encryptor createEncryptor(AesMode mode, byte[] key) throws IllegalArgumentException, IOException {
-    BlockCipher.Encryptor encryptor = ModuleCipherFactory.getEncryptor(mode, key);
-    allEncryptors.add((AesCipher)encryptor);
-    return encryptor;
-  }
-
   private BlockCipher.Encryptor getThriftModuleEncryptor(byte[] columnKey) throws IOException {
     if (null == columnKey) { // Encryptor with footer key
       if (null == aesGcmEncryptorWithFooterKey) {
-        aesGcmEncryptorWithFooterKey = createEncryptor(AesMode.GCM, footerKey);
+        aesGcmEncryptorWithFooterKey = ModuleCipherFactory.getEncryptor(AesMode.GCM, footerKey);
       }
       return aesGcmEncryptorWithFooterKey;
     } else { // Encryptor with column key
-      return createEncryptor(AesMode.GCM, columnKey);
+      return ModuleCipherFactory.getEncryptor(AesMode.GCM, columnKey);
     }
   }
 
@@ -86,19 +72,16 @@ public class InternalFileEncryptor {
     // AES_GCM_CTR_V1
     if (null == columnKey) { // Encryptor with footer key
       if (null == aesCtrEncryptorWithFooterKey) {
-        aesCtrEncryptorWithFooterKey = createEncryptor(AesMode.CTR, footerKey);
+        aesCtrEncryptorWithFooterKey = ModuleCipherFactory.getEncryptor(AesMode.CTR, footerKey);
       }
       return aesCtrEncryptorWithFooterKey;
     } else { // Encryptor with column key
-      return createEncryptor(AesMode.CTR, columnKey);
+      return ModuleCipherFactory.getEncryptor(AesMode.CTR, columnKey);
     }
   }
 
   public InternalColumnEncryptionSetup getColumnSetup(ColumnPath columnPath, 
       boolean createIfNull, short ordinal) throws IOException {
-    if (wipedOut) {
-      throw new IOException("File encryptor is wiped out");
-    }
     InternalColumnEncryptionSetup internalColumnProperties = columnMap.get(columnPath);
     if (null != internalColumnProperties) {
       if (ordinal != internalColumnProperties.getOrdinal()) {
@@ -135,9 +118,6 @@ public class InternalFileEncryptor {
   }
 
   public BlockCipher.Encryptor getFooterEncryptor() throws IOException  {
-    if (wipedOut) {
-      throw new IOException("File encryptor is wiped out");
-    }
     if (!encryptFooter) return null;
     return getThriftModuleEncryptor(null);
   }
@@ -145,9 +125,6 @@ public class InternalFileEncryptor {
   public FileCryptoMetaData getFileCryptoMetaData() throws IOException {
     if (!encryptFooter) {
       throw new IOException("Requesting FileCryptoMetaData in file with unencrypted footer");
-    }
-    if (wipedOut) {
-      throw new IOException("File encryptor is wiped out");
     }
     FileCryptoMetaData fileCryptoMetaData = new FileCryptoMetaData(algorithm);
     if (null != footerKeyMetadata) fileCryptoMetaData.setKey_metadata(footerKeyMetadata);
@@ -184,21 +161,6 @@ public class InternalFileEncryptor {
     if (encryptFooter) {
       throw new IOException("Requesting signed footer encryptor in file with encrypted footer");
     }
-    if (wipedOut) {
-      throw new IOException("File encryptor is wiped out");
-    }
-    return (AesGcmEncryptor) createEncryptor(AesMode.GCM, footerKey);
-  }
-
-  public void wipeOutEncryptionKeys() {
-    wipedOut = true;
-    fileEncryptionProperties.wipeOutEncryptionKeys();
-    for (AesCipher encryptor : allEncryptors) {
-      encryptor.wipeOut();
-    }
-  }
-
-  public boolean isWipedOut() {
-    return wipedOut;
+    return (AesGcmEncryptor) ModuleCipherFactory.getEncryptor(AesMode.GCM, footerKey);
   }
 }

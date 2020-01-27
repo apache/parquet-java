@@ -20,7 +20,6 @@
 package org.apache.parquet.crypto;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
@@ -32,14 +31,8 @@ public class ColumnEncryptionProperties {
   private final byte[] keyBytes;
   private final byte[] keyMetaData;
 
-  private boolean utilized;
-
   private ColumnEncryptionProperties(boolean encrypted, ColumnPath columnPath, 
       byte[] keyBytes, byte[] keyMetaData) {
-
-    // column encryption properties object (with a column key) can be used for writing only one file.
-    // Upon completion of file writing, the encryption keys in the properties will be wiped out (set to 0 in memory).
-    utilized = false;
 
     if (null == columnPath) {
       throw new IllegalArgumentException("Null column path");
@@ -115,8 +108,6 @@ public class ColumnEncryptionProperties {
      * Set a column-specific key.
      * If key is not set on an encrypted column, the column will
      * be encrypted with the footer key.
-     * The key is cloned, and will be wiped out (array values set to 0) upon completion of file writing.
-     * Caller is responsible for wiping out the input key array. 
      * 
      * @param columnKey Key length must be either 16, 24 or 32 bytes.
      * @return Builder
@@ -190,30 +181,5 @@ public class ColumnEncryptionProperties {
 
   public byte[] getKeyMetaData() {
     return keyMetaData;
-  }
-
-
-  void wipeOutEncryptionKey() {
-    if (null != keyBytes) {
-      Arrays.fill(keyBytes, (byte)0);
-    }
-  }
-
-
-  boolean isUtilized() {
-    // can re-use column properties without encryption keys
-    if (null == keyBytes) return false;
-    return utilized;
-  }
-
-
-  void setUtilized() {
-    utilized = true;
-  }
-
-
-  ColumnEncryptionProperties deepClone() {
-    byte[] columnKeyBytes = (null == keyBytes? null : keyBytes.clone());
-    return new ColumnEncryptionProperties(encrypted, columnPath, columnKeyBytes, keyMetaData);
   }
 }

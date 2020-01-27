@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-import java.util.Arrays;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
@@ -32,8 +31,6 @@ public class ColumnDecryptionProperties {
 
   private final ColumnPath columnPath;
   private final byte[] keyBytes;
-
-  private boolean utilized;
 
   private ColumnDecryptionProperties(ColumnPath columnPath, byte[] keyBytes) {
     if (null == columnPath) {
@@ -49,7 +46,6 @@ public class ColumnDecryptionProperties {
 
     this.columnPath = columnPath;
     this.keyBytes = keyBytes;
-    this.utilized = false;
   }
 
   /**
@@ -81,9 +77,6 @@ public class ColumnDecryptionProperties {
      * However, if the column was encrypted with the footer key, it will also be decrypted with the
      * footer key, and the column key passed in this method will be ignored.
      * 
-     * The key is cloned, and will be wiped out (array values set to 0) upon completion of file reading.
-     * Caller is responsible for wiping out the input key array. 
-     * 
      * @param columnKey Key length must be either 16, 24 or 32 bytes.
      * @return Builder
      */
@@ -107,22 +100,5 @@ public class ColumnDecryptionProperties {
 
   public byte[] getKeyBytes() {
     return keyBytes;
-  }
-
-  boolean isUtilized() {
-    return utilized;
-  }
-
-  void setUtilized() {
-    utilized = true;
-  }
-
-  void wipeOutDecryptionKey() {
-    Arrays.fill(keyBytes, (byte)0);
-  }
-
-  ColumnDecryptionProperties deepClone() {
-    byte[] columnKeyBytes = keyBytes.clone();
-    return new ColumnDecryptionProperties(columnPath, columnKeyBytes);
   }
 }

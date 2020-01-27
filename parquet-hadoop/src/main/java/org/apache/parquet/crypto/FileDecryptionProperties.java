@@ -20,7 +20,6 @@
 
 package org.apache.parquet.crypto;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,8 +37,6 @@ public class FileDecryptionProperties {
   private final Map<ColumnPath, ColumnDecryptionProperties> columnPropertyMap;
   private final boolean checkPlaintextFooterIntegrity;
   private final boolean allowPlaintextFiles;
-
-  private boolean utilized;
 
   private FileDecryptionProperties(byte[] footerKey, DecryptionKeyRetriever keyRetriever,
       boolean checkPlaintextFooterIntegrity,  byte[] aadPrefix, AADPrefixVerifier aadPrefixVerifier,
@@ -63,7 +60,6 @@ public class FileDecryptionProperties {
     this.columnPropertyMap = columnPropertyMap;
     this.aadPrefixVerifier = aadPrefixVerifier;
     this.allowPlaintextFiles = allowPlaintextFiles;
-    this.utilized = false;
   }
 
   public static Builder builder() {
@@ -88,12 +84,6 @@ public class FileDecryptionProperties {
      * Set an explicit footer key. If applied on a file that contains footer key metadata - 
      * the metadata will be ignored, the footer will be decrypted/verified with this key.
      * If explicit key is not set, footer key will be fetched from key retriever.
-     * 
-     * With explicit keys or AAD prefix, new encryption properties object must be created for each encrypted file.
-     * Explicit encryption keys (footer and column) are cloned.
-     * Upon completion of file reading, the cloned encryption keys in the properties will 
-     * be wiped out (array values set to 0).
-     * Caller is responsible for wiping out the input key array. 
      * 
      * @param footerKey Key length must be either 16, 24 or 32 bytes.
      * @return Builder 
@@ -125,12 +115,6 @@ public class FileDecryptionProperties {
       }
       if (null != this.columnPropertyMap) {
         throw new IllegalArgumentException("Column properties already set");
-      }
-      for (Map.Entry<ColumnPath, ColumnDecryptionProperties> entry : columnProperties.entrySet()) {
-        if(entry.getValue().isUtilized()) {
-          throw new IllegalArgumentException("Column properties re-used in another file");
-        }
-        entry.getValue().setUtilized();
       }
       // Copy the map to make column properties immutable
       this.columnPropertyMap = new HashMap<ColumnPath, ColumnDecryptionProperties>(columnProperties);
@@ -258,55 +242,5 @@ public class FileDecryptionProperties {
 
   AADPrefixVerifier getAADPrefixVerifier() {
     return aadPrefixVerifier;
-  }
-
-  void wipeOutDecryptionKeys() {
-    if (null != footerKey) Arrays.fill(footerKey, (byte)0);
-
-    if (null != columnPropertyMap) {
-      for (Map.Entry<ColumnPath, ColumnDecryptionProperties> entry : columnPropertyMap.entrySet()) {
-        entry.getValue().wipeOutDecryptionKey();
-      }
-    }
-  }
-
-  boolean isUtilized() {
-    // can be re-used if no explicit keys and no AAD prefix are specified
-    if (null == footerKey && null == columnPropertyMap && null == aadPrefix) return false;
-
-    return utilized;
-  }
-
-  void setUtilized() {
-    utilized = true;
-  }
-
-  /** 
-   * DecryptionProperties object can be used for reading one file only.
-   * (unless this object keeps the keyRetrieval callback only, and no explicit keys or aadPrefix).
-   * At the end, keys are wiped out in the memory.
-   * This method allows to clone identical properties for another file, 
-   * with an option to update the AAD Prefix (if newAadPrefix is null, 
-   * aadPrefix will be cloned too) 
-   * 
-   * @param newAadPrefix AAD prefix
-   * @return Cloned properties
-   */
-  public FileDecryptionProperties deepClone(byte[] newAadPrefix) {
-
-    byte[] footerKeyBytes = (null == footerKey?null:footerKey.clone());
-    Map<ColumnPath, ColumnDecryptionProperties> columnProps = null;
-    if (null != columnPropertyMap) {
-      columnProps = new HashMap<ColumnPath, ColumnDecryptionProperties>();
-      for (Map.Entry<ColumnPath, ColumnDecryptionProperties> entry : columnPropertyMap.entrySet()) {
-        columnProps.put(entry.getKey(), entry.getValue().deepClone());
-      }
-    }
-
-    if (null == newAadPrefix) newAadPrefix = aadPrefix;
-
-    return new FileDecryptionProperties(footerKeyBytes, keyRetriever,
-        checkPlaintextFooterIntegrity,  newAadPrefix, aadPrefixVerifier,
-        columnProps, allowPlaintextFiles);
   }
 }
