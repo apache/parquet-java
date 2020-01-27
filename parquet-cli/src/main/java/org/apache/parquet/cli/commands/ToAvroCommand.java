@@ -101,13 +101,11 @@ public class ToAvroCommand extends BaseCommand {
     DatumWriter<Record> datumWriter = new GenericDatumWriter<>(schema);
     try (DataFileWriter<Record> fileWriter = new DataFileWriter<>(datumWriter)) {
       fileWriter.setCodec(codecFactory);
-      try (OutputStream os = overwrite ?
-          create(outputPath) : createWithNoOverwrite(outputPath)) {
-        try (DataFileWriter<Record> writer = fileWriter.create(projection, os)) {
-          for (Record record : reader) {
-            writer.append(record);
-            count += 1;
-	  }
+      try (OutputStream os = overwrite ? create(outputPath) : createWithNoOverwrite(outputPath);
+           DataFileWriter<Record> writer = fileWriter.create(projection, os)) {
+        for (Record record : reader) {
+          writer.append(record);
+          count += 1;
         }
       }
       threw = false;
