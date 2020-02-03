@@ -28,6 +28,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 
 /*
  * This Bloom filter is implemented using block-based Bloom filter algorithm from Putze et al.'s
@@ -355,5 +356,19 @@ public class BlockSplitBloomFilter implements BloomFilter {
   @Override
   public long hash(Binary value) {
     return hashFunction.hashBytes(value.getBytes());
+  }
+
+  @Override
+  public boolean equals(Object object) {
+    if (object == this) {
+      return true;
+    }
+    if (object instanceof BlockSplitBloomFilter) {
+      BlockSplitBloomFilter that = (BlockSplitBloomFilter) object;
+      return Arrays.equals(this.bitset, that.bitset)
+        && this.maximumBytes == that.maximumBytes
+        && this.hashStrategy == that.hashStrategy;
+    }
+    return false;
   }
 }

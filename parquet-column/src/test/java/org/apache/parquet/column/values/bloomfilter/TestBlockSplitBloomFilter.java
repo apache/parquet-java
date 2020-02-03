@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotEquals;
 
 public class TestBlockSplitBloomFilter {
   @Test
@@ -91,6 +92,25 @@ public class TestBlockSplitBloomFilter {
     for (String testString : testStrings) {
       assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(testString))));
     }
+  }
+
+  @Test
+  public void testEquals() {
+    final String[] words = {"hello", "parquet", "bloom", "filter"};
+    BloomFilter bloomFilterOne = new BlockSplitBloomFilter(1024);
+    BloomFilter bloomFilterTwo = new BlockSplitBloomFilter(1024);
+
+    for (String word : words) {
+      bloomFilterOne.insertHash(bloomFilterOne.hash(Binary.fromString(word)));
+      bloomFilterTwo.insertHash(bloomFilterTwo.hash(Binary.fromString(word)));
+    }
+
+    assertEquals(bloomFilterOne, bloomFilterTwo);
+
+    BloomFilter bloomFilterThree = new BlockSplitBloomFilter(1024);
+    bloomFilterThree.insertHash(bloomFilterThree.hash(Binary.fromString("parquet")));
+
+    assertNotEquals(bloomFilterTwo, bloomFilterThree);
   }
 
   @Test
