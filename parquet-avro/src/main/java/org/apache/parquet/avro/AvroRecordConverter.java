@@ -236,7 +236,6 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       GenericData model, Class<?> knownClass, ParentValueContainer setter) {
     LogicalType logicalType = schema.getLogicalType();
     Conversion<?> conversion;
-    Class<?> datumClass;
 
     if (knownClass != null) {
       conversion = model.getConversionByClass(knownClass, logicalType);
@@ -251,17 +250,17 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     case BOOLEAN:
       return new AvroConverters.FieldBooleanConverter(parent);
     case INT:
-      datumClass = getDatumClass(conversion, knownClass, schema, model);
-      if (datumClass == null) {
+      Class<?> intDatumClass = getDatumClass(conversion, knownClass, schema, model);
+      if (intDatumClass == null) {
         return new AvroConverters.FieldIntegerConverter(parent);
       }
-      if (datumClass == byte.class || datumClass == Byte.class) {
+      if (intDatumClass == byte.class || intDatumClass == Byte.class) {
         return new AvroConverters.FieldByteConverter(parent);
       }
-      if (datumClass == char.class || datumClass == Character.class) {
+      if (intDatumClass == char.class || intDatumClass == Character.class) {
         return new AvroConverters.FieldCharConverter(parent);
       }
-      if (datumClass == short.class || datumClass == Short.class) {
+      if (intDatumClass == short.class || intDatumClass == Short.class) {
         return new AvroConverters.FieldShortConverter(parent);
       }
       return new AvroConverters.FieldIntegerConverter(parent);
@@ -272,11 +271,11 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     case DOUBLE:
       return new AvroConverters.FieldDoubleConverter(parent);
     case BYTES:
-      datumClass = getDatumClass(conversion, knownClass, schema, model);
-      if (datumClass == null) {
+      Class<?> byteDatumClass = getDatumClass(conversion, knownClass, schema, model);
+      if (byteDatumClass == null) {
         return new AvroConverters.FieldByteBufferConverter(parent);
       }
-      if (datumClass.isArray() && datumClass.getComponentType() == byte.class) {
+      if (byteDatumClass.isArray() && byteDatumClass.getComponentType() == byte.class) {
         return new AvroConverters.FieldByteArrayConverter(parent);
       }
       return new AvroConverters.FieldByteBufferConverter(parent);
@@ -287,13 +286,13 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     case ENUM:
       return new AvroConverters.FieldEnumConverter(parent, schema, model);
     case ARRAY:
-      datumClass = getDatumClass(conversion, knownClass, schema, model);
-      if (datumClass != null && datumClass.isArray()) {
+      Class<?> arrayDatumClass = getDatumClass(conversion, knownClass, schema, model);
+      if (arrayDatumClass != null && arrayDatumClass.isArray()) {
         return new AvroArrayConverter(parent, type.asGroupType(), schema, model,
-            datumClass);
+            arrayDatumClass);
       }
       return new AvroCollectionConverter(parent, type.asGroupType(), schema,
-          model, datumClass);
+          model, arrayDatumClass);
     case MAP:
       return new MapConverter(parent, type.asGroupType(), schema, model);
     case UNION:
