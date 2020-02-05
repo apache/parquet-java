@@ -248,7 +248,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     if (columnNames.length == expectedNDVs.length) {
       for (int i = 0; i < columnNames.length; i++) {
-        kv.put(columnNames[i], Long.getLong(expectedNDVs[i]));
+        kv.put(columnNames[i], Long.parseLong(expectedNDVs[i]));
       }
     } else {
       LOG.warn("Bloom filter column names are not match expected NDVs");
