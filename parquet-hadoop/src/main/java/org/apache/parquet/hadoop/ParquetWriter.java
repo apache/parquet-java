@@ -485,6 +485,18 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Enable or disable dictionary encoding of the specified column for the constructed writer.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enableDictionary whether dictionary encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public SELF withDictionaryEncoding(String columnPath, boolean enableDictionary) {
+      encodingPropsBuilder.withDictionaryEncoding(columnPath, enableDictionary);
+      return self();
+    }
+
+    /**
      * Enables validation for the constructed writer.
      *
      * @return this builder for method chaining.
