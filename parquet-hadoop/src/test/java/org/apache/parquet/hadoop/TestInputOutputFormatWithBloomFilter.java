@@ -16,9 +16,11 @@
  *  specific language governing permissions and limitations
  *  under the License.
  */
+
+
 package org.apache.parquet.hadoop;
 
-
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -49,7 +51,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.*;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Random;
 
 import static java.lang.Thread.sleep;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
@@ -70,6 +74,7 @@ public class TestInputOutputFormatWithBloomFilter {
 
   public static class Writer extends Mapper<LongWritable, Text, Void, Group> {
     public static final SimpleGroupFactory GROUP_FACTORY = new SimpleGroupFactory(PARQUET_TYPE);
+
     @Override
     protected void map(LongWritable key, Text value, Context context)
       throws IOException, InterruptedException {
@@ -79,11 +84,12 @@ public class TestInputOutputFormatWithBloomFilter {
         String[] elements = tuple.split(":");
         Group group = GROUP_FACTORY.newGroup();
         group.add(0, Binary.fromString(elements[0]));
-        group.add(1,Integer.parseInt(elements[1]));
+        group.add(1, Integer.parseInt(elements[1]));
         context.write(null, group);
       }
     }
   }
+
   public static class Reader extends Mapper<LongWritable, Text, Void, Group> {
     public static final SimpleGroupFactory GROUP_FACTORY = new SimpleGroupFactory(PARQUET_TYPE);
 
@@ -105,14 +111,16 @@ public class TestInputOutputFormatWithBloomFilter {
   @Test
   public void testBloomFilter() throws Exception {
 
-    final String[] EXPECTED_DISTINCT_NUMBERS = {"200","50"};
+    final String[] EXPECTED_DISTINCT_NUMBERS = {"200", "50"};
 
     HadoopOutputFile.getBlockFileSystems().add("file");
 
     File inputFile = temp.newFile();
-    FileOutputStream out = new FileOutputStream(inputFile);
-    out.write(FILE_CONTENT.getBytes("UTF-8"));
-    out.close();
+    try (FileOutputStream out = new FileOutputStream(inputFile)) {
+      out.write(FILE_CONTENT.getBytes(StandardCharsets.UTF_8));
+    } catch (IOException ex) {
+      LOGGER.error("Exception occurred while writing the content", ex);
+    }
 
     File tempFolder = temp.newFolder();
     tempFolder.delete();
@@ -132,7 +140,7 @@ public class TestInputOutputFormatWithBloomFilter {
 
     {
       conf.set("parquet.bloom.filter.column.names", "uuid,value");
-      conf.set("parquet.bloom.filter.expected.ndv", String.join(",",EXPECTED_DISTINCT_NUMBERS));
+      conf.set("parquet.bloom.filter.expected.ndv", String.join(",", EXPECTED_DISTINCT_NUMBERS));
 
       Job writeJob = new Job(conf, "writeWithBloomFilter");
       writeJob.setInputFormatClass(TextInputFormat.class);
@@ -148,9 +156,9 @@ public class TestInputOutputFormatWithBloomFilter {
       ParquetOutputFormat.setOutputPath(writeJob, tempPath);
 
       // Check Bloom filter parameters
-      HashMap expectedParameter = new HashMap<String,Long>(){{
-        put("uuid",200L);
-        put("value",50L);
+      HashMap expectedParameter = new HashMap<String, Long>() {{
+        put("uuid", 200L);
+        put("value", 50L);
       }};
       Assert.assertTrue("Bloom filter parameter should be correct inside Hadoop conf.", expectedParameter.equals(ParquetOutputFormat.getBloomFilterColumnExpectedNDVs(conf)));
 
@@ -162,19 +170,19 @@ public class TestInputOutputFormatWithBloomFilter {
     Path path = getDataPath(tempFolder);
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, path);
-    ParquetFileReader r = new ParquetFileReader(conf,path,readFooter);
+    ParquetFileReader r = new ParquetFileReader(conf, path, readFooter);
 
     int startBlock = 0;
-    for(BlockMetaData block : readFooter.getBlocks()){
+    for (BlockMetaData block : readFooter.getBlocks()) {
       int rowCount = (int) block.getRowCount();
       int endBlock = rowCount + startBlock;
       int columnIndex = 0;
-      for(ColumnChunkMetaData columnMetaData : block.getColumns()) {
+      for (ColumnChunkMetaData columnMetaData : block.getColumns()) {
 
         Long expectedDistinctNumbers = Long.parseLong(EXPECTED_DISTINCT_NUMBERS[columnIndex]);
 
         // Build bloom filter from the generated data
-        BloomFilter expectedBloomFilter = buildBloomFilter(columnMetaData, startBlock, endBlock,columnIndex, expectedDistinctNumbers);
+        BloomFilter expectedBloomFilter = buildBloomFilter(columnMetaData, startBlock, endBlock, columnIndex, expectedDistinctNumbers);
 
         // Read bloom filter from the parquet file
         BloomFilterReader bloomFilterReader = r.getBloomFilterDataReader(block);
@@ -189,20 +197,18 @@ public class TestInputOutputFormatWithBloomFilter {
 
   }
 
-  private String generateData(){
+  private String generateData() {
     StringBuilder data = new StringBuilder();
-    for(int i =0; i< 200; i++) {
-      String uuid = UUID.randomUUID().toString();
-      Random random = new Random();
+    Random random = new Random();
+    for (int i = 0; i < 200; i++) {
+      String uuid = RandomStringUtils.randomAlphanumeric(10);
       int value = random.nextInt(50);
-      data.append(uuid).append(":").append(Integer.toString(value)).append("_");
+      data.append(uuid).append(":").append(value).append("_");
     }
     return StringUtils.chop(data.toString());
-
-
   }
 
-  private BloomFilter buildBloomFilter(ColumnChunkMetaData columnMetaData, int startBlock,int endBlock, int columnIndex, long expectedDistinctNumbers) {
+  private BloomFilter buildBloomFilter(ColumnChunkMetaData columnMetaData, int startBlock, int endBlock, int columnIndex, long expectedDistinctNumbers) {
 
     String[] tuples = this.FILE_CONTENT.split("_");
 
@@ -238,7 +244,7 @@ public class TestInputOutputFormatWithBloomFilter {
       for (File file : files) {
         if (file.getName().startsWith("part-")) {
           path = new Path(file.toString());
-          break;
+          return path;
         }
       }
     }
