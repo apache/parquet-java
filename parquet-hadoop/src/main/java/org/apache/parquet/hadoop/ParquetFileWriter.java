@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -575,6 +575,71 @@ public class ParquetFileWriter {
   }
 
   /**
+   * Writes a single v2 data page
+   * @param rowCount count of rows
+   * @param nullCount count of nulls
+   * @param valueCount count of values
+   * @param repetitionLevels repetition level bytes
+   * @param definitionLevels definition level bytes
+   * @param dataEncoding encoding for data
+   * @param compressedData compressed data bytes
+   * @param uncompressedDataSize the size of uncompressed data
+   * @param statistics the statistics of the page
+   * @throws IOException if any I/O error occurs during writing the file
+   */
+  public void writeDataPageV2(int rowCount, int nullCount, int valueCount,
+                              BytesInput repetitionLevels,
+                              BytesInput definitionLevels,
+                              Encoding dataEncoding,
+                              BytesInput compressedData,
+                              int uncompressedDataSize,
+                              Statistics<?> statistics) throws IOException {
+    state = state.write();
+    int rlByteLength = toIntWithCheck(repetitionLevels.size());
+    int dlByteLength = toIntWithCheck(definitionLevels.size());
+
+    int compressedSize = toIntWithCheck(
+      compressedData.size() + repetitionLevels.size() + definitionLevels.size()
+    );
+
+    int uncompressedSize = toIntWithCheck(
+      uncompressedDataSize + repetitionLevels.size() + definitionLevels.size()
+    );
+
+    long beforeHeader = out.getPos();
+    if (firstPageOffset == -1) {
+      firstPageOffset = beforeHeader;
+    }
+
+    metadataConverter.writeDataPageV2Header(
+      uncompressedSize, compressedSize,
+      valueCount, nullCount, rowCount,
+      dataEncoding,
+      rlByteLength,
+      dlByteLength,
+      out);
+
+    long headersSize  = out.getPos() - beforeHeader;
+    this.uncompressedLength += uncompressedSize + headersSize;
+    this.compressedLength += compressedSize + headersSize;
+
+    if (currentStatistics == null) {
+      currentStatistics = statistics.copy();
+    } else {
+      currentStatistics.mergeStatistics(statistics);
+    }
+
+    columnIndexBuilder.add(statistics);
+    currentEncodings.add(dataEncoding);
+    encodingStatsBuilder.addDataEncoding(dataEncoding);
+
+    BytesInput.concat(repetitionLevels, definitionLevels, compressedData)
+      .writeAllTo(out);
+
+    offsetIndexBuilder.add((int) (out.getPos() - beforeHeader), rowCount);
+  }
+
+  /**
    * Writes a column chunk at once
    * @param descriptor the descriptor of the column
    * @param valueCount the value count in this column
@@ -884,6 +949,15 @@ public class ParquetFileWriter {
         column.setColumnIndexReference(new IndexReference(offset, (int) (out.getPos() - offset)));
       }
     }
+  }
+
+  private int toIntWithCheck(long size) {
+    if (size > Integer.MAX_VALUE) {
+      throw new ParquetEncodingException(
+        "Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " +
+          size);
+    }
+    return (int)size;
   }
 
   private static void serializeOffsetIndexes(
