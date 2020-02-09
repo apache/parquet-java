@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -32,6 +34,9 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
   private CapacityByteArrayOutputStream[] byteStreams;
 
   public ByteStreamSplitValuesWriter(int elementSizeInBytes, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
+    if (elementSizeInBytes <= 0) {
+      throw new ParquetEncodingException(String.format("Element byte size is invalid: %d", elementSizeInBytes));
+    }
     this.numStreams = elementSizeInBytes;
     this.elementSizeInBytes = elementSizeInBytes;
     this.byteStreams = new CapacityByteArrayOutputStream[elementSizeInBytes];
@@ -84,7 +89,9 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
 
   protected void scatterBytes(byte[] bytes) {
     if (bytes.length != this.numStreams) {
-      throw new ParquetEncodingException("Number of bytes doesn't match the number of streams.");
+      throw new ParquetEncodingException(
+              String.format("Number of bytes doesn't match the number of streams. Num butes: %d, Num streams: %d",
+                      bytes.length, this.numStreams));
     }
     for (int i = 0; i < bytes.length; ++i) {
       this.byteStreams[i].write(bytes[i]);
@@ -102,23 +109,16 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
 
   public static class FloatByteStreamSplitValuesWriter extends ByteStreamSplitValuesWriter {
 
-    private static final int FLOAT_SIZE_IN_BYTES = 4;
-
     public FloatByteStreamSplitValuesWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-      super(FLOAT_SIZE_IN_BYTES, initialCapacity, pageSize, allocator);
+      super(Float.BYTES, initialCapacity, pageSize, allocator);
     }
 
     @Override
     public void writeFloat(float v) {
-      int vAsInt = Float.floatToIntBits(v);
-      byte[] bytes = new byte[FLOAT_SIZE_IN_BYTES];
-      for (int i = 0; i < FLOAT_SIZE_IN_BYTES; ++i) {
-        byte b = (byte) ((vAsInt >> (i * 8)) & 0xFF);
-        bytes[i] = b;
-      }
-      super.scatterBytes(bytes);
+      super.scatterBytes(ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN).putFloat(v).array());
     }
 
+    @Override
     public String memUsageString(String prefix) {
       return String.format("%s FloatByteStreamSplitWriter %d bytes", prefix, getAllocatedSize());
     }
@@ -126,23 +126,16 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
 
   public static class DoubleByteStreamSplitValuesWriter extends ByteStreamSplitValuesWriter {
 
-    private static final int DOUBLE_SIZE_IN_BYTES = 8;
-
     public DoubleByteStreamSplitValuesWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-      super(DOUBLE_SIZE_IN_BYTES, initialCapacity, pageSize, allocator);
+      super(Double.BYTES, initialCapacity, pageSize, allocator);
     }
 
     @Override
     public void writeDouble(double v) {
-      long vAsLong = Double.doubleToLongBits(v);
-      byte[] bytes = new byte[DOUBLE_SIZE_IN_BYTES];
-      for (int i = 0; i < DOUBLE_SIZE_IN_BYTES; ++i) {
-        byte b = (byte) ((vAsLong >> (i * 8)) & 0xFF);
-        bytes[i] = b;
-      }
-      super.scatterBytes(bytes);
+      super.scatterBytes(ByteBuffer.allocate(Double.BYTES).order(ByteOrder.LITTLE_ENDIAN).putDouble(v).array());
     }
 
+    @Override
     public String memUsageString(String prefix) {
       return String.format("%s DoubleByteStreamSplitWriter %d bytes", prefix, getAllocatedSize());
     }

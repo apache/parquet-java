@@ -29,55 +29,56 @@ import org.slf4j.LoggerFactory;
 public abstract class ByteStreamSplitValuesReader extends ValuesReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(ByteStreamSplitValuesReader.class);
-  private final int numStreams;
   private final int elementSizeInBytes;
   private byte[] byteStreamData;
   private int indexInStream;
-  private int numberOfValues;
+  private int valuesCount;
 
   protected ByteStreamSplitValuesReader(int elementSizeInBytes) {
-    this.numStreams = elementSizeInBytes;
     this.elementSizeInBytes = elementSizeInBytes;
     this.indexInStream = 0;
-    this.numberOfValues = 0;
+    this.valuesCount = 0;
   }
 
   protected void gatherElementDataFromStreams(byte[] gatheredData)
-          throws IOException, ArrayIndexOutOfBoundsException {
-    if (gatheredData.length != numStreams) {
-      throw new IOException("gatherData buffer is not of the expected size.");
+          throws ParquetDecodingException {
+    if (gatheredData.length != elementSizeInBytes) {
+      throw new ParquetDecodingException("gatherData buffer is not of the expected size.");
     }
-    if (indexInStream >= numberOfValues) {
-      throw new ArrayIndexOutOfBoundsException("Byte-stream data was already exhausted.");
+    if (indexInStream >= valuesCount) {
+      throw new ParquetDecodingException("Byte-stream data was already exhausted.");
     }
-    for (int i = 0; i < numStreams; ++i) {
-      gatheredData[i] = byteStreamData[i * numberOfValues + indexInStream];
+    for (int i = 0; i < elementSizeInBytes; ++i) {
+      gatheredData[i] = byteStreamData[i * valuesCount + indexInStream];
     }
     ++indexInStream;
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
+  public void initFromPage(int valuesCount, ByteBufferInputStream stream) throws ParquetDecodingException, IOException {
     LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
 
-    if (valueCount * elementSizeInBytes > stream.available()) {
-      throw new IOException("Stream does not contain enough data for the given number of values.");
+    if (valuesCount * elementSizeInBytes > stream.available()) {
+      String errorMessage = String.format(
+              "Stream does not contain enough data for the given number of values. Num values: %d. Element size: %d Bytes available: %d",
+              valuesCount, elementSizeInBytes, stream.available());
+      throw new ParquetDecodingException(errorMessage);
     }
 
-    /* Allocate buffer for all of the byte stream data */
-    final int totalSizeInBytes = valueCount * numStreams;
+    // Allocate buffer for all of the byte stream data.
+    final int totalSizeInBytes = valuesCount * elementSizeInBytes;
     byteStreamData = new byte[totalSizeInBytes];
 
-    /* Eagerly read the data for each stream */
+    // Eagerly read the data for each stream.
     final int numRead = stream.read(byteStreamData, 0, totalSizeInBytes);
     if (numRead != totalSizeInBytes) {
       String errorMessage = String.format("Failed to read requested number of bytes. Expected: %d. Read %d.",
               totalSizeInBytes, numRead);
-      throw new IOException(errorMessage);
+      throw new ParquetDecodingException(errorMessage);
     }
 
     indexInStream = 0;
-    numberOfValues = valueCount;
+    this.valuesCount = valuesCount;
   }
 
   @Override
@@ -87,10 +88,10 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
 
   @Override
   public void skip(int n) {
-    if (indexInStream + n > numberOfValues || n < 0) {
+    if (n < 0 || indexInStream + n > valuesCount) {
       String errorMessage = String.format(
               "Cannot skip this many elements. Current index: %d. Skip %d. Total number of elements: %d",
-              indexInStream, n, numberOfValues);
+              indexInStream, n, valuesCount);
       throw new ParquetDecodingException(errorMessage);
     }
     indexInStream += n;

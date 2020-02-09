@@ -18,13 +18,12 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import org.apache.parquet.io.ParquetDecodingException;
-
-import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class ByteStreamSplitValuesReaderForFloat extends ByteStreamSplitValuesReader {
 
-  private byte[] valueByteBuffer;
+  private final byte[] valueByteBuffer;
 
   public ByteStreamSplitValuesReaderForFloat() {
     super(Float.BYTES);
@@ -33,15 +32,7 @@ public class ByteStreamSplitValuesReaderForFloat extends ByteStreamSplitValuesRe
 
   @Override
   public float readFloat() {
-    try {
       gatherElementDataFromStreams(valueByteBuffer);
-      int value = (int)(valueByteBuffer[0] & 0xFF) |
-                  ((int)(valueByteBuffer[1] & 0xFF) << 8) |
-                  ((int)(valueByteBuffer[2] & 0xFF) << 16) |
-                  ((int)(valueByteBuffer[3] & 0xFF) << 24);
-      return Float.intBitsToFloat(value);
-    } catch (IOException | ArrayIndexOutOfBoundsException ex) {
-      throw new ParquetDecodingException("Could not read float.", ex);
-    }
+      return ByteBuffer.wrap(valueByteBuffer).order(ByteOrder.LITTLE_ENDIAN).getFloat();
   }
 }
