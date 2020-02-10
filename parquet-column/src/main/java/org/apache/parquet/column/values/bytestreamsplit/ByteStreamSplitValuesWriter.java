@@ -18,10 +18,9 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
@@ -115,7 +114,7 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
 
     @Override
     public void writeFloat(float v) {
-      super.scatterBytes(ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN).putFloat(v).array());
+      super.scatterBytes(BytesUtils.intToBytes(Float.floatToIntBits(v)));
     }
 
     @Override
@@ -132,7 +131,7 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
 
     @Override
     public void writeDouble(double v) {
-      super.scatterBytes(ByteBuffer.allocate(Double.BYTES).order(ByteOrder.LITTLE_ENDIAN).putDouble(v).array());
+      super.scatterBytes(BytesUtils.longToBytes(Double.doubleToLongBits(v)));
     }
 
     @Override

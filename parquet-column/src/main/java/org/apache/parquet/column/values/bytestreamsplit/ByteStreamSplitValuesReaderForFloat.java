@@ -18,8 +18,7 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import org.apache.parquet.bytes.BytesUtils;
 
 public class ByteStreamSplitValuesReaderForFloat extends ByteStreamSplitValuesReader {
 
@@ -33,6 +32,6 @@ public class ByteStreamSplitValuesReaderForFloat extends ByteStreamSplitValuesRe
   @Override
   public float readFloat() {
       gatherElementDataFromStreams(valueByteBuffer);
-      return ByteBuffer.wrap(valueByteBuffer).order(ByteOrder.LITTLE_ENDIAN).getFloat();
+      return Float.intBitsToFloat(BytesUtils.bytesToInt(valueByteBuffer));
   }
 }

@@ -18,8 +18,7 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import org.apache.parquet.bytes.BytesUtils;
 
 public class ByteStreamSplitValuesReaderForDouble extends ByteStreamSplitValuesReader {
 
@@ -33,6 +32,6 @@ public class ByteStreamSplitValuesReaderForDouble extends ByteStreamSplitValuesR
   @Override
   public double readDouble() {
     gatherElementDataFromStreams(valueByteBuffer);
-    return ByteBuffer.wrap(valueByteBuffer).order(ByteOrder.LITTLE_ENDIAN).getDouble();
+    return Double.longBitsToDouble(BytesUtils.bytesToLong(valueByteBuffer));
   }
 }
