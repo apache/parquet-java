@@ -952,10 +952,8 @@ public class ParquetFileWriter {
   }
 
   private int toIntWithCheck(long size) {
-    if (size > Integer.MAX_VALUE) {
-      throw new ParquetEncodingException(
-        "Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " +
-          size);
+    if ((int)size != size) {
+      throw new ParquetEncodingException("Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " + size);
     }
     return (int)size;
   }
