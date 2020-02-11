@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 package org.apache.parquet.crypto;
 
 import java.io.IOException;

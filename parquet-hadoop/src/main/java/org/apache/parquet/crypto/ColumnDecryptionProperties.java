@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 /**
@@ -82,10 +81,11 @@ public class ColumnDecryptionProperties {
      */
     public Builder withKey(byte[] columnKey) {
       if (null != this.keyBytes) {
-        throw new IllegalArgumentException("Key already set on column: " + columnPath);
+        throw new IllegalStateException("Key already set on column: " + columnPath);
       }
       this.keyBytes = new byte[columnKey.length];
       System.arraycopy(columnKey, 0, this.keyBytes, 0, columnKey.length);
+
       return this;
     }
 

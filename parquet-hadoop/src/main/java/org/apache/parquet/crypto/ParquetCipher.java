@@ -19,12 +19,9 @@
 
 package org.apache.parquet.crypto;
 
-
 import org.apache.parquet.format.AesGcmV1;
 import org.apache.parquet.format.AesGcmCtrV1;
 import org.apache.parquet.format.EncryptionAlgorithm;
-
-
 
 public enum ParquetCipher {
 

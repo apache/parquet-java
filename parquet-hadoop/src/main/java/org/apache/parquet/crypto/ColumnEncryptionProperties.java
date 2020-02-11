@@ -62,7 +62,6 @@ public class ColumnEncryptionProperties {
     this.keyMetaData = keyMetaData;
   }
 
-
   /**
    * Convenience builder for regular (not nested) columns.
    * To make sure column name is not misspelled or misplaced, 
@@ -86,7 +85,6 @@ public class ColumnEncryptionProperties {
   public static Builder builder(ColumnPath path) {
     return builder(path, true);
   }
-
 
   static Builder builder(ColumnPath path, boolean encrypt) {
     return new Builder(path, encrypt);
@@ -117,10 +115,11 @@ public class ColumnEncryptionProperties {
         return this;
       }
       if (null != this.keyBytes) {
-        throw new IllegalArgumentException("Key already set on column: " + columnPath);
+        throw new IllegalStateException("Key already set on column: " + columnPath);
       }
       this.keyBytes = new byte[columnKey.length];
       System.arraycopy(columnKey, 0, this.keyBytes, 0, columnKey.length);
+
       return this;
     }
 
@@ -136,9 +135,10 @@ public class ColumnEncryptionProperties {
         return this;
       }
       if (null != this.keyMetaData) {
-        throw new IllegalArgumentException("Key metadata already set on column: " + columnPath);
+        throw new IllegalStateException("Key metadata already set on column: " + columnPath);
       }
       this.keyMetaData = keyMetaData;
+
       return this;
     }
 
@@ -154,6 +154,7 @@ public class ColumnEncryptionProperties {
         return this;
       }
       byte[] metaData = keyId.getBytes(StandardCharsets.UTF_8);
+
       return withKeyMetaData(metaData);
     }
 

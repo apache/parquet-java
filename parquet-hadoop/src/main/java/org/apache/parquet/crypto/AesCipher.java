@@ -19,16 +19,13 @@
 
 package org.apache.parquet.crypto;
 
-
 import javax.crypto.Cipher;
-import javax.security.auth.DestroyFailedException;
+import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 
 import java.io.IOException;
 import java.security.SecureRandom;
-
 
 public class AesCipher {
 
@@ -42,18 +39,16 @@ public class AesCipher {
   protected static final int CHUNK_LENGTH = 4 * 1024;
   protected static final int SIZE_LENGTH = ModuleCipherFactory.SIZE_LENGTH;
 
-  protected EncryptionKey aesKey;
+  protected SecretKeySpec aesKey;
   protected final SecureRandom randomGenerator;
   protected Cipher cipher;
   protected final byte[] localNonce;
-  protected boolean wipedOut;
-
 
   AesCipher(AesMode mode, byte[] keyBytes) throws IllegalArgumentException, IOException {
     if (null == keyBytes) {
       throw new IllegalArgumentException("Null key bytes");
     }
-    
+
     boolean allZeroKey = true;
     for (byte kb : keyBytes) {
       if (kb != 0) {
@@ -61,15 +56,14 @@ public class AesCipher {
         break;
       }
     }
-    
+
     if (allZeroKey) {
       throw new IllegalArgumentException("All key bytes are zero");
     }
 
-    aesKey = new EncryptionKey(keyBytes);
+    aesKey = new SecretKeySpec(keyBytes, "AES");
     randomGenerator = new SecureRandom();
     localNonce = new byte[NONCE_LENGTH];
-    wipedOut = false;
   }
 
   public static byte[] createModuleAAD(byte[] fileAAD, ModuleType moduleType, 
@@ -105,12 +99,14 @@ public class AesCipher {
     for (byte[] array : arrays) {
       totalLength += array.length;
     }
+
     byte[] output = new byte[totalLength];
     int offset = 0;
     for (byte[] array : arrays) {
       System.arraycopy(array, 0, output, offset, array.length);
       offset += array.length;
     }
+
     return output;
   }
 
@@ -118,17 +114,7 @@ public class AesCipher {
     byte[] output  = new byte[2];
     output[1] = (byte)(0xff & (input >> 8));
     output[0] = (byte)(0xff & input);
+
     return output;
   }
-
-  public void wipeOut() {
-    try {
-      aesKey.destroy();
-    } catch (DestroyFailedException e) {
-      throw new ShouldNeverHappenException(e);
-    }
-    wipedOut = true;
-    cipher = null; // dereference for GC
-  }
 }
-

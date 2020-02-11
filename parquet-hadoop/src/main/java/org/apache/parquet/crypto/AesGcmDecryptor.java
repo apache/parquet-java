@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.GeneralSecurityException;
 
-
 public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
 
 
@@ -46,14 +45,12 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
   public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD)  throws IOException {
     int cipherTextOffset = SIZE_LENGTH;
     int cipherTextLength = lengthAndCiphertext.length - SIZE_LENGTH;
+
     return decrypt(lengthAndCiphertext, cipherTextOffset, cipherTextLength, AAD);
   }
 
   public byte[] decrypt(byte[] ciphertext, int cipherTextOffset, int cipherTextLength, byte[] AAD)  
       throws IOException {
-    if (wipedOut) {
-      throw new IOException("AES decryptor is wiped out");
-    }
 
     int plainTextLength = cipherTextLength - GCM_TAG_LENGTH - NONCE_LENGTH;
     if (plainTextLength < 1) {
@@ -73,10 +70,10 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
       if (null != AAD) cipher.updateAAD(AAD);
 
       cipher.doFinal(ciphertext, inputOffset, inputLength, plainText, outputOffset);
-    }
-    catch (GeneralSecurityException e) {
+    }  catch (GeneralSecurityException e) {
       throw new IOException("Failed to decrypt", e);
     }
+
     return plainText;
   }
 
@@ -114,8 +111,8 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
       }
       gotBytes += n;
     }
+
     // Decrypt the structure contents
     return decrypt(ciphertextBuffer, 0, ciphertextLength, AAD);
   }
 }
-

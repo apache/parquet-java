@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
@@ -32,7 +31,6 @@ public class InternalColumnDecryptionSetup {
   private final BlockCipher.Decryptor metaDataDecryptor;
   private final short columnOrdinal;
   private final byte[] keyMetadata;
-
 
   InternalColumnDecryptionSetup(ColumnPath path, boolean encrypted, 
       boolean isEncryptedWithFooterKey, BlockCipher.Decryptor dataDecryptor, 

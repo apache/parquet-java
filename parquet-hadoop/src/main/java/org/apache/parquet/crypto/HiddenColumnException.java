@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 import org.apache.parquet.ParquetRuntimeException;
 
 /**

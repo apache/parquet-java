@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.FileCryptoMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -27,7 +26,6 @@ import org.apache.parquet.format.EncryptionAlgorithm;
 
 import java.io.IOException;
 import java.util.HashMap;
-
 
 public class InternalFileEncryptor {
 
@@ -83,6 +81,7 @@ public class InternalFileEncryptor {
   public InternalColumnEncryptionSetup getColumnSetup(ColumnPath columnPath, 
       boolean createIfNull, short ordinal) throws IOException {
     InternalColumnEncryptionSetup internalColumnProperties = columnMap.get(columnPath);
+
     if (null != internalColumnProperties) {
       if (ordinal != internalColumnProperties.getOrdinal()) {
         throw new IOException("Column ordinal doesnt match " + columnPath + 
@@ -90,6 +89,7 @@ public class InternalFileEncryptor {
       }
       return internalColumnProperties;
     }
+
     if (!createIfNull) {
       throw new IOException("No encryption setup found for column " + columnPath);
     }
@@ -114,6 +114,7 @@ public class InternalFileEncryptor {
       internalColumnProperties = new InternalColumnEncryptionSetup(columnProperties, ordinal, null, null);
     }
     columnMap.put(columnPath, internalColumnProperties);
+
     return internalColumnProperties;
   }
 
@@ -127,14 +128,22 @@ public class InternalFileEncryptor {
       throw new IOException("Requesting FileCryptoMetaData in file with unencrypted footer");
     }
     FileCryptoMetaData fileCryptoMetaData = new FileCryptoMetaData(algorithm);
-    if (null != footerKeyMetadata) fileCryptoMetaData.setKey_metadata(footerKeyMetadata);
+    if (null != footerKeyMetadata) {
+      fileCryptoMetaData.setKey_metadata(footerKeyMetadata);
+    }
     fileCryptoMetaDataCreated = true;
+
     return fileCryptoMetaData;
   }
 
   public boolean encryptColumnMetaData(InternalColumnEncryptionSetup columnSetup) {
-    if (!columnSetup.isEncrypted()) return false;
-    if (!encryptFooter) return true;
+    if (!columnSetup.isEncrypted()) {
+      return false;
+    }
+    if (!encryptFooter) {
+      return true;
+    }
+
     return !columnSetup.isEncryptedWithFooterKey();
   }
 

@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 
@@ -29,9 +28,7 @@ import org.apache.parquet.format.BlockCipher;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
-
 public class AesGcmEncryptor extends AesCipher implements BlockCipher.Encryptor{
-
 
   AesGcmEncryptor(byte[] keyBytes) throws IllegalArgumentException, IOException {
     super(AesMode.GCM, keyBytes);
@@ -55,9 +52,7 @@ public class AesGcmEncryptor extends AesCipher implements BlockCipher.Encryptor{
 
   public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD)  
       throws IOException {
-    if (wipedOut) {
-      throw new IOException("AES encryptor is wiped out");
-    }
+
     if (nonce.length != NONCE_LENGTH) {
       throw new IOException("Wrong nonce length " + nonce.length);
     }
@@ -68,16 +63,17 @@ public class AesGcmEncryptor extends AesCipher implements BlockCipher.Encryptor{
     int inputLength = plainTextLength;
     int inputOffset = 0;
     int outputOffset = lengthBufferLength + NONCE_LENGTH;
+
     try {
       GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, nonce);
       cipher.init(Cipher.ENCRYPT_MODE, aesKey, spec);
       if (null != AAD) cipher.updateAAD(AAD);
 
       cipher.doFinal(plainText, inputOffset, inputLength, cipherText, outputOffset);
-    }
-    catch (GeneralSecurityException e) {
+    } catch (GeneralSecurityException e) {
       throw new IOException("Failed to encrypt", e);
     }
+
     // Add ciphertext length
     if (writeLength) {
       System.arraycopy(BytesUtils.intToBytes(cipherTextLength), 0, cipherText, 0, lengthBufferLength);
@@ -88,4 +84,3 @@ public class AesGcmEncryptor extends AesCipher implements BlockCipher.Encryptor{
     return cipherText;
   }
 }
-

@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 package org.apache.parquet.crypto;
 
 import java.util.HashMap;
@@ -93,10 +92,11 @@ public class FileDecryptionProperties {
         return this;
       }
       if (null != this.footerKeyBytes) {
-        throw new IllegalArgumentException("Footer key already set");
+        throw new IllegalStateException("Footer key already set");
       }
       this.footerKeyBytes = new byte[footerKey.length];
       System.arraycopy(footerKey, 0, this.footerKeyBytes, 0, footerKey.length);
+
       return this;
     }
 
@@ -114,10 +114,11 @@ public class FileDecryptionProperties {
         return this;
       }
       if (null != this.columnPropertyMap) {
-        throw new IllegalArgumentException("Column properties already set");
+        throw new IllegalStateException("Column properties already set");
       }
       // Copy the map to make column properties immutable
       this.columnPropertyMap = new HashMap<ColumnPath, ColumnDecryptionProperties>(columnProperties);
+
       return this;
     }
 
@@ -136,9 +137,10 @@ public class FileDecryptionProperties {
         return this;
       }
       if (null != this.keyRetriever) {
-        throw new IllegalArgumentException("Key retriever already set");
+        throw new IllegalStateException("Key retriever already set");
       }
       this.keyRetriever = keyRetriever;
+
       return this;
     }
 
@@ -156,7 +158,6 @@ public class FileDecryptionProperties {
       return this;
     }
 
-
     /**
      * Explicitly supply the file AAD prefix.
      * A must when a prefix is used for file encryption, but not stored in file.
@@ -171,9 +172,10 @@ public class FileDecryptionProperties {
         return this;
       }
       if (null != this.aadPrefixBytes) {
-        throw new IllegalArgumentException("AAD Prefix already set");
+        throw new IllegalStateException("AAD Prefix already set");
       }
       this.aadPrefixBytes = aadPrefixBytes;
+
       return this;
     }
 
@@ -188,9 +190,10 @@ public class FileDecryptionProperties {
         return this;
       }
       if (null != this.aadPrefixVerifier) {
-        throw new IllegalArgumentException("AAD Prefix verifier already set");
+        throw new IllegalStateException("AAD Prefix verifier already set");
       }
       this.aadPrefixVerifier = aadPrefixVerifier;
+
       return this;
     }
 
@@ -218,9 +221,14 @@ public class FileDecryptionProperties {
   }
 
   public byte[] getColumnKey(ColumnPath path) {
-    if (null == columnPropertyMap) return null;
+    if (null == columnPropertyMap) {
+      return null;
+    }
     ColumnDecryptionProperties columnDecryptionProperties = columnPropertyMap.get(path);
-    if (null == columnDecryptionProperties) return null;
+    if (null == columnDecryptionProperties) {
+      return null;
+    }
+
     return columnDecryptionProperties.getKeyBytes();
   }
 

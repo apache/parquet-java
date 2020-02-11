@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 public enum AesMode {
   GCM("AES/GCM/NoPadding"),
   CTR("AES/CTR/NoPadding");

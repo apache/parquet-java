@@ -17,9 +17,7 @@
  * under the License.
  */
 
-
 package org.apache.parquet.crypto;
-
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -35,15 +33,13 @@ public class FileEncryptionProperties {
 
   private static final ParquetCipher ALGORITHM_DEFAULT = ParquetCipher.AES_GCM_V1;
   private static final boolean ENCRYPTED_FOOTER_DEFAULT = true;
-  
+
   private final EncryptionAlgorithm algorithm;
   private final boolean encryptedFooter;
   private final byte[] footerKey;
   private final byte[] footerKeyMetadata;
   private final byte[] fileAAD;
   private final Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap;
-
-
 
   private FileEncryptionProperties(ParquetCipher cipher, 
       byte[] footerKey, byte[] footerKeyMetadata, boolean encryptedFooter,
@@ -105,7 +101,6 @@ public class FileEncryptionProperties {
     return new Builder(footerKey);
   }
 
-
   public static class Builder {
     private byte[] footerKeyBytes;
     private boolean encryptedFooter;
@@ -156,6 +151,7 @@ public class FileEncryptionProperties {
       if (null == keyID) {
         return this;
       }
+
       return withFooterKeyMetadata(keyID.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -171,9 +167,10 @@ public class FileEncryptionProperties {
         return this;
       }
       if (null != this.footerKeyMetadata) {
-        throw new IllegalArgumentException("Footer key metadata already set");
+        throw new IllegalStateException("Footer key metadata already set");
       }
       this.footerKeyMetadata = footerKeyMetadata;
+
       return this;
     }
 
@@ -188,10 +185,11 @@ public class FileEncryptionProperties {
         return this;
       }
       if (null != this.aadPrefix) {
-        throw new IllegalArgumentException("AAD Prefix already set");
+        throw new IllegalStateException("AAD Prefix already set");
       }
       this.aadPrefix = aadPrefixBytes;
       this.storeAadPrefixInFile = true;
+
       return this;
     }
 
@@ -203,9 +201,10 @@ public class FileEncryptionProperties {
      */
     public Builder withoutAADPrefixStorage() {
       if (null == this.aadPrefix) {
-        throw new IllegalArgumentException("AAD Prefix not yet set");
+        throw new IllegalStateException("AAD Prefix not yet set");
       }
       this.storeAadPrefixInFile = false;
+
       return this;
     }
 
@@ -222,10 +221,11 @@ public class FileEncryptionProperties {
         return this;
       }
       if (null != this.columnPropertyMap) {
-        throw new IllegalArgumentException("Column properties already set");
+        throw new IllegalStateException("Column properties already set");
       }
       // Copy the map to make column properties immutable
       this.columnPropertyMap = new HashMap<ColumnPath, ColumnEncryptionProperties>(encryptedColumns);
+
       return this;
     }
 

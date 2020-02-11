@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 
@@ -33,7 +32,6 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
 
   private final byte[] ctrIV;
 
-
   AesCtrEncryptor(byte[] keyBytes) throws IllegalArgumentException, IOException {
     super(AesMode.CTR, keyBytes);
 
@@ -42,6 +40,7 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
     } catch (GeneralSecurityException e) {
       throw new IOException("Failed to create CTR cipher", e);
     }
+
     ctrIV = new byte[CTR_IV_LENGTH];
     // Setting last bit of initial CTR counter to 1
     ctrIV[CTR_IV_LENGTH - 1] = (byte) 1;
@@ -59,9 +58,7 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
 
   public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD)  
       throws IOException {
-    if (wipedOut) {
-      throw new IOException("AES encryptor is wiped out");
-    }
+
     if (nonce.length != NONCE_LENGTH) {
       throw new IOException("Wrong nonce length " + nonce.length);
     }
@@ -86,10 +83,10 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
       }
 
       cipher.doFinal(plainText, inputOffset, inputLength, cipherText, outputOffset);
-    }
-    catch (GeneralSecurityException e) {
+    }  catch (GeneralSecurityException e) {
       throw new IOException("Failed to encrypt", e);
     }
+
     // Add ciphertext length
     if (writeLength) {
       System.arraycopy(BytesUtils.intToBytes(cipherTextLength), 0, cipherText, 0, lengthBufferLength);

@@ -19,14 +19,12 @@
 
 package org.apache.parquet.crypto;
 
-
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.EncryptionAlgorithm;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-
 
 public class InternalFileDecryptor {
 
@@ -57,7 +55,7 @@ public class InternalFileDecryptor {
     this.aadPrefixVerifier = fileDecryptionProperties.getAADPrefixVerifier();
     this.plaintextFile = false;
   }
-  
+
   private BlockCipher.Decryptor getThriftModuleDecryptor(byte[] columnKey) throws IOException {
     if (null == columnKey) { // Decryptor with footer key
       if (null == aesGcmDecryptorWithFooterKey) {
@@ -73,6 +71,7 @@ public class InternalFileDecryptor {
     if (algorithm.isSetAES_GCM_V1()) {
       return getThriftModuleDecryptor(columnKey);
     }
+
     // AES_GCM_CTR_V1
     if (null == columnKey) { // Decryptor with footer key
       if (null == aesCtrDecryptorWithFooterKey) {
@@ -92,6 +91,7 @@ public class InternalFileDecryptor {
     if (null == columnDecryptionSetup) {
       throw new IOException("Failed to find decryption setup for column " + path);
     }
+
     return columnDecryptionSetup;
   }
 
@@ -99,7 +99,10 @@ public class InternalFileDecryptor {
     if (!fileCryptoMetaDataProcessed) {
       throw new IOException("Haven't parsed the file crypto metadata yet");
     }
-    if (!encryptedFooter) return null;
+    if (!encryptedFooter) {
+      return null;
+    }
+
     return getThriftModuleDecryptor(null);
   }
 
@@ -142,6 +145,7 @@ public class InternalFileDecryptor {
       if (mustSupplyAadPrefix && (null == aadPrefixInProperties)) {
         throw new IOException("AAD prefix used for file encryption, but not stored in file and not supplied in decryption properties");
       }
+
       if (fileHasAadPrefix) {
         if (null != aadPrefixInProperties) {
           if (!Arrays.equals(aadPrefixInProperties, aadPrefixInFile)) {
@@ -161,6 +165,7 @@ public class InternalFileDecryptor {
           throw new IOException("AAD Prefix Verifier is set, but AAD Prefix not found in file");
         }
       }
+
       if (null == aadPrefix) {
         this.fileAAD = aadFileUnique;
       } else {
@@ -170,14 +175,19 @@ public class InternalFileDecryptor {
       // Get footer key
       if (null == footerKey) { // ignore footer key metadata if footer key is explicitly set via API
         if (encryptedFooter || checkPlaintextFooterIntegrity) {
-          if (null == footerKeyMetaData) throw new IOException("No footer key or key metadata");
-          if (null == keyRetriever) throw new IOException("No footer key or key retriever");
+          if (null == footerKeyMetaData) {
+            throw new IOException("No footer key or key metadata");
+          }
+          if (null == keyRetriever) {
+            throw new IOException("No footer key or key retriever");
+          }
+
           try {
             footerKey = keyRetriever.getKey(footerKeyMetaData);
-          } 
-          catch (KeyAccessDeniedException e) {
+          } catch (KeyAccessDeniedException e) {
             throw new IOException("Footer key: access denied", e);
           }
+
           if (null == footerKey) {
             throw new IOException("Footer key unavailable");
           }
@@ -237,8 +247,7 @@ public class InternalFileDecryptor {
           // No explicit column key given via API. Retrieve via key metadata.
           try {
             columnKeyBytes = keyRetriever.getKey(keyMetadata);
-          } 
-          catch (KeyAccessDeniedException e) {
+          } catch (KeyAccessDeniedException e) {
             throw new IOException("Column " + path + ": key access denied", e);
           }
         }
@@ -252,6 +261,7 @@ public class InternalFileDecryptor {
       }
     }
     columnMap.put(path, columnDecryptionSetup);
+
     return columnDecryptionSetup;
   }
 
@@ -266,6 +276,7 @@ public class InternalFileDecryptor {
     if (encryptedFooter) {
       throw new IOException("Requesting signed footer encryptor in file with encrypted footer");
     }
+
     return (AesGcmEncryptor) ModuleCipherFactory.getEncryptor(AesMode.GCM, footerKey);
   }
 
