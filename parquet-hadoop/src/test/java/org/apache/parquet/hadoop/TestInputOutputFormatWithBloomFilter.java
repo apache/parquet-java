@@ -160,7 +160,8 @@ public class TestInputOutputFormatWithBloomFilter {
         put("uuid", 200L);
         put("value", 50L);
       }};
-      Assert.assertTrue("Bloom filter parameter should be correct inside Hadoop conf.", expectedParameter.equals(ParquetOutputFormat.getBloomFilterColumnExpectedNDVs(conf)));
+      Assert.assertTrue("Bloom filter parameter should be correct inside Hadoop conf.",
+        expectedParameter.equals(ParquetOutputFormat.getBloomFilterColumnExpectedNDVs(conf)));
 
       waitForJob(writeJob);
 
