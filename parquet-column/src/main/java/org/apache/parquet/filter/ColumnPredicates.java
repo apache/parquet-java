@@ -18,7 +18,8 @@
  */
 package org.apache.parquet.filter;
 
-import org.apache.parquet.Preconditions;
+import java.util.Objects;
+
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.api.Binary;
 
@@ -60,7 +61,7 @@ public class ColumnPredicates {
   }
 
   public static Predicate equalTo(final String target) {
-    Preconditions.checkNotNull(target,"target");
+	Objects.requireNonNull(target, "target cannot be null");
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
@@ -169,7 +170,7 @@ public class ColumnPredicates {
   }
 
   public static <E extends Enum> Predicate equalTo(final E target) {
-    Preconditions.checkNotNull(target,"target");
+    Objects.requireNonNull(target, "target cannot be null");
     final String targetAsString = target.name();
     return new Predicate() {
       @Override

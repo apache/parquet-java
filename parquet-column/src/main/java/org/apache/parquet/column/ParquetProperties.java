@@ -18,12 +18,16 @@
  */
 package org.apache.parquet.column;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
-
-import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
@@ -31,15 +35,15 @@ import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.schema.MessageType;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
+import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
+
+
 
 /**
  * This class represents all the configurable Parquet properties.
@@ -49,6 +53,7 @@ public class ParquetProperties {
   public static final int DEFAULT_PAGE_SIZE = 1024 * 1024;
   public static final int DEFAULT_DICTIONARY_PAGE_SIZE = DEFAULT_PAGE_SIZE;
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
+  public static final boolean DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED = false;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
@@ -104,11 +109,12 @@ public class ParquetProperties {
   private final Set<String> bloomFilterColumns;
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
+  private final boolean enableByteStreamSplit;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
                             ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, int pageRowCountLimit,
-                            boolean pageWriteChecksumEnabled, int statisticsTruncateLength,
+                            boolean pageWriteChecksumEnabled, int statisticsTruncateLength, boolean enableByteStreamSplit,
                             Map<String, Long> bloomFilterExpectedDistinctNumber, Set<String> bloomFilterColumns,
                             int maxBloomFilterBytes) {
     this.pageSizeThreshold = pageSize;
@@ -130,6 +136,7 @@ public class ParquetProperties {
     this.maxBloomFilterBytes = maxBloomFilterBytes;
     this.pageRowCountLimit = pageRowCountLimit;
     this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
+    this.enableByteStreamSplit = enableByteStreamSplit;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -184,6 +191,10 @@ public class ParquetProperties {
 
   public boolean isEnableDictionary() {
     return enableDictionary;
+  }
+
+  public boolean isByteStreamSplitEnabled() {
+      return enableByteStreamSplit;
   }
 
   public ByteBufferAllocator getAllocator() {
@@ -284,6 +295,7 @@ public class ParquetProperties {
     private Set<String> bloomFilterColumns = new HashSet<>();
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
+    private boolean enableByteStreamSplit = DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED;
 
     private Builder() {
     }
@@ -303,6 +315,7 @@ public class ParquetProperties {
       this.bloomFilterColumnExpectedNDVs = toCopy.bloomFilterExpectedDistinctNumbers;
       this.bloomFilterColumns = toCopy.bloomFilterColumns;
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
+      this.enableByteStreamSplit = toCopy.enableByteStreamSplit;
     }
 
     /**
@@ -326,6 +339,11 @@ public class ParquetProperties {
      */
     public Builder withDictionaryEncoding(boolean enableDictionary) {
       this.enableDict = enableDictionary;
+      return this;
+    }
+
+    public Builder withByteStreamSplitEncoding(boolean enableByteStreamSplit) {
+      this.enableByteStreamSplit = enableByteStreamSplit;
       return this;
     }
 
@@ -374,14 +392,12 @@ public class ParquetProperties {
     }
 
     public Builder withAllocator(ByteBufferAllocator allocator) {
-      Preconditions.checkNotNull(allocator, "ByteBufferAllocator");
-      this.allocator = allocator;
+      this.allocator = Objects.requireNonNull(allocator, "ByteBufferAllocator cannot be null");
       return this;
     }
 
     public Builder withValuesWriterFactory(ValuesWriterFactory factory) {
-      Preconditions.checkNotNull(factory, "ValuesWriterFactory");
-      this.valuesWriterFactory = factory;
+      this.valuesWriterFactory = Objects.requireNonNull(factory, "ValuesWriterFactory cannot be null");
       return this;
     }
 
@@ -446,7 +462,7 @@ public class ParquetProperties {
         new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
           estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength,
-          pageRowCountLimit, pageWriteChecksumEnabled, statisticsTruncateLength,
+          pageRowCountLimit, pageWriteChecksumEnabled, statisticsTruncateLength, enableByteStreamSplit,
           bloomFilterColumnExpectedNDVs, bloomFilterColumns, maxBloomFilterBytes);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently
       // creation of ValuesWriters is invoked from within ParquetProperties. In the future

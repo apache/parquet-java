@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -31,8 +32,6 @@ import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicat
 import org.apache.parquet.io.PrimitiveColumnIO;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.RecordMaterializer;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * A pass-through proxy for a {@link RecordMaterializer} that updates a {@link IncrementallyUpdatedFilterPredicate}
@@ -57,10 +56,10 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
       Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn,
       IncrementallyUpdatedFilterPredicate filterPredicate) {
 
-    checkNotNull(columnIOs, "columnIOs");
-    checkNotNull(valueInspectorsByColumn, "valueInspectorsByColumn");
-    this.filterPredicate = checkNotNull(filterPredicate, "filterPredicate");
-    this.delegate = checkNotNull(delegate, "delegate");
+    Objects.requireNonNull(columnIOs, "columnIOs cannot be null");
+    Objects.requireNonNull(valueInspectorsByColumn, "valueInspectorsByColumn cannot be null");
+    this.filterPredicate = Objects.requireNonNull(filterPredicate, "filterPredicate cannot be null");
+    this.delegate = Objects.requireNonNull(delegate, "delegate cannot be null");
 
     // keep track of which path of indices leads to which primitive column
     Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<>();

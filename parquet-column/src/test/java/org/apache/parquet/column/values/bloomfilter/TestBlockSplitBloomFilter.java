@@ -26,8 +26,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import org.apache.parquet.column.values.RandomStr;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Rule;
 import org.junit.Test;
@@ -101,9 +100,8 @@ public class TestBlockSplitBloomFilter {
 
     BloomFilter bloomFilter = new BlockSplitBloomFilter(BlockSplitBloomFilter.optimalNumOfBits(totalCount, FPP));
     List<String> strings = new ArrayList<>();
-    RandomStr randomStr = new RandomStr(new Random(SEED));
     for(int i = 0; i < totalCount; i++) {
-      String str = randomStr.get(10);
+      String str = RandomStringUtils.randomAlphabetic(10);
       strings.add(str);
       bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(str)));
     }
@@ -111,7 +109,7 @@ public class TestBlockSplitBloomFilter {
     // The exist counts the number of times FindHash returns true.
     int exist = 0;
     for (int i = 0; i < totalCount; i++) {
-      String str = randomStr.get(8);
+      String str = RandomStringUtils.randomAlphabetic(8);
       if (bloomFilter.findHash(bloomFilter.hash(Binary.fromString(str)))) {
         exist ++;
       }

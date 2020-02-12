@@ -19,10 +19,10 @@
 package org.apache.parquet.hadoop.metadata;
 
 import static java.util.Collections.unmodifiableMap;
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.parquet.schema.MessageType;
 
@@ -43,11 +43,14 @@ public final class FileMetaData implements Serializable {
    * @param schema the schema for the file
    * @param keyValueMetaData the app specific metadata
    * @param createdBy the description of the library that created the file
+   *
+   * @throws NullPointerException if schema or keyValueMetaData is {@code null}
    */
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy) {
     super();
-    this.schema = checkNotNull(schema, "schema");
-    this.keyValueMetaData = unmodifiableMap(checkNotNull(keyValueMetaData, "keyValueMetaData"));
+    this.schema = Objects.requireNonNull(schema, "schema cannot be null");
+    this.keyValueMetaData = unmodifiableMap(Objects
+        .requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
     this.createdBy = createdBy;
   }
 

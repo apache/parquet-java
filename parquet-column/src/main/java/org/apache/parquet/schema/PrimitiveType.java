@@ -35,7 +35,6 @@ import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 
 

@@ -21,6 +21,7 @@ package org.apache.parquet.filter2.recordlevel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
@@ -29,7 +30,6 @@ import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 
 import static org.apache.parquet.Preconditions.checkArgument;
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * See {@link FilteringRecordMaterializer}
@@ -56,10 +56,10 @@ public class FilteringGroupConverter extends GroupConverter {
       Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn, Map<List<Integer>,
       PrimitiveColumnIO> columnIOsByIndexFieldPath) {
 
-    this.delegate = checkNotNull(delegate, "delegate");
-    this.indexFieldPath = checkNotNull(indexFieldPath, "indexFieldPath");
-    this.columnIOsByIndexFieldPath = checkNotNull(columnIOsByIndexFieldPath, "columnIOsByIndexFieldPath");
-    this.valueInspectorsByColumn = checkNotNull(valueInspectorsByColumn, "valueInspectorsByColumn");
+    this.delegate = Objects.requireNonNull(delegate, "delegate cannot be null");
+    this.indexFieldPath = Objects.requireNonNull(indexFieldPath, "indexFieldPath cannot be null");
+    this.columnIOsByIndexFieldPath = Objects.requireNonNull(columnIOsByIndexFieldPath, "columnIOsByIndexFieldPath cannot be null");
+    this.valueInspectorsByColumn = Objects.requireNonNull(valueInspectorsByColumn, "valueInspectorsByColumn cannot be null");
   }
 
   // When a converter is asked for, we get the real one from the delegate, then wrap it
@@ -69,11 +69,11 @@ public class FilteringGroupConverter extends GroupConverter {
   public Converter getConverter(int fieldIndex) {
 
     // get the real converter from the delegate
-    Converter delegateConverter = checkNotNull(delegate.getConverter(fieldIndex), "delegate converter");
+    Converter delegateConverter = Objects.requireNonNull(delegate.getConverter(fieldIndex), "delegate converter cannot be null");
 
     // determine the indexFieldPath for the converter proxy we're about to make, which is
     // this converter's path + the requested fieldIndex
-    List<Integer> newIndexFieldPath = new ArrayList<Integer>(indexFieldPath.size() + 1);
+    List<Integer> newIndexFieldPath = new ArrayList<>(indexFieldPath.size() + 1);
     newIndexFieldPath.addAll(indexFieldPath);
     newIndexFieldPath.add(fieldIndex);
 

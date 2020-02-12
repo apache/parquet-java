@@ -482,7 +482,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testRequiredMap() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
     GroupType expected = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED,
@@ -497,7 +497,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testOptionalMap() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
     GroupType expected = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED,
@@ -512,7 +512,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithRequiredValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
     GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
@@ -527,7 +527,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithOptionalValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new PrimitiveType(OPTIONAL, INT64, "value"));
     GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
@@ -542,14 +542,14 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithGroupKeyAndOptionalGroupValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> keyFields = new ArrayList<Type>();
+    List<Type> keyFields = new ArrayList<>();
     keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
     keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
     typeList.add(new GroupType(REQUIRED, "key", keyFields));
 
-    List<Type> valueFields = new ArrayList<Type>();
+    List<Type> valueFields = new ArrayList<>();
     valueFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "one"));
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(OPTIONAL, "value", valueFields));
@@ -570,14 +570,14 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithGroupKeyAndRequiredGroupValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> keyFields = new ArrayList<Type>();
+    List<Type> keyFields = new ArrayList<>();
     keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
     keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
     typeList.add(new GroupType(REQUIRED, "key", keyFields));
 
-    List<Type> valueFields = new ArrayList<Type>();
+    List<Type> valueFields = new ArrayList<>();
     valueFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "one"));
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(REQUIRED, "value", valueFields));
@@ -602,9 +602,9 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithGroupKeyAndOptionalValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> keyFields = new ArrayList<Type>();
+    List<Type> keyFields = new ArrayList<>();
     keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
     keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
     typeList.add(new GroupType(REQUIRED, "key", keyFields));
@@ -628,9 +628,9 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithGroupKeyAndRequiredValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> keyFields = new ArrayList<Type>();
+    List<Type> keyFields = new ArrayList<>();
     keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
     keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
     typeList.add(new GroupType(REQUIRED, "key", keyFields));
@@ -654,14 +654,14 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithOptionalGroupValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> keyFields = new ArrayList<Type>();
+    List<Type> keyFields = new ArrayList<>();
     keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
     keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
 
-    List<Type> valueFields = new ArrayList<Type>();
+    List<Type> valueFields = new ArrayList<>();
     valueFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "one"));
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(OPTIONAL, "value", valueFields));
@@ -684,11 +684,11 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithRequiredGroupValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
 
-    List<Type> valueFields = new ArrayList<Type>();
+    List<Type> valueFields = new ArrayList<>();
     valueFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "one"));
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(REQUIRED, "value", valueFields));
@@ -711,18 +711,18 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithNestedGroupKeyAndNestedGroupValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> innerFields = new ArrayList<Type>();
+    List<Type> innerFields = new ArrayList<>();
     innerFields.add(new PrimitiveType(REQUIRED, FLOAT, "inner_key_1"));
     innerFields.add(new PrimitiveType(OPTIONAL, INT32, "inner_key_2"));
 
-    List<Type> keyFields = new ArrayList<Type>();
+    List<Type> keyFields = new ArrayList<>();
     keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
     keyFields.add(new GroupType(REQUIRED, "second", innerFields));
     typeList.add(new GroupType(REQUIRED, "key", keyFields));
 
-    List<Type> valueFields = new ArrayList<Type>();
+    List<Type> valueFields = new ArrayList<>();
     valueFields.add(new GroupType(OPTIONAL, "one", innerFields));
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(OPTIONAL, "value", valueFields));
@@ -753,7 +753,7 @@ public class TestTypeBuilders {
 
     @Test
     public void testMapWithRequiredListValue() {
-        List<Type> typeList = new ArrayList<Type>();
+        List<Type> typeList = new ArrayList<>();
 
         typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
         typeList.add(new GroupType(REQUIRED, "value", OriginalType.LIST,
@@ -778,7 +778,7 @@ public class TestTypeBuilders {
 
     @Test
     public void testMapWithOptionalListValue() {
-        List<Type> typeList = new ArrayList<Type>();
+        List<Type> typeList = new ArrayList<>();
 
         typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
         typeList.add(new GroupType(OPTIONAL, "value", OriginalType.LIST,
@@ -803,9 +803,9 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithRequiredMapValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> innerMapTypeList = new ArrayList<Type>();
+    List<Type> innerMapTypeList = new ArrayList<>();
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
 
@@ -831,9 +831,9 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithOptionalMapValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> innerMapTypeList = new ArrayList<Type>();
+    List<Type> innerMapTypeList = new ArrayList<>();
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
 
@@ -859,7 +859,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithGroupKeyAndRequiredListValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
     typeList.add(new GroupType(REQUIRED, "key", new PrimitiveType(REQUIRED, INT64,
         "first"
@@ -888,7 +888,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithGroupKeyAndOptionalListValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
     typeList.add(new GroupType(REQUIRED, "key", new PrimitiveType(REQUIRED, INT64,
         "first"
@@ -917,9 +917,9 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithGroupKeyAndRequiredMapValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> innerMapTypeList = new ArrayList<Type>();
+    List<Type> innerMapTypeList = new ArrayList<>();
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
 
@@ -950,9 +950,9 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithGroupKeyAndOptionalMapValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
-    List<Type> innerMapTypeList = new ArrayList<Type>();
+    List<Type> innerMapTypeList = new ArrayList<>();
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
 
@@ -983,7 +983,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithNullValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
@@ -1001,7 +1001,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testMapWithDefaultKeyAndNullValue() {
-    List<Type> typeList = new ArrayList<Type>();
+    List<Type> typeList = new ArrayList<>();
 
     typeList.add(new PrimitiveType(REQUIRED, BINARY, "key", OriginalType.UTF8));
     GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
@@ -1077,7 +1077,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testListOfReqGroup() {
-    List<Type> fields = new ArrayList<Type>();
+    List<Type> fields = new ArrayList<>();
     fields.add(new PrimitiveType(OPTIONAL, BOOLEAN, "field"));
     GroupType expected = new GroupType(REQUIRED, "myList", OriginalType.LIST,
         new GroupType(REPEATED,
@@ -1093,7 +1093,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testListOfOptionalGroup() {
-    List<Type> fields = new ArrayList<Type>();
+    List<Type> fields = new ArrayList<>();
     fields.add(new PrimitiveType(OPTIONAL, BOOLEAN, "field"));
     GroupType expected = new GroupType(REQUIRED, "myList", OriginalType.LIST,
         new GroupType(REPEATED,
@@ -1109,7 +1109,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testRequiredNestedList() {
-    List<Type> fields = new ArrayList<Type>();
+    List<Type> fields = new ArrayList<>();
     fields.add(new GroupType(REQUIRED, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
@@ -1130,7 +1130,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testOptionalNestedList() {
-    List<Type> fields = new ArrayList<Type>();
+    List<Type> fields = new ArrayList<>();
     fields.add(new GroupType(OPTIONAL, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
@@ -1151,7 +1151,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testRequiredListWithinGroup() {
-    List<Type> fields = new ArrayList<Type>();
+    List<Type> fields = new ArrayList<>();
     fields.add(new GroupType(REQUIRED, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
@@ -1166,7 +1166,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testOptionalListWithinGroup() {
-    List<Type> fields = new ArrayList<Type>();
+    List<Type> fields = new ArrayList<>();
     fields.add(new GroupType(OPTIONAL, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
@@ -1181,7 +1181,7 @@ public class TestTypeBuilders {
 
   @Test
   public void testOptionalListWithinGroupWithReqElement() {
-    List<Type> fields = new ArrayList<Type>();
+    List<Type> fields = new ArrayList<>();
     fields.add(new GroupType(OPTIONAL, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
@@ -1197,11 +1197,11 @@ public class TestTypeBuilders {
 
   @Test
   public void testRequiredMapWithinList() {
-    List<Type> innerFields = new ArrayList<Type>();
+    List<Type> innerFields = new ArrayList<>();
     innerFields.add(new PrimitiveType(REQUIRED, DOUBLE, "key"));
     innerFields.add(new PrimitiveType(REQUIRED, INT32, "value"));
 
-    List<Type> fields = new ArrayList<Type>();
+    List<Type> fields = new ArrayList<>();
     fields.add(new GroupType(REQUIRED, "element", OriginalType.MAP,
         new GroupType(REPEATED,
             "map",
@@ -1223,11 +1223,11 @@ public class TestTypeBuilders {
 
   @Test
   public void testOptionalMapWithinList() {
-    List<Type> innerFields = new ArrayList<Type>();
+    List<Type> innerFields = new ArrayList<>();
     innerFields.add(new PrimitiveType(REQUIRED, DOUBLE, "key"));
     innerFields.add(new PrimitiveType(REQUIRED, INT32, "value"));
 
-    List<Type> fields = new ArrayList<Type>();
+    List<Type> fields = new ArrayList<>();
     fields.add(new GroupType(OPTIONAL, "element", OriginalType.MAP,
         new GroupType(REPEATED,
             "map",

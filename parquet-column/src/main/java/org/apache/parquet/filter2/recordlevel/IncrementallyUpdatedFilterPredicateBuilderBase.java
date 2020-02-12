@@ -57,7 +57,7 @@ import static org.apache.parquet.Preconditions.checkArgument;
  */
 public abstract class IncrementallyUpdatedFilterPredicateBuilderBase implements Visitor<IncrementallyUpdatedFilterPredicate> {
   private boolean built = false;
-  private final Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn = new HashMap<ColumnPath, List<ValueInspector>>();
+  private final Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn = new HashMap<>();
   private final Map<ColumnPath, PrimitiveComparator<?>> comparatorsByColumn = new HashMap<>();
 
   @Deprecated
@@ -82,7 +82,7 @@ public abstract class IncrementallyUpdatedFilterPredicateBuilderBase implements 
   protected final void addValueInspector(ColumnPath columnPath, ValueInspector valueInspector) {
     List<ValueInspector> valueInspectors = valueInspectorsByColumn.get(columnPath);
     if (valueInspectors == null) {
-      valueInspectors = new ArrayList<ValueInspector>();
+      valueInspectors = new ArrayList<>();
       valueInspectorsByColumn.put(columnPath, valueInspectors);
     }
     valueInspectors.add(valueInspector);

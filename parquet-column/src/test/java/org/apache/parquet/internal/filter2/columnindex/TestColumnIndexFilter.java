@@ -27,6 +27,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
 import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.lt;
 import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
@@ -38,10 +39,11 @@ import static org.apache.parquet.internal.column.columnindex.BoundaryOrder.DESCE
 import static org.apache.parquet.internal.column.columnindex.BoundaryOrder.UNORDERED;
 import static org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter.calculateRowRanges;
 import static org.apache.parquet.io.api.Binary.fromString;
-import static org.apache.parquet.schema.OriginalType.UTF8;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Types.optional;
 import static org.junit.Assert.assertArrayEquals;
 
@@ -161,55 +163,56 @@ public class TestColumnIndexFilter {
 
   /**
    * <pre>
-   * row     column1        column2        column3        column4 (no column index)
-   *      ------0------  ------0------  ------0------  ------0------
-   * 0.   1              Zulu           2.03
-   *      ------1------  ------1------  ------1------  ------1------
-   * 1.   2              Yankee         4.67
-   * 2.   3              Xray           3.42
-   * 3.   4              Whiskey        8.71
+   * row     column1        column2        column3        column4        column5
+   *                                                 (no column index)
+   *      ------0------  ------0------  ------0------  ------0------  ------0------
+   * 0.   1              Zulu           2.03                          null
+   *      ------1------  ------1------  ------1------  ------1------  ------1------
+   * 1.   2              Yankee         4.67                          null
+   * 2.   3              Xray           3.42                          null
+   * 3.   4              Whiskey        8.71                          null
    *                     ------2------                 ------2------
-   * 4.   5              Victor         0.56
-   * 5.   6              Uniform        4.30
+   * 4.   5              Victor         0.56                          null
+   * 5.   6              Uniform        4.30                          null
    *                                    ------2------  ------3------
-   * 6.   null           null           null
+   * 6.   null           null           null                          null
    *      ------2------                                ------4------
-   * 7.   7              Tango          3.50
+   * 7.   7              Tango          3.50                          null
    *                     ------3------
-   * 8.   7              null           3.14
+   * 8.   7              null           3.14                          null
    *      ------3------
-   * 9.   7              null           null
+   * 9.   7              null           null                          null
    *                                    ------3------
-   * 10.  null           null           9.99
+   * 10.  null           null           9.99                          null
    *                     ------4------
-   * 11.  8              Sierra         8.78
+   * 11.  8              Sierra         8.78                          null
    *                                                   ------5------
-   * 12.  9              Romeo          9.56
-   * 13.  10             Quebec         2.71
+   * 12.  9              Romeo          9.56                          null
+   * 13.  10             Quebec         2.71                          null
    *      ------4------
-   * 14.  11             Papa           5.71
-   * 15.  12             Oscar          4.09
+   * 14.  11             Papa           5.71                          null
+   * 15.  12             Oscar          4.09                          null
    *                     ------5------  ------4------  ------6------
-   * 16.  13             November       null
-   * 17.  14             Mike           null
-   * 18.  15             Lima           0.36
-   * 19.  16             Kilo           2.94
-   * 20.  17             Juliett        4.23
+   * 16.  13             November       null                          null
+   * 17.  14             Mike           null                          null
+   * 18.  15             Lima           0.36                          null
+   * 19.  16             Kilo           2.94                          null
+   * 20.  17             Juliett        4.23                          null
    *      ------5------  ------6------                 ------7------
-   * 21.  18             India          null
-   * 22.  19             Hotel          5.32
+   * 21.  18             India          null                          null
+   * 22.  19             Hotel          5.32                          null
    *                                    ------5------
-   * 23.  20             Golf           4.17
-   * 24.  21             Foxtrot        7.92
-   * 25.  22             Echo           7.95
+   * 23.  20             Golf           4.17                          null
+   * 24.  21             Foxtrot        7.92                          null
+   * 25.  22             Echo           7.95                          null
    *                                   ------6------
-   * 26.  23             Delta          null
+   * 26.  23             Delta          null                          null
    *      ------6------
-   * 27.  24             Charlie        null
+   * 27.  24             Charlie        null                          null
    *                                                   ------8------
-   * 28.  25             Bravo          null
+   * 28.  25             Bravo          null                          null
    *                     ------7------
-   * 29.  26             Alfa           null
+   * 29.  26             Alfa           null                          null
    * </pre>
    */
   private static final long TOTAL_ROW_COUNT = 30;
@@ -231,7 +234,7 @@ public class TestColumnIndexFilter {
       .addPage(6)
       .addPage(3)
       .build();
-  private static final ColumnIndex COLUMN2_CI = new CIBuilder(optional(BINARY).as(UTF8).named("column2"), DESCENDING)
+  private static final ColumnIndex COLUMN2_CI = new CIBuilder(optional(BINARY).as(stringType()).named("column2"), DESCENDING)
       .addPage(0, "Zulu", "Zulu")
       .addPage(0, "Whiskey", "Yankee")
       .addPage(1, "Tango", "Victor")
@@ -281,6 +284,14 @@ public class TestColumnIndexFilter {
       .addPage(7)
       .addPage(2)
       .build();
+  private static final ColumnIndex COLUMN5_CI = new CIBuilder(optional(INT64).named("column5"), ASCENDING)
+      .addNullPage(1)
+      .addNullPage(29)
+      .build();
+  private static final OffsetIndex COLUMN5_OI = new OIBuilder()
+      .addPage(1)
+      .addPage(29)
+      .build();
   private static final ColumnIndexStore STORE = new ColumnIndexStore() {
     @Override
     public ColumnIndex getColumnIndex(ColumnPath column) {
@@ -293,6 +304,8 @@ public class TestColumnIndexFilter {
           return COLUMN3_CI;
         case "column4":
           return COLUMN4_CI;
+        case "column5":
+          return COLUMN5_CI;
         default:
           return null;
       }
@@ -309,6 +322,8 @@ public class TestColumnIndexFilter {
           return COLUMN3_OI;
         case "column4":
           return COLUMN4_OI;
+        case "column5":
+          return COLUMN5_OI;
         default:
           throw new MissingOffsetIndexException(column);
       }
@@ -461,4 +476,25 @@ public class TestColumnIndexFilter {
         TOTAL_ROW_COUNT);
   }
 
+  @Test
+  public void testFilteringWithAllNullPages() {
+    Set<ColumnPath> paths = paths("column1", "column5");
+
+    assertAllRows(calculateRowRanges(FilterCompat.get(
+        notEq(longColumn("column5"), 1234567L)),
+        STORE, paths, TOTAL_ROW_COUNT),
+        TOTAL_ROW_COUNT);
+    assertAllRows(calculateRowRanges(FilterCompat.get(
+        or(gtEq(intColumn("column1"), 10),
+            notEq(longColumn("column5"), 1234567L))),
+        STORE, paths, TOTAL_ROW_COUNT),
+        TOTAL_ROW_COUNT);
+    assertRows(calculateRowRanges(FilterCompat.get(
+        eq(longColumn("column5"), 1234567L)),
+        STORE, paths, TOTAL_ROW_COUNT));
+    assertRows(calculateRowRanges(FilterCompat.get(
+        and(lt(intColumn("column1"), 20),
+            gtEq(longColumn("column5"), 1234567L))),
+        STORE, paths, TOTAL_ROW_COUNT));
+  }
 }

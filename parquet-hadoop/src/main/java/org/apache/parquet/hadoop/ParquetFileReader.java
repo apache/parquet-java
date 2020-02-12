@@ -761,7 +761,7 @@ public class ParquetFileReader implements Closeable {
     return total;
   }
 
-  long getFilteredRecordCount() {
+  public long getFilteredRecordCount() {
     if (!options.useColumnIndexFilter()) {
       return getRecordCount();
     }
