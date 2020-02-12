@@ -27,6 +27,7 @@ import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.schema.MessageType;
 
 public class ColumnWriteStoreV1 extends ColumnWriteStoreBase {
+
   public ColumnWriteStoreV1(MessageType schema, PageWriteStore pageWriteStore, ParquetProperties props) {
     super(schema, pageWriteStore, props);
   }

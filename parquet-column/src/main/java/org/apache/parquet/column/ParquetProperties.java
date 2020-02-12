@@ -43,8 +43,6 @@ import org.apache.parquet.schema.MessageType;
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
-
-
 /**
  * This class represents all the configurable Parquet properties.
  */

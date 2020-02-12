@@ -33,6 +33,7 @@ import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
  */
 final class ColumnWriterV1 extends ColumnWriterBase {
+
   ColumnWriterV1(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
     super(path, pageWriter, props);
   }
