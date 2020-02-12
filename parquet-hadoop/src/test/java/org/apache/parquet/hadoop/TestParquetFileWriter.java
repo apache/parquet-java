@@ -27,6 +27,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.junit.Assume;
 import org.junit.Rule;
@@ -217,6 +218,69 @@ public class TestParquetFileWriter {
       assertNull(r.readNextRowGroup());
     }
     PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
+  public void testWriteReadDataPageV2() throws Exception {
+    File testFile = temp.newFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+
+    ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
+    w.start();
+    w.startBlock(14);
+
+    BytesInput repLevels = BytesInput.fromInt(2);
+    BytesInput defLevels = BytesInput.fromInt(1);
+    BytesInput data = BytesInput.fromInt(3);
+    BytesInput data2 = BytesInput.fromInt(10);
+
+    org.apache.parquet.column.statistics.Statistics<?> statsC1P1 = createStatistics("s", "z", C1);
+    org.apache.parquet.column.statistics.Statistics<?> statsC1P2 = createStatistics("b", "d", C1);
+
+    w.startColumn(C1, 6, CODEC);
+    long c1Starts = w.getPos();
+    w.writeDataPageV2(4, 1, 3, repLevels, defLevels, PLAIN, data,  4, statsC1P1);
+    w.writeDataPageV2(3, 0, 3, repLevels, defLevels, PLAIN, data,  4, statsC1P2);
+    w.endColumn();
+    long c1Ends = w.getPos();
+
+    w.startColumn(C2, 5, CODEC);
+    long c2Starts = w.getPos();
+    w.writeDataPageV2(5, 2, 3, repLevels, defLevels, PLAIN, data2,  4, EMPTY_STATS);
+    w.writeDataPageV2(2, 0, 2, repLevels, defLevels, PLAIN, data2,  4, EMPTY_STATS);
+    w.endColumn();
+    long c2Ends = w.getPos();
+
+    w.endBlock();
+    w.end(new HashMap<>());
+
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    assertEquals("footer: "+ readFooter, 1, readFooter.getBlocks().size());
+    assertEquals(c1Ends - c1Starts, readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
+    assertEquals(c2Ends - c2Starts, readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
+    assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
+
+    //check for stats
+    org.apache.parquet.column.statistics.Statistics<?> expectedStats = createStatistics("b", "z", C1);
+    TestUtils.assertStatsValuesEqual(expectedStats, readFooter.getBlocks().get(0).getColumns().get(0).getStatistics());
+
+    HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
+    expectedEncoding.add(PLAIN);
+    assertEquals(expectedEncoding, readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
+
+    ParquetFileReader reader = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+      readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
+
+    PageReadStore pages = reader.readNextRowGroup();
+    assertEquals(14, pages.getRowCount());
+    validateV2Page(SCHEMA, pages, PATH1, 3, 4, 1, repLevels.toByteArray(), defLevels.toByteArray(), data.toByteArray(), 12);
+    validateV2Page(SCHEMA, pages, PATH1, 3, 3, 0, repLevels.toByteArray(), defLevels.toByteArray(),data.toByteArray(), 12);
+    validateV2Page(SCHEMA, pages, PATH2, 3, 5, 2, repLevels.toByteArray(), defLevels.toByteArray(), data2.toByteArray(), 12);
+    validateV2Page(SCHEMA, pages, PATH2, 2, 2, 0, repLevels.toByteArray(), defLevels.toByteArray(), data2.toByteArray(), 12);
+    assertNull(reader.readNextRowGroup());
   }
 
   @Test
@@ -678,6 +742,25 @@ public class TestParquetFileWriter {
     extraMetaData.put("foo", "bar");
     extraMetaData.put(path.getName(), path.getName());
     w.end(extraMetaData);
+  }
+
+  private void validateV2Page(MessageType schema, PageReadStore pages, String[] path, int values, int rows, int nullCount,
+                              byte[] repetition, byte[] definition, byte[] data, int uncompressedSize) throws IOException {
+    PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
+    DataPageV2 page = (DataPageV2)pageReader.readPage();
+    assertEquals(values, page.getValueCount());
+    assertEquals(rows, page.getRowCount());
+    assertEquals(nullCount, page.getNullCount());
+    assertEquals(uncompressedSize, page.getUncompressedSize());
+    assertArrayEquals(repetition, page.getRepetitionLevels().toByteArray());
+    assertArrayEquals(definition, page.getDefinitionLevels().toByteArray());
+    assertArrayEquals(data, page.getData().toByteArray());
+  }
+
+  private org.apache.parquet.column.statistics.Statistics<?> createStatistics(String min, String max, ColumnDescriptor col) {
+    return org.apache.parquet.column.statistics.Statistics .getBuilderForReading(col.getPrimitiveType())
+      .withMin(Binary.fromString(min).getBytes()).withMax(Binary.fromString(max).getBytes()).withNumNulls(0)
+      .build();
   }
 
   private void validateContains(MessageType schema, PageReadStore pages, String[] path, int values, BytesInput bytes) throws IOException {
