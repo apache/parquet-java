@@ -33,10 +33,12 @@ import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.schema.MessageType;
+
+import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
 /**
  * This class represents all the configurable Parquet properties.
@@ -46,6 +48,7 @@ public class ParquetProperties {
   public static final int DEFAULT_PAGE_SIZE = 1024 * 1024;
   public static final int DEFAULT_DICTIONARY_PAGE_SIZE = DEFAULT_PAGE_SIZE;
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
+  public static final boolean DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED = false;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
@@ -95,6 +98,7 @@ public class ParquetProperties {
   private final int statisticsTruncateLength;
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
+  private final boolean enableByteStreamSplit;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -113,6 +117,7 @@ public class ParquetProperties {
     this.statisticsTruncateLength = builder.statisticsTruncateLength;
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
+    this.enableByteStreamSplit = builder.enableByteStreamSplit;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -172,6 +177,10 @@ public class ParquetProperties {
 
   public boolean isDictionaryEnabled(ColumnDescriptor column) {
     return dictionaryEnabled.getValue(column);
+  }
+
+  public boolean isByteStreamSplitEnabled() {
+      return enableByteStreamSplit;
   }
 
   public ByteBufferAllocator getAllocator() {
@@ -259,6 +268,7 @@ public class ParquetProperties {
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
+    private boolean enableByteStreamSplit = DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -276,6 +286,7 @@ public class ParquetProperties {
       this.allocator = toCopy.allocator;
       this.pageRowCountLimit = toCopy.pageRowCountLimit;
       this.pageWriteChecksumEnabled = toCopy.pageWriteChecksumEnabled;
+      this.enableByteStreamSplit = toCopy.enableByteStreamSplit;
     }
 
     /**
@@ -311,6 +322,11 @@ public class ParquetProperties {
      */
     public Builder withDictionaryEncoding(String columnPath, boolean enableDictionary) {
       this.enableDict.withValue(columnPath, enableDictionary);
+      return this;
+    }
+
+    public Builder withByteStreamSplitEncoding(boolean enableByteStreamSplit) {
+      this.enableByteStreamSplit = enableByteStreamSplit;
       return this;
     }
 

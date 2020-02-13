@@ -484,6 +484,11 @@ public class ParquetWriter<T> implements Closeable {
       return self();
     }
 
+    public SELF withByteStreamSplitEncoding(boolean enableByteStreamSplit) {
+      encodingPropsBuilder.withByteStreamSplitEncoding(enableByteStreamSplit);
+      return self();
+    }
+
     /**
      * Enable or disable dictionary encoding of the specified column for the constructed writer.
      *
