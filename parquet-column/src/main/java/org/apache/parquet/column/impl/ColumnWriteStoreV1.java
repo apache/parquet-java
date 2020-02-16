@@ -41,7 +41,7 @@ public class ColumnWriteStoreV1 extends ColumnWriteStoreBase {
   public ColumnWriteStoreV1(MessageType schema, PageWriteStore pageWriteStore,
                             BloomFilterWriteStore bloomFilterWriteStore,
                             ParquetProperties props) {
-    super (schema, pageWriteStore, bloomFilterWriteStore, props);
+    super(schema, pageWriteStore, bloomFilterWriteStore, props);
   }
 
   @Override

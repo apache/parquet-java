@@ -27,6 +27,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Rule;
 import org.junit.Test;
@@ -53,7 +54,7 @@ public class TestBlockSplitBloomFilter {
    * serializing and de-serializing.
    */
   @Test
-  public void testBasic () throws IOException {
+  public void testBasic() throws IOException {
     final String[] testStrings = {"hello", "parquet", "bloom", "filter"};
     BloomFilter bloomFilter = new BlockSplitBloomFilter(1024);
 
@@ -63,6 +64,10 @@ public class TestBlockSplitBloomFilter {
 
     File testFile = temp.newFile();
     FileOutputStream fileOutputStream = new FileOutputStream(testFile);
+    fileOutputStream.write(BytesUtils.intToBytes(bloomFilter.getBitsetSize()));
+    fileOutputStream.write(BytesUtils.intToBytes(bloomFilter.getAlgorithm().value));
+    fileOutputStream.write(BytesUtils.intToBytes(bloomFilter.getHashStrategy().value));
+    fileOutputStream.write(BytesUtils.intToBytes(bloomFilter.getCompression().value));
     bloomFilter.writeTo(fileOutputStream);
     fileOutputStream.close();
     FileInputStream fileInputStream = new FileInputStream(testFile);

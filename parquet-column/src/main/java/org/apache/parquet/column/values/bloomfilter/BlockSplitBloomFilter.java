@@ -201,15 +201,6 @@ public class BlockSplitBloomFilter implements BloomFilter {
 
   @Override
   public void writeTo(OutputStream out) throws IOException {
-    // Write number of bytes of bitset.
-    out.write(BytesUtils.intToBytes(bitset.length));
-    // Write hash strategy
-    out.write(BytesUtils.intToBytes(hashStrategy.value));
-    // Write algorithm
-    out.write(BytesUtils.intToBytes(Algorithm.BLOCK.value));
-    // Write compression
-    out.write(BytesUtils.intToBytes(Compression.UNCOMPRESSED.value));
-    // Write bitset
     out.write(bitset);
   }
 
@@ -293,7 +284,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
   }
 
   @Override
-  public long getBitsetSize() {
+  public int getBitsetSize() {
     return this.bitset.length;
   }
 
@@ -322,6 +313,21 @@ public class BlockSplitBloomFilter implements BloomFilter {
     }
 
     return hashFunction.hashByteBuffer(plain);
+  }
+
+  @Override
+  public HashStrategy getHashStrategy() {
+    return HashStrategy.XXH64;
+  }
+
+  @Override
+  public Algorithm getAlgorithm() {
+    return Algorithm.BLOCK;
+  }
+
+  @Override
+  public Compression getCompression() {
+    return Compression.UNCOMPRESSED;
   }
 
   @Override

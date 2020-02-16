@@ -51,7 +51,6 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
-import org.apache.parquet.example.DummyRecordConverter;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.Util;
@@ -585,10 +584,11 @@ public class ParquetFileWriter {
   }
 
   /**
-   * Write a Bloom filter
+   * Add a Bloom filter that will be written out. This is only used in unit test.
+   *
    * @param bloomFilter the bloom filter of column values
    */
-  void writeBloomFilter(BloomFilter bloomFilter)  {
+  void addBloomFilter(BloomFilter bloomFilter)  {
     currentBloomFilters.add(bloomFilter);
   }
 
@@ -694,7 +694,9 @@ public class ParquetFileWriter {
     state = state.write();
     if (dictionaryPage != null) {
       writeDictionaryPage(dictionaryPage);
-    }  else if (bloomFilter != null) {
+    }
+
+    if (bloomFilter != null) {
       currentBloomFilters.add(bloomFilter);
     }
     LOG.debug("{}: write data pages", out.getPos());
@@ -765,7 +767,7 @@ public class ParquetFileWriter {
     bloomFilters.add(currentBloomFilters);
     currentColumnIndexes = null;
     currentOffsetIndexes = null;
-    currentBloomFilters =  null;
+    currentBloomFilters = null;
     currentBlock = null;
   }
 
@@ -1021,6 +1023,7 @@ public class ParquetFileWriter {
         ColumnChunkMetaData column = columns.get(cIndex);
         long offset = out.getPos();
         column.setBloomFilterOffset(offset);
+        Util.writeBloomFilterHeader(ParquetMetadataConverter.toBloomFilterHeader(bloomFilter), out);
         bloomFilter.writeTo(out);
       }
     }

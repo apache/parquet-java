@@ -104,7 +104,7 @@ class InternalParquetRecordWriter<T> {
 
   private void initStore() {
     ColumnChunkPageWriteStore columnChunkPageWriteStore = new ColumnChunkPageWriteStore(compressor,
-        schema, props.getAllocator(), props.getColumnIndexTruncateLength());
+        schema, props.getAllocator(), props.getColumnIndexTruncateLength(), props.getPageWriteChecksumEnabled());
     pageStore = columnChunkPageWriteStore;
     bloomFilterWriteStore = columnChunkPageWriteStore;
 

@@ -21,6 +21,7 @@ package org.apache.parquet.column.impl;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
@@ -82,14 +83,13 @@ abstract class ColumnWriterBase implements ColumnWriter {
   ) {
     this(path, pageWriter, props);
 
-    // Bloom filters don't support nested columns yet; see PARQUET-1453.
-    if (path.getPath().length != 1 || bloomFilterWriter == null) {
-      return;
-    }
-    String column = path.getPath()[0];
-
     this.bloomFilterWriter = bloomFilterWriter;
     Set<String> bloomFilterColumns = props.getBloomFilterColumns();
+    StringJoiner joiner = new StringJoiner(".");
+    for (String subpath :path.getPath()) {
+      joiner.add(subpath);
+    }
+    String column = joiner.toString();
     if (!bloomFilterColumns.contains(column)) {
       return;
     }
@@ -98,7 +98,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     Map<String, Long> bloomFilterColumnExpectedNDVs = props.getBloomFilterColumnExpectedNDVs();
     if (bloomFilterColumnExpectedNDVs.size() > 0) {
       // If user specify the column NDV, we construct Bloom filter from it.
-      if (bloomFilterColumnExpectedNDVs.keySet().contains(column)) {
+      if (bloomFilterColumnExpectedNDVs.containsKey(column)) {
         int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(bloomFilterColumnExpectedNDVs.get(column).intValue(),
           BlockSplitBloomFilter.DEFAULT_FPP);
 
@@ -348,24 +348,20 @@ abstract class ColumnWriterBase implements ColumnWriter {
    * @return the number of bytes of memory used to buffer the current data and the previously written pages
    */
   long getTotalBufferedSize() {
-    long bloomBufferSize = bloomFilter == null ? 0 : bloomFilter.getBitsetSize();
     return repetitionLevelColumn.getBufferedSize()
         + definitionLevelColumn.getBufferedSize()
         + dataColumn.getBufferedSize()
-        + pageWriter.getMemSize()
-        + bloomBufferSize;
+        + pageWriter.getMemSize();
   }
 
   /**
    * @return actual memory used
    */
   long allocatedSize() {
-    long bloomAllocatedSize = bloomFilter == null ? 0 : bloomFilter.getBitsetSize();
     return repetitionLevelColumn.getAllocatedSize()
         + definitionLevelColumn.getAllocatedSize()
         + dataColumn.getAllocatedSize()
-        + pageWriter.allocatedSize()
-        + bloomAllocatedSize;
+        + pageWriter.allocatedSize();
   }
 
   /**

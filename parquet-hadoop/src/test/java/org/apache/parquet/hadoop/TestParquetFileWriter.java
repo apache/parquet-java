@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -243,7 +242,7 @@ public class TestParquetFileWriter {
     BloomFilter blockSplitBloomFilter = new BlockSplitBloomFilter(0);
     blockSplitBloomFilter.insertHash(blockSplitBloomFilter.hash(Binary.fromString("hello")));
     blockSplitBloomFilter.insertHash(blockSplitBloomFilter.hash(Binary.fromString("world")));
-    w.writeBloomFilter(blockSplitBloomFilter);
+    w.addBloomFilter(blockSplitBloomFilter);
     w.endBlock();
     w.end(new HashMap<>());
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);

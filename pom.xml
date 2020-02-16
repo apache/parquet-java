@@ -289,10 +289,6 @@
                     <pattern>it.unimi.dsi</pattern>
                     <shadedPattern>${shade.prefix}.it.unimi.dsi</shadedPattern>
                   </relocation>
-                  <relocation>
-                    <pattern>com.google.common</pattern>
-                    <shadedPattern>${shade.prefix}.com.google.common</shadedPattern>
-                  </relocation>
                 </relocations>
               </configuration>
             </execution>

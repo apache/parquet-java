@@ -34,8 +34,6 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.SequenceInputStream;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -76,6 +74,7 @@ import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
+import org.apache.parquet.format.BloomFilterHeader;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
@@ -1070,27 +1069,14 @@ public class ParquetFileReader implements Closeable {
     f.seek(bloomFilterOffset);
 
     // Read Bloom filter data header.
-    byte[] bytes = new byte[BlockSplitBloomFilter.HEADER_SIZE];
-    f.read(bytes);
-    ByteBuffer bloomHeader = ByteBuffer.wrap(bytes);
-    IntBuffer headerBuffer = bloomHeader.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
-    int numBytes = headerBuffer.get();
-    if (numBytes <= 0 || numBytes > BlockSplitBloomFilter.DEFAULT_MAXIMUM_BYTES) {
+    BloomFilterHeader bloomFilterHeader = Util.readBloomFilterHeader(f);
+    int numBytes = bloomFilterHeader.getNumBytes();
+    if ( numBytes <= 0 || numBytes > BlockSplitBloomFilter.DEFAULT_MAXIMUM_BYTES) {
       return null;
     }
 
-    BloomFilter.HashStrategy hash = BloomFilter.HashStrategy.values()[headerBuffer.get()];
-    if (hash != BlockSplitBloomFilter.HashStrategy.XXH64) {
-      return null;
-    }
-
-    BloomFilter.Algorithm algorithm = BloomFilter.Algorithm.values()[headerBuffer.get()];
-    if (algorithm != BlockSplitBloomFilter.Algorithm.BLOCK) {
-      return null;
-    }
-
-    BloomFilter.Compression compression = BloomFilter.Compression.values()[headerBuffer.get()];
-    if (compression != BlockSplitBloomFilter.Compression.UNCOMPRESSED) {
+    if (!bloomFilterHeader.getHash().isSetXXHASH() || !bloomFilterHeader.getAlgorithm().isSetBLOCK()
+      || !bloomFilterHeader.getCompression().isSetUNCOMPRESSED()) {
       return null;
     }
 

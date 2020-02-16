@@ -91,7 +91,7 @@ public interface BloomFilter {
    *
    * @return The number of bytes for bitset in this Bloom filter.
    */
-  long getBitsetSize();
+  int getBitsetSize();
 
   /**
    * Compute hash for int value by using its plain encoding result.
@@ -140,4 +140,29 @@ public interface BloomFilter {
    * @return hash result
    */
   long hash(Object value);
+
+  // The boolean type is not supported because boolean type has only two values, while Bloom filter is
+  // suitable for high cardinality.
+  // long hash(Boolean value);
+
+  /**
+   * Return the hash strategy that the bloom filter apply.
+   *
+   * @return hash strategy that the bloom filter apply
+   */
+  HashStrategy getHashStrategy();
+
+  /**
+   * Return the algorithm that the bloom filter apply.
+   *
+   * @return algorithm that the bloom filter apply
+   */
+  Algorithm getAlgorithm();
+
+  /**
+   * Return the compress algorithm that the bloom filter apply.
+   *
+   * @return compress algorithm that the bloom filter apply
+   */
+  Compression getCompression();
 }

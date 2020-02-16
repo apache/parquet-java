@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.parquet.filter2.BloomFilterLevel;
+package org.apache.parquet.filter2.bloomfilterlevel;
 
 import java.util.HashMap;
 import java.util.List;

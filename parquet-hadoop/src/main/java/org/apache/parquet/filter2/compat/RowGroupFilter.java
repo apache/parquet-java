@@ -23,7 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.apache.parquet.filter2.BloomFilterLevel.BloomFilterImpl;
+import org.apache.parquet.filter2.bloomfilterlevel.BloomFilterImpl;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
 import org.apache.parquet.filter2.compat.FilterCompat.Visitor;
@@ -47,7 +47,6 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
   private final MessageType schema;
   private final List<FilterLevel> levels;
   private final ParquetFileReader reader;
-  private Logger logger = LoggerFactory.getLogger(RowGroupFilter.class);
 
   public enum FilterLevel {
     STATISTICS,
@@ -110,7 +109,6 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
 
       if (!drop && levels.contains(FilterLevel.BLOOMFILTER)) {
         drop = BloomFilterImpl.canDrop(filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
-        if (drop) logger.info("Block drop by Bloom filter");
       }
 
       if(!drop) {
