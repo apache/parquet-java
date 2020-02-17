@@ -52,15 +52,13 @@ public class BloomFilterReader {
       return cache.get(meta.getPath());
     }
     try {
-      synchronized (cache) {
-        if (!cache.containsKey(meta.getPath())) {
-          BloomFilter bloomFilter = reader.readBloomFilter(meta);
-          if (bloomFilter == null) {
-            return null;
-          }
-
-          cache.put(meta.getPath(), bloomFilter);
+      if (!cache.containsKey(meta.getPath())) {
+        BloomFilter bloomFilter = reader.readBloomFilter(meta);
+        if (bloomFilter == null) {
+          return null;
         }
+
+        cache.put(meta.getPath(), bloomFilter);
       }
       return cache.get(meta.getPath());
     } catch (IOException e) {
