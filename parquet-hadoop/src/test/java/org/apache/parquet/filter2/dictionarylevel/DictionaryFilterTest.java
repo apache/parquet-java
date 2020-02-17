@@ -25,6 +25,7 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.FixedBinaryTestUtils;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
@@ -140,13 +141,7 @@ public class DictionaryFilterTest {
   }
 
   private static Binary toBinary(BigInteger decimalWithoutScale, int byteCount) {
-    byte[] src = decimalWithoutScale.toByteArray();
-    if (src.length > byteCount) {
-      throw new IllegalArgumentException("Too large decimal value for byte count " + byteCount);
-    }
-    byte[] dest = new byte[byteCount];
-    System.arraycopy(src, 0, dest, dest.length - src.length, src.length);
-    return Binary.fromConstantByteArray(dest);
+    return FixedBinaryTestUtils.getFixedBinary(byteCount, decimalWithoutScale);
   }
 
   private static void writeData(SimpleGroupFactory f, ParquetWriter<Group> writer) throws IOException {
