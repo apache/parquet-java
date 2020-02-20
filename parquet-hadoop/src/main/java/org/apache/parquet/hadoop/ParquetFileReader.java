@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
+import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.BLOOMFILTER;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTIONARY;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
@@ -796,6 +797,10 @@ public class ParquetFileReader implements Closeable {
       levels.add(DICTIONARY);
     }
 
+    if (options.useBloomFilter()) {
+      levels.add(BLOOMFILTER);
+    }
+
     FilterCompat.Filter recordFilter = options.getRecordFilter();
     if (recordFilter != null) {
       return RowGroupFilter.filterRowGroups(levels, recordFilter, blocks, this);
@@ -1067,16 +1072,26 @@ public class ParquetFileReader implements Closeable {
   public BloomFilter readBloomFilter(ColumnChunkMetaData meta) throws IOException {
     long bloomFilterOffset = meta.getBloomFilterOffset();
     f.seek(bloomFilterOffset);
+    BloomFilterHeader bloomFilterHeader;
 
     // Read Bloom filter data header.
-    BloomFilterHeader bloomFilterHeader = Util.readBloomFilterHeader(f);
+    try {
+      bloomFilterHeader = Util.readBloomFilterHeader(f);
+    } catch (IOException e) {
+      LOG.warn("read no bloom filter");
+      return null;
+    }
+
     int numBytes = bloomFilterHeader.getNumBytes();
-    if ( numBytes <= 0 || numBytes > BlockSplitBloomFilter.DEFAULT_MAXIMUM_BYTES) {
+    if (numBytes <= 0 || numBytes > BlockSplitBloomFilter.UPPER_BOUND_BYTES) {
+      LOG.warn("the read bloom filter size is wrong, size is {}", bloomFilterHeader.getNumBytes());
       return null;
     }
 
     if (!bloomFilterHeader.getHash().isSetXXHASH() || !bloomFilterHeader.getAlgorithm().isSetBLOCK()
       || !bloomFilterHeader.getCompression().isSetUNCOMPRESSED()) {
+      LOG.warn("the read bloom filter is not supported yet,  algorithm = {}, hash = {}, compression = {}",
+        bloomFilterHeader.getAlgorithm(), bloomFilterHeader.getHash(), bloomFilterHeader.getCompression());
       return null;
     }
 

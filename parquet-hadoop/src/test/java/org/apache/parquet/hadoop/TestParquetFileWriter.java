@@ -242,7 +242,7 @@ public class TestParquetFileWriter {
     BloomFilter blockSplitBloomFilter = new BlockSplitBloomFilter(0);
     blockSplitBloomFilter.insertHash(blockSplitBloomFilter.hash(Binary.fromString("hello")));
     blockSplitBloomFilter.insertHash(blockSplitBloomFilter.hash(Binary.fromString("world")));
-    w.addBloomFilter(blockSplitBloomFilter);
+    w.addBloomFilter("foo", blockSplitBloomFilter);
     w.endBlock();
     w.end(new HashMap<>());
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);

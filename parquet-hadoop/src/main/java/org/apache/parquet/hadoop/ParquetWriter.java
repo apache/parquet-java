@@ -21,7 +21,7 @@ package org.apache.parquet.hadoop;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -546,15 +546,28 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-     * Enables bloom filter column names for the constructed writer.
+     * Specified the column and the NDV map for the bloom filter.
+     *
+     * @param columnNDVMap the column to NDV map
      *
      * @return this builder for method chaining.
      */
-    public SELF withBloomFilterColumnNames(String... columnNames) {
-      if (columnNames != null) {
-        encodingPropsBuilder.withBloomFilterColumnNames(
-          new HashSet<>(Arrays.asList(columnNames))
-        );
+    public SELF withBloomFilterColumnToNDVMap(Map<String, Long> columnNDVMap) {
+      if (columnNDVMap != null) {
+        encodingPropsBuilder.withBloomFilterColumnToNDVMap(columnNDVMap);
+      }
+
+      return self();
+    }
+
+    /**
+     * Specified the column names for the bloom filter.
+     *
+     * @return this builder for method chaining.
+     */
+    public SELF withBloomFilterColumnNames(String...columns) {
+      if (columns != null) {
+        encodingPropsBuilder.withBloomFilterColumnNames(Arrays.asList(columns));
       }
 
       return self();

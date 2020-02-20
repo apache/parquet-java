@@ -22,12 +22,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,9 +37,9 @@ public class TestBlockSplitBloomFilter {
   @Test
   public void testConstructor () {
     BloomFilter bloomFilter1 = new BlockSplitBloomFilter(0);
-    assertEquals(bloomFilter1.getBitsetSize(), BlockSplitBloomFilter.DEFAULT_MINIMUM_BYTES);
-    BloomFilter bloomFilter2 = new BlockSplitBloomFilter(BlockSplitBloomFilter.DEFAULT_MAXIMUM_BYTES + 1);
-    assertEquals(bloomFilter2.getBitsetSize(), BlockSplitBloomFilter.DEFAULT_MAXIMUM_BYTES);
+    assertEquals(bloomFilter1.getBitsetSize(), BlockSplitBloomFilter.LOWER_BOUND_BYTES);
+    BloomFilter bloomFilter2 = new BlockSplitBloomFilter(BlockSplitBloomFilter.UPPER_BOUND_BYTES + 1);
+    assertEquals(bloomFilter2.getBitsetSize(), BlockSplitBloomFilter.UPPER_BOUND_BYTES);
     BloomFilter bloomFilter3 = new BlockSplitBloomFilter(1000);
     assertEquals(bloomFilter3.getBitsetSize(), 1024);
   }
@@ -54,43 +52,23 @@ public class TestBlockSplitBloomFilter {
    * serializing and de-serializing.
    */
   @Test
-  public void testBasic() throws IOException {
+  public void testBloomFilterBasicReadWrite() throws IOException {
     final String[] testStrings = {"hello", "parquet", "bloom", "filter"};
     BloomFilter bloomFilter = new BlockSplitBloomFilter(1024);
 
-    for(int i = 0; i < testStrings.length; i++) {
-      bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(testStrings[i])));
+    for (String string : testStrings) {
+      bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(string)));
     }
 
     File testFile = temp.newFile();
     FileOutputStream fileOutputStream = new FileOutputStream(testFile);
-    fileOutputStream.write(BytesUtils.intToBytes(bloomFilter.getBitsetSize()));
-    fileOutputStream.write(BytesUtils.intToBytes(bloomFilter.getAlgorithm().value));
-    fileOutputStream.write(BytesUtils.intToBytes(bloomFilter.getHashStrategy().value));
-    fileOutputStream.write(BytesUtils.intToBytes(bloomFilter.getCompression().value));
     bloomFilter.writeTo(fileOutputStream);
     fileOutputStream.close();
     FileInputStream fileInputStream = new FileInputStream(testFile);
 
-    byte[] value = new byte[4];
-    fileInputStream.read(value);
-    int length = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
-    assertEquals(length, 1024);
-
-    fileInputStream.read(value);
-    int hash = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
-    assertEquals(hash, BloomFilter.HashStrategy.XXH64.ordinal());
-
-    fileInputStream.read(value);
-    int algorithm = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
-    assertEquals(algorithm, BloomFilter.Algorithm.BLOCK.ordinal());
-
-    fileInputStream.read(value);
-    int compression = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN).getInt();
-    assertEquals(compression, BloomFilter.Compression.UNCOMPRESSED.ordinal());
-
-    byte[] bitset = new byte[length];
-    fileInputStream.read(bitset);
+    byte[] bitset = new byte[1024];
+    int bytes = fileInputStream.read(bitset);
+    assertEquals(bytes, 1024);
     bloomFilter = new BlockSplitBloomFilter(bitset);
     for (String testString : testStrings) {
       assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(testString))));
@@ -98,29 +76,50 @@ public class TestBlockSplitBloomFilter {
   }
 
   @Test
-  public void testFPP() throws IOException {
+  public void testBloomFilterFPPAccuracy() {
     final int totalCount = 100000;
     final double FPP = 0.01;
-    final long SEED = 104729;
 
-    BloomFilter bloomFilter = new BlockSplitBloomFilter(BlockSplitBloomFilter.optimalNumOfBits(totalCount, FPP));
-    List<String> strings = new ArrayList<>();
-    for(int i = 0; i < totalCount; i++) {
-      String str = RandomStringUtils.randomAlphabetic(10);
-      strings.add(str);
-      bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(str)));
+    BloomFilter bloomFilter = new BlockSplitBloomFilter(BlockSplitBloomFilter.optimalNumOfBits(totalCount, FPP) / 8);
+
+    Set<String> distinctStrings = new HashSet<>();
+    while (distinctStrings.size() < totalCount) {
+      String str = RandomStringUtils.randomAlphabetic(12);
+      if (distinctStrings.add(str)) {
+        bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(str)));
+      }
     }
 
+    distinctStrings.clear();
     // The exist counts the number of times FindHash returns true.
     int exist = 0;
-    for (int i = 0; i < totalCount; i++) {
-      String str = RandomStringUtils.randomAlphabetic(8);
-      if (bloomFilter.findHash(bloomFilter.hash(Binary.fromString(str)))) {
+    while(distinctStrings.size() < totalCount) {
+      String str = RandomStringUtils.randomAlphabetic(10);
+      if (distinctStrings.add(str) && bloomFilter.findHash(bloomFilter.hash(Binary.fromString(str)))) {
         exist ++;
       }
     }
 
-    // The exist should be probably less than 1000 according FPP 0.01.
-    assertTrue(exist < totalCount * FPP);
+    // The exist should be probably less than 1000 according FPP 0.01. Add 10% here for error space.
+    assertTrue(exist < totalCount * (FPP * 1.1));
   }
+
+  @Test
+  public void testBloomFilterNDVs(){
+    // a row group of 128M with one column of long type.
+    int ndv = 128 * 1024 * 1024 / 8;
+    double fpp = 0.01;
+
+    // the optimal value formula
+    double numBits = -8 * ndv / Math.log(1 - Math.pow(0.01, 1.0 / 8));
+    int bytes = (int)numBits / 8;
+    assertTrue(bytes < BlockSplitBloomFilter.UPPER_BOUND_BYTES);
+
+    // a row group of 128MB with one column of UUID type
+    ndv = 128 * 1024 * 1024 / java.util.UUID.randomUUID().toString().length();
+    numBits = -8 * ndv / Math.log(1 - Math.pow(fpp, 1.0 / 8));
+    bytes = (int)numBits / 8;
+    assertTrue(bytes < 5 * 1024 * 1024);
+  }
+
 }

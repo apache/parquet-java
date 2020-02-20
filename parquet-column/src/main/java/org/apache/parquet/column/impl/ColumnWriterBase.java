@@ -21,7 +21,6 @@ package org.apache.parquet.column.impl;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringJoiner;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
@@ -85,11 +84,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
     this.bloomFilterWriter = bloomFilterWriter;
     Set<String> bloomFilterColumns = props.getBloomFilterColumns();
-    StringJoiner joiner = new StringJoiner(".");
-    for (String subpath :path.getPath()) {
-      joiner.add(subpath);
-    }
-    String column = joiner.toString();
+    String column = String.join(".", path.getPath());
     if (!bloomFilterColumns.contains(column)) {
       return;
     }
@@ -99,8 +94,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
     if (bloomFilterColumnExpectedNDVs.size() > 0) {
       // If user specify the column NDV, we construct Bloom filter from it.
       if (bloomFilterColumnExpectedNDVs.containsKey(column)) {
-        int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(bloomFilterColumnExpectedNDVs.get(column).intValue(),
-          BlockSplitBloomFilter.DEFAULT_FPP);
+        int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(
+          bloomFilterColumnExpectedNDVs.get(column).intValue(), BlockSplitBloomFilter.DEFAULT_FPP);
 
         this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
       }

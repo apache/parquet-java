@@ -35,6 +35,7 @@ public class XxHash implements HashFunction {
 
   @Override
   public long hashByteBuffer(ByteBuffer input) {
+    input.flip();
     return LongHashFunction.xx(0).hashBytes(input);
   }
 }

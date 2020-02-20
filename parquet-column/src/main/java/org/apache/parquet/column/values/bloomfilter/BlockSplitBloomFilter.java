@@ -20,7 +20,6 @@
 package org.apache.parquet.column.values.bloomfilter;
 
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
 
 import java.io.IOException;
@@ -43,11 +42,12 @@ public class BlockSplitBloomFilter implements BloomFilter {
   // Bits in a tiny Bloom filter block.
   private static final int BITS_PER_BLOCK = 256;
 
-  // Default minimum Bloom filter size, set to the size of a tiny Bloom filter block
-  public static final int DEFAULT_MINIMUM_BYTES = 32;
+  // the lower bound of Bloom filter size, set to the size of a tiny Bloom filter block
+  public static final int LOWER_BOUND_BYTES = 32;
 
-  // Default Maximum Bloom filter size, set to 1MB which should cover most cases.
-  public static final int DEFAULT_MAXIMUM_BYTES = 1024 * 1024;
+  // the upper bound of Bloom filter size, it sets to 20MB which is enough for a row group of 128MB
+  // with only one column of long type which should covers most real cases.
+  public static final int UPPER_BOUND_BYTES = 1024 * 1024 * 20;
 
   // The number of bits to set in a tiny Bloom filter
   private static final int BITS_SET_PER_BLOCK = 8;
@@ -59,7 +59,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
   // The default false positive probability value
   public static final double DEFAULT_FPP = 0.01;
 
-  // Hash strategy used in this Bloom filter.
+  // The hash strategy used in this Bloom filter.
   private final HashStrategy hashStrategy;
 
   // The underlying byte array for Bloom filter bitset.
@@ -71,8 +71,8 @@ public class BlockSplitBloomFilter implements BloomFilter {
   // Hash function use to compute hash for column value.
   private HashFunction hashFunction;
 
-  private int maximumBytes = DEFAULT_MAXIMUM_BYTES;
-  private int minimumBytes = DEFAULT_MINIMUM_BYTES;
+  private int maximumBytes = UPPER_BOUND_BYTES;
+  private int minimumBytes = LOWER_BOUND_BYTES;
 
   // The block-based algorithm needs 8 odd SALT values to calculate eight indexes
   // of bits to set, one per 32-bit word.
@@ -88,20 +88,20 @@ public class BlockSplitBloomFilter implements BloomFilter {
    *                 of 2. It uses XXH64 as its default hash function.
    */
   public BlockSplitBloomFilter(int numBytes) {
-    this(numBytes, DEFAULT_MAXIMUM_BYTES, HashStrategy.XXH64);
+    this(numBytes, LOWER_BOUND_BYTES, UPPER_BOUND_BYTES, HashStrategy.XXH64);
   }
 
   /**
    * Constructor of block-based Bloom filter.
    *
    * @param numBytes The number of bytes for Bloom filter bitset. The range of num_bytes should be within
-   *                 [DEFAULT_MINIMUM_BYTES, DEFAULT_MAXIMUM_BYTES], it will be rounded up/down
+   *                 [DEFAULT_MINIMUM_BYTES, maximumBytes], it will be rounded up/down
    *                 to lower/upper bound if num_bytes is out of range. It will also be rounded up to a power
    *                 of 2. It uses XXH64 as its default hash function.
    * @param maximumBytes The maximum bytes of the Bloom filter.
    */
   public BlockSplitBloomFilter(int numBytes, int maximumBytes) {
-    this(numBytes, maximumBytes, HashStrategy.XXH64);
+    this(numBytes, LOWER_BOUND_BYTES, maximumBytes, HashStrategy.XXH64);
   }
 
   /**
@@ -111,22 +111,28 @@ public class BlockSplitBloomFilter implements BloomFilter {
    * @param hashStrategy The hash strategy of Bloom filter.
    */
   private BlockSplitBloomFilter(int numBytes, HashStrategy hashStrategy) {
-    this(numBytes, DEFAULT_MAXIMUM_BYTES, hashStrategy);
+    this(numBytes, LOWER_BOUND_BYTES, UPPER_BOUND_BYTES, hashStrategy);
   }
 
   /**
    * Constructor of block-based Bloom filter.
    *
    * @param numBytes The number of bytes for Bloom filter bitset. The range of num_bytes should be within
-   *                 [DEFAULT_MINIMUM_BYTES, maximumBytes], it will be rounded up/down to lower/upper bound if
+   *                 [minimumBytes, maximumBytes], it will be rounded up/down to lower/upper bound if
    *                 num_bytes is out of range. It will also be rounded up to a power of 2.
+   * @param minimumBytes The minimum bytes of the Bloom filter.
    * @param maximumBytes The maximum bytes of the Bloom filter.
    * @param hashStrategy The adopted hash strategy of the Bloom filter.
    */
-  public BlockSplitBloomFilter(int numBytes, int maximumBytes, HashStrategy hashStrategy) {
-    if (maximumBytes > DEFAULT_MINIMUM_BYTES) {
+  public BlockSplitBloomFilter(int numBytes, int minimumBytes, int maximumBytes, HashStrategy hashStrategy) {
+    if (minimumBytes > LOWER_BOUND_BYTES && minimumBytes < UPPER_BOUND_BYTES) {
+      this.minimumBytes = minimumBytes;
+    }
+
+    if (maximumBytes> LOWER_BOUND_BYTES && maximumBytes < UPPER_BOUND_BYTES) {
       this.maximumBytes = maximumBytes;
     }
+
     initBitset(numBytes);
 
     switch (hashStrategy) {
@@ -259,13 +265,14 @@ public class BlockSplitBloomFilter implements BloomFilter {
    *
    * @param n: The number of distinct values.
    * @param p: The false positive probability.
+   *
    * @return optimal number of bits of given n and p.
    */
   public static int optimalNumOfBits(long n, double p) {
     Preconditions.checkArgument((p > 0.0 && p < 1.0),
       "FPP should be less than 1.0 and great than 0.0");
     final double m = -8 * n / Math.log(1 - Math.pow(p, 1.0 / 8));
-    final double MAX = DEFAULT_MAXIMUM_BYTES << 3;
+    final double MAX = UPPER_BOUND_BYTES << 3;
     int numBits = (int)m;
 
     // Handle overflow.
@@ -276,8 +283,8 @@ public class BlockSplitBloomFilter implements BloomFilter {
     // Round to BITS_PER_BLOCK
     numBits = (numBits + BITS_PER_BLOCK -1) & ~BITS_PER_BLOCK;
 
-    if (numBits < (DEFAULT_MINIMUM_BYTES << 3)) {
-      numBits = DEFAULT_MINIMUM_BYTES << 3;
+    if (numBits < (LOWER_BOUND_BYTES << 3)) {
+      numBits = LOWER_BOUND_BYTES << 3;
     }
 
     return numBits;

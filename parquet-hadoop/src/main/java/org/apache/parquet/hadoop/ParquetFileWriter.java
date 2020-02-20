@@ -112,7 +112,7 @@ public class ParquetFileWriter {
   private final List<List<OffsetIndex>> offsetIndexes = new ArrayList<>();
 
   // The Bloom filters
-  private final List<List<BloomFilter>> bloomFilters = new ArrayList<>();
+  private final List<Map<String, BloomFilter>> bloomFilters = new ArrayList<>();
 
   // row group data
   private BlockMetaData currentBlock; // appended to by endColumn
@@ -122,7 +122,7 @@ public class ParquetFileWriter {
   private List<OffsetIndex> currentOffsetIndexes;
 
   // The Bloom filter for the actual block
-  private List<BloomFilter> currentBloomFilters;
+  private Map<String, BloomFilter> currentBloomFilters;
 
   // row group data set at the start of a row group
   private long currentRecordCount; // set in startBlock
@@ -363,7 +363,7 @@ public class ParquetFileWriter {
     currentColumnIndexes = new ArrayList<>();
     currentOffsetIndexes = new ArrayList<>();
 
-    currentBloomFilters = new ArrayList<>();
+    currentBloomFilters = new HashMap<>();
   }
 
   /**
@@ -586,10 +586,11 @@ public class ParquetFileWriter {
   /**
    * Add a Bloom filter that will be written out. This is only used in unit test.
    *
+   * @param column the column name
    * @param bloomFilter the bloom filter of column values
    */
-  void addBloomFilter(BloomFilter bloomFilter)  {
-    currentBloomFilters.add(bloomFilter);
+  void addBloomFilter(String column, BloomFilter bloomFilter)  {
+    currentBloomFilters.put(column , bloomFilter);
   }
 
   /**
@@ -697,7 +698,17 @@ public class ParquetFileWriter {
     }
 
     if (bloomFilter != null) {
-      currentBloomFilters.add(bloomFilter);
+      // write bloom filter if one of data pages is not dictionary encoded
+      boolean isWriteBloomFilter = false;
+      for (Encoding encoding : dataEncodings) {
+        if (encoding != Encoding.RLE_DICTIONARY) {
+          isWriteBloomFilter = true;
+          break;
+        }
+      }
+      if (isWriteBloomFilter) {
+        currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
+      }
     }
     LOG.debug("{}: write data pages", out.getPos());
     long headersSize = bytes.size() - compressedTotalPageSize;
@@ -1007,20 +1018,21 @@ public class ParquetFileWriter {
   }
 
   private static void serializeBloomFilters(
-    List<List<BloomFilter>> bloomFilters,
+    List<Map<String, BloomFilter>> bloomFilters,
     List<BlockMetaData> blocks,
     PositionOutputStream out) throws IOException {
     LOG.debug("{}: bloom filters", out.getPos());
     for (int bIndex = 0, bSize = blocks.size(); bIndex < bSize; ++bIndex) {
       List<ColumnChunkMetaData> columns = blocks.get(bIndex).getColumns();
-      List<BloomFilter> blockBloomFilters = bloomFilters.get(bIndex);
+      Map<String, BloomFilter> blockBloomFilters = bloomFilters.get(bIndex);
       if (blockBloomFilters.isEmpty()) continue;
       for (int cIndex = 0, cSize = columns.size(); cIndex < cSize; ++cIndex) {
-        BloomFilter bloomFilter = blockBloomFilters.get(cIndex);
+        ColumnChunkMetaData column = columns.get(cIndex);
+        BloomFilter bloomFilter = blockBloomFilters.get(column.getPath().toDotString());
         if (bloomFilter == null) {
           continue;
         }
-        ColumnChunkMetaData column = columns.get(cIndex);
+
         long offset = out.getPos();
         column.setBloomFilterOffset(offset);
         Util.writeBloomFilterHeader(ParquetMetadataConverter.toBloomFilterHeader(bloomFilter), out);

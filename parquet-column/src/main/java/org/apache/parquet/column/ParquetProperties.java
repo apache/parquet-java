@@ -18,8 +18,11 @@
  */
 package org.apache.parquet.column;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -40,7 +43,6 @@ import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import org.apache.parquet.schema.MessageType;
 
-import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
 /**
@@ -104,7 +106,7 @@ public class ParquetProperties {
   // The key-value pair represents the column name and its expected distinct number of values in a row group.
   private final Map<String, Long> bloomFilterExpectedDistinctNumbers;
   private final int maxBloomFilterBytes;
-  private final Set<String> bloomFilterColumns;
+  private final List<String> bloomFilterColumns;
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final boolean enableByteStreamSplit;
@@ -113,7 +115,7 @@ public class ParquetProperties {
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
                             ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, int pageRowCountLimit,
                             boolean pageWriteChecksumEnabled, int statisticsTruncateLength, boolean enableByteStreamSplit,
-                            Map<String, Long> bloomFilterExpectedDistinctNumber, Set<String> bloomFilterColumns,
+                            Map<String, Long> bloomFilterExpectedDistinctNumber, List<String> bloomFilterColumns,
                             int maxBloomFilterBytes) {
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
@@ -125,7 +127,6 @@ public class ParquetProperties {
     this.maxRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
     this.allocator = allocator;
-
     this.valuesWriterFactory = writerFactory;
     this.columnIndexTruncateLength = columnIndexMinMaxTruncateLength;
     this.statisticsTruncateLength = statisticsTruncateLength;
@@ -261,7 +262,11 @@ public class ParquetProperties {
   }
 
   public Set<String> getBloomFilterColumns() {
-    return bloomFilterColumns;
+    if (bloomFilterColumns != null && bloomFilterColumns.size() > 0){
+      return new HashSet<>(bloomFilterColumns);
+    }
+
+    return bloomFilterExpectedDistinctNumbers.keySet();
   }
 
   public int getMaxBloomFilterBytes() {
@@ -290,7 +295,7 @@ public class ParquetProperties {
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
     private Map<String, Long> bloomFilterColumnExpectedNDVs = new HashMap<>();
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
-    private Set<String> bloomFilterColumns = new HashSet<>();
+    private List<String> bloomFilterColumns = new ArrayList<>();
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private boolean enableByteStreamSplit = DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED;
@@ -423,24 +428,26 @@ public class ParquetProperties {
     }
 
     /**
-     * Set Bloom filter column names.
+     * Set Bloom filter column names and expected NDVs.
      *
-     * @param columns the columns which has bloom filter enabled.
+     * @param columnToNDVMap the columns which has bloom filter enabled.
+     *
      * @return this builder for method chaining
      */
-    public Builder withBloomFilterColumnNames(Set<String> columns) {
-      this.bloomFilterColumns = columns;
+    public Builder withBloomFilterColumnToNDVMap(Map<String, Long> columnToNDVMap) {
+      this.bloomFilterColumnExpectedNDVs = columnToNDVMap;
       return this;
     }
 
     /**
-     * Set expected columns distinct number for Bloom filter.
+     * Set Bloom filter column names.
      *
-     * @param columnExpectedNDVs the columns expected number of distinct values in a row group
+     * @param columns the columns which has bloom filter enabled.
+     *
      * @return this builder for method chaining
      */
-    public Builder withBloomFilterColumnNdvs(Map<String, Long> columnExpectedNDVs) {
-      this.bloomFilterColumnExpectedNDVs = columnExpectedNDVs;
+    public Builder withBloomFilterColumnNames(List<String> columns) {
+      this.bloomFilterColumns = columns;
       return this;
     }
 

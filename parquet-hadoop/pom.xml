@@ -115,6 +115,11 @@
       <version>${slf4j.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>net.openhft</groupId>
+      <artifactId>zero-allocation-hashing</artifactId>
+      <version>0.9</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -129,6 +134,28 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+        <execution>
+        <phase>package</phase>
+        <goals>
+          <goal>shade</goal>
+        </goals>
+        <configuration>
+        <minimizeJar>true</minimizeJar>
+        <artifactSet>
+          <includes>
+            <include>net.openhft</include>
+          </includes>
+        </artifactSet>
+        <relocations>
+          <relocation>
+            <pattern>net.openhft</pattern>
+            <shadedPattern>${shade.prefix}.net.openhft</shadedPattern>
+          </relocation>
+        </relocations>
+        </configuration>
+        </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

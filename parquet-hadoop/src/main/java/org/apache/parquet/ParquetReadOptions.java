@@ -42,7 +42,7 @@ public class ParquetReadOptions {
   private static final boolean COLUMN_INDEX_FILTERING_ENABLED_DEFAULT = true;
   private static final int ALLOCATION_SIZE_DEFAULT = 8388608; // 8MB
   private static final boolean PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT = false;
-  private static final boolean BLOOM_FILTER_ENABLED_DEFAULT = false;
+  private static final boolean BLOOM_FILTER_ENABLED_DEFAULT = true;
 
   private final boolean useSignedStringMinMax;
   private final boolean useStatsFilter;
