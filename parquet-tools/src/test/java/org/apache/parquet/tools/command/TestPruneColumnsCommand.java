@@ -45,7 +45,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
@@ -59,7 +58,6 @@ public class TestPruneColumnsCommand {
   private final int numRecord = 1000;
   private PruneColumnsCommand command = new PruneColumnsCommand();
   private Configuration conf = new Configuration();
-  private Random rand = new Random();
 
   @Test
   public void testPruneOneColumn() throws Exception {
@@ -116,7 +114,7 @@ public class TestPruneColumnsCommand {
     validateColumns(inputFile, prunePaths);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testNotExistsColumn() throws Exception {
     // Create Parquet file
     String inputFile = createParquetFile("input");
@@ -177,7 +175,7 @@ public class TestPruneColumnsCommand {
     validateColumns(inputFile, prunePaths);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testNotExistsNestedColumn() throws Exception {
     // Create Parquet file
     String inputFile = createParquetFile("input");
