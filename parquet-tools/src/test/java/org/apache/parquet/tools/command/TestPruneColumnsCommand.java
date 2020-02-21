@@ -32,6 +32,7 @@ import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -42,10 +43,12 @@ import org.apache.parquet.schema.Type;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
@@ -55,7 +58,6 @@ import static org.junit.Assert.assertEquals;
 
 public class TestPruneColumnsCommand {
 
-  private static final String root = "target/";
   private final int numRecord = 1000;
   private PruneColumnsCommand command = new PruneColumnsCommand();
   private Configuration conf = new Configuration();
@@ -64,8 +66,8 @@ public class TestPruneColumnsCommand {
   @Test
   public void testPruneOneColumn() throws Exception {
     // Create Parquet file
-    String inputFile = createParquetFile();
-    String outputFile = getParquetFileName();
+    String inputFile = createParquetFile("input");
+    String outputFile = createTempFile("output");
 
     // Remove column
     String cargs[] = {inputFile, outputFile, "Gender"};
@@ -92,8 +94,8 @@ public class TestPruneColumnsCommand {
   @Test
   public void testPruneMultiColumns() throws Exception {
     // Create Parquet file
-    String inputFile = createParquetFile();
-    String outputFile = getParquetFileName();
+    String inputFile = createParquetFile("input");
+    String outputFile = createTempFile("output");
 
     // Remove columns
     String cargs[] = {inputFile, outputFile, "Name", "Gender"};
@@ -119,8 +121,8 @@ public class TestPruneColumnsCommand {
   @Test(expected = IllegalArgumentException.class)
   public void testNotExistsColumn() throws Exception {
     // Create Parquet file
-    String inputFile = createParquetFile();
-    String outputFile = getParquetFileName();
+    String inputFile = createParquetFile("input");
+    String outputFile = createTempFile("output");
     String cargs[] = {inputFile, outputFile, "no_exist"};
     executeCommandLine(cargs);
   }
@@ -128,8 +130,8 @@ public class TestPruneColumnsCommand {
   @Test
   public void testPruneNestedColumn() throws Exception {
     // Create Parquet file
-    String inputFile = createParquetFile();
-    String outputFile = getParquetFileName();
+    String inputFile = createParquetFile("input");
+    String outputFile = createTempFile("output");
 
     // Remove nested column
     String cargs[] = {inputFile, outputFile, "Links.Backward"};
@@ -156,8 +158,8 @@ public class TestPruneColumnsCommand {
   @Test
   public void testPruneNestedParentColumn() throws Exception {
     // Create Parquet file
-    String inputFile = createParquetFile();
-    String outputFile = getParquetFileName();
+    String inputFile = createParquetFile("input");
+    String outputFile = createTempFile("output");
 
     // Remove parent column. All of it's children will be removed.
     String cargs[] = {inputFile, outputFile, "Links"};
@@ -180,8 +182,8 @@ public class TestPruneColumnsCommand {
   @Test(expected = IllegalArgumentException.class)
   public void testNotExistsNestedColumn() throws Exception {
     // Create Parquet file
-    String inputFile = createParquetFile();
-    String outputFile = getParquetFileName();
+    String inputFile = createParquetFile("input");
+    String outputFile = createTempFile("output");
     String cargs[] = {inputFile, outputFile, "Links.Not_exists"};
     executeCommandLine(cargs);
   }
@@ -218,7 +220,7 @@ public class TestPruneColumnsCommand {
     reader.close();
   }
 
-  private String createParquetFile() throws IOException {
+  private String createParquetFile(String prefix) throws IOException {
     MessageType schema = new MessageType("schema",
       new PrimitiveType(REQUIRED, INT64, "DocId"),
       new PrimitiveType(REQUIRED, BINARY, "Name"),
@@ -229,30 +231,29 @@ public class TestPruneColumnsCommand {
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
-    Path file = new Path(root, + rand.nextInt(100000) + "input.parquet");
-
-    ParquetWriter<Group> writer = new ParquetWriter<>(file, new GroupWriteSupport(), ParquetWriter.DEFAULT_COMPRESSION_CODEC_NAME,
-      ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.DEFAULT_PAGE_SIZE, 1024,
-      ParquetWriter.DEFAULT_IS_DICTIONARY_ENABLED, ParquetWriter.DEFAULT_IS_VALIDATING_ENABLED,
-      ParquetProperties.WriterVersion.PARQUET_1_0, conf);
-
-    for (int i = 0; i < numRecord; i++) {
-      SimpleGroup g = new SimpleGroup(schema);
-      g.add("DocId", 1l);
-      g.add("Name", "foo");
-      g.add("Gender", "male");
-      Group links = g.addGroup("Links");
-      links.add(0, 2l);
-      links.add(1, 3l);
-      writer.write(g);
+    String file = createTempFile(prefix);
+    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file)).withConf(conf);
+    try (ParquetWriter writer = builder.build()) {
+      for (int i = 0; i < numRecord; i++) {
+        SimpleGroup g = new SimpleGroup(schema);
+        g.add("DocId", 1l);
+        g.add("Name", "foo");
+        g.add("Gender", "male");
+        Group links = g.addGroup("Links");
+        links.add(0, 2l);
+        links.add(1, 3l);
+        writer.write(g);
+      }
     }
 
-    writer.close();
-
-    return root + file.getName();
+    return file;
   }
 
-  private String getParquetFileName() {
-    return root + rand.nextInt(100000) + ".parquet";
+  private static String createTempFile(String prefix) {
+    try {
+      return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
+    } catch (IOException e) {
+      throw new AssertionError("Unable to create temporary file", e);
+    }
   }
 }

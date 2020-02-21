@@ -21,7 +21,6 @@ package org.apache.parquet.tools.command;
 import org.apache.commons.cli.CommandLine;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.example.data.simple.Primitive;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
@@ -29,20 +28,20 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.OriginalType;
-import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
-import org.apache.parquet.tools.Main;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.HashSet;
 
 public class PruneColumnsCommand extends ArgsOnlyCommand {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PruneColumnsCommand.class);
 
   public static final String[] USAGE = new String[] {
     "<input> <output> [<column> ...]",
@@ -57,7 +56,6 @@ public class PruneColumnsCommand extends ArgsOnlyCommand {
    * Biggest number of columns we can prune.
    */
   private static final int MAX_COL_NUM = 100;
-
   private Configuration conf;
 
   public PruneColumnsCommand() {
@@ -94,7 +92,7 @@ public class PruneColumnsCommand extends ArgsOnlyCommand {
 
     for (String col : cols) {
       if (!paths.contains(col)) {
-        throw new IllegalArgumentException("Input column name " + col + " doesn't show up in the schema of file " + inputFile.getName());
+        LOG.warn("Input column name {} doesn't show up in the schema of file {}", col, inputFile.getName());
       }
     }
 
