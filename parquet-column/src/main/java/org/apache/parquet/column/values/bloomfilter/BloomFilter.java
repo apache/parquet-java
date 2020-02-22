@@ -42,6 +42,11 @@ public interface BloomFilter {
       this.value = value;
     }
     int value;
+
+    @Override
+    public String toString() {
+      return "xxhash";
+    }
   }
 
   // Bloom filter algorithm.
@@ -51,6 +56,11 @@ public interface BloomFilter {
       this.value = value;
     }
     int value;
+
+    @Override
+    public String toString() {
+      return "block";
+    }
   }
 
   // Bloom filter compression.
@@ -60,6 +70,11 @@ public interface BloomFilter {
       this.value = value;
     }
     int value;
+
+    @Override
+    public String toString() {
+      return "uncompressed";
+    }
   }
 
   /**

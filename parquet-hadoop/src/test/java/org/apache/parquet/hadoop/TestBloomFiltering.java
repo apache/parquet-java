@@ -186,7 +186,7 @@ public class TestBloomFiltering {
 
   private void assertCorrectFiltering(Predicate<PhoneBookWriter.User> expectedFilter, FilterPredicate actualFilter)
     throws IOException {
-    // Check with only column index based filtering
+    // Check with only bloom filter based filtering
     List<PhoneBookWriter.User> result = readUsers(actualFilter, false, true);
 
     assertTrue("Bloom filtering should drop some row groups", result.size() < DATA.size());
@@ -250,7 +250,7 @@ public class TestBloomFiltering {
     assertCorrectFiltering(
       record -> {
         PhoneBookWriter.Location location = record.getLocation();
-        return location != null && location.getLat() != null &&location.getLat() == 99.9;
+        return location != null && location.getLat() != null && location.getLat() == 99.9;
       },
       eq(doubleColumn("location.lat"), 99.9));
   }

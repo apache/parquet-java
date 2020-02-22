@@ -1643,7 +1643,9 @@ public class ParquetMetadataConverter {
     if (algorithm != null && hashStrategy != null && compression != null) {
       return new BloomFilterHeader(bloomFilter.getBitsetSize(), algorithm, hashStrategy, compression);
     } else {
-      throw new RuntimeException("Failed to build thrift structure for BloomFilterHeader");
+      throw new IllegalArgumentException(String.format("Failed to build thrift structure for BloomFilterHeader," +
+        "algorithm=%s, hash=%s, compression=%s",
+        bloomFilter.getAlgorithm(), bloomFilter.getHashStrategy(), bloomFilter.getCompression()));
     }
   }
 }
