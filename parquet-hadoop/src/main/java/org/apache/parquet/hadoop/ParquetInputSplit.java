@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -47,7 +47,7 @@ import org.apache.parquet.schema.MessageTypeParser;
  *
  * This class is private to the ParquetInputFormat.
  * Backward compatibility is not maintained.
- * @deprecated will be removed in 2.0.0. use FileInputSplit instead.
+ * @deprecated will be removed in 2.0.0. use org.apache.hadoop.mapred.FileSplit instead.
  */
 @Private
 @Deprecated
