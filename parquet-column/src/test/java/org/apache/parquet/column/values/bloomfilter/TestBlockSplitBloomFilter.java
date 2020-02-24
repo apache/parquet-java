@@ -18,13 +18,10 @@
  */
 package org.apache.parquet.column.values.bloomfilter;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 
 import net.openhft.hashing.LongHashFunction;
@@ -54,26 +51,66 @@ public class TestBlockSplitBloomFilter {
    * serializing and de-serializing.
    */
   @Test
-  public void testBloomFilterBasicReadWrite() throws IOException {
-    final String[] testStrings = {"hello", "parquet", "bloom", "filter"};
-    BloomFilter bloomFilter = new BlockSplitBloomFilter(1024);
+  public void testBloomFilterForString() {
+    final int numValues = 1024 * 1024;
+    int numBytes = BlockSplitBloomFilter.optimalNumOfBits(numValues , 0.01) / 8;
+    BloomFilter bloomFilter = new BlockSplitBloomFilter(numBytes);
 
-    for (String string : testStrings) {
-      bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(string)));
+    Set<String> testStrings = new HashSet<>();
+    for (int i = 0; i < numValues; i ++) {
+      String str = RandomStringUtils.randomAlphabetic(1, 64);
+      bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(str)));
+      testStrings.add(str);
     }
 
-    File testFile = temp.newFile();
-    FileOutputStream fileOutputStream = new FileOutputStream(testFile);
-    bloomFilter.writeTo(fileOutputStream);
-    fileOutputStream.close();
-    FileInputStream fileInputStream = new FileInputStream(testFile);
-
-    byte[] bitset = new byte[1024];
-    int bytes = fileInputStream.read(bitset);
-    assertEquals(bytes, 1024);
-    bloomFilter = new BlockSplitBloomFilter(bitset);
     for (String testString : testStrings) {
       assertTrue(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(testString))));
+    }
+  }
+
+  @Test
+  public void testBloomFilterForPrimitives() {
+    for (int i = 0; i < 4; i++) {
+      long seed = System.nanoTime();
+      testBloomFilterForPrimitives(seed);
+    }
+  }
+
+  private void testBloomFilterForPrimitives(long seed) {
+    final int numValues = 1024 * 1024;
+    final int numBytes = BlockSplitBloomFilter.optimalNumOfBits(numValues , 0.01) / 8;
+
+    BloomFilter bloomFilter = new BlockSplitBloomFilter(numBytes);
+    Random random = new Random(seed);
+    Set<Object> values = new HashSet<>();
+
+    for (int i = 0; i < numValues; i++) {
+      int type = random.nextInt(4);
+      Object v;
+      switch (type) {
+        case 0: {
+          v = random.nextInt();
+          break;
+        }
+        case 1: {
+          v = random.nextLong();
+          break;
+        }
+        case 2: {
+          v = random.nextFloat();
+          break;
+        }
+        default: {
+          v = random.nextDouble();
+        }
+      }
+      values.add(v);
+      bloomFilter.insertHash(bloomFilter.hash(v));
+    }
+
+    for (Object v : values) {
+      assertTrue(String.format("the value %s should not be filtered, seed = %d", v, seed),
+        bloomFilter.findHash(bloomFilter.hash(v)));
     }
   }
 

@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 
 /*
  * This Bloom filter is implemented using block-based Bloom filter algorithm from Putze et al.'s
@@ -74,7 +75,9 @@ public class BlockSplitBloomFilter implements BloomFilter {
   private int minimumBytes = LOWER_BOUND_BYTES;
 
   // A cache used for hashing
-  private ByteBuffer cacheBuffer = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
+  private ByteBuffer cacheBuffer = ByteBuffer.allocate(Long.BYTES);
+
+  private int[] mask = new int[BITS_SET_PER_BLOCK];
 
   // The block-based algorithm needs 8 odd SALT values to calculate eight indexes
   // of bits to set, one per 32-bit word.
@@ -135,7 +138,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
       this.minimumBytes = minimumBytes;
     }
 
-    if (maximumBytes> LOWER_BOUND_BYTES && maximumBytes < UPPER_BOUND_BYTES) {
+    if (maximumBytes > LOWER_BOUND_BYTES && maximumBytes < UPPER_BOUND_BYTES) {
       this.maximumBytes = maximumBytes;
     }
 
@@ -220,14 +223,18 @@ public class BlockSplitBloomFilter implements BloomFilter {
   }
 
   private int[] setMask(int key) {
-    int[] mask = new int[BITS_SET_PER_BLOCK];
+    Arrays.fill(mask, 0);
 
+    // The following three loops are written separately so that they could be
+    // optimized for vectorization.
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = key * SALT[i];
     }
+
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = mask[i] >>> 27;
     }
+
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = 0x1 << mask[i];
     }
@@ -284,11 +291,11 @@ public class BlockSplitBloomFilter implements BloomFilter {
     int numBits = (int)m ;
 
     // Handle overflow.
-    if (m > UPPER_BOUND_BYTES << 3 || m < 0) {
-      numBits = UPPER_BOUND_BYTES;
+    if (numBits > UPPER_BOUND_BYTES << 3 || m < 0) {
+      numBits = UPPER_BOUND_BYTES << 3;
     }
 
-    // Round to BITS_PER_BLOCK
+    // Round numBits up to (k * BITS_PER_BLOCK)
     numBits = (numBits + BITS_PER_BLOCK -1) & ~BITS_PER_BLOCK;
 
     if (numBits < (LOWER_BOUND_BYTES << 3)) {

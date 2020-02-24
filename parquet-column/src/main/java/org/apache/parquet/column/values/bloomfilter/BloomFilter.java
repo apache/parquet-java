@@ -37,11 +37,7 @@ public interface BloomFilter {
    * (see https://github.com/Cyan4973/xxHash).
    */
   enum HashStrategy {
-    XXH64(0);
-    HashStrategy(int value) {
-      this.value = value;
-    }
-    int value;
+    XXH64;
 
     @Override
     public String toString() {
@@ -51,11 +47,7 @@ public interface BloomFilter {
 
   // Bloom filter algorithm.
   enum Algorithm {
-    BLOCK(0);
-    Algorithm(int value) {
-      this.value = value;
-    }
-    int value;
+    BLOCK;
 
     @Override
     public String toString() {
@@ -65,11 +57,7 @@ public interface BloomFilter {
 
   // Bloom filter compression.
   enum Compression {
-    UNCOMPRESSED(0);
-    Compression(int value) {
-      this.value = value;
-    }
-    int value;
+    UNCOMPRESSED;
 
     @Override
     public String toString() {

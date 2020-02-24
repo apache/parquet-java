@@ -99,8 +99,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
         this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
       }
-    }
-    else {
+    } else {
       this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize);
     }
   }
