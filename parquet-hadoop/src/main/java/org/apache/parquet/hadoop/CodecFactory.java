@@ -227,7 +227,13 @@ public class CodecFactory implements CompressionCodecFactory {
     }
 
     try {
-      Class<?> codecClass = Class.forName(codecClassName);
+      Class<?> codecClass;
+      try {
+        codecClass = Class.forName(codecClassName);
+      } catch (ClassNotFoundException e) {
+        // Try to load the class using the job classloader
+        codecClass = configuration.getClassLoader().loadClass(codecClassName);
+      }
       codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, configuration);
       CODEC_BY_NAME.put(codecClassName, codec);
       return codec;
