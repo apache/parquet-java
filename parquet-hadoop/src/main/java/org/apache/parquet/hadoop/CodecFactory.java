@@ -22,6 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -92,8 +93,8 @@ public class CodecFactory implements CompressionCodecFactory {
     private final CompressionCodec codec;
     private final Decompressor decompressor;
 
-    HeapBytesDecompressor(CompressionCodecName codecName) {
-      this.codec = getCodec(codecName);
+    HeapBytesDecompressor(CompressionCodecName codecName,Configuration configuration) {
+      this.codec = getCodec(codecName,configuration);
       if (codec != null) {
         decompressor = CodecPool.getDecompressor(codec);
       } else {
@@ -137,9 +138,9 @@ public class CodecFactory implements CompressionCodecFactory {
     private final ByteArrayOutputStream compressedOutBuffer;
     private final CompressionCodecName codecName;
 
-    HeapBytesCompressor(CompressionCodecName codecName) {
+    HeapBytesCompressor(CompressionCodecName codecName,Configuration configuration) {
       this.codecName = codecName;
-      this.codec = getCodec(codecName);
+      this.codec = getCodec(codecName,configuration);
       if (codec != null) {
         this.compressor = CodecPool.getCompressor(codec);
         this.compressedOutBuffer = new ByteArrayOutputStream(pageSize);
@@ -203,11 +204,11 @@ public class CodecFactory implements CompressionCodecFactory {
   }
 
   protected BytesCompressor createCompressor(CompressionCodecName codecName) {
-    return new HeapBytesCompressor(codecName);
+    return new HeapBytesCompressor(codecName,configuration);
   }
 
   protected BytesDecompressor createDecompressor(CompressionCodecName codecName) {
-    return new HeapBytesDecompressor(codecName);
+    return new HeapBytesDecompressor(codecName,configuration);
   }
 
   /**
@@ -216,8 +217,17 @@ public class CodecFactory implements CompressionCodecFactory {
    *          the requested codec
    * @return the corresponding hadoop codec. null if UNCOMPRESSED
    */
-  protected CompressionCodec getCodec(CompressionCodecName codecName) {
-    String codecClassName = codecName.getHadoopCompressionCodecClassName();
+  protected CompressionCodec getCodec(CompressionCodecName codecName,Configuration conf) {
+    String[] configCodecNames = conf.getStrings(CodecConfigurationKeys.CUSTOMIZED_COMPRESSION_CODEC_NAME);
+    String codecClassName = null;
+    int codecIdx = Arrays.asList(configCodecNames).indexOf(codecName.toString());
+    if(codecIdx > 0){
+      String[] configCodecClassNames=conf.getStrings(CodecConfigurationKeys.CUSTOMIZED_COMPRESSION_CODEC_CLASS_NAME);
+      codecClassName = configCodecClassNames[codecIdx];
+    }
+    if(codecClassName == null ||codecClassName.isEmpty()){
+      codecClassName = codecName.getHadoopCompressionCodecClassName();
+    }
     if (codecClassName == null) {
       return null;
     }
