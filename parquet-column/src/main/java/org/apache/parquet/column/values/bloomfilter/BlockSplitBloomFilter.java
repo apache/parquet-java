@@ -27,7 +27,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
-import java.util.Arrays;
 
 /*
  * This Bloom filter is implemented using block-based Bloom filter algorithm from Putze et al.'s
@@ -223,8 +222,6 @@ public class BlockSplitBloomFilter implements BloomFilter {
   }
 
   private int[] setMask(int key) {
-    Arrays.fill(mask, 0);
-
     // The following three loops are written separately so that they could be
     // optimized for vectorization.
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
@@ -316,7 +313,6 @@ public class BlockSplitBloomFilter implements BloomFilter {
       return hashFunction.hashBytes(((Binary) value).getBytes());
     }
 
-    cacheBuffer.clear();
     if (value instanceof Integer) {
       cacheBuffer.putInt((Integer)value);
     } else if (value instanceof Long) {
