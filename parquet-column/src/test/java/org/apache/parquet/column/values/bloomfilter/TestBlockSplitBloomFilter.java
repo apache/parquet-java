@@ -79,7 +79,7 @@ public class TestBlockSplitBloomFilter {
   private void testBloomFilterForPrimitives(long seed) {
     Random random = new Random(seed);
     final int numValues = 1024 * 1024;
-    final int numBytes = BlockSplitBloomFilter.optimalNumOfBits(numValues , random.nextDouble()/10) / 8;
+    final int numBytes = BlockSplitBloomFilter.optimalNumOfBits(numValues, random.nextDouble() / 10) / 8;
     BloomFilter bloomFilter = new BlockSplitBloomFilter(numBytes);
 
     Set<Object> values = new HashSet<>();

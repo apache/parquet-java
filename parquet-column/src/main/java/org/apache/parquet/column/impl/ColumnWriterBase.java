@@ -58,8 +58,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
   private long rowsWrittenSoFar = 0;
   private int pageRowCount;
 
-  private BloomFilterWriter bloomFilterWriter;
-  private BloomFilter bloomFilter;
+  private final BloomFilterWriter bloomFilterWriter;
+  private final BloomFilter bloomFilter;
 
   ColumnWriterBase(
       ColumnDescriptor path,
@@ -72,6 +72,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
     this.repetitionLevelColumn = createRLWriter(props, path);
     this.definitionLevelColumn = createDLWriter(props, path);
     this.dataColumn = props.newValuesWriter(path);
+    this.bloomFilter = null;
+    this.bloomFilterWriter = null;
   }
 
   ColumnWriterBase(
