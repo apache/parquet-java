@@ -470,7 +470,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
-    ParquetProperties props = ParquetProperties.builder()
+    ParquetProperties.Builder propsBuilder = ParquetProperties.builder()
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
         .withDictionaryEncoding(getEnableDictionary(conf))
@@ -483,8 +483,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
         .withBloomFilterColumnToNDVMap(getBloomFilterColumnExpectedNDVs(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
-        .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
-        .build();
+        .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf));
+    new ColumnConfigParser()
+        .withColumnConfig(ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)
+        .parseConfig(conf);
+
+    ParquetProperties props = propsBuilder.build();
 
     long blockSize = getLongBlockSize(conf);
     int maxPaddingSize = getMaxPaddingSize(conf);
@@ -492,23 +496,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     if (LOG.isInfoEnabled()) {
       LOG.info("Parquet block size to {}", blockSize);
-      LOG.info("Parquet page size to {}", props.getPageSizeThreshold());
-      LOG.info("Parquet dictionary page size to {}", props.getDictionaryPageSizeThreshold());
-      LOG.info("Dictionary is {}", (props.isEnableDictionary() ? "on" : "off"));
       LOG.info("Validation is {}", (validating ? "on" : "off"));
-      LOG.info("Writer version is: {}", props.getWriterVersion());
       LOG.info("Maximum row group padding size is {} bytes", maxPaddingSize);
-      LOG.info("Page size checking is: {}", (props.estimateNextSizeCheck() ? "estimated" : "constant"));
-      LOG.info("Min row count for page size check is: {}", props.getMinRowCountForPageSizeCheck());
-      LOG.info("Max row count for page size check is: {}", props.getMaxRowCountForPageSizeCheck());
-      LOG.info("Truncate length for column indexes is: {}", props.getColumnIndexTruncateLength());
-      LOG.info("Truncate length for statistics min/max  is: {}", props.getStatisticsTruncateLength());
-      LOG.info("Bloom filter enabled column names are: {}", props.getBloomFilterColumns());
-      LOG.info("Max Bloom filter size for a column is {}", props.getMaxBloomFilterBytes());
-      LOG.info("Bloom filter enabled column expected number of distinct values are: {}",
-        props.getBloomFilterColumnExpectedNDVs().values());
-      LOG.info("Page row count limit to {}", props.getPageRowCountLimit());
-      LOG.info("Writing page checksums is: {}", props.getPageWriteChecksumEnabled() ? "on" : "off");
+      LOG.info("Parquet properties are:\n{}", props);
     }
 
     WriteContext init = writeSupport.init(conf);
