@@ -65,15 +65,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
       ColumnDescriptor path,
       PageWriter pageWriter,
       ParquetProperties props) {
-    this.path = path;
-    this.pageWriter = pageWriter;
-    resetStatistics();
-
-    this.repetitionLevelColumn = createRLWriter(props, path);
-    this.definitionLevelColumn = createDLWriter(props, path);
-    this.dataColumn = props.newValuesWriter(path);
-    this.bloomFilter = null;
-    this.bloomFilterWriter = null;
+    this(path, pageWriter, null, props);
   }
 
   ColumnWriterBase(
@@ -82,12 +74,19 @@ abstract class ColumnWriterBase implements ColumnWriter {
     BloomFilterWriter bloomFilterWriter,
     ParquetProperties props
   ) {
-    this(path, pageWriter, props);
+    this.path = path;
+    this.pageWriter = pageWriter;
+    resetStatistics();
+
+    this.repetitionLevelColumn = createRLWriter(props, path);
+    this.definitionLevelColumn = createDLWriter(props, path);
+    this.dataColumn = props.newValuesWriter(path);
 
     this.bloomFilterWriter = bloomFilterWriter;
     Set<String> bloomFilterColumns = props.getBloomFilterColumns();
     String column = String.join(".", path.getPath());
     if (!bloomFilterColumns.contains(column)) {
+      this.bloomFilter = null;
       return;
     }
     int maxBloomFilterSize = props.getMaxBloomFilterBytes();
@@ -100,6 +99,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
           bloomFilterColumnExpectedNDVs.get(column).intValue(), BlockSplitBloomFilter.DEFAULT_FPP);
 
         this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
+      } else {
+        this.bloomFilter = null;
       }
     } else {
       this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize);
