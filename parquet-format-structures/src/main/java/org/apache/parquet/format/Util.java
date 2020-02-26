@@ -70,6 +70,14 @@ public class Util {
     return read(from, new OffsetIndex());
   }
 
+  public static BloomFilterHeader readBloomFilterHeader(InputStream from) throws IOException {
+    return read(from, new BloomFilterHeader());
+  }
+
+  public static void writeBloomFilterHeader(BloomFilterHeader header, OutputStream out) throws IOException {
+    write(header, out);
+  }
+
   public static void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
     write(pageHeader, to);
   }

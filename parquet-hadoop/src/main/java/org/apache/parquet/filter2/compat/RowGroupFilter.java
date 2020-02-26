@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import org.apache.parquet.filter2.bloomfilterlevel.BloomFilterImpl;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
 import org.apache.parquet.filter2.compat.FilterCompat.Visitor;
@@ -33,6 +34,8 @@ import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.schema.MessageType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Given a {@link Filter} applies it to a list of BlockMetaData (row groups)
@@ -47,7 +50,8 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
 
   public enum FilterLevel {
     STATISTICS,
-    DICTIONARY
+    DICTIONARY,
+    BLOOMFILTER
   }
 
   /**
@@ -101,6 +105,10 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
 
       if(!drop && levels.contains(FilterLevel.DICTIONARY)) {
         drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
+      }
+
+      if (!drop && levels.contains(FilterLevel.BLOOMFILTER)) {
+        drop = BloomFilterImpl.canDrop(filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
       }
 
       if(!drop) {

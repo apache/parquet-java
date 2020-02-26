@@ -103,6 +103,7 @@
     <guava.version>27.0.1-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
+    <net.openhft.version>0.9</net.openhft.version>
     <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
 
     <!-- parquet-cli dependencies -->
@@ -269,6 +270,7 @@
                   <includes>
                     <include>${jackson.groupId}:*</include>
                     <include>it.unimi.dsi:fastutil</include>
+                    <include>net.openhft:*</include>
                   </includes>
                 </artifactSet>
                 <!-- Shade jackson but do not include any class. Let parquet-jackson handle this -->
@@ -288,6 +290,10 @@
                   <relocation>
                     <pattern>it.unimi.dsi</pattern>
                     <shadedPattern>${shade.prefix}.it.unimi.dsi</shadedPattern>
+                  </relocation>
+                  <relocation>
+                    <pattern>net.openhft</pattern>
+                    <shadedPattern>${shade.prefix}.net.openhft</shadedPattern>
                   </relocation>
                 </relocations>
               </configuration>

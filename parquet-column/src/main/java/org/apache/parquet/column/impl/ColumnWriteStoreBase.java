@@ -34,6 +34,8 @@ import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -74,7 +76,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       public ColumnWriter getColumnWriter(ColumnDescriptor path) {
         ColumnWriterBase column = columns.get(path);
         if (column == null) {
-          column = createColumnWriter(path, pageWriteStore.getPageWriter(path), props);
+          column = createColumnWriter(path, pageWriteStore.getPageWriter(path), null, props);
           columns.put(path, column);
         }
         return column;
@@ -91,7 +93,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      mcolumns.put(path, createColumnWriter(path, pageWriter, props));
+      mcolumns.put(path, createColumnWriter(path, pageWriter, null, props));
     }
     this.columns = unmodifiableMap(mcolumns);
 
@@ -105,7 +107,38 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     };
   }
 
-  abstract ColumnWriterBase createColumnWriter(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props);
+  // The Bloom filter is written to a specified bitset instead of pages, so it needs a separate write store abstract.
+  ColumnWriteStoreBase(
+    MessageType schema,
+    PageWriteStore pageWriteStore,
+    BloomFilterWriteStore bloomFilterWriteStore,
+    ParquetProperties props) {
+    this.props = props;
+    this.thresholdTolerance = (long) (props.getPageSizeThreshold() * THRESHOLD_TOLERANCE_RATIO);
+    Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
+    for (ColumnDescriptor path : schema.getColumns()) {
+      PageWriter pageWriter = pageWriteStore.getPageWriter(path);
+      if (props.getBloomFilterColumns() != null && props.getBloomFilterColumns().size() > 0) {
+        BloomFilterWriter bloomFilterWriter = bloomFilterWriteStore.getBloomFilterWriter(path);
+        mcolumns.put(path, createColumnWriter(path, pageWriter, bloomFilterWriter, props));
+      } else {
+        mcolumns.put(path, createColumnWriter(path, pageWriter, null, props));
+      }
+    }
+    this.columns = unmodifiableMap(mcolumns);
+
+    this.rowCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+
+    columnWriterProvider = new ColumnWriterProvider() {
+      @Override
+      public ColumnWriter getColumnWriter(ColumnDescriptor path) {
+        return columns.get(path);
+      }
+    };
+  }
+
+  abstract ColumnWriterBase createColumnWriter(ColumnDescriptor path, PageWriter pageWriter,
+                                               BloomFilterWriter bloomFilterWriter, ParquetProperties props);
 
   @Override
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {

@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
+import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.BLOOMFILTER;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTIONARY;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
@@ -69,9 +70,12 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
+import org.apache.parquet.format.BloomFilterHeader;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
@@ -793,6 +797,10 @@ public class ParquetFileReader implements Closeable {
       levels.add(DICTIONARY);
     }
 
+    if (options.useBloomFilter()) {
+      levels.add(BLOOMFILTER);
+    }
+
     FilterCompat.Filter recordFilter = options.getRecordFilter();
     if (recordFilter != null) {
       return RowGroupFilter.filterRowGroups(levels, recordFilter, blocks, this);
@@ -1048,6 +1056,48 @@ public class ParquetFileReader implements Closeable {
     return new DictionaryPage(
         bin, uncompressedPageSize, dictHeader.getNum_values(),
         converter.getEncoding(dictHeader.getEncoding()));
+  }
+
+  public BloomFilterReader getBloomFilterDataReader(BlockMetaData block) {
+    return new BloomFilterReader(this, block);
+  }
+
+  /**
+   * Reads Bloom filter data for the given column chunk.
+   *
+   * @param meta a column's ColumnChunkMetaData to read the dictionary from
+   * @return an BloomFilter object.
+   * @throws IOException if there is an error while reading the Bloom filter.
+   */
+  public BloomFilter readBloomFilter(ColumnChunkMetaData meta) throws IOException {
+    long bloomFilterOffset = meta.getBloomFilterOffset();
+    f.seek(bloomFilterOffset);
+    BloomFilterHeader bloomFilterHeader;
+
+    // Read Bloom filter data header.
+    try {
+      bloomFilterHeader = Util.readBloomFilterHeader(f);
+    } catch (IOException e) {
+      LOG.warn("read no bloom filter");
+      return null;
+    }
+
+    int numBytes = bloomFilterHeader.getNumBytes();
+    if (numBytes <= 0 || numBytes > BlockSplitBloomFilter.UPPER_BOUND_BYTES) {
+      LOG.warn("the read bloom filter size is wrong, size is {}", bloomFilterHeader.getNumBytes());
+      return null;
+    }
+
+    if (!bloomFilterHeader.getHash().isSetXXHASH() || !bloomFilterHeader.getAlgorithm().isSetBLOCK()
+      || !bloomFilterHeader.getCompression().isSetUNCOMPRESSED()) {
+      LOG.warn("the read bloom filter is not supported yet,  algorithm = {}, hash = {}, compression = {}",
+        bloomFilterHeader.getAlgorithm(), bloomFilterHeader.getHash(), bloomFilterHeader.getCompression());
+      return null;
+    }
+
+    byte[] bitset = new byte[numBytes];
+    f.readFully(bitset);
+    return new BlockSplitBloomFilter(bitset);
   }
 
   /**
