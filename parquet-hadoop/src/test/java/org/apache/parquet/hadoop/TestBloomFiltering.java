@@ -207,22 +207,22 @@ public class TestBloomFiltering {
   public static void createFile() throws IOException {
     int pageSize = DATA.size() / 100;     // Ensure that several pages will be created
     int rowGroupSize = pageSize * 4;    // Ensure that there are more row-groups created
-    Map<String, Long> column2NDVMap = new HashMap<>();
-    column2NDVMap.put("location.lat", 10000L);
-    column2NDVMap.put("name", 10000L);
-    column2NDVMap.put("id", 10000L);
     PhoneBookWriter.write(ExampleParquetWriter.builder(FILE_V1)
         .withWriteMode(OVERWRITE)
         .withRowGroupSize(rowGroupSize)
         .withPageSize(pageSize)
-        .withBloomFilterColumnToNDVMap(column2NDVMap)
+        .withBloomFilterNDV("location.lat", 10000L)
+        .withBloomFilterNDV("name", 10000L)
+        .withBloomFilterNDV("id", 10000L)
         .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0),
       DATA);
     PhoneBookWriter.write(ExampleParquetWriter.builder(FILE_V2)
         .withWriteMode(OVERWRITE)
         .withRowGroupSize(rowGroupSize)
         .withPageSize(pageSize)
-        .withBloomFilterColumnToNDVMap(column2NDVMap)
+        .withBloomFilterNDV("location.lat", 10000L)
+        .withBloomFilterNDV("name", 10000L)
+        .withBloomFilterNDV("id", 10000L)
         .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_2_0),
       DATA);
   }

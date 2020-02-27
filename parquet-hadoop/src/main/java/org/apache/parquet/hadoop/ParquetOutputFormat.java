@@ -18,16 +18,12 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_BLOOM_FILTER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -150,8 +146,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
   public static final String COLUMN_INDEX_TRUNCATE_LENGTH = "parquet.columnindex.truncate.length";
   public static final String STATISTICS_TRUNCATE_LENGTH = "parquet.statistics.truncate.length";
-  public static final String BLOOM_FILTER_COLUMN_NAMES = "parquet.bloom.filter.column.names";
-  public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.expected.ndv";
+  public static final String BLOOM_FILTER_ENABLED = "parquet.bloom.filter.enabled";
+  public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.ndv";
   public static final String BLOOM_FILTER_MAX_BYTES = "parquet.bloom.filter.max.bytes";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
@@ -225,38 +221,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       ParquetProperties.DEFAULT_MAX_BLOOM_FILTER_BYTES);
   }
 
-  public static Set<String> getBloomFilterColumns(Configuration conf) {
-    String columnNames = conf.get(BLOOM_FILTER_COLUMN_NAMES);
-    if (columnNames != null) {
-      return new HashSet<>(Arrays.asList(columnNames.split(",")));
-    } else {
-      return new HashSet<>();
-    }
+  public static boolean getBloomFilterEnabled(Configuration conf) {
+    return conf.getBoolean(BLOOM_FILTER_ENABLED, DEFAULT_BLOOM_FILTER_ENABLED);
   }
-
-  public static Map<String, Long> getBloomFilterColumnExpectedNDVs(Configuration conf) {
-    Map<String, Long> kv = new HashMap<>();
-    String columnNamesConf = conf.get(BLOOM_FILTER_COLUMN_NAMES);
-    String expectedNDVsConf = conf.get(BLOOM_FILTER_EXPECTED_NDV);
-
-    if (columnNamesConf == null || expectedNDVsConf == null) {
-      return kv;
-    }
-
-    String[] columnNames = columnNamesConf.split(",");
-    String[] expectedNDVs = expectedNDVsConf.split(",");
-
-    if (columnNames.length == expectedNDVs.length) {
-      for (int i = 0; i < columnNames.length; i++) {
-        kv.put(columnNames[i], Long.parseLong(expectedNDVs[i]));
-      }
-    } else {
-      LOG.warn("Bloom filter column names are not match expected NDVs");
-    }
-
-    return kv;
-  }
-
   public static int getBlockSize(JobContext jobContext) {
     return getBlockSize(getConfiguration(jobContext));
   }
@@ -481,11 +448,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withColumnIndexTruncateLength(getColumnIndexTruncateLength(conf))
         .withStatisticsTruncateLength(getStatisticsTruncateLength(conf))
         .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
-        .withBloomFilterColumnToNDVMap(getBloomFilterColumnExpectedNDVs(conf))
+        .withBloomFilterEnabled(getBloomFilterEnabled(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf));
     new ColumnConfigParser()
         .withColumnConfig(ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)
+        .withColumnConfig(BLOOM_FILTER_ENABLED, key -> conf.getBoolean(key, false),
+            propsBuilder::withBloomFilterEnabled)
+        .withColumnConfig(BLOOM_FILTER_EXPECTED_NDV, key -> conf.getLong(key, -1L), propsBuilder::withBloomFilterNDV)
         .parseConfig(conf);
 
     ParquetProperties props = propsBuilder.build();
