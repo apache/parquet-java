@@ -580,7 +580,8 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-     * Sets the bloom filter enabled/disabled for the specified column
+     * Sets the bloom filter enabled/disabled for the specified column. If not set for the column specifically the
+     * default enabled/disabled state will take place. See {@link #withBloomFilterEnabled(boolean)}.
      *
      * @param columnPath the path of the column (dot-string)
      * @param enabled    whether to write bloom filter for the column

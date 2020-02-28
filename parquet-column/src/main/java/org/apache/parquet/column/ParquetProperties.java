@@ -464,7 +464,7 @@ public class ParquetProperties {
     public Builder withBloomFilterNDV(String columnPath, long ndv) {
       Preconditions.checkArgument(ndv > 0, "Invalid NDV for column \"%s\": %d", columnPath, ndv);
       this.bloomFilterNDVs.withValue(columnPath, ndv);
-      // Setting and NDV for a column implies writing a bloom filter
+      // Setting an NDV for a column implies writing a bloom filter
       this.bloomFilterEnabled.withValue(columnPath, true);
       return this;
     }
@@ -473,7 +473,7 @@ public class ParquetProperties {
      * Enable or disable the bloom filter for the columns not specified by
      * {@link #withBloomFilterEnabled(String, boolean)}.
      *
-     * @param enabled whether bloom filter shall be enabled
+     * @param enabled whether bloom filter shall be enabled for all columns
      *
      * @return this builder for method chaining
      */

@@ -147,7 +147,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String COLUMN_INDEX_TRUNCATE_LENGTH = "parquet.columnindex.truncate.length";
   public static final String STATISTICS_TRUNCATE_LENGTH = "parquet.statistics.truncate.length";
   public static final String BLOOM_FILTER_ENABLED = "parquet.bloom.filter.enabled";
-  public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.ndv";
+  public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.expected.ndv";
   public static final String BLOOM_FILTER_MAX_BYTES = "parquet.bloom.filter.max.bytes";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
