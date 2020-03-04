@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -48,28 +48,30 @@ public class SimpleGroup extends Group {
   }
 
   public String toString(String indent) {
-    String result = "";
+    StringBuilder result = new StringBuilder();
     int i = 0;
     for (Type field : schema.getFields()) {
       String name = field.getName();
       List<Object> values = data[i];
       ++i;
-      if (values != null) {
-        if (values.size() > 0) {
+      if (values != null && !values.isEmpty()) {
           for (Object value : values) {
-            result += indent + name;
+            result.append(indent);
+            result.append(name);
             if (value == null) {
-              result += ": NULL\n";
+              result.append(": NULL\n");
             } else if (value instanceof Group) {
-              result += "\n" + ((SimpleGroup)value).toString(indent+"  ");
+              result.append("\n");
+              result.append(((SimpleGroup)value).toString(indent+"  "));
             } else {
-              result += ": " + value.toString() + "\n";
+              result.append(": " );
+              result.append(value.toString());
+              result.append("\n");
             }
           }
-        }
       }
     }
-    return result;
+    return result.toString();
   }
 
   @Override
