@@ -105,7 +105,9 @@ public class CodecFactory implements CompressionCodecFactory {
     public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
       final BytesInput decompressed;
       if (codec != null) {
-        decompressor.reset();
+        if (decompressor != null) {
+          decompressor.reset();
+        }
         InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
         decompressed = BytesInput.from(is, uncompressedSize);
       } else {
