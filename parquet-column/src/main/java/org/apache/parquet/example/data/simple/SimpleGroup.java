@@ -44,10 +44,10 @@ public class SimpleGroup extends Group {
 
   @Override
   public String toString() {
-    return toString("");
+    return toString(new StringBuilder()).toString();
   }
 
-  public String toString(String indent) {
+  public StringBuilder toString(StringBuilder indent) {
     StringBuilder result = new StringBuilder();
     int i = 0;
     for (Type field : schema.getFields()) {
@@ -60,14 +60,14 @@ public class SimpleGroup extends Group {
             if (value == null) {
               result.append(": NULL\n");
             } else if (value instanceof Group) {
-              result.append("\n").append(((SimpleGroup)value).toString(indent+"  "));
+              result.append("\n").append(((SimpleGroup)value).toString(indent.append("  ")));
             } else {
               result.append(": " ).append(value.toString()).append("\n");
             }
           }
       }
     }
-    return result.toString();
+    return result;
   }
 
   @Override
