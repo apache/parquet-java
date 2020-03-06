@@ -44,30 +44,34 @@ public class SimpleGroup extends Group {
 
   @Override
   public String toString() {
-    return toString(new StringBuilder()).toString();
+    return toString("");
   }
-
-  public StringBuilder toString(StringBuilder indent) {
-    StringBuilder result = new StringBuilder();
+  private StringBuilder appendToString(StringBuilder builder, String indent){
     int i = 0;
     for (Type field : schema.getFields()) {
       String name = field.getName();
       List<Object> values = data[i];
       ++i;
       if (values != null && !values.isEmpty()) {
-          for (Object value : values) {
-            result.append(indent).append(name);
-            if (value == null) {
-              result.append(": NULL\n");
-            } else if (value instanceof Group) {
-              result.append("\n").append(((SimpleGroup)value).toString(indent.append("  ")));
-            } else {
-              result.append(": " ).append(value.toString()).append("\n");
-            }
+        for (Object value : values) {
+          builder.append(indent).append(name);
+          if (value == null) {
+            builder.append(": NULL\n");
+          } else if (value instanceof Group) {
+            builder.append("\n").append(((SimpleGroup)value).appendToString(builder,indent+"  "));
+          } else {
+            builder.append(": " ).append(value.toString()).append("\n");
           }
+        }
       }
     }
-    return result;
+    return builder;
+  }
+
+  public String toString(String indent) {
+    StringBuilder builder = new StringBuilder();
+    appendToString(builder, indent);
+    return builder.toString();
   }
 
   @Override
