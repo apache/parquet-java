@@ -154,12 +154,10 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
     StringBuilder pathString = new StringBuilder();
     if (path.size() > 0) {
       for (int i = 1; i < path.size(); i++) {
-        pathString.append(path.get(i).getName());
-        pathString.append(".");
+        pathString.append(path.get(i).getName()).append('.');
       }
     }
-    pathString.append(type.getName());
-    pathString.append(".");
+    pathString.append(type.getName()).append('.');
     return pathString.toString();
   }
 

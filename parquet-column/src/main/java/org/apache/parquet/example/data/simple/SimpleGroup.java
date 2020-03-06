@@ -56,17 +56,13 @@ public class SimpleGroup extends Group {
       ++i;
       if (values != null && !values.isEmpty()) {
           for (Object value : values) {
-            result.append(indent);
-            result.append(name);
+            result.append(indent).append(name);
             if (value == null) {
               result.append(": NULL\n");
             } else if (value instanceof Group) {
-              result.append("\n");
-              result.append(((SimpleGroup)value).toString(indent+"  "));
+              result.append("\n").append(((SimpleGroup)value).toString(indent+"  "));
             } else {
-              result.append(": " );
-              result.append(value.toString());
-              result.append("\n");
+              result.append(": " ).append(value.toString()).append("\n");
             }
           }
       }

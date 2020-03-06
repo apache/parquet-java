@@ -276,7 +276,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private void log(Object message, Object...parameters) {
       if (DEBUG) {
-        StringBuilder indent = new StringBuilder();
+        StringBuilder indent = new StringBuilder(currentLevel * 2);
         for (int i = 0; i < currentLevel; ++i) {
           indent.append("  ");
         }

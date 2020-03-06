@@ -396,10 +396,9 @@ public class TestInputFormat {
       File file = new File(tempDir, String.format("part-%05d.parquet", i));
       createParquetFile(file);
       if (i > 0) {
-        url.append(",");
+        url.append(',');
       }
-      url.append("file:");
-      url.append(file.getAbsolutePath());
+      url.append("file:").append(file.getAbsolutePath());
     }
 
     Job job = new Job();
