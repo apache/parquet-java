@@ -59,7 +59,8 @@ public class SimpleGroup extends Group {
           if (value == null) {
             builder.append(": NULL\n");
           } else if (value instanceof Group) {
-            builder.append("\n").append(((SimpleGroup)value).appendToString(builder,indent+"  "));
+            builder.append('\n');
+            ((SimpleGroup) value).appendToString(builder, indent + "  ");
           } else {
             builder.append(": ").append(value.toString()).append('\n');
           }
