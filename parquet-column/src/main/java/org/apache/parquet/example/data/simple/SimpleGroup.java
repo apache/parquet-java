@@ -46,7 +46,8 @@ public class SimpleGroup extends Group {
   public String toString() {
     return toString("");
   }
-  private StringBuilder appendToString(StringBuilder builder, String indent){
+
+  private StringBuilder appendToString(StringBuilder builder, String indent) {
     int i = 0;
     for (Type field : schema.getFields()) {
       String name = field.getName();
