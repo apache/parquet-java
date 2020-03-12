@@ -1,0 +1,3379 @@
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.google.inject.internal.cglib.core.$ReflectUtils$1 (file:/usr/share/maven/lib/guice.jar) to method java.lang.ClassLoader.defineClass(java.lang.String,byte[],int,int,java.security.ProtectionDomain)
+WARNING: Please consider reporting this to the maintainers of com.google.inject.internal.cglib.core.$ReflectUtils$1
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m-----------------< [0;36morg.apache.parquet:parquet-hadoop[0;1m >------------------[m
+[[1;34mINFO[m] [1mBuilding Apache Parquet Hadoop 1.12.0-SNAPSHOT[m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;33mWARNING[m] The POM for org.apache.yetus:audience-annotations:jar:0.11.0 is invalid, transitive dependencies (if any) will not be available, enable debug logging for more details
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mbuildnumber-maven-plugin:1.1:create[m [1m(default)[m @ [36mparquet-hadoop[0;1m ---[m
+[[1;34mINFO[m] Checking for local modifications: skipped.
+[[1;34mINFO[m] Updating project files from SCM: skipped.
+[[1;34mINFO[m] Executing: /bin/sh -c cd /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop && git rev-parse --verify HEAD
+[[1;34mINFO[m] Working directory: /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop
+[[1;34mINFO[m] Storing buildNumber: 806037c080dc477798d157cd4a54a81240a85d37 at timestamp: 1583824740151
+[[1;34mINFO[m] Executing: /bin/sh -c cd /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop && git rev-parse --verify HEAD
+[[1;34mINFO[m] Working directory: /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop
+[[1;34mINFO[m] Storing buildScmBranch: UNKNOWN
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-enforcer-plugin:1.3.1:enforce[m [1m(enforce-banned-dependencies)[m @ [36mparquet-hadoop[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-remote-resources-plugin:1.5:process[m [1m(default)[m @ [36mparquet-hadoop[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:2.7:resources[m [1m(default-resources)[m @ [36mparquet-hadoop[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.1:compile[m [1m(default-compile)[m @ [36mparquet-hadoop[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 106 source files to /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/target/classes
+[[1;33mWARNING[m] /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/src/main/java/org/apache/parquet/format/converter/ParquetMetadataConverter.java: Some input files use or override a deprecated API.
+[[1;33mWARNING[m] /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/src/main/java/org/apache/parquet/format/converter/ParquetMetadataConverter.java: Recompile with -Xlint:deprecation for details.
+[[1;33mWARNING[m] /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/src/main/java/org/apache/parquet/filter2/statisticslevel/StatisticsFilter.java: Some input files use unchecked or unsafe operations.
+[[1;33mWARNING[m] /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/src/main/java/org/apache/parquet/filter2/statisticslevel/StatisticsFilter.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:2.7:testResources[m [1m(default-testResources)[m @ [36mparquet-hadoop[0;1m ---[m
+[[1;34mINFO[m] Using 'UTF-8' encoding to copy filtered resources.
+[[1;34mINFO[m] Copying 1 resource
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.1:testCompile[m [1m(default-testCompile)[m @ [36mparquet-hadoop[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;34mINFO[m] Compiling 44 source files to /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/target/test-classes
+[[1;33mWARNING[m] /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/src/test/java/org/apache/parquet/filter2/TestFiltersWithMissingColumns.java: Some input files use or override a deprecated API.
+[[1;33mWARNING[m] /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/src/test/java/org/apache/parquet/filter2/TestFiltersWithMissingColumns.java: Recompile with -Xlint:deprecation for details.
+[[1;33mWARNING[m] /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/src/test/java/org/apache/parquet/hadoop/TestMemoryManager.java: /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/src/test/java/org/apache/parquet/hadoop/TestMemoryManager.java uses unchecked or unsafe operations.
+[[1;33mWARNING[m] /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/src/test/java/org/apache/parquet/hadoop/TestMemoryManager.java: Recompile with -Xlint:unchecked for details.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-surefire-plugin:2.10:test[m [1m(default-test)[m @ [36mparquet-hadoop[0;1m ---[m
+[[1;34mINFO[m] Surefire report directory: /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/target/surefire-reports
+
+-------------------------------------------------------
+ T E S T S
+-------------------------------------------------------
+Running org.apache.parquet.hadoop.TestEncryption
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.apache.hadoop.security.authentication.util.KerberosUtil (file:/home/gidon/.m2/repository/org/apache/hadoop/hadoop-auth/2.7.3/hadoop-auth-2.7.3.jar) to method sun.security.krb5.Config.getInstance()
+WARNING: Please consider reporting this to the maintainers of org.apache.hadoop.security.authentication.util.KerberosUtil
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+09:19:08,982 WARN                NativeCodeLoader:  62 - Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+MODE: 0
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,016 bytes
+   total: 1,016/1,016
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,126 bytes
+   total: 1,126/1,126
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,126 bytes
+   total: 1,126/1,126
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,126 bytes
+   total: 1,126/1,126
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,126 bytes
+   total: 1,126/1,126
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,125 bytes
+   total: 1,125/1,125
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,126 bytes
+   total: 1,126/1,126
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,126 bytes
+   total: 1,126/1,126
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,126 bytes
+   total: 1,126/1,126
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:09 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,126 bytes
+   total: 1,126/1,126
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - RecordReader initialized will read a total of 1000 records.
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 0. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 8 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 100 records from 8 columns in 5 ms: 20.0 rec/ms, 160.0 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 61% reading (8 ms) and 38% processing (5 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 100. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 1 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 200 records from 8 columns in 7 ms: 28.571428 rec/ms, 228.57143 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 56% reading (9 ms) and 43% processing (7 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 200. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 0 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 300 records from 8 columns in 9 ms: 33.333332 rec/ms, 266.66666 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 50% reading (9 ms) and 50% processing (9 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 300. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 6 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 400 records from 8 columns in 13 ms: 30.76923 rec/ms, 246.15384 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 53% reading (15 ms) and 46% processing (13 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 400. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 1 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 500 records from 8 columns in 14 ms: 35.714287 rec/ms, 285.7143 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 53% reading (16 ms) and 46% processing (14 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 500. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 0 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 600 records from 8 columns in 17 ms: 35.294117 rec/ms, 282.35294 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 48% reading (16 ms) and 51% processing (17 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 600. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 2 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 700 records from 8 columns in 18 ms: 38.88889 rec/ms, 311.1111 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 50% reading (18 ms) and 50% processing (18 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 700. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 1 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 800 records from 8 columns in 19 ms: 42.105263 rec/ms, 336.8421 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 50% reading (19 ms) and 50% processing (19 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 800. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 0 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 900 records from 8 columns in 21 ms: 42.857143 rec/ms, 342.85715 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 47% reading (19 ms) and 52% processing (21 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 900. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 5 ms. row count = 100
+MODE: 1
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,154 bytes
+   total: 1,154/1,154
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 167 bytes
+   total: 167/179
+ }
+}
+
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - RecordReader initialized will read a total of 1000 records.
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 0. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 4 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 100 records from 8 columns in 1 ms: 100.0 rec/ms, 800.0 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 80% reading (4 ms) and 20% processing (1 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 100. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 1 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 200 records from 8 columns in 2 ms: 100.0 rec/ms, 800.0 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 71% reading (5 ms) and 28% processing (2 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 200. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 2 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 300 records from 8 columns in 2 ms: 150.0 rec/ms, 1200.0 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 77% reading (7 ms) and 22% processing (2 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 300. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 2 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 400 records from 8 columns in 3 ms: 133.33333 rec/ms, 1066.6666 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 75% reading (9 ms) and 25% processing (3 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 400. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 1 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 500 records from 8 columns in 4 ms: 125.0 rec/ms, 1000.0 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 71% reading (10 ms) and 28% processing (4 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 500. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 1 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 600 records from 8 columns in 5 ms: 120.0 rec/ms, 960.0 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 68% reading (11 ms) and 31% processing (5 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 600. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 1 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 700 records from 8 columns in 6 ms: 116.666664 rec/ms, 933.3333 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 66% reading (12 ms) and 33% processing (6 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 700. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 1 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 800 records from 8 columns in 7 ms: 114.28571 rec/ms, 914.2857 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 65% reading (13 ms) and 35% processing (7 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 800. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 1 ms. row count = 100
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - Assembled and processed 900 records from 8 columns in 8 ms: 112.5 rec/ms, 900.0 cell/ms
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - time spent so far 63% reading (14 ms) and 36% processing (8 ms)
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - at row 900. reading next block
+2020-03-10 09:19:10 INFO InternalParquetRecordReader - block read in memory in 2 ms. row count = 100
+MODE: 2
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,154 bytes
+   total: 1,154/1,154
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+2020-03-10 09:19:10 WARN InternalParquetRecordWriter - Too much memory used: Store {
+ [binary_field] required binary binary_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:0
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 1,264 bytes
+   total: 1,264/1,264
+ }
+ [boolean_field] required boolean boolean_field {
+  r:0 bytes
+  d:0 bytes
+   data: ByteBitPacking 0 slabs, 1056 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 13/1,056
+ }
+ [double_field] required double double_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [flba_field] required fixed_len_byte_array(3) flba_field {
+  r:0 bytes
+  d:0 bytes
+   data: PLAIN CapacityByteArrayOutputStream 4 slabs, 460 bytes
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 300/460
+ }
+ [float_field] required float float_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int32_field] required int32 int32_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:4
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 400/404
+ }
+ [int64_field] required int64 int64_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:8
+   data: initial: values:400
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 0 slabs, 0 bytes
+   total: 800/408
+ }
+ [int96_field] required int96 int96_field {
+  r:0 bytes
+  d:0 bytes
+   data: FallbackValuesWriter{
+   data: initial: DictionaryValuesWriter{
+   data: initial: dict:12
+   data: initial: values:0
+   data: initial:}
+
+   data: fallback: PLAIN CapacityByteArrayOutputStream 0 slabs, 0 bytes
+   data:}
+
+   pages: ColumnChunkPageWriter ConcatenatingByteArrayCollector 1 slabs, 27 bytes
+   total: 27/39
+ }
+}
+
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 2.54 sec <<< FAILURE!
+
+Results :
+
+Tests in error: 
+  test(org.apache.parquet.hadoop.TestEncryption): All key bytes are zero
+
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0
+
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;31mBUILD FAILURE[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  12.512 s
+[[1;34mINFO[m] Finished at: 2020-03-10T09:19:10+02:00
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;31mERROR[m] Failed to execute goal [32morg.apache.maven.plugins:maven-surefire-plugin:2.10:test[m [1m(default-test)[m on project [36mparquet-hadoop[m: [1;31mThere are test failures.[m
+[[1;31mERROR[m] [1;31m[m
+[[1;31mERROR[m] [1;31mPlease refer to /home/gidon/Parquet/encr_feb27/parquet-mr/parquet-hadoop/target/surefire-reports for the individual test results.[m
+[[1;31mERROR[m] -> [1m[Help 1][m
+[[1;31mERROR[m] 
+[[1;31mERROR[m] To see the full stack trace of the errors, re-run Maven with the [1m-e[m switch.
+[[1;31mERROR[m] Re-run Maven using the [1m-X[m switch to enable full debug logging.
+[[1;31mERROR[m] 
+[[1;31mERROR[m] For more information about the errors and possible solutions, please read the following articles:
+[[1;31mERROR[m] [1m[Help 1][m http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

@@ -71,6 +71,7 @@ public class SimpleRecordConverter extends GroupConverter {
           }
         }).orElse(new SimplePrimitiveConverter(field.getName()));
       }
+      return new SimplePrimitiveConverter(field.getName());
     }
 
     GroupType groupType = field.asGroupType();

@@ -20,8 +20,8 @@ package org.apache.parquet.thrift.projection.deprecated;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.thrift.projection.FieldsPath;
 import org.apache.parquet.thrift.projection.FieldProjectionFilter;
 import org.apache.parquet.thrift.projection.ThriftProjectionException;
@@ -59,7 +59,7 @@ public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
   }
 
   public DeprecatedFieldProjectionFilter(String filterDescStr) {
-    Preconditions.checkNotNull(filterDescStr, "filterDescStr");
+    Objects.requireNonNull(filterDescStr, "filterDescStr cannot be null");
 
     filterPatterns = new LinkedList<PathGlobPatternStatus>();
 

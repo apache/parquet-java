@@ -47,6 +47,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LE
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 
 import java.io.IOException;
 import java.util.List;
@@ -417,6 +418,47 @@ public class TestSchemaConverter {
       field("a", new ArrowType.Time(TimeUnit.MICROSECOND, 64))
     ));
     Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test
+  public void testParquetFixedBinaryToArrow() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Binary())
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test
+  public void testParquetFixedBinaryToArrowDecimal() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(5).as(DECIMAL).precision(8).scale(2).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Decimal(8, 2))
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test
+  public void testParquetInt96ToArrowBinary() {
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(INT96).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Binary())
+    ));
+    Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test
+  public void testParquetInt96ToArrowTimestamp() {
+    final SchemaConverter converterInt96ToTimestamp = new SchemaConverter(true);
+    MessageType parquet = Types.buildMessage()
+      .addField(Types.optional(INT96).named("a")).named("root");
+    Schema expected = new Schema(asList(
+      field("a", new ArrowType.Timestamp(TimeUnit.NANOSECOND, null))
+    ));
+    Assert.assertEquals(expected, converterInt96ToTimestamp.fromParquet(parquet).getArrowSchema());
   }
 
   @Test(expected = IllegalStateException.class)

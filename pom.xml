@@ -73,40 +73,43 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
-    <jackson.groupId>org.codehaus.jackson</jackson.groupId>
-    <jackson.version>1.9.13</jackson.version>
-    <jackson.package>org.codehaus.jackson</jackson.package>
+    <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
+    <jackson.package>com.fasterxml.jackson</jackson.package>
+    <jackson.version>2.9.10</jackson.version>
+    <jackson-databind.version>2.9.10</jackson-databind.version>
+    <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.7.3</hadoop.version>
-    <hadoop1.version>1.2.1</hadoop1.version>
     <cascading.version>2.7.1</cascading.version>
     <cascading3.version>3.1.2</cascading3.version>
-    <parquet.format.version>2.6.0</parquet.format.version>
-    <previous.version>1.7.0</previous.version>
+    <parquet.format.version>2.8.0</parquet.format.version>
+    <previous.version>1.11.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>thrift</format.thrift.executable>
-    <scala.version>2.10.6</scala.version>
+    <scala.version>2.12.8</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
-    <scala.binary.version>2.10</scala.binary.version>
+    <scala.binary.version>2.12</scala.binary.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
+    <scrooge.verion>19.10.0</scrooge.verion>
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.9.3</thrift.version>
-    <format.thrift.version>0.9.3</format.thrift.version>
-    <fastutil.version>7.0.13</fastutil.version>
+    <thrift.version>0.12.0</thrift.version>
+    <format.thrift.version>0.12.0</format.thrift.version>
+    <fastutil.version>8.2.3</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
-    <avro.version>1.8.2</avro.version>
-    <guava.version>20.0</guava.version>
+    <avro.version>1.9.2</avro.version>
+    <guava.version>27.0.1-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
+    <net.openhft.version>0.9</net.openhft.version>
+    <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
-    <jackson2.version>2.3.1</jackson2.version>
-    <jcommander.version>1.35</jcommander.version>
-    <commons-codec.version>1.10</commons-codec.version>
+    <jcommander.version>1.72</jcommander.version>
+    <zstd-jni.version>1.4.0-1</zstd-jni.version>
   </properties>
 
   <modules>
@@ -148,13 +151,6 @@
       <version>3.4</version>
       <scope>test</scope>
     </dependency>
-    <!-- hadoop-1 requires the old httpclient for testing -->
-    <dependency>
-      <groupId>commons-httpclient</groupId>
-      <artifactId>commons-httpclient</artifactId>
-      <version>3.1</version>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
 
   <reporting>
@@ -162,7 +158,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.9</version>
+        <version>${maven-javadoc-plugin.version}</version>
         <reportSets>
           <reportSet><!-- by default, id = "default" -->
             <reports><!-- select non-aggregate reports -->
@@ -182,6 +178,7 @@
           <sourceFileExcludes>
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
+          <source>8</source>
         </configuration>
       </plugin>
       <plugin>
@@ -240,50 +237,6 @@
          </dependencies>
          <executions>
            <execution>
-             <id>check</id>
-             <phase>verify</phase>
-             <goals>
-               <goal>enforce</goal>
-             </goals>
-             <configuration>
-               <rules>
-                 <requireBackwardCompatibility implementation="org.semver.enforcer.RequireSemanticVersioningConformance">
-                   <dumpDetails>true</dumpDetails>
-                   <previousVersion>${previous.version}</previousVersion>
-                   <excludes>
-                     <exclude>org/apache/parquet/hadoop/util/**</exclude>
-                     <exclude>org/apache/parquet/thrift/projection/**</exclude>
-                     <exclude>org/apache/parquet/thrift/ThriftSchemaConverter</exclude>
-                     <exclude>org/apache/parquet/filter2/**</exclude>
-                     <exclude>org/apache/parquet/column/**</exclude>
-                     <exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>
-                     <exclude>org/apache/parquet/hadoop/CodecFactory**</exclude>
-                     <exclude>shaded/**</exclude> <!-- shaded by parquet -->
-                     <exclude>org/apache/parquet/it/unimi/dsi/fastutil/**</exclude> <!-- Another shaded dependency from parquet-column -->
-                     <exclude>org/apache/parquet/benchmarks/**</exclude>
-                     <exclude>org/openjdk/**</exclude>
-                     <!-- temporary exclusions for false-positives -->
-                     <exclude>org/apache/parquet/Version</exclude>
-                     <exclude>org/apache/parquet/schema/**</exclude> <!-- methods moved to new superclass -->
-                     <exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> <!-- not public -->
-                     <exclude>org/apache/parquet/avro/AvroParquetReader</exclude> <!-- returns subclass of old return class -->
-                     <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> <!-- made public -->
-                     <exclude>org/apache/parquet/io/ColumnIOFactory$ColumnIOCreatorVisitor</exclude> <!-- removed non-API class -->
-                     <exclude>org/apache/parquet/io/ColumnIOFactory/**</exclude> <!-- removed non-API class and methods-->
-                     <exclude>org/apache/parquet/hadoop/codec/SnappyCompressor</exclude> <!-- added synchronized modifier -->
-                     <exclude>org/apache/parquet/bytes/BytesInput</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/bytes/CapacityByteArrayOutputStream</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/bytes/ConcatenatingByteArrayCollector</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/bytes/LittleEndianDataInputStream</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/bytes/LittleEndianDataOutputStream</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/hadoop/metadata/CompressionCodecName</exclude> <!-- moved to parquet-common -->
-                     <exclude>org/apache/parquet/hadoop/codec/CompressionCodecNotSupportedException</exclude> <!-- moved to parquet-common -->
-                   </excludes>
-                 </requireBackwardCompatibility>
-               </rules>
-             </configuration>
-           </execution>
-           <execution>
             <id>enforce-banned-dependencies</id>
             <goals>
               <goal>enforce</goal>
@@ -304,7 +257,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.2.1</version>
           <executions>
             <execution>
               <phase>package</phase>
@@ -317,6 +270,7 @@
                   <includes>
                     <include>${jackson.groupId}:*</include>
                     <include>it.unimi.dsi:fastutil</include>
+                    <include>net.openhft:*</include>
                   </includes>
                 </artifactSet>
                 <!-- Shade jackson but do not include any class. Let parquet-jackson handle this -->
@@ -336,6 +290,10 @@
                   <relocation>
                     <pattern>it.unimi.dsi</pattern>
                     <shadedPattern>${shade.prefix}.it.unimi.dsi</shadedPattern>
+                  </relocation>
+                  <relocation>
+                    <pattern>net.openhft</pattern>
+                    <shadedPattern>${shade.prefix}.net.openhft</shadedPattern>
                   </relocation>
                 </relocations>
               </configuration>
@@ -364,6 +322,17 @@
       </plugins>
     </pluginManagement>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>${maven-javadoc-plugin.version}</version>
+        <configuration>
+          <sourceFileExcludes>
+            <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
+          </sourceFileExcludes>
+          <source>8</source>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>com.mycila.maven-license-plugin</groupId>
         <artifactId>maven-license-plugin</artifactId>
@@ -470,6 +439,7 @@
         <configuration>
           <consoleOutput>true</consoleOutput>
           <excludes>
+            <exclude>.github/PULL_REQUEST_TEMPLATE.md</exclude>
             <exclude>**/*.parquet</exclude>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.json</exclude>
@@ -496,6 +466,54 @@
           </excludes>
         </configuration>
       </plugin>
+
+      <plugin>
+        <groupId>com.github.siom79.japicmp</groupId>
+        <artifactId>japicmp-maven-plugin</artifactId>
+        <version>${japicmp.version}</version>
+        <configuration>
+          <parameter>
+            <oldVersionPattern>${previous.version}</oldVersionPattern>
+            <breakBuildBasedOnSemanticVersioning>true</breakBuildBasedOnSemanticVersioning>
+            <onlyModified>true</onlyModified>
+            <overrideCompatibilityChangeParameters>
+              <!-- Adding a new method with default implementation to an interface should be a compatible change.
+                That's why they invented it. -->
+              <overrideCompatibilityChangeParameter>
+                <compatibilityChange>METHOD_NEW_DEFAULT</compatibilityChange>
+                <semanticVersionLevel>MINOR</semanticVersionLevel>
+                <binaryCompatible>true</binaryCompatible>
+                <sourceCompatible>true</sourceCompatible>
+              </overrideCompatibilityChangeParameter>
+            </overrideCompatibilityChangeParameters>
+            <excludeModules>
+              <!-- Excluding the following modules because they are not part of the parquet public API -->
+              <excludeModule>parquet-benchmarks</excludeModule>
+              <excludeModule>parquet-cli</excludeModule>
+              <excludeModule>parquet-tools</excludeModule>
+              <excludeModule>parquet-format-structures</excludeModule>
+
+              <!-- Excluding the following modules because bundles do not contain any java classes while they still fail the
+                compatibility check because of missing dependencies -->
+              <excludeModule>parquet-hadoop-bundle</excludeModule>
+              <excludeModule>parquet-hive-bundle</excludeModule>
+              <excludeModule>parquet-pig-bundle</excludeModule>
+            </excludeModules>
+            <excludes>
+              <exclude>${shade.prefix}</exclude>
+            </excludes>
+          </parameter>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>verify</phase>
+            <goals>
+              <goal>cmp</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
     </plugins>
   </build>
 
@@ -564,21 +582,6 @@
       </build>
     </profile>
 
-    <profile>
-      <id>hadoop-1</id>
-      <activation>
-        <property>
-          <name>hadoop.profile</name>
-          <value>hadoop1</value>
-        </property>
-      </activation>
-      <properties>
-        <!-- test hadoop-1 with the same jars that were produced for default profile -->
-        <maven.main.skip>true</maven.main.skip>
-        <hadoop.version>${hadoop1.version}</hadoop.version>
-        <pig.classifier />
-      </properties>
-    </profile>
     <profile>
       <id>thrift9</id>
       <properties>

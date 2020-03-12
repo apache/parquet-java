@@ -35,7 +35,7 @@ struct Address {
 
 struct Phone {
   1: string mobile
-  2: string work
+  2: required string work
 }
 
 struct TestPerson {
@@ -94,4 +94,8 @@ struct StructWithIndexStartsFrom4 {
 struct StructWithExtraField {
   3: required Phone extraPhone,
   6: required Phone phone
+}
+
+struct TestLogicalType {
+  1: required i16 test_i16
 }

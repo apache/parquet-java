@@ -20,18 +20,23 @@
 
 set -e
 
-if [ -z "$2" ]; then
+[[ $# != 2 ]] && err="Incorrect number of arguments: $#"
+[[ -z $err ]] && ! [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && err="Invalid release version: \"$1\""
+[[ -z $err ]] && ! [[ $2 =~ ^[0-9]+$ ]] && err="Invalid rc number: \"$2\""
+
+if [[ -n $err ]]; then
     cat <<EOF
-Usage: $0 <release-version> <new-development-version-without-SNAPSHOT-suffix>
-Example: $0 1.6.0 1.7.0
+$err
+Usage: $0 <release-version> <rc-num>
+Example: $0 1.11.0 7
 EOF
   exit 1
 fi
 
 release_version="$1"
-new_development_version="$2-SNAPSHOT"
+new_development_version="$release_version-SNAPSHOT"
 
-tag="apache-parquet-$release_version"
+tag="apache-parquet-$release_version-rc$2"
 
 mvn release:clean
 mvn release:prepare -Dtag="$tag" "-DreleaseVersion=$release_version" -DdevelopmentVersion="$new_development_version"

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -135,6 +135,16 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String COLUMN_INDEX_FILTERING_ENABLED = "parquet.filter.columnindex.enabled";
 
   /**
+   * key to configure whether page level checksum verification is enabled
+   */
+  public static final String PAGE_VERIFY_CHECKSUM_ENABLED = "parquet.page.verify-checksum.enabled";
+
+  /**
+   * key to configure whether row group bloom filtering is enabled
+   */
+  public static final String BLOOM_FILTERING_ENABLED = "parquet.filter.bloom.enabled";
+
+  /**
    * key to turn on or off task side metadata loading (default true)
    * if true then metadata is read on the task side and some tasks may finish immediately.
    * if false metadata is read on the client which is slower if there is a lot of metadata but tasks will only be spawn if there is work to do.
@@ -190,10 +200,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       }
 
       return unboundRecordFilter;
-    } catch (InstantiationException e) {
-      throw new BadConfigurationException("could not instantiate unbound record filter class", e);
-    } catch (IllegalAccessException e) {
-      throw new BadConfigurationException("could not instantiate unbound record filter class", e);
+    } catch (InstantiationException | IllegalAccessException e) {
+      throw new BadConfigurationException(
+          "could not instantiate unbound record filter class", e);
     }
   }
 
@@ -307,9 +316,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       Class<? extends ReadSupport<T>> readSupportClass){
     try {
       return readSupportClass.newInstance();
-    } catch (InstantiationException e) {
-      throw new BadConfigurationException("could not instantiate read support class", e);
-    } catch (IllegalAccessException e) {
+    } catch (InstantiationException | IllegalAccessException e) {
       throw new BadConfigurationException("could not instantiate read support class", e);
     }
   }

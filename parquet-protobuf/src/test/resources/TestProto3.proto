@@ -1,4 +1,3 @@
-syntax = "proto3";
 //
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
@@ -17,6 +16,9 @@ syntax = "proto3";
 // specific language governing permissions and limitations
 // under the License.
 //
+
+syntax = "proto3";
+
 package TestProto3;
 
 option java_package = "org.apache.parquet.proto.test";

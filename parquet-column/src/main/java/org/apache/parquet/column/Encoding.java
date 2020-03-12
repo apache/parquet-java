@@ -31,6 +31,8 @@ import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesReader;
+import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForDouble;
+import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForFloat;
 import org.apache.parquet.column.values.rle.ZeroIntegerValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
@@ -117,6 +119,20 @@ public enum Encoding {
         return new ZeroIntegerValuesReader();
       }
       return new RunLengthBitPackingHybridValuesReader(bitWidth);
+    }
+  },
+
+  BYTE_STREAM_SPLIT {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      switch (descriptor.getType()) {
+      case FLOAT:
+        return new ByteStreamSplitValuesReaderForFloat();
+      case DOUBLE:
+        return new ByteStreamSplitValuesReaderForDouble();
+      default:
+        throw new ParquetDecodingException("no byte stream split reader for type " + descriptor.getType());
+      }
     }
   },
 

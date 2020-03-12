@@ -24,11 +24,16 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
 import org.apache.avro.Schema;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Expressions;
+import org.apache.parquet.crypto.FileDecryptionProperties;
+import org.apache.parquet.crypto.StringKeyIdRetriever;
 import org.slf4j.Logger;
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 
 import static org.apache.parquet.cli.util.Expressions.select;
@@ -47,6 +52,14 @@ public class CatCommand extends BaseCommand {
       names = {"-c", "--column", "--columns"},
       description = "List of columns")
   List<String> columns;
+  
+  @Parameter(names={"-e", "--encrypted-file"},
+      description="Cat an encrypted Parquet file")
+  boolean encrypt = false;
+
+  @Parameter(names={"--key"},
+      description="Encryption key (base64 string)")
+  String encodedKey;
 
   public CatCommand(Logger console, long defaultNumRecords) {
     super(console);
@@ -62,11 +75,50 @@ public class CatCommand extends BaseCommand {
         "Only one file can be given");
 
     final String source = sourceFiles.get(0);
+    
+    FileDecryptionProperties dSetup = null;
+    if (encrypt) {
+      byte[] keyBytes;
+      if (null == encodedKey) {
+        keyBytes = new byte[16];
+        for (byte i=0; i < 16; i++) {keyBytes[i] = i;}
+        String sampleKey = Base64.getEncoder().encodeToString(keyBytes);
+        console.info("Decrypting with a sample key: " +sampleKey);
+      }
+      else {
+        keyBytes = Base64.getDecoder().decode(encodedKey);
+      }
 
-    Schema schema = getAvroSchema(source);
+      StringKeyIdRetriever kr = new StringKeyIdRetriever();
+      kr.putKey("kf", keyBytes);
+
+      for (int c=0; c < 20; c++) {
+
+        byte[] colKeyBytes = new byte[16]; 
+        for (byte i=0; i < 16; i++) {colKeyBytes[i] = (byte)(i*(c+2));}
+
+        kr.putKey("kc"+c, colKeyBytes);
+      }
+
+
+      byte[] aad = source.getBytes(StandardCharsets.UTF_8);
+      console.info("AAD Prefix: "+source+". Len: "+aad.length);
+
+
+      dSetup = FileDecryptionProperties.builder()
+          .withKeyRetriever(kr)
+          //.withPlaintextFilesAllowed()
+          //.withAADPrefix(aad)
+          .build();
+    }
+
+    Configuration conf = getConf();
+
+    Schema schema = getAvroSchema(source, dSetup);
+    
     Schema projection = Expressions.filterSchema(schema, columns);
 
-    Iterable<Object> reader = openDataFile(source, projection);
+    Iterable<Object> reader = openDataFile(source, projection, dSetup);
     boolean threw = true;
     long count = 0;
     try {

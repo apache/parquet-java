@@ -19,8 +19,7 @@
 package org.apache.parquet.filter2.predicate;
 
 import java.util.Comparator;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
+import java.util.Objects;
 
 /**
  * Contains statistics about a group of records
@@ -40,8 +39,8 @@ public class Statistics<T> {
    */
   @Deprecated
   public Statistics(T min, T max) {
-    this.min = checkNotNull(min, "min");
-    this.max = checkNotNull(max, "max");
+    this.min = Objects.requireNonNull(min, "min cannot be null");
+    this.max = Objects.requireNonNull(max, "max cannot be null");
     this.comparator = null;
   }
 
@@ -53,9 +52,9 @@ public class Statistics<T> {
    * @param comparator a comparator to use when comparing values described by this statistics instance
    */
   public Statistics(T min, T max, Comparator<T> comparator) {
-    this.min = checkNotNull(min, "min");
-    this.max = checkNotNull(max, "max");
-    this.comparator = checkNotNull(comparator, "comparator");
+    this.min = Objects.requireNonNull(min, "min cannot be null");
+    this.max = Objects.requireNonNull(max, "max cannot be null");
+    this.comparator = Objects.requireNonNull(comparator, "comparator cannot be null");
   }
 
   /**

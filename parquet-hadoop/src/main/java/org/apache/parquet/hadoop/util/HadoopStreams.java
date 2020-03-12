@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.PositionOutputStream;
@@ -30,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Objects;
 
 /**
  * Convenience methods to get Parquet abstractions for Hadoop data streams.
@@ -49,15 +49,12 @@ public class HadoopStreams {
    * @return a SeekableInputStream
    */
   public static SeekableInputStream wrap(FSDataInputStream stream) {
-    Preconditions.checkNotNull(stream, "Cannot wrap a null input stream");
+    Objects.requireNonNull(stream, "Cannot wrap a null input stream");
     if (byteBufferReadableClass != null && h2SeekableConstructor != null &&
         byteBufferReadableClass.isInstance(stream.getWrappedStream())) {
       try {
         return h2SeekableConstructor.newInstance(stream);
-      } catch (InstantiationException e) {
-        LOG.warn("Could not instantiate H2SeekableInputStream, falling back to byte array reads", e);
-        return new H1SeekableInputStream(stream);
-      } catch (IllegalAccessException e) {
+      } catch (InstantiationException | IllegalAccessException e) {
         LOG.warn("Could not instantiate H2SeekableInputStream, falling back to byte array reads", e);
         return new H1SeekableInputStream(stream);
       } catch (InvocationTargetException e) {
@@ -72,9 +69,7 @@ public class HadoopStreams {
   private static Class<?> getReadableClass() {
     try {
       return Class.forName("org.apache.hadoop.fs.ByteBufferReadable");
-    } catch (ClassNotFoundException e) {
-      return null;
-    } catch (NoClassDefFoundError e) {
+    } catch (ClassNotFoundException | NoClassDefFoundError e) {
       return null;
     }
   }
@@ -84,9 +79,7 @@ public class HadoopStreams {
     try {
       return (Class<SeekableInputStream>) Class.forName(
           "org.apache.parquet.hadoop.util.H2SeekableInputStream");
-    } catch (ClassNotFoundException e) {
-      return null;
-    } catch (NoClassDefFoundError e) {
+    } catch (ClassNotFoundException | NoClassDefFoundError e) {
       return null;
     }
   }
@@ -111,7 +104,7 @@ public class HadoopStreams {
    * @return a SeekableOutputStream
    */
   public static PositionOutputStream wrap(FSDataOutputStream stream) {
-    Preconditions.checkNotNull(stream, "Cannot wrap a null output stream");
+    Objects.requireNonNull(stream, "Cannot wrap a null output stream");
     return new HadoopPositionOutputStream(stream);
   }
 }

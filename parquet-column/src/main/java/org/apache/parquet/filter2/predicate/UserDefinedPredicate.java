@@ -39,9 +39,27 @@ public abstract class UserDefinedPredicate<T extends Comparable<T>> {
   public UserDefinedPredicate() { }
 
   /**
-   * Return true to keep the record with this value, false to drop it.
+   * Returns whether this predicate accepts {@code null} values.
    *
-   * @param value a value
+   * @return {@code true} if this predicate accepts {@code null} values, {@code false} otherwise
+   */
+  public boolean acceptsNullValue() {
+    try {
+      return keep(null);
+    } catch (NullPointerException e) {
+      // The implementor might not be prepared to handle null values;
+      // in this case this predicate obviously does not accept nulls
+      return false;
+    }
+  }
+
+  /**
+   * Return true to keep the record with this value, false to drop it.
+   * <p>
+   * This method shall handle {@code null} values returning whether this user defined predicate accepts {@code null}
+   * values or not.
+   *
+   * @param value a value (might be {@code null})
    * @return true to keep the record with the value, false to drop it
    */
   public abstract boolean keep(T value);

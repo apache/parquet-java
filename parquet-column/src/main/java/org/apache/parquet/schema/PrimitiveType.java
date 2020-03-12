@@ -35,7 +35,6 @@ import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 
 
@@ -750,7 +749,8 @@ public final class PrimitiveType extends Type {
       }
     }
 
-    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive, toMerge.getRepetition());
+    Repetition repetition = Repetition.leastRestrictive(this.getRepetition(), toMerge.getRepetition());
+    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive, repetition);
 
     if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitive) {
       builder.length(length);

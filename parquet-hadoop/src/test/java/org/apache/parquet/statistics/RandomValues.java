@@ -19,14 +19,21 @@
 
 package org.apache.parquet.statistics;
 
-import org.apache.parquet.io.api.Binary;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Random;
+import java.util.function.Supplier;
+
+import org.apache.parquet.FixedBinaryTestUtils;
+import org.apache.parquet.io.api.Binary;
 
 public class RandomValues {
   private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
 
-  static abstract class RandomValueGenerator<T extends Comparable<T>> {
+  static abstract class RandomValueGenerator<T extends Comparable<T>> implements Supplier<T> {
     private final Random random;
 
     protected RandomValueGenerator(long seed) {
@@ -80,6 +87,11 @@ public class RandomValues {
     }
 
     public abstract T nextValue();
+
+    @Override
+    public T get() {
+      return nextValue();
+    }
   }
 
   static abstract class RandomBinaryBase<T extends Comparable<T>> extends RandomValueGenerator<T> {
@@ -202,7 +214,7 @@ public class RandomValues {
 
     @Override
     public Binary nextBinaryValue() {
-      return asReusedBinary(nextValue().toByteArray());
+      return FixedBinaryTestUtils.getFixedBinary(INT_96_LENGTH, nextValue());
     }
   }
 
@@ -277,7 +289,6 @@ public class RandomValues {
       return asReusedBinary(nextValue().getBytes());
     }
   }
-
   public static class BinaryGenerator extends RandomBinaryBase<Binary> {
     private static final int MAX_STRING_LENGTH = 16;
     public BinaryGenerator(long seed) {
@@ -338,5 +349,35 @@ public class RandomValues {
 
     public T minimum() { return this.minimum; }
     public T maximum() { return this.maximum; }
+  }
+
+  public static Supplier<Binary> binaryStringGenerator(long seed) {
+    final StringGenerator generator = new StringGenerator(seed);
+    return generator::nextBinaryValue;
+  }
+
+  public static Supplier<Binary> int96Generator(long seed) {
+    final Int96Generator generator = new Int96Generator(seed);
+    return generator::nextBinaryValue;
+  }
+
+  public static <T extends Comparable<T>> Supplier<T> wrapSorted(Supplier<T> supplier,
+      int recordCount, boolean ascending) {
+    return wrapSorted(supplier, recordCount, ascending, (a, b) -> a.compareTo(b));
+  }
+
+  public static <T> Supplier<T> wrapSorted(Supplier<T> supplier, int recordCount, boolean ascending,
+      Comparator<T> cmp) {
+    List<T> values = new ArrayList<>(recordCount);
+    for (int i = 0; i < recordCount; ++i) {
+      values.add(supplier.get());
+    }
+    if (ascending) {
+      values.sort(cmp);
+    } else {
+      values.sort((a, b) -> cmp.compare(b, a));
+    }
+    final Iterator<T> it = values.iterator();
+    return it::next;
   }
 }

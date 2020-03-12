@@ -49,7 +49,7 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
   }
 
   public ExpectationValidatingConverter(String[] expectations, MessageType schema) {
-    this(new ArrayDeque<String>(Arrays.asList(expectations)), schema);
+    this(new ArrayDeque<>(Arrays.asList(expectations)), schema);
   }
 
   public ExpectationValidatingConverter(Deque<String> expectations, MessageType schema) {

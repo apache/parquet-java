@@ -104,7 +104,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       if (field.schema().getType() == Schema.Type.NULL) {
         continue; // skip null since Parquet does not write nulls
       }
-      if (field.defaultValue() == null || model.getDefaultValue(field) == null) {
+      if (field.defaultVal() == null || model.getDefaultValue(field) == null) {
         continue; // field has no default
       }
       recordDefaults.put(field, model.getDefaultValue(field));
@@ -150,35 +150,38 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     ParentValueContainer parent = ParentValueContainer
         .getConversionContainer(setter, conversion, schema);
 
-    if (schema.getType().equals(Schema.Type.BOOLEAN)) {
-      return new AvroConverters.FieldBooleanConverter(parent);
-    } else if (schema.getType().equals(Schema.Type.INT)) {
-      return new AvroConverters.FieldIntegerConverter(parent);
-    } else if (schema.getType().equals(Schema.Type.LONG)) {
-      return new AvroConverters.FieldLongConverter(parent);
-    } else if (schema.getType().equals(Schema.Type.FLOAT)) {
-      return new AvroConverters.FieldFloatConverter(parent);
-    } else if (schema.getType().equals(Schema.Type.DOUBLE)) {
-      return new AvroConverters.FieldDoubleConverter(parent);
-    } else if (schema.getType().equals(Schema.Type.BYTES)) {
-      return new AvroConverters.FieldByteBufferConverter(parent);
-    } else if (schema.getType().equals(Schema.Type.STRING)) {
-      return new AvroConverters.FieldStringConverter(parent);
-    } else if (schema.getType().equals(Schema.Type.RECORD)) {
-      return new AvroIndexedRecordConverter(parent, type.asGroupType(), schema, model);
-    } else if (schema.getType().equals(Schema.Type.ENUM)) {
-      return new FieldEnumConverter(parent, schema, model);
-    } else if (schema.getType().equals(Schema.Type.ARRAY)) {
+    switch (schema.getType()) {
+    case ARRAY:
       return new AvroArrayConverter(parent, type.asGroupType(), schema, model);
-    } else if (schema.getType().equals(Schema.Type.MAP)) {
-      return new MapConverter(parent, type.asGroupType(), schema, model);
-    } else if (schema.getType().equals(Schema.Type.UNION)) {
-      return new AvroUnionConverter(parent, type, schema, model);
-    } else if (schema.getType().equals(Schema.Type.FIXED)) {
+    case BOOLEAN:
+      return new AvroConverters.FieldBooleanConverter(parent);
+    case BYTES:
+      return new AvroConverters.FieldByteBufferConverter(parent);
+    case DOUBLE:
+      return new AvroConverters.FieldDoubleConverter(parent);
+    case ENUM:
+      return new FieldEnumConverter(parent, schema, model);
+    case FIXED:
       return new FieldFixedConverter(parent, schema, model);
+    case FLOAT:
+      return new AvroConverters.FieldFloatConverter(parent);
+    case INT:
+      return new AvroConverters.FieldIntegerConverter(parent);
+    case LONG:
+      return new AvroConverters.FieldLongConverter(parent);
+    case MAP:
+      return new MapConverter(parent, type.asGroupType(), schema, model);
+    case RECORD:
+      return new AvroIndexedRecordConverter(parent, type.asGroupType(), schema, model);
+    case STRING:
+      return new AvroConverters.FieldStringConverter(parent);
+    case UNION:
+      return new AvroUnionConverter(parent, type, schema, model);
+    case NULL: // fall through
+    default:
+      throw new UnsupportedOperationException(String.format("Cannot convert Avro type: %s" +
+          " (Parquet type: %s) ", schema, type));
     }
-    throw new UnsupportedOperationException(String.format("Cannot convert Avro type: %s" +
-        " (Parquet type: %s) ", schema, type));
   }
 
   private void set(int index, Object value) {

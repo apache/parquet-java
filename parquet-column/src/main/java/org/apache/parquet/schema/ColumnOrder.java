@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.schema;
 
-import org.apache.parquet.Preconditions;
+import java.util.Objects;
 
 /**
  * Class representing the column order with all the related parameters.
@@ -61,7 +61,7 @@ public class ColumnOrder {
   private final ColumnOrderName columnOrderName;
 
   private ColumnOrder(ColumnOrderName columnOrderName) {
-    this.columnOrderName = Preconditions.checkNotNull(columnOrderName, "columnOrderName");
+    this.columnOrderName = Objects.requireNonNull(columnOrderName, "columnOrderName cannot be null");
   }
 
   public ColumnOrderName getColumnOrderName() {

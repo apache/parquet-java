@@ -206,11 +206,8 @@ public class ContextUtil {
     try {
       return (JobContext)
           JOB_CONTEXT_CONSTRUCTOR.newInstance(conf, jobId);
-    } catch (InstantiationException e) {
-      throw new IllegalArgumentException("Can't instantiate JobContext", e);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Can't instantiate JobContext", e);
-    } catch (InvocationTargetException e) {
+    } catch (InstantiationException | IllegalAccessException
+        | InvocationTargetException e) {
       throw new IllegalArgumentException("Can't instantiate JobContext", e);
     }
   }
@@ -228,12 +225,10 @@ public class ContextUtil {
     try {
       return (TaskAttemptContext)
           TASK_CONTEXT_CONSTRUCTOR.newInstance(conf, taskAttemptId);
-    } catch (InstantiationException e) {
-      throw new IllegalArgumentException("Can't instantiate TaskAttemptContext", e);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Can't instantiate TaskAttemptContext", e);
-    } catch (InvocationTargetException e) {
-      throw new IllegalArgumentException("Can't instantiate TaskAttemptContext", e);
+    } catch (InstantiationException | IllegalAccessException
+        | InvocationTargetException e) {
+      throw new IllegalArgumentException("Can't instantiate TaskAttemptContext",
+          e);
     }
   }
 
@@ -248,11 +243,8 @@ public class ContextUtil {
     try {
       return (Counter)
           GENERIC_COUNTER_CONSTRUCTOR.newInstance(name, displayName, value);
-    } catch (InstantiationException e) {
-      throw new IllegalArgumentException("Can't instantiate Counter", e);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Can't instantiate Counter", e);
-    } catch (InvocationTargetException e) {
+    } catch (InstantiationException | IllegalAccessException
+        | InvocationTargetException e) {
       throw new IllegalArgumentException("Can't instantiate Counter", e);
     }
   }
@@ -267,9 +259,7 @@ public class ContextUtil {
   public static Configuration getConfiguration(JobContext context) {
     try {
       return (Configuration) GET_CONFIGURATION_METHOD.invoke(context);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Can't invoke method", e);
-    } catch (InvocationTargetException e) {
+    } catch (IllegalAccessException | InvocationTargetException e) {
       throw new IllegalArgumentException("Can't invoke method", e);
     }
   }
@@ -314,9 +304,7 @@ public class ContextUtil {
   private static Object invoke(Method method, Object obj, Object... args) {
     try {
       return method.invoke(obj, args);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Can't invoke method " + method.getName(), e);
-    } catch (InvocationTargetException e) {
+    } catch (IllegalAccessException | InvocationTargetException e) {
       throw new IllegalArgumentException("Can't invoke method " + method.getName(), e);
     }
   }

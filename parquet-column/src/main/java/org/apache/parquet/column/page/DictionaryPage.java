@@ -18,11 +18,9 @@
  */
 package org.apache.parquet.column.page;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-
 import java.io.IOException;
+import java.util.Objects;
 
-import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 
@@ -53,10 +51,10 @@ public class DictionaryPage extends Page {
    * @param encoding the encoding used
    */
   public DictionaryPage(BytesInput bytes, int uncompressedSize, int dictionarySize, Encoding encoding) {
-    super(Ints.checkedCast(bytes.size()), uncompressedSize);
-    this.bytes = checkNotNull(bytes, "bytes");
+    super(Math.toIntExact(bytes.size()), uncompressedSize);
+    this.bytes = Objects.requireNonNull(bytes, "bytes cannot be null");
     this.dictionarySize = dictionarySize;
-    this.encoding = checkNotNull(encoding, "encoding");
+    this.encoding = Objects.requireNonNull(encoding, "encoding cannot be null");
   }
 
   public BytesInput getBytes() {

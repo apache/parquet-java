@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,22 +18,31 @@
  */
 package org.apache.parquet.column;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
-
-import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.schema.MessageType;
+
+import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
 /**
  * This class represents all the configurable Parquet properties.
@@ -43,12 +52,17 @@ public class ParquetProperties {
   public static final int DEFAULT_PAGE_SIZE = 1024 * 1024;
   public static final int DEFAULT_DICTIONARY_PAGE_SIZE = DEFAULT_PAGE_SIZE;
   public static final boolean DEFAULT_IS_DICTIONARY_ENABLED = true;
+  public static final boolean DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED = false;
   public static final WriterVersion DEFAULT_WRITER_VERSION = WriterVersion.PARQUET_1_0;
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
   public static final int DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH = 64;
+  public static final int DEFAULT_STATISTICS_TRUNCATE_LENGTH = Integer.MAX_VALUE;
   public static final int DEFAULT_PAGE_ROW_COUNT_LIMIT = 20_000;
+  public static final int DEFAULT_MAX_BLOOM_FILTER_BYTES = 1024 * 1024;
+
+  public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
@@ -79,32 +93,44 @@ public class ParquetProperties {
   private final int pageSizeThreshold;
   private final int dictionaryPageSizeThreshold;
   private final WriterVersion writerVersion;
-  private final boolean enableDictionary;
+  private final ColumnProperty<Boolean> dictionaryEnabled;
   private final int minRowCountForPageSizeCheck;
   private final int maxRowCountForPageSizeCheck;
   private final boolean estimateNextSizeCheck;
   private final ByteBufferAllocator allocator;
   private final ValuesWriterFactory valuesWriterFactory;
   private final int columnIndexTruncateLength;
-  private final int pageRowCountLimit;
+  private final int statisticsTruncateLength;
 
-  private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
-                            int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
-                            ValuesWriterFactory writerFactory, int columnIndexMinMaxTruncateLength, int pageRowCountLimit) {
-    this.pageSizeThreshold = pageSize;
+  // The key-value pair represents the column name and its expected distinct number of values in a row group.
+  private final Map<String, Long> bloomFilterExpectedDistinctNumbers;
+  private final int maxBloomFilterBytes;
+  private final List<String> bloomFilterColumns;
+  private final int pageRowCountLimit;
+  private final boolean pageWriteChecksumEnabled;
+  private final boolean enableByteStreamSplit;
+
+  private ParquetProperties(Builder builder) {
+    this.pageSizeThreshold = builder.pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
-    this.dictionaryPageSizeThreshold = dictPageSize;
-    this.writerVersion = writerVersion;
-    this.enableDictionary = enableDict;
-    this.minRowCountForPageSizeCheck = minRowCountForPageSizeCheck;
-    this.maxRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
-    this.estimateNextSizeCheck = estimateNextSizeCheck;
-    this.allocator = allocator;
+    this.dictionaryPageSizeThreshold = builder.dictPageSize;
+    this.writerVersion = builder.writerVersion;
+    this.dictionaryEnabled = builder.enableDict.build();
+    this.minRowCountForPageSizeCheck = builder.minRowCountForPageSizeCheck;
+    this.maxRowCountForPageSizeCheck = builder.maxRowCountForPageSizeCheck;
+    this.estimateNextSizeCheck = builder.estimateNextSizeCheck;
+    this.allocator = builder.allocator;
 
-    this.valuesWriterFactory = writerFactory;
-    this.columnIndexTruncateLength = columnIndexMinMaxTruncateLength;
-    this.pageRowCountLimit = pageRowCountLimit;
+    this.valuesWriterFactory = builder.valuesWriterFactory;
+    this.columnIndexTruncateLength = builder.columnIndexTruncateLength;
+    this.statisticsTruncateLength = builder.statisticsTruncateLength;
+    this.bloomFilterExpectedDistinctNumbers = builder.bloomFilterColumnExpectedNDVs;
+    this.bloomFilterColumns = builder.bloomFilterColumns;
+    this.maxBloomFilterBytes = builder.maxBloomFilterBytes;
+    this.pageRowCountLimit = builder.pageRowCountLimit;
+    this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
+    this.enableByteStreamSplit = builder.enableByteStreamSplit;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -157,8 +183,17 @@ public class ParquetProperties {
     return writerVersion;
   }
 
+  @Deprecated
   public boolean isEnableDictionary() {
-    return enableDictionary;
+    return dictionaryEnabled.getDefaultValue();
+  }
+
+  public boolean isDictionaryEnabled(ColumnDescriptor column) {
+    return dictionaryEnabled.getValue(column);
+  }
+
+  public boolean isByteStreamSplitEnabled() {
+      return enableByteStreamSplit;
   }
 
   public ByteBufferAllocator getAllocator() {
@@ -168,10 +203,23 @@ public class ParquetProperties {
   public ColumnWriteStore newColumnWriteStore(MessageType schema,
                                               PageWriteStore pageStore) {
     switch (writerVersion) {
+      case PARQUET_1_0:
+        return new ColumnWriteStoreV1(schema, pageStore, this);
+      case PARQUET_2_0:
+        return new ColumnWriteStoreV2(schema, pageStore, this);
+      default:
+        throw new IllegalArgumentException("unknown version " + writerVersion);
+    }
+  }
+
+  public ColumnWriteStore newColumnWriteStore(MessageType schema,
+                                              PageWriteStore pageStore,
+                                              BloomFilterWriteStore bloomFilterWriteStore) {
+    switch (writerVersion) {
     case PARQUET_1_0:
-      return new ColumnWriteStoreV1(schema, pageStore, this);
+      return new ColumnWriteStoreV1(schema, pageStore, bloomFilterWriteStore, this);
     case PARQUET_2_0:
-      return new ColumnWriteStoreV2(schema, pageStore, this);
+      return new ColumnWriteStoreV2(schema, pageStore, bloomFilterWriteStore, this);
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);
     }
@@ -193,12 +241,36 @@ public class ParquetProperties {
     return columnIndexTruncateLength;
   }
 
+  public int getStatisticsTruncateLength() {
+    return statisticsTruncateLength;
+  }
+
   public boolean estimateNextSizeCheck() {
     return estimateNextSizeCheck;
   }
 
   public int getPageRowCountLimit() {
     return pageRowCountLimit;
+  }
+
+  public boolean getPageWriteChecksumEnabled() {
+    return pageWriteChecksumEnabled;
+  }
+
+  public Map<String, Long> getBloomFilterColumnExpectedNDVs() {
+    return bloomFilterExpectedDistinctNumbers;
+  }
+
+  public Set<String> getBloomFilterColumns() {
+    if (bloomFilterColumns != null && bloomFilterColumns.size() > 0){
+      return new HashSet<>(bloomFilterColumns);
+    }
+
+    return bloomFilterExpectedDistinctNumbers.keySet();
+  }
+
+  public int getMaxBloomFilterBytes() {
+    return maxBloomFilterBytes;
   }
 
   public static Builder builder() {
@@ -209,10 +281,28 @@ public class ParquetProperties {
     return new Builder(toCopy);
   }
 
+  @Override
+  public String toString() {
+    return "Parquet page size to " + getPageSizeThreshold() + '\n'
+        + "Parquet dictionary page size to " + getDictionaryPageSizeThreshold() + '\n'
+        + "Dictionary is " + dictionaryEnabled + '\n'
+        + "Writer version is: " + getWriterVersion() + '\n'
+        + "Page size checking is: " + (estimateNextSizeCheck() ? "estimated" : "constant") + '\n'
+        + "Min row count for page size check is: " + getMinRowCountForPageSizeCheck() + '\n'
+        + "Max row count for page size check is: " + getMaxRowCountForPageSizeCheck() + '\n'
+        + "Truncate length for column indexes is: " + getColumnIndexTruncateLength() + '\n'
+        + "Truncate length for statistics min/max  is: " + getStatisticsTruncateLength() + '\n'
+        + "Bloom filter enabled column names are: " + getBloomFilterColumns() + '\n'
+        + "Max Bloom filter size for a column is " + getMaxBloomFilterBytes() + '\n'
+        + "Bloom filter enabled column expected number of distinct values are: " + getBloomFilterColumnExpectedNDVs().values() + '\n'
+        + "Page row count limit to " + getPageRowCountLimit() + '\n'
+        + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off");
+  }
+
   public static class Builder {
     private int pageSize = DEFAULT_PAGE_SIZE;
     private int dictPageSize = DEFAULT_DICTIONARY_PAGE_SIZE;
-    private boolean enableDict = DEFAULT_IS_DICTIONARY_ENABLED;
+    private final ColumnProperty.Builder<Boolean> enableDict;
     private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
     private int minRowCountForPageSizeCheck = DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK;
     private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
@@ -220,14 +310,21 @@ public class ParquetProperties {
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
     private int columnIndexTruncateLength = DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
+    private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
+    private Map<String, Long> bloomFilterColumnExpectedNDVs = new HashMap<>();
+    private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
+    private List<String> bloomFilterColumns = new ArrayList<>();
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
+    private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
+    private boolean enableByteStreamSplit = DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED;
 
     private Builder() {
+      enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
     }
 
     private Builder(ParquetProperties toCopy) {
       this.pageSize = toCopy.pageSizeThreshold;
-      this.enableDict = toCopy.enableDictionary;
+      this.enableDict = ColumnProperty.<Boolean>builder(toCopy.dictionaryEnabled);
       this.dictPageSize = toCopy.dictionaryPageSizeThreshold;
       this.writerVersion = toCopy.writerVersion;
       this.minRowCountForPageSizeCheck = toCopy.minRowCountForPageSizeCheck;
@@ -236,6 +333,11 @@ public class ParquetProperties {
       this.valuesWriterFactory = toCopy.valuesWriterFactory;
       this.allocator = toCopy.allocator;
       this.pageRowCountLimit = toCopy.pageRowCountLimit;
+      this.pageWriteChecksumEnabled = toCopy.pageWriteChecksumEnabled;
+      this.bloomFilterColumnExpectedNDVs = toCopy.bloomFilterExpectedDistinctNumbers;
+      this.bloomFilterColumns = toCopy.bloomFilterColumns;
+      this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
+      this.enableByteStreamSplit = toCopy.enableByteStreamSplit;
     }
 
     /**
@@ -258,7 +360,24 @@ public class ParquetProperties {
      * @return this builder for method chaining.
      */
     public Builder withDictionaryEncoding(boolean enableDictionary) {
-      this.enableDict = enableDictionary;
+      this.enableDict.withDefaultValue(enableDictionary);
+      return this;
+    }
+
+    /**
+     * Enable or disable dictionary encoding for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enableDictionary whether dictionary encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public Builder withDictionaryEncoding(String columnPath, boolean enableDictionary) {
+      this.enableDict.withValue(columnPath, enableDictionary);
+      return this;
+    }
+
+    public Builder withByteStreamSplitEncoding(boolean enableByteStreamSplit) {
+      this.enableByteStreamSplit = enableByteStreamSplit;
       return this;
     }
 
@@ -307,20 +426,59 @@ public class ParquetProperties {
     }
 
     public Builder withAllocator(ByteBufferAllocator allocator) {
-      Preconditions.checkNotNull(allocator, "ByteBufferAllocator");
-      this.allocator = allocator;
+      this.allocator = Objects.requireNonNull(allocator, "ByteBufferAllocator cannot be null");
       return this;
     }
 
     public Builder withValuesWriterFactory(ValuesWriterFactory factory) {
-      Preconditions.checkNotNull(factory, "ValuesWriterFactory");
-      this.valuesWriterFactory = factory;
+      this.valuesWriterFactory = Objects.requireNonNull(factory, "ValuesWriterFactory cannot be null");
       return this;
     }
 
     public Builder withColumnIndexTruncateLength(int length) {
-      Preconditions.checkArgument(length > 0, "Invalid column index min/max truncate length (negative) : %s", length);
+      Preconditions.checkArgument(length > 0, "Invalid column index min/max truncate length (negative or zero) : %s", length);
       this.columnIndexTruncateLength = length;
+      return this;
+    }
+
+    public Builder withStatisticsTruncateLength(int length) {
+      Preconditions.checkArgument(length > 0, "Invalid statistics min/max truncate length (negative or zero) : %s", length);
+      this.statisticsTruncateLength = length;
+      return this;
+    }
+
+    /**
+     * Set max Bloom filter bytes for related columns.
+     *
+     * @param maxBloomFilterBytes the max bytes of a Bloom filter bitset for a column.
+     * @return this builder for method chaining
+     */
+    public Builder withMaxBloomFilterBytes(int maxBloomFilterBytes) {
+      this.maxBloomFilterBytes = maxBloomFilterBytes;
+      return this;
+    }
+
+    /**
+     * Set Bloom filter column names and expected NDVs.
+     *
+     * @param columnToNDVMap the columns which has bloom filter enabled.
+     *
+     * @return this builder for method chaining
+     */
+    public Builder withBloomFilterColumnToNDVMap(Map<String, Long> columnToNDVMap) {
+      this.bloomFilterColumnExpectedNDVs = columnToNDVMap;
+      return this;
+    }
+
+    /**
+     * Set Bloom filter column names.
+     *
+     * @param columns the columns which has bloom filter enabled.
+     *
+     * @return this builder for method chaining
+     */
+    public Builder withBloomFilterColumnNames(List<String> columns) {
+      this.bloomFilterColumns = columns;
       return this;
     }
 
@@ -330,11 +488,13 @@ public class ParquetProperties {
       return this;
     }
 
+    public Builder withPageWriteChecksumEnabled(boolean val) {
+      this.pageWriteChecksumEnabled = val;
+      return this;
+    }
+
     public ParquetProperties build() {
-      ParquetProperties properties =
-        new ParquetProperties(writerVersion, pageSize, dictPageSize,
-          enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, valuesWriterFactory, columnIndexTruncateLength, pageRowCountLimit);
+      ParquetProperties properties = new ParquetProperties(this);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently
       // creation of ValuesWriters is invoked from within ParquetProperties. In the future
       // we'd like to decouple that and won't need to pass an object to properties and then pass the

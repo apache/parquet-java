@@ -30,6 +30,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.reflect.ReflectData;
+import org.apache.avro.reflect.Stringable;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -50,12 +51,13 @@ public class TestReflectReadWrite {
     AvroReadSupport.setAvroDataSupplier(conf, ReflectDataSupplier.class);
 
     Path path = writePojosToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-    ParquetReader<Pojo> reader = new AvroParquetReader<Pojo>(conf, path);
-    Pojo object = getPojo();
-    for (int i = 0; i < 10; i++) {
-      assertEquals(object, reader.read());
+    try(ParquetReader<Pojo> reader = new AvroParquetReader<Pojo>(conf, path)) {
+      Pojo object = getPojo();
+      for (int i = 0; i < 10; i++) {
+        assertEquals(object, reader.read());
+      }
+      assertNull(reader.read());
     }
-    assertNull(reader.read());
   }
 
   @Test
@@ -65,12 +67,13 @@ public class TestReflectReadWrite {
     AvroReadSupport.setAvroDataSupplier(conf, GenericDataSupplier.class);
 
     Path path = writePojosToParquetFile(2, CompressionCodecName.UNCOMPRESSED, false);
-    ParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(conf, path);
-    GenericRecord object = getGenericPojoUtf8();
-    for (int i = 0; i < 2; i += 1) {
-      assertEquals(object, reader.read());
+    try(ParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(conf, path)) {
+      GenericRecord object = getGenericPojoUtf8();
+      for (int i = 0; i < 2; i += 1) {
+        assertEquals(object, reader.read());
+      }
+      assertNull(reader.read());
     }
-    assertNull(reader.read());
   }
 
   private GenericRecord getGenericPojoUtf8() {
@@ -99,6 +102,7 @@ public class TestReflectReadWrite {
         schema.getField("mystringarray").schema(), Lists.newArrayList(new Utf8("a"), new Utf8("b"))));
     record.put("mylist", new GenericData.Array<Utf8>(
         schema.getField("mylist").schema(), Lists.newArrayList(new Utf8("a"), new Utf8("b"), new Utf8("c"))));
+    record.put("mystringable", new StringableObj("blah blah"));
     return record;
   }
 
@@ -122,6 +126,7 @@ public class TestReflectReadWrite {
     object.myintarray = new int[] { 1, 2 };
     object.mystringarray = new String[] { "a", "b" };
     object.mylist = Lists.newArrayList("a", "b", "c");
+    object.mystringable = new StringableObj("blah blah");
     return object;
   }
 
@@ -135,21 +140,36 @@ public class TestReflectReadWrite {
     Pojo object = getPojo();
 
     Schema schema = ReflectData.get().getSchema(object.getClass());
-    ParquetWriter<Pojo> writer = AvroParquetWriter.<Pojo>builder(path)
+    try(ParquetWriter<Pojo> writer = AvroParquetWriter.<Pojo>builder(path)
         .withSchema(schema)
         .withCompressionCodec(compression)
         .withDataModel(ReflectData.get())
         .withDictionaryEncoding(enableDictionary)
-        .build();
-    for (int i = 0; i < num; i++) {
-      writer.write(object);
+        .build()) {
+      for (int i = 0; i < num; i++) {
+        writer.write(object);
+      }
     }
-    writer.close();
     return path;
   }
 
   public static enum E {
     A, B
+  }
+
+  public static class StringableObj {
+    private String value;
+    public StringableObj(String value) {
+      this.value = value;
+    }
+    @Override
+    public String toString() {
+      return this.value;
+    }
+    @Override
+    public boolean equals(Object other) {
+      return other instanceof StringableObj && this.value.equals(((StringableObj)other).value);
+    }
   }
 
   public static class Pojo {
@@ -169,6 +189,8 @@ public class TestReflectReadWrite {
     private int[] myintarray;
     private String[] mystringarray;
     private List<String> mylist;
+    @Stringable
+    private StringableObj mystringable;
 
     @Override
     public boolean equals(Object o) {
@@ -188,7 +210,8 @@ public class TestReflectReadWrite {
           && Arrays.equals(myshortarray, that.myshortarray)
           && Arrays.equals(myintarray, that.myintarray)
           && Arrays.equals(mystringarray, that.mystringarray)
-          && mylist.equals(that.mylist);
+          && mylist.equals(that.mylist)
+          && mystringable.equals(that.mystringable);
     }
 
     @Override
@@ -209,6 +232,7 @@ public class TestReflectReadWrite {
           ", myintarray=" + Arrays.toString(myintarray) +
           ", mystringarray=" + Arrays.toString(mystringarray) +
           ", mylist=" + mylist +
+          ", mystringable=" + mystringable.toString() +
           '}';
     }
   }

@@ -20,7 +20,6 @@ package org.apache.parquet.column.page;
 
 import java.util.Optional;
 
-import org.apache.parquet.Ints;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.Statistics;
@@ -47,7 +46,7 @@ public class DataPageV2 extends DataPage {
         rowCount, nullCount, valueCount,
         repetitionLevels, definitionLevels,
         dataEncoding, data,
-        Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()),
+        Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
         statistics,
         false);
   }
@@ -73,7 +72,7 @@ public class DataPageV2 extends DataPage {
         rowCount, nullCount, valueCount, firstRowIndex,
         repetitionLevels, definitionLevels,
         dataEncoding, data,
-        Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()),
+        Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
         statistics,
         false);
   }
@@ -121,7 +120,7 @@ public class DataPageV2 extends DataPage {
       int uncompressedSize,
       Statistics<?> statistics,
       boolean isCompressed) {
-    super(Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize, valueCount);
+    super(Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize, valueCount);
     this.rowCount = rowCount;
     this.nullCount = nullCount;
     this.repetitionLevels = repetitionLevels;
@@ -139,7 +138,7 @@ public class DataPageV2 extends DataPage {
       int uncompressedSize,
       Statistics<?> statistics,
       boolean isCompressed) {
-    super(Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize,
+    super(Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize,
         valueCount, firstRowIndex);
     this.rowCount = rowCount;
     this.nullCount = nullCount;

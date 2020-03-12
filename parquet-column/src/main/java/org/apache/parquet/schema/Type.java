@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.schema;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.parquet.io.InvalidRecordException;
 
@@ -111,6 +110,28 @@ abstract public class Type {
      */
     abstract public boolean isMoreRestrictiveThan(Repetition other);
 
+
+    /**
+     * @param repetitions repetitions to traverse
+     * @return the least restrictive repetition of all repetitions provided
+     */
+    public static Repetition leastRestrictive(Repetition... repetitions) {
+      boolean hasOptional = false;
+
+      for (Repetition repetition : repetitions) {
+        if (repetition == REPEATED) {
+          return REPEATED;
+        } else if (repetition == OPTIONAL) {
+          hasOptional = true;
+        }
+      }
+
+      if (hasOptional) {
+        return OPTIONAL;
+      }
+
+      return REQUIRED;
+    }
   }
 
   private final String name;
@@ -149,8 +170,8 @@ abstract public class Type {
 
   Type(String name, Repetition repetition, OriginalType originalType, DecimalMetadata decimalMetadata, ID id) {
     super();
-    this.name = checkNotNull(name, "name");
-    this.repetition = checkNotNull(repetition, "repetition");
+    this.name = Objects.requireNonNull(name, "name cannot be null");
+    this.repetition = Objects.requireNonNull(repetition, "repetition cannot be null");
     this.logicalTypeAnnotation = originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType, decimalMetadata);
     this.id = id;
   }
@@ -161,8 +182,8 @@ abstract public class Type {
 
   Type(String name, Repetition repetition, LogicalTypeAnnotation logicalTypeAnnotation, ID id) {
     super();
-    this.name = checkNotNull(name, "name");
-    this.repetition = checkNotNull(repetition, "repetition");
+    this.name = Objects.requireNonNull(name, "name cannot be null");
+    this.repetition = Objects.requireNonNull(repetition, "repetition cannot be null");
     this.logicalTypeAnnotation = logicalTypeAnnotation;
     this.id = id;
   }
@@ -279,7 +300,7 @@ abstract public class Type {
         && eqOrBothNull(repetition, other.repetition)
         && eqOrBothNull(id, other.id)
         && eqOrBothNull(logicalTypeAnnotation, other.logicalTypeAnnotation);
-  };
+  }
 
   @Override
   public boolean equals(Object other) {

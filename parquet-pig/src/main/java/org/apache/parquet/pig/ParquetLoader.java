@@ -256,7 +256,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         return null;
       }
     } catch (InterruptedException e) {
-      Thread.interrupted();
+      Thread.currentThread().interrupt();
       throw new ParquetDecodingException("Interrupted", e);
     }
   }
@@ -331,7 +331,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         length += split.getLength();
       }
     } catch (InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOG.warn("Interrupted", e);
+      Thread.currentThread().interrupt();
       return null;
     }
     ResourceStatistics stats = new ResourceStatistics();

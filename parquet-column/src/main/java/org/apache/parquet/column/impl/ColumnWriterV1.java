@@ -27,6 +27,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
@@ -35,6 +36,11 @@ final class ColumnWriterV1 extends ColumnWriterBase {
 
   ColumnWriterV1(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
     super(path, pageWriter, props);
+  }
+
+  public ColumnWriterV1(ColumnDescriptor path, PageWriter pageWriter,
+                        BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
+    super(path, pageWriter, bloomFilterWriter, props);
   }
 
   @Override

@@ -32,8 +32,32 @@ public class BlockMetaData {
   private long rowCount;
   private long totalByteSize;
   private String path;
+  
+  private short ordinal;
+  // TODO private? all 4
+  long startingPosition;
+  long totalCompressedSize;
+  boolean startingPositionSet;
+  boolean totalCompressedSizeSet;
 
   public BlockMetaData() {
+    startingPositionSet = false;
+    totalCompressedSizeSet = false;
+  }
+  
+  // Reader side (get parameters from RowGroup structure)
+  public BlockMetaData(long fileOffset, long totalCompressedSize) {
+    // fileOffset is optional, 0 means fileOffset is absent
+    if (fileOffset > 0) {
+      this.startingPosition = fileOffset;
+      startingPositionSet = true;
+    }
+
+    // totalCompressedSize is optional, 0 means totalCompressedSize is absent
+    if (totalCompressedSize > 0) {
+      this.totalCompressedSize = totalCompressedSize;
+      totalCompressedSizeSet = true;
+    }
   }
 
 
@@ -100,8 +124,10 @@ public class BlockMetaData {
    * @return the starting pos of first column
    */
   public long getStartingPos() {
-    return getColumns().get(0).getStartingPos();
+    if (startingPositionSet) return startingPosition;
+    return getColumns().get(0).getStartingPos(); // TODO store in startingPosition
   }
+  
   @Override
   public String toString() {
     return "BlockMetaData{" + rowCount + ", " + totalByteSize + " " + columns + "}";
@@ -111,10 +137,19 @@ public class BlockMetaData {
    * @return the compressed size of all columns
    */
   public long getCompressedSize() {
+    if (totalCompressedSizeSet) return totalCompressedSize;
     long totalSize = 0;
     for (ColumnChunkMetaData col : getColumns()) {
       totalSize += col.getTotalSize();
     }
-    return totalSize;
+    return totalSize; // TODO store in totalByteSize
+  }
+  
+  public short getOrdinal() {
+    return ordinal;
+  }
+
+  public void setOrdinal(short ordinal) {
+    this.ordinal = ordinal;
   }
 }

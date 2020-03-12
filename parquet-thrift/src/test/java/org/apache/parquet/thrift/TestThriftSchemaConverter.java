@@ -28,6 +28,7 @@ import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.test.compat.MapStructV2;
 import org.apache.parquet.thrift.test.compat.SetStructV2;
+import org.apache.parquet.thrift.test.TestLogicalType;
 import org.apache.thrift.TBase;
 import org.junit.Test;
 
@@ -337,4 +338,16 @@ public class TestThriftSchemaConverter {
     final ThriftType fromJSON = StructType.fromJSON(json);
     assertEquals(json, fromJSON.toJSON());
   }
+
+  @Test
+  public void testLogicalTypeConvertion() throws Exception {
+    String expected =
+      "message ParquetSchema {\n" +
+        "  required int32 test_i16 (INTEGER(16,true)) = 1;" +
+        "}";
+    ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
+    final MessageType converted = schemaConverter.convert(TestLogicalType.class);
+    assertEquals(MessageTypeParser.parseMessageType(expected), converted);
+  }
+
 }

@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.pool.BasePoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
@@ -65,10 +66,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       tempClass = Class.forName("org.apache.hadoop.io.compress.DirectDecompressionCodec");
       tempCreateMethod = tempClass.getMethod("createDirectDecompressor");
       tempDecompressMethod = tempClass.getMethod("decompress", ByteBuffer.class, ByteBuffer.class);
-    } catch (ClassNotFoundException e) {
+    } catch (ClassNotFoundException | NoSuchMethodException e) {
       // do nothing, the class will just be assigned null
-    } catch (NoSuchMethodException e) {
-      // do nothing, the method will just be assigned null
     }
     DIRECT_DECOMPRESSION_CODEC_CLASS = tempClass;
     CREATE_DIRECT_DECOMPRESSOR_METHOD = tempCreateMethod;
@@ -79,14 +78,16 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
    * See docs on CodecFactory#createDirectCodecFactory which is how this class is
    * exposed publicly and is just a pass-through factory method for this constructor
    * to hide the rest of this class from public access.
+   *
+   * @throws NullPointerException if allocator is {@code null}
    */
   DirectCodecFactory(Configuration config, ByteBufferAllocator allocator, int pageSize) {
     super(config, pageSize);
-    Preconditions.checkNotNull(allocator, "allocator");
+
+    this.allocator = Objects.requireNonNull(allocator, "allocator cannot be null");
     Preconditions.checkState(allocator.isDirect(),
         "A %s requires a direct buffer allocator be provided.",
         getClass().getSimpleName());
-    this.allocator = allocator;
   }
 
   private ByteBuffer ensure(ByteBuffer buffer, int size) {
@@ -212,9 +213,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       output.clear();
       try {
         DECOMPRESS_METHOD.invoke(decompressor, (ByteBuffer) input.limit(compressedSize), (ByteBuffer) output.limit(uncompressedSize));
-      } catch (IllegalAccessException e) {
-        throw new DirectCodecPool.ParquetCompressionCodecException(e);
-      } catch (InvocationTargetException e) {
+      } catch (IllegalAccessException | InvocationTargetException e) {
         throw new DirectCodecPool.ParquetCompressionCodecException(e);
       }
       output.position(uncompressedSize);
@@ -518,7 +517,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       }
 
       public ParquetCompressionCodecException(Throwable cause) {
-
+        super(cause);
       }
     }
   }

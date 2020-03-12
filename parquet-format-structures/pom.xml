@@ -31,7 +31,7 @@
   <packaging>jar</packaging>
 
   <name>Apache Parquet Format Structures</name>
-  <url>http://parquet.apache.org/</url>
+  <url>https://parquet.apache.org/</url>
   <description>Parquet-mr related java classes to use the parquet-format thrift structures.</description>
 
   <properties>
@@ -68,9 +68,9 @@
        </plugin>
       <!-- thrift -->
       <plugin>
-        <groupId>org.apache.thrift.tools</groupId>
-        <artifactId>maven-thrift-plugin</artifactId>
-        <version>0.1.11</version>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>thrift-maven-plugin</artifactId>
+        <version>${thrift-maven-plugin.version}</version>
         <configuration>
           <thriftSourceRoot>${parquet.thrift.path}</thriftSourceRoot>
           <thriftExecutable>${format.thrift.executable}</thriftExecutable>
@@ -126,9 +126,11 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
+        <version>${maven-javadoc-plugin.version}</version>
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
-          <additionalparam>-Xdoclint:none</additionalparam>
+          <doclint>none</doclint>
+          <source>8</source>
         </configuration>
       </plugin>
     </plugins>
@@ -139,9 +141,11 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
+        <version>${maven-javadoc-plugin.version}</version>
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
-          <additionalparam>-Xdoclint:none</additionalparam>
+          <doclint>none</doclint>
+          <source>8</source>
         </configuration>
       </plugin>
     </plugins>
@@ -158,6 +162,11 @@
       <artifactId>libthrift</artifactId>
       <version>${format.thrift.version}</version>
     </dependency>
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
+      <version>1.3.2</version>
+     </dependency>
   </dependencies>
 
   <profiles>

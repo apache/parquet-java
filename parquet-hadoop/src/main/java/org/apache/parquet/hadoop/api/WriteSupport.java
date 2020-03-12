@@ -18,11 +18,10 @@
  */
 package org.apache.parquet.hadoop.api;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -47,11 +46,14 @@ abstract public class WriteSupport<T> {
     /**
      * @param schema the schema of the data
      * @param extraMetaData application specific metadata to add in the file
+     *
+     * @throws NullPointerException if schema or extraMetaData is {@code null}
      */
     public WriteContext(MessageType schema, Map<String, String> extraMetaData) {
       super();
-      this.schema = checkNotNull(schema, "schema");
-      this.extraMetaData = Collections.unmodifiableMap(checkNotNull(extraMetaData, "extraMetaData"));
+      this.schema = Objects.requireNonNull(schema, "schema cannot be null");
+      this.extraMetaData = Collections.unmodifiableMap(Objects
+          .requireNonNull(extraMetaData, "extraMetaData cannot be null"));
     }
     /**
      * @return the schema of the file
@@ -78,10 +80,13 @@ abstract public class WriteSupport<T> {
 
     /**
      * @param extraMetaData application specific metadata to add in the file
+     *
+     * @throws NullPointerException if extraMetaData is {@code null}
      */
     public FinalizedWriteContext(Map<String, String> extraMetaData) {
       super();
-      this.extraMetaData = Collections.unmodifiableMap(checkNotNull(extraMetaData, "extraMetaData"));
+      this.extraMetaData = Collections.unmodifiableMap(Objects
+          .requireNonNull(extraMetaData, "extraMetaData cannot be null"));
     }
 
     /**

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,6 +19,8 @@
 package org.apache.parquet.hadoop;
 
 import static java.util.Arrays.asList;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -40,12 +42,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import net.openhft.hashing.LongHashFunction;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -151,19 +156,86 @@ public class TestParquetWriter {
     file.delete();
 
     TestUtils.assertThrows("Should reject a schema with an empty group",
-        InvalidSchemaException.class, new Callable<Void>() {
-          @Override
-          public Void call() throws IOException {
-            ExampleParquetWriter.builder(new Path(file.toString()))
-                .withType(Types.buildMessage()
-                    .addField(new GroupType(REQUIRED, "invalid_group"))
-                    .named("invalid_message"))
-                .build();
-            return null;
-          }
+        InvalidSchemaException.class, (Callable<Void>) () -> {
+          ExampleParquetWriter.builder(new Path(file.toString()))
+              .withType(Types.buildMessage()
+                  .addField(new GroupType(REQUIRED, "invalid_group"))
+                  .named("invalid_message"))
+              .build();
+          return null;
         });
 
     Assert.assertFalse("Should not create a file when schema is rejected",
         file.exists());
+  }
+
+  // Testing the issue of PARQUET-1531 where writing null nested rows leads to empty pages if the page row count limit
+  // is reached.
+  @Test
+  public void testNullValuesWithPageRowLimit() throws IOException {
+    MessageType schema = Types.buildMessage().optionalList().optionalElement(BINARY).as(stringType()).named("str_list")
+        .named("msg");
+    final int recordCount = 100;
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Group listNull = factory.newGroup();
+
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withPageRowCountLimit(10)
+        .withConf(conf)
+        .build()) {
+      for (int i = 0; i < recordCount; ++i) {
+        writer.write(listNull);
+      }
+    }
+
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).build()) {
+      int readRecordCount = 0;
+      for (Group group = reader.read(); group != null; group = reader.read()) {
+        assertEquals(listNull.toString(), group.toString());
+        ++readRecordCount;
+      }
+      assertEquals("Number of written records should be equal to the read one", recordCount, readRecordCount);
+    }
+  }
+
+  @Test
+  public void testParquetFileWithBloomFilter() throws IOException {
+    MessageType schema = Types.buildMessage().
+      required(BINARY).as(stringType()).named("name").named("msg");
+
+    String[] testNames = {"hello", "parquet", "bloom", "filter"};
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+      .withPageRowCountLimit(10)
+      .withConf(conf)
+      .withDictionaryEncoding(false)
+      .withBloomFilterColumnNames("name")
+      .build()) {
+      for (String testName : testNames) {
+        writer.write(factory.newGroup().append("name", testName));
+      }
+    }
+
+    ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()));
+    BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
+    BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
+      .readBloomFilter(blockMetaData.getColumns().get(0));
+
+    for (String name: testNames) {
+      assertTrue(bloomFilter.findHash(
+        LongHashFunction.xx(0).hashBytes(Binary.fromString(name).toByteBuffer())));
+    }
   }
 }

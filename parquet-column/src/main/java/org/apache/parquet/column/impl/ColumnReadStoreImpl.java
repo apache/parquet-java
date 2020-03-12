@@ -65,9 +65,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     ParsedVersion version;
     try {
       version = VersionParser.parse(createdBy);
-    } catch (RuntimeException e) {
-      version = null;
-    } catch (VersionParseException e) {
+    } catch (RuntimeException | VersionParseException e) {
       version = null;
     }
     this.writerVersion = version;
@@ -85,7 +83,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     }
   }
 
-  public ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+  private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
     PrimitiveConverter converter = getPrimitiveConverter(path);
     return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
   }

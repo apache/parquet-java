@@ -86,30 +86,30 @@ public class ToAvroCommand extends BaseCommand {
 
     CodecFactory codecFactory = Codecs.avroCodec(compressionCodecName);
 
-    Schema schema;
+    final Schema schema;
     if (avroSchemaFile != null) {
       schema = Schemas.fromAvsc(open(avroSchemaFile));
     } else {
       schema = getAvroSchema(source);
     }
-    Schema projection = filterSchema(schema, columns);
+    final Schema projection = filterSchema(schema, columns);
 
     Path outPath = qualifiedPath(outputPath);
-    FileSystem outFS = outPath.getFileSystem(getConf());
-    if (overwrite && outFS.exists(outPath)) {
-      console.debug("Deleting output file {} (already exists)", outPath);
-      outFS.delete(outPath);
+    try (FileSystem outFS = outPath.getFileSystem(getConf())) {
+      if (overwrite && outFS.exists(outPath)) {
+        console.debug("Deleting output file {} (already exists)", outPath);
+        outFS.delete(outPath);
+      }
     }
 
     Iterable<Record> reader = openDataFile(source, projection);
     boolean threw = true;
     long count = 0;
-    try {
-      DatumWriter<Record> datumWriter = new GenericDatumWriter<>(schema);
-      DataFileWriter<Record> w = new DataFileWriter<>(datumWriter);
-      w.setCodec(codecFactory);
 
-      try (DataFileWriter<Record> writer = w.create(projection, create(outputPath))) {
+    DatumWriter<Record> datumWriter = new GenericDatumWriter<>(schema);
+    try (DataFileWriter<Record> fileWriter = new DataFileWriter<>(datumWriter)) {
+      fileWriter.setCodec(codecFactory);
+      try (DataFileWriter<Record> writer=fileWriter.create(projection, create(outputPath))) {
         for (Record record : reader) {
           writer.append(record);
           count += 1;

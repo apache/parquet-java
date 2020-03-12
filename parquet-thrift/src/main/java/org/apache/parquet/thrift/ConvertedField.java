@@ -18,11 +18,11 @@
  */
 package org.apache.parquet.thrift;
 
+import java.util.Objects;
+
 import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.thrift.projection.FieldsPath;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * This is the return value for the recursion done in {@link ThriftSchemaConvertVisitor}
@@ -54,7 +54,7 @@ public interface ConvertedField {
     private final FieldsPath path;
 
     protected ConvertedFieldBase(FieldsPath path) {
-      this.path = checkNotNull(path, "path");
+      this.path = Objects.requireNonNull(path, "path cannot be null");
     }
 
     @Override
@@ -101,7 +101,7 @@ public interface ConvertedField {
 
     public Keep(FieldsPath path, Type type) {
       super(path);
-      this.type = checkNotNull(type, "type");
+      this.type = Objects.requireNonNull(type, "type cannot be null");
     }
 
     @Override
@@ -129,7 +129,7 @@ public interface ConvertedField {
 
     public SentinelUnion(FieldsPath path, Type type) {
       super(path);
-      this.type = checkNotNull(type, "type");
+      this.type = Objects.requireNonNull(type, "type cannot be null");
     }
 
     @Override
