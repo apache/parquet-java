@@ -29,7 +29,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -84,7 +83,6 @@ import org.apache.parquet.format.TimeUnit;
 import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Uncompressed;
 import org.apache.parquet.format.XxHash;
-import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.BoundaryOrder;
 import org.apache.parquet.format.ColumnChunk;
@@ -120,7 +118,6 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.GroupType;
@@ -195,9 +192,8 @@ public class ParquetMetadataConverter {
     try {
       return toParquetMetadata(currentVersion, parquetMetadata, (InternalFileEncryptor) null);
     } catch (IOException e) {
-      // Doesn't happen. Exception can be thrown only with encryption.
       // TODO check callers. Change method signature?
-      throw new ShouldNeverHappenException();
+      throw new ShouldNeverHappenException("Exception can be thrown only with encryption");
     }
   }
 
@@ -1304,7 +1300,9 @@ public class ParquetMetadataConverter {
     byte[] calculatedTag = new byte[AesCipher.GCM_TAG_LENGTH];
     System.arraycopy(encryptedFooterBytes, encryptedFooterBytes.length - AesCipher.GCM_TAG_LENGTH, 
         calculatedTag, 0, AesCipher.GCM_TAG_LENGTH);
-    if (!Arrays.equals(gcmTag, calculatedTag)) throw new IOException("Signature mismatch in plaintext footer");
+    if (!Arrays.equals(gcmTag, calculatedTag)) {
+      throw new IOException("Signature mismatch in plaintext footer");
+    }
   }
 
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter) throws IOException {
@@ -1406,7 +1404,7 @@ public class ParquetMetadataConverter {
               || (filePath != null && !filePath.equals(columnChunk.getFile_path()))) {
             throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
           }
-          ColumnMetaData metaData = columnChunk.meta_data; // TODO getMetaData()
+          ColumnMetaData metaData = columnChunk.meta_data;
           ColumnCryptoMetaData cryptoMetaData = columnChunk.getCrypto_metadata();
           ColumnChunkMetaData column = null;
           ColumnPath columnPath = null;
@@ -1631,7 +1629,7 @@ public class ParquetMetadataConverter {
         newDataPageHeader(uncompressedSize, compressedSize, valueCount,
             rlEncoding, dlEncoding, valuesEncoding),
         to);
-  } // TODO why no encryption here? see 182
+  }
 
   private PageHeader newDataPageHeader(
     int uncompressedSize, int compressedSize,

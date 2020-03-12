@@ -34,11 +34,10 @@ public class BlockMetaData {
   private String path;
   
   private short ordinal;
-  // TODO private? all 4
-  long startingPosition;
-  long totalCompressedSize;
-  boolean startingPositionSet;
-  boolean totalCompressedSizeSet;
+  private long startingPosition;
+  private long totalCompressedSize;
+  private boolean startingPositionSet;
+  private boolean totalCompressedSizeSet;
 
   public BlockMetaData() {
     startingPositionSet = false;

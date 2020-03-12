@@ -34,15 +34,20 @@ public abstract class CryptoPropertiesFactory {
   public static final String CRYPTO_FACTORY_CLASS_PROPERTY_NAME = "encryption.factory.class";
 
   public static CryptoPropertiesFactory get(Configuration hadoopConfig) throws IOException {
-    CryptoPropertiesFactory cryptoFactory = null;
+    if (null == hadoopConfig) {
+      LOG.debug("CryptoPropertiesFactory is not configured - null hadoop config");
+      return null;
+    }
+    
     String factoryClassName = hadoopConfig.getTrimmed(CRYPTO_FACTORY_CLASS_PROPERTY_NAME);
     if (StringUtils.isEmpty(factoryClassName)) {
-      LOG.debug("CryptoPropertiesFactory is not configured");
+      LOG.debug("CryptoPropertiesFactory is not configured - name not found in hadoop config");
       return null;
     }
     
     LOG.debug("CryptoPropertiesFactory implementation is: " + factoryClassName);
 
+    CryptoPropertiesFactory cryptoFactory = null;
     try {
       cryptoFactory = (Class.forName(factoryClassName).asSubclass(CryptoPropertiesFactory.class)).newInstance();
     } catch (Exception e) {

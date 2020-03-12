@@ -191,8 +191,8 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       for (ColumnChunkMetaData column : block.getColumns()) {
         try {
           encodings.addAll(column.getEncodings());
-        } catch (HiddenColumnException e) { // TODO
-          LOG.warn("Bypass column {} because it is hidden column so encodings cannot be read", column);
+        } catch (HiddenColumnException e) {
+          LOG.warn("checkDeltaByteArrayProblem: Bypass column {} because it is hidden so encodings cannot be read", column);
         }
       }
       for (Encoding encoding : encodings) {

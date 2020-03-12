@@ -183,7 +183,6 @@ abstract public class ColumnChunkMetaData {
     decryptIfNeededed();
     long dictionaryPageOffset = getDictionaryPageOffset();
     long firstDataPageOffset = getFirstDataPageOffset();
-    // TODO Bug! dictionaryPageOffset is not set in Thrift. Always 0 in reader
     if (dictionaryPageOffset > 0 && dictionaryPageOffset < firstDataPageOffset) {
       // if there's a dictionary and it's before the first data page, start from there
       return dictionaryPageOffset;

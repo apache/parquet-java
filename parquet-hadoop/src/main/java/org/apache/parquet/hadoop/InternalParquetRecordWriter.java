@@ -102,7 +102,7 @@ class InternalParquetRecordWriter<T> {
     this.fileEncryptor = parquetFileWriter.getEncryptor();
     this.rowGroupOrdinal = 0;
     try {
-      initStore(fileEncryptor);
+      initStore();
     } catch (IOException e) {
       // TODO Change constructor signature: add throws IOException
       throw new RuntimeException(e);
@@ -113,7 +113,7 @@ class InternalParquetRecordWriter<T> {
     return parquetFileWriter.getFooter();
   }
 
-  private void initStore(InternalFileEncryptor fileEncryptor) throws IOException { // TODO no need to pass the parameter.
+  private void initStore() throws IOException {
     ColumnChunkPageWriteStore columnChunkPageWriteStore = new ColumnChunkPageWriteStore(compressor,
         schema, props.getAllocator(), props.getColumnIndexTruncateLength(), props.getPageWriteChecksumEnabled(),
         fileEncryptor, rowGroupOrdinal);
@@ -163,7 +163,7 @@ class InternalParquetRecordWriter<T> {
       if (memSize > (nextRowGroupSize - 2 * recordSize)) {
         LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
         flushRowGroupToStore();
-        initStore(fileEncryptor);
+        initStore();
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
         this.lastRowGroupEndPos = parquetFileWriter.getPos();
       } else {
@@ -185,7 +185,7 @@ class InternalParquetRecordWriter<T> {
     }
 
     if (recordCount > 0) {
-      rowGroupOrdinal++; // TODO recordCount > 0?
+      rowGroupOrdinal++;
       parquetFileWriter.startBlock(recordCount);
       columnStore.flush();
       pageStore.flushToFileWriter(parquetFileWriter);

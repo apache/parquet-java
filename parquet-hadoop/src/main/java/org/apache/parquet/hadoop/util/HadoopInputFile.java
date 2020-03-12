@@ -54,6 +54,10 @@ public class HadoopInputFile implements InputFile {
   public Configuration getConfiguration() {
     return conf;
   }
+  
+  public Path getPath() {
+    return stat.getPath();
+  }
 
   @Override
   public long getLength() {

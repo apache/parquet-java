@@ -860,7 +860,11 @@ public class ParquetFileWriter {
     state = state.endBlock();
     LOG.debug("{}: end block", out.getPos());
     currentBlock.setRowCount(currentRecordCount);
-    currentBlock.setOrdinal((short)blocks.size()); // TODO check ordinal < max short size
+    int blockSize = blocks.size();
+    if (fileEncryptor != null && blockSize > Short.MAX_VALUE) {
+      throw new IOException("Number of row groups exceeds short max. Can't set ordinal");
+    }
+    currentBlock.setOrdinal((short) blockSize);
     blocks.add(currentBlock);
     columnIndexes.add(currentColumnIndexes);
     offsetIndexes.add(currentOffsetIndexes);

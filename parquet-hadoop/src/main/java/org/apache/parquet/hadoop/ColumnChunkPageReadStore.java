@@ -77,15 +77,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final BlockCipher.Decryptor blockDecryptor;
     private final boolean hiddenColumn;
     private final HiddenColumnException decryptionException;
-    
-    private final String[] columnPath;
-    
-    private byte[] dataPageAAD;
-    private byte[] dictionaryPageAAD;
+    private final byte[] dataPageAAD;
+    private final byte[] dictionaryPageAAD;
 
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
         DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount,
-        String[] columnPath, BlockCipher.Decryptor blockDecryptor, byte[] fileAAD, 
+        BlockCipher.Decryptor blockDecryptor, byte[] fileAAD, 
         short rowGroupOrdinal, short columnOrdinal) {
       this.decompressor = decompressor;
       this.compressedPages = new ArrayDeque<DataPage>(compressedPages);
@@ -99,28 +96,31 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       this.rowCount = rowCount;
       
       this.blockDecryptor = blockDecryptor;
-      this.hiddenColumn = false;
-      this.decryptionException = null;
-      this.columnPath = columnPath;
+      hiddenColumn = false;
+      decryptionException = null;
  
       if (null != blockDecryptor) {
         dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, rowGroupOrdinal, columnOrdinal, (short) 0);
         dictionaryPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPage, rowGroupOrdinal, columnOrdinal, (short) -1);
-      } 
+      } else {
+        dataPageAAD = null;
+        dictionaryPageAAD = null;
+      }
     }
     
     // Creates hidden column object
-    ColumnChunkPageReader(String[] columnPath, HiddenColumnException decryptionException) {
-      this.decompressor = null;
-      this.blockDecryptor = null;
-      this.compressedPages = null;
-      this.compressedDictionaryPage = null;
-      this.valueCount = -1;
-      this.hiddenColumn = true;
+    ColumnChunkPageReader(HiddenColumnException decryptionException) {
+      decompressor = null;
+      blockDecryptor = null;
+      compressedPages = null;
+      compressedDictionaryPage = null;
+      valueCount = -1;
+      hiddenColumn = true;
       this.decryptionException = decryptionException;
-      this.columnPath = columnPath;
-      this.offsetIndex = null;
-      this.rowCount = 0;
+      offsetIndex = null;
+      rowCount = 0;
+      dataPageAAD = null;
+      dictionaryPageAAD = null;
     }
     
     private short getPageOrdinal(int currentPageIndex) {
@@ -146,7 +146,6 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       
       final DataPage compressedPage = compressedPages.poll();
       if (compressedPage == null) {
-        // TODO ordinal??
         return null;
       }
       final int currentPageIndex = pageIndex++;
@@ -352,6 +351,6 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
   }
 
   void addHiddenColumn(ColumnDescriptor path, HiddenColumnException decryptionException) {
-    addColumn(path, new ColumnChunkPageReader(path.getPath(), decryptionException));
+    addColumn(path, new ColumnChunkPageReader(decryptionException));
   }
 }

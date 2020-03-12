@@ -41,6 +41,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.crypto.CryptoPropertiesFactory;
+import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
@@ -48,6 +50,7 @@ import org.apache.parquet.hadoop.codec.CodecConfig;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
+import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -502,9 +505,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
 
     WriteContext init = writeSupport.init(conf);
+    
+    FileEncryptionProperties encryptionProperties = getEncryptionProperties(conf, file, init.getSchema());
+    
     ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
         init.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
-        props.getStatisticsTruncateLength(), props.getPageWriteChecksumEnabled());
+        props.getStatisticsTruncateLength(), props.getPageWriteChecksumEnabled(), encryptionProperties);
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
@@ -568,5 +574,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public synchronized static MemoryManager getMemoryManager() {
     return memoryManager;
+  }
+  
+  private FileEncryptionProperties getEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath, 
+      MessageType fileSchema) throws IOException {
+    CryptoPropertiesFactory cryptoFactory = CryptoPropertiesFactory.get(fileHadoopConfig);
+    if (null == cryptoFactory) return null;
+    return cryptoFactory.getFileEncryptionProperties(fileHadoopConfig, tempFilePath, fileSchema);
   }
 }

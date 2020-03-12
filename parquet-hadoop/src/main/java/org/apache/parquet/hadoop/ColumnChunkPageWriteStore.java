@@ -93,9 +93,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
     private final BlockCipher.Encryptor pageBlockEncryptor;
     private final short rowGroupOrdinal;
     private final short columnOrdinal;
-    private short pageOrdinal;  // TODO replace with pageCount?
-    private byte[] dataPageAAD;
-    private byte[] dataPageHeaderAAD;
+    private short pageOrdinal;
+    private final byte[] dataPageAAD;
+    private final byte[] dataPageHeaderAAD;
     private final byte[] fileAAD;
 
     private ColumnChunkPageWriter(ColumnDescriptor path,
@@ -126,10 +126,14 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
       if (null != headerBlockEncryptor) {
         dataPageHeaderAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPageHeader, 
             rowGroupOrdinal, columnOrdinal, (short) 0);
+      } else {
+        dataPageHeaderAAD = null;
       }
       if (null != pageBlockEncryptor) {
         dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, 
             rowGroupOrdinal, columnOrdinal, (short) 0);
+      } else {
+        dataPageAAD = null;
       }
     }
 
@@ -384,7 +388,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
       ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
 
-  // TODO replace with this(..)
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
       int columnIndexTruncateLength, boolean pageWriteChecksumEnabled) {
     this.schema = schema;
