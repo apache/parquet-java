@@ -371,4 +371,32 @@ public class BlockSplitBloomFilter implements BloomFilter {
     }
     return false;
   }
+
+  private boolean checkCompatibility(BlockSplitBloomFilter that) {
+    return this.maximumBytes == that.maximumBytes && this.hashStrategy == that.hashStrategy;
+  }
+
+  @Override
+  public BloomFilter union(BloomFilter bloomFilter) {
+    if (bloomFilter instanceof BlockSplitBloomFilter) {
+      BlockSplitBloomFilter that = (BlockSplitBloomFilter) bloomFilter;
+
+      if (!checkCompatibility(that)) {
+        throw new RuntimeException("Bloom filters are not compatible!");
+      }
+
+      int numBytes = this.bitset.length;
+      byte[] newBitset = new byte[numBytes];
+
+      for (int index = 0; index < numBytes; index++) {
+        newBitset[index] = (byte) (this.bitset[index] | that.bitset[index]);
+      }
+
+      return new BlockSplitBloomFilter(newBitset);
+
+    } else {
+      throw new RuntimeException("Bloom filter should be BlockSplitFilter");
+    }
+
+  }
 }

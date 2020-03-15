@@ -114,6 +114,33 @@ public class TestBlockSplitBloomFilter {
   }
 
   @Test
+  public void testUnion() {
+    final String[] setOne = {"hello", "parquet", "bloom"};
+    final String[] setTwo = {"Bye", "parquet", "bloomFilter"};
+    final String[] setThree = {"Bye", "parquet", "bloomFilter","hello","bloom"};
+    BlockSplitBloomFilter bloomFilterOne = new BlockSplitBloomFilter(1024);
+    BlockSplitBloomFilter bloomFilterTwo = new BlockSplitBloomFilter(1024);
+
+    BlockSplitBloomFilter bloomFilterExpected = new BlockSplitBloomFilter(1024);
+
+    for (String word : setOne) {
+      bloomFilterOne.insertHash(bloomFilterOne.hash(Binary.fromString(word)));
+    }
+
+    for (String word : setTwo) {
+      bloomFilterTwo.insertHash(bloomFilterTwo.hash(Binary.fromString(word)));
+    }
+
+    for (String word : setThree) {
+      bloomFilterExpected.insertHash(bloomFilterExpected.hash(Binary.fromString(word)));
+    }
+
+    BloomFilter bloomFilterUnion = bloomFilterOne.union(bloomFilterTwo);
+
+    assertEquals(bloomFilterExpected, bloomFilterUnion);
+  }
+
+  @Test
   public void testFPP() throws IOException {
     final int totalCount = 100000;
     final double FPP = 0.01;

@@ -102,6 +102,14 @@ public interface BloomFilter {
   boolean equals(Object object);
 
   /**
+   * Union this Bloom filter with the specified one.
+   *
+   * @param bloomFilter the second bloom filter to use in the union operation
+   * @return The union of the two Bloom filter.
+   */
+  BloomFilter union(BloomFilter bloomFilter);
+
+  /**
    * Compute hash for int value by using its plain encoding result.
    *
    * @param value the value to hash
