@@ -32,34 +32,11 @@ public class BlockMetaData {
   private long rowCount;
   private long totalByteSize;
   private String path;
-  
   private short ordinal;
-  private long startingPosition;
-  private long totalCompressedSize;
-  private boolean startingPositionSet;
-  private boolean totalCompressedSizeSet;
 
   public BlockMetaData() {
-    startingPositionSet = false;
-    totalCompressedSizeSet = false;
   }
   
-  // Reader side (get parameters from RowGroup structure)
-  public BlockMetaData(long fileOffset, long totalCompressedSize) {
-    // fileOffset is optional, 0 means fileOffset is absent
-    if (fileOffset > 0) {
-      this.startingPosition = fileOffset;
-      startingPositionSet = true;
-    }
-
-    // totalCompressedSize is optional, 0 means totalCompressedSize is absent
-    if (totalCompressedSize > 0) {
-      this.totalCompressedSize = totalCompressedSize;
-      totalCompressedSizeSet = true;
-    }
-  }
-
-
   /**
    * @param path the path to the file containing the data. Or null if same file the metadata was found
    */
@@ -123,8 +100,7 @@ public class BlockMetaData {
    * @return the starting pos of first column
    */
   public long getStartingPos() {
-    if (startingPositionSet) return startingPosition;
-    return getColumns().get(0).getStartingPos(); // TODO store in startingPosition
+    return getColumns().get(0).getStartingPos();
   }
   
   @Override
@@ -136,18 +112,24 @@ public class BlockMetaData {
    * @return the compressed size of all columns
    */
   public long getCompressedSize() {
-    if (totalCompressedSizeSet) return totalCompressedSize;
     long totalSize = 0;
     for (ColumnChunkMetaData col : getColumns()) {
       totalSize += col.getTotalSize();
     }
-    return totalSize; // TODO store in totalByteSize
+    return totalSize;
   }
   
+  /**
+   * @return row group ordinal
+   */
   public short getOrdinal() {
     return ordinal;
   }
 
+  /**
+  *
+  * @param row group ordinal
+  */
   public void setOrdinal(short ordinal) {
     this.ordinal = ordinal;
   }

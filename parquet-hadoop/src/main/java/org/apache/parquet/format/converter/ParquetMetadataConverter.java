@@ -570,12 +570,7 @@ public class ParquetMetadataConverter {
       parquetColumns.add(columnChunk);
     }
     RowGroup rowGroup = new RowGroup(parquetColumns, block.getTotalByteSize(), block.getRowCount());
-    // rowGroup.setFile_offset(block.getStartingPos()); TODO this is right thing to do, but a bug must be fixed: 
-    // TODO dictionaryPageOffset is not set in Thrift. Always 0 in reader
-    // RemoveUponPush
-    rowGroup.setFile_offset(block.getColumns().get(0).getFirstDataPageOffset()); // TODO this is wrong - but makes things work as before. 
-    // TODO Done for TestInputOutputFormatWithPadding to pass.
-    // RemoveUponPush
+    rowGroup.setFile_offset(block.getStartingPos()); 
     rowGroup.setTotal_compressed_size(block.getCompressedSize());
     rowGroup.setOrdinal(rowGroupOrdinal);
     rowGroups.add(rowGroup);
@@ -1220,25 +1215,27 @@ public class ParquetMetadataConverter {
     for (RowGroup rowGroup : rowGroups) {
       long totalSize = 0;
       long startIndex;
+      
       if (rowGroup.isSetFile_offset()) {
         startIndex = rowGroup.getFile_offset();
-      }
-      else {
+      } else {
         startIndex = getOffset(rowGroup.getColumns().get(0));
       }
+      
       if (rowGroup.isSetTotal_compressed_size()) {
         totalSize = rowGroup.getTotal_compressed_size();
-      }
-      else {
+      } else {
         for (ColumnChunk col : rowGroup.getColumns()) {
           totalSize += col.getMeta_data().getTotal_compressed_size();
         }
       }
+      
       long midPoint = startIndex + totalSize / 2;
       if (filter.contains(midPoint)) {
         newRowGroups.add(rowGroup);
       }
     }
+    
     metaData.setRow_groups(newRowGroups);
     return metaData;
   }
@@ -1251,10 +1248,10 @@ public class ParquetMetadataConverter {
       long startIndex;
       if (rowGroup.isSetFile_offset()) {
         startIndex = rowGroup.getFile_offset();
-      }
-      else {
+      } else {
         startIndex = getOffset(rowGroup.getColumns().get(0));
       }
+      
       if (filter.contains(startIndex)) {
         newRowGroups.add(rowGroup);
       }
@@ -1391,10 +1388,13 @@ public class ParquetMetadataConverter {
     
     if (row_groups != null) {
       for (RowGroup rowGroup : row_groups) {
-        BlockMetaData blockMetaData = new BlockMetaData(rowGroup.getFile_offset(), rowGroup.getTotal_compressed_size());
-        blockMetaData.setOrdinal(rowGroup.getOrdinal());
+        BlockMetaData blockMetaData = new BlockMetaData();
         blockMetaData.setRowCount(rowGroup.getNum_rows());
         blockMetaData.setTotalByteSize(rowGroup.getTotal_byte_size());
+        // not set in legacy files
+        if (rowGroup.isSetOrdinal()) {
+          blockMetaData.setOrdinal(rowGroup.getOrdinal());
+        }
         List<ColumnChunk> columns = rowGroup.getColumns();
         String filePath = columns.get(0).getFile_path();
         short columnOrdinal = -1;

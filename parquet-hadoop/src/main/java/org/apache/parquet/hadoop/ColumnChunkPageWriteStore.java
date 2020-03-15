@@ -310,25 +310,43 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
     }
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
-      writer.writeColumnChunk(
-          path,
-          totalValueCount,
-          compressor.getCodecName(),
-          dictionaryPage,
-          buf,
-          uncompressedLength,
-          compressedLength,
-          totalStatistics,
-          columnIndexBuilder,
-          offsetIndexBuilder,
-          bloomFilter,
-          rlEncodings,
-          dlEncodings,
-          dataEncodings,
-          headerBlockEncryptor,
-          rowGroupOrdinal,
-          columnOrdinal, 
-          fileAAD);
+      if (null == headerBlockEncryptor) {
+        writer.writeColumnChunk(
+            path,
+            totalValueCount,
+            compressor.getCodecName(),
+            dictionaryPage,
+            buf,
+            uncompressedLength,
+            compressedLength,
+            totalStatistics,
+            columnIndexBuilder,
+            offsetIndexBuilder,
+            bloomFilter,
+            rlEncodings,
+            dlEncodings,
+            dataEncodings);
+      } else {
+        writer.writeColumnChunk(
+            path,
+            totalValueCount,
+            compressor.getCodecName(),
+            dictionaryPage,
+            buf,
+            uncompressedLength,
+            compressedLength,
+            totalStatistics,
+            columnIndexBuilder,
+            offsetIndexBuilder,
+            bloomFilter,
+            rlEncodings,
+            dlEncodings,
+            dataEncodings,
+            headerBlockEncryptor,
+            rowGroupOrdinal,
+            columnOrdinal, 
+            fileAAD);
+      }
       if (LOG.isDebugEnabled()) {
         LOG.debug(
             String.format(
