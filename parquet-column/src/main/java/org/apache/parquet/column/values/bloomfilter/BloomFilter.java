@@ -168,4 +168,13 @@ public interface BloomFilter {
    * @return compress algorithm that the bloom filter apply
    */
   Compression getCompression();
+
+  /**
+   * Union this Bloom filter with the specified one.
+   *
+   * @param bloomFilter the second bloom filter to use in the union operation
+   * @return The union of the two Bloom filters.
+   */
+  BloomFilter union(BloomFilter bloomFilter);
+
 }

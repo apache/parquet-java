@@ -379,4 +379,32 @@ public class BlockSplitBloomFilter implements BloomFilter {
   public long hash(Binary value) {
     return hashFunction.hashBytes(value.getBytes());
   }
+
+  private boolean checkCompatibility(BlockSplitBloomFilter that) {
+    return this.maximumBytes == that.maximumBytes &&
+      this.hashStrategy == that.hashStrategy &&
+      this.getAlgorithm() == that.getAlgorithm();
+  }
+
+  @Override
+  public BloomFilter union(BloomFilter bloomFilter) {
+    if (bloomFilter instanceof BlockSplitBloomFilter) {
+      BlockSplitBloomFilter that = (BlockSplitBloomFilter) bloomFilter;
+
+      if (!checkCompatibility(that)) {
+        throw new RuntimeException("Bloom filters are not compatible! Please check"
+          + "if they have the same maximum Bytes, hash strategy and algorithm.");
+      }
+
+      for (int i = 0; i < this.bitset.length; i++) {
+        this.bitset[i] |= that.bitset[i];
+      }
+
+      return new BlockSplitBloomFilter(this.bitset);
+    } else {
+      throw new RuntimeException("Bloom filter should be BlockSplitFilter");
+    }
+
+  }
+
 }
