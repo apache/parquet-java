@@ -96,6 +96,24 @@ public class Util {
     return read(from, new OffsetIndex(), decryptor, AAD);
   }
 
+  public static BloomFilterHeader readBloomFilterHeader(InputStream from) throws IOException {
+    return readBloomFilterHeader(from, null, null);
+  }
+
+  public static void writeBloomFilterHeader(BloomFilterHeader header, OutputStream out) throws IOException {
+    writeBloomFilterHeader(header, out, null, null);
+  }
+  
+  public static BloomFilterHeader readBloomFilterHeader(InputStream from,
+      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+    return read(from, new BloomFilterHeader(), decryptor, AAD);
+  }
+
+  public static void writeBloomFilterHeader(BloomFilterHeader header, OutputStream out,
+      BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
+    write(header, out, encryptor, AAD);
+  }
+
   public static void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
     writePageHeader(pageHeader, to, null, null);
   }
