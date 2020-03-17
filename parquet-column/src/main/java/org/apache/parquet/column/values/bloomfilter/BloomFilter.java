@@ -105,6 +105,13 @@ public interface BloomFilter {
   long hash(int value);
 
   /**
+   * Compute the intersection of this bloom filter with the specified one.
+   * @param bloomFilter
+   * @return the intersection of two bloom filters
+   */
+  BloomFilter intersection(BloomFilter bloomFilter);
+
+  /**
    * Compute hash for long value by using its plain encoding result.
    *
    * @param value the value to hash
