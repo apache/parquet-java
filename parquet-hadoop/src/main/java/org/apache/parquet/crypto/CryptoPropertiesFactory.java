@@ -21,47 +21,55 @@ package org.apache.parquet.crypto;
 
 import java.io.IOException;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.hadoop.BadConfigurationException;
+import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
+import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class CryptoPropertiesFactory {
   private static final Logger LOG = LoggerFactory.getLogger(CryptoPropertiesFactory.class);
   
-  public static final String CRYPTO_FACTORY_CLASS_PROPERTY_NAME = "encryption.factory.class";
-
-  public static CryptoPropertiesFactory get(Configuration hadoopConfig) throws IOException {
-    if (null == hadoopConfig) {
+  public static final String CRYPTO_FACTORY_CLASS_PROPERTY_NAME = "parquet.encryption.factory.class";
+  
+  public static CryptoPropertiesFactory loadFactory(Configuration conf) throws IOException {
+    if (null == conf) {
       LOG.debug("CryptoPropertiesFactory is not configured - null hadoop config");
       return null;
     }
+
+    return getCryptoPropertiesFactory(conf);
+  }
+
+  private static CryptoPropertiesFactory getCryptoPropertiesFactory(Configuration hadoopConfig) {
+    final Class<?> cryptoPropertiesFactoryClass = ConfigurationUtil.getClassFromConfig(hadoopConfig,
+      CRYPTO_FACTORY_CLASS_PROPERTY_NAME, CryptoPropertiesFactory.class);
     
-    String factoryClassName = hadoopConfig.getTrimmed(CRYPTO_FACTORY_CLASS_PROPERTY_NAME);
-    if (StringUtils.isEmpty(factoryClassName)) {
+    if (null == cryptoPropertiesFactoryClass) {
       LOG.debug("CryptoPropertiesFactory is not configured - name not found in hadoop config");
       return null;
     }
     
-    LOG.debug("CryptoPropertiesFactory implementation is: " + factoryClassName);
-
-    CryptoPropertiesFactory cryptoFactory = null;
+    LOG.debug("CryptoPropertiesFactory implementation is: " + cryptoPropertiesFactoryClass);
+    
     try {
-      cryptoFactory = (Class.forName(factoryClassName).asSubclass(CryptoPropertiesFactory.class)).newInstance();
-    } catch (Exception e) {
-      throw new IOException("Failed to instantiate CryptoPropertiesFactory " + factoryClassName, e);
+      CryptoPropertiesFactory cryptoFactory = (CryptoPropertiesFactory)cryptoPropertiesFactoryClass.newInstance();
+      cryptoFactory.initialize(hadoopConfig);
+      return cryptoFactory;
+    } catch (InstantiationException | IllegalAccessException e) {
+      throw new BadConfigurationException("could not instantiate crypto metadata retriever class: "
+        + cryptoPropertiesFactoryClass, e);
     }
-
-    cryptoFactory.initialize(hadoopConfig);
-    return cryptoFactory;
   }
 
   public abstract void initialize(Configuration hadoopConfig);
 
-  public abstract FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath, 
-      MessageType fileSchema)  throws IOException;
-  
-  public abstract FileDecryptionProperties getFileDecryptionProperties(Configuration hadoopConfig, Path filePath)  throws IOException;
+  public abstract FileEncryptionProperties getFileEncryptionProperties(
+    Configuration fileHadoopConfig, Path tempFilePath,
+    WriteContext fileWriteContext)  throws IOException;
+
+  public abstract FileDecryptionProperties getFileDecryptionProperties(
+    Configuration hadoopConfig, Path filePath)  throws IOException;
 }

@@ -50,7 +50,6 @@ import org.apache.parquet.hadoop.codec.CodecConfig;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
-import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -504,12 +503,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Parquet properties are:\n{}", props);
     }
 
-    WriteContext init = writeSupport.init(conf);
+    WriteContext fileWriteContext = writeSupport.init(conf);
     
-    FileEncryptionProperties encryptionProperties = getEncryptionProperties(conf, file, init.getSchema());
+    FileEncryptionProperties encryptionProperties = getEncryptionProperties(conf, file, fileWriteContext);
     
     ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
-        init.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
+        fileWriteContext.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
         props.getStatisticsTruncateLength(), props.getPageWriteChecksumEnabled(), encryptionProperties);
     w.start();
 
@@ -530,8 +529,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return new ParquetRecordWriter<T>(
         w,
         writeSupport,
-        init.getSchema(),
-        init.getExtraMetaData(),
+        fileWriteContext.getSchema(),
+        fileWriteContext.getExtraMetaData(),
         blockSize,
         codec,
         validating,
@@ -577,9 +576,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
   
   private FileEncryptionProperties getEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath, 
-      MessageType fileSchema) throws IOException {
-    CryptoPropertiesFactory cryptoFactory = CryptoPropertiesFactory.get(fileHadoopConfig);
+      WriteContext fileWriteContext) throws IOException {
+    CryptoPropertiesFactory cryptoFactory = CryptoPropertiesFactory.loadFactory(fileHadoopConfig);
     if (null == cryptoFactory) return null;
-    return cryptoFactory.getFileEncryptionProperties(fileHadoopConfig, tempFilePath, fileSchema);
+    return cryptoFactory.getFileEncryptionProperties(fileHadoopConfig, tempFilePath, fileWriteContext);
   }
 }

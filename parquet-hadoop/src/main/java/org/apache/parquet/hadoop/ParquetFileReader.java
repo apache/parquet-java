@@ -442,7 +442,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   private static FileDecryptionProperties getDecryptionProperties(Path file, Configuration hadoopConfig) throws IOException {
-    CryptoPropertiesFactory cryptoFactory = CryptoPropertiesFactory.get(hadoopConfig);
+    CryptoPropertiesFactory cryptoFactory = CryptoPropertiesFactory.loadFactory(hadoopConfig);
     if (null == cryptoFactory) {
       return null;
     }
