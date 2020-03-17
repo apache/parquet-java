@@ -220,14 +220,14 @@ public class CodecFactory implements CompressionCodecFactory {
   protected CompressionCodec getCodec(CompressionCodecName codecName,Configuration conf) {
     String[] configCodecNames = conf.getStrings(CodecConfigurationKeys.CUSTOMIZED_COMPRESSION_CODEC_NAME);
     String codecClassName = null;
-    if(configCodecNames != null && configCodecNames.length > 0 && codecName != null){
+    if(configCodecNames != null && configCodecNames.length > 0 && codecName != null) {
       int codecIdx = Arrays.asList(configCodecNames).indexOf(codecName.toString());
-      if(codecIdx >= 0){
+      if(codecIdx >= 0) {
         String[] configCodecClassNames=conf.getStrings(CodecConfigurationKeys.CUSTOMIZED_COMPRESSION_CODEC_CLASS_NAME);
         codecClassName = configCodecClassNames[codecIdx];
       }
     }
-    if(codecClassName == null ||codecClassName.isEmpty()){
+    if(codecClassName == null ||codecClassName.isEmpty()) {
       codecClassName = codecName.getHadoopCompressionCodecClassName();
     }
     if (codecClassName == null) {
