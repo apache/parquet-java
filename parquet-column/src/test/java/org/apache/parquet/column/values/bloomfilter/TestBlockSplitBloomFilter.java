@@ -31,6 +31,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class TestBlockSplitBloomFilter {
@@ -141,6 +142,25 @@ public class TestBlockSplitBloomFilter {
 
     // The exist should be probably less than 1000 according FPP 0.01. Add 20% here for error space.
     assertTrue(exist < totalCount * (FPP * 1.2));
+  }
+
+  @Test
+  public void testEquals() {
+    final String[] words = {"hello", "parquet", "bloom", "filter"};
+    BloomFilter bloomFilterOne = new BlockSplitBloomFilter(1024);
+    BloomFilter bloomFilterTwo = new BlockSplitBloomFilter(1024);
+
+    for (String word : words) {
+      bloomFilterOne.insertHash(bloomFilterOne.hash(Binary.fromString(word)));
+      bloomFilterTwo.insertHash(bloomFilterTwo.hash(Binary.fromString(word)));
+    }
+
+    assertEquals(bloomFilterOne, bloomFilterTwo);
+
+    BloomFilter bloomFilterThree = new BlockSplitBloomFilter(1024);
+    bloomFilterThree.insertHash(bloomFilterThree.hash(Binary.fromString("parquet")));
+
+    assertNotEquals(bloomFilterTwo, bloomFilterThree);
   }
 
   @Test
