@@ -455,6 +455,8 @@ public class ParquetProperties {
 
     /**
      * Set Bloom filter NDV (number of distinct values) for the specified column.
+     * If set for a column then the writing of the bloom filter for that column will be automatically enabled (see
+     * {@link #withBloomFilterEnabled(String, boolean)}).
      *
      * @param columnPath the path of the column (dot-string)
      * @param ndv the NDV of the column
@@ -483,7 +485,10 @@ public class ParquetProperties {
     }
 
     /**
-     * Enable or disable the bloom filter for the specified column
+     * Enable or disable the bloom filter for the specified column.
+     * One may either disable bloom filters for all columns by invoking {@link #withBloomFilterEnabled(boolean)} with a
+     * {@code false} value and then enable the bloom filters for the required columns one-by-one by invoking this
+     * method or vice versa.
      *
      * @param columnPath the path of the column (dot-string)
      * @param enabled    whether bloom filter shall be enabled
