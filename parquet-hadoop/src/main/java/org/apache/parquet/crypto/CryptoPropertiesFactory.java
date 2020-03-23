@@ -30,17 +30,20 @@ import java.io.IOException;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
-public abstract class CryptoPropertiesFactory {
+public interface CryptoPropertiesFactory {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CryptoPropertiesFactory.class);
-  public static final String CRYPTO_FACTORY_CLASS_PROPERTY_NAME = "parquet.encryption.factory.class";
+  Logger LOG = LoggerFactory.getLogger(CryptoPropertiesFactory.class);
+  String CRYPTO_FACTORY_CLASS_PROPERTY_NAME = "parquet.encryption.factory.class";
 
-  public static CryptoPropertiesFactory loadFactory(Configuration conf) throws IOException {
-    if (null == conf) {
-      LOG.debug("CryptoPropertiesFactory is not configured - null hadoop config");
-      return null;
-    }
-
+  /**
+   * Load CryptoPropertiesFactory class specified by CRYPTO_FACTORY_CLASS_PROPERTY_NAME as the path in the configuration
+   *
+   * @param conf Configuration where user specifies the class path
+   * @return return object with class CryptoPropertiesFactory if user specified the class path and invoking of
+   * the class succeeds, null if user doesn't specify the class path. RunTimeException with type BadConfigurationException
+   * will be thrown if invoking the configured class fails
+   */
+  static CryptoPropertiesFactory loadFactory(Configuration conf) {
     final Class<?> cryptoPropertiesFactoryClass = ConfigurationUtil.getClassFromConfig(conf,
       CRYPTO_FACTORY_CLASS_PROPERTY_NAME, CryptoPropertiesFactory.class);
 
@@ -51,7 +54,6 @@ public abstract class CryptoPropertiesFactory {
 
     try {
       CryptoPropertiesFactory cryptoFactory = (CryptoPropertiesFactory)cryptoPropertiesFactoryClass.newInstance();
-      cryptoFactory.initialize(conf);
       return cryptoFactory;
     } catch (InstantiationException | IllegalAccessException e) {
       throw new BadConfigurationException("could not instantiate CryptoPropertiesFactory class: "
@@ -59,12 +61,25 @@ public abstract class CryptoPropertiesFactory {
     }
   }
 
-  public abstract void initialize(Configuration hadoopConfig);
+  /**
+   * Get FileEncryptionProperties object which is created by the implementation of this interface. Please see
+   * the unit test (TBD) for example
+   *
+   * @param fileHadoopConfig Configuration that is used to pass the needed information, e.g. KMS uri
+   * @param tempFilePath File path of the parquet file
+   * @param fileWriteContext WriteContext to provide information like schema to build the FileEncryptionProperties
+   * @return
+   * @throws IOException
+   */
+  FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
+                                                       WriteContext fileWriteContext)  throws IOException;
 
-  public abstract FileEncryptionProperties getFileEncryptionProperties(
-    Configuration fileHadoopConfig, Path tempFilePath,
-    WriteContext fileWriteContext)  throws IOException;
-
-  public abstract FileDecryptionProperties getFileDecryptionProperties(
-    Configuration hadoopConfig, Path filePath)  throws IOException;
+  /**
+   *
+   * @param hadoopConfig Configuration that is used to pass the needed information, e.g. KMS uri
+   * @param filePath  File path of the parquet file
+   * @return
+   * @throws IOException
+   */
+  FileDecryptionProperties getFileDecryptionProperties(Configuration hadoopConfig, Path filePath)  throws IOException;
 }
