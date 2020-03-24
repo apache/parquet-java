@@ -125,23 +125,20 @@ public class TestEncryptionOptions {
   String fileName = "tester";
 
   @Test
-  public void testInterop() throws IOException {
+  public void testWriteReadEncryptedParquetFiles() throws IOException {
     Path rootPath = new Path(temporaryFolder.getRoot().getPath());
-    interopTestWriteEncryptedParquetFiles(rootPath);
-    interopTestReadEncryptedParquetFiles(rootPath);
+    byte[] AADPrefix = rootPath.getName().getBytes(StandardCharsets.UTF_8);
+    // This array will hold various encryption configuraions.
+    FileEncryptionProperties[] encryptionPropertiesList = getEncryptionConfigurations(AADPrefix);
+    testWriteEncryptedParquetFiles(rootPath, encryptionPropertiesList);
+    // This array will hold various decryption configurations.
+    FileDecryptionProperties[] decryptionPropertiesList = getDecryptionConfigurations(AADPrefix);
+    testReadEncryptedParquetFiles(rootPath, decryptionPropertiesList);
   }
 
-  private void interopTestWriteEncryptedParquetFiles(Path root) throws IOException {
-    byte[] AADPrefix = root.getName().getBytes(StandardCharsets.UTF_8);
+  private void testWriteEncryptedParquetFiles(Path root, FileEncryptionProperties[] encryptionPropertiesList) throws IOException {
     Configuration conf = new Configuration();
-    /**********************************************************************************
-     Creating a number of Encryption configurations
-     **********************************************************************************/
-
-    // This array will hold various encryption configuraions.
-    int numberOfEncryptionModes = 7;
-    FileEncryptionProperties[] encryptionPropertiesList = getEncryptionConfigurations(AADPrefix);
-
+    int numberOfEncryptionModes = encryptionPropertiesList.length;
 
     MessageType schema = parseMessageType(
       "message test { "
@@ -186,20 +183,14 @@ public class TestEncryptionOptions {
     }
   }
 
-  private void interopTestReadEncryptedParquetFiles(Path root) throws IOException {
-    byte[] AADPrefix = root.getName().getBytes(StandardCharsets.UTF_8);
+  private void testReadEncryptedParquetFiles(Path root, FileDecryptionProperties[] decryptionPropertiesList) throws IOException {
     Configuration conf = new Configuration();
-    /**********************************************************************************
-     Creating a number of Decryption configurations
-     **********************************************************************************/
-
-    // This array will hold various decryption configurations.
-    int numberOfDecryptionModes = 4;
-    FileDecryptionProperties[] decryptionPropertiesList = getDecryptionConfigurations(AADPrefix);
+    int numberOfDecryptionModes = decryptionPropertiesList.length;
 
     for (int decryptionMode = 0; decryptionMode < numberOfDecryptionModes; decryptionMode++) {
-//      PrintDecryptionConfiguration(decryptionMode + 1);
-      LOG.info("==> Decryption configuration " + (decryptionMode + 1));
+      int decryptionConfigurationNumber = decryptionMode + 1;
+      LOG.info("==> Decryption configuration {} {}", decryptionConfigurationNumber,
+        DecryptionConfiguration.fromNumConfiguration(decryptionConfigurationNumber).toString());
       FileDecryptionProperties fileDecryptionProperties = decryptionPropertiesList[decryptionMode];
 
       File folder = new File(root.toString());
@@ -210,7 +201,10 @@ public class TestEncryptionOptions {
         if (!file.toString().endsWith("parquet.encrypted")) { // Skip non encrypted files
           continue;
         }
-        LOG.info("--> Read file " + file.toString());
+        int encryptionConfigurationNumber = getEncryptionConfigurationNumberFromFilename(file.getName());
+        LOG.info("--> Read file {} {} {}", file.toString(), encryptionConfigurationNumber,
+          EncryptionConfiguration.fromNumConfiguration(encryptionConfigurationNumber).toString());
+
         ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).
           withDecryption(fileDecryptionProperties).
           withConf(conf).build();
@@ -223,18 +217,19 @@ public class TestEncryptionOptions {
               expect = true;
             boolean bool_res = group.getBoolean("boolean_field", 0);
             if (bool_res != expect)
-              System.out.println("Wrong bool");
+              addErrorToErrorCollectorAndLog("Wrong bool", encryptionConfigurationNumber, decryptionConfigurationNumber);
             int int_res = group.getInteger("int32_field", 0);
             if (int_res != i)
-              System.out.println("Wrong int");
+              addErrorToErrorCollectorAndLog("Wrong int", encryptionConfigurationNumber, decryptionConfigurationNumber);
             float float_res = group.getFloat("float_field", 0);
             float tmp1 = (float) i * 1.1f;
-            if (float_res != tmp1) System.out.println("Wrong float");
+            if (float_res != tmp1)
+              addErrorToErrorCollectorAndLog("Wrong float", encryptionConfigurationNumber, decryptionConfigurationNumber);
 
             double double_res = group.getDouble("double_field", 0);
             double tmp = (i * 1.1111111);
             if (double_res != tmp)
-              System.out.println("Wrong double");
+              addErrorToErrorCollectorAndLog("Wrong double", encryptionConfigurationNumber, decryptionConfigurationNumber);
           }
         } catch (Exception e) {
           String errorMessage = e.getMessage();
@@ -244,6 +239,11 @@ public class TestEncryptionOptions {
     }
   }
 
+  /**
+   * Create a number of Encryption configurations
+   * @param AADPrefix
+   * @return
+   */
   private FileEncryptionProperties[] getEncryptionConfigurations(byte[] AADPrefix) {
     FileEncryptionProperties[] encryptionPropertiesList = new FileEncryptionProperties[EncryptionConfiguration.values().length];
 
@@ -384,7 +384,11 @@ public class TestEncryptionOptions {
     return encryptionPropertiesList;
   }
 
-
+  /**
+   * Create a number of Decryption configurations
+   * @param AADPrefix
+   * @return
+   */
   private FileDecryptionProperties[] getDecryptionConfigurations(byte[] AADPrefix) {
     FileDecryptionProperties[] decryptionPropertiesList = new FileDecryptionProperties[DecryptionConfiguration.values().length];
 
@@ -453,16 +457,8 @@ public class TestEncryptionOptions {
 
   // Check that the decryption result is as expected.
   private void checkResult(String file, int exampleId, String exceptionMsg) {
-    int encryptionConfigurationNumber = -1;
     // Extract encryptionConfigurationNumber from the parquet file name.
-    Pattern p = Pattern.compile("tester([0-9]+)\\.parquet.encrypted");
-    Matcher m = p.matcher(file);
-
-    if (m.find()) {
-      encryptionConfigurationNumber = Integer.parseInt(m.group(1));
-    } else {
-      Assert.fail("Error: Error parsing filename to extract encryption configuration number. ");
-    }
+    int encryptionConfigurationNumber = getEncryptionConfigurationNumberFromFilename(file);
     int decryptionConfigurationNumber = exampleId + 1;
 
     // Encryption_configuration 5 contains aad_prefix and
@@ -473,9 +469,8 @@ public class TestEncryptionOptions {
         decryptionConfigurationNumber == DecryptionConfiguration.DECRYPT_WITH_EXPLICIT_KEYS.getNumConfiguration() ||
         decryptionConfigurationNumber == DecryptionConfiguration.DECRYPT_COLUMNS_PLAINTEXT_FOOTER.getNumConfiguration()) {
         if (!exceptionMsg.contains("AAD")) {
-          errorCollector.addError(new Exception(String.format("%s %s\nError: Expecting AAD related exception, but got [%s]",
-            EncryptionConfiguration.fromNumConfiguration(encryptionConfigurationNumber).toString(),
-            DecryptionConfiguration.fromNumConfiguration(decryptionConfigurationNumber).toString(), exceptionMsg)));
+          addErrorToErrorCollectorAndLog("Expecting AAD related exception", exceptionMsg,
+            encryptionConfigurationNumber, decryptionConfigurationNumber);
         }
         return;
       }
@@ -487,8 +482,8 @@ public class TestEncryptionOptions {
         encryptionConfigurationNumber != EncryptionConfiguration.ENCRYPT_COLUMNS_AND_FOOTER_AAD.getNumConfiguration() &&
         encryptionConfigurationNumber != EncryptionConfiguration.WRITE_PLAINTEXT.getNumConfiguration()) {
         if (!exceptionMsg.contains("AAD")) {
-          addErrorToErrorCollectorAndLog(exceptionMsg, encryptionConfigurationNumber, decryptionConfigurationNumber,
-            "Expecting AAD related exception", errorCollector);
+          addErrorToErrorCollectorAndLog("Expecting AAD related exception", exceptionMsg,
+            encryptionConfigurationNumber, decryptionConfigurationNumber);
         }
         return;
       }
@@ -500,37 +495,62 @@ public class TestEncryptionOptions {
         (decryptionConfigurationNumber == DecryptionConfiguration.DECRYPT_COLUMNS_AND_FOOTER_AAD.getNumConfiguration()) ||
         (decryptionConfigurationNumber == DecryptionConfiguration.DECRYPT_WITH_EXPLICIT_KEYS.getNumConfiguration())) {
         if (!exceptionMsg.endsWith("Applying decryptor on plaintext file")) {
-          addErrorToErrorCollectorAndLog(exceptionMsg, encryptionConfigurationNumber, decryptionConfigurationNumber,
-            "Expecting exception Applying decryptor on plaintext file", errorCollector);
+          addErrorToErrorCollectorAndLog("Expecting exception Applying decryptor on plaintext file",
+            exceptionMsg, encryptionConfigurationNumber, decryptionConfigurationNumber);
         }
         return;
       }
     }
     // Decryption configuration 4 is null, so only plaintext file can be read. An exception is expected to
     // be thrown if the file is encrypted.
-    if (decryptionConfigurationNumber == DecryptionConfiguration.DECRYPT_COLUMNS_PLAINTEXT_FOOTER.getNumConfiguration()) {
+    if (decryptionConfigurationNumber == DecryptionConfiguration.DECRYPT_COLUMNS_PLAINTEXT_FOOTER.getNumConfiguration() ||
+      decryptionConfigurationNumber == DecryptionConfiguration.READ_PLAINTEXT.getNumConfiguration()) {
       if (encryptionConfigurationNumber != EncryptionConfiguration.WRITE_PLAINTEXT.getNumConfiguration()) {
         if (!exceptionMsg.endsWith("No keys available") && !exceptionMsg.endsWith("Null File Decryptor") && !exceptionMsg.endsWith("Footer key unavailable")) {
-          addErrorToErrorCollectorAndLog(exceptionMsg, encryptionConfigurationNumber, decryptionConfigurationNumber,
-            "Expecting No keys available exception", errorCollector);
+          addErrorToErrorCollectorAndLog("Expecting No keys available exception", exceptionMsg,
+            encryptionConfigurationNumber, decryptionConfigurationNumber);
         }
         return;
       }
     }
     if (null != exceptionMsg && !exceptionMsg.equals("")) {
-      addErrorToErrorCollectorAndLog(exceptionMsg, encryptionConfigurationNumber, decryptionConfigurationNumber,
-        "Didn't expect an exception", errorCollector);
+      addErrorToErrorCollectorAndLog("Didn't expect an exception", exceptionMsg,
+        encryptionConfigurationNumber, decryptionConfigurationNumber);
     }
   }
 
-  private static void addErrorToErrorCollectorAndLog(String exceptionMsg, int encryptionConfigurationNumber,
-                                                     int decryptionConfigurationNumber, String errorMessage,
-                                                     ErrorCollector errorCollector) {
+  private static int getEncryptionConfigurationNumberFromFilename(String file) {
+    int encryptionConfigurationNumber = -1;
+    Pattern p = Pattern.compile("tester([0-9]+)\\.parquet.encrypted");
+    Matcher m = p.matcher(file);
+
+    if (m.find()) {
+      encryptionConfigurationNumber = Integer.parseInt(m.group(1));
+    } else {
+      Assert.fail("Error: Error parsing filename to extract encryption configuration number. ");
+    }
+    return encryptionConfigurationNumber;
+  }
+
+  private void addErrorToErrorCollectorAndLog(String errorMessage, String exceptionMessage, int encryptionConfigurationNumber,
+                                              int decryptionConfigurationNumber) {
     String fullErrorMessage = String.format("\nE%d %s - D%d %s\nError: " + errorMessage + ", but got [%s]",
       encryptionConfigurationNumber,
       EncryptionConfiguration.fromNumConfiguration(encryptionConfigurationNumber).toString(),
       decryptionConfigurationNumber,
-      DecryptionConfiguration.fromNumConfiguration(decryptionConfigurationNumber).toString(), exceptionMsg);
+      DecryptionConfiguration.fromNumConfiguration(decryptionConfigurationNumber).toString(), exceptionMessage);
+
+    errorCollector.addError(new Exception(fullErrorMessage));
+    LOG.error(fullErrorMessage);
+  }
+
+  private void addErrorToErrorCollectorAndLog(String errorMessage, int encryptionConfigurationNumber,
+                                                     int decryptionConfigurationNumber) {
+    String fullErrorMessage = String.format("\nE%d %s - D%d %s\nError: " + errorMessage,
+      encryptionConfigurationNumber,
+      EncryptionConfiguration.fromNumConfiguration(encryptionConfigurationNumber).toString(),
+      decryptionConfigurationNumber,
+      DecryptionConfiguration.fromNumConfiguration(decryptionConfigurationNumber).toString());
 
     errorCollector.addError(new Exception(fullErrorMessage));
     LOG.error(fullErrorMessage);
