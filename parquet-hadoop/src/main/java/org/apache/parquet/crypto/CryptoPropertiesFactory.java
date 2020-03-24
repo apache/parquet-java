@@ -28,8 +28,25 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-
+/**
+ * CryptoPropertiesFactory interface enables transparent activation of Parquet encryption.
+ *
+ * It's customized implementations produce encryption and decryption properties for each Parquet file, using the information
+ * available in Parquet file writers and readers: file path, file extended schema (in writers only) - and also Hadoop
+ * configuration properties that can pass custom parameters required by a crypto factory. A factory implementation can
+ * use or ignore any of these parameters.
+ *
+ * The example could be as below.
+ *
+ * 1. Write a class to implement CryptoPropertiesFactory.
+ * 2. Set configuration of "parquet.encryption.factory.class" with the full namespace of this class.
+ *    For example, we can set the configuration in SparkSession as below.
+ *       SparkSession spark = SparkSession
+ *                   .config("parquet.encryption.factory.class",
+ *                    "xxx.xxx.CryptoPropertiesImpl")
+ *
+ *    This class will be invoked when the static method loadFactory() is called.
+ */
 public interface CryptoPropertiesFactory {
 
   Logger LOG = LoggerFactory.getLogger(CryptoPropertiesFactory.class);
@@ -66,7 +83,10 @@ public interface CryptoPropertiesFactory {
    * the unit test (TBD) for example
    *
    * @param fileHadoopConfig Configuration that is used to pass the needed information, e.g. KMS uri
-   * @param tempFilePath File path of the parquet file
+   * @param tempFilePath File path of the parquet file being written.
+   *                     Can be used for AAD prefix creation, key material management, etc.
+   *                     Implementations must not presume the path is permanent,
+   *                     as the file can be moved or renamed later
    * @param fileWriteContext WriteContext to provide information like schema to build the FileEncryptionProperties
    * @return
    * @throws IOException
@@ -77,7 +97,8 @@ public interface CryptoPropertiesFactory {
   /**
    *
    * @param hadoopConfig Configuration that is used to pass the needed information, e.g. KMS uri
-   * @param filePath  File path of the parquet file
+   * @param filePath File path of the parquet file
+   *                 Can be used for AAD prefix verification, part of key metadata etc
    * @return
    * @throws IOException
    */
