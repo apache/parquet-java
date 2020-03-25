@@ -39,7 +39,7 @@ import java.io.IOException;
  * The example could be as below.
  *
  * 1. Write a class to implement CryptoPropertiesFactory.
- * 2. Set configuration of "parquet.encryption.factory.class" with the full namespace of this class.
+ * 2. Set configuration of "parquet.encryption.factory.class" with the fully qualified name of this class.
  *    For example, we can set the configuration in SparkSession as below.
  *       SparkSession spark = SparkSession
  *                   .config("parquet.encryption.factory.class",
