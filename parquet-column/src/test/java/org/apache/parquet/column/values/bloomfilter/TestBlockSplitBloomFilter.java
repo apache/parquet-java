@@ -31,6 +31,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class TestBlockSplitBloomFilter {
@@ -112,6 +113,45 @@ public class TestBlockSplitBloomFilter {
       assertTrue(String.format("the value %s should not be filtered, seed = %d", v, seed),
         bloomFilter.findHash(bloomFilter.hash(v)));
     }
+  }
+
+  @Test
+  public void testIntesection() {
+    final String[] setOne = {"Hello", "parquet", "Apache", "bloom"};
+    final String[] setTwo = {"parquet", "BloomFilter", "filter", "Apache"};
+    final String[] setIntesection = {"parquet", "Apache"};
+    final String[] setUnknown = {"Hello", "BloomFilter"};
+
+    BlockSplitBloomFilter bloomFilterOne = new BlockSplitBloomFilter(1024);
+    BlockSplitBloomFilter bloomFilterTwo = new BlockSplitBloomFilter(1024);
+
+    for (String word : setOne) {
+      bloomFilterOne.insertHash(bloomFilterOne.hash(Binary.fromString(word)));
+    }
+
+    for (String word : setTwo) {
+      bloomFilterTwo.insertHash(bloomFilterTwo.hash(Binary.fromString(word)));
+    }
+
+    BloomFilter bloomFilterIntersection = bloomFilterOne.intersection(bloomFilterTwo);
+
+    for (String word : setIntesection) {
+      assertTrue(bloomFilterIntersection.findHash(bloomFilterIntersection.hash(Binary.fromString(word))));
+    }
+
+    for (String word : setUnknown) {
+      assertFalse(bloomFilterIntersection.findHash(bloomFilterIntersection.hash(Binary.fromString(word))));
+    }
+
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testFailedIntersectin() {
+
+    BlockSplitBloomFilter bloomFilterTwo = new BlockSplitBloomFilter(512);
+    BlockSplitBloomFilter bloomFilterOne = new BlockSplitBloomFilter(1024);
+
+    BloomFilter wrongBloomFilter = bloomFilterOne.intersection(bloomFilterTwo);
   }
 
   @Test
