@@ -88,19 +88,21 @@ public interface CryptoPropertiesFactory {
    *                     Implementations must not presume the path is permanent,
    *                     as the file can be moved or renamed later
    * @param fileWriteContext WriteContext to provide information like schema to build the FileEncryptionProperties
-   * @return
-   * @throws IOException
+   * @return object with class of FileEncryptionProperties
+   * @throws IOException if there is an exception while creating the object
    */
   FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
                                                        WriteContext fileWriteContext)  throws IOException;
 
   /**
+   * Get FileDecryptionProperties object which is created by the implementation of this interface. Please see
+   * the unit test (TBD) for example
    *
    * @param hadoopConfig Configuration that is used to pass the needed information, e.g. KMS uri
    * @param filePath File path of the parquet file
    *                 Can be used for AAD prefix verification, part of key metadata etc
-   * @return
-   * @throws IOException
+   * @return object with class of FileDecryptionProperties
+   * @throws IOException if there is an exception while creating the object
    */
   FileDecryptionProperties getFileDecryptionProperties(Configuration hadoopConfig, Path filePath)  throws IOException;
 }
