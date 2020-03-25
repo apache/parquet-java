@@ -45,7 +45,7 @@ import java.io.IOException;
  *                   .config("parquet.encryption.factory.class",
  *                    "xxx.xxx.CryptoPropertiesImpl")
  *
- *    This class will be invoked when the static method loadFactory() is called.
+ *    The implementation of this interface will be instantiated by {@link #loadFactory(Configuration)}.
  */
 public interface CryptoPropertiesFactory {
 
