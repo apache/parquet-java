@@ -337,7 +337,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
     if (object instanceof BlockSplitBloomFilter) {
       BlockSplitBloomFilter that = (BlockSplitBloomFilter) object;
       return Arrays.equals(this.bitset, that.bitset)
-        && this.maximumBytes == that.maximumBytes
+        && this.getAlgorithm() == that.getAlgorithm()
         && this.hashStrategy == that.hashStrategy;
     }
     return false;
