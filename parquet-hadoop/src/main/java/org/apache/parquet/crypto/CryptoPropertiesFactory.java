@@ -56,9 +56,9 @@ public interface CryptoPropertiesFactory {
    * Load CryptoPropertiesFactory class specified by CRYPTO_FACTORY_CLASS_PROPERTY_NAME as the path in the configuration
    *
    * @param conf Configuration where user specifies the class path
-   * @return return object with class CryptoPropertiesFactory if user specified the class path and invoking of
-   * the class succeeds, null if user doesn't specify the class path. RunTimeException with type BadConfigurationException
-   * will be thrown if invoking the configured class fails
+   * @return object with class CryptoPropertiesFactory if user specified the class path and invoking of
+   * the class succeeds, null if user doesn't specify the class path
+   * @throws BadConfigurationException if the instantiation of the configured class fails
    */
   static CryptoPropertiesFactory loadFactory(Configuration conf) {
     final Class<?> cryptoPropertiesFactoryClass = ConfigurationUtil.getClassFromConfig(conf,
