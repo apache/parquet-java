@@ -381,7 +381,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
   }
 
   private boolean checkCompatibility(BlockSplitBloomFilter that) {
-    return this.maximumBytes == that.maximumBytes &&
+    return this.getBitsetSize() == that.getBitsetSize() &&
       this.hashStrategy == that.hashStrategy &&
       this.getAlgorithm() == that.getAlgorithm();
   }
@@ -392,8 +392,9 @@ public class BlockSplitBloomFilter implements BloomFilter {
       BlockSplitBloomFilter that = (BlockSplitBloomFilter) bloomFilter;
 
       if (!checkCompatibility(that)) {
-        throw new RuntimeException("Bloom filters are not compatible! Please check"
-          + "if they have the same maximum Bytes, hash strategy and algorithm.");
+        throw new IllegalArgumentException("Bloom filter is not compatible! "
+          + "Bitset size = " + that.getBitsetSize() + ", hash strategy = " + that.hashStrategy
+          + ", algorithm = " + that.getAlgorithm());
       }
 
       for (int i = 0; i < this.bitset.length; i++) {
@@ -402,7 +403,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
 
       return new BlockSplitBloomFilter(this.bitset);
     } else {
-      throw new RuntimeException("Bloom filter should be BlockSplitFilter");
+      throw new IllegalArgumentException("Unsupported BloomFilter implementation to union with: " + bloomFilter.getClass());
     }
 
   }

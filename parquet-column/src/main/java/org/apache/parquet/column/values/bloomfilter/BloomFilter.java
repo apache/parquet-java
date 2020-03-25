@@ -171,6 +171,7 @@ public interface BloomFilter {
 
   /**
    * Union this Bloom filter with the specified one.
+   * Both bloom filters should have the same implementation.
    *
    * @param bloomFilter the second bloom filter to use in the union operation
    * @return The union of the two Bloom filters.

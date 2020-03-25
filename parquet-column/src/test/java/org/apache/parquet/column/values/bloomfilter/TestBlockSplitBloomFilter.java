@@ -137,7 +137,7 @@ public class TestBlockSplitBloomFilter {
     }
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testFailedUnion(){
 
     BlockSplitBloomFilter bloomFilterTwo = new BlockSplitBloomFilter(512);
