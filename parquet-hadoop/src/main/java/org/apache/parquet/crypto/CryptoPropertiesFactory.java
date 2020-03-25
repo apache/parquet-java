@@ -89,10 +89,10 @@ public interface CryptoPropertiesFactory {
    *                     as the file can be moved or renamed later
    * @param fileWriteContext WriteContext to provide information like schema to build the FileEncryptionProperties
    * @return object with class of FileEncryptionProperties
-   * @throws IOException if there is an exception while creating the object
+   * @throws ParquetCryptoRuntimeException if there is an exception while creating the object
    */
   FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
-                                                       WriteContext fileWriteContext)  throws IOException;
+                                                       WriteContext fileWriteContext)  throws ParquetCryptoRuntimeException;
 
   /**
    * Get FileDecryptionProperties object which is created by the implementation of this interface. Please see
@@ -102,7 +102,7 @@ public interface CryptoPropertiesFactory {
    * @param filePath File path of the parquet file
    *                 Can be used for AAD prefix verification, part of key metadata etc
    * @return object with class of FileDecryptionProperties
-   * @throws IOException if there is an exception while creating the object
+   * @throws ParquetCryptoRuntimeException if there is an exception while creating the object
    */
-  FileDecryptionProperties getFileDecryptionProperties(Configuration hadoopConfig, Path filePath)  throws IOException;
+  FileDecryptionProperties getFileDecryptionProperties(Configuration hadoopConfig, Path filePath)  throws ParquetCryptoRuntimeException;
 }
