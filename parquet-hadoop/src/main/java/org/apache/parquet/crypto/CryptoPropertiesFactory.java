@@ -34,7 +34,7 @@ import java.io.IOException;
  * It's customized implementations produce encryption and decryption properties for each Parquet file, using the input information
  * available in Parquet file writers and readers: file path, file extended schema (in writers only) - and also Hadoop
  * configuration properties that can pass custom parameters required by a crypto factory. A factory implementation can
- * use or ignore any of these parameters.
+ * use or ignore any of these inputs.
  *
  * The example could be as below.
  *
