@@ -52,8 +52,8 @@ public class TestColumnSizeCommand {
     Map<String, Long> columnSizeInBytes = command.getColumnSizeInBytes(new Path(inputFile));
     assertEquals(columnSizeInBytes.size(), 2);
     assertTrue(columnSizeInBytes.get("DocId") > columnSizeInBytes.get("Num"));
-    Map<String, Float> columnPercentage = command.getColumnPercentage(columnSizeInBytes);
-    assertTrue(columnPercentage.get("DocId") > columnPercentage.get("Num"));
+    Map<String, Float> columnRatio = command.getColumnRatio(columnSizeInBytes);
+    assertTrue(columnRatio.get("DocId") > columnRatio.get("Num"));
   }
 
   private String createParquetFile(String prefix) throws IOException {

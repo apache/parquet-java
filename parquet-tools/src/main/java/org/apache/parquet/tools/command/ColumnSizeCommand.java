@@ -59,7 +59,7 @@ public class ColumnSizeCommand extends ArgsOnlyCommand {
 
   @Override
   public String getCommandDescription() {
-    return "Print out the size in bytes and percentage of column(s) in the input Parquet file";
+    return "Print out the size in bytes and ratio of column(s) in the input Parquet file";
   }
 
   @Override
@@ -69,24 +69,24 @@ public class ColumnSizeCommand extends ArgsOnlyCommand {
     Path inputFile = new Path(args.get(0));
 
     Map<String, Long> columnSizes = getColumnSizeInBytes(inputFile);
-    Map<String, Float> columnPercentage = getColumnPercentage(columnSizes);
+    Map<String, Float> columnRatio = getColumnRatio(columnSizes);
 
     if (args.size() > 1) {
       for (String inputColumn : args.subList(1, args.size())) {
         long size = 0;
-        float percentage = 0;
+        float ratio = 0;
         for (String column : columnSizes.keySet()) {
-          if (column.startsWith(inputColumn)) {
+          if (column.equals(inputColumn) || column.startsWith(inputColumn + ".")) {
             size += columnSizes.get(column);
-            percentage += columnPercentage.get(column);
+            ratio += columnRatio.get(column);
           }
         }
-        Main.out.println(inputColumn + "->" + " Size In Bytes: " + size + " Size In Percentage: " + percentage);
+        Main.out.println(inputColumn + "->" + " Size In Bytes: " + size + " Size In Ratio: " + ratio);
       }
     } else {
       for (String column : columnSizes.keySet()) {
         Main.out.println(column + "->" + " Size In Bytes: " + columnSizes.get(column)
-          + " Size In Percentage: " + columnPercentage.get(column));
+          + " Size In Ratio: " + columnRatio.get(column));
       }
     }
   }
@@ -107,14 +107,14 @@ public class ColumnSizeCommand extends ArgsOnlyCommand {
   }
 
   // Make it public to allow some automation tools to call it
-  public Map<String, Float> getColumnPercentage(Map<String, Long> colSizes) {
+  public Map<String, Float> getColumnRatio(Map<String, Long> colSizes) {
     long totalSize = colSizes.values().stream().reduce(0L, Long::sum);
-    Map<String, Float> colPercentage = new HashMap<>();
+    Map<String, Float> colRatio = new HashMap<>();
 
     for (Map.Entry<String, Long> entry : colSizes.entrySet()) {
-      colPercentage.put(entry.getKey(), ((float) entry.getValue()) / ((float) totalSize));
+      colRatio.put(entry.getKey(), ((float) entry.getValue()) / ((float) totalSize));
     }
 
-    return colPercentage;
+    return colRatio;
   }
 }

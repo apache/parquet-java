@@ -68,25 +68,25 @@ public class ColumnSizeCommand extends BaseCommand {
 
     Path inputFile = new Path(target);
     Map<String, Long> columnSizes = getColumnSizeInBytes(inputFile);
-    Map<String, Float> columnPercentage = getColumnPercentage(columnSizes);
+    Map<String, Float> columnRatio = getColumnRatio(columnSizes);
 
     // If user defined columns, only print out size for those columns
     if (columns != null && columns.size() > 0) {
       for (String inputColumn : columns) {
         long size = 0;
-        float percentage = 0;
+        float ratio = 0;
         for (String column : columnSizes.keySet()) {
-          if (column.startsWith(inputColumn)) {
+          if (column.equals(inputColumn) || column.startsWith(inputColumn + ".")) {
             size += columnSizes.get(column);
-            percentage += columnPercentage.get(column);
+            ratio += columnRatio.get(column);
           }
         }
-        console.info(inputColumn + "->" + " Size In Bytes: " + size + " Size In Percentage: " + percentage);
+        console.info(inputColumn + "->" + " Size In Bytes: " + size + " Size In Ratio: " + ratio);
       }
     } else {
       for (String column : columnSizes.keySet()) {
         console.info(column + "->" + " Size In Bytes: " + columnSizes.get(column)
-          + " Size In Percentage: " + columnPercentage.get(column));
+          + " Size In Ratio: " + columnRatio.get(column));
       }
     }
 
@@ -96,10 +96,12 @@ public class ColumnSizeCommand extends BaseCommand {
   @Override
   public List<String> getExamples() {
     return Lists.newArrayList(
-        "# Print every column size in byte and percentage for a Parquet file",
+        "# Print every column size in byte and ratio for a Parquet file",
         "sample.parquet",
-        "sample.parquet col_1 col_2",
-        "sample.parquet col_1 col_2.sub_col_a"
+        "sample.parquet -c col_1",
+        "sample.parquet -column col_2",
+        "sample.parquet -columns col_1 col_2",
+        "sample.parquet -columns col_1 col_2.sub_col_a"
     );
   }
 
@@ -119,14 +121,14 @@ public class ColumnSizeCommand extends BaseCommand {
   }
 
   // Make it public to allow some automation tools to call it
-  public Map<String, Float> getColumnPercentage(Map<String, Long> colSizes) {
+  public Map<String, Float> getColumnRatio(Map<String, Long> colSizes) {
     long totalSize = colSizes.values().stream().reduce(0L, Long::sum);
-    Map<String, Float> colPercentage = new HashMap<>();
+    Map<String, Float> colRatio = new HashMap<>();
 
     for (Map.Entry<String, Long> entry : colSizes.entrySet()) {
-      colPercentage.put(entry.getKey(), ((float) entry.getValue()) / ((float) totalSize));
+      colRatio.put(entry.getKey(), ((float) entry.getValue()) / ((float) totalSize));
     }
 
-    return colPercentage;
+    return colRatio;
   }
 }
