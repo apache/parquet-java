@@ -37,9 +37,9 @@ public class ColumnSizeCommand extends ArgsOnlyCommand {
 
   public static final String[] USAGE = new String[] {
     "<input>",
-    "where <input> is the parquet file to calculate teh column size" +
+    "where <input> is the parquet file to calculate the column size" +
     "     [<column> ...] are the columns in the case sensitive dot format" +
-    "     to be calculated, for example a.b.c. If no columns are input, all the" +
+    "     to be calculated, for example a.b.c. If no columns are set, all the" +
     "     columns will be printed out"
   };
 
@@ -118,4 +118,3 @@ public class ColumnSizeCommand extends ArgsOnlyCommand {
     return colPercentage;
   }
 }
-
