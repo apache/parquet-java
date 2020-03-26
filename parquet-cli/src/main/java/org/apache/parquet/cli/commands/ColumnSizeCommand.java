@@ -70,7 +70,7 @@ public class ColumnSizeCommand extends BaseCommand {
     Map<String, Long> columnSizes = getColumnSizeInBytes(inputFile);
     Map<String, Float> columnPercentage = getColumnPercentage(columnSizes);
 
-    // If user inputted columns, only print out size for those columns
+    // If user defined columns, only print out size for those columns
     if (columns != null && columns.size() > 0) {
       for (String inputColumn : columns) {
         long size = 0;
