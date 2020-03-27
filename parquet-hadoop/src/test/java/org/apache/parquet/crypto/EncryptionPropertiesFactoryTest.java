@@ -36,10 +36,10 @@ public class EncryptionPropertiesFactoryTest {
     FileEncryptionProperties encryptionProperties = encryptionPropertiesFactory.getFileEncryptionProperties(conf,
       null, null);
 
-    assertArrayEquals(encryptionProperties.getFooterKey(), SampleEncryptionPropertiesFactory.footerKey);
-    assertEquals(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.col1),
-      SampleEncryptionPropertiesFactory.col1EncrProperties);
-    assertEquals(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.col2),
-      SampleEncryptionPropertiesFactory.col2EncrProperties);
+    assertArrayEquals(encryptionProperties.getFooterKey(), SampleEncryptionPropertiesFactory.FOOTER_KEY);
+    assertEquals(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL1),
+      SampleEncryptionPropertiesFactory.COL1_ENCR_PROPERTIES);
+    assertEquals(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL2),
+      SampleEncryptionPropertiesFactory.COL2_ENCR_PROPERTIES);
   }
 }

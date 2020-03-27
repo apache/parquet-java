@@ -34,10 +34,10 @@ public class DecryptionPropertiesFactoryTest {
     DecryptionPropertiesFactory decryptionPropertiesFactory = DecryptionPropertiesFactory.loadFactory(conf);
     FileDecryptionProperties decryptionProperties = decryptionPropertiesFactory.getFileDecryptionProperties(conf, null);
 
-    assertArrayEquals(decryptionProperties.getFooterKey(), SampleDecryptionPropertiesFactory.footerKey);
-    assertArrayEquals(decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.col1),
-      SampleDecryptionPropertiesFactory.col1Key);
-    assertArrayEquals(decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.col2),
-      SampleDecryptionPropertiesFactory.col2Key);
+    assertArrayEquals(decryptionProperties.getFooterKey(), SampleDecryptionPropertiesFactory.FOOTER_KEY);
+    assertArrayEquals(decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL1),
+      SampleDecryptionPropertiesFactory.COL1_KEY);
+    assertArrayEquals(decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL2),
+      SampleDecryptionPropertiesFactory.COL2_KEY);
   }
 }

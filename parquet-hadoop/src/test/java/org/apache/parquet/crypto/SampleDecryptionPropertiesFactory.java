@@ -28,18 +28,18 @@ import java.util.Map;
 
 public class SampleDecryptionPropertiesFactory implements DecryptionPropertiesFactory {
 
-  public final static byte[] footerKey = {0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+  public static final byte[] FOOTER_KEY = {0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
     0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
-  public final static ColumnPath col1 = ColumnPath.fromDotString("col_1");
-  public final static byte[] col1Key = {0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+  public static final ColumnPath COL1 = ColumnPath.fromDotString("col_1");
+  public static final byte[] COL1_KEY = {0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
     0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11};
-  public final static ColumnDecryptionProperties col1DecrProperties = ColumnDecryptionProperties.builder(col1.toDotString())
-    .withKey(col1Key).build();
-  public final static ColumnPath col2 = ColumnPath.fromDotString("col_2");
-  public final static byte[] col2Key = {0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
+  public static final ColumnDecryptionProperties COL1_ENCR_PROPERTIES = ColumnDecryptionProperties.builder(COL1.toDotString())
+    .withKey(COL1_KEY).build();
+  public static final ColumnPath COL2 = ColumnPath.fromDotString("col_2");
+  public static final byte[] COL2_KEY = {0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
      0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12};
-  public final static ColumnDecryptionProperties col2DecrProperties = ColumnDecryptionProperties.builder(col2.toDotString())
-    .withKey(col2Key).build();
+  public static final ColumnDecryptionProperties COL2_ENCR_PROPERTIES = ColumnDecryptionProperties.builder(COL2.toDotString())
+    .withKey(COL2_KEY).build();
 
   @Override
   public FileDecryptionProperties getFileDecryptionProperties(Configuration hadoopConfig, Path filePath)
@@ -47,11 +47,11 @@ public class SampleDecryptionPropertiesFactory implements DecryptionPropertiesFa
 
     Map<ColumnPath, ColumnDecryptionProperties> columnDecPropertiesMap = new HashMap<>();
 
-    columnDecPropertiesMap.put(col1, col1DecrProperties);
-    columnDecPropertiesMap.put(col2, col2DecrProperties);
+    columnDecPropertiesMap.put(COL1, COL1_ENCR_PROPERTIES);
+    columnDecPropertiesMap.put(COL2, COL2_ENCR_PROPERTIES);
 
     FileDecryptionProperties.Builder fileDecBuilder = FileDecryptionProperties.builder();
 
-    return fileDecBuilder.withFooterKey(footerKey).withColumnKeys(columnDecPropertiesMap).build();
+    return fileDecBuilder.withFooterKey(FOOTER_KEY).withColumnKeys(columnDecPropertiesMap).build();
   }
 }

@@ -29,18 +29,18 @@ import java.util.Map;
 
 public class SampleEncryptionPropertiesFactory implements EncryptionPropertiesFactory {
 
-  public final static byte[] footerKey = {0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+  public static final byte[] FOOTER_KEY = {0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
     0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
-  public final static ColumnPath col1 = ColumnPath.fromDotString("col_1");
-  public final static byte[] col1Key = {0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+  public static final ColumnPath COL1 = ColumnPath.fromDotString("col_1");
+  public static final byte[] COL1_KEY = {0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
     0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11};
-  public final static ColumnEncryptionProperties col1EncrProperties = ColumnEncryptionProperties.builder(
-    col1.toDotString()).withKey(col1Key).build();
-  public final static ColumnPath col2 = ColumnPath.fromDotString("col_2");
-  public final static byte[] col2Key = {0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
+  public static final ColumnEncryptionProperties COL1_ENCR_PROPERTIES = ColumnEncryptionProperties.builder(
+    COL1.toDotString()).withKey(COL1_KEY).build();
+  public static final ColumnPath COL2 = ColumnPath.fromDotString("col_2");
+  public static final byte[] COL2_KEY = {0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
      0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12};
-  public final static ColumnEncryptionProperties col2EncrProperties = ColumnEncryptionProperties.builder(
-    col2.toDotString()).withKey(col2Key).build();
+  public static final ColumnEncryptionProperties COL2_ENCR_PROPERTIES = ColumnEncryptionProperties.builder(
+    COL2.toDotString()).withKey(COL2_KEY).build();
 
   @Override
   public FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
@@ -48,10 +48,10 @@ public class SampleEncryptionPropertiesFactory implements EncryptionPropertiesFa
 
     Map<ColumnPath, ColumnEncryptionProperties> columnEncPropertiesMap = new HashMap<>();
 
-    columnEncPropertiesMap.put(col1, col1EncrProperties);
-    columnEncPropertiesMap.put(col2, col2EncrProperties);
+    columnEncPropertiesMap.put(COL1, COL1_ENCR_PROPERTIES);
+    columnEncPropertiesMap.put(COL2, COL2_ENCR_PROPERTIES);
 
-    FileEncryptionProperties.Builder fileEncBuilder = FileEncryptionProperties.builder(footerKey);
+    FileEncryptionProperties.Builder fileEncBuilder = FileEncryptionProperties.builder(FOOTER_KEY);
 
     return fileEncBuilder.withAlgorithm(ParquetCipher.AES_GCM_V1).withEncryptedColumns(columnEncPropertiesMap).build();
   }
