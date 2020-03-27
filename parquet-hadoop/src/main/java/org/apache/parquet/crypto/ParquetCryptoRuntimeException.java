@@ -21,7 +21,7 @@ package org.apache.parquet.crypto;
 import org.apache.parquet.ParquetRuntimeException;
 
 /**
- * thrown when a encryption or decryption operation problem occured
+ * Thrown when an encryption or decryption operation problem is occurred
  */
 public class ParquetCryptoRuntimeException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
