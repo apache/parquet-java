@@ -56,7 +56,10 @@ public class ColumnSizeCommand extends BaseCommand {
 
   @Parameter(
     names = {"-c", "--column", "--columns"},
-    description = "List of columns",
+    description = "List of columns in the case sensitive dot format to be calculated, " +
+                  "for example a.b.c. If an input column is intermediate column, all " +
+                  "the child columns will be printed out. If no columns are set, all " +
+                  "the columns will be printed out.",
     required = false)
   List<String> columns;
 

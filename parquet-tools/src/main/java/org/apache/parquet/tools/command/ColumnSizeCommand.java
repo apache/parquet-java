@@ -39,8 +39,9 @@ public class ColumnSizeCommand extends ArgsOnlyCommand {
     "<input>",
     "where <input> is the parquet file to calculate the column size" +
     "     [<column> ...] are the columns in the case sensitive dot format" +
-    "     to be calculated, for example a.b.c. If no columns are set, all the" +
-    "     columns will be printed out"
+    "     to be calculated, for example a.b.c. If an input column is intermediate" +
+    "     column, all the child columns will be printed out. If no columns are" +
+    "     set, all the columns will be printed out."
   };
 
   /**
