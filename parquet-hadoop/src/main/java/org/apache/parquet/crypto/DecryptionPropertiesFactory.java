@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  *   2. Set configuration of "parquet.crypto.factory.class" with the fully qualified name of this class.
  *      For example, we can set the configuration in SparkSession as below.
  *         SparkSession spark = SparkSession
- *                     .config("parquet.encryption.factory.class",
+ *                     .config("parquet.crypto.factory.class",
  *                     "xxx.xxx.DecryptionPropertiesClassLoaderImpl")
  *
  * The implementation of this interface will be instantiated by {@link #loadFactory(Configuration)}.
