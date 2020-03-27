@@ -99,9 +99,9 @@ public class ColumnSizeCommand extends BaseCommand {
         "# Print every column size in byte and ratio for a Parquet file",
         "sample.parquet",
         "sample.parquet -c col_1",
-        "sample.parquet -column col_2",
-        "sample.parquet -columns col_1 col_2",
-        "sample.parquet -columns col_1 col_2.sub_col_a"
+        "sample.parquet --column col_2",
+        "sample.parquet --columns col_1 col_2",
+        "sample.parquet --columns col_1 col_2.sub_col_a"
     );
   }
 
