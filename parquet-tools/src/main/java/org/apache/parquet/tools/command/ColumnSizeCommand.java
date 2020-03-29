@@ -82,7 +82,7 @@ public class ColumnSizeCommand extends ArgsOnlyCommand {
             ratio += columnRatio.get(column);
           }
         }
-        Main.out.println(inputColumn + "->" + " Size In Bytes: " + size + " Size In Ratio: " + ratio);
+        Main.out.println(inputColumn + "-> Size In Bytes: " + size + " Size In Ratio: " + ratio);
       }
     } else {
       for (String column : columnSizes.keySet()) {
