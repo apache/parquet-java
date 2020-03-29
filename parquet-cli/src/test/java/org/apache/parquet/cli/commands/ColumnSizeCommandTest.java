@@ -74,7 +74,7 @@ public class ColumnSizeCommandTest extends ParquetFileTest {
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
-    String file = createTempFile(prefix);
+    String file = parquetFile().getAbsolutePath();
     ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file)).withConf(conf);
     Random rnd = new Random();
     try (ParquetWriter writer = builder.build()) {
@@ -87,13 +87,5 @@ public class ColumnSizeCommandTest extends ParquetFileTest {
     }
 
     return file;
-  }
-
-  private static String createTempFile(String prefix) {
-    try {
-      return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
-    } catch (IOException e) {
-      throw new AssertionError("Unable to create temporary file", e);
-    }
   }
 }

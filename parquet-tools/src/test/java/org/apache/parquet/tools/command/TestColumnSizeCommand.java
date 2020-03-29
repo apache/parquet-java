@@ -27,10 +27,12 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Map;
 import java.util.Random;
 
@@ -45,6 +47,9 @@ public class TestColumnSizeCommand {
   private final int numRecord = 10000;
   private ColumnSizeCommand command = new ColumnSizeCommand();
   private Configuration conf = new Configuration();
+
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Test
   public void testColumnSize() throws Exception {
@@ -63,7 +68,7 @@ public class TestColumnSizeCommand {
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
-    String file = createTempFile(prefix);
+    String file = parquetFile().getAbsolutePath();
     ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file)).withConf(conf);
     Random rnd = new Random();
     try (ParquetWriter writer = builder.build()) {
@@ -78,11 +83,12 @@ public class TestColumnSizeCommand {
     return file;
   }
 
-  private static String createTempFile(String prefix) {
-    try {
-      return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
-    } catch (IOException e) {
-      throw new AssertionError("Unable to create temporary file", e);
-    }
+  private File getTempFolder() {
+    return this.tempFolder.getRoot();
+  }
+
+  private File parquetFile() {
+    File tmpDir = getTempFolder();
+    return new File(tmpDir, getClass().getSimpleName() + ".parquet");
   }
 }
