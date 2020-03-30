@@ -33,12 +33,15 @@ import org.junit.Before;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.apache.parquet.schema.Type.Repetition.*;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public abstract class ParquetFileTest extends FileTest {
+
+  private Random rnd = new Random();
 
   @Before
   public void setUp() throws IOException {
@@ -48,6 +51,11 @@ public abstract class ParquetFileTest extends FileTest {
   protected File parquetFile() {
     File tmpDir = getTempFolder();
     return new File(tmpDir, getClass().getSimpleName() + ".parquet");
+  }
+
+  protected File randomParquetFile() {
+    File tmpDir = getTempFolder();
+    return new File(tmpDir, getClass().getSimpleName() + rnd.nextLong() + ".parquet");
   }
 
   private static MessageType createSchema() {

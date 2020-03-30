@@ -59,7 +59,7 @@ public class ColumnSizeCommandTest extends ParquetFileTest {
 
   @Test
   public void testColumnSize() throws Exception {
-    String inputFile = createParquetFile("input");
+    String inputFile = createParquetFile();
     Map<String, Long> columnSizeInBytes = command.getColumnSizeInBytes(new Path(inputFile));
     assertEquals(columnSizeInBytes.size(), 2);
     assertTrue(columnSizeInBytes.get("DocId") > columnSizeInBytes.get("Num"));
@@ -67,14 +67,14 @@ public class ColumnSizeCommandTest extends ParquetFileTest {
     assertTrue(columnRatio.get("DocId") > columnRatio.get("Num"));
   }
 
-  private String createParquetFile(String prefix) throws IOException {
+  private String createParquetFile() throws IOException {
     MessageType schema = new MessageType("schema",
       new PrimitiveType(REQUIRED, INT64, "DocId"),
       new PrimitiveType(REQUIRED, INT32, "Num"));
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
-    String file = parquetFile().getAbsolutePath();
+    String file = randomParquetFile().getAbsolutePath();
     ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file)).withConf(conf);
     Random rnd = new Random();
     try (ParquetWriter writer = builder.build()) {
