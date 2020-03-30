@@ -20,8 +20,6 @@ package org.apache.parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -558,30 +556,39 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-     * Specified the column and the NDV map for the bloom filter.
+     * Sets the NDV (number of distinct values) for the specified column.
      *
-     * @param columnNDVMap the column to NDV map
+     * @param columnPath the path of the column (dot-string)
+     * @param ndv        the NDV of the column
      *
      * @return this builder for method chaining.
      */
-    public SELF withBloomFilterColumnToNDVMap(Map<String, Long> columnNDVMap) {
-      if (columnNDVMap != null) {
-        encodingPropsBuilder.withBloomFilterColumnToNDVMap(columnNDVMap);
-      }
-
+    public SELF withBloomFilterNDV(String columnPath, long ndv) {
+      encodingPropsBuilder.withBloomFilterNDV(columnPath, ndv);
       return self();
     }
 
     /**
-     * Specified the column names for the bloom filter.
+     * Sets the bloom filter enabled/disabled
      *
-     * @return this builder for method chaining.
+     * @param enabled whether to write bloom filters
+     * @return this builder for method chaining
      */
-    public SELF withBloomFilterColumnNames(String...columns) {
-      if (columns != null) {
-        encodingPropsBuilder.withBloomFilterColumnNames(Arrays.asList(columns));
-      }
+    public SELF withBloomFilterEnabled(boolean enabled) {
+      encodingPropsBuilder.withBloomFilterEnabled(enabled);
+      return self();
+    }
 
+    /**
+     * Sets the bloom filter enabled/disabled for the specified column. If not set for the column specifically the
+     * default enabled/disabled state will take place. See {@link #withBloomFilterEnabled(boolean)}.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enabled    whether to write bloom filter for the column
+     * @return this builder for method chaining
+     */
+    public SELF withBloomFilterEnabled(String columnPath, boolean enabled) {
+      encodingPropsBuilder.withBloomFilterEnabled(columnPath, enabled);
       return self();
     }
 

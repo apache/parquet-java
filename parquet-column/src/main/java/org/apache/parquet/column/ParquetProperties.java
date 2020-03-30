@@ -18,13 +18,8 @@
  */
 package org.apache.parquet.column;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.OptionalLong;
 
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -61,6 +56,7 @@ public class ParquetProperties {
   public static final int DEFAULT_STATISTICS_TRUNCATE_LENGTH = Integer.MAX_VALUE;
   public static final int DEFAULT_PAGE_ROW_COUNT_LIMIT = 20_000;
   public static final int DEFAULT_MAX_BLOOM_FILTER_BYTES = 1024 * 1024;
+  public static final boolean DEFAULT_BLOOM_FILTER_ENABLED = false;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
@@ -102,10 +98,10 @@ public class ParquetProperties {
   private final int columnIndexTruncateLength;
   private final int statisticsTruncateLength;
 
-  // The key-value pair represents the column name and its expected distinct number of values in a row group.
-  private final Map<String, Long> bloomFilterExpectedDistinctNumbers;
+  // The expected NDV (number of distinct values) for each columns
+  private final ColumnProperty<Long> bloomFilterNDVs;
   private final int maxBloomFilterBytes;
-  private final List<String> bloomFilterColumns;
+  private final ColumnProperty<Boolean> bloomFilterEnabled;
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final boolean enableByteStreamSplit;
@@ -125,8 +121,8 @@ public class ParquetProperties {
     this.valuesWriterFactory = builder.valuesWriterFactory;
     this.columnIndexTruncateLength = builder.columnIndexTruncateLength;
     this.statisticsTruncateLength = builder.statisticsTruncateLength;
-    this.bloomFilterExpectedDistinctNumbers = builder.bloomFilterColumnExpectedNDVs;
-    this.bloomFilterColumns = builder.bloomFilterColumns;
+    this.bloomFilterNDVs = builder.bloomFilterNDVs.build();
+    this.bloomFilterEnabled = builder.bloomFilterEnabled.build();
     this.maxBloomFilterBytes = builder.maxBloomFilterBytes;
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
@@ -257,16 +253,13 @@ public class ParquetProperties {
     return pageWriteChecksumEnabled;
   }
 
-  public Map<String, Long> getBloomFilterColumnExpectedNDVs() {
-    return bloomFilterExpectedDistinctNumbers;
+  public OptionalLong getBloomFilterNDV(ColumnDescriptor column) {
+    Long ndv = bloomFilterNDVs.getValue(column);
+    return ndv == null ? OptionalLong.empty() : OptionalLong.of(ndv);
   }
 
-  public Set<String> getBloomFilterColumns() {
-    if (bloomFilterColumns != null && bloomFilterColumns.size() > 0){
-      return new HashSet<>(bloomFilterColumns);
-    }
-
-    return bloomFilterExpectedDistinctNumbers.keySet();
+  public boolean isBloomFilterEnabled(ColumnDescriptor column) {
+    return bloomFilterEnabled.getValue(column);
   }
 
   public int getMaxBloomFilterBytes() {
@@ -292,9 +285,9 @@ public class ParquetProperties {
         + "Max row count for page size check is: " + getMaxRowCountForPageSizeCheck() + '\n'
         + "Truncate length for column indexes is: " + getColumnIndexTruncateLength() + '\n'
         + "Truncate length for statistics min/max  is: " + getStatisticsTruncateLength() + '\n'
-        + "Bloom filter enabled column names are: " + getBloomFilterColumns() + '\n'
+        + "Bloom filter enabled: " + bloomFilterEnabled + '\n'
         + "Max Bloom filter size for a column is " + getMaxBloomFilterBytes() + '\n'
-        + "Bloom filter enabled column expected number of distinct values are: " + getBloomFilterColumnExpectedNDVs().values() + '\n'
+        + "Bloom filter expected number of distinct values are: " + bloomFilterNDVs + '\n'
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off");
   }
@@ -311,15 +304,17 @@ public class ParquetProperties {
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
     private int columnIndexTruncateLength = DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
-    private Map<String, Long> bloomFilterColumnExpectedNDVs = new HashMap<>();
+    private final ColumnProperty.Builder<Long> bloomFilterNDVs;
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
-    private List<String> bloomFilterColumns = new ArrayList<>();
+    private final ColumnProperty.Builder<Boolean> bloomFilterEnabled;
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private boolean enableByteStreamSplit = DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
+      bloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_ENABLED);
+      bloomFilterNDVs = ColumnProperty.<Long>builder().withDefaultValue(null);
     }
 
     private Builder(ParquetProperties toCopy) {
@@ -334,8 +329,8 @@ public class ParquetProperties {
       this.allocator = toCopy.allocator;
       this.pageRowCountLimit = toCopy.pageRowCountLimit;
       this.pageWriteChecksumEnabled = toCopy.pageWriteChecksumEnabled;
-      this.bloomFilterColumnExpectedNDVs = toCopy.bloomFilterExpectedDistinctNumbers;
-      this.bloomFilterColumns = toCopy.bloomFilterColumns;
+      this.bloomFilterNDVs = ColumnProperty.<Long>builder(toCopy.bloomFilterNDVs);
+      this.bloomFilterEnabled = ColumnProperty.<Boolean>builder(toCopy.bloomFilterEnabled);
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.enableByteStreamSplit = toCopy.enableByteStreamSplit;
     }
@@ -459,26 +454,49 @@ public class ParquetProperties {
     }
 
     /**
-     * Set Bloom filter column names and expected NDVs.
+     * Set Bloom filter NDV (number of distinct values) for the specified column.
+     * If set for a column then the writing of the bloom filter for that column will be automatically enabled (see
+     * {@link #withBloomFilterEnabled(String, boolean)}).
      *
-     * @param columnToNDVMap the columns which has bloom filter enabled.
+     * @param columnPath the path of the column (dot-string)
+     * @param ndv the NDV of the column
      *
      * @return this builder for method chaining
      */
-    public Builder withBloomFilterColumnToNDVMap(Map<String, Long> columnToNDVMap) {
-      this.bloomFilterColumnExpectedNDVs = columnToNDVMap;
+    public Builder withBloomFilterNDV(String columnPath, long ndv) {
+      Preconditions.checkArgument(ndv > 0, "Invalid NDV for column \"%s\": %d", columnPath, ndv);
+      this.bloomFilterNDVs.withValue(columnPath, ndv);
+      // Setting an NDV for a column implies writing a bloom filter
+      this.bloomFilterEnabled.withValue(columnPath, true);
       return this;
     }
 
     /**
-     * Set Bloom filter column names.
+     * Enable or disable the bloom filter for the columns not specified by
+     * {@link #withBloomFilterEnabled(String, boolean)}.
      *
-     * @param columns the columns which has bloom filter enabled.
+     * @param enabled whether bloom filter shall be enabled for all columns
      *
      * @return this builder for method chaining
      */
-    public Builder withBloomFilterColumnNames(List<String> columns) {
-      this.bloomFilterColumns = columns;
+    public Builder withBloomFilterEnabled(boolean enabled) {
+      this.bloomFilterEnabled.withDefaultValue(enabled);
+      return this;
+    }
+
+    /**
+     * Enable or disable the bloom filter for the specified column.
+     * One may either disable bloom filters for all columns by invoking {@link #withBloomFilterEnabled(boolean)} with a
+     * {@code false} value and then enable the bloom filters for the required columns one-by-one by invoking this
+     * method or vice versa.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enabled    whether bloom filter shall be enabled
+     *
+     * @return this builder for method chaining
+     */
+    public Builder withBloomFilterEnabled(String columnPath, boolean enabled) {
+      this.bloomFilterEnabled.withValue(columnPath, enabled);
       return this;
     }
 

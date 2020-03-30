@@ -221,7 +221,7 @@ public class TestParquetWriter {
       .withPageRowCountLimit(10)
       .withConf(conf)
       .withDictionaryEncoding(false)
-      .withBloomFilterColumnNames("name")
+      .withBloomFilterEnabled("name", true)
       .build()) {
       for (String testName : testNames) {
         writer.write(factory.newGroup().append("name", testName));
