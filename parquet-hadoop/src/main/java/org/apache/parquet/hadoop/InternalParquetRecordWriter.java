@@ -101,19 +101,14 @@ class InternalParquetRecordWriter<T> {
     this.props = props;
     this.fileEncryptor = parquetFileWriter.getEncryptor();
     this.rowGroupOrdinal = 0;
-    try {
-      initStore();
-    } catch (IOException e) {
-      // TODO Change constructor signature: add throws IOException
-      throw new RuntimeException(e);
-    }
+    initStore();
   }
 
   public ParquetMetadata getFooter() {
     return parquetFileWriter.getFooter();
   }
 
-  private void initStore() throws IOException {
+  private void initStore() {
     ColumnChunkPageWriteStore columnChunkPageWriteStore = new ColumnChunkPageWriteStore(compressor,
         schema, props.getAllocator(), props.getColumnIndexTruncateLength(), props.getPageWriteChecksumEnabled(),
         fileEncryptor, rowGroupOrdinal);

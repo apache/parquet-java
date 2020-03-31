@@ -41,7 +41,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.crypto.CryptoPropertiesFactory;
+import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -577,8 +577,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   
   private FileEncryptionProperties getEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath, 
       WriteContext fileWriteContext) throws IOException {
-    CryptoPropertiesFactory cryptoFactory = CryptoPropertiesFactory.loadFactory(fileHadoopConfig);
-    if (null == cryptoFactory) return null;
+    EncryptionPropertiesFactory cryptoFactory = EncryptionPropertiesFactory.loadFactory(fileHadoopConfig);
+    if (null == cryptoFactory) {
+      return null;
+    }
     return cryptoFactory.getFileEncryptionProperties(fileHadoopConfig, tempFilePath, fileWriteContext);
   }
 }

@@ -162,8 +162,8 @@ abstract public class ColumnChunkMetaData {
   
   public static ColumnChunkMetaData getWithEncryptedMetadata(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, 
       PrimitiveType type, byte[] encryptedMetadata, byte[] columnKeyMetadata,
-      InternalFileDecryptor fileDecryptor, 
-      short rowGroupOrdinal, short columnOrdinal, String createdBy) {
+      InternalFileDecryptor fileDecryptor, short rowGroupOrdinal, short columnOrdinal, 
+      String createdBy) {
     return new EncryptedColumnChunkMetaData(parquetMetadataConverter, path, type, encryptedMetadata, columnKeyMetadata,
         fileDecryptor, rowGroupOrdinal, columnOrdinal, createdBy);
   }
@@ -664,5 +664,3 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
     return shadowColumnChunkMetaData.getStatistics();
   }
 }
-
-

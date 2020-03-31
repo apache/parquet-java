@@ -451,7 +451,7 @@ public class ParquetFileWriter {
    * @throws IOException if there is an error while writing
    */
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
-    writeDictionaryPage(dictionaryPage, (BlockCipher.Encryptor) null, (byte[]) null);
+    writeDictionaryPage(dictionaryPage, null, null);
   }
   
   public void writeDictionaryPage(DictionaryPage dictionaryPage, 
@@ -752,7 +752,7 @@ public class ParquetFileWriter {
       List<Encoding> dataEncodings) throws IOException {
     writeColumnChunk(descriptor, valueCount, compressionCodecName, dictionaryPage, bytes,
       uncompressedTotalPageSize, compressedTotalPageSize, totalStats, columnIndexBuilder, offsetIndexBuilder,
-      bloomFilter, rlEncodings, dlEncodings, dataEncodings, (BlockCipher.Encryptor) null, (short) 0, (short) 0, (byte[]) null);
+      bloomFilter, rlEncodings, dlEncodings, dataEncodings, null, (short) 0, (short) 0, null);
   }
   
   void writeColumnChunk(ColumnDescriptor descriptor,
@@ -1170,7 +1170,8 @@ public class ParquetFileWriter {
           }
         }
         
-        Util.writeBloomFilterHeader(ParquetMetadataConverter.toBloomFilterHeader(bloomFilter), out, bloomFilterEncryptor, bloomFilterHeaderAAD);
+        Util.writeBloomFilterHeader(ParquetMetadataConverter.toBloomFilterHeader(bloomFilter), out, 
+            bloomFilterEncryptor, bloomFilterHeaderAAD);
         
         ByteArrayOutputStream tempOutStream = new ByteArrayOutputStream();
         bloomFilter.writeTo(tempOutStream);

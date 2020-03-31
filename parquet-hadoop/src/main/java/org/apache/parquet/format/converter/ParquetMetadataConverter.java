@@ -528,15 +528,13 @@ public class ParquetMetadataConverter {
       
       if (!encryptMetaData) {
         columnChunk.setMeta_data(metaData);
-      }
-      else {
+      }  else {
         // Serialize and encrypt ColumnMetadata separately 
         byte[] columnMetaDataAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), 
             ModuleType.ColumnMetaData, rowGroupOrdinal, columnSetup.getOrdinal(), (short) -1);
         if (null == tempOutStream) {
           tempOutStream = new ByteArrayOutputStream();
-        }
-        else {
+        }  else {
           tempOutStream.reset();
         }
         writeColumnMetaData(metaData, tempOutStream, columnSetup.getMetaDataEncryptor(), columnMetaDataAAD);
@@ -1303,7 +1301,7 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter) throws IOException {
-    return readParquetMetadata(from, filter, (InternalFileDecryptor) null, false, 0);
+    return readParquetMetadata(from, filter, null, false, 0);
   }
 
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter,
@@ -1343,10 +1341,10 @@ public class ParquetMetadataConverter {
         if (!fileDecryptor.plaintextFilesAllowed()) {
           throw new IOException("Applying decryptor on plaintext file");
         }
-      }
-      else {  // Encrypted file with plaintext footer
+      } else {  // Encrypted file with plaintext footer
         // if no fileDecryptor, can still read plaintext columns
-        fileDecryptor.setFileCryptoMetaData(fileMetaData.getEncryption_algorithm(), false, fileMetaData.getFooter_signing_key_metadata());
+        fileDecryptor.setFileCryptoMetaData(fileMetaData.getEncryption_algorithm(), false, 
+            fileMetaData.getFooter_signing_key_metadata());
         if (fileDecryptor.checkFooterIntegrity()) {
           verifyFooterIntegrity(from, fileDecryptor, combinedFooterLength);
         }
@@ -1419,8 +1417,7 @@ public class ParquetMetadataConverter {
               // mark this column as plaintext in encrypted file decryptor
               fileDecryptor.setColumnCryptoMetadata(columnPath, false, false, (byte[]) null, columnOrdinal);
             }
-          }
-          else {  // Encrypted column
+          } else {  // Encrypted column
             boolean encryptedWithFooterKey = cryptoMetaData.isSetENCRYPTION_WITH_FOOTER_KEY();
             if (encryptedWithFooterKey) { // Column encrypted with footer key
               if (!encryptedFooter) {
@@ -1434,8 +1431,7 @@ public class ParquetMetadataConverter {
               }
               columnPath = getPath(metaData);
               fileDecryptor.setColumnCryptoMetadata(columnPath, true, true, (byte[]) null, columnOrdinal);
-            }
-            else { // Column encrypted with column key
+            }  else { // Column encrypted with column key
               // setColumnCryptoMetadata triggers KMS interaction, hence delayed until this column is projected
               encryptedMetadata = true;
             }
@@ -1447,8 +1443,7 @@ public class ParquetMetadataConverter {
                 messageType.getType(columnPath.toArray()).asPrimitiveType(), createdBy);
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
             column.setBloomFilterOffset(metaData.bloom_filter_offset);
-          }
-          else { // column encrypted with column key
+          }  else { // column encrypted with column key
             // Metadata will be decrypted later, if this column is accessed
             EncryptionWithColumnKey columnKeyStruct = cryptoMetaData.getENCRYPTION_WITH_COLUMN_KEY();
             List<String> pathList = columnKeyStruct.getPath_in_schema();

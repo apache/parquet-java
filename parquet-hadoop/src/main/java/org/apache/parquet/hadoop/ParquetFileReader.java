@@ -76,7 +76,7 @@ import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.crypto.AesCipher;
-import org.apache.parquet.crypto.CryptoPropertiesFactory;
+import org.apache.parquet.crypto.DecryptionPropertiesFactory;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
 import org.apache.parquet.crypto.InternalFileDecryptor;
@@ -442,7 +442,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   private static FileDecryptionProperties getDecryptionProperties(Path file, Configuration hadoopConfig) throws IOException {
-    CryptoPropertiesFactory cryptoFactory = CryptoPropertiesFactory.loadFactory(hadoopConfig);
+    DecryptionPropertiesFactory cryptoFactory = DecryptionPropertiesFactory.loadFactory(hadoopConfig);
     if (null == cryptoFactory) {
       return null;
     }
@@ -687,6 +687,16 @@ public class ParquetFileReader implements Closeable {
     return open(file, options, null);
   }
 
+  /**
+   * Open a {@link InputFile file} with {@link ParquetReadOptions options} and
+   * {@link FileDecryptionProperties fileDecryptionProperties}
+   *
+   * @param file an input file
+   * @param options parquet read options
+   * @param fileDecryptionProperties file decryption properties
+   * @return an open ParquetFileReader
+   * @throws IOException if there is an error while opening the file
+   */
   public static ParquetFileReader open(InputFile file, ParquetReadOptions options, 
       FileDecryptionProperties fileDecryptionProperties) throws IOException {
     return new ParquetFileReader(file, options, fileDecryptionProperties);
@@ -1138,10 +1148,10 @@ public class ParquetFileReader implements Closeable {
         !meta.getEncodings().contains(Encoding.RLE_DICTIONARY)) {
       return null;
     }
-    /** TODO Replace with
+    /** TODO Gabor - can be replaced with this?:
     if (!meta.hasDictionaryPage()) {
       return null;
-    }*/
+    } */
 
     // TODO: this should use getDictionaryPageOffset() but it isn't reliable.
     if (f.getPos() != meta.getStartingPos()) {
@@ -1220,7 +1230,7 @@ public class ParquetFileReader implements Closeable {
   public BloomFilter readBloomFilter(ColumnChunkMetaData meta) throws IOException {
     long bloomFilterOffset = meta.getBloomFilterOffset();
 
-    if (0 == bloomFilterOffset) { // TODO find a better way to handle this?
+    if (0 == bloomFilterOffset) { // TODO Jinjie - is there a better way to handle this?
       return null;
     }
 
@@ -1416,8 +1426,8 @@ public class ParquetFileReader implements Closeable {
       this.offsetIndex = offsetIndex;
     }
 
-    protected PageHeader readPageHeader() throws IOException { // TODO rm
-      return readPageHeader((BlockCipher.Decryptor) null, (byte[]) null);
+    protected PageHeader readPageHeader() throws IOException {
+      return readPageHeader(null, null);
     }
 
     protected PageHeader readPageHeader(BlockCipher.Decryptor blockDecryptor, byte[] pageHeaderAAD) throws IOException {
@@ -1463,8 +1473,7 @@ public class ParquetFileReader implements Closeable {
           // Important: this verifies file integrity (makes sure dictionary page had not been removed)
           if (null == dictionaryPage && descriptor.metadata.hasDictionaryPage()) {
             pageHeaderAAD = AesCipher.createModuleAAD(aadPrefix, ModuleType.DictionaryPageHeader, rowGroupOrdinal, columnOrdinal, (short) -1);
-          }
-          else {
+          }  else {
             short pageOrdinal = getPageOrdinal(dataPageCountReadSoFar);
             AesCipher.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);
           }
