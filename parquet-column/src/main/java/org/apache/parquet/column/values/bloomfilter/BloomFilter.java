@@ -97,6 +97,14 @@ public interface BloomFilter {
   int getBitsetSize();
 
   /**
+   * Compare this Bloom filter to the specified object.
+   *
+   * @param object
+   * @return true if the given object represents a Bloom filter equivalent to this Bloom filter, false otherwise.
+   */
+  boolean equals(Object object);
+
+  /**
    * Compute hash for int value by using its plain encoding result.
    *
    * @param value the value to hash
