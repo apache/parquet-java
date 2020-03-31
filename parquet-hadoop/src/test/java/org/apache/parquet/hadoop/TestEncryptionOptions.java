@@ -138,6 +138,15 @@ public class TestEncryptionOptions {
     testReadEncryptedParquetFiles(rootPath, decryptionPropertiesList);
   }
 
+  @Test
+  public void testInteropReadEncryptedParquetFiles() throws IOException {
+    Path rootPath = new Path("submodules/parquet-testing/data");
+    byte[] AADPrefix = fileName.getBytes(StandardCharsets.UTF_8);
+    // This array will hold various decryption configurations.
+    FileDecryptionProperties[] decryptionPropertiesList = getDecryptionConfigurations(AADPrefix);
+    testReadEncryptedParquetFiles(rootPath, decryptionPropertiesList);
+  }
+
 //  @Test
   public void testRegressionWriteReadEncryptedParquetFilePlaintextFooter() throws IOException {
     Path rootPath = new Path(temporaryFolder.getRoot().getPath());
@@ -243,11 +252,14 @@ public class TestEncryptionOptions {
       File[] listOfFiles = folder.listFiles();
 
       for (int fileNum = 0; fileNum < listOfFiles.length; fileNum++) {
-        Path file = new Path(root, listOfFiles[fileNum].toString());
-        if (!file.toString().endsWith("parquet.encrypted")) { // Skip non encrypted files
+        Path file = new Path(listOfFiles[fileNum].getAbsolutePath());
+        if (!file.getName().endsWith("parquet.encrypted")) { // Skip non encrypted files
           continue;
         }
         int encryptionConfigurationNumber = getEncryptionConfigurationNumberFromFilename(file.getName());
+        if (encryptionConfigurationNumber == -1) {
+          continue;
+        }
         LOG.info("--> Read file {} {} {}", file.toString(), encryptionConfigurationNumber,
           EncryptionConfiguration.fromNumConfiguration(encryptionConfigurationNumber).toString());
 
@@ -289,7 +301,7 @@ public class TestEncryptionOptions {
           }
         } catch (Exception e) {
           String errorMessage = e.getMessage();
-          checkResult(file.toString(), decryptionMode, (null == errorMessage ? "" : errorMessage));
+          checkResult(file.getName(), decryptionMode, (null == errorMessage ? "" : errorMessage));
         }
         conf.unset("parquet.read.schema");
       }
@@ -312,10 +324,13 @@ public class TestEncryptionOptions {
 
       for (int fileNum = 0; fileNum < listOfFiles.length; fileNum++) {
         Path file = new Path(root, listOfFiles[fileNum].toString());
-        if (!file.toString().endsWith("parquet.encrypted")) { // Skip non encrypted files
+        if (!file.getName().endsWith("parquet.encrypted")) { // Skip non encrypted files
           continue;
         }
         int encryptionConfigurationNumber = getEncryptionConfigurationNumberFromFilename(file.getName());
+        if (encryptionConfigurationNumber == -1) {
+          continue;
+        }
         LOG.info("--> Read file {} {} {}", file.toString(), encryptionConfigurationNumber,
           EncryptionConfiguration.fromNumConfiguration(encryptionConfigurationNumber).toString());
         // set the projection schema
@@ -343,7 +358,7 @@ public class TestEncryptionOptions {
           }
         } catch (Exception e) {
           String errorMessage = e.getMessage();
-          checkResult(file.toString(), decryptionMode, (null == errorMessage ? "" : errorMessage));
+          checkResult(file.getName(), decryptionMode, (null == errorMessage ? "" : errorMessage));
         }
         conf.unset("parquet.read.schema");
       }
@@ -624,7 +639,7 @@ public class TestEncryptionOptions {
     }
   }
 
-  private static int getEncryptionConfigurationNumberFromFilename(String file) {
+  private int getEncryptionConfigurationNumberFromFilename(String file) {
     int encryptionConfigurationNumber = -1;
     Pattern p = Pattern.compile("tester([0-9]+)\\.parquet.encrypted");
     Matcher m = p.matcher(file);
@@ -632,6 +647,17 @@ public class TestEncryptionOptions {
     if (m.find()) {
       encryptionConfigurationNumber = Integer.parseInt(m.group(1));
     } else {
+      if (!file.endsWith(".parquet.encrypted")) {
+        return encryptionConfigurationNumber;
+      }
+      String fileNamePrefix = file.replaceFirst(".parquet.encrypted", "");
+      try {
+        EncryptionConfiguration encryptionConfiguration = EncryptionConfiguration.valueOf(fileNamePrefix.toUpperCase());
+        return encryptionConfiguration.getNumConfiguration();
+      } catch (IllegalArgumentException e) {
+        LOG.error("File name doesn't match any known encryption configuration: " + file);
+        errorCollector.addError(e);
+      }
       Assert.fail("Error: Error parsing filename to extract encryption configuration number. ");
     }
     return encryptionConfigurationNumber;
