@@ -24,6 +24,7 @@ import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.schema.MessageType;
 
 
@@ -38,6 +39,8 @@ public final class FileMetaData implements Serializable {
   private final Map<String, String> keyValueMetaData;
 
   private final String createdBy;
+  
+  private InternalFileDecryptor fileDecryptor;
 
   /**
    * @param schema the schema for the file
@@ -52,6 +55,15 @@ public final class FileMetaData implements Serializable {
     this.keyValueMetaData = unmodifiableMap(Objects
         .requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
     this.createdBy = createdBy;
+  }
+  
+  public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy, InternalFileDecryptor fileDecryptor) {
+    super();
+    this.schema = Objects.requireNonNull(schema, "schema cannot be null");
+    this.keyValueMetaData = unmodifiableMap(Objects
+        .requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
+    this.createdBy = createdBy;
+    this.fileDecryptor = fileDecryptor;
   }
 
   /**
@@ -80,4 +92,7 @@ public final class FileMetaData implements Serializable {
     return createdBy;
   }
 
+  public InternalFileDecryptor getFileDecryptor() {
+    return fileDecryptor;
+  }
 }

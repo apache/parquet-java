@@ -32,11 +32,11 @@ public class BlockMetaData {
   private long rowCount;
   private long totalByteSize;
   private String path;
+  private short ordinal;
 
   public BlockMetaData() {
   }
-
-
+  
   /**
    * @param path the path to the file containing the data. Or null if same file the metadata was found
    */
@@ -102,6 +102,7 @@ public class BlockMetaData {
   public long getStartingPos() {
     return getColumns().get(0).getStartingPos();
   }
+  
   @Override
   public String toString() {
     return "BlockMetaData{" + rowCount + ", " + totalByteSize + " " + columns + "}";
@@ -116,5 +117,20 @@ public class BlockMetaData {
       totalSize += col.getTotalSize();
     }
     return totalSize;
+  }
+  
+  /**
+   * @return row group ordinal
+   */
+  public short getOrdinal() {
+    return ordinal;
+  }
+
+  /**
+  *
+  * @param row group ordinal
+  */
+  public void setOrdinal(short ordinal) {
+    this.ordinal = ordinal;
   }
 }

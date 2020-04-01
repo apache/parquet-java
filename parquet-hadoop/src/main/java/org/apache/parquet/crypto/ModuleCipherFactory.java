@@ -34,7 +34,9 @@ public class ModuleCipherFactory {
     DataPageHeader((byte)4),
     DictionaryPageHeader((byte)5),
     ColumnIndex((byte)6),
-    OffsetIndex((byte)7);
+    OffsetIndex((byte)7),
+    BloomFilterHeader((byte)8),
+    BloomFilterBitset((byte)9);
 
     private final byte value;
 

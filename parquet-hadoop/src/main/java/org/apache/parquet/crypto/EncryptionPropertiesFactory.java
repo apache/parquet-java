@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 /**
  * EncryptionPropertiesFactory interface enables transparent activation of Parquet encryption.
  *
- * It's customized implementations produce encryption properties for each Parquet file, using the input information
+ * Its customized implementations produce encryption properties for each Parquet file, using the input information
  * available in Parquet file writers: file path, file extended schema - and also Hadoop configuration properties that
  * can pass custom parameters required by a crypto factory. A factory implementation can use or ignore any of these
  * inputs.
@@ -55,7 +55,7 @@ public interface EncryptionPropertiesFactory {
    *
    * @param conf Configuration where user specifies the class path
    * @return object with class EncryptionPropertiesFactory if user specified the class path and invoking of
-   * the class succeeds, null if user doesn't specify the class path
+   * the class succeeds. Null if user doesn't specify the class path (no encryption then).
    * @throws BadConfigurationException if the instantiation of the configured class fails
    */
   static EncryptionPropertiesFactory loadFactory(Configuration conf) {
@@ -85,7 +85,7 @@ public interface EncryptionPropertiesFactory {
    *                     Implementations must not presume the path is permanent,
    *                     as the file can be moved or renamed later
    * @param fileWriteContext WriteContext to provide information like schema to build the FileEncryptionProperties
-   * @return object with class of FileEncryptionProperties
+   * @return object with class of FileEncryptionProperties. Null return value means the file should not be encrypted.
    * @throws ParquetCryptoRuntimeException if there is an exception while creating the object
    */
   FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,

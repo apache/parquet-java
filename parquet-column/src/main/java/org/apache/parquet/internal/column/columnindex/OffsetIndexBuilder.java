@@ -65,6 +65,14 @@ public class OffsetIndexBuilder {
     public long getFirstRowIndex(int pageIndex) {
       return firstRowIndexes[pageIndex];
     }
+    
+    @Override
+    public short getPageOrdinal(int pageIndex) {
+      if (pageIndex > Short.MAX_VALUE) {
+        throw new RuntimeException("Page ordinal exceeds limit " + pageIndex);
+      }
+      return (short) pageIndex;
+    }
   }
 
   private static final OffsetIndexBuilder NO_OP_BUILDER = new OffsetIndexBuilder() {
@@ -173,3 +181,4 @@ public class OffsetIndexBuilder {
   }
 
 }
+

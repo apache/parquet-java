@@ -29,6 +29,7 @@ import java.util.Objects;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
+import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
@@ -67,6 +68,9 @@ class InternalParquetRecordWriter<T> {
   private ColumnChunkPageWriteStore pageStore;
   private BloomFilterWriteStore bloomFilterWriteStore;
   private RecordConsumer recordConsumer;
+  
+  private InternalFileEncryptor fileEncryptor;
+  private short rowGroupOrdinal;
 
   /**
    * @param parquetFileWriter the file to write to
@@ -95,6 +99,8 @@ class InternalParquetRecordWriter<T> {
     this.compressor = compressor;
     this.validating = validating;
     this.props = props;
+    this.fileEncryptor = parquetFileWriter.getEncryptor();
+    this.rowGroupOrdinal = 0;
     initStore();
   }
 
@@ -104,7 +110,8 @@ class InternalParquetRecordWriter<T> {
 
   private void initStore() {
     ColumnChunkPageWriteStore columnChunkPageWriteStore = new ColumnChunkPageWriteStore(compressor,
-        schema, props.getAllocator(), props.getColumnIndexTruncateLength(), props.getPageWriteChecksumEnabled());
+        schema, props.getAllocator(), props.getColumnIndexTruncateLength(), props.getPageWriteChecksumEnabled(),
+        fileEncryptor, rowGroupOrdinal);
     pageStore = columnChunkPageWriteStore;
     bloomFilterWriteStore = columnChunkPageWriteStore;
 
@@ -173,6 +180,7 @@ class InternalParquetRecordWriter<T> {
     }
 
     if (recordCount > 0) {
+      rowGroupOrdinal++;
       parquetFileWriter.startBlock(recordCount);
       columnStore.flush();
       pageStore.flushToFileWriter(parquetFileWriter);

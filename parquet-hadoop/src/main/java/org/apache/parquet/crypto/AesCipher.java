@@ -67,20 +67,27 @@ public class AesCipher {
   }
 
   public static byte[] createModuleAAD(byte[] fileAAD, ModuleType moduleType, 
-      short rowGroupOrdinal, short columnOrdinal, short pageOrdinal) {
+      short rowGroupOrdinal, short columnOrdinal, short pageOrdinal) throws IllegalArgumentException {
+    
     byte[] typeOrdinalBytes = new byte[1];
     typeOrdinalBytes[0] = moduleType.getValue();
+    
     if (ModuleType.Footer == moduleType) {
       return concatByteArrays(fileAAD, typeOrdinalBytes);      
     }
 
+    if (rowGroupOrdinal < 0) throw new IllegalArgumentException("Wrong row group ordinal: " + rowGroupOrdinal);
     byte[] rowGroupOrdinalBytes = shortToBytesLE(rowGroupOrdinal);
+    if (columnOrdinal < 0) throw new IllegalArgumentException("Wrong column ordinal: " + columnOrdinal);
     byte[] columnOrdinalBytes = shortToBytesLE(columnOrdinal);
+    
     if (ModuleType.DataPage != moduleType && ModuleType.DataPageHeader != moduleType) {
       return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes); 
     }
 
+    if (pageOrdinal < 0) throw new IllegalArgumentException("Wrong page ordinal: " + pageOrdinal);
     byte[] pageOrdinalBytes = shortToBytesLE(pageOrdinal);
+    
     return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes, pageOrdinalBytes);
   }
 
@@ -89,7 +96,9 @@ public class AesCipher {
   }
 
   // Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
-  public static void quickUpdatePageAAD(byte[] pageAAD, short newPageOrdinal) {
+  public static void quickUpdatePageAAD(byte[] pageAAD, short newPageOrdinal) throws IllegalArgumentException {
+    if (newPageOrdinal < 0) throw new IllegalArgumentException("Wrong page ordinal: " + newPageOrdinal);
+    
     byte[] pageOrdinalBytes = shortToBytesLE(newPageOrdinal);
     System.arraycopy(pageOrdinalBytes, 0, pageAAD, pageAAD.length - 2, 2);
   }

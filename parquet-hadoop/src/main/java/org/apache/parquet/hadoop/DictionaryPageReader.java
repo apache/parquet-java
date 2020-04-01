@@ -20,8 +20,6 @@ package org.apache.parquet.hadoop;
 
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -32,11 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
-import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 
 /**
  * A {@link DictionaryPageReadStore} implementation that reads dictionaries from
@@ -101,7 +95,7 @@ class DictionaryPageReader implements DictionaryPageReadStore {
     return dictionaryPageCache.computeIfAbsent(dotPath, key -> {
       try {
         final DictionaryPage dict =
-            hasDictionaryPage(column) ? reader.readDictionary(column) : null;
+            column.hasDictionaryPage() ? reader.readDictionary(column) : null;
 
         // Copy the dictionary to ensure it can be reused if it is returned
         // more than once. This can happen when a DictionaryFilter has two or
@@ -117,16 +111,5 @@ class DictionaryPageReader implements DictionaryPageReadStore {
       throws IOException {
     return new DictionaryPage(BytesInput.from(dict.getBytes().toByteArray()),
         dict.getDictionarySize(), dict.getEncoding());
-  }
-
-  private boolean hasDictionaryPage(ColumnChunkMetaData column) {
-    EncodingStats stats = column.getEncodingStats();
-    if (stats != null) {
-      // ensure there is a dictionary page and that it is used to encode data pages
-      return stats.hasDictionaryPages() && stats.hasDictionaryEncodedPages();
-    }
-
-    Set<Encoding> encodings = column.getEncodings();
-    return (encodings.contains(PLAIN_DICTIONARY) || encodings.contains(RLE_DICTIONARY));
   }
 }
