@@ -84,8 +84,7 @@ public class TestPrimitiveStringifier {
 
     assertEquals("null", stringifier.stringify(null));
     assertEquals("0x", stringifier.stringify(Binary.EMPTY));
-    assertEquals("0x0123456789ABCDEF", stringifier.stringify(Binary.fromConstantByteArray(
-        new byte[] { 0x01, 0x23, 0x45, 0x67, (byte) 0x89, (byte) 0xAB, (byte) 0xCD, (byte) 0xEF })));
+    assertEquals("0x0123456789ABCDEF", stringifier.stringify(toBinary(0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF)));
   }
 
   @Test
@@ -309,6 +308,35 @@ public class TestPrimitiveStringifier {
     checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE, Binary.class);
   }
 
+  @Test
+  public void testUUIDStringifier() {
+    PrimitiveStringifier stringifier = PrimitiveStringifier.UUID_STRINGIFIER;
+
+    assertEquals("00112233-4455-6677-8899-aabbccddeeff", stringifier.stringify(
+        toBinary(0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff)));
+    assertEquals("00000000-0000-0000-0000-000000000000", stringifier.stringify(
+        toBinary(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)));
+    assertEquals("ffffffff-ffff-ffff-ffff-ffffffffffff", stringifier.stringify(
+        toBinary(0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)));
+
+    assertEquals("0eb1497c-19b6-42bc-b028-b4b612bed141", stringifier.stringify(
+        toBinary(0x0e, 0xb1, 0x49, 0x7c, 0x19, 0xb6, 0x42, 0xbc, 0xb0, 0x28, 0xb4, 0xb6, 0x12, 0xbe, 0xd1, 0x41)));
+    assertEquals("2f40b422-a4cb-438b-beb5-c5870d5aa235", stringifier.stringify(
+        toBinary(0x2f, 0x40, 0xb4, 0x22, 0xa4, 0xcb, 0x43, 0x8b, 0xbe, 0xb5, 0xc5, 0x87, 0x0d, 0x5a, 0xa2, 0x35)));
+    assertEquals("6cf17826-be60-4997-83da-eabd8d7b9297", stringifier.stringify(
+        toBinary(0x6c, 0xf1, 0x78, 0x26, 0xbe, 0x60, 0x49, 0x97, 0x83, 0xda, 0xea, 0xbd, 0x8d, 0x7b, 0x92, 0x97)));
+
+    checkThrowingUnsupportedException(stringifier, Binary.class);
+  }
+
+  private Binary toBinary(int...bytes) {
+    byte[] array = new byte[bytes.length];
+    for (int i = 0; i < array.length; ++i) {
+      array[i] = (byte) bytes[i];
+    }
+    return Binary.fromConstantByteArray(array);
+  }
+
   private void checkThrowingUnsupportedException(PrimitiveStringifier stringifier, Class<?>... excludes) {
     Set<Class<?>> set = new HashSet<>(asList(excludes));
     if (!set.contains(Integer.TYPE)) {
@@ -354,5 +382,4 @@ public class TestPrimitiveStringifier {
       }
     }
   }
-
 }

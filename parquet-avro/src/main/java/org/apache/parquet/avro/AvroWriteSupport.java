@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,6 +23,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
@@ -35,6 +37,7 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.apache.hadoop.util.ReflectionUtils;
@@ -60,6 +63,8 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   public static final String WRITE_OLD_LIST_STRUCTURE =
       "parquet.avro.write-old-list-structure";
   static final boolean WRITE_OLD_LIST_STRUCTURE_DEFAULT = true;
+  public static final String WRITE_PARQUET_UUID = "parquet.avro.write-parquet-uuid";
+  static final boolean WRITE_PARQUET_UUID_DEFAULT = false;
 
   private static final String MAP_REPEATED_NAME = "key_value";
   private static final String MAP_KEY_NAME = "key";
@@ -228,7 +233,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     recordConsumer.endGroup();
   }
 
-  private void writeUnion(GroupType parquetSchema, Schema avroSchema, 
+  private void writeUnion(GroupType parquetSchema, Schema avroSchema,
                           Object value) {
     recordConsumer.startGroup();
 
@@ -343,7 +348,11 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
         }
         break;
       case STRING:
-        recordConsumer.addBinary(fromAvroString(value));
+        if (type.asPrimitiveType().getLogicalTypeAnnotation() instanceof UUIDLogicalTypeAnnotation) {
+          recordConsumer.addBinary(fromUUIDString(value));
+        } else {
+          recordConsumer.addBinary(fromAvroString(value));
+        }
         break;
       case RECORD:
         writeRecord(type.asGroupType(), avroSchema, value);
@@ -360,6 +369,20 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
       case UNION:
         writeUnion(type.asGroupType(), avroSchema, value);
         break;
+    }
+  }
+
+  private Binary fromUUIDString(Object value) {
+    byte[] data = new byte[UUIDLogicalTypeAnnotation.BYTES];
+    UUID uuid = UUID.fromString(value.toString());
+    writeLong(data, 0, uuid.getMostSignificantBits());
+    writeLong(data, Long.BYTES, uuid.getLeastSignificantBits());
+    return Binary.fromConstantByteArray(data);
+  }
+
+  private void writeLong(byte[] array, int offset, long value) {
+    for (int i = 0; i < Long.BYTES; ++i) {
+      array[i + offset] = (byte) (value >>> ((Long.BYTES - i - 1) * Byte.SIZE));
     }
   }
 
