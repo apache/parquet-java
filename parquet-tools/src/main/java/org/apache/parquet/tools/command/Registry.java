@@ -36,6 +36,7 @@ public final class Registry {
     registry.put("size", SizeCommand.class);
     registry.put("column-index", ColumnIndexCommand.class);
     registry.put("prune", PruneColumnsCommand.class);
+    registry.put("column-size", ColumnSizeCommand.class);
   }
 
   public static Map<String,Command> allCommands() {
