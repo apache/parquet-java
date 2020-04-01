@@ -190,10 +190,9 @@ public class ParquetMetadataConverter {
 
   public FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
     try {
-      return toParquetMetadata(currentVersion, parquetMetadata, (InternalFileEncryptor) null);
+      return toParquetMetadata(currentVersion, parquetMetadata, null);
     } catch (IOException e) {
-      // TODO check callers. Change method signature?
-      throw new ShouldNeverHappenException("Exception can be thrown only with encryption");
+      throw new ShouldNeverHappenException("Exception can be thrown only with encryption", e);
     }
   }
 
