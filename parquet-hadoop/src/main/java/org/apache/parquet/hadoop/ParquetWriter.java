@@ -453,7 +453,7 @@ public class ParquetWriter<T> implements Closeable {
      * Set the {@link FileEncryptionProperties file encryption properties} used by the
      * constructed writer.
      *
-     * @param fileEncryptor a {@code ParquetFileEncryptor}
+     * @param encryptionProperties a {@code FileEncryptionProperties}
      * @return this builder for method chaining.
      */
     public SELF withEncryption (FileEncryptionProperties encryptionProperties) {
@@ -621,6 +621,7 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withBloomFilterNDV(String columnPath, long ndv) {
       encodingPropsBuilder.withBloomFilterNDV(columnPath, ndv);
+
       return self();
     }
 
@@ -681,3 +682,4 @@ public class ParquetWriter<T> implements Closeable {
     }
   }
 }
+

@@ -128,7 +128,7 @@ public class BlockMetaData {
 
   /**
   *
-  * @param row group ordinal
+  * @param ordinal - row group ordinal
   */
   public void setOrdinal(short ordinal) {
     this.ordinal = ordinal;
