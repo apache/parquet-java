@@ -110,6 +110,10 @@
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.72</jcommander.version>
     <zstd-jni.version>1.4.0-1</zstd-jni.version>
+
+    <!-- properties for the profiles -->
+    <surefire.argLine>-Xmx512m</surefire.argLine>
+    <surefire.logLevel>INFO</surefire.logLevel>
   </properties>
 
   <modules>
@@ -179,6 +183,7 @@
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
           <source>8</source>
+          <quiet>true</quiet>
         </configuration>
       </plugin>
       <plugin>
@@ -331,6 +336,7 @@
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
           <source>8</source>
+          <quiet>true</quiet>
         </configuration>
       </plugin>
       <plugin>
@@ -395,16 +401,19 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.10</version>
         <configuration>
-          <argLine>-Xmx512m</argLine>
+          <argLine>${surefire.argLine}</argLine>
           <systemPropertyVariables>
             <!-- Configure Parquet logging during tests
                  See http://www.slf4j.org/api/org/slf4j/impl/SimpleLogger.html
                  -->
-            <org.slf4j.simpleLogger.defaultLogLevel>info</org.slf4j.simpleLogger.defaultLogLevel>
+            <org.slf4j.simpleLogger.defaultLogLevel>${surefire.logLevel}</org.slf4j.simpleLogger.defaultLogLevel>
             <org.slf4j.simpleLogger.showDateTime>true</org.slf4j.simpleLogger.showDateTime>
             <org.slf4j.simpleLogger.dateTimeFormat>YYYY-MM-dd HH:mm:ss</org.slf4j.simpleLogger.dateTimeFormat>
             <org.slf4j.simpleLogger.showThreadName>false</org.slf4j.simpleLogger.showThreadName>
             <org.slf4j.simpleLogger.showShortLogName>true</org.slf4j.simpleLogger.showShortLogName>
+
+            <!-- Configure log level for Hadoop -->
+            <hadoop.logLevel>${surefire.logLevel}</hadoop.logLevel>
           </systemPropertyVariables>
           <excludes>
             <exclude>**/benchmark/*.java</exclude>
@@ -588,5 +597,15 @@
         <thrift.version>0.9.0</thrift.version>
       </properties>
     </profile>
+
+    <!-- Profile for Travis to have less output -->
+    <profile>
+      <id>travis</id>
+      <properties>
+        <surefire.logLevel>WARN</surefire.logLevel>
+        <surefire.argLine>-Xmx512m -XX:MaxJavaStackTraceDepth=10</surefire.argLine>
+      </properties>
+    </profile>
+
   </profiles>
 </project>
