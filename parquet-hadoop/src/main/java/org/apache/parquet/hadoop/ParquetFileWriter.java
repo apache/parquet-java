@@ -25,7 +25,6 @@ import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 import org.apache.hadoop.conf.Configuration;
@@ -909,9 +907,7 @@ public class ParquetFileWriter {
   }
 
   private List<ColumnChunkMetaData> getColumnsInOrder(BlockMetaData rowGroup, boolean dropColumns) {
-    return getColumnsInOrder(rowGroup, schema, dropColumns).stream()
-      .map(Entry::getValue)
-      .collect(Collectors.toList());
+    return getColumnsInOrder(rowGroup, schema, dropColumns);
   }
 
   /**
@@ -919,31 +915,31 @@ public class ParquetFileWriter {
    * @param schema the schema to use for column ordering
    * @param dropColumns whether we should drop columns that are not defined in the provided schema
    */
-  public static List<Entry<ColumnDescriptor, ColumnChunkMetaData>> getColumnsInOrder(BlockMetaData rowGroup,
-                                                                                     MessageType schema, boolean dropColumns) {
+  public static List<ColumnChunkMetaData> getColumnsInOrder(BlockMetaData rowGroup,
+                                                            MessageType schema, boolean dropColumns) {
     Map<String, ColumnChunkMetaData> columnsToCopy = new HashMap<>();
     for (ColumnChunkMetaData chunk : rowGroup.getColumns()) {
       columnsToCopy.put(chunk.getPath().toDotString(), chunk);
     }
 
-    List<Entry<ColumnDescriptor, ColumnChunkMetaData>> columnsInOrder = new ArrayList<>();
+    List<ColumnChunkMetaData> columnsInOrder = new ArrayList<>();
 
     for (ColumnDescriptor descriptor : schema.getColumns()) {
       String path = ColumnPath.get(descriptor.getPath()).toDotString();
       ColumnChunkMetaData chunk = columnsToCopy.remove(path);
       if (chunk != null) {
-        columnsInOrder.add(new AbstractMap.SimpleEntry<>(descriptor, chunk));
+        columnsInOrder.add(chunk);
       } else {
         throw new IllegalArgumentException(String.format(
-            "Missing column '%s', cannot copy row group: %s", path, rowGroup));
+          "Missing column '%s', cannot copy row group: %s", path, rowGroup));
       }
     }
 
     // complain if some columns would be dropped and that's not okay
     if (!dropColumns && !columnsToCopy.isEmpty()) {
       throw new IllegalArgumentException(String.format(
-          "Columns cannot be copied (missing from target schema): %s",
-          String.join(", ", columnsToCopy.keySet())));
+        "Columns cannot be copied (missing from target schema): %s",
+        String.join(", ", columnsToCopy.keySet())));
     }
     return columnsInOrder;
   }

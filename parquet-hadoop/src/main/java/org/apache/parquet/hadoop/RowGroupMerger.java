@@ -22,11 +22,11 @@ import static java.lang.String.format;
 import static org.apache.parquet.column.ValuesType.DEFINITION_LEVEL;
 import static org.apache.parquet.column.ValuesType.REPETITION_LEVEL;
 import static org.apache.parquet.column.ValuesType.VALUES;
-import static org.apache.parquet.hadoop.ParquetFileWriter.getColumnsInOrder;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -102,7 +102,7 @@ class RowGroupMerger {
           Preconditions.checkState(group != null,
             "number of groups returned by FileReader does not match metadata");
 
-          if (mergedBlock != null && mergedBlock.getCompressedBytesSize() + estimator.estimate(blockMeta) > maxRowGroupSize) {
+          if (mergedBlock != null && mergedBlock.getCompressedSize() + estimator.estimate(blockMeta) > maxRowGroupSize) {
             saveBlockTo(mergedBlock, writer);
             mergedBlock = null;
           }
@@ -117,10 +117,10 @@ class RowGroupMerger {
             mergedBlock = new MutableMergedBlock(schema);
           }
 
-          long sizeBeforeMerge = mergedBlock.getCompressedBytesSize();
+          long sizeBeforeMerge = mergedBlock.getCompressedSize();
           mergedBlock.merge(blockMeta, group);
           //update our estimator
-          long currentBlockEffect = mergedBlock.getCompressedBytesSize() - sizeBeforeMerge;
+          long currentBlockEffect = mergedBlock.getCompressedSize() - sizeBeforeMerge;
           estimator.update(currentBlockEffect, blockMeta);
         }
       }
@@ -163,7 +163,8 @@ class RowGroupMerger {
 
   private static BytesInput compress(BytesInput bytes, CompressionCodecFactory.BytesInputCompressor compressor) {
     try {
-      return BytesInput.copy(compressor.compress(bytes));//we copy as some compressors use shared memory
+      //we copy as some compressors use shared memory
+      return BytesInput.copy(compressor.compress(bytes));
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
@@ -256,7 +257,7 @@ class RowGroupMerger {
     private final Map<ColumnDescriptor, MutableMergedColumn> columns = new HashMap<>();
     private final MessageType schema;
     private long recordCount;
-    private long compressedBytesSize;
+    private long compressedSize;
 
     private MutableMergedBlock(MessageType schema) {
       this.schema = schema;
@@ -267,8 +268,8 @@ class RowGroupMerger {
       return recordCount;
     }
 
-    private long getCompressedBytesSize() {
-      return compressedBytesSize;
+    private long getCompressedSize() {
+      return compressedSize;
     }
 
     @Override
@@ -288,11 +289,11 @@ class RowGroupMerger {
     }
 
     void addCompressedBytes(long size) {
-      compressedBytesSize += size;
+      compressedSize += size;
     }
 
     void merge(BlockMetaData blockMeta, PageReadStore group) throws IOException {
-      for (Entry<ColumnDescriptor, ColumnChunkMetaData> col : getColumnsInOrder(blockMeta, schema, false)) {
+      for (Entry<ColumnDescriptor, ColumnChunkMetaData> col : getColumnsInOrder(blockMeta, schema)) {
 
         MutableMergedColumn column = getOrCreateColumn(col.getKey());
         PageReader columnReader = group.getPageReader(col.getKey());
@@ -311,6 +312,22 @@ class RowGroupMerger {
       }
       addRowCount(blockMeta.getRowCount());
     }
+  }
+
+  private static List<Entry<ColumnDescriptor, ColumnChunkMetaData>> getColumnsInOrder(BlockMetaData blockMeta,
+                                                                                      MessageType schema) {
+
+    return ParquetFileWriter.getColumnsInOrder(blockMeta, schema, false).stream()
+      .map(c -> toEntry(schema, c))
+      .collect(Collectors.toList());
+  }
+
+  private static SimpleEntry<ColumnDescriptor, ColumnChunkMetaData> toEntry(MessageType schema,
+                                                                            ColumnChunkMetaData column) {
+
+    return new SimpleEntry<>(
+      schema.getColumnDescription(column.getPath().toArray()),
+      column);
   }
 
   private static class ReadOnlyMergedBlock implements MergedBlock {
@@ -335,7 +352,7 @@ class RowGroupMerger {
     static ReadOnlyMergedBlock of(BlockMetaData blockMeta, PageReadStore group, MessageType schema,
                                   CompressionCodecFactory.BytesInputCompressor compressor) {
       List<MergedColumn> columns = new ArrayList<>();
-      for (Entry<ColumnDescriptor, ColumnChunkMetaData> col : getColumnsInOrder(blockMeta, schema, false)) {
+      for (Entry<ColumnDescriptor, ColumnChunkMetaData> col : getColumnsInOrder(blockMeta, schema)) {
 
         List<DataPage> pages = new ArrayList<>();
         PageReader columnReader = group.getPageReader(col.getKey());
@@ -530,7 +547,8 @@ class RowGroupMerger {
                 pageV1.getDlEncoding(), valuesEncoding
               );
 
-            } else { //not dictionary encoded
+            } else {
+              //not dictionary encoded
               int rowCount = pageV1.getIndexRowCount()
                 .orElseGet(() -> calculateRowCount(pageV1, ByteBufferInputStream.wrap(ByteBuffer.wrap(originalBytes))));
 
@@ -613,7 +631,8 @@ class RowGroupMerger {
   }
 
   private static class SizeEstimator {
-    private final boolean targetCompressed;//is destination block compressed
+    //is destination block compressed
+    private final boolean targetCompressed;
     private double factor;
 
     private SizeEstimator(boolean targetCompressed) {
@@ -622,13 +641,15 @@ class RowGroupMerger {
 
     private long estimate(BlockMetaData blockMeta) {
       if (factor <= 0) {
-        return targetCompressed ? blockMeta.getCompressedSize() : blockMeta.getTotalByteSize();//very naive estimator
+        //very naive estimator
+        return targetCompressed ? blockMeta.getCompressedSize() : blockMeta.getTotalByteSize();
       }
       return (long) (factor * blockMeta.getTotalByteSize());
     }
 
     private void update(long actualBytes, BlockMetaData blockMeta) {
-      factor = (double) actualBytes / blockMeta.getTotalByteSize();// basically remembers last ratio
+      // basically remembers last ratio
+      factor = (double) actualBytes / blockMeta.getTotalByteSize();
     }
   }
 }
