@@ -121,15 +121,15 @@ public class TestEncryptionOptions {
   @Rule
   public ErrorCollector errorCollector = new ErrorCollector();
 
-  byte[] FOOTER_ENCRYPTION_KEY = new String("0123456789012345").getBytes();
-  byte[] COLUMN_ENCRYPTION_KEY1 = new String("1234567890123450").getBytes();
-  byte[] COLUMN_ENCRYPTION_KEY2 = new String("1234567890123451").getBytes();
-  String fileName = "tester";
+  private static final byte[] FOOTER_ENCRYPTION_KEY = new String("0123456789012345").getBytes();
+  private static final byte[] COLUMN_ENCRYPTION_KEY1 = new String("1234567890123450").getBytes();
+  private static final byte[] COLUMN_ENCRYPTION_KEY2 = new String("1234567890123451").getBytes();
+  private static final String AAD_PREFIX_STRING = "tester";
 
   @Test
   public void testWriteReadEncryptedParquetFiles() throws IOException {
     Path rootPath = new Path(temporaryFolder.getRoot().getPath());
-    byte[] AADPrefix = rootPath.getName().getBytes(StandardCharsets.UTF_8);
+    byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
     // This array will hold various encryption configuraions.
     FileEncryptionProperties[] encryptionPropertiesList = getEncryptionConfigurations(AADPrefix);
     testWriteEncryptedParquetFiles(rootPath, encryptionPropertiesList);
@@ -141,7 +141,7 @@ public class TestEncryptionOptions {
   @Test
   public void testInteropReadEncryptedParquetFiles() throws IOException {
     Path rootPath = new Path("submodules/parquet-testing/data");
-    byte[] AADPrefix = fileName.getBytes(StandardCharsets.UTF_8);
+    byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
     // This array will hold various decryption configurations.
     FileDecryptionProperties[] decryptionPropertiesList = getDecryptionConfigurations(AADPrefix);
     testReadEncryptedParquetFiles(rootPath, decryptionPropertiesList);
@@ -209,7 +209,7 @@ public class TestEncryptionOptions {
 
     for (int encryptionMode = 0; encryptionMode < numberOfEncryptionModes; encryptionMode++) {
       int mode = encryptionMode + 1;
-      Path file = new Path(root, fileName + mode + ".parquet.encrypted");
+      Path file = new Path(root, AAD_PREFIX_STRING + mode + ".parquet.encrypted");
 
       LOG.info("\nWrite " + file.toString());
       ParquetWriter<Group> writer = new ParquetWriter<Group>(
