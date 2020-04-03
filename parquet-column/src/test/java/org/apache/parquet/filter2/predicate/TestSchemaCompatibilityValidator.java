@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.filter2.predicate;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
@@ -130,6 +131,10 @@ public class TestSchemaCompatibilityValidator {
 
   }
 
+  /** Ignore this test as row-group-filtering for columns of repeated type is supported
+   * through a hacky way. see {@link SchemaCompatibilityValidator}
+  */
+  @Ignore
   @Test
   public void testRepeatedNotSupported() {
     try {

@@ -171,10 +171,13 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
       return;
     }
 
-    if (descriptor.getMaxRepetitionLevel() > 0) {
-      throw new IllegalArgumentException("FilterPredicates do not currently support repeated columns. "
-          + "Column " + path.toDotString() + " is repeated.");
-    }
+    // comments this check to support row group filtering on columns of repeated type.
+    // Parquet "parquet.filter.record-level.enabled" must be off as record-level filtering
+    // is not supported yet
+    //if (descriptor.getMaxRepetitionLevel() > 0) {
+    //  throw new IllegalArgumentException("FilterPredicates do not currently support repeated columns. "
+    //      + "Column " + path.toDotString() + " is repeated.");
+    //}
 
     ValidTypeMap.assertTypeValid(column, descriptor.getType());
   }
