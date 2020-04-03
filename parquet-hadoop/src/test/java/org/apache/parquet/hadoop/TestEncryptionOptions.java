@@ -28,7 +28,6 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ErrorCollector;
@@ -41,8 +40,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
@@ -588,19 +585,19 @@ public class TestEncryptionOptions {
 
   private void addErrorToErrorCollectorAndLog(String errorMessage, String exceptionMessage, EncryptionConfiguration encryptionConfiguration,
                                               DecryptionConfiguration decryptionConfiguration) {
-    String fullErrorMessage = String.format("\n%s - %s\nError: " + errorMessage + ", but got [%s]",
-      encryptionConfiguration, decryptionConfiguration);
+    String fullErrorMessage = String.format("%s - %s Error: %s, but got [%s]",
+      encryptionConfiguration, decryptionConfiguration, errorMessage, exceptionMessage);
 
-    errorCollector.addError(new Exception(fullErrorMessage));
+    errorCollector.addError(new Throwable(fullErrorMessage));
     LOG.error(fullErrorMessage);
   }
 
   private void addErrorToErrorCollectorAndLog(String errorMessage, EncryptionConfiguration encryptionConfiguration,
                                                      DecryptionConfiguration decryptionConfiguration) {
-    String fullErrorMessage = String.format("\n%s - %s\nError: " + errorMessage,
-      encryptionConfiguration, decryptionConfiguration);
+    String fullErrorMessage = String.format("%s - %s Error: %s",
+      encryptionConfiguration, decryptionConfiguration, errorMessage);
 
-    errorCollector.addError(new Exception(fullErrorMessage));
+    errorCollector.addError(new Throwable(fullErrorMessage));
     LOG.error(fullErrorMessage);
   }
 
