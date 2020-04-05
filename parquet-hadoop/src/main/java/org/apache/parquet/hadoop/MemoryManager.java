@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -37,7 +37,7 @@ import java.util.Objects;
  *
  * This class balances the allocation size of each writer by resize them averagely.
  * When the sum of each writer's allocation size  is less than total memory pool,
- * keep them original value.
+ * keep their original value.
  * When the sum exceeds, decrease each writer's allocation size by a ratio.
  */
 public class MemoryManager {

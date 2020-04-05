@@ -90,7 +90,7 @@ import org.slf4j.LoggerFactory;
  *
  * # Maximum size (in bytes) allowed as padding to align row groups
  * # This is also the minimum size of a row group. Default: 0
- * parquet.writer.max-padding=2097152 # 2 MB
+ * parquet.writer.max-padding=8388608 # 8 MB
  * </pre>
  *
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
