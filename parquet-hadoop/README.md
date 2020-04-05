@@ -288,4 +288,4 @@ conf.set("parquet.bloom.filter.expected.ndv", 200) // Enable bloom filter for al
 
 **Property:** `parquet.read.bad.record.threshold`  
 **Description:** The percentage of bad records to tolerate.  
-default: 0
+**Default value:** 0
