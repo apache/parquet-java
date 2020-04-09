@@ -224,7 +224,7 @@ conf.set("parquet.bloom.filter.expected.ndv#column.path", 200)
 ---
 
 **Property:** `parquet.page.row.count.limit`  
-**Description:** The maximum number of row per page.  
+**Description:** The maximum number of rows per page.  
 **Default value:** `20000`
 
 ---
