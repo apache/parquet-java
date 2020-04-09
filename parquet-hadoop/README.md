@@ -58,9 +58,15 @@ If it is `true`, it similar to `parquet.summary.metadata.level` with `all`. If i
 ---
 
 **Property:** `parquet.block.size`  
-**Description:** The block size in bytes.
-is the size of a row group being buffered in memory. This limits the memory usage when writing.  
-Larger values will improve the IO when reading but consume more memory when writing.  
+**Description:** The block size in bytes. This property depends on the file system:
+
+- If the file system (FS) used supports blocks like HDFS, the block size will be the maximum between the default block size of FS and this property. And the row group size will be equals to this property.  
+  - block_size = max(default_fs_block_size, parquet.block.size)  
+  - row_group_size = parquet.block.size`
+
+- If the file system used doesn't support blocks, then this property will define the row group size.
+
+Note that larger values of row group size will improve the IO when reading but consume more memory when writing  
 **Default value:** `134217728` (128 MB)  
 
 ---
@@ -75,19 +81,19 @@ If this value is too small, the compression will deteriorate.
 
 **Property:** `parquet.compression`  
 **Description:** The compression algorithm used to compress pages. This property supersedes `mapred.output.compress*`.  
-It can be `uncompressed`, `snappy`, `gzip` or `lzo`.  
+It can be `uncompressed`, `snappy`, `gzip` or `lzo`, `brotli`,`lz4` and `zstd`.  
 If `parquet.compression` is not set, the following properties are checked:
  * mapred.output.compress=true
  * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec
 
-Note that custom codecs are explicitly disallowed. Only one of Snappy, GZip or LZO is accepted.  
+Note that custom codecs are explicitly disallowed. Only one of Snappy, GZip, LZO, LZ4, Brotli or ZSTD is accepted.  
 **Default value:** `uncompressed`
 
 ---
 
 **Property:** `parquet.write.support.class`  
 **Description:** The write support class to convert the records written to the OutputFormat into the events accepted by the record consumer.  
-Usually provided by a specific ParquetOutputFormat subclass.
+Usually provided by a specific ParquetOutputFormat subclass and it should be the descendant class of `org.apache.parquet.hadoop.api.WriteSupport`
 
 ---
 
@@ -158,7 +164,7 @@ This property should be between 0 and 1.
 ---
 
 **Property:** `parquet.page.size.row.check.max`  
-**Description:** The maximum number of rows per page.  
+**Description:** The frequency of checks of the page size limit. In other words, we perform the checking after each `parquet.page.size.row.check.max` rows.  
 **Default value:** `10000`
 
 ---
@@ -230,23 +236,28 @@ conf.set("parquet.bloom.filter.expected.ndv#column.path", 200)
 ## Class: ParquetInputFormat
 
 **Property:** `parquet.read.support.class`  
-**Description:** The read support class.
+**Description:** The read support class that is used in
+ParquetInputFormat to materialize records. It should be a the descendant class of `org.apache.parquet.hadoop.api.ReadSupport`
 
 ---
 
 **Property:** `parquet.read.filter`  
-**Description:** **Todo**
+**Description:** The filter class name that implements `org.apache.parquet.filter.UnboundRecordFilter`. This class is for the old filter API in the package `org.apache.parquet.filter`, it filters records during record assembly.
+
+---
+
+ **Property:** `parquet.private.read.filter.predicate`  
+ **Description:** The filter class used in the new filter API in the package `org.apache.parquet.filter2.predicate`
+ Note that this class should implements `org.apache.parquet.filter2..FilterPredicate` and the value of this property should be a gzip compressed base64 encoded java serialized object.  
+ The new filter API can filter records or filter entire row groups of records without reading them at all.
+
+**Note:** User should either use the old filter API (`parquet.read.filter`) or the new one (`parquet.private.read.filter.predicate`).
 
 ---
 
 **Property:** `parquet.strict.typing`  
 **Description:** Whether to enable type checking for conflicting schema.  
 **Default value:** `true`
-
----
-
-**Property:** `parquet.private.read.filter.predicate`  
-**Description:** **Todo**
 
 ---
 
