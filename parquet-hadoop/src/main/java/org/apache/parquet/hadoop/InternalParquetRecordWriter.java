@@ -20,11 +20,11 @@ package org.apache.parquet.hadoop;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
@@ -86,7 +86,7 @@ class InternalParquetRecordWriter<T> {
       boolean validating,
       ParquetProperties props) {
     this.parquetFileWriter = parquetFileWriter;
-    this.writeSupport = checkNotNull(writeSupport, "writeSupport");
+    this.writeSupport = Objects.requireNonNull(writeSupport, "writeSupport cannot be null");
     this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.rowGroupSize = rowGroupSize;
@@ -104,7 +104,7 @@ class InternalParquetRecordWriter<T> {
 
   private void initStore() {
     ColumnChunkPageWriteStore columnChunkPageWriteStore = new ColumnChunkPageWriteStore(compressor,
-        schema, props.getAllocator(), props.getColumnIndexTruncateLength());
+        schema, props.getAllocator(), props.getColumnIndexTruncateLength(), props.getPageWriteChecksumEnabled());
     pageStore = columnChunkPageWriteStore;
     bloomFilterWriteStore = columnChunkPageWriteStore;
 

@@ -23,7 +23,7 @@ import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicat
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Visitor;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
+import java.util.Objects;
 
 /**
  * Determines whether an {@link IncrementallyUpdatedFilterPredicate} is satisfied or not.
@@ -37,8 +37,7 @@ public class IncrementallyUpdatedFilterPredicateEvaluator implements Visitor {
   private static final IncrementallyUpdatedFilterPredicateEvaluator INSTANCE = new IncrementallyUpdatedFilterPredicateEvaluator();
 
   public static boolean evaluate(IncrementallyUpdatedFilterPredicate pred) {
-    checkNotNull(pred, "pred");
-    return pred.accept(INSTANCE);
+    return Objects.requireNonNull(pred, "pred cannot be null").accept(INSTANCE);
   }
 
   private IncrementallyUpdatedFilterPredicateEvaluator() {}

@@ -20,8 +20,6 @@ package org.apache.parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -486,6 +484,23 @@ public class ParquetWriter<T> implements Closeable {
       return self();
     }
 
+    public SELF withByteStreamSplitEncoding(boolean enableByteStreamSplit) {
+      encodingPropsBuilder.withByteStreamSplitEncoding(enableByteStreamSplit);
+      return self();
+    }
+
+    /**
+     * Enable or disable dictionary encoding of the specified column for the constructed writer.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enableDictionary whether dictionary encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public SELF withDictionaryEncoding(String columnPath, boolean enableDictionary) {
+      encodingPropsBuilder.withDictionaryEncoding(columnPath, enableDictionary);
+      return self();
+    }
+
     /**
      * Enables validation for the constructed writer.
      *
@@ -541,17 +556,39 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-     * Enables bloom filter column names for the constructed writer.
+     * Sets the NDV (number of distinct values) for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param ndv        the NDV of the column
      *
      * @return this builder for method chaining.
      */
-    public SELF withBloomFilterColumnNames(String... columnNames) {
-      if (columnNames != null) {
-        encodingPropsBuilder.withBloomFilterColumnNames(
-          new HashSet<>(Arrays.asList(columnNames))
-        );
-      }
+    public SELF withBloomFilterNDV(String columnPath, long ndv) {
+      encodingPropsBuilder.withBloomFilterNDV(columnPath, ndv);
+      return self();
+    }
 
+    /**
+     * Sets the bloom filter enabled/disabled
+     *
+     * @param enabled whether to write bloom filters
+     * @return this builder for method chaining
+     */
+    public SELF withBloomFilterEnabled(boolean enabled) {
+      encodingPropsBuilder.withBloomFilterEnabled(enabled);
+      return self();
+    }
+
+    /**
+     * Sets the bloom filter enabled/disabled for the specified column. If not set for the column specifically the
+     * default enabled/disabled state will take place. See {@link #withBloomFilterEnabled(boolean)}.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enabled    whether to write bloom filter for the column
+     * @return this builder for method chaining
+     */
+    public SELF withBloomFilterEnabled(String columnPath, boolean enabled) {
+      encodingPropsBuilder.withBloomFilterEnabled(columnPath, enabled);
       return self();
     }
 

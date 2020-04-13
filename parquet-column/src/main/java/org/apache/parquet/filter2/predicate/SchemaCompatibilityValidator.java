@@ -20,6 +20,7 @@ package org.apache.parquet.filter2.predicate;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.filter2.predicate.Operators.And;
@@ -38,9 +39,6 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
 
-import static org.apache.parquet.Preconditions.checkArgument;
-import static org.apache.parquet.Preconditions.checkNotNull;
-
 /**
  * Inspects the column types found in the provided {@link FilterPredicate} and compares them
  * to the actual schema found in the parquet file. If the provided predicate's types are
@@ -58,19 +56,19 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Void> {
 
   public static void validate(FilterPredicate predicate, MessageType schema) {
-    checkNotNull(predicate, "predicate");
-    checkNotNull(schema, "schema");
+    Objects.requireNonNull(predicate, "predicate cannot be null");
+    Objects.requireNonNull(schema, "schema cannot be null");
     predicate.accept(new SchemaCompatibilityValidator(schema));
   }
 
   // A map of column name to the type the user supplied for this column.
   // Used to validate that the user did not provide different types for the same
   // column.
-  private final Map<ColumnPath, Class<?>> columnTypesEncountered = new HashMap<ColumnPath, Class<?>>();
+  private final Map<ColumnPath, Class<?>> columnTypesEncountered = new HashMap<>();
 
   // the columns (keyed by path) according to the file's schema. This is the source of truth, and
   // we are validating that what the user provided agrees with these.
-  private final Map<ColumnPath, ColumnDescriptor> columnsAccordingToSchema = new HashMap<ColumnPath, ColumnDescriptor>();
+  private final Map<ColumnPath, ColumnDescriptor> columnsAccordingToSchema = new HashMap<>();
 
   private SchemaCompatibilityValidator(MessageType schema) {
 

@@ -49,6 +49,7 @@ Below is more information about each committer (in alphabetical order). If this 
 | Tom White              | tomwhite        | @tomwhite           |                |
 | Wes McKinney           | wesm            | @wesm               |                |
 | Wesley Graham Peck     | wesleypeck      | @wesleypeck         |                |
+| Xinli Shang            | shangxinli      | @shangxinli         |                |
 
 
 # Reviewing guidelines:

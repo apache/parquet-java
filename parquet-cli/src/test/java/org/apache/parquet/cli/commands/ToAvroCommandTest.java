@@ -20,6 +20,8 @@
 package org.apache.parquet.cli.commands;
 
 import com.beust.jcommander.JCommander;
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -62,6 +64,7 @@ public class ToAvroCommandTest extends AvroFileTest {
       .addObject(cmd)
       .build()
       .parse(
+        "--overwrite",
         jsonInputFile.getAbsolutePath(),
         "--output",
         avroOutputFile.getAbsolutePath()
@@ -90,5 +93,21 @@ public class ToAvroCommandTest extends AvroFileTest {
   @Test(expected = IllegalArgumentException.class)
   public void testToAvroCommandWithInvalidCompression() throws IOException {
     toAvro(parquetFile(), "FOO");
+  }
+
+  @Test
+  public void testToAvroCommandOverwriteExistentFile() throws IOException {
+    File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
+    FileUtils.touch(outputFile);
+    Assert.assertEquals(0, outputFile.length());
+    File avroFile = toAvro(parquetFile(), outputFile, true);
+    Assert.assertTrue(0 < avroFile.length());
+  }
+
+  @Test(expected = FileAlreadyExistsException.class)
+  public void testToAvroCommandOverwriteExistentFileWithoutOverwriteOption() throws IOException {
+    File outputFile = new File(getTempFolder(), getClass().getSimpleName() + ".avro");
+    FileUtils.touch(outputFile);
+    toAvro(parquetFile(), outputFile, false);
   }
 }

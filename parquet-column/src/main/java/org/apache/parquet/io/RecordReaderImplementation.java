@@ -107,7 +107,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
         return equals((Case)obj);
       }
       return false;
-    };
+    }
 
     // see comment for hashCode above
 //    public boolean equals(Case other) {
@@ -334,8 +334,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     }
     for (int i = 0; i < states.length; i++) {
       State state = states[i];
-      final Map<Case, Case> definedCases = new HashMap<Case, Case>();
-      final Map<Case, Case> undefinedCases = new HashMap<Case, Case>();
+      final Map<Case, Case> definedCases = new HashMap<>();
+      final Map<Case, Case> undefinedCases = new HashMap<>();
       Case[][][] caseLookup = new Case[state.fieldPath.length][][];
       for (int currentLevel = 0; currentLevel < state.fieldPath.length; ++ currentLevel) {
         caseLookup[currentLevel] = new Case[state.maxDefinitionLevel+1][];
@@ -358,8 +358,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
         }
       }
       state.caseLookup = caseLookup;
-      state.definedCases = new ArrayList<Case>(definedCases.values());
-      state.undefinedCases = new ArrayList<Case>(undefinedCases.values());
+      state.definedCases = new ArrayList<>(definedCases.values());
+      state.undefinedCases = new ArrayList<>(undefinedCases.values());
       Comparator<Case> caseComparator = new Comparator<Case>() {
         @Override
         public int compare(Case o1, Case o2) {

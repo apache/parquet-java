@@ -25,7 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.parquet.Preconditions.checkArgument;
-import static org.apache.parquet.Preconditions.checkNotNull;
+
+import java.util.Objects;
 
 /**
  * Parquet currently has two ways to specify a filter for dropping records at read time.
@@ -69,7 +70,7 @@ public class FilterCompat {
    * @return a filter for the given predicate
    */
   public static Filter get(FilterPredicate filterPredicate) {
-    checkNotNull(filterPredicate, "filterPredicate");
+    Objects.requireNonNull(filterPredicate, "filterPredicate cannot be null");
 
     LOG.info("Filtering using predicate: {}", filterPredicate);
 
@@ -125,7 +126,7 @@ public class FilterCompat {
     private final FilterPredicate filterPredicate;
 
     private FilterPredicateCompat(FilterPredicate filterPredicate) {
-      this.filterPredicate = checkNotNull(filterPredicate, "filterPredicate");
+      this.filterPredicate = Objects.requireNonNull(filterPredicate, "filterPredicate cannot be null");
     }
 
     public FilterPredicate getFilterPredicate() {
@@ -143,7 +144,7 @@ public class FilterCompat {
     private final UnboundRecordFilter unboundRecordFilter;
 
     private UnboundRecordFilterCompat(UnboundRecordFilter unboundRecordFilter) {
-      this.unboundRecordFilter = checkNotNull(unboundRecordFilter, "unboundRecordFilter");
+      this.unboundRecordFilter = Objects.requireNonNull(unboundRecordFilter, "unboundRecordFilter cannot be null");
     }
 
     public UnboundRecordFilter getUnboundRecordFilter() {

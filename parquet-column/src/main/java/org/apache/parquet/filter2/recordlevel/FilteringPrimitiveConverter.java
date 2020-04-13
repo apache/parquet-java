@@ -23,7 +23,7 @@ import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicat
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
+import java.util.Objects;
 
 /**
  * see {@link FilteringRecordMaterializer}
@@ -36,8 +36,8 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
   private final ValueInspector[] valueInspectors;
 
   public FilteringPrimitiveConverter(PrimitiveConverter delegate, ValueInspector[] valueInspectors) {
-    this.delegate = checkNotNull(delegate, "delegate");
-    this.valueInspectors = checkNotNull(valueInspectors, "valueInspectors");
+    this.delegate = Objects.requireNonNull(delegate, "delegate cannot be null");
+    this.valueInspectors = Objects.requireNonNull(valueInspectors, "valueInspectors cannot be null");
   }
 
   // TODO: this works, but

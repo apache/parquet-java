@@ -29,7 +29,6 @@ import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.io.DatumWriter;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Codecs;
@@ -37,6 +36,7 @@ import org.apache.parquet.cli.util.Schemas;
 import org.slf4j.Logger;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 
 import static org.apache.avro.generic.GenericData.Record;
@@ -92,16 +92,8 @@ public class ToAvroCommand extends BaseCommand {
     } else {
       schema = getAvroSchema(source);
     }
+
     final Schema projection = filterSchema(schema, columns);
-
-    Path outPath = qualifiedPath(outputPath);
-    try (FileSystem outFS = outPath.getFileSystem(getConf())) {
-      if (overwrite && outFS.exists(outPath)) {
-        console.debug("Deleting output file {} (already exists)", outPath);
-        outFS.delete(outPath);
-      }
-    }
-
     Iterable<Record> reader = openDataFile(source, projection);
     boolean threw = true;
     long count = 0;
@@ -109,7 +101,8 @@ public class ToAvroCommand extends BaseCommand {
     DatumWriter<Record> datumWriter = new GenericDatumWriter<>(schema);
     try (DataFileWriter<Record> fileWriter = new DataFileWriter<>(datumWriter)) {
       fileWriter.setCodec(codecFactory);
-      try (DataFileWriter<Record> writer=fileWriter.create(projection, create(outputPath))) {
+      try (OutputStream os = overwrite ? create(outputPath) : createWithNoOverwrite(outputPath);
+           DataFileWriter<Record> writer = fileWriter.create(projection, os)) {
         for (Record record : reader) {
           writer.append(record);
           count += 1;

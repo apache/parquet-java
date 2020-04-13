@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -49,7 +49,7 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
   }
 
   public ExpectationValidatingConverter(String[] expectations, MessageType schema) {
-    this(new ArrayDeque<String>(Arrays.asList(expectations)), schema);
+    this(new ArrayDeque<>(Arrays.asList(expectations)), schema);
   }
 
   public ExpectationValidatingConverter(Deque<String> expectations, MessageType schema) {
@@ -151,14 +151,14 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
   }
 
   private String path(List<GroupType> path, Type type) {
-    String pathString = "";
+    StringBuilder pathString = new StringBuilder();
     if (path.size() > 0) {
       for (int i = 1; i < path.size(); i++) {
-        pathString += path.get(i).getName() + ".";
+        pathString.append(path.get(i).getName()).append('.');
       }
     }
-    pathString += type.getName() + ".";
-    return pathString;
+    pathString.append(type.getName()).append('.');
+    return pathString.toString();
   }
 
   @Override

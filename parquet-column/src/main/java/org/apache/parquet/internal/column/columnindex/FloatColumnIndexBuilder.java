@@ -62,7 +62,7 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
     @Override
     @SuppressWarnings("unchecked")
     <T extends Comparable<T>> Statistics<T> createStats(int arrayIndex) {
-      return (Statistics<T>) new Statistics<Float>(minValues[arrayIndex], maxValues[arrayIndex], comparator);
+      return (Statistics<T>) new Statistics<>(minValues[arrayIndex], maxValues[arrayIndex], comparator);
     }
 
     @Override

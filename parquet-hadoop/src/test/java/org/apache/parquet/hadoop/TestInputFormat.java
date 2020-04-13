@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -391,18 +391,18 @@ public class TestInputFormat {
     tempDir.deleteOnExit();
     int numFiles = 10; // create a nontrivial number of files so that it actually tests getFooters() returns files in the correct order
 
-    String url = "";
+    StringBuilder url = new StringBuilder();
     for (int i = 0; i < numFiles; i++) {
       File file = new File(tempDir, String.format("part-%05d.parquet", i));
       createParquetFile(file);
       if (i > 0) {
-        url += ",";
+        url.append(',');
       }
-      url += "file:" + file.getAbsolutePath();
+      url.append("file:").append(file.getAbsolutePath());
     }
 
     Job job = new Job();
-    FileInputFormat.setInputPaths(job, url);
+    FileInputFormat.setInputPaths(job, url.toString());
     List<Footer> footers = new ParquetInputFormat<Object>().getFooters(job);
     for (int i = 0; i < numFiles; i++) {
       Footer footer = footers.get(i);

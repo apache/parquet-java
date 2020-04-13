@@ -20,7 +20,6 @@
 package org.apache.parquet.column.values.bloomfilter;
 
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.io.api.Binary;
 
 import java.io.IOException;
@@ -44,11 +43,11 @@ public class BlockSplitBloomFilter implements BloomFilter {
   // Bits in a tiny Bloom filter block.
   private static final int BITS_PER_BLOCK = 256;
 
-  // Default minimum Bloom filter size, set to the size of a tiny Bloom filter block
-  public static final int DEFAULT_MINIMUM_BYTES = 32;
+  // The lower bound of bloom filter size, set to the size of a tiny Bloom filter block.
+  public static final int LOWER_BOUND_BYTES = 32;
 
-  // Default Maximum Bloom filter size, set to 1MB which should cover most cases.
-  public static final int DEFAULT_MAXIMUM_BYTES = 1024 * 1024;
+  // The upper bound of bloom filter size, set to default row group size.
+  public static final int UPPER_BOUND_BYTES = 128 * 1024 * 1024;
 
   // The number of bits to set in a tiny Bloom filter
   private static final int BITS_SET_PER_BLOCK = 8;
@@ -60,7 +59,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
   // The default false positive probability value
   public static final double DEFAULT_FPP = 0.01;
 
-  // Hash strategy used in this Bloom filter.
+  // The hash strategy used in this Bloom filter.
   private final HashStrategy hashStrategy;
 
   // The underlying byte array for Bloom filter bitset.
@@ -72,8 +71,13 @@ public class BlockSplitBloomFilter implements BloomFilter {
   // Hash function use to compute hash for column value.
   private HashFunction hashFunction;
 
-  private int maximumBytes = DEFAULT_MAXIMUM_BYTES;
-  private int minimumBytes = DEFAULT_MINIMUM_BYTES;
+  private int maximumBytes = UPPER_BOUND_BYTES;
+  private int minimumBytes = LOWER_BOUND_BYTES;
+
+  // A cache used for hashing
+  private ByteBuffer cacheBuffer = ByteBuffer.allocate(Long.BYTES);
+
+  private int[] mask = new int[BITS_SET_PER_BLOCK];
 
   // The block-based algorithm needs 8 odd SALT values to calculate eight indexes
   // of bits to set, one per 32-bit word.
@@ -89,20 +93,20 @@ public class BlockSplitBloomFilter implements BloomFilter {
    *                 of 2. It uses XXH64 as its default hash function.
    */
   public BlockSplitBloomFilter(int numBytes) {
-    this(numBytes, DEFAULT_MAXIMUM_BYTES, HashStrategy.XXH64);
+    this(numBytes, LOWER_BOUND_BYTES, UPPER_BOUND_BYTES, HashStrategy.XXH64);
   }
 
   /**
    * Constructor of block-based Bloom filter.
    *
    * @param numBytes The number of bytes for Bloom filter bitset. The range of num_bytes should be within
-   *                 [DEFAULT_MINIMUM_BYTES, DEFAULT_MAXIMUM_BYTES], it will be rounded up/down
+   *                 [DEFAULT_MINIMUM_BYTES, maximumBytes], it will be rounded up/down
    *                 to lower/upper bound if num_bytes is out of range. It will also be rounded up to a power
    *                 of 2. It uses XXH64 as its default hash function.
    * @param maximumBytes The maximum bytes of the Bloom filter.
    */
   public BlockSplitBloomFilter(int numBytes, int maximumBytes) {
-    this(numBytes, maximumBytes, HashStrategy.XXH64);
+    this(numBytes, LOWER_BOUND_BYTES, maximumBytes, HashStrategy.XXH64);
   }
 
   /**
@@ -112,23 +116,35 @@ public class BlockSplitBloomFilter implements BloomFilter {
    * @param hashStrategy The hash strategy of Bloom filter.
    */
   private BlockSplitBloomFilter(int numBytes, HashStrategy hashStrategy) {
-    this(numBytes, DEFAULT_MAXIMUM_BYTES, hashStrategy);
+    this(numBytes, LOWER_BOUND_BYTES, UPPER_BOUND_BYTES, hashStrategy);
   }
 
   /**
    * Constructor of block-based Bloom filter.
    *
    * @param numBytes The number of bytes for Bloom filter bitset. The range of num_bytes should be within
-   *                 [DEFAULT_MINIMUM_BYTES, maximumBytes], it will be rounded up/down to lower/upper bound if
+   *                 [minimumBytes, maximumBytes], it will be rounded up/down to lower/upper bound if
    *                 num_bytes is out of range. It will also be rounded up to a power of 2.
+   * @param minimumBytes The minimum bytes of the Bloom filter.
    * @param maximumBytes The maximum bytes of the Bloom filter.
    * @param hashStrategy The adopted hash strategy of the Bloom filter.
    */
-  public BlockSplitBloomFilter(int numBytes, int maximumBytes, HashStrategy hashStrategy) {
-    if (maximumBytes > DEFAULT_MINIMUM_BYTES) {
+  public BlockSplitBloomFilter(int numBytes, int minimumBytes, int maximumBytes, HashStrategy hashStrategy) {
+    if (minimumBytes > maximumBytes) {
+      throw new IllegalArgumentException("the minimum bytes should be less or equal than maximum bytes");
+    }
+
+    if (minimumBytes > LOWER_BOUND_BYTES && minimumBytes < UPPER_BOUND_BYTES) {
+      this.minimumBytes = minimumBytes;
+    }
+
+    if (maximumBytes > LOWER_BOUND_BYTES && maximumBytes < UPPER_BOUND_BYTES) {
       this.maximumBytes = maximumBytes;
     }
+
     initBitset(numBytes);
+
+    cacheBuffer.order(ByteOrder.LITTLE_ENDIAN);
 
     switch (hashStrategy) {
       case XXH64:
@@ -164,6 +180,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
       throw new RuntimeException("Given bitset is null");
     }
 
+    cacheBuffer.order(ByteOrder.LITTLE_ENDIAN);
     this.bitset = bitset;
     this.intBuffer = ByteBuffer.wrap(bitset).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
     switch (hashStrategy) {
@@ -202,27 +219,20 @@ public class BlockSplitBloomFilter implements BloomFilter {
 
   @Override
   public void writeTo(OutputStream out) throws IOException {
-    // Write number of bytes of bitset.
-    out.write(BytesUtils.intToBytes(bitset.length));
-    // Write hash strategy
-    out.write(BytesUtils.intToBytes(hashStrategy.value));
-    // Write algorithm
-    out.write(BytesUtils.intToBytes(Algorithm.BLOCK.value));
-    // Write compression
-    out.write(BytesUtils.intToBytes(Compression.UNCOMPRESSED.value));
-    // Write bitset
     out.write(bitset);
   }
 
   private int[] setMask(int key) {
-    int[] mask = new int[BITS_SET_PER_BLOCK];
-
+    // The following three loops are written separately so that they could be
+    // optimized for vectorization.
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = key * SALT[i];
     }
+
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = mask[i] >>> 27;
     }
+
     for (int i = 0; i < BITS_SET_PER_BLOCK; ++i) {
       mask[i] = 0x1 << mask[i];
     }
@@ -269,93 +279,54 @@ public class BlockSplitBloomFilter implements BloomFilter {
    *
    * @param n: The number of distinct values.
    * @param p: The false positive probability.
+   *
    * @return optimal number of bits of given n and p.
    */
   public static int optimalNumOfBits(long n, double p) {
     Preconditions.checkArgument((p > 0.0 && p < 1.0),
       "FPP should be less than 1.0 and great than 0.0");
     final double m = -8 * n / Math.log(1 - Math.pow(p, 1.0 / 8));
-    final double MAX = DEFAULT_MAXIMUM_BYTES << 3;
-    int numBits = (int)m;
+    int numBits = (int)m ;
 
     // Handle overflow.
-    if (m > MAX || m < 0) {
-      numBits = (int)MAX;
+    if (numBits > UPPER_BOUND_BYTES << 3 || m < 0) {
+      numBits = UPPER_BOUND_BYTES << 3;
     }
 
-    // Round to BITS_PER_BLOCK
+    // Round numBits up to (k * BITS_PER_BLOCK)
     numBits = (numBits + BITS_PER_BLOCK -1) & ~BITS_PER_BLOCK;
 
-    if (numBits < (DEFAULT_MINIMUM_BYTES << 3)) {
-      numBits = DEFAULT_MINIMUM_BYTES << 3;
+    if (numBits < (LOWER_BOUND_BYTES << 3)) {
+      numBits = LOWER_BOUND_BYTES << 3;
     }
 
     return numBits;
   }
 
   @Override
-  public long getBitsetSize() {
+  public int getBitsetSize() {
     return this.bitset.length;
   }
 
   @Override
   public long hash(Object value) {
-    ByteBuffer plain;
-
     if (value instanceof Binary) {
       return hashFunction.hashBytes(((Binary) value).getBytes());
     }
 
     if (value instanceof Integer) {
-      plain = ByteBuffer.allocate(Integer.SIZE/Byte.SIZE);
-      plain.order(ByteOrder.LITTLE_ENDIAN).putInt(((Integer)value));
+      cacheBuffer.putInt((Integer)value);
     } else if (value instanceof Long) {
-      plain = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
-      plain.order(ByteOrder.LITTLE_ENDIAN).putLong(((Long)value));
+      cacheBuffer.putLong((Long)value);
     } else if (value instanceof Float) {
-      plain = ByteBuffer.allocate(Float.SIZE/Byte.SIZE);
-      plain.order(ByteOrder.LITTLE_ENDIAN).putFloat(((Float)value));
+      cacheBuffer.putFloat((Float)value);
     } else if (value instanceof Double) {
-      plain = ByteBuffer.allocate(Double.SIZE/ Byte.SIZE);
-      plain.order(ByteOrder.LITTLE_ENDIAN).putDouble(((Double)value));
+      cacheBuffer.putDouble((Double) value);
     } else {
       throw new RuntimeException("Parquet Bloom filter: Not supported type");
     }
 
-    return hashFunction.hashByteBuffer(plain);
-  }
-
-  @Override
-  public long hash(int value) {
-    ByteBuffer plain = ByteBuffer.allocate(Integer.SIZE/Byte.SIZE);
-    plain.order(ByteOrder.LITTLE_ENDIAN).putInt(value);
-    return hashFunction.hashByteBuffer(plain);
-  }
-
-  @Override
-  public long hash(long value) {
-    ByteBuffer plain = ByteBuffer.allocate(Long.SIZE/Byte.SIZE);
-    plain.order(ByteOrder.LITTLE_ENDIAN).putLong(value);
-    return hashFunction.hashByteBuffer(plain);
-  }
-
-  @Override
-  public long hash(double value) {
-    ByteBuffer plain = ByteBuffer.allocate(Double.SIZE/Byte.SIZE);
-    plain.order(ByteOrder.LITTLE_ENDIAN).putDouble(value);
-    return hashFunction.hashByteBuffer(plain);
-  }
-
-  @Override
-  public long hash(float value) {
-    ByteBuffer plain = ByteBuffer.allocate(Float.SIZE/Byte.SIZE);
-    plain.order(ByteOrder.LITTLE_ENDIAN).putFloat(value);
-    return hashFunction.hashByteBuffer(plain);
-  }
-
-  @Override
-  public long hash(Binary value) {
-    return hashFunction.hashBytes(value.getBytes());
+    return doHash();
   }
 
   @Override
@@ -366,9 +337,61 @@ public class BlockSplitBloomFilter implements BloomFilter {
     if (object instanceof BlockSplitBloomFilter) {
       BlockSplitBloomFilter that = (BlockSplitBloomFilter) object;
       return Arrays.equals(this.bitset, that.bitset)
-        && this.maximumBytes == that.maximumBytes
+        && this.getAlgorithm() == that.getAlgorithm()
         && this.hashStrategy == that.hashStrategy;
     }
     return false;
+  }
+
+  @Override
+  public HashStrategy getHashStrategy() {
+    return HashStrategy.XXH64;
+  }
+
+  @Override
+  public Algorithm getAlgorithm() {
+    return Algorithm.BLOCK;
+  }
+
+  @Override
+  public Compression getCompression() {
+    return Compression.UNCOMPRESSED;
+  }
+
+  private long doHash() {
+    cacheBuffer.flip();
+    long hashResult = hashFunction.hashByteBuffer(cacheBuffer);
+    cacheBuffer.clear();
+
+    return hashResult;
+  }
+
+  @Override
+  public long hash(int value) {
+    cacheBuffer.putInt(value);
+    return doHash();
+  }
+
+  @Override
+  public long hash(long value) {
+    cacheBuffer.putLong(value);
+    return doHash();
+  }
+
+  @Override
+  public long hash(double value) {
+    cacheBuffer.putDouble(value);
+    return doHash();
+  }
+
+  @Override
+  public long hash(float value) {
+    cacheBuffer.putFloat(value);
+    return doHash();
+  }
+
+  @Override
+  public long hash(Binary value) {
+    return hashFunction.hashBytes(value.getBytes());
   }
 }
