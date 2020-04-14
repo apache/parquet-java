@@ -22,7 +22,6 @@ package org.apache.parquet.cli.csv;
 import au.com.bytecode.opencsv.CSVParser;
 import au.com.bytecode.opencsv.CSVReader;
 import com.google.common.base.CharMatcher;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import org.apache.avro.Schema;
@@ -31,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -104,17 +104,17 @@ public class AvroCSV {
       // read the header and then the first line
       header = reader.readNext();
       line = reader.readNext();
-      Preconditions.checkNotNull(line, "No content to infer schema");
+      Objects.requireNonNull(line, "No content to infer schema");
 
     } else if (props.header != null) {
       header = newParser(props).parseLine(props.header);
       line = reader.readNext();
-      Preconditions.checkNotNull(line, "No content to infer schema");
+      Objects.requireNonNull(line, "No content to infer schema");
 
     } else {
       // use the first line to create a header
       line = reader.readNext();
-      Preconditions.checkNotNull(line, "No content to infer schema");
+      Objects.requireNonNull(line, "No content to infer schema");
       header = new String[line.length];
       for (int i = 0; i < line.length; i += 1) {
         header[i] = "field_" + String.valueOf(i);

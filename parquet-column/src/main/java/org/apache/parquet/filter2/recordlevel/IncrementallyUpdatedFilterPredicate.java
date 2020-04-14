@@ -20,7 +20,7 @@ package org.apache.parquet.filter2.recordlevel;
 
 import org.apache.parquet.io.api.Binary;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
+import java.util.Objects;
 
 /**
  * A rewritten version of a {@link org.apache.parquet.filter2.predicate.FilterPredicate} which receives
@@ -129,8 +129,8 @@ public interface IncrementallyUpdatedFilterPredicate {
     private final IncrementallyUpdatedFilterPredicate right;
 
     BinaryLogical(IncrementallyUpdatedFilterPredicate left, IncrementallyUpdatedFilterPredicate right) {
-      this.left = checkNotNull(left, "left");
-      this.right = checkNotNull(right, "right");
+      this.left = Objects.requireNonNull(left, "left cannot be null");
+      this.right = Objects.requireNonNull(right, "right cannot be null");
     }
 
     public final IncrementallyUpdatedFilterPredicate getLeft() {

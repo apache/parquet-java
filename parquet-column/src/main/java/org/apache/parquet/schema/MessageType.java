@@ -103,7 +103,7 @@ public final class MessageType extends GroupType {
 
   public List<ColumnDescriptor> getColumns() {
     List<String[]> paths = this.getPaths(0);
-    List<ColumnDescriptor> columns = new ArrayList<ColumnDescriptor>(paths.size());
+    List<ColumnDescriptor> columns = new ArrayList<>(paths.size());
     for (String[] path : paths) {
       // TODO: optimize this
       PrimitiveType primitiveType = getType(path).asPrimitiveType();
@@ -125,7 +125,7 @@ public final class MessageType extends GroupType {
   }
 
   public <T> T convertWith(TypeConverter<T> converter) {
-    final ArrayList<GroupType> path = new ArrayList<GroupType>();
+    final ArrayList<GroupType> path = new ArrayList<>();
     path.add(this);
     return converter.convertMessageType(this, convertChildren(path, converter));
   }

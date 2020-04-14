@@ -19,6 +19,7 @@
 package org.apache.parquet.thrift;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -29,8 +30,6 @@ import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * To read a parquet file into thrift objects
@@ -95,19 +94,19 @@ public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> 
     private Class<T> thriftClass;
 
     private Builder(Path file) {
-      this.file = checkNotNull(file, "file");
+      this.file = Objects.requireNonNull(file, "file cannot be null");
       this.conf = new Configuration();
       this.filter = FilterCompat.NOOP;
       this.thriftClass = null;
     }
 
     public Builder<T> withConf(Configuration conf) {
-      this.conf = checkNotNull(conf, "conf");
+      this.conf = Objects.requireNonNull(conf, "conf cannot be null");
       return this;
     }
 
     public Builder<T> withFilter(Filter filter) {
-      this.filter = checkNotNull(filter, "filter");
+      this.filter = Objects.requireNonNull(filter, "filter cannot be null");
       return this;
     }
 
@@ -120,7 +119,7 @@ public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> 
      * @return this for method chaining
      */
     public Builder<T> withThriftClass(Class<T> thriftClass) {
-      this.thriftClass = checkNotNull(thriftClass, "thriftClass");
+      this.thriftClass = Objects.requireNonNull(thriftClass, "thriftClass cannot be null");
       return this;
     }
 

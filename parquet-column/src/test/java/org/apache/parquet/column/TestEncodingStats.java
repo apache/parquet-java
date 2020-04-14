@@ -21,9 +21,6 @@ package org.apache.parquet.column;
 
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -39,12 +36,6 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.DELTA_BYTE_ARRAY);
     EncodingStats stats1 = builder.build();
 
-    Map<Encoding, Integer> expectedDictStats1 = new HashMap<Encoding, Integer>();
-    expectedDictStats1.put(Encoding.PLAIN, 1);
-    Map<Encoding, Integer> expectedDataStats1 = new HashMap<Encoding, Integer>();
-    expectedDataStats1.put(Encoding.RLE_DICTIONARY, 3);
-    expectedDataStats1.put(Encoding.DELTA_BYTE_ARRAY, 2);
-
     builder.clear();
     builder.addDataEncoding(Encoding.PLAIN);
     builder.addDataEncoding(Encoding.PLAIN);
@@ -52,15 +43,24 @@ public class TestEncodingStats {
     builder.addDataEncoding(Encoding.PLAIN);
     EncodingStats stats2 = builder.build();
 
-    Map<Encoding, Integer> expectedDictStats2 = new HashMap<Encoding, Integer>();
-    Map<Encoding, Integer> expectedDataStats2 = new HashMap<Encoding, Integer>();
-    expectedDataStats2.put(Encoding.PLAIN, 4);
+    assertEquals("Dictionary stats should be correct", 0,
+        stats2.dictStats.size());
+    assertEquals("Data stats size should be correct", 1,
+        stats2.dataStats.size());
+    assertEquals("Data stats content should be correct", 4,
+        stats2.dataStats.get(Encoding.PLAIN).intValue());
 
-    assertEquals("Dictionary stats should be correct", expectedDictStats2, stats2.dictStats);
-    assertEquals("Data stats should be correct", expectedDataStats2, stats2.dataStats);
+    assertEquals("Dictionary stats size should be correct after reuse",
+        1, stats1.dictStats.size());
+    assertEquals("Dictionary stats content should be correct", 1,
+        stats1.dictStats.get(Encoding.PLAIN).intValue());
 
-    assertEquals("Dictionary stats should be correct after reuse", expectedDictStats1, stats1.dictStats);
-    assertEquals("Data stats should be correct after reuse", expectedDataStats1, stats1.dataStats);
+    assertEquals("Data stats size should be correct after reuse", 2,
+        stats1.dataStats.size());
+    assertEquals("Data stats content should be correct", 3,
+        stats1.dataStats.get(Encoding.RLE_DICTIONARY).intValue());
+    assertEquals("Data stats content should be correct", 2,
+        stats1.dataStats.get(Encoding.DELTA_BYTE_ARRAY).intValue());
   }
 
   @Test

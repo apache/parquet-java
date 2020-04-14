@@ -76,14 +76,17 @@ public final class DummyRecordConverter extends RecordMaterializer<Object> {
       public Converter convertGroupType(List<GroupType> path, GroupType groupType, final List<Converter> converters) {
         return new GroupConverter() {
 
+          @Override
           public Converter getConverter(int fieldIndex) {
             return converters.get(fieldIndex);
           }
 
+          @Override
           public void start() {
             a = "start()";
           }
 
+          @Override
           public void end() {
             a = "end()";
           }

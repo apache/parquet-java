@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
+import org.apache.parquet.FixedBinaryTestUtils;
 import org.apache.parquet.io.api.Binary;
 
 public class RandomValues {
@@ -213,7 +214,7 @@ public class RandomValues {
 
     @Override
     public Binary nextBinaryValue() {
-      return asReusedBinary(nextValue().toByteArray());
+      return FixedBinaryTestUtils.getFixedBinary(INT_96_LENGTH, nextValue());
     }
   }
 

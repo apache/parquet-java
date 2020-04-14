@@ -20,7 +20,7 @@ package org.apache.parquet.filter;
 
 import org.apache.parquet.column.ColumnReader;
 import java.util.Arrays;
-import static org.apache.parquet.Preconditions.checkNotNull;
+import java.util.Objects;
 
 /**
  * Record filter which applies the supplied predicate to the specified column.
@@ -41,8 +41,8 @@ public final class ColumnRecordFilter implements RecordFilter {
    */
   public static final UnboundRecordFilter column(final String columnPath,
                                                  final ColumnPredicates.Predicate predicate) {
-    checkNotNull(columnPath, "columnPath");
-    checkNotNull(predicate,  "predicate");
+    Objects.requireNonNull(columnPath, "columnPath cannot be null");
+    Objects.requireNonNull(predicate, "predicate cannot be null");
     return new UnboundRecordFilter() {
       final String[] filterPath = columnPath.split("\\.");
       @Override

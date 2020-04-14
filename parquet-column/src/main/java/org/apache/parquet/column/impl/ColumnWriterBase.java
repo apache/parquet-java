@@ -19,8 +19,7 @@
 package org.apache.parquet.column.impl;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
+import java.util.OptionalLong;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
@@ -58,20 +57,14 @@ abstract class ColumnWriterBase implements ColumnWriter {
   private long rowsWrittenSoFar = 0;
   private int pageRowCount;
 
-  private BloomFilterWriter bloomFilterWriter;
-  private BloomFilter bloomFilter;
+  private final BloomFilterWriter bloomFilterWriter;
+  private final BloomFilter bloomFilter;
 
   ColumnWriterBase(
       ColumnDescriptor path,
       PageWriter pageWriter,
       ParquetProperties props) {
-    this.path = path;
-    this.pageWriter = pageWriter;
-    resetStatistics();
-
-    this.repetitionLevelColumn = createRLWriter(props, path);
-    this.definitionLevelColumn = createDLWriter(props, path);
-    this.dataColumn = props.newValuesWriter(path);
+    this(path, pageWriter, null, props);
   }
 
   ColumnWriterBase(
@@ -80,32 +73,27 @@ abstract class ColumnWriterBase implements ColumnWriter {
     BloomFilterWriter bloomFilterWriter,
     ParquetProperties props
   ) {
-    this(path, pageWriter, props);
+    this.path = path;
+    this.pageWriter = pageWriter;
+    resetStatistics();
 
-    // Bloom filters don't support nested columns yet; see PARQUET-1453.
-    if (path.getPath().length != 1 || bloomFilterWriter == null) {
-      return;
-    }
-    String column = path.getPath()[0];
+    this.repetitionLevelColumn = createRLWriter(props, path);
+    this.definitionLevelColumn = createDLWriter(props, path);
+    this.dataColumn = props.newValuesWriter(path);
 
     this.bloomFilterWriter = bloomFilterWriter;
-    Set<String> bloomFilterColumns = props.getBloomFilterColumns();
-    if (!bloomFilterColumns.contains(column)) {
+    if (bloomFilterWriter == null) {
+      this.bloomFilter = null;
       return;
     }
     int maxBloomFilterSize = props.getMaxBloomFilterBytes();
 
-    Map<String, Long> bloomFilterColumnExpectedNDVs = props.getBloomFilterColumnExpectedNDVs();
-    if (bloomFilterColumnExpectedNDVs.size() > 0) {
-      // If user specify the column NDV, we construct Bloom filter from it.
-      if (bloomFilterColumnExpectedNDVs.keySet().contains(column)) {
-        int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(bloomFilterColumnExpectedNDVs.get(column).intValue(),
-          BlockSplitBloomFilter.DEFAULT_FPP);
-
-        this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
-      }
-    }
-    else {
+    OptionalLong ndv = props.getBloomFilterNDV(path);
+    // If user specify the column NDV, we construct Bloom filter from it.
+    if (ndv.isPresent()) {
+      int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(ndv.getAsLong(), BlockSplitBloomFilter.DEFAULT_FPP);
+      this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
+    } else {
       this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize);
     }
   }
@@ -348,24 +336,20 @@ abstract class ColumnWriterBase implements ColumnWriter {
    * @return the number of bytes of memory used to buffer the current data and the previously written pages
    */
   long getTotalBufferedSize() {
-    long bloomBufferSize = bloomFilter == null ? 0 : bloomFilter.getBitsetSize();
     return repetitionLevelColumn.getBufferedSize()
         + definitionLevelColumn.getBufferedSize()
         + dataColumn.getBufferedSize()
-        + pageWriter.getMemSize()
-        + bloomBufferSize;
+        + pageWriter.getMemSize();
   }
 
   /**
    * @return actual memory used
    */
   long allocatedSize() {
-    long bloomAllocatedSize = bloomFilter == null ? 0 : bloomFilter.getBitsetSize();
     return repetitionLevelColumn.getAllocatedSize()
         + definitionLevelColumn.getAllocatedSize()
         + dataColumn.getAllocatedSize()
-        + pageWriter.allocatedSize()
-        + bloomAllocatedSize;
+        + pageWriter.allocatedSize();
   }
 
   /**

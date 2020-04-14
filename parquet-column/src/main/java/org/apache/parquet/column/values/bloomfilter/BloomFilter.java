@@ -37,29 +37,32 @@ public interface BloomFilter {
    * (see https://github.com/Cyan4973/xxHash).
    */
   enum HashStrategy {
-    XXH64(0);
-    HashStrategy(int value) {
-      this.value = value;
+    XXH64;
+
+    @Override
+    public String toString() {
+      return "xxhash";
     }
-    int value;
   }
 
   // Bloom filter algorithm.
   enum Algorithm {
-    BLOCK(0);
-    Algorithm(int value) {
-      this.value = value;
+    BLOCK;
+
+    @Override
+    public String toString() {
+      return "block";
     }
-    int value;
   }
 
   // Bloom filter compression.
   enum Compression {
-    UNCOMPRESSED(0);
-    Compression(int value) {
-      this.value = value;
+    UNCOMPRESSED;
+
+    @Override
+    public String toString() {
+      return "uncompressed";
     }
-    int value;
   }
 
   /**
@@ -91,7 +94,7 @@ public interface BloomFilter {
    *
    * @return The number of bytes for bitset in this Bloom filter.
    */
-  long getBitsetSize();
+  int getBitsetSize();
 
   /**
    * Compare this Bloom filter to the specified object.
@@ -148,4 +151,29 @@ public interface BloomFilter {
    * @return hash result
    */
   long hash(Object value);
+
+  // The boolean type is not supported because boolean type has only two values, while Bloom filter is
+  // suitable for high cardinality.
+  // long hash(Boolean value);
+
+  /**
+   * Return the hash strategy that the bloom filter apply.
+   *
+   * @return hash strategy that the bloom filter apply
+   */
+  HashStrategy getHashStrategy();
+
+  /**
+   * Return the algorithm that the bloom filter apply.
+   *
+   * @return algorithm that the bloom filter apply
+   */
+  Algorithm getAlgorithm();
+
+  /**
+   * Return the compress algorithm that the bloom filter apply.
+   *
+   * @return compress algorithm that the bloom filter apply
+   */
+  Compression getCompression();
 }

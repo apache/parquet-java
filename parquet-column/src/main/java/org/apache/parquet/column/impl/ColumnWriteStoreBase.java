@@ -118,7 +118,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      if (props.getBloomFilterColumnExpectedNDVs() != null) {
+      if (props.isBloomFilterEnabled(path)) {
         BloomFilterWriter bloomFilterWriter = bloomFilterWriteStore.getBloomFilterWriter(path);
         mcolumns.put(path, createColumnWriter(path, pageWriter, bloomFilterWriter, props));
       } else {
@@ -140,6 +140,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   abstract ColumnWriterBase createColumnWriter(ColumnDescriptor path, PageWriter pageWriter,
                                                BloomFilterWriter bloomFilterWriter, ParquetProperties props);
 
+  @Override
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
     return columnWriterProvider.getColumnWriter(path);
   }
@@ -188,6 +189,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     }
   }
 
+  @Override
   public String memUsageString() {
     StringBuilder b = new StringBuilder("Store {\n");
     for (ColumnWriterBase memColumn : columns.values()) {
@@ -238,7 +240,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       long rowsToFillPage =
           usedMem == 0 ?
               props.getMaxRowCountForPageSizeCheck()
-              : (long) ((float) rows) / usedMem * remainingMem;
+              : (long) rows / usedMem * remainingMem;
       if (rowsToFillPage < minRecordToWait) {
         minRecordToWait = rowsToFillPage;
       }

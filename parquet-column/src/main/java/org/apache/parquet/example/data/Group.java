@@ -70,6 +70,7 @@ abstract public class Group extends GroupValueSource {
     return addGroup(getType().getFieldIndex(field));
   }
 
+  @Override
   public Group getGroup(String field, int index) {
     return getGroup(getType().getFieldIndex(field), index);
   }
@@ -94,6 +95,7 @@ abstract public class Group extends GroupValueSource {
 
   abstract public Group addGroup(int fieldIndex);
 
+  @Override
   abstract public Group getGroup(int fieldIndex, int index);
 
   public Group asGroup() {
