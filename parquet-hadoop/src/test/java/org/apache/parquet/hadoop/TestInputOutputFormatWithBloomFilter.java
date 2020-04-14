@@ -53,6 +53,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 import static java.lang.Thread.sleep;
@@ -111,7 +112,10 @@ public class TestInputOutputFormatWithBloomFilter {
   @Test
   public void testBloomFilter() throws Exception {
 
-    final String[] EXPECTED_DISTINCT_NUMBERS = {"200", "50"};
+    final HashMap<String, String> expectedDistinctNumbers = new HashMap<String, String> () {{
+      put("uuid","200");
+      put("value","50");
+    }};
 
     HadoopOutputFile.getBlockFileSystems().add("file");
 
@@ -138,10 +142,11 @@ public class TestInputOutputFormatWithBloomFilter {
     conf.set("parquet.summary.metadata.level", "none");
     conf.set("parquet.example.schema", PARQUET_TYPE.toString());
 
-    {
-      conf.set("parquet.bloom.filter.column.names", "uuid,value");
-      conf.set("parquet.bloom.filter.expected.ndv", String.join(",", EXPECTED_DISTINCT_NUMBERS));
+    for (Map.Entry<String, String> entry : expectedDistinctNumbers.entrySet()) {
+      conf.set("parquet.bloom.filter.expected.ndv#" + entry.getKey(), entry.getValue());
+    }
 
+    {
       Job writeJob = new Job(conf, "writeWithBloomFilter");
       writeJob.setInputFormatClass(TextInputFormat.class);
       TextInputFormat.addInputPath(writeJob, new Path(inputFile.toString()));
@@ -154,14 +159,6 @@ public class TestInputOutputFormatWithBloomFilter {
       ParquetOutputFormat.setEnableDictionary(writeJob, false);
       ParquetOutputFormat.setMaxPaddingSize(writeJob, 1023); // always pad
       ParquetOutputFormat.setOutputPath(writeJob, tempPath);
-
-      // Check Bloom filter parameters
-      HashMap expectedParameter = new HashMap<String, Long>() {{
-        put("uuid", 200L);
-        put("value", 50L);
-      }};
-      Assert.assertTrue("Bloom filter parameter should be correct inside Hadoop conf.",
-        expectedParameter.equals(ParquetOutputFormat.getBloomFilterColumnExpectedNDVs(conf)));
 
       waitForJob(writeJob);
 
@@ -179,11 +176,11 @@ public class TestInputOutputFormatWithBloomFilter {
       int endBlock = rowCount + startBlock;
       int columnIndex = 0;
       for (ColumnChunkMetaData columnMetaData : block.getColumns()) {
-
-        Long expectedDistinctNumbers = Long.parseLong(EXPECTED_DISTINCT_NUMBERS[columnIndex]);
+        String columnPath = columnMetaData.getPath().toDotString();
+        Long expectedDNV = Long.parseLong(expectedDistinctNumbers.get(columnPath));
 
         // Build bloom filter from the generated data
-        BloomFilter expectedBloomFilter = buildBloomFilter(columnMetaData, startBlock, endBlock, columnIndex, expectedDistinctNumbers);
+        BloomFilter expectedBloomFilter = buildBloomFilter(columnMetaData, startBlock, endBlock, columnIndex, expectedDNV);
 
         // Read bloom filter from the parquet file
         BloomFilterReader bloomFilterReader = r.getBloomFilterDataReader(block);
