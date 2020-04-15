@@ -299,9 +299,6 @@ public class TestStatistics {
       if (stats.isEmpty()) {
         // stats are empty if num nulls = 0 and there are no non-null values
         // this happens if stats are not written (e.g., when stats are too big)
-        System.err.println(String.format(
-            "No stats written for page=%s col=%s",
-            page, Arrays.toString(desc.getPath())));
         return;
       }
 
@@ -317,12 +314,6 @@ public class TestStatistics {
       }
 
       Assert.assertEquals(numNulls, stats.getNumNulls());
-
-      System.err.println(String.format(
-          "Validated stats min=%s max=%s nulls=%d for page=%s col=%s",
-          stats.minAsString(),
-          stats.maxAsString(), stats.getNumNulls(), page,
-          Arrays.toString(desc.getPath())));
     }
   }
 
