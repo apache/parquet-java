@@ -32,13 +32,13 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
 
   private final byte[] ctrIV;
 
-  AesCtrDecryptor(byte[] keyBytes) throws IllegalArgumentException, IOException {
+  AesCtrDecryptor(byte[] keyBytes) {
     super(AesMode.CTR, keyBytes);
 
     try {
       cipher = Cipher.getInstance(AesMode.CTR.getCipherName());
     } catch (GeneralSecurityException e) {
-      throw new IOException("Failed to create CTR cipher", e);
+      throw new ParquetCryptoRuntimeException("Failed to create CTR cipher", e);
     }
     ctrIV = new byte[CTR_IV_LENGTH];
     // Setting last bit of initial CTR counter to 1
@@ -46,19 +46,18 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
   }
 
   @Override
-  public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD)  throws IOException {
+  public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD) {
     int cipherTextOffset = SIZE_LENGTH;
     int cipherTextLength = lengthAndCiphertext.length - SIZE_LENGTH;
 
     return decrypt(lengthAndCiphertext, cipherTextOffset, cipherTextLength, AAD);
   }
 
-  public byte[] decrypt(byte[] ciphertext, int cipherTextOffset, int cipherTextLength, 
-      byte[] AAD)  throws IOException {
+  public byte[] decrypt(byte[] ciphertext, int cipherTextOffset, int cipherTextLength, byte[] AAD) {
 
     int plainTextLength = cipherTextLength - NONCE_LENGTH;
     if (plainTextLength < 1) {
-      throw new IOException("Wrong input length " + plainTextLength);
+      throw new ParquetCryptoRuntimeException("Wrong input length " + plainTextLength);
     }
 
     // Get the nonce from ciphertext
@@ -82,22 +81,27 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
 
       cipher.doFinal(ciphertext, inputOffset, inputLength, plainText, outputOffset);
     } catch (GeneralSecurityException e) {
-      throw new IOException("Failed to decrypt", e);
+      throw new ParquetCryptoRuntimeException("Failed to decrypt", e);
     }
 
     return plainText;
   }
 
   @Override
-  public byte[] decrypt(InputStream from, byte[] AAD) throws IOException {
+  public byte[] decrypt(InputStream from, byte[] AAD) {
     byte[] lengthBuffer = new byte[SIZE_LENGTH];
     int gotBytes = 0;
 
     // Read the length of encrypted Thrift structure
     while (gotBytes < SIZE_LENGTH) {
-      int n = from.read(lengthBuffer, gotBytes, SIZE_LENGTH - gotBytes);
+      int n;
+      try {
+        n = from.read(lengthBuffer, gotBytes, SIZE_LENGTH - gotBytes);
+      } catch (IOException e) {
+        throw new ParquetCryptoRuntimeException(e);
+      }
       if (n <= 0) {
-        throw new IOException("Tried to read int (4 bytes), but only got " + gotBytes + " bytes.");
+        throw new ParquetCryptoRuntimeException("Tried to read int (4 bytes), but only got " + gotBytes + " bytes.");
       }
       gotBytes += n;
     }
@@ -109,16 +113,21 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
         ((lengthBuffer[0] & 0xff));
 
     if (ciphertextLength < 1) {
-      throw new IOException("Wrong length of encrypted metadata: " + ciphertextLength);
+      throw new ParquetCryptoRuntimeException("Wrong length of encrypted metadata: " + ciphertextLength);
     }
 
     // Read the encrypted structure contents
     byte[] ciphertextBuffer = new byte[ciphertextLength];
     gotBytes = 0;
     while (gotBytes < ciphertextLength) {
-      int n = from.read(ciphertextBuffer, gotBytes, ciphertextLength - gotBytes);
+      int n;
+      try {
+        n = from.read(ciphertextBuffer, gotBytes, ciphertextLength - gotBytes);
+      } catch (IOException e) {
+        throw new ParquetCryptoRuntimeException(e);
+      }
       if (n <= 0) {
-        throw new IOException("Tried to read " + ciphertextLength + 
+        throw new ParquetCryptoRuntimeException("Tried to read " + ciphertextLength + 
             " bytes, but only got " + gotBytes + " bytes.");
       }
       gotBytes += n;

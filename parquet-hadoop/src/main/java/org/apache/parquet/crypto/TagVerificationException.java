@@ -19,20 +19,21 @@
 
 package org.apache.parquet.crypto;
 
-import org.apache.parquet.ParquetRuntimeException;
 
-/**
- * Reader doesn't have key for encrypted column,
- * but tries to access its contents
- */
-public class HiddenColumnException extends ParquetRuntimeException {
+public class TagVerificationException extends ParquetCryptoRuntimeException {
   private static final long serialVersionUID = 1L;
 
-  public HiddenColumnException(String string) {
-    super(string);
+  public TagVerificationException() {}
+
+  public TagVerificationException(String message, Throwable cause) {
+    super(message, cause);
   }
 
-  public HiddenColumnException(String string, Exception e) {
-    super(string, e);
+  public TagVerificationException(String message) {
+    super(message);
+  }
+
+  public TagVerificationException(Throwable cause) {
+    super(cause);
   }
 }

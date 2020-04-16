@@ -24,7 +24,6 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 
-import java.io.IOException;
 import java.security.SecureRandom;
 
 public class AesCipher {
@@ -44,7 +43,7 @@ public class AesCipher {
   protected Cipher cipher;
   protected final byte[] localNonce;
 
-  AesCipher(AesMode mode, byte[] keyBytes) throws IllegalArgumentException, IOException {
+  AesCipher(AesMode mode, byte[] keyBytes) {
     if (null == keyBytes) {
       throw new IllegalArgumentException("Null key bytes");
     }
@@ -67,7 +66,7 @@ public class AesCipher {
   }
 
   public static byte[] createModuleAAD(byte[] fileAAD, ModuleType moduleType, 
-      short rowGroupOrdinal, short columnOrdinal, short pageOrdinal) throws IllegalArgumentException {
+      short rowGroupOrdinal, short columnOrdinal, short pageOrdinal) {
     
     byte[] typeOrdinalBytes = new byte[1];
     typeOrdinalBytes[0] = moduleType.getValue();
@@ -102,7 +101,7 @@ public class AesCipher {
   }
 
   // Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
-  public static void quickUpdatePageAAD(byte[] pageAAD, short newPageOrdinal) throws IllegalArgumentException {
+  public static void quickUpdatePageAAD(byte[] pageAAD, short newPageOrdinal) {
     if (newPageOrdinal < 0) {
       throw new IllegalArgumentException("Wrong page ordinal: " + newPageOrdinal);
     }

@@ -19,6 +19,7 @@
 
 package org.apache.parquet.crypto;
 
+import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 
@@ -30,31 +31,29 @@ import java.security.GeneralSecurityException;
 
 public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
 
-
-  AesGcmDecryptor(byte[] keyBytes) throws IllegalArgumentException, IOException {
+  AesGcmDecryptor(byte[] keyBytes) {
     super(AesMode.GCM, keyBytes);
 
     try {
       cipher = Cipher.getInstance(AesMode.GCM.getCipherName());
     } catch (GeneralSecurityException e) {
-      throw new IOException("Failed to create GCM cipher", e);
+      throw new ParquetCryptoRuntimeException("Failed to create GCM cipher", e);
     }
   }
 
   @Override
-  public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD)  throws IOException {
+  public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD)  {
     int cipherTextOffset = SIZE_LENGTH;
     int cipherTextLength = lengthAndCiphertext.length - SIZE_LENGTH;
 
     return decrypt(lengthAndCiphertext, cipherTextOffset, cipherTextLength, AAD);
   }
 
-  public byte[] decrypt(byte[] ciphertext, int cipherTextOffset, int cipherTextLength, byte[] AAD)  
-      throws IOException {
+  public byte[] decrypt(byte[] ciphertext, int cipherTextOffset, int cipherTextLength, byte[] AAD) { 
 
     int plainTextLength = cipherTextLength - GCM_TAG_LENGTH - NONCE_LENGTH;
     if (plainTextLength < 1) {
-      throw new IOException("Wrong input length " + plainTextLength);
+      throw new ParquetCryptoRuntimeException("Wrong input length " + plainTextLength);
     }
 
     // Get the nonce from ciphertext
@@ -70,23 +69,30 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
       if (null != AAD) cipher.updateAAD(AAD);
 
       cipher.doFinal(ciphertext, inputOffset, inputLength, plainText, outputOffset);
-    }  catch (GeneralSecurityException e) {
-      throw new IOException("Failed to decrypt", e);
+    }  catch (AEADBadTagException e) {
+      throw new TagVerificationException("GCM tag check failed", e);
+    } catch (GeneralSecurityException e) {
+      throw new ParquetCryptoRuntimeException("Failed to decrypt", e);
     }
 
     return plainText;
   }
 
   @Override
-  public byte[] decrypt(InputStream from, byte[] AAD) throws IOException {
+  public byte[] decrypt(InputStream from, byte[] AAD) {
     byte[] lengthBuffer = new byte[SIZE_LENGTH];
     int gotBytes = 0;
 
     // Read the length of encrypted Thrift structure
     while (gotBytes < SIZE_LENGTH) {
-      int n = from.read(lengthBuffer, gotBytes, SIZE_LENGTH - gotBytes);
+      int n;
+      try {
+        n = from.read(lengthBuffer, gotBytes, SIZE_LENGTH - gotBytes);
+      } catch (IOException e) {
+        throw new ParquetCryptoRuntimeException(e);
+      }
       if (n <= 0) {
-        throw new IOException("Tried to read int (4 bytes), but only got " + gotBytes + " bytes.");
+        throw new ParquetCryptoRuntimeException("Tried to read int (4 bytes), but only got " + gotBytes + " bytes.");
       }
       gotBytes += n;
     }
@@ -98,16 +104,21 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
         ((lengthBuffer[0] & 0xff));
 
     if (ciphertextLength < 1) {
-      throw new IOException("Wrong length of encrypted metadata: " + ciphertextLength);
+      throw new ParquetCryptoRuntimeException("Wrong length of encrypted metadata: " + ciphertextLength);
     }
 
     byte[] ciphertextBuffer = new byte[ciphertextLength];
     gotBytes = 0;
     // Read the encrypted structure contents
     while (gotBytes < ciphertextLength) {
-      int n = from.read(ciphertextBuffer, gotBytes, ciphertextLength - gotBytes);
+      int n;
+      try {
+        n = from.read(ciphertextBuffer, gotBytes, ciphertextLength - gotBytes);
+      } catch (IOException e) {
+        throw new ParquetCryptoRuntimeException(e);
+      }
       if (n <= 0) {
-        throw new IOException("Tried to read " + ciphertextLength + " bytes, but only got " + gotBytes + " bytes.");
+        throw new ParquetCryptoRuntimeException("Tried to read " + ciphertextLength + " bytes, but only got " + gotBytes + " bytes.");
       }
       gotBytes += n;
     }

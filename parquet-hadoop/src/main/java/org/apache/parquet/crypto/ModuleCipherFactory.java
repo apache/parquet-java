@@ -21,8 +21,6 @@ package org.apache.parquet.crypto;
 
 import org.apache.parquet.format.BlockCipher;
 
-import java.io.IOException;
-
 public class ModuleCipherFactory {
 
   // Parquet Module types
@@ -51,8 +49,7 @@ public class ModuleCipherFactory {
 
   public static final int SIZE_LENGTH = 4;
 
-  public static BlockCipher.Encryptor getEncryptor(AesMode mode, byte[] keyBytes) 
-      throws IllegalArgumentException, IOException {
+  public static BlockCipher.Encryptor getEncryptor(AesMode mode, byte[] keyBytes) {
     switch (mode) {
     case GCM:
       return new AesGcmEncryptor(keyBytes);
@@ -63,8 +60,7 @@ public class ModuleCipherFactory {
     }
   }
 
-  public static BlockCipher.Decryptor getDecryptor(AesMode mode, byte[] keyBytes) 
-      throws IllegalArgumentException, IOException {
+  public static BlockCipher.Decryptor getDecryptor(AesMode mode, byte[] keyBytes) {
     switch (mode) {
     case GCM:
       return new AesGcmDecryptor(keyBytes);
