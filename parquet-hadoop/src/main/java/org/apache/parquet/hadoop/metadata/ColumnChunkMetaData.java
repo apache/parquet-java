@@ -31,10 +31,10 @@ import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.crypto.AesCipher;
-import org.apache.parquet.crypto.HiddenColumnException;
 import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
@@ -601,16 +601,13 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
     if (decrypted) return;
 
     if (null == fileDecryptor) {
-      throw new HiddenColumnException(path + ". Null File Decryptor");
+      throw new ParquetCryptoRuntimeException(path + ". Null File Decryptor");
     }
 
     // Decrypt the ColumnMetaData
-    InternalColumnDecryptionSetup columnDecryptionSetup;
-    try {
-      columnDecryptionSetup = fileDecryptor.setColumnCryptoMetadata(path, true, false, columnKeyMetadata, columnOrdinal);
-    } catch (IOException e) {
-      throw new HiddenColumnException(path + ". Failed to setup column metadata decryption", e);
-    }
+    InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.setColumnCryptoMetadata(path, true, false, 
+        columnKeyMetadata, columnOrdinal);
+    
 
     ColumnMetaData metaData;
     ByteArrayInputStream tempInputStream = new ByteArrayInputStream(encryptedMetadata);
@@ -619,7 +616,7 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
     try {
       metaData = readColumnMetaData(tempInputStream, columnDecryptionSetup.getMetaDataDecryptor(), columnMetaDataAAD);
     } catch (IOException e) {
-      throw new HiddenColumnException(path + ". Failed to decrypt column metadata", e);
+      throw new ParquetCryptoRuntimeException(path + ". Failed to decrypt column metadata", e);
     }
     decrypted = true;
     shadowColumnChunkMetaData = parquetMetadataConverter.buildColumnChunkMetaData(metaData, path, primitiveType, createdBy);

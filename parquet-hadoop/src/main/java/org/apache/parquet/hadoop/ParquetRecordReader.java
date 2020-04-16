@@ -37,7 +37,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.Encoding;
-import org.apache.parquet.crypto.HiddenColumnException;
+import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -191,8 +191,8 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       for (ColumnChunkMetaData column : block.getColumns()) {
         try {
           encodings.addAll(column.getEncodings());
-        } catch (HiddenColumnException e) {
-          LOG.warn("checkDeltaByteArrayProblem: Bypass column {} because it is hidden so encodings cannot be read", column);
+        } catch (KeyAccessDeniedException e) {
+          LOG.warn("checkDeltaByteArrayProblem: Bypass encrypted column {} because key unavailable", column);
         }
       }
       for (Encoding encoding : encodings) {

@@ -56,6 +56,7 @@ import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
+import org.apache.parquet.crypto.TagVerificationException;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.BloomFilterAlgorithm;
 import org.apache.parquet.format.BloomFilterCompression;
@@ -1295,7 +1296,7 @@ public class ParquetMetadataConverter {
     System.arraycopy(encryptedFooterBytes, encryptedFooterBytes.length - AesCipher.GCM_TAG_LENGTH, 
         calculatedTag, 0, AesCipher.GCM_TAG_LENGTH);
     if (!Arrays.equals(gcmTag, calculatedTag)) {
-      throw new IOException("Signature mismatch in plaintext footer");
+      throw new TagVerificationException("Signature mismatch in plaintext footer");
     }
   }
 

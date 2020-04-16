@@ -40,7 +40,7 @@ public final class FileMetaData implements Serializable {
 
   private final String createdBy;
   
-  private InternalFileDecryptor fileDecryptor;
+  private final InternalFileDecryptor fileDecryptor;
 
   /**
    * @param schema the schema for the file
@@ -50,11 +50,7 @@ public final class FileMetaData implements Serializable {
    * @throws NullPointerException if schema or keyValueMetaData is {@code null}
    */
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy) {
-    super();
-    this.schema = Objects.requireNonNull(schema, "schema cannot be null");
-    this.keyValueMetaData = unmodifiableMap(Objects
-        .requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
-    this.createdBy = createdBy;
+    this(schema, keyValueMetaData, createdBy, null);
   }
   
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy, InternalFileDecryptor fileDecryptor) {

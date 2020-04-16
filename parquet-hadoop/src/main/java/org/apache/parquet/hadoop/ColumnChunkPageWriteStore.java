@@ -44,7 +44,6 @@ import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
 import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
-import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
@@ -434,14 +433,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
       columnOrdinal++;
       BlockCipher.Encryptor headerBlockEncryptor = null;
       BlockCipher.Encryptor pageBlockEncryptor = null;
-
       ColumnPath columnPath = ColumnPath.get(path.getPath());
-      InternalColumnEncryptionSetup columnSetup;
-      try {
-        columnSetup = fileEncryptor.getColumnSetup(columnPath, true, columnOrdinal);
-      } catch (IOException e) {
-        throw new ParquetCryptoRuntimeException("Failed to get encryption setup for column " + columnPath, e);
-      }
+      
+      InternalColumnEncryptionSetup columnSetup = fileEncryptor.getColumnSetup(columnPath, true, columnOrdinal);
       if (columnSetup.isEncrypted()) {
         headerBlockEncryptor = columnSetup.getMetaDataEncryptor();
         pageBlockEncryptor = columnSetup.getDataEncryptor();
