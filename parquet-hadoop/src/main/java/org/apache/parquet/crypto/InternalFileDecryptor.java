@@ -94,7 +94,7 @@ public class InternalFileDecryptor {
     return columnDecryptionSetup;
   }
 
-  public BlockCipher.Decryptor getFooterDecryptor() {
+  public BlockCipher.Decryptor fetchFooterDecryptor() {
     if (!fileCryptoMetaDataProcessed) {
       throw new ParquetCryptoRuntimeException("Haven't parsed the file crypto metadata yet");
     }
@@ -269,7 +269,7 @@ public class InternalFileDecryptor {
     return this.fileAAD;
   }
 
-  public AesGcmEncryptor getSignedFooterEncryptor() {
+  public AesGcmEncryptor createSignedFooterEncryptor() {
     if (!fileCryptoMetaDataProcessed) {
       throw new ParquetCryptoRuntimeException("Haven't parsed the file crypto metadata yet");
     }

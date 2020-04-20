@@ -1777,4 +1777,3 @@ public class ParquetFileReader implements Closeable {
     }
   }
 }
-

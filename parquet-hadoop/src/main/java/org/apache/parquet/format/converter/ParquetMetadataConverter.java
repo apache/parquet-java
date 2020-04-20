@@ -1283,7 +1283,7 @@ public class ParquetMetadataConverter {
     byte[] gcmTag = new byte[AesCipher.GCM_TAG_LENGTH];
     from.read(gcmTag);
     
-    AesGcmEncryptor footerSigner =  fileDecryptor.getSignedFooterEncryptor();
+    AesGcmEncryptor footerSigner =  fileDecryptor.createSignedFooterEncryptor();
     
     byte[] footerAndSignature = ((ByteBufferInputStream) from).slice(0).array();
     int footerSignatureLength = AesCipher.NONCE_LENGTH + AesCipher.GCM_TAG_LENGTH;
@@ -1308,7 +1308,7 @@ public class ParquetMetadataConverter {
       final InternalFileDecryptor fileDecryptor, final boolean encryptedFooter, 
       final int combinedFooterLength) throws IOException {
     
-    final BlockCipher.Decryptor footerDecryptor = (encryptedFooter? fileDecryptor.getFooterDecryptor() : null);
+    final BlockCipher.Decryptor footerDecryptor = (encryptedFooter? fileDecryptor.fetchFooterDecryptor() : null);
     final byte[] encryptedFooterAAD = (encryptedFooter? AesCipher.createFooterAAD(fileDecryptor.getFileAAD()) : null);
     
     FileMetaData fileMetaData = filter.accept(new MetadataFilterVisitor<FileMetaData, IOException>() {
