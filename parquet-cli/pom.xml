@@ -59,6 +59,11 @@
       <version>${opencsv.version}</version>
     </dependency>
     <dependency>
+       <groupId>org.apache.commons</groupId>
+       <artifactId>commons-text</artifactId>
+       <version>${commons-text.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-jackson</artifactId>
       <version>${project.version}</version>

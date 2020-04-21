@@ -20,7 +20,8 @@
 package org.apache.parquet.cli.csv;
 
 import javax.annotation.concurrent.Immutable;
-import org.apache.commons.lang.StringEscapeUtils;
+
+import org.apache.commons.text.StringEscapeUtils;
 
 @Immutable
 public class CSVProperties {
@@ -62,23 +63,31 @@ public class CSVProperties {
     private int linesToSkip = DEFAULT_LINES_TO_SKIP;
     private String header = null;
 
+    private static String unescapeJava(String str) {
+      // StringEscapeUtils removes the single escape character
+      if (str == "\\") {
+        return str;
+      }
+      return StringEscapeUtils.unescapeJava(str);
+    }
+
     public Builder charset(String charset) {
       this.charset = charset;
       return this;
     }
 
     public Builder delimiter(String delimiter) {
-      this.delimiter = StringEscapeUtils.unescapeJava(delimiter);
+      this.delimiter = unescapeJava(delimiter);
       return this;
     }
 
     public Builder quote(String quote) {
-      this.quote = StringEscapeUtils.unescapeJava(quote);
+      this.quote = unescapeJava(quote);
       return this;
     }
 
     public Builder escape(String escape) {
-      this.escape = StringEscapeUtils.unescapeJava(escape);
+      this.escape = unescapeJava(escape);
       return this;
     }
 
