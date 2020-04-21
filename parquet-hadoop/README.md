@@ -60,7 +60,7 @@ If it is `true`, it similar to `parquet.summary.metadata.level` with `all`. If i
 **Property:** `parquet.block.size`  
 **Description:** The block size in bytes. This property depends on the file system:
 
-- If the file system (FS) used supports blocks like HDFS, the block size will be the maximum between the default block size of FS and this property. And the row group size will be equals to this property.  
+- If the file system (FS) used supports blocks like HDFS, the block size will be the maximum between the default block size of FS and this property. And the row group size will be equal to this property.  
   - block_size = max(default_fs_block_size, parquet.block.size)  
   - row_group_size = parquet.block.size`
 
@@ -158,13 +158,19 @@ This property should be between 0 and 1.
 ---
 
 **Property:** `parquet.page.size.row.check.min`  
-**Description:** The minimum number of row per page.  
+**Description:** The frequency of checks of the page size limit will be between
+`parquet.page.size.row.check.min` and `parquet.page.size.row.check.max`.  
+If the frequency is high, the page size will be accurate.  
+If the frequency is low, the performance will be better.
 **Default value:** `100`
 
 ---
 
 **Property:** `parquet.page.size.row.check.max`  
-**Description:** The frequency of checks of the page size limit. In other words, we perform the checking after each `parquet.page.size.row.check.max` rows.  
+**Description:** The frequency of checks of the page size limit will be between
+`parquet.page.size.row.check.min` and `parquet.page.size.row.check.max`.  
+If the frequency is high, the page size will be accurate.  
+If the frequency is low, the performance will be better.
 **Default value:** `10000`
 
 ---
@@ -247,11 +253,14 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 ---
 
  **Property:** `parquet.private.read.filter.predicate`  
- **Description:** The filter class used in the new filter API in the package `org.apache.parquet.filter2.predicate`
- Note that this class should implements `org.apache.parquet.filter2..FilterPredicate` and the value of this property should be a gzip compressed base64 encoded java serialized object.  
+ **Description:** The filter object used in the new filter API in the package `org.apache.parquet.filter2.predicate`
+ Note that this object should implements `org.apache.parquet.filter2.FilterPredicate` and the value of this property should be a gzip compressed base64 encoded java serialized object.  
  The new filter API can filter records or filter entire row groups of records without reading them at all.
 
-**Note:** User should either use the old filter API (`parquet.read.filter`) or the new one (`parquet.private.read.filter.predicate`).
+**Notes:**
+- User should either use the old filter API (`parquet.read.filter`) or the new one (`parquet.private.read.filter.predicate`). It is recommended to use the new API.
+- It is also recommended to set the filter manually with [ParquetInputFormat.setFilterPredicate](https://github.com/apache/parquet-mr/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetInputFormat.java#L217-L227) instead of setting this property.
+- The property `parquet.private.read.filter.predicate.human.readable` contains the filter in a human readable format. It is used only for debugging.
 
 ---
 
