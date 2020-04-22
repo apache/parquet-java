@@ -21,7 +21,8 @@ package org.apache.parquet.filter2.dictionarylevel;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import org.apache.commons.lang.ArrayUtils;
+import com.google.common.primitives.Ints;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -524,7 +525,7 @@ public class DictionaryFilterTest {
   public void testInverseUdp() throws Exception {
     InInt32UDP droppable = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
-    Set<Integer> allValues = ImmutableSet.copyOf(Arrays.asList(ArrayUtils.toObject(intValues)));
+    Set<Integer> allValues = ImmutableSet.copyOf(Ints.asList(intValues));
     InInt32UDP completeMatch = new InInt32UDP(allValues);
 
     FilterPredicate inverse =
