@@ -1143,7 +1143,7 @@ public class ParquetFileReader implements Closeable {
    * @return an uncompressed DictionaryPage or null
    * @throws IOException if there is an error while reading the dictionary
    */
-  DictionaryPage readDictionary(ColumnChunkMetaData meta) throws IOException { 
+  DictionaryPage readDictionary(ColumnChunkMetaData meta) throws IOException {
     if (!meta.getEncodings().contains(Encoding.PLAIN_DICTIONARY) &&
         !meta.getEncodings().contains(Encoding.RLE_DICTIONARY)) {
       return null;
@@ -1230,7 +1230,7 @@ public class ParquetFileReader implements Closeable {
   public BloomFilter readBloomFilter(ColumnChunkMetaData meta) throws IOException {
     long bloomFilterOffset = meta.getBloomFilterOffset();
 
-    if (0 == bloomFilterOffset) { // TODO Jinjie - is there a better way to handle this?
+    if (0 == bloomFilterOffset) { // TODO Junjie - is there a better way to handle this?
       return null;
     }
 
@@ -1491,7 +1491,7 @@ public class ParquetFileReader implements Closeable {
             pageBytes = this.readAsBytesInput(compressedPageSize);
             if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
               verifyCrc(pageHeader.getCrc(), pageBytes.toByteArray(),
-                  "could not verify dictionary page integrity, CRC checksum verification failed");
+                "could not verify dictionary page integrity, CRC checksum verification failed");
             }
             DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
             dictionaryPage =
@@ -1511,19 +1511,19 @@ public class ParquetFileReader implements Closeable {
             pageBytes = this.readAsBytesInput(compressedPageSize);
             if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
               verifyCrc(pageHeader.getCrc(), pageBytes.toByteArray(),
-                  "could not verify page integrity, CRC checksum verification failed");
+                "could not verify page integrity, CRC checksum verification failed");
             }
             DataPageV1 dataPageV1 = new DataPageV1(
-                pageBytes,
-                dataHeaderV1.getNum_values(),
-                uncompressedPageSize,
-                converter.fromParquetStatistics(
-                    getFileMetaData().getCreatedBy(),
-                    dataHeaderV1.getStatistics(),
-                    type),
-                converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
-                converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
-                converter.getEncoding(dataHeaderV1.getEncoding()));
+              pageBytes,
+              dataHeaderV1.getNum_values(),
+              uncompressedPageSize,
+              converter.fromParquetStatistics(
+                getFileMetaData().getCreatedBy(),
+                dataHeaderV1.getStatistics(),
+                type),
+              converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
+              converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
+              converter.getEncoding(dataHeaderV1.getEncoding()));
             // Copy crc to new page, used for testing
             if (pageHeader.isSetCrc()) {
               dataPageV1.setCrc(pageHeader.getCrc());
