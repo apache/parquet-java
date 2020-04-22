@@ -730,7 +730,7 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public ParquetFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks,
-      List<ColumnDescriptor> columns) throws IOException {
+                           List<ColumnDescriptor> columns) throws IOException {
     this(configuration, null, filePath, blocks, columns);
   }
 
@@ -1266,9 +1266,9 @@ public class ParquetFileReader implements Closeable {
     }
 
     if (!bloomFilterHeader.getHash().isSetXXHASH() || !bloomFilterHeader.getAlgorithm().isSetBLOCK()
-        || !bloomFilterHeader.getCompression().isSetUNCOMPRESSED()) {
+      || !bloomFilterHeader.getCompression().isSetUNCOMPRESSED()) {
       LOG.warn("the read bloom filter is not supported yet,  algorithm = {}, hash = {}, compression = {}",
-          bloomFilterHeader.getAlgorithm(), bloomFilterHeader.getHash(), bloomFilterHeader.getCompression());
+        bloomFilterHeader.getAlgorithm(), bloomFilterHeader.getHash(), bloomFilterHeader.getCompression());
       return null;
     }
 
@@ -1483,90 +1483,90 @@ public class ParquetFileReader implements Closeable {
         int compressedPageSize = pageHeader.getCompressed_page_size();
         final BytesInput pageBytes;
         switch (pageHeader.type) {
-        case DICTIONARY_PAGE:
-          // there is only one dictionary page per column chunk
-          if (dictionaryPage != null) {
-            throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
-          }
-          pageBytes = this.readAsBytesInput(compressedPageSize);
-          if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
-            verifyCrc(pageHeader.getCrc(), pageBytes.toByteArray(),
-                "could not verify dictionary page integrity, CRC checksum verification failed");
-          }
-          DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
-          dictionaryPage =
-              new DictionaryPage(
-                  pageBytes,
-                  uncompressedPageSize,
-                  dicHeader.getNum_values(),
-                  converter.getEncoding(dicHeader.getEncoding())
-                  );
-          // Copy crc to new page, used for testing
-          if (pageHeader.isSetCrc()) {
-            dictionaryPage.setCrc(pageHeader.getCrc());
-          }
-          break;
-        case DATA_PAGE:
-          DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
-          pageBytes = this.readAsBytesInput(compressedPageSize);
-          if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
-            verifyCrc(pageHeader.getCrc(), pageBytes.toByteArray(),
-                "could not verify page integrity, CRC checksum verification failed");
-          }
-          DataPageV1 dataPageV1 = new DataPageV1(
-              pageBytes,
-              dataHeaderV1.getNum_values(),
-              uncompressedPageSize,
-              converter.fromParquetStatistics(
-                  getFileMetaData().getCreatedBy(),
-                  dataHeaderV1.getStatistics(),
-                  type),
-              converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
-              converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
-              converter.getEncoding(dataHeaderV1.getEncoding()));
-          // Copy crc to new page, used for testing
-          if (pageHeader.isSetCrc()) {
-            dataPageV1.setCrc(pageHeader.getCrc());
-          }
-          pagesInChunk.add(dataPageV1);
-          valuesCountReadSoFar += dataHeaderV1.getNum_values();
-          ++dataPageCountReadSoFar;
-          break;
-        case DATA_PAGE_V2:
-          DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
-          int dataSize = compressedPageSize - dataHeaderV2.getRepetition_levels_byte_length() - dataHeaderV2.getDefinition_levels_byte_length();
-          pagesInChunk.add(
-              new DataPageV2(
-                  dataHeaderV2.getNum_rows(),
-                  dataHeaderV2.getNum_nulls(),
-                  dataHeaderV2.getNum_values(),
-                  this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length()),
-                  this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length()),
-                  converter.getEncoding(dataHeaderV2.getEncoding()),
-                  this.readAsBytesInput(dataSize),
-                  uncompressedPageSize,
-                  converter.fromParquetStatistics(
-                      getFileMetaData().getCreatedBy(),
-                      dataHeaderV2.getStatistics(),
-                      type),
-                  dataHeaderV2.isIs_compressed()
-                  ));
-          valuesCountReadSoFar += dataHeaderV2.getNum_values();
-          ++dataPageCountReadSoFar;
-          break;
-        default:
-          LOG.debug("skipping page of type {} of size {}", pageHeader.getType(), compressedPageSize);
-          stream.skipFully(compressedPageSize);
-          break;
+          case DICTIONARY_PAGE:
+            // there is only one dictionary page per column chunk
+            if (dictionaryPage != null) {
+              throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
+            }
+            pageBytes = this.readAsBytesInput(compressedPageSize);
+            if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
+              verifyCrc(pageHeader.getCrc(), pageBytes.toByteArray(),
+                  "could not verify dictionary page integrity, CRC checksum verification failed");
+            }
+            DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
+            dictionaryPage =
+                new DictionaryPage(
+                    pageBytes,
+                    uncompressedPageSize,
+                    dicHeader.getNum_values(),
+                    converter.getEncoding(dicHeader.getEncoding())
+                    );
+            // Copy crc to new page, used for testing
+            if (pageHeader.isSetCrc()) {
+              dictionaryPage.setCrc(pageHeader.getCrc());
+            }
+            break;
+          case DATA_PAGE:
+            DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
+            pageBytes = this.readAsBytesInput(compressedPageSize);
+            if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
+              verifyCrc(pageHeader.getCrc(), pageBytes.toByteArray(),
+                  "could not verify page integrity, CRC checksum verification failed");
+            }
+            DataPageV1 dataPageV1 = new DataPageV1(
+                pageBytes,
+                dataHeaderV1.getNum_values(),
+                uncompressedPageSize,
+                converter.fromParquetStatistics(
+                    getFileMetaData().getCreatedBy(),
+                    dataHeaderV1.getStatistics(),
+                    type),
+                converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
+                converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
+                converter.getEncoding(dataHeaderV1.getEncoding()));
+            // Copy crc to new page, used for testing
+            if (pageHeader.isSetCrc()) {
+              dataPageV1.setCrc(pageHeader.getCrc());
+            }
+            pagesInChunk.add(dataPageV1);
+            valuesCountReadSoFar += dataHeaderV1.getNum_values();
+            ++dataPageCountReadSoFar;
+            break;
+          case DATA_PAGE_V2:
+            DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
+            int dataSize = compressedPageSize - dataHeaderV2.getRepetition_levels_byte_length() - dataHeaderV2.getDefinition_levels_byte_length();
+            pagesInChunk.add(
+                new DataPageV2(
+                    dataHeaderV2.getNum_rows(),
+                    dataHeaderV2.getNum_nulls(),
+                    dataHeaderV2.getNum_values(),
+                    this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length()),
+                    this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length()),
+                    converter.getEncoding(dataHeaderV2.getEncoding()),
+                    this.readAsBytesInput(dataSize),
+                    uncompressedPageSize,
+                    converter.fromParquetStatistics(
+                        getFileMetaData().getCreatedBy(),
+                        dataHeaderV2.getStatistics(),
+                        type),
+                    dataHeaderV2.isIs_compressed()
+                    ));
+            valuesCountReadSoFar += dataHeaderV2.getNum_values();
+            ++dataPageCountReadSoFar;
+            break;
+          default:
+            LOG.debug("skipping page of type {} of size {}", pageHeader.getType(), compressedPageSize);
+            stream.skipFully(compressedPageSize);
+            break;
         }
       }
       if (offsetIndex == null && valuesCountReadSoFar != descriptor.metadata.getValueCount()) {
         // Would be nice to have a CorruptParquetFileException or something as a subclass?
         throw new IOException(
             "Expected " + descriptor.metadata.getValueCount() + " values in column chunk at " +
-                getPath() + " offset " + descriptor.metadata.getFirstDataPageOffset() +
-                " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
-                + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
+            getPath() + " offset " + descriptor.metadata.getFirstDataPageOffset() +
+            " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
+            + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex,
@@ -1777,3 +1777,4 @@ public class ParquetFileReader implements Closeable {
     }
   }
 }
+
