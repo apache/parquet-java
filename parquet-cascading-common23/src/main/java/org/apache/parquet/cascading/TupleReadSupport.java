@@ -19,11 +19,11 @@
 package org.apache.parquet.cascading;
 
 import java.util.Map;
+import java.util.StringJoiner;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.commons.lang.StringUtils;
 
 import cascading.tuple.Tuple;
 import cascading.tuple.Fields;
@@ -44,7 +44,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     if(fieldsString == null)
       return Fields.ALL;
 
-    String[] parts = StringUtils.split(fieldsString, ":");
+    String[] parts = fieldsString.split(":");
     if(parts.length == 0)
       return Fields.ALL;
     else
@@ -52,8 +52,9 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   }
 
   static protected void setRequestedFields(JobConf configuration, Fields fields) {
-    String fieldsString = StringUtils.join(fields.iterator(), ":");
-    configuration.set(PARQUET_CASCADING_REQUESTED_FIELDS, fieldsString);
+    StringJoiner joiner = new StringJoiner(":");
+    fields.forEach(f -> joiner.add(f.toString()));
+    configuration.set(PARQUET_CASCADING_REQUESTED_FIELDS, joiner.toString());
   }
 
   @Override

@@ -76,13 +76,13 @@
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <jackson.version>2.9.10</jackson.version>
-    <jackson-databind.version>2.9.10</jackson-databind.version>
+    <jackson-databind.version>2.9.10.4</jackson-databind.version>
     <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.7.3</hadoop.version>
     <cascading.version>2.7.1</cascading.version>
     <cascading3.version>3.1.2</cascading3.version>
-    <parquet.format.version>2.7.0</parquet.format.version>
+    <parquet.format.version>2.8.0</parquet.format.version>
     <previous.version>1.11.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>thrift</format.thrift.executable>
@@ -99,16 +99,22 @@
     <fastutil.version>8.2.3</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
-    <avro.version>1.9.1</avro.version>
+    <avro.version>1.9.2</avro.version>
     <guava.version>27.0.1-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
+    <net.openhft.version>0.9</net.openhft.version>
     <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.72</jcommander.version>
     <zstd-jni.version>1.4.0-1</zstd-jni.version>
+    <commons-text.version>1.8</commons-text.version>
+
+    <!-- properties for the profiles -->
+    <surefire.argLine>-Xmx512m</surefire.argLine>
+    <surefire.logLevel>INFO</surefire.logLevel>
   </properties>
 
   <modules>
@@ -178,6 +184,7 @@
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
           <source>8</source>
+          <quiet>true</quiet>
         </configuration>
       </plugin>
       <plugin>
@@ -269,6 +276,7 @@
                   <includes>
                     <include>${jackson.groupId}:*</include>
                     <include>it.unimi.dsi:fastutil</include>
+                    <include>net.openhft:*</include>
                   </includes>
                 </artifactSet>
                 <!-- Shade jackson but do not include any class. Let parquet-jackson handle this -->
@@ -288,6 +296,10 @@
                   <relocation>
                     <pattern>it.unimi.dsi</pattern>
                     <shadedPattern>${shade.prefix}.it.unimi.dsi</shadedPattern>
+                  </relocation>
+                  <relocation>
+                    <pattern>net.openhft</pattern>
+                    <shadedPattern>${shade.prefix}.net.openhft</shadedPattern>
                   </relocation>
                 </relocations>
               </configuration>
@@ -325,6 +337,7 @@
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
           <source>8</source>
+          <quiet>true</quiet>
         </configuration>
       </plugin>
       <plugin>
@@ -389,16 +402,19 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.10</version>
         <configuration>
-          <argLine>-Xmx512m</argLine>
+          <argLine>${surefire.argLine}</argLine>
           <systemPropertyVariables>
             <!-- Configure Parquet logging during tests
                  See http://www.slf4j.org/api/org/slf4j/impl/SimpleLogger.html
                  -->
-            <org.slf4j.simpleLogger.defaultLogLevel>info</org.slf4j.simpleLogger.defaultLogLevel>
+            <org.slf4j.simpleLogger.defaultLogLevel>${surefire.logLevel}</org.slf4j.simpleLogger.defaultLogLevel>
             <org.slf4j.simpleLogger.showDateTime>true</org.slf4j.simpleLogger.showDateTime>
             <org.slf4j.simpleLogger.dateTimeFormat>YYYY-MM-dd HH:mm:ss</org.slf4j.simpleLogger.dateTimeFormat>
             <org.slf4j.simpleLogger.showThreadName>false</org.slf4j.simpleLogger.showThreadName>
             <org.slf4j.simpleLogger.showShortLogName>true</org.slf4j.simpleLogger.showShortLogName>
+
+            <!-- Configure log level for Hadoop -->
+            <hadoop.logLevel>${surefire.logLevel}</hadoop.logLevel>
           </systemPropertyVariables>
           <excludes>
             <exclude>**/benchmark/*.java</exclude>
@@ -582,5 +598,15 @@
         <thrift.version>0.9.0</thrift.version>
       </properties>
     </profile>
+
+    <!-- Profile for Travis to have less output -->
+    <profile>
+      <id>travis</id>
+      <properties>
+        <surefire.logLevel>WARN</surefire.logLevel>
+        <surefire.argLine>-Xmx512m -XX:MaxJavaStackTraceDepth=10</surefire.argLine>
+      </properties>
+    </profile>
+
   </profiles>
 </project>

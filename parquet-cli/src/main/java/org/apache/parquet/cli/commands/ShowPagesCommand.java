@@ -25,7 +25,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.parquet.cli.BaseCommand;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.text.TextStringBuilder;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
@@ -120,7 +120,7 @@ public class ShowPagesCommand extends BaseCommand {
 
     // TODO: Show total column size and overall size per value in the column summary line
     for (String columnName : formatted.keySet()) {
-      console.info(String.format("\nColumn: %s\n%s", columnName, StringUtils.leftPad("", 80, '-')));
+      console.info(String.format("\nColumn: %s\n%s", columnName, new TextStringBuilder(80).appendPadding(80, '-')));
       console.info(formatter.getHeader());
       for (String line : formatted.get(columnName)) {
         console.info(line);

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,7 +19,6 @@
 package org.apache.parquet.hadoop;
 
 import org.apache.parquet.ParquetRuntimeException;
-import org.apache.parquet.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +26,7 @@ import java.lang.management.ManagementFactory;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Implements a memory manager that keeps a global context of how many Parquet
@@ -37,7 +37,7 @@ import java.util.Map;
  *
  * This class balances the allocation size of each writer by resize them averagely.
  * When the sum of each writer's allocation size  is less than total memory pool,
- * keep them original value.
+ * keep their original value.
  * When the sum exceeds, decrease each writer's allocation size by a ratio.
  */
 public class MemoryManager {
@@ -168,8 +168,8 @@ public class MemoryManager {
    * @param callBack the callback passed in from upper layer, such as Hive.
    */
   public void registerScaleCallBack(String callBackName, Runnable callBack) {
-    Preconditions.checkNotNull(callBackName, "callBackName");
-    Preconditions.checkNotNull(callBack, "callBack");
+    Objects.requireNonNull(callBackName, "callBackName cannot be null");
+    Objects.requireNonNull(callBack, "callBack cannot be null");
 
     if (callBacks.containsKey(callBackName)) {
       throw new IllegalArgumentException("The callBackName " + callBackName +

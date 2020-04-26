@@ -260,6 +260,7 @@ public class TestColumnChunkPageWriteStore {
           same(OffsetIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no offset index
           any(),
           any(),
+          any(),
           any());
     }
   }

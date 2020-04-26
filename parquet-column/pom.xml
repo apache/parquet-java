@@ -58,6 +58,11 @@
       <artifactId>fastutil</artifactId>
       <version>${fastutil.version}</version>
     </dependency>
+    <dependency>
+      <groupId>net.openhft</groupId>
+      <artifactId>zero-allocation-hashing</artifactId>
+      <version>${net.openhft.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>com.carrotsearch</groupId>
@@ -87,6 +92,12 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.9</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

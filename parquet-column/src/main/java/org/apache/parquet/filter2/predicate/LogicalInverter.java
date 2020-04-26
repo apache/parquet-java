@@ -31,7 +31,7 @@ import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
+import java.util.Objects;
 
 /**
  * Converts a {@link FilterPredicate} to its logical inverse.
@@ -45,7 +45,7 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
   private static final LogicalInverter INSTANCE = new LogicalInverter();
 
   public static FilterPredicate invert(FilterPredicate pred) {
-    checkNotNull(pred, "pred");
+    Objects.requireNonNull(pred, "pred cannot be null");
     return pred.accept(INSTANCE);
   }
 

@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.RecordWriter;
@@ -31,8 +32,6 @@ import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * Writes records to a Parquet file
@@ -121,7 +120,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         .build();
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, compressor, validating, props);
-    this.memoryManager = checkNotNull(memoryManager, "memoryManager");
+    this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
     memoryManager.addWriter(internalWriter, blockSize);
     this.codecFactory = null;
   }
@@ -152,7 +151,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, codecFactory.getCompressor(codec), validating,
         props);
-    this.memoryManager = checkNotNull(memoryManager, "memoryManager");
+    this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
     memoryManager.addWriter(internalWriter, blockSize);
   }
 

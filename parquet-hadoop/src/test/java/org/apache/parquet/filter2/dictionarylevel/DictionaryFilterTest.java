@@ -21,10 +21,12 @@ package org.apache.parquet.filter2.dictionarylevel;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import org.apache.commons.lang.ArrayUtils;
+import com.google.common.primitives.Ints;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.FixedBinaryTestUtils;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
@@ -140,13 +142,7 @@ public class DictionaryFilterTest {
   }
 
   private static Binary toBinary(BigInteger decimalWithoutScale, int byteCount) {
-    byte[] src = decimalWithoutScale.toByteArray();
-    if (src.length > byteCount) {
-      throw new IllegalArgumentException("Too large decimal value for byte count " + byteCount);
-    }
-    byte[] dest = new byte[byteCount];
-    System.arraycopy(src, 0, dest, dest.length - src.length, src.length);
-    return Binary.fromConstantByteArray(dest);
+    return FixedBinaryTestUtils.getFixedBinary(byteCount, decimalWithoutScale);
   }
 
   private static void writeData(SimpleGroupFactory f, ParquetWriter<Group> writer) throws IOException {
@@ -529,7 +525,7 @@ public class DictionaryFilterTest {
   public void testInverseUdp() throws Exception {
     InInt32UDP droppable = new InInt32UDP(ImmutableSet.of(42));
     InInt32UDP undroppable = new InInt32UDP(ImmutableSet.of(205));
-    Set<Integer> allValues = ImmutableSet.copyOf(Arrays.asList(ArrayUtils.toObject(intValues)));
+    Set<Integer> allValues = ImmutableSet.copyOf(Ints.asList(intValues));
     InInt32UDP completeMatch = new InInt32UDP(allValues);
 
     FilterPredicate inverse =

@@ -20,7 +20,6 @@ package org.apache.parquet.format.converter;
 
 import static java.util.Optional.empty;
 
-import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
@@ -46,6 +45,11 @@ import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.format.BloomFilterAlgorithm;
+import org.apache.parquet.format.BloomFilterCompression;
+import org.apache.parquet.format.BloomFilterHash;
+import org.apache.parquet.format.BloomFilterHeader;
 import org.apache.parquet.format.BsonType;
 import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.DateType;
@@ -61,10 +65,13 @@ import org.apache.parquet.format.MilliSeconds;
 import org.apache.parquet.format.NanoSeconds;
 import org.apache.parquet.format.NullType;
 import org.apache.parquet.format.PageEncodingStats;
+import org.apache.parquet.format.SplitBlockAlgorithm;
 import org.apache.parquet.format.StringType;
 import org.apache.parquet.format.TimeType;
 import org.apache.parquet.format.TimeUnit;
 import org.apache.parquet.format.TimestampType;
+import org.apache.parquet.format.Uncompressed;
+import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.BoundaryOrder;
 import org.apache.parquet.format.ColumnChunk;
@@ -473,6 +480,7 @@ public class ParquetMetadataConverter {
           columnMetaData.getTotalSize(),
           columnMetaData.getFirstDataPageOffset());
       columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
+      columnChunk.meta_data.setBloom_filter_offset(columnMetaData.getBloomFilterOffset());
       if (!columnMetaData.getStatistics().isEmpty()) {
         columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics(), this.statisticsTruncateLength));
       }
@@ -1240,6 +1248,7 @@ public class ParquetMetadataConverter {
               metaData.total_uncompressed_size);
           column.setColumnIndexReference(toColumnIndexReference(columnChunk));
           column.setOffsetIndexReference(toOffsetIndexReference(columnChunk));
+          column.setBloomFilterOffset(metaData.bloom_filter_offset);
           // TODO
           // index_page_offset
           // key_value_metadata
@@ -1610,5 +1619,33 @@ public class ParquetMetadataConverter {
       builder.add(pageLocation.getOffset(), pageLocation.getCompressed_page_size(), pageLocation.getFirst_row_index());
     }
     return builder.build();
+  }
+
+  public static BloomFilterHeader toBloomFilterHeader(
+    org.apache.parquet.column.values.bloomfilter.BloomFilter bloomFilter) {
+
+    BloomFilterAlgorithm algorithm = null;
+    BloomFilterHash hashStrategy = null;
+    BloomFilterCompression compression = null;
+
+    if (bloomFilter.getAlgorithm() == BloomFilter.Algorithm.BLOCK) {
+      algorithm = BloomFilterAlgorithm.BLOCK(new SplitBlockAlgorithm());
+    }
+
+    if (bloomFilter.getHashStrategy() == BloomFilter.HashStrategy.XXH64) {
+      hashStrategy = BloomFilterHash.XXHASH(new XxHash());
+    }
+
+    if (bloomFilter.getCompression() == BloomFilter.Compression.UNCOMPRESSED) {
+      compression = BloomFilterCompression.UNCOMPRESSED(new Uncompressed());
+    }
+
+    if (algorithm != null && hashStrategy != null && compression != null) {
+      return new BloomFilterHeader(bloomFilter.getBitsetSize(), algorithm, hashStrategy, compression);
+    } else {
+      throw new IllegalArgumentException(String.format("Failed to build thrift structure for BloomFilterHeader," +
+        "algorithm=%s, hash=%s, compression=%s",
+        bloomFilter.getAlgorithm(), bloomFilter.getHashStrategy(), bloomFilter.getCompression()));
+    }
   }
 }

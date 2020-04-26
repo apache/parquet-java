@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.parquet.cli.commands.CSVSchemaCommand;
 import org.apache.parquet.cli.commands.CatCommand;
 import org.apache.parquet.cli.commands.CheckParquet251Command;
+import org.apache.parquet.cli.commands.ColumnSizeCommand;
 import org.apache.parquet.cli.commands.ConvertCSVCommand;
 import org.apache.parquet.cli.commands.ConvertCommand;
 import org.apache.parquet.cli.commands.ParquetMetadataCommand;
@@ -89,6 +90,7 @@ public class Main extends Configured implements Tool {
     jc.addCommand("cat", new CatCommand(console, 0));
     jc.addCommand("head", new CatCommand(console, 10));
     jc.addCommand("column-index", new ShowColumnIndexCommand(console));
+    jc.addCommand("column-size", new ColumnSizeCommand(console));
   }
 
   @Override

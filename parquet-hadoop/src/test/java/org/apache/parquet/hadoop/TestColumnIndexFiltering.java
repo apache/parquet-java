@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.toList;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
@@ -33,6 +34,12 @@ import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.LogicalInverter.invert;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Types.optional;
+import static org.apache.parquet.schema.Types.required;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -64,9 +71,12 @@ import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter.Location;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter.PhoneNumber;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter.User;
+import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Types;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -87,6 +97,19 @@ public class TestColumnIndexFiltering {
   private static final List<User> DATA = Collections.unmodifiableList(generateData(10000));
   private static final Path FILE_V1 = createTempFile();
   private static final Path FILE_V2 = createTempFile();
+  private static final MessageType SCHEMA_WITHOUT_NAME = Types.buildMessage()
+      .required(INT64).named("id")
+      .optionalGroup()
+        .addField(optional(DOUBLE).named("lon"))
+        .addField(optional(DOUBLE).named("lat"))
+        .named("location")
+      .optionalGroup()
+        .repeatedGroup()
+          .addField(required(INT64).named("number"))
+          .addField(optional(BINARY).as(stringType()).named("kind"))
+          .named("phone")
+        .named("phoneNumbers")
+      .named("user_without_name");
 
   @Parameters
   public static Collection<Object[]> params() {
@@ -197,6 +220,16 @@ public class TestColumnIndexFiltering {
         .useStatsFilter(useOtherFiltering)
         .useRecordFilter(useOtherFiltering)
         .useColumnIndexFilter(useColumnIndexFilter));
+  }
+
+  private List<User> readUsersWithProjection(Filter filter, MessageType schema, boolean useOtherFiltering, boolean useColumnIndexFilter) throws IOException {
+    return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file)
+        .withFilter(filter)
+        .useDictionaryFilter(useOtherFiltering)
+        .useStatsFilter(useOtherFiltering)
+        .useRecordFilter(useOtherFiltering)
+        .useColumnIndexFilter(useColumnIndexFilter)
+        .set(ReadSupport.PARQUET_READ_SCHEMA, schema.toString()));
   }
 
   // Assumes that both lists are in the same order
@@ -440,5 +473,22 @@ public class TestColumnIndexFiltering {
         record -> record.getId() == 1234,
         or(eq(longColumn("id"), 1234l),
             userDefined(longColumn("not-existing-long"), new IsDivisibleBy(1))));
+  }
+
+  @Test
+  public void testFilteringWithProjection() throws IOException {
+    // All rows shall be retrieved because all values in column 'name' shall be handled as null values
+    assertEquals(
+        DATA.stream().map(user -> user.cloneWithName(null)).collect(toList()),
+        readUsersWithProjection(FilterCompat.get(eq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, true, true));
+
+    // Column index filter shall drop all pages because all values in column 'name' shall be handled as null values
+    assertEquals(
+        emptyList(),
+        readUsersWithProjection(FilterCompat.get(notEq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, false, true));
+    assertEquals(
+        emptyList(),
+        readUsersWithProjection(FilterCompat.get(userDefined(binaryColumn("name"), NameStartsWithVowel.class)),
+            SCHEMA_WITHOUT_NAME, false, true));
   }
 }

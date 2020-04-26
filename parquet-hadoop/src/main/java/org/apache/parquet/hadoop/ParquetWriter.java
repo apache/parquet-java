@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -484,6 +484,23 @@ public class ParquetWriter<T> implements Closeable {
       return self();
     }
 
+    public SELF withByteStreamSplitEncoding(boolean enableByteStreamSplit) {
+      encodingPropsBuilder.withByteStreamSplitEncoding(enableByteStreamSplit);
+      return self();
+    }
+
+    /**
+     * Enable or disable dictionary encoding of the specified column for the constructed writer.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enableDictionary whether dictionary encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public SELF withDictionaryEncoding(String columnPath, boolean enableDictionary) {
+      encodingPropsBuilder.withDictionaryEncoding(columnPath, enableDictionary);
+      return self();
+    }
+
     /**
      * Enables validation for the constructed writer.
      *
@@ -535,6 +552,43 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withPageWriteChecksumEnabled(boolean enablePageWriteChecksum) {
       encodingPropsBuilder.withPageWriteChecksumEnabled(enablePageWriteChecksum);
+      return self();
+    }
+
+    /**
+     * Sets the NDV (number of distinct values) for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param ndv        the NDV of the column
+     *
+     * @return this builder for method chaining.
+     */
+    public SELF withBloomFilterNDV(String columnPath, long ndv) {
+      encodingPropsBuilder.withBloomFilterNDV(columnPath, ndv);
+      return self();
+    }
+
+    /**
+     * Sets the bloom filter enabled/disabled
+     *
+     * @param enabled whether to write bloom filters
+     * @return this builder for method chaining
+     */
+    public SELF withBloomFilterEnabled(boolean enabled) {
+      encodingPropsBuilder.withBloomFilterEnabled(enabled);
+      return self();
+    }
+
+    /**
+     * Sets the bloom filter enabled/disabled for the specified column. If not set for the column specifically the
+     * default enabled/disabled state will take place. See {@link #withBloomFilterEnabled(boolean)}.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enabled    whether to write bloom filter for the column
+     * @return this builder for method chaining
+     */
+    public SELF withBloomFilterEnabled(String columnPath, boolean enabled) {
+      encodingPropsBuilder.withBloomFilterEnabled(columnPath, enabled);
       return self();
     }
 

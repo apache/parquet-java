@@ -21,6 +21,7 @@ package org.apache.parquet.column.values;
 import java.io.IOException;
 import java.util.Random;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.io.api.Binary;
 
@@ -29,16 +30,13 @@ import org.apache.parquet.io.api.Binary;
  */
 public class Utils {
   private static Random randomLen = new Random();
-  private static RandomStr randomStr = new RandomStr(randomLen);
-  
+
   public static String[] getRandomStringSamples(int numSamples, int maxLength) {
     String[] samples = new String[numSamples];
-    
-    for (int i=0; i < numSamples; i++) {
-      int len = randomLen.nextInt(maxLength);
-      samples[i] = randomStr.get(len);
+    for (int i = 0; i < numSamples; i++) {
+      int maxLen = randomLen.nextInt(maxLength);
+      samples[i] = RandomStringUtils.randomAlphanumeric(0, maxLen);
     }
-    
     return samples;
   }
   

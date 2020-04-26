@@ -17,6 +17,8 @@
 // under the License.
 //
 
+syntax = "proto2";
+
 package TestProtobuf;
 
 option java_package = "org.apache.parquet.proto.test";

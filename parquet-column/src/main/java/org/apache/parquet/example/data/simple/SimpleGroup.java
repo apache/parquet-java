@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -47,29 +47,33 @@ public class SimpleGroup extends Group {
     return toString("");
   }
 
-  public String toString(String indent) {
-    String result = "";
+  private StringBuilder appendToString(StringBuilder builder, String indent) {
     int i = 0;
     for (Type field : schema.getFields()) {
       String name = field.getName();
       List<Object> values = data[i];
       ++i;
-      if (values != null) {
-        if (values.size() > 0) {
-          for (Object value : values) {
-            result += indent + name;
-            if (value == null) {
-              result += ": NULL\n";
-            } else if (value instanceof Group) {
-              result += "\n" + ((SimpleGroup)value).toString(indent+"  ");
-            } else {
-              result += ": " + value.toString() + "\n";
-            }
+      if (values != null && !values.isEmpty()) {
+        for (Object value : values) {
+          builder.append(indent).append(name);
+          if (value == null) {
+            builder.append(": NULL\n");
+          } else if (value instanceof Group) {
+            builder.append('\n');
+            ((SimpleGroup) value).appendToString(builder, indent + "  ");
+          } else {
+            builder.append(": ").append(value.toString()).append('\n');
           }
         }
       }
     }
-    return result;
+    return builder;
+  }
+
+  public String toString(String indent) {
+    StringBuilder builder = new StringBuilder();
+    appendToString(builder, indent);
+    return builder.toString();
   }
 
   @Override

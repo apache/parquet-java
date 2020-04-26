@@ -26,7 +26,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.parquet.cli.BaseCommand;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.text.TextStringBuilder;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
@@ -128,7 +128,7 @@ public class ParquetMetadataCommand extends BaseCommand {
         humanReadable(((float) compressedSize) / rowCount),
         start, humanReadable(compressedSize),
         filePath != null ? " path: " + filePath : "",
-        StringUtils.leftPad("", 80, '-')));
+        new TextStringBuilder(80).appendPadding(80, '-')));
 
     int size = maxSize(Iterables.transform(rowGroup.getColumns(),
         new Function<ColumnChunkMetaData, String>() {

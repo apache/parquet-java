@@ -323,7 +323,6 @@ public class TestStatistics {
       }
 
       Assert.assertEquals(numNulls, stats.getNumNulls());
-
       if (LOG.isDebugEnabled()) {
         LOG.debug("Validated stats min={} max={} nulls={} for page={} col={}",
             stats.minAsString(), stats.maxAsString(), stats.getNumNulls(), page,
