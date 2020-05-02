@@ -170,6 +170,7 @@
         <executions>
           <execution>
             <configuration combine.self="override">
+              <minimizeJar>true</minimizeJar>
               <artifactSet>
                 <includes>
                   <include>it.unimi.dsi:fastutil</include>
