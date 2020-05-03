@@ -1,0 +1,194 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+
+package org.apache.parquet.crypto.keytools;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.crypto.DecryptionKeyRetriever;
+import org.apache.parquet.crypto.KeyAccessDeniedException;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.apache.parquet.crypto.keytools.KeyToolUtilities.KeyWithMasterID;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
+  private static final Logger LOG = LoggerFactory.getLogger(EnvelopeKeyRetriever.class);
+
+  private static final Map<String,byte[]> readSessionKEKMap = new HashMap<String, byte[]>();
+  private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  private KmsClient kmsClient;
+  private final FileKeyMaterialStore keyMaterialStore;
+  private final Configuration hadoopConfiguration;
+
+  EnvelopeKeyRetriever(KmsClient kmsClient, Configuration hadoopConfiguration,
+      FileKeyMaterialStore keyStore) {
+    this.kmsClient = kmsClient;
+    this.hadoopConfiguration = hadoopConfiguration;
+    this.keyMaterialStore = keyStore;
+  }
+
+  @Override
+  public byte[] getKey(byte[] keyMetaData) throws ParquetCryptoRuntimeException, KeyAccessDeniedException {
+    String keyMaterial;
+    if (null != keyMaterialStore) {
+      String keyReferenceMetadata = new String(keyMetaData, StandardCharsets.UTF_8);
+      String keyIDinFile = getKeyReference(keyReferenceMetadata, keyMaterialStore.getStorageLocation());
+      keyMaterial = keyMaterialStore.getKeyMaterial(keyIDinFile);
+      if (null == keyMaterial) {
+        throw new ParquetCryptoRuntimeException("Null key material for keyIDinFile: " + keyIDinFile);
+      }
+    }  else {
+      keyMaterial = new String(keyMetaData, StandardCharsets.UTF_8);
+    }
+
+    return getDEKandMasterID(keyMaterial).getDataKey();
+  }
+
+  KeyWithMasterID getDEKandMasterID(String keyMaterial)  {
+    
+    Map<String, String> keyMaterialJson = null;
+    try {
+      keyMaterialJson = objectMapper.readValue(new StringReader(keyMaterial),
+          new TypeReference<Map<String, String>>() {});
+    }  catch (Exception e) {
+      throw new ParquetCryptoRuntimeException("Failed to parse key material " + keyMaterial, e);
+    }
+
+    boolean doubleWrapping;
+    String wrapMethod = keyMaterialJson.get(EnvelopeKeyManager.WRAPPING_METHOD_FIELD); // TODO static import
+    if (wrapMethod.equals(EnvelopeKeyManager.single_wrapping_method)) {
+      doubleWrapping = false;
+    } else if (wrapMethod.equals(EnvelopeKeyManager.double_wrapping_method)) {
+      doubleWrapping = true;
+    } else {
+      throw new ParquetCryptoRuntimeException("Wrong wrapping method " + wrapMethod);
+    }
+
+    String wrapMethodVersion = keyMaterialJson.get(EnvelopeKeyManager.WRAPPING_METHOD_VERSION_FIELD);
+    if (!EnvelopeKeyManager.wrapping_method_version.equals(wrapMethodVersion)) {
+      throw new ParquetCryptoRuntimeException("Wrong wrapping method version " + wrapMethodVersion); // TODO
+    }
+
+    if (null == kmsClient) {
+      kmsClient = getKmsClientFromKeyMaterial(hadoopConfiguration, keyMaterialJson);
+    }
+
+    String masterKeyID = keyMaterialJson.get(EnvelopeKeyManager.MASTER_KEY_ID_FIELD); // TODO cache?
+    String encodedWrappedDatakey = keyMaterialJson.get(EnvelopeKeyManager.WRAPPED_DEK_FIELD);
+    
+    byte[] dataKey;
+    if (!doubleWrapping) {
+      dataKey = kmsClient.unwrapDataKey(encodedWrappedDatakey, masterKeyID);
+    } else {
+      // Get KEK
+      String encodedKEK_ID = keyMaterialJson.get(EnvelopeKeyManager.KEK_ID_FIELD);
+      byte[] kekBytes = readSessionKEKMap.get(encodedKEK_ID);
+
+      if (null == kekBytes) {
+        synchronized (readSessionKEKMap) {
+          kekBytes = readSessionKEKMap.get(encodedKEK_ID);
+          if (null == kekBytes) {
+            String encodedWrappedKEK = keyMaterialJson.get(EnvelopeKeyManager.WRAPPED_KEK_FIELD);
+
+            kekBytes = kmsClient.unwrapDataKey(encodedWrappedKEK, masterKeyID); // TODO nested sync. Break.
+
+            if (null == kekBytes) {
+              throw new ParquetCryptoRuntimeException("Null KEK, after unwrapping in KMS with master key " + masterKeyID);
+            }
+
+            readSessionKEKMap.put(encodedKEK_ID, kekBytes);
+          }
+        } // sync readSessionKEKMap
+      }
+
+      // Decrypt the data key
+      byte[]  AAD = Base64.getDecoder().decode(encodedKEK_ID);
+      dataKey =  KeyToolUtilities.unwrapKeyLocally(encodedWrappedDatakey, kekBytes, AAD);
+    }
+
+    return new KeyWithMasterID(dataKey, masterKeyID);
+  }
+
+  /**
+   * Create and initialize KmsClient based on properties saved in key metadata
+   * @param hadoopConfiguration
+   * @param keyMaterialJson key metadata
+   * @return new KMSClient
+   * @throws IOException
+   */
+  private static KmsClient getKmsClientFromKeyMaterial(Configuration hadoopConfiguration,
+      Map<String, String> keyMaterialJson) {
+    String kmsInstanceID = keyMaterialJson.get(EnvelopeKeyManager.KMS_INSTANCE_ID_FIELD);
+    final String kmsInstanceURL = keyMaterialJson.get(EnvelopeKeyManager.KMS_INSTANCE_URL_FIELD);
+    updateKmsInstanceURLInHadoopConfiguration(hadoopConfiguration, kmsInstanceURL);
+    KmsClient kmsClient = EnvelopeKeyManager.getKmsClient(hadoopConfiguration, kmsInstanceID);
+    if (null == kmsClient) {
+      throw new ParquetCryptoRuntimeException("KMSClient was not successfully created for reading encrypted data.");
+    }
+    return kmsClient;
+  }
+
+  /**
+   * If KMS instance URL is specified in encryption.kms.instance.url or encryption.kms.instance.url.list, then it overrides
+   * the KMS instance URL that is read from file metadata.
+   * @param hadoopConfiguration
+   * @param kmsInstanceURL
+   */
+  private static void updateKmsInstanceURLInHadoopConfiguration(Configuration hadoopConfiguration, String kmsInstanceURL) {
+    if (!StringUtils.isEmpty(kmsInstanceURL)) {
+      final String kmsUrlProperty = hadoopConfiguration.getTrimmed(RemoteKmsClient.KMS_INSTANCE_URL_PROPERTY_NAME);
+      final String[] kmsUrlList = hadoopConfiguration.getTrimmedStrings(RemoteKmsClient.KMS_INSTANCE_URL_LIST_PROPERTY_NAME);
+      if (StringUtils.isEmpty(kmsUrlProperty) && ArrayUtils.isEmpty(kmsUrlList)) {
+        LOG.debug("Updating KMS instance URL to: " + kmsInstanceURL);
+        hadoopConfiguration.set(RemoteKmsClient.KMS_INSTANCE_URL_PROPERTY_NAME, kmsInstanceURL);
+      }
+    }
+  }
+
+  private static String getKeyReference(String keyReferenceMetadata, String targetStorageLocation) {
+    Map<String, String> keyMetadataJson = null;
+    try {
+      keyMetadataJson = objectMapper.readValue(new StringReader(keyReferenceMetadata),
+          new TypeReference<Map<String, String>>() {});
+    } catch (Exception e) {
+      throw new ParquetCryptoRuntimeException("Failed to parse key metadata " + keyReferenceMetadata, e);
+    }
+
+    String storageLocation = keyMetadataJson.get(EnvelopeKeyManager.KEY_METADATA_STORAGE_FIELD);
+    if (!targetStorageLocation.equals(storageLocation)) {
+      throw new ParquetCryptoRuntimeException("Wrong key material storage location " + storageLocation + 
+          " vs " + targetStorageLocation); // TODO
+    }
+
+    return keyMetadataJson.get(EnvelopeKeyManager.KEY_REFERENCE_FIELD);
+  }
+}

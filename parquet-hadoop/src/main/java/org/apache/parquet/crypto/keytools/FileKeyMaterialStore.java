@@ -21,13 +21,26 @@
 
 package org.apache.parquet.crypto.keytools;
 
-public class KeyMaterialStore {
+
+import java.util.Set;
+
+import org.apache.hadoop.fs.Path;
+
+public interface FileKeyMaterialStore {
   
-  public void storeKeyMaterial(String keyMaterial, String fileID, String keyIDInFile) {
-    //TODO
-  }
+  public void initialize(Path parquetFilePath);
+
+  public void addKeyMaterial(String keyIDInFile, String keyMaterial);
+
+  public String getKeyMaterial(String keyIDInFile);
   
-  public String getKeyMaterial(String fileID, String keyIDInFile) {
-    return null; //TODO
-  }
+  public void saveFileKeyMaterial();
+
+  public Set<String> getFileKeyIDSet();
+
+  public void removeFileKeyMaterial();
+
+  public void moveFileKeyMaterial(FileKeyMaterialStore targetKeyMaterialStore);
+
+  public String getStorageLocation();
 }
