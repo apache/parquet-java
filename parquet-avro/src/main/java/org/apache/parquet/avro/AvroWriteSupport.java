@@ -19,6 +19,7 @@
 package org.apache.parquet.avro;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -542,7 +543,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     @Override
     public void writeCollection(GroupType schema, Schema avroSchema,
                                 Collection<?> array) {
-      if (array.size() > 0) {
+      if (!array.isEmpty()) {
         recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
         try {
           for (Object elt : array) {
@@ -550,18 +551,16 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
           }
         } catch (NullPointerException e) {
           // find the null element and throw a better error message
-          int i = 0;
-          for (Object elt : array) {
-            if (elt == null) {
-              throw new NullPointerException(
-                  "Array contains a null element at " + i + "\n" +
-                  "Set parquet.avro.write-old-list-structure=false to turn " +
-                  "on support for arrays with null elements.");
-            }
-            i += 1;
+          final int idx =
+              Arrays.asList(array.toArray(new Object[0])).indexOf(null);
+          if (idx < 0) {
+            // no element was null, throw the original exception
+            throw e;
           }
-          // no element was null, throw the original exception
-          throw e;
+          throw new NullPointerException(
+              "Array contains a null element at " + idx + ". "
+                  + "Set parquet.avro.write-old-list-structure=false to turn "
+                  + "on support for arrays with null elements.");
         }
         recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
@@ -578,16 +577,15 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
           }
         } catch (NullPointerException e) {
           // find the null element and throw a better error message
-          for (int i = 0; i < array.length; i += 1) {
-            if (array[i] == null) {
-              throw new NullPointerException(
-                  "Array contains a null element at " + i + "\n" +
-                  "Set parquet.avro.write-old-list-structure=false to turn " +
-                  "on support for arrays with null elements.");
-            }
+          final int idx = Arrays.asList(array).indexOf(null);
+          if (idx < 0) {
+            // no element was null, throw the original exception
+            throw e;
           }
-          // no element was null, throw the original exception
-          throw e;
+          throw new NullPointerException(
+              "Array contains a null element at " + idx + ". " +
+              "Set parquet.avro.write-old-list-structure=false to turn " +
+              "on support for arrays with null elements.");
         }
         recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
