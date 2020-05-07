@@ -91,20 +91,20 @@ public class RowRanges {
     }
   }
 
-  static final RowRanges EMPTY = new RowRanges(0);
+  static final RowRanges EMPTY = new RowRanges(Collections.emptyList());
 
   private final List<Range> ranges;
 
   private RowRanges() {
-    this.ranges = new ArrayList<>();
+    this(new ArrayList<>());
   }
 
-  private RowRanges(int initialCapacity) {
-    this.ranges = new ArrayList<>(initialCapacity);
+  private RowRanges(Range range) {
+    this(Collections.singletonList(range));
   }
 
-  private RowRanges(final Range range) {
-    this.ranges = Collections.singletonList(range);
+  private RowRanges(List<Range> ranges) {
+    this.ranges = ranges;
   }
 
   /**
