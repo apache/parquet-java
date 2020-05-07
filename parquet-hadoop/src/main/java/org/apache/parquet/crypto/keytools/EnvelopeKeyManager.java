@@ -24,17 +24,21 @@ package org.apache.parquet.crypto.keytools;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.crypto.keytools.KeyToolUtilities.KeyEncryptionKey;
 import org.apache.parquet.crypto.keytools.KeyToolUtilities.KeyWithMasterID;
+import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
@@ -57,6 +61,7 @@ public class EnvelopeKeyManager {
   
   public static final String DEFAULT_KMS_INSTANCE_ID = "DEFAULT";
   public static final String DEFAULT_KMS_INSTANCE_URL = "DEFAULT";
+  public static final String DEFAULT_ACCESS_TOKEN = "DEFAULT";
   
   public static final String KMS_INSTANCE_ID_FIELD = "kmsInstanceID";
   public static final String KMS_INSTANCE_URL_FIELD = "kmsInstanceURL";
@@ -64,6 +69,7 @@ public class EnvelopeKeyManager {
   public static final String WRAPPING_METHOD_PROPERTY_NAME = "encryption.key.wrapping.method";
   public static final String CACHE_ENTRY_LIFETIME_PROPERTY_NAME = "encryption.cache.entry.lifetime";
   public static final String KMS_CLIENT_CLASS_PROPERTY_NAME = "encryption.kms.client.class";
+  public static final String KEY_ACCESS_TOKEN_PROPERTY_NAME = "encryption.key.access.token";
 
   public static final String WRAPPING_METHOD_FIELD = "method";
   public static final String single_wrapping_method = "single";
@@ -76,15 +82,20 @@ public class EnvelopeKeyManager {
   public static final String KEK_ID_FIELD = "keyEncryptionKeyID";
   public static final String WRAPPED_KEK_FIELD = "wrappedKEK";
   
-  private static final int INITIAL_KMS_CLIENT_CACHE_SIZE = 5;
-  private static final Map<String, KmsClientCacheEntry> kmsClientPerKmsInstanceCache =
-      new HashMap<String, KmsClientCacheEntry>(INITIAL_KMS_CLIENT_CACHE_SIZE);
-  private static final long KMS_CLIENT_CACHE_ENTRY_DEFAULT_LIFETIME = 10 * 60 * 1000; // 10 minutes
+  public static final long DEFAULT_CACHE_ENTRY_LIFETIME = 10 * 60 * 1000; // 10 minutes
+  public static final int INITIAL_PER_TOKEN_CACHE_SIZE = 5;
+  // For every access token a map of KMSInstanceId to kmsClient
+  private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String, KmsClient>>> kmsClientCachePerToken =
+    new ConcurrentHashMap<>(INITIAL_PER_TOKEN_CACHE_SIZE);
+  private static final Object cacheLock = new Object();
+  private static volatile Long lastCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute
 
-
-  private static final Map<String,KeyEncryptionKey> writeSessionKEKMap = new HashMap<String, KeyEncryptionKey>();
-
+  private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentHashMap<String,KeyEncryptionKey>>> writeKEKMapPerToken =
+    new ConcurrentHashMap<>(INITIAL_PER_TOKEN_CACHE_SIZE);
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  private final ConcurrentMap<String,KeyEncryptionKey> writeSessionKEKMap;
+  private final long cacheEntryLifetime;
 
   private final KmsClient kmsClient;
   private final String kmsInstanceID;
@@ -96,9 +107,13 @@ public class EnvelopeKeyManager {
   private final boolean doubleWrapping;
 
   private short keyCounter;
+  private String accessToken;
 
-  EnvelopeKeyManager(Configuration configuration, FileKeyMaterialStore keyMaterialStore) {
+  public EnvelopeKeyManager(Configuration configuration, FileKeyMaterialStore keyMaterialStore) {
     this.hadoopConfiguration = configuration;
+
+    this.cacheEntryLifetime = hadoopConfiguration.getLong(CACHE_ENTRY_LIFETIME_PROPERTY_NAME, DEFAULT_CACHE_ENTRY_LIFETIME);
+    invalidateCachesForExpiredTokens();
 
     String kmsInstanceID = hadoopConfiguration.getTrimmed(RemoteKmsClient.KMS_INSTANCE_ID_PROPERTY_NAME);
     if (StringUtils.isEmpty(kmsInstanceID)) {
@@ -124,9 +139,23 @@ public class EnvelopeKeyManager {
     } else {
       doubleWrapping = true; // default
       this.wrappingMethod = double_wrapping_method;
-    }
   }
 
+    this.accessToken = getAccessTokenOrDefault(configuration);
+
+    ExpiringCacheEntry<ConcurrentHashMap<String, KeyEncryptionKey>> writeKEKCacheEntry = writeKEKMapPerToken.get(accessToken);
+    if ((null == writeKEKCacheEntry) || writeKEKCacheEntry.isExpired()) {
+      synchronized (cacheLock) {
+        writeKEKCacheEntry = writeKEKMapPerToken.get(accessToken);
+        if ((null == writeKEKCacheEntry) || writeKEKCacheEntry.isExpired()) {
+          LOG.debug("CACHE --- create write-KEK cache for token: " + formatTokenForLog(accessToken));
+          writeKEKCacheEntry = new ExpiringCacheEntry<>(new ConcurrentHashMap<String, KeyEncryptionKey>(), this.cacheEntryLifetime);
+          writeKEKMapPerToken.put(accessToken, writeKEKCacheEntry);
+        }
+      }
+    }
+    this.writeSessionKEKMap = writeKEKCacheEntry.getCachedItem();
+  }
 
   public byte[] getEncryptionKeyMetadata(byte[] dataKey, String masterKeyID, boolean isFooterKey) {
     return getEncryptionKeyMetadata(dataKey, masterKeyID, isFooterKey, keyMaterialStore, null);
@@ -156,37 +185,56 @@ public class EnvelopeKeyManager {
     keyMaterialStore.removeFileKeyMaterial();
 
     tempKeyMaterialStore.moveFileKeyMaterial(keyMaterialStore);
+
+    invalidateCachesForAllTokens();
   }
 
   /**
-   * Immutable class for KmsClient cache entries
+   * Flush any caches that are tied to the specified accessToken
+   * @param accessToken
    */
-  private static class KmsClientCacheEntry {
-    private final KmsClient kmsClient;
-    private final String accessToken;
-    private final long expirationTimestamp;
-
-    private KmsClientCacheEntry(KmsClient kmsClient, String accessToken, long expirationTimestamp) {
-      this.kmsClient = kmsClient;
-      this.accessToken = accessToken;
-      this.expirationTimestamp = expirationTimestamp;
-    }
-    public KmsClient getKmsClient() {
-      return kmsClient;
-    }
-
-    /**
-     * Cache entry is valid - it is not expired and matches the current access token
-     * @param currentAccessToken
-     * @return
-     */
-    public boolean isValid(String currentAccessToken) {
-      final long now = System.currentTimeMillis();
-      return (now < expirationTimestamp) && Objects.equals(this.accessToken, currentAccessToken);
+  public static void invalidateCachesForToken(String accessToken) {
+    synchronized (cacheLock) {
+      kmsClientCachePerToken.remove(accessToken);
+      writeKEKMapPerToken.remove(accessToken);
     }
   }
 
+  private void invalidateCachesForExpiredTokens() {
+    long now = System.currentTimeMillis();
+    if (now > lastCacheCleanupTimestamp + this.cacheEntryLifetime) {
+      synchronized (cacheLock) {
+        if (now > lastCacheCleanupTimestamp + this.cacheEntryLifetime) {
+          removeExpiredEntriesFromCache(kmsClientCachePerToken);
+          removeExpiredEntriesFromCache(writeKEKMapPerToken);
+          lastCacheCleanupTimestamp = now;
+        }
+      }
+    }
+    }
 
+  static <E> void removeExpiredEntriesFromCache(ConcurrentMap<String, ExpiringCacheEntry<E>> cache) {
+    Set<Map.Entry<String, ExpiringCacheEntry<E>>> cacheEntries = cache.entrySet();
+    List<String> expiredKeys = new ArrayList<>(cacheEntries.size());
+    for (Map.Entry<String, ExpiringCacheEntry<E>> cacheEntry : cacheEntries) {
+      if (cacheEntry.getValue().isExpired()) {
+        expiredKeys.add(cacheEntry.getKey());
+      }
+    }
+    LOG.debug("CACHE --- Removing " + expiredKeys.size() + " expired entries from cache");
+    cache.keySet().removeAll(expiredKeys);
+  }
+
+  static void invalidateCachesForAllTokens() {
+    synchronized (cacheLock) {
+      kmsClientCachePerToken.clear();
+      writeKEKMapPerToken.clear();
+    }
+  }
+
+  public static String getAccessTokenOrDefault(Configuration configuration) {
+    return configuration.getTrimmed(KEY_ACCESS_TOKEN_PROPERTY_NAME, DEFAULT_ACCESS_TOKEN); // default for KMS without token
+  }
 
   private byte[] getEncryptionKeyMetadata(byte[] dataKey, String masterKeyID, boolean isFooterKey, 
       FileKeyMaterialStore targetKeyMaterialStore, String keyIdInFile) {
@@ -197,29 +245,17 @@ public class EnvelopeKeyManager {
     KeyEncryptionKey keyEncryptionKey = null;
     String encodedWrappedDEK = null;
     if (!doubleWrapping) {
+      try {
       encodedWrappedDEK = kmsClient.wrapDataKey(dataKey, masterKeyID);
+      } catch (IOException e) {
+        throw new ParquetCryptoRuntimeException(e);
+      }
     } else {
      // Find or generate KEK for Master Key ID
-      keyEncryptionKey = writeSessionKEKMap.get(masterKeyID);
-      if (null == keyEncryptionKey) {
-        synchronized(writeSessionKEKMap) {
-          keyEncryptionKey = writeSessionKEKMap.get(masterKeyID);
-          if (null == keyEncryptionKey) {
-            byte[] kekBytes = new byte[16]; //TODO length. configure via properties
-            random.nextBytes(kekBytes);
-
-            byte[] kekID = new byte[16];  //TODO length. configure via properties
-            random.nextBytes(kekID);
-            String encodedKEK_ID = Base64.getEncoder().encodeToString(kekID);
-
-            // Encrypt KEK with Master key
-            String encodedWrappedKEK = kmsClient.wrapDataKey(kekBytes, masterKeyID); // TODO nested sync. Break
-
-            keyEncryptionKey = new KeyEncryptionKey(kekBytes, encodedKEK_ID, kekID, encodedWrappedKEK);
-            writeSessionKEKMap.put(masterKeyID, keyEncryptionKey);
-          }
-        } // sync writeSessionKEKMap
-      }
+      keyEncryptionKey = writeSessionKEKMap.computeIfAbsent(masterKeyID, (k) -> {
+          LOG.debug("CACHE --- get KEK " + masterKeyID + " and add to write-KEK cache for token: " + formatTokenForLog(accessToken));
+          return getKeyEncryptionKey(masterKeyID);
+      });
       
       // Encrypt DEK with KEK
       byte[] AAD = keyEncryptionKey.getID();
@@ -271,6 +307,25 @@ public class EnvelopeKeyManager {
     return keyMetadata;
   }
 
+  private KeyEncryptionKey getKeyEncryptionKey(String masterKeyID) {
+    byte[] kekBytes = new byte[16]; //TODO length. configure via properties
+    random.nextBytes(kekBytes);
+
+    byte[] kekID = new byte[16];  //TODO length. configure via properties
+    random.nextBytes(kekID);
+    String encodedKEK_ID = Base64.getEncoder().encodeToString(kekID);
+
+    // Encrypt KEK with Master key
+    String encodedWrappedKEK = null;
+    try {
+      encodedWrappedKEK = kmsClient.wrapDataKey(kekBytes, masterKeyID);
+    } catch (IOException e) {
+      throw new ParquetCryptoRuntimeException(e);
+    }
+
+    return new KeyEncryptionKey(kekBytes, encodedKEK_ID, kekID, encodedWrappedKEK);
+  }
+
   /**
    * Create and initialize a KMSClient. Called when KMS instance ID should be known.
    * @param configuration
@@ -280,49 +335,65 @@ public class EnvelopeKeyManager {
    */
   static KmsClient getKmsClient(Configuration configuration, String kmsInstanceID) 
       throws ParquetCryptoRuntimeException {
-    String currentAccessToken = configuration.getTrimmed(RemoteKmsClient.KEY_ACCESS_TOKEN_PROPERTY_NAME, ""); // default for KMS without token
-    KmsClient kmsClient = null;
-    synchronized (kmsClientPerKmsInstanceCache) {
-      // Get from KmsClients cache if entry not expired
-      KmsClientCacheEntry kmsClientCacheEntry = kmsClientPerKmsInstanceCache.get(kmsInstanceID);
-      if (null != kmsClientCacheEntry) {
-        if (kmsClientCacheEntry.isValid(currentAccessToken)) {
-          kmsClient = kmsClientCacheEntry.getKmsClient();
-          return kmsClient;
+
+    String currentAccessToken = getAccessTokenOrDefault(configuration);
+    ExpiringCacheEntry<ConcurrentMap<String, KmsClient>> kmsClientCachePerTokenEntry =
+      kmsClientCachePerToken.get(currentAccessToken);
+
+    if ((null == kmsClientCachePerTokenEntry) || kmsClientCachePerTokenEntry.isExpired()) {
+      synchronized (cacheLock) {
+        kmsClientCachePerTokenEntry = kmsClientCachePerToken.get(currentAccessToken);
+        if ((null == kmsClientCachePerTokenEntry) || kmsClientCachePerTokenEntry.isExpired()) {
+          ConcurrentHashMap<String, KmsClient> kmsClientPerToken = new ConcurrentHashMap<>();
+          long cacheEntryLifetime = configuration.getLong(CACHE_ENTRY_LIFETIME_PROPERTY_NAME, DEFAULT_CACHE_ENTRY_LIFETIME);
+          kmsClientCachePerTokenEntry = new ExpiringCacheEntry<>(kmsClientPerToken, cacheEntryLifetime);
+          kmsClientCachePerToken.put(currentAccessToken, kmsClientCachePerTokenEntry);
         }
       }
+      }
+    final ConcurrentMap<String, KmsClient> kmsClientPerKmsInstanceCache = kmsClientCachePerTokenEntry.getCachedItem();
+    KmsClient kmsClient =
+      kmsClientPerKmsInstanceCache.computeIfAbsent(kmsInstanceID,
+        (k) -> createKmsClient(configuration, kmsInstanceID, currentAccessToken));
 
-      final Class<?> kmsClientClass = ConfigurationUtil.getClassFromConfig(configuration,
-          KMS_CLIENT_CLASS_PROPERTY_NAME, KmsClient.class);
-
-      if (null == kmsClientClass) {
-        throw new ParquetCryptoRuntimeException("Unspecified encryption.kms.client.class"); //TODO
+    return kmsClient;
       }
 
+  private static KmsClient createKmsClient(Configuration configuration, String kmsInstanceID, String accessToken) {
+    KmsClient kmsClient;
       try {
-        kmsClient = (KmsClient)kmsClientClass.newInstance();
-      } catch (InstantiationException | IllegalAccessException e) {
-        throw new ParquetCryptoRuntimeException("could not instantiate KmsClient class: "
-            + kmsClientClass, e);
-      }
-
-      try {
+      kmsClient = instantiateKmsClient(configuration);
         kmsClient.initialize(configuration, kmsInstanceID);
-      } catch (ParquetCryptoRuntimeException e) {
+    } catch (IOException e) {
         LOG.info("Cannot create KMS client. If encryption.kms.instance.id not defined, will be expecting to use " +
             "default KMS instance ID, if relevant, or key metadata from parquet file.");
         LOG.debug("Cannot create KMS client.", e);
         return null;
       }
-      long kmsClientCacheEntryLifetime = configuration.getLong(CACHE_ENTRY_LIFETIME_PROPERTY_NAME, KMS_CLIENT_CACHE_ENTRY_DEFAULT_LIFETIME);
-      final long expirationTimestamp = System.currentTimeMillis() + kmsClientCacheEntryLifetime;
-      final KmsClientCacheEntry newClientCacheEntry = new KmsClientCacheEntry(kmsClient, currentAccessToken, expirationTimestamp);
-      kmsClientPerKmsInstanceCache.put(kmsInstanceID, newClientCacheEntry);
-    } // sync on KMS cache
-
+    if (kmsClient == null) return null;
+    LOG.debug("CACHE --- KmsClent instantiated and configured.");
     return kmsClient;
   }
 
+  private static KmsClient instantiateKmsClient(Configuration configuration) {
+    Class<?> kmsClientClass = null;
+    KmsClient kmsClient = null;
+
+    try {
+      kmsClientClass = ConfigurationUtil.getClassFromConfig(configuration,
+          KMS_CLIENT_CLASS_PROPERTY_NAME, KmsClient.class);
+
+      if (null == kmsClientClass) {
+        throw new ParquetCryptoRuntimeException("Unspecified encryption.kms.client.class"); //TODO
+      }
+        kmsClient = (KmsClient)kmsClientClass.newInstance();
+    } catch (InstantiationException | IllegalAccessException | BadConfigurationException e) {
+      throw new ParquetCryptoRuntimeException("Could not instantiate KmsClient class: "
+            + kmsClientClass, e);
+      }
+
+    return kmsClient;
+  }
 
   private static String createKeyReferenceMetadata(String keyReference, String targetStorageLocation) {
     Map<String, String> keyMetadataMap = new HashMap<String, String>(2);
@@ -337,5 +408,13 @@ public class EnvelopeKeyManager {
     }
 
     return keyMetadata;
+  }
+
+  private static String formatTokenForLog(String accessToken) {
+    int maxTokenDisplayLength = 5;
+    if (accessToken.length() <= maxTokenDisplayLength) {
+      return accessToken;
+    }
+    return accessToken.substring(accessToken.length() - maxTokenDisplayLength);
   }
 }

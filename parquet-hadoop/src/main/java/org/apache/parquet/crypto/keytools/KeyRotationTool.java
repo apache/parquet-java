@@ -26,20 +26,14 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 
 public class KeyRotationTool  {
 
-  private Configuration hadoopConfig;
-
-  public KeyRotationTool(Configuration hadoopConfig) {
-    this.hadoopConfig = hadoopConfig;
-  }
-
-
-  public void rotateMasterKeys(String folderPath) throws IOException, ParquetCryptoRuntimeException, KeyAccessDeniedException {
+  public static void rotateMasterKeys(String folderPath, Configuration hadoopConfig) throws IOException, ParquetCryptoRuntimeException, KeyAccessDeniedException {
 
     Path parentPath = new Path(folderPath);
 

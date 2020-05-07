@@ -39,7 +39,7 @@ public interface KmsClient {
    *                      Specific KmsClient implementation should decide whether the default value is acceptable here.
    * @throws IOException
    */
-  public void initialize(Configuration configuration, String kmsInstanceID) throws ParquetCryptoRuntimeException;
+  public void initialize(Configuration configuration, String kmsInstanceID) throws IOException, KeyAccessDeniedException, UnsupportedOperationException;
 
   /**
    * Encrypts (wraps) data key in KMS server, using the master key. 
@@ -58,7 +58,7 @@ public interface KmsClient {
    * @throws KeyAccessDeniedException
    */
   public String wrapDataKey(byte[] dataKey, String masterKeyIdentifier)
-      throws ParquetCryptoRuntimeException, KeyAccessDeniedException;
+      throws IOException, KeyAccessDeniedException, UnsupportedOperationException;
 
   /**
    * Decrypts (unwraps) data key in KMS server, using the master key. 
@@ -77,5 +77,5 @@ public interface KmsClient {
    * @throws KeyAccessDeniedException
    */
   public byte[] unwrapDataKey(String wrappedDataKey, String masterKeyIdentifier)
-      throws ParquetCryptoRuntimeException, KeyAccessDeniedException;
+      throws IOException, KeyAccessDeniedException, UnsupportedOperationException;
 }
