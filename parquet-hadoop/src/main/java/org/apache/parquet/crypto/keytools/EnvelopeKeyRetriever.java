@@ -42,12 +42,14 @@ import org.slf4j.LoggerFactory;
 public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
   private static final Logger LOG = LoggerFactory.getLogger(EnvelopeKeyRetriever.class);
 
+  // For every token a map of KEK_ID to KEK bytes
   private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String,byte[]>>> readKEKMapPerToken
     = new ConcurrentHashMap<>();
   private static final Object readKEKCacheLock = new Object();
   private static volatile Long lastCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute
   private final String accessToken;
 
+  // A map of KEK_ID to KEK bytes for the current token
   private ConcurrentMap<String,byte[]> readSessionKEKMap;
   private final long cacheEntryLifetime;
   private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -109,16 +111,16 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
 
     boolean doubleWrapping;
     String wrapMethod = keyMaterialJson.get(EnvelopeKeyManager.WRAPPING_METHOD_FIELD); // TODO static import
-    if (wrapMethod.equals(EnvelopeKeyManager.single_wrapping_method)) {
+    if (wrapMethod.equals(EnvelopeKeyManager.SINGLE_WRAPPING_METHOD)) {
       doubleWrapping = false;
-    } else if (wrapMethod.equals(EnvelopeKeyManager.double_wrapping_method)) {
+    } else if (wrapMethod.equals(EnvelopeKeyManager.DOUBLE_WRAPPING_METHOD)) {
       doubleWrapping = true;
     } else {
       throw new ParquetCryptoRuntimeException("Wrong wrapping method " + wrapMethod);
     }
 
     String wrapMethodVersion = keyMaterialJson.get(EnvelopeKeyManager.WRAPPING_METHOD_VERSION_FIELD);
-    if (!EnvelopeKeyManager.wrapping_method_version.equals(wrapMethodVersion)) {
+    if (!EnvelopeKeyManager.WRAPPING_METHOD_VERSION.equals(wrapMethodVersion)) {
       throw new ParquetCryptoRuntimeException("Wrong wrapping method version " + wrapMethodVersion); // TODO
     }
 

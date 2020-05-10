@@ -25,7 +25,6 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
-import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,28 +123,28 @@ public abstract class RemoteKmsClient implements KmsClient {
 
   protected abstract void initializeInternal(Configuration configuration) throws IOException, KeyAccessDeniedException, UnsupportedOperationException;
 
-  private void setKmsURL(Configuration configuration) throws ParquetCryptoRuntimeException {
+  private void setKmsURL(Configuration configuration) throws IOException {
     final String kmsUrlProperty = configuration.getTrimmed(KMS_INSTANCE_URL_PROPERTY_NAME);
     final String[] kmsUrlList = configuration.getTrimmedStrings(KMS_INSTANCE_URL_LIST_PROPERTY_NAME);
     if (StringUtils.isEmpty(kmsUrlProperty) && ArrayUtils.isEmpty(kmsUrlList) || "DEFAULT".equals(kmsUrlProperty)) {
-      throw new ParquetCryptoRuntimeException("KMS URL is not set.");
+      throw new IOException("KMS URL is not set.");
     }
     if (!StringUtils.isEmpty(kmsUrlProperty) && !ArrayUtils.isEmpty(kmsUrlList)) {
-      throw new ParquetCryptoRuntimeException("KMS URL is ambiguous: " +
+      throw new IOException("KMS URL is ambiguous: " +
           "it should either be set in encryption.kms.instance.url or in encryption.kms.instance.url.list"); // TODO use constants
     }
     if (!StringUtils.isEmpty(kmsUrlProperty)) {
       kmsURL = kmsUrlProperty;
     } else {
       if (StringUtils.isEmpty(kmsInstanceID) ) {
-        throw new ParquetCryptoRuntimeException("Missing kms instance id value. Cannot find a matching KMS URL mapping.");
+        throw new IOException("Missing kms instance id value. Cannot find a matching KMS URL mapping.");
       }
       Map<String, String> kmsUrlMap = new HashMap<String, String>(kmsUrlList.length);
       int nKeys = kmsUrlList.length;
       for (int i=0; i < nKeys; i++) {
         Matcher m = kmsUrlListItemPattern.matcher(kmsUrlList[i]);
         if (!m.matches() || (m.groupCount() != 2)) {
-          throw new ParquetCryptoRuntimeException(String.format("String %s doesn't match pattern %s for KMS URL mapping",
+          throw new IOException(String.format("String %s doesn't match pattern %s for KMS URL mapping",
               kmsUrlList[i], kmsUrlListItemPattern.toString()));
         }
         String instanceID = m.group(1);
@@ -154,7 +153,7 @@ public abstract class RemoteKmsClient implements KmsClient {
         kmsUrlMap.put(instanceID, kmsURL);
       }      kmsURL = kmsUrlMap.get(kmsInstanceID);
       if (StringUtils.isEmpty(kmsURL) ) {
-        throw new ParquetCryptoRuntimeException(String.format("Missing KMS URL for kms instance ID [%s] in KMS URL mapping",
+        throw new IOException(String.format("Missing KMS URL for kms instance ID [%s] in KMS URL mapping",
             kmsInstanceID));
       }
     }

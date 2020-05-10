@@ -56,7 +56,7 @@ public class EnvelopeKeyManager {
   private static final Logger LOG = LoggerFactory.getLogger(EnvelopeKeyManager.class);
   
   public static final String KEY_METADATA_STORAGE_FIELD = "storageLocation";
-  public static final String keyMetadataInternalStorage = "internal";
+  public static final String KEY_METADATA_INTERNAL_STORAGE = "internal";
   public static final String KEY_REFERENCE_FIELD = "keyReference";
   
   public static final String DEFAULT_KMS_INSTANCE_ID = "DEFAULT";
@@ -72,10 +72,10 @@ public class EnvelopeKeyManager {
   public static final String KEY_ACCESS_TOKEN_PROPERTY_NAME = "encryption.key.access.token";
 
   public static final String WRAPPING_METHOD_FIELD = "method";
-  public static final String single_wrapping_method = "single";
-  public static final String double_wrapping_method = "double";
+  public static final String SINGLE_WRAPPING_METHOD = "single";
+  public static final String DOUBLE_WRAPPING_METHOD = "double";
   public static final String WRAPPING_METHOD_VERSION_FIELD = "version";
-  public static final String wrapping_method_version = "0.1";
+  public static final String WRAPPING_METHOD_VERSION = "0.1";
   public static final String MASTER_KEY_ID_FIELD = "masterKeyID";
   public static final String WRAPPED_DEK_FIELD = "wrappedDEK";
 
@@ -84,16 +84,18 @@ public class EnvelopeKeyManager {
   
   public static final long DEFAULT_CACHE_ENTRY_LIFETIME = 10 * 60 * 1000; // 10 minutes
   public static final int INITIAL_PER_TOKEN_CACHE_SIZE = 5;
-  // For every access token a map of KMSInstanceId to kmsClient
+  // For every token a map of KMSInstanceId to kmsClient
   private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String, KmsClient>>> kmsClientCachePerToken =
     new ConcurrentHashMap<>(INITIAL_PER_TOKEN_CACHE_SIZE);
   private static final Object cacheLock = new Object();
   private static volatile Long lastCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute
 
+  // For every token a map of MEK_ID to (KEK ID and KEK)
   private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentHashMap<String,KeyEncryptionKey>>> writeKEKMapPerToken =
     new ConcurrentHashMap<>(INITIAL_PER_TOKEN_CACHE_SIZE);
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
+  // A map of MEK_ID to (KEK ID and KEK) for the current token
   private final ConcurrentMap<String,KeyEncryptionKey> writeSessionKEKMap;
   private final long cacheEntryLifetime;
 
@@ -133,12 +135,12 @@ public class EnvelopeKeyManager {
     keyCounter = 0;
 
     String wrappingMethod =  hadoopConfiguration.getTrimmed(WRAPPING_METHOD_PROPERTY_NAME);
-    if (!StringUtils.isEmpty(wrappingMethod) && wrappingMethod.equals(single_wrapping_method)) { // TODO
+    if (!StringUtils.isEmpty(wrappingMethod) && wrappingMethod.equals(SINGLE_WRAPPING_METHOD)) { // TODO
       doubleWrapping = false;
       this.wrappingMethod = wrappingMethod;
     } else {
       doubleWrapping = true; // default
-      this.wrappingMethod = double_wrapping_method;
+      this.wrappingMethod = DOUBLE_WRAPPING_METHOD;
   }
 
     this.accessToken = getAccessTokenOrDefault(configuration);
@@ -265,10 +267,10 @@ public class EnvelopeKeyManager {
     // Pack all into key material JSON
     Map<String, String> keyMaterialMap = new HashMap<String, String>(10);
     if (null == targetKeyMaterialStore) {
-      keyMaterialMap.put(KEY_METADATA_STORAGE_FIELD, keyMetadataInternalStorage); // TODO use/check
+      keyMaterialMap.put(KEY_METADATA_STORAGE_FIELD, KEY_METADATA_INTERNAL_STORAGE); // TODO use/check
     }
     keyMaterialMap.put(WRAPPING_METHOD_FIELD, wrappingMethod);
-    keyMaterialMap.put(WRAPPING_METHOD_VERSION_FIELD, wrapping_method_version);
+    keyMaterialMap.put(WRAPPING_METHOD_VERSION_FIELD, WRAPPING_METHOD_VERSION);
     keyMaterialMap.put(MASTER_KEY_ID_FIELD, masterKeyID);
     if (isFooterKey) { // Add KMS metadata
       keyMaterialMap.put(KMS_INSTANCE_ID_FIELD, kmsInstanceID);
