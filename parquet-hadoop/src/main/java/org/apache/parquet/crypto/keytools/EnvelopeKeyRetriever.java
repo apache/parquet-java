@@ -87,7 +87,7 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
     String keyMaterial;
     if (null != keyMaterialStore) {
       String keyReferenceMetadata = new String(keyMetaData, StandardCharsets.UTF_8);
-      String keyIDinFile = getKeyReference(keyReferenceMetadata, keyMaterialStore.getStorageLocation());
+      String keyIDinFile = getKeyReference(keyReferenceMetadata);
       keyMaterial = keyMaterialStore.getKeyMaterial(keyIDinFile);
       if (null == keyMaterial) {
         throw new ParquetCryptoRuntimeException("Null key material for keyIDinFile: " + keyIDinFile);
@@ -133,11 +133,7 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
     
     byte[] dataKey;
     if (!doubleWrapping) {
-      try {
-      dataKey = kmsClient.unwrapDataKey(encodedWrappedDatakey, masterKeyID);
-      } catch (IOException e) {
-        throw new ParquetCryptoRuntimeException(e);
-      }
+      dataKey = kmsClient.unwrapKey(encodedWrappedDatakey, masterKeyID);
     } else {
       // Get KEK
       String encodedKEK_ID = keyMaterialJson.get(EnvelopeKeyManager.KEK_ID_FIELD);
@@ -158,11 +154,8 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
   private byte[] unwrapKek(Map<String, String> keyMaterialJson, String masterKeyID) {
     byte[] kekBytes;
     String encodedWrappedKEK = keyMaterialJson.get(EnvelopeKeyManager.WRAPPED_KEK_FIELD);
-    try {
-      kekBytes = kmsClient.unwrapDataKey(encodedWrappedKEK, masterKeyID);
-    } catch (IOException e) {
-      throw new ParquetCryptoRuntimeException(e);
-    }
+    kekBytes = kmsClient.unwrapKey(encodedWrappedKEK, masterKeyID);
+    
     if (null == kekBytes) {
       throw new ParquetCryptoRuntimeException("Null KEK, after unwrapping in KMS with master key " + masterKeyID);
     }
@@ -205,7 +198,7 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
     }
   }
 
-  private static String getKeyReference(String keyReferenceMetadata, String targetStorageLocation) {
+  private static String getKeyReference(String keyReferenceMetadata) {
     Map<String, String> keyMetadataJson = null;
     try {
       keyMetadataJson = objectMapper.readValue(new StringReader(keyReferenceMetadata),
@@ -214,8 +207,6 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
       throw new ParquetCryptoRuntimeException("Failed to parse key metadata " + keyReferenceMetadata, e);
     }
 
-    String storageLocation = keyMetadataJson.get(EnvelopeKeyManager.KEY_METADATA_STORAGE_FIELD);
-    LOG.debug("Key material storage location " + storageLocation + " vs " + targetStorageLocation);
     return keyMetadataJson.get(EnvelopeKeyManager.KEY_REFERENCE_FIELD);
     }
 

@@ -142,9 +142,4 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   private Path getStorageFilePath() {
     return keyMaterialFile;
   }
-
-  @Override
-  public String getStorageLocation() {
-    return keyMaterialFile.getName();
-  }
 }

@@ -26,6 +26,7 @@ import okhttp3.Response;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.crypto.keytools.EnvelopeKeyManager;
 import org.apache.parquet.crypto.keytools.RemoteKmsClient;
 import org.codehaus.jackson.JsonNode;
@@ -55,10 +56,10 @@ public class VaultClient extends RemoteKmsClient {
   private String vaultToken;
 
   @Override
-  protected void initializeInternal(Configuration conf) throws IOException {
+  protected void initializeInternal(Configuration conf) {
     vaultToken = conf.getTrimmed(EnvelopeKeyManager.KEY_ACCESS_TOKEN_PROPERTY_NAME);
     if (StringUtils.isEmpty(vaultToken)) {
-      throw new IOException("Missing token");
+      throw new ParquetCryptoRuntimeException("Missing token");
     }
     if (EnvelopeKeyManager.DEFAULT_KMS_INSTANCE_ID != kmsInstanceID) {
       transitEngine = "/v1/" + kmsInstanceID;
@@ -70,7 +71,7 @@ public class VaultClient extends RemoteKmsClient {
   }
 
   @Override
-  public String wrapDataKeyInServer(byte[] dataKey, String masterKeyIdentifier) throws IOException, KeyAccessDeniedException, UnsupportedOperationException {
+  public String wrapKeyInServer(byte[] dataKey, String masterKeyIdentifier) {
     Map<String, String> writeKeyMap = new HashMap<String, String>(1);
     final String dataKeyStr = Base64.getEncoder().encodeToString(dataKey);
     writeKeyMap.put("plaintext", dataKeyStr);
@@ -80,7 +81,7 @@ public class VaultClient extends RemoteKmsClient {
   }
 
   @Override
-  public byte[] unwrapDataKeyInServer(String wrappedKey, String masterKeyIdentifier) throws IOException, KeyAccessDeniedException, UnsupportedOperationException {
+  public byte[] unwrapKeyInServer(String wrappedKey, String masterKeyIdentifier) {
     Map<String, String> writeKeyMap = new HashMap<String, String>(1);
     writeKeyMap.put("ciphertext", wrappedKey);
     String response = getContentFromTransitEngine(transitEngine + transitUnwrapEndpoint, buildPayload(writeKeyMap), masterKeyIdentifier);
@@ -90,7 +91,7 @@ public class VaultClient extends RemoteKmsClient {
   }
 
   @Override
-  protected byte[] getKeyFromServer(String key) throws IOException, KeyAccessDeniedException, UnsupportedOperationException {
+  protected byte[] getKeyFromServer(String key) {
     LOG.info("standardKeyIdentifier:  " + key);
 
     final String endpoint = this.kmsURL + getKeyEndpoint;
@@ -101,25 +102,39 @@ public class VaultClient extends RemoteKmsClient {
 
     String response = executeAndGetResponse(endpoint, request);
 
-    JsonNode keysNode = objectMapper.readTree(response).get("data").get("data");
+    JsonNode keysNode;
+    try {
+      keysNode = objectMapper.readTree(response).get("data").get("data");
+    } catch (IOException e) {
+      throw new ParquetCryptoRuntimeException("Failed to parse vault response. " + key + " not found."  + response);
+    }
     byte[] matchingValue = null;
     if (null != keysNode) {
-      matchingValue = keysNode.findValue(key).getBinaryValue();
+      try {
+        matchingValue = keysNode.findValue(key).getBinaryValue();
+      } catch (IOException e) {
+        throw new ParquetCryptoRuntimeException("Failed to match vault response. " + key + " not found."  + response);
+      }
     }
 
     if(null == matchingValue) {
-      throw new IOException("Failed to parse vault response. " + key + " not found."  + response);
+      throw new ParquetCryptoRuntimeException("Failed to find vault response. " + key + " not found."  + response);
     }
 
     return matchingValue;
   }
 
-  private String buildPayload(Map<String, String> paramMap) throws IOException {
-    String jsonValue = objectMapper.writeValueAsString(paramMap);
+  private String buildPayload(Map<String, String> paramMap) {
+    String jsonValue;
+    try {
+      jsonValue = objectMapper.writeValueAsString(paramMap);
+    } catch (IOException e) {
+      throw new ParquetCryptoRuntimeException("Failed to build payload", e);
+    }
     return jsonValue;
   }
 
-  private String getContentFromTransitEngine(String endPoint, String jPayload, String masterKeyIdentifier) throws IOException, KeyAccessDeniedException {
+  private String getContentFromTransitEngine(String endPoint, String jPayload, String masterKeyIdentifier) {
     LOG.info("masterKeyIdentifier: " + masterKeyIdentifier);
     String masterKeyID = masterKeyIdentifier;
 
@@ -132,7 +147,7 @@ public class VaultClient extends RemoteKmsClient {
     return executeAndGetResponse(endPoint, request);
   }
 
-  private String executeAndGetResponse(String endPoint, Request request) throws IOException, KeyAccessDeniedException {
+  private String executeAndGetResponse(String endPoint, Request request) {
     Response response = null;
     try {
       response = httpClient.newCall(request).execute();
@@ -146,7 +161,7 @@ public class VaultClient extends RemoteKmsClient {
         throw new IOException("Vault call [" + endPoint + "] didn't succeed: " + responseBody);
       }
     } catch (IOException e) {
-      throw new IOException("Vault call [" + request.url().toString() + endPoint + "] didn't succeed", e);
+      throw new ParquetCryptoRuntimeException("Vault call [" + request.url().toString() + endPoint + "] didn't succeed", e);
     } finally {
       if (null != response) {
         response.close();
@@ -155,11 +170,16 @@ public class VaultClient extends RemoteKmsClient {
   }
 
 
-  private static String parseReturn(String response, String searchKey) throws IOException {
-    String matchingValue = objectMapper.readTree(response).findValue(searchKey).getTextValue();
+  private static String parseReturn(String response, String searchKey) {
+    String matchingValue;
+    try {
+      matchingValue = objectMapper.readTree(response).findValue(searchKey).getTextValue();
+    } catch (IOException e) {
+      throw new ParquetCryptoRuntimeException("Failed to parse vault response. " + searchKey + " not found."  + response, e);
+    }
 
     if(null == matchingValue) {
-      throw new IOException("Failed to parse vault response. " + searchKey + " not found."  + response);
+      throw new ParquetCryptoRuntimeException("Failed to match vault response. " + searchKey + " not found."  + response);
     }
     return matchingValue;
   }

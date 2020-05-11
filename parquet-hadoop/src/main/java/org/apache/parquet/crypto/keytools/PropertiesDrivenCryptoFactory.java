@@ -20,7 +20,6 @@
 package org.apache.parquet.crypto.keytools;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,13 +38,12 @@ import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
-public class ConfigurationDrivenCryptoFactory implements EncryptionPropertiesFactory, DecryptionPropertiesFactory {
+public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactory, DecryptionPropertiesFactory {
 
   public static final String COLUMN_KEYS_PROPERTY_NAME = "encryption.column.keys";
   public static final String FOOTER_KEY_PROPERTY_NAME = "encryption.footer.key";
   public static final String ENCRYPTION_ALGORITHM_PROPERTY_NAME = "encryption.algorithm";
   public static final String PLAINTEXT_FOOTER_PROPERTY_NAME = "encryption.plaintext.footer";
-  public static final String TABLE_ID_PROPERTY_NAME= "encryption.table.id";
   
   private static SecureRandom random = new SecureRandom();
 
@@ -101,19 +99,10 @@ public class ConfigurationDrivenCryptoFactory implements EncryptionPropertiesFac
     String plaintextFooterStr = fileHadoopConfig.getTrimmed(PLAINTEXT_FOOTER_PROPERTY_NAME);
     boolean plaintextFooter = Boolean.parseBoolean(plaintextFooterStr);
 
-    // Handle AAD prefix
-    byte[] aadPrefix = null;
-    String tableId = fileHadoopConfig.getTrimmed(TABLE_ID_PROPERTY_NAME);
-    if (!StringUtils.isEmpty(tableId)) {
-      String fileId = tableId + "/" + tempFilePath.getName(); // TODO presumes name doesnt change (path can change)
-      aadPrefix = fileId.getBytes(StandardCharsets.UTF_8);
-    }
-
     FileEncryptionProperties.Builder propertiesBuilder = FileEncryptionProperties.builder(footerKey)
         .withFooterKeyMetadata(footerKeyMetadata)
         .withAlgorithm(cipher)
-        .withEncryptedColumns(encryptedColumns)
-        .withAADPrefix(aadPrefix);
+        .withEncryptedColumns(encryptedColumns);
 
     if (plaintextFooter) {
       propertiesBuilder = propertiesBuilder.withPlaintextFooter();
@@ -197,24 +186,15 @@ public class ConfigurationDrivenCryptoFactory implements EncryptionPropertiesFac
       }
     }
 
-    String kmsInstanceID = hadoopConfig.getTrimmed(RemoteKmsClient.KMS_INSTANCE_ID_PROPERTY_NAME);
+    String kmsInstanceID = hadoopConfig.getTrimmed(EnvelopeKeyManager.KMS_INSTANCE_ID_PROPERTY_NAME);
     if (StringUtils.isEmpty(kmsInstanceID)) {
       kmsInstanceID = EnvelopeKeyManager.DEFAULT_KMS_INSTANCE_ID;
     }
     DecryptionKeyRetriever keyRetriever = new EnvelopeKeyRetriever(EnvelopeKeyManager.getKmsClient(hadoopConfig, kmsInstanceID), 
         hadoopConfig, keyMaterialStore);
 
-    // Handle AAD prefix
-    byte[] aadPrefix = null;
-    String tableId = hadoopConfig.getTrimmed(TABLE_ID_PROPERTY_NAME);
-    if (null != tableId) {
-      String fileId = tableId + "/" + filePath.getName(); 
-      aadPrefix = fileId.getBytes(StandardCharsets.UTF_8);
-    }
-
     return FileDecryptionProperties.builder()
         .withKeyRetriever(keyRetriever)
-        .withAADPrefix(aadPrefix)
         .withPlaintextFilesAllowed() // TODO make configurable?
         .build();
   }

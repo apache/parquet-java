@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.Path;
 
 public interface FileKeyMaterialStore {
   
+  // TODO comments
   public void initialize(Path parquetFilePath);
 
   public void addKeyMaterial(String keyIDInFile, String keyMaterial);
@@ -41,6 +42,4 @@ public interface FileKeyMaterialStore {
   public void removeFileKeyMaterial();
 
   public void moveFileKeyMaterial(FileKeyMaterialStore targetKeyMaterialStore);
-
-  public String getStorageLocation();
 }
