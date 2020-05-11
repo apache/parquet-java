@@ -117,18 +117,10 @@ public class EnvelopeKeyManager {
     this.cacheEntryLifetime = hadoopConfiguration.getLong(CACHE_ENTRY_LIFETIME_PROPERTY_NAME, DEFAULT_CACHE_ENTRY_LIFETIME);
     invalidateCachesForExpiredTokens();
 
-    String kmsInstanceID = hadoopConfiguration.getTrimmed(RemoteKmsClient.KMS_INSTANCE_ID_PROPERTY_NAME);
-    if (StringUtils.isEmpty(kmsInstanceID)) {
-      kmsInstanceID = DEFAULT_KMS_INSTANCE_ID;
-    }
-    this.kmsInstanceID = kmsInstanceID;
+    this.kmsInstanceID = hadoopConfiguration.getTrimmed(RemoteKmsClient.KMS_INSTANCE_ID_PROPERTY_NAME, DEFAULT_KMS_INSTANCE_ID);
     this.kmsClient = getKmsClient(configuration, kmsInstanceID);
 
-    String kmsInstanceURLForParquetWrite = hadoopConfiguration.getTrimmed(RemoteKmsClient.KMS_INSTANCE_URL_PROPERTY_NAME);
-    if (StringUtils.isEmpty(kmsInstanceURLForParquetWrite)) {
-      kmsInstanceURLForParquetWrite = DEFAULT_KMS_INSTANCE_URL;
-    }
-    this.kmsInstanceURLForParquetWrite = kmsInstanceURLForParquetWrite;
+    this.kmsInstanceURLForParquetWrite = hadoopConfiguration.getTrimmed(RemoteKmsClient.KMS_INSTANCE_URL_PROPERTY_NAME, DEFAULT_KMS_INSTANCE_URL);
 
     this.keyMaterialStore = keyMaterialStore;
     random = new SecureRandom();

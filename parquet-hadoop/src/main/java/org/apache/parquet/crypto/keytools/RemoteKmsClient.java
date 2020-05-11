@@ -172,12 +172,11 @@ public abstract class RemoteKmsClient implements KmsClient {
 
   private byte[] getKeyFromCacheOrServer(String keyIdentifier) throws IOException {
     invalidateExpiredKeyCacheEntries();
-    ExpiringCacheEntry<byte[]> keyCacheEntry = null;
-    ExpiringCacheEntry<byte[]> expiringCacheEntry = masterKeyCache.get(keyIdentifier);
-    if ((null == expiringCacheEntry) || expiringCacheEntry.isExpired()) {
+    ExpiringCacheEntry<byte[]> keyCacheEntry = masterKeyCache.get(keyIdentifier);
+    if ((null == keyCacheEntry) || keyCacheEntry.isExpired()) {
       synchronized (cacheLock) {
-        expiringCacheEntry = masterKeyCache.get(keyIdentifier);
-        if ((null == expiringCacheEntry) || expiringCacheEntry.isExpired()) {
+        keyCacheEntry = masterKeyCache.get(keyIdentifier);
+        if ((null == keyCacheEntry) || keyCacheEntry.isExpired()) {
           byte[] key = getKeyFromServer(keyIdentifier);
           keyCacheEntry = new ExpiringCacheEntry<>(key, cacheEntryLifetime);
           masterKeyCache.put(keyIdentifier, keyCacheEntry);
