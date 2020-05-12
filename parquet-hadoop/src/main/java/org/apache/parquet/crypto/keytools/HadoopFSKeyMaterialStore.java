@@ -16,36 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-
-
 package org.apache.parquet.crypto.keytools;
-
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.HashMap;
-import java.util.Set;
 
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
-
+  
   public final static String KEY_MATERIAL_FILE_PREXIX = "_KEY_MATERIAL_FOR_";
+  public final static String KEY_MATERIAL_FILE_SUFFIX = ".json";
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private final FileSystem hadoopFileSystem;
-  private HashMap<String, String> keyMaterialMap;
+  private Map<String, String> keyMaterialMap;
   private Path keyMaterialFile;
-
+  
   HadoopFSKeyMaterialStore(FileSystem hadoopFileSystem, Path parquetFilePath) {
     this(hadoopFileSystem, parquetFilePath, null);
   }
-
+  
   HadoopFSKeyMaterialStore(FileSystem hadoopFileSystem, Path parquetFilePath, String prefix) {
     this.hadoopFileSystem = hadoopFileSystem;
     String fullPrefix = "";
@@ -53,7 +53,8 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
       fullPrefix = prefix;
     }
     fullPrefix += KEY_MATERIAL_FILE_PREXIX;
-    keyMaterialFile = new Path(parquetFilePath.getParent(), fullPrefix + parquetFilePath.getName());
+    keyMaterialFile = new Path(parquetFilePath.getParent(),
+      fullPrefix + parquetFilePath.getName() + KEY_MATERIAL_FILE_SUFFIX);
   }
 
   @Override
@@ -63,7 +64,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   @Override
   public void addKeyMaterial(String keyIDInFile, String keyMaterial) throws ParquetCryptoRuntimeException {
     if (null == keyMaterialMap) {
-      keyMaterialMap = new HashMap<String, String>();
+      keyMaterialMap = new HashMap<>();
     }
     keyMaterialMap.put(keyIDInFile, keyMaterial);
   }
@@ -74,23 +75,14 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
     if (null == keyMaterialMap) {
       loadKeyMaterialMap();
     }
-
     return keyMaterialMap.get(keyIDInFile);
   }
-
-  @SuppressWarnings("unchecked")
+  
   private void loadKeyMaterialMap() {
-    try {
-      FSDataInputStream keyMaterialStream = hadoopFileSystem.open(keyMaterialFile);
-
-      ObjectInputStream objectStream = new ObjectInputStream(keyMaterialStream);
-      try {
-        keyMaterialMap = (HashMap<String,String>) objectStream.readObject(); // TODO run instanceof, to get rid of SupressWarning
-      } catch (ClassNotFoundException e) {
-        throw new ShouldNeverHappenException(e);
-      }
-      objectStream.close();
-      keyMaterialStream.close();
+    try (FSDataInputStream keyMaterialStream = hadoopFileSystem.open(keyMaterialFile)) {
+      JsonNode keyMaterialJson = objectMapper.readTree(keyMaterialStream);
+      keyMaterialMap = objectMapper.readValue(keyMaterialJson,
+        new TypeReference<Map<String, String>>() { });
     } catch (IOException e) {
       throw new ParquetCryptoRuntimeException("Failed to get key material from " + keyMaterialFile, e);
     }
@@ -99,12 +91,8 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   @Override
   public void saveFileKeyMaterial() throws ParquetCryptoRuntimeException {
     // TODO needed? Path qualifiedPath = parquetFilePath.makeQualified(hadoopFileSystem);
-    try {
-      FSDataOutputStream keyMaterialStream = hadoopFileSystem.create(keyMaterialFile);
-      ObjectOutputStream objectStream = new ObjectOutputStream(keyMaterialStream);
-      objectStream.writeObject(keyMaterialMap);
-      objectStream.close();
-      keyMaterialStream.close();
+    try (FSDataOutputStream keyMaterialStream = hadoopFileSystem.create(keyMaterialFile)) {
+      objectMapper.writeValue(keyMaterialStream, keyMaterialMap);
     } catch (IOException e) {
       throw new ParquetCryptoRuntimeException("Failed to save key material in " + keyMaterialFile, e);
     }
@@ -142,4 +130,5 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   private Path getStorageFilePath() {
     return keyMaterialFile;
   }
+
 }
