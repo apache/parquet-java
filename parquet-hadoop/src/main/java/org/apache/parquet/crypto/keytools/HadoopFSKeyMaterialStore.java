@@ -35,17 +35,17 @@ import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 
 public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
-  
+
   public final static String KEY_MATERIAL_FILE_PREXIX = "_KEY_MATERIAL_FOR_";
 
   private final FileSystem hadoopFileSystem;
   private HashMap<String, String> keyMaterialMap;
   private Path keyMaterialFile;
-  
+
   HadoopFSKeyMaterialStore(FileSystem hadoopFileSystem, Path parquetFilePath) {
     this(hadoopFileSystem, parquetFilePath, null);
   }
-  
+
   HadoopFSKeyMaterialStore(FileSystem hadoopFileSystem, Path parquetFilePath, String prefix) {
     this.hadoopFileSystem = hadoopFileSystem;
     String fullPrefix = "";
@@ -77,7 +77,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
 
     return keyMaterialMap.get(keyIDInFile);
   }
-  
+
   @SuppressWarnings("unchecked")
   private void loadKeyMaterialMap() {
     try {

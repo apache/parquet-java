@@ -44,7 +44,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
   public static final String FOOTER_KEY_PROPERTY_NAME = "encryption.footer.key";
   public static final String ENCRYPTION_ALGORITHM_PROPERTY_NAME = "encryption.algorithm";
   public static final String PLAINTEXT_FOOTER_PROPERTY_NAME = "encryption.plaintext.footer";
-  
+  public static final String KEY_MATERIAL_INTERNAL_PROPERTY_NAME = "encryption.key.material.internal.storage";
+
   private static SecureRandom random = new SecureRandom();
 
   @Override
@@ -64,8 +65,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     }
 
     FileKeyMaterialStore keyMaterialStore = null;
-    String keyMaterialStoreClass = fileHadoopConfig.getTrimmed("encryption.key.material.store.class"); // TODO
-    if (null != keyMaterialStoreClass) { // TODO
+    boolean keyMaterialInternalStorage = fileHadoopConfig.getBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
+    if (!keyMaterialInternalStorage) {
       try {
         keyMaterialStore = new HadoopFSKeyMaterialStore(tempFilePath.getFileSystem(fileHadoopConfig), tempFilePath);
       } catch (IOException e) {
@@ -130,7 +131,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
       String[] parts = curKeyToColumns.split(":");
       if (parts.length != 2) {
-        throw new ParquetCryptoRuntimeException("Incorrect key to columns mapping in encryption.column.keys: [" + curKeyToColumns + "]");
+        throw new ParquetCryptoRuntimeException("Incorrect key to columns mapping in encryption.column.keys: [" 
+            + curKeyToColumns + "]");
       }
 
       String columnKeyId = parts[0].trim();
@@ -177,8 +179,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       throws ParquetCryptoRuntimeException {
 
     FileKeyMaterialStore keyMaterialStore = null; 
-    String keyMaterialStoreClass = hadoopConfig.getTrimmed("encryption.key.material.store.class"); // TODO
-    if (null != keyMaterialStoreClass) { // TODO
+    boolean keyMaterialInternalStorage = hadoopConfig.getBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
+    if (!keyMaterialInternalStorage) {
       try {
         keyMaterialStore = new HadoopFSKeyMaterialStore(filePath.getFileSystem(hadoopConfig), filePath);
       } catch (IOException e) {

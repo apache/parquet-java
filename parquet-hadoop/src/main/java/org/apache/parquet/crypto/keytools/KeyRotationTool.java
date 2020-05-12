@@ -48,9 +48,9 @@ public class KeyRotationTool  {
       FileKeyMaterialStore sourceKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile);
 
       EnvelopeKeyManager keyManager = new EnvelopeKeyManager(hadoopConfig, sourceKeyMaterialStore);
-      
+
       FileKeyMaterialStore tempKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile, "_TMP"); // TODO
-      
+
       keyManager.rotateMasterKeys(tempKeyMaterialStore);
     }
   }

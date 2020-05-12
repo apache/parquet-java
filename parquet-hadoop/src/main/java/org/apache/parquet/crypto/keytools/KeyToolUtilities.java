@@ -30,7 +30,7 @@ import java.util.Base64;
 
 
 public class KeyToolUtilities {
-  
+
   static class KeyWithMasterID {
 
     private final byte[] keyBytes;
@@ -49,7 +49,7 @@ public class KeyToolUtilities {
       return masterID;
     }
   }
-  
+
   static class KeyEncryptionKey {
     private final byte[] kekBytes;
     private final byte[] kekID;
@@ -62,7 +62,7 @@ public class KeyToolUtilities {
       this.encodedKEK_ID = encodedKEK_ID;
       this.encodedWrappedKEK = encodedWrappedKEK;
     }
-    
+
     byte[] getBytes() {
       return kekBytes;
     }

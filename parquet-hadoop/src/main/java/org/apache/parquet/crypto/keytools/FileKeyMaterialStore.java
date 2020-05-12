@@ -27,14 +27,14 @@ import java.util.Set;
 import org.apache.hadoop.fs.Path;
 
 public interface FileKeyMaterialStore {
-  
+
   // TODO comments
   public void initialize(Path parquetFilePath);
 
   public void addKeyMaterial(String keyIDInFile, String keyMaterial);
 
   public String getKeyMaterial(String keyIDInFile);
-  
+
   public void saveFileKeyMaterial();
 
   public Set<String> getFileKeyIDSet();

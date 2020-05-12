@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.DecryptionKeyRetriever;
@@ -44,7 +43,7 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
 
   // For every token a map of KEK_ID to KEK bytes
   private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String,byte[]>>> readKEKMapPerToken
-    = new ConcurrentHashMap<>();
+  = new ConcurrentHashMap<>();
   private static final Object readKEKCacheLock = new Object();
   private static volatile Long lastCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute
   private final String accessToken;
@@ -66,8 +65,8 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
 
     this.accessToken = EnvelopeKeyManager.getAccessTokenOrDefault(hadoopConfiguration);
 
-    this.cacheEntryLifetime = hadoopConfiguration.getLong(EnvelopeKeyManager.CACHE_ENTRY_LIFETIME_PROPERTY_NAME,
-      EnvelopeKeyManager.DEFAULT_CACHE_ENTRY_LIFETIME);
+    this.cacheEntryLifetime = 1000 * hadoopConfiguration.getLong(EnvelopeKeyManager.TOKEN_LIFETIME_PROPERTY_NAME,
+        EnvelopeKeyManager.DEFAULT_CACHE_ENTRY_LIFETIME);
     invalidateCachesForExpiredTokens();
     ExpiringCacheEntry<ConcurrentMap<String, byte[]>> readKEKCacheEntry = readKEKMapPerToken.get(accessToken);
     if ((null == readKEKCacheEntry) || (readKEKCacheEntry.isExpired())) {
@@ -100,7 +99,6 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
   }
 
   KeyWithMasterID getDEKandMasterID(String keyMaterial)  {
-    
     Map<String, String> keyMaterialJson = null;
     try {
       keyMaterialJson = objectMapper.readValue(new StringReader(keyMaterial),
@@ -109,28 +107,21 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
       throw new ParquetCryptoRuntimeException("Failed to parse key material " + keyMaterial, e);
     }
 
-    boolean doubleWrapping;
-    String wrapMethod = keyMaterialJson.get(EnvelopeKeyManager.WRAPPING_METHOD_FIELD); // TODO static import
-    if (wrapMethod.equals(EnvelopeKeyManager.SINGLE_WRAPPING_METHOD)) {
-      doubleWrapping = false;
-    } else if (wrapMethod.equals(EnvelopeKeyManager.DOUBLE_WRAPPING_METHOD)) {
-      doubleWrapping = true;
-    } else {
-      throw new ParquetCryptoRuntimeException("Wrong wrapping method " + wrapMethod);
-    }
-
-    String wrapMethodVersion = keyMaterialJson.get(EnvelopeKeyManager.WRAPPING_METHOD_VERSION_FIELD);
-    if (!EnvelopeKeyManager.WRAPPING_METHOD_VERSION.equals(wrapMethodVersion)) {
-      throw new ParquetCryptoRuntimeException("Wrong wrapping method version " + wrapMethodVersion); // TODO
+    String keyMaterialType = keyMaterialJson.get(EnvelopeKeyManager.KEY_MATERIAL_TYPE_FIELD);
+    if (null != keyMaterialType && !EnvelopeKeyManager.keyMaterialType.equals(keyMaterialType)) {
+      throw new ParquetCryptoRuntimeException("Wrong key materila type: " + keyMaterialType + 
+          " vs " + EnvelopeKeyManager.KEY_MATERIAL_TYPE_FIELD);
     }
 
     if (null == kmsClient) {
       kmsClient = getKmsClientFromKeyMaterial(hadoopConfiguration, keyMaterialJson);
     }
 
-    String masterKeyID = keyMaterialJson.get(EnvelopeKeyManager.MASTER_KEY_ID_FIELD); // TODO cache?
+    boolean doubleWrapping = Boolean.valueOf(keyMaterialJson.get(EnvelopeKeyManager.DOUBLE_WRAPPING_FIELD));
+
+    String masterKeyID = keyMaterialJson.get(EnvelopeKeyManager.MASTER_KEY_ID_FIELD);
     String encodedWrappedDatakey = keyMaterialJson.get(EnvelopeKeyManager.WRAPPED_DEK_FIELD);
-    
+
     byte[] dataKey;
     if (!doubleWrapping) {
       dataKey = kmsClient.unwrapKey(encodedWrappedDatakey, masterKeyID);
@@ -155,7 +146,7 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
     byte[] kekBytes;
     String encodedWrappedKEK = keyMaterialJson.get(EnvelopeKeyManager.WRAPPED_KEK_FIELD);
     kekBytes = kmsClient.unwrapKey(encodedWrappedKEK, masterKeyID);
-    
+
     if (null == kekBytes) {
       throw new ParquetCryptoRuntimeException("Null KEK, after unwrapping in KMS with master key " + masterKeyID);
     }
@@ -182,7 +173,7 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
   }
 
   /**
-   * If KMS instance URL is specified in encryption.kms.instance.url or encryption.kms.instance.url.list, then it overrides
+   * If KMS instance URL is specified in encryption.kms.instance.url, then it overrides
    * the KMS instance URL that is read from file metadata.
    * @param hadoopConfiguration
    * @param kmsInstanceURL
@@ -190,8 +181,7 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
   private static void updateKmsInstanceURLInHadoopConfiguration(Configuration hadoopConfiguration, String kmsInstanceURL) {
     if (!StringUtils.isEmpty(kmsInstanceURL)) {
       final String kmsUrlProperty = hadoopConfiguration.getTrimmed(RemoteKmsClient.KMS_INSTANCE_URL_PROPERTY_NAME);
-      final String[] kmsUrlList = hadoopConfiguration.getTrimmedStrings(RemoteKmsClient.KMS_INSTANCE_URL_LIST_PROPERTY_NAME);
-      if (StringUtils.isEmpty(kmsUrlProperty) && ArrayUtils.isEmpty(kmsUrlList)) {
+      if (StringUtils.isEmpty(kmsUrlProperty)) {
         LOG.debug("Updating KMS instance URL to: " + kmsInstanceURL);
         hadoopConfiguration.set(RemoteKmsClient.KMS_INSTANCE_URL_PROPERTY_NAME, kmsInstanceURL);
       }
@@ -208,7 +198,7 @@ public class EnvelopeKeyRetriever implements DecryptionKeyRetriever {
     }
 
     return keyMetadataJson.get(EnvelopeKeyManager.KEY_REFERENCE_FIELD);
-    }
+  }
 
   /**
    * Flush any caches that are tied to the specified accessToken

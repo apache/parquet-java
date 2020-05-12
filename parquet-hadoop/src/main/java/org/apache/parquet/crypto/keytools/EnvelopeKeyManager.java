@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.crypto.keytools.KeyToolUtilities.KeyEncryptionKey;
@@ -55,34 +54,31 @@ import org.slf4j.LoggerFactory;
 public class EnvelopeKeyManager {
   private static final Logger LOG = LoggerFactory.getLogger(EnvelopeKeyManager.class);
 
+  public static final String KMS_CLIENT_CLASS_PROPERTY_NAME = "encryption.kms.client.class";
+  public static final String KMS_INSTANCE_ID_PROPERTY_NAME = "encryption.kms.instance.id";
+  public static final String DOUBLE_WRAPPING_PROPERTY_NAME = "encryption.double.wrapping";
+  public static final String KEY_ACCESS_TOKEN_PROPERTY_NAME = "encryption.key.access.token";
+  public static final String TOKEN_LIFETIME_PROPERTY_NAME = "encryption.key.access.token.lifetime";
+
+  public static final String KEY_MATERIAL_TYPE_FIELD = "keyMaterialType";
+  public static final String keyMaterialType = "PKMT1";
   public static final String KEY_METADATA_INTERNAL_STORAGE_FIELD = "internalStorage";
   public static final String KEY_REFERENCE_FIELD = "keyReference";
+  public static final String DOUBLE_WRAPPING_FIELD = "doubleWrapping";
+
+  public static final String KMS_INSTANCE_ID_FIELD = "kmsInstanceID";
+  public static final String KMS_INSTANCE_URL_FIELD = "kmsInstanceURL";
+
+  public static final String MASTER_KEY_ID_FIELD = "masterKeyID";
+  public static final String WRAPPED_DEK_FIELD = "wrappedDEK";
+  public static final String KEK_ID_FIELD = "keyEncryptionKeyID";
+  public static final String WRAPPED_KEK_FIELD = "wrappedKEK";
 
   public static final String DEFAULT_KMS_INSTANCE_ID = "DEFAULT";
   public static final String DEFAULT_KMS_INSTANCE_URL = "DEFAULT";
   public static final String DEFAULT_ACCESS_TOKEN = "DEFAULT";
 
-  public static final String KMS_INSTANCE_ID_FIELD = "kmsInstanceID";
-  public static final String KMS_INSTANCE_URL_FIELD = "kmsInstanceURL";
-
-  public static final String KMS_INSTANCE_ID_PROPERTY_NAME = "encryption.kms.instance.id";
-  public static final String WRAPPING_METHOD_PROPERTY_NAME = "encryption.key.wrapping.method";
-  public static final String CACHE_ENTRY_LIFETIME_PROPERTY_NAME = "encryption.cache.entry.lifetime";
-  public static final String KMS_CLIENT_CLASS_PROPERTY_NAME = "encryption.kms.client.class";
-  public static final String KEY_ACCESS_TOKEN_PROPERTY_NAME = "encryption.key.access.token";
-
-  public static final String WRAPPING_METHOD_FIELD = "method";
-  public static final String SINGLE_WRAPPING_METHOD = "single";
-  public static final String DOUBLE_WRAPPING_METHOD = "double";
-  public static final String WRAPPING_METHOD_VERSION_FIELD = "version";
-  public static final String WRAPPING_METHOD_VERSION = "0.1";
-  public static final String MASTER_KEY_ID_FIELD = "masterKeyID";
-  public static final String WRAPPED_DEK_FIELD = "wrappedDEK";
-
-  public static final String KEK_ID_FIELD = "keyEncryptionKeyID";
-  public static final String WRAPPED_KEK_FIELD = "wrappedKEK";
-
-  public static final long DEFAULT_CACHE_ENTRY_LIFETIME = 10 * 60 * 1000; // 10 minutes
+  public static final long DEFAULT_CACHE_ENTRY_LIFETIME = 10 * 60; // 10 minutes
   public static final int INITIAL_PER_TOKEN_CACHE_SIZE = 5;
   // For every token a map of KMSInstanceId to kmsClient
   private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String, KmsClient>>> kmsClientCachePerToken =
@@ -105,7 +101,6 @@ public class EnvelopeKeyManager {
   private final FileKeyMaterialStore keyMaterialStore;
   private final Configuration hadoopConfiguration;
   private final SecureRandom random;
-  private final String wrappingMethod;
   private final boolean doubleWrapping;
 
   private short keyCounter;
@@ -114,7 +109,7 @@ public class EnvelopeKeyManager {
   public EnvelopeKeyManager(Configuration configuration, FileKeyMaterialStore keyMaterialStore) {
     this.hadoopConfiguration = configuration;
 
-    this.cacheEntryLifetime = hadoopConfiguration.getLong(CACHE_ENTRY_LIFETIME_PROPERTY_NAME, DEFAULT_CACHE_ENTRY_LIFETIME);
+    this.cacheEntryLifetime = 1000 * hadoopConfiguration.getLong(TOKEN_LIFETIME_PROPERTY_NAME, DEFAULT_CACHE_ENTRY_LIFETIME);
     invalidateCachesForExpiredTokens();
 
     this.kmsInstanceID = hadoopConfiguration.getTrimmed(KMS_INSTANCE_ID_PROPERTY_NAME, DEFAULT_KMS_INSTANCE_ID);
@@ -127,15 +122,7 @@ public class EnvelopeKeyManager {
     random = new SecureRandom();
     keyCounter = 0;
 
-    String wrappingMethod =  hadoopConfiguration.getTrimmed(WRAPPING_METHOD_PROPERTY_NAME);
-    if (!StringUtils.isEmpty(wrappingMethod) && wrappingMethod.equals(SINGLE_WRAPPING_METHOD)) { // TODO
-      doubleWrapping = false;
-      this.wrappingMethod = wrappingMethod;
-    } else {
-      doubleWrapping = true; // default
-      this.wrappingMethod = DOUBLE_WRAPPING_METHOD;
-    }
-
+    doubleWrapping =  hadoopConfiguration.getBoolean(DOUBLE_WRAPPING_PROPERTY_NAME, true);
     this.accessToken = getAccessTokenOrDefault(configuration);
 
     ExpiringCacheEntry<ConcurrentHashMap<String, KeyEncryptionKey>> writeKEKCacheEntry = writeKEKMapPerToken.get(accessToken);
@@ -255,16 +242,17 @@ public class EnvelopeKeyManager {
 
     // Pack all into key material JSON
     Map<String, String> keyMaterialMap = new HashMap<String, String>(10);
-    if (null == targetKeyMaterialStore) {
-      keyMaterialMap.put(KEY_METADATA_INTERNAL_STORAGE_FIELD, "true"); // TODO use/check
-    }
-    keyMaterialMap.put(WRAPPING_METHOD_FIELD, wrappingMethod);
-    keyMaterialMap.put(WRAPPING_METHOD_VERSION_FIELD, WRAPPING_METHOD_VERSION);
-    keyMaterialMap.put(MASTER_KEY_ID_FIELD, masterKeyID);
-    if (isFooterKey) { // Add KMS metadata
+    if (isFooterKey) {
+      keyMaterialMap.put(KEY_MATERIAL_TYPE_FIELD, keyMaterialType);
       keyMaterialMap.put(KMS_INSTANCE_ID_FIELD, kmsInstanceID);
       keyMaterialMap.put(KMS_INSTANCE_URL_FIELD, kmsInstanceURLForParquetWrite);
     }
+    if (null == targetKeyMaterialStore) {
+      keyMaterialMap.put(KEY_METADATA_INTERNAL_STORAGE_FIELD, "true"); // TODO use/check
+    }
+    keyMaterialMap.put(DOUBLE_WRAPPING_FIELD, Boolean.toString(doubleWrapping));
+    keyMaterialMap.put(MASTER_KEY_ID_FIELD, masterKeyID);
+
     if (doubleWrapping) {
       keyMaterialMap.put(KEK_ID_FIELD, keyEncryptionKey.getEncodedID());
       keyMaterialMap.put(WRAPPED_KEK_FIELD, keyEncryptionKey.getWrappedWithCRK());
@@ -331,7 +319,7 @@ public class EnvelopeKeyManager {
         kmsClientCachePerTokenEntry = kmsClientCachePerToken.get(currentAccessToken);
         if ((null == kmsClientCachePerTokenEntry) || kmsClientCachePerTokenEntry.isExpired()) {
           ConcurrentHashMap<String, KmsClient> kmsClientPerToken = new ConcurrentHashMap<>();
-          long cacheEntryLifetime = configuration.getLong(CACHE_ENTRY_LIFETIME_PROPERTY_NAME, DEFAULT_CACHE_ENTRY_LIFETIME);
+          long cacheEntryLifetime = 1000 * configuration.getLong(TOKEN_LIFETIME_PROPERTY_NAME, DEFAULT_CACHE_ENTRY_LIFETIME);
           kmsClientCachePerTokenEntry = new ExpiringCacheEntry<>(kmsClientPerToken, cacheEntryLifetime);
           kmsClientCachePerToken.put(currentAccessToken, kmsClientCachePerTokenEntry);
         }

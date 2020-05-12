@@ -21,35 +21,34 @@
 
 package org.apache.parquet.crypto.keytools;
 
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
-import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * An abstract class for implementation of a remote-KMS client.
  * Both KMS instance ID and KMS URL need to be defined in order to access such a KMS.
  * The concrete implementation should implement getKeyFromServer() and/or
- * wrapDataKeyInServer() with unwrapDataKeyInServer() methods.
+ * wrapKeyInServer() with unwrapKeyInServer() methods.
  */
 public abstract class RemoteKmsClient implements KmsClient {
   private static final Logger LOG = LoggerFactory.getLogger(RemoteKmsClient.class);
 
   public static final String KMS_INSTANCE_URL_PROPERTY_NAME = "encryption.kms.instance.url";
-  public static final String KMS_INSTANCE_URL_LIST_PROPERTY_NAME = "encryption.kms.instance.url.list";
+  //public static final String KMS_INSTANCE_URL_LIST_PROPERTY_NAME = "encryption.kms.instance.url.list";
   public static final String WRAP_LOCALLY_PROPERTY_NAME = "encryption.wrap.locally";
-  
+
   private static final long DEFAULT_CACHE_ENTRY_LIFETIME = 10 * 60 * 1000; // 10 minutes
 
   protected String kmsInstanceID;
@@ -62,7 +61,7 @@ public abstract class RemoteKmsClient implements KmsClient {
   // KMS instance id and access token
   private final int INITIAL_KEY_CACHE_SIZE = 10;
   private final ConcurrentMap<String, ExpiringCacheEntry<byte[]>> masterKeyCache =
-    new ConcurrentHashMap<>(INITIAL_KEY_CACHE_SIZE);
+      new ConcurrentHashMap<>(INITIAL_KEY_CACHE_SIZE);
   private final Object cacheLock = new Object();
   private long cacheEntryLifetime;
   private volatile Long lastCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute
@@ -90,11 +89,12 @@ public abstract class RemoteKmsClient implements KmsClient {
    * @throws IOException
    */
   @Override
-  public void initialize(Configuration configuration, String kmsInstanceID) throws KeyAccessDeniedException {
+  public void initialize(Configuration configuration, String kmsInstanceID) {
     this.kmsInstanceID = kmsInstanceID;
-    setKmsURL(configuration);
+    this.kmsURL = configuration.getTrimmed(KMS_INSTANCE_URL_PROPERTY_NAME);
     this.isWrapLocally = configuration.getBoolean(WRAP_LOCALLY_PROPERTY_NAME, false);
-    this.cacheEntryLifetime = configuration.getLong(EnvelopeKeyManager.CACHE_ENTRY_LIFETIME_PROPERTY_NAME, DEFAULT_CACHE_ENTRY_LIFETIME); // TODO static import
+    this.cacheEntryLifetime = 1000 * configuration.getLong(EnvelopeKeyManager.TOKEN_LIFETIME_PROPERTY_NAME, 
+        DEFAULT_CACHE_ENTRY_LIFETIME);
     initializeInternal(configuration);
   }
 
@@ -111,48 +111,12 @@ public abstract class RemoteKmsClient implements KmsClient {
 
   @Override
   public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier) throws KeyAccessDeniedException, UnsupportedOperationException {
-      if (isWrapLocally) {
-        byte[] masterKey = getKeyFromCacheOrServer(masterKeyIdentifier);
-        byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-        return KeyToolUtilities.unwrapKeyLocally(wrappedKey, masterKey, AAD);
-      } else {
-        return unwrapKeyInServer(wrappedKey, masterKeyIdentifier);
-      }
-  }
-
-  private void setKmsURL(Configuration configuration) {
-    final String kmsUrlProperty = configuration.getTrimmed(KMS_INSTANCE_URL_PROPERTY_NAME);
-    final String[] kmsUrlList = configuration.getTrimmedStrings(KMS_INSTANCE_URL_LIST_PROPERTY_NAME);
-    if (StringUtils.isEmpty(kmsUrlProperty) && ArrayUtils.isEmpty(kmsUrlList) || "DEFAULT".equals(kmsUrlProperty)) {
-      throw new ParquetCryptoRuntimeException("KMS URL is not set.");
-    }
-    if (!StringUtils.isEmpty(kmsUrlProperty) && !ArrayUtils.isEmpty(kmsUrlList)) {
-      throw new ParquetCryptoRuntimeException("KMS URL is ambiguous: " +
-          "it should either be set in encryption.kms.instance.url or in encryption.kms.instance.url.list"); // TODO use constants
-    }
-    if (!StringUtils.isEmpty(kmsUrlProperty)) {
-      kmsURL = kmsUrlProperty;
+    if (isWrapLocally) {
+      byte[] masterKey = getKeyFromCacheOrServer(masterKeyIdentifier);
+      byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
+      return KeyToolUtilities.unwrapKeyLocally(wrappedKey, masterKey, AAD);
     } else {
-      if (StringUtils.isEmpty(kmsInstanceID) ) {
-        throw new ParquetCryptoRuntimeException("Missing kms instance id value. Cannot find a matching KMS URL mapping.");
-      }
-      Map<String, String> kmsUrlMap = new HashMap<String, String>(kmsUrlList.length);
-      int nKeys = kmsUrlList.length;
-      for (int i=0; i < nKeys; i++) {
-        Matcher m = kmsUrlListItemPattern.matcher(kmsUrlList[i]);
-        if (!m.matches() || (m.groupCount() != 2)) {
-          throw new ParquetCryptoRuntimeException(String.format("String %s doesn't match pattern %s for KMS URL mapping",
-              kmsUrlList[i], kmsUrlListItemPattern.toString()));
-        }
-        String instanceID = m.group(1);
-        String kmsURL = m.group(2);
-        //TODO check parts
-        kmsUrlMap.put(instanceID, kmsURL);
-      }      kmsURL = kmsUrlMap.get(kmsInstanceID);
-      if (StringUtils.isEmpty(kmsURL) ) {
-        throw new ParquetCryptoRuntimeException(String.format("Missing KMS URL for kms instance ID [%s] in KMS URL mapping",
-            kmsInstanceID));
-      }
+      return unwrapKeyInServer(wrappedKey, masterKeyIdentifier);
     }
   }
 
@@ -174,12 +138,12 @@ public abstract class RemoteKmsClient implements KmsClient {
       synchronized (cacheLock) {
         keyCacheEntry = masterKeyCache.get(keyIdentifier);
         if ((null == keyCacheEntry) || keyCacheEntry.isExpired()) {
-          byte[] key = getKeyFromServer(keyIdentifier);
+          byte[] key = getMasterKeyFromServer(keyIdentifier);
           keyCacheEntry = new ExpiringCacheEntry<>(key, cacheEntryLifetime);
           masterKeyCache.put(keyIdentifier, keyCacheEntry);
+        }
       }
     }
-  }
     return keyCacheEntry.getCachedItem();
   }
 
@@ -199,16 +163,16 @@ public abstract class RemoteKmsClient implements KmsClient {
           masterKeyCache.keySet().removeAll(expiredKeys);
           lastCacheCleanupTimestamp = now;
         }
-    }
       }
     }
+  }
 
-    /**
-   * Get a standard key from server - call the remote server, without using the key cache.
+  /**
+   * Get master key from server - call the remote server, without using the key cache.
    * This method should be implemented by the concrete RemoteKmsClient implementation,
    * or otherwise  throw UnsupportedOperationException.
-     */
-  protected abstract byte[] getKeyFromServer(String keyIdentifier) 
+   */
+  protected abstract byte[] getMasterKeyFromServer(String masterKeyIdentifier) 
       throws KeyAccessDeniedException, UnsupportedOperationException;
 
   protected abstract String wrapKeyInServer(byte[] dataKey, String masterKeyIdentifier) 
@@ -216,7 +180,7 @@ public abstract class RemoteKmsClient implements KmsClient {
 
   protected abstract byte[] unwrapKeyInServer(String wrappedKey, String masterKeyIdentifier) 
       throws KeyAccessDeniedException, UnsupportedOperationException;
-  
+
   protected abstract void initializeInternal(Configuration configuration) 
       throws KeyAccessDeniedException;
 }

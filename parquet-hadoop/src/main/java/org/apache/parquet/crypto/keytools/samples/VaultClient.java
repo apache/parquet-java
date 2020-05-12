@@ -91,14 +91,14 @@ public class VaultClient extends RemoteKmsClient {
   }
 
   @Override
-  protected byte[] getKeyFromServer(String key) {
-    LOG.info("standardKeyIdentifier:  " + key);
+  protected byte[] getMasterKeyFromServer(String masterKeyIdentifier) {
+    LOG.info("masterKeyIdentifier:  " + masterKeyIdentifier);
 
     final String endpoint = this.kmsURL + getKeyEndpoint;
     Request request = new Request.Builder()
-      .url(endpoint)
-      .header(tokenHeader,  vaultToken)
-      .get().build();
+        .url(endpoint)
+        .header(tokenHeader,  vaultToken)
+        .get().build();
 
     String response = executeAndGetResponse(endpoint, request);
 
@@ -106,19 +106,22 @@ public class VaultClient extends RemoteKmsClient {
     try {
       keysNode = objectMapper.readTree(response).get("data").get("data");
     } catch (IOException e) {
-      throw new ParquetCryptoRuntimeException("Failed to parse vault response. " + key + " not found."  + response);
+      throw new ParquetCryptoRuntimeException("Failed to parse vault response. Key " 
+          + masterKeyIdentifier + " not found."  + response);
     }
     byte[] matchingValue = null;
     if (null != keysNode) {
       try {
-        matchingValue = keysNode.findValue(key).getBinaryValue();
+        matchingValue = keysNode.findValue(masterKeyIdentifier).getBinaryValue();
       } catch (IOException e) {
-        throw new ParquetCryptoRuntimeException("Failed to match vault response. " + key + " not found."  + response);
+        throw new ParquetCryptoRuntimeException("Failed to match vault response. Key " 
+            + masterKeyIdentifier + " not found."  + response);
       }
     }
 
     if(null == matchingValue) {
-      throw new ParquetCryptoRuntimeException("Failed to find vault response. " + key + " not found."  + response);
+      throw new ParquetCryptoRuntimeException("Failed to find vault response. " + 
+          masterKeyIdentifier + " not found."  + response);
     }
 
     return matchingValue;
@@ -140,9 +143,9 @@ public class VaultClient extends RemoteKmsClient {
 
     final RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE, jPayload);
     Request request = new Request.Builder()
-            .url(this.kmsURL + endPoint + masterKeyID)
-            .header(tokenHeader,  vaultToken)
-            .post(requestBody).build();
+        .url(this.kmsURL + endPoint + masterKeyID)
+        .header(tokenHeader,  vaultToken)
+        .post(requestBody).build();
 
     return executeAndGetResponse(endPoint, request);
   }
