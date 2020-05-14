@@ -26,7 +26,11 @@ import org.apache.parquet.crypto.AesGcmEncryptor;
 import org.apache.parquet.crypto.AesMode;
 import org.apache.parquet.crypto.ModuleCipherFactory;
 
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 
 public class KeyToolUtilities {
@@ -97,5 +101,26 @@ public class KeyToolUtilities {
     keyDecryptor = (AesGcmDecryptor) ModuleCipherFactory.getDecryptor(AesMode.GCM, wrappingKey);
 
     return keyDecryptor.decrypt(wrappedKEy, 0, wrappedKEy.length, AAD);
+  }
+
+  /**
+   * Flush any caches that are tied to the specified accessToken
+   * @param accessToken
+   */
+  public static void removeCacheEntriesForToken(String accessToken) {
+    FileKeyWrapper.removeCacheEntriesForToken(accessToken);
+
+    FileKeyUnwrapper.removeCacheEntriesForToken(accessToken);
+  }
+
+  static <E> void removeExpiredEntriesFromCache(Map<String, ExpiringCacheEntry<E>> cache) {
+    Set<Map.Entry<String, ExpiringCacheEntry<E>>> cacheEntries = cache.entrySet();
+    List<String> expiredKeys = new ArrayList<>(cacheEntries.size());
+    for (Map.Entry<String, ExpiringCacheEntry<E>> cacheEntry : cacheEntries) {
+      if (cacheEntry.getValue().isExpired()) {
+        expiredKeys.add(cacheEntry.getKey());
+      }
+    }
+    cache.keySet().removeAll(expiredKeys);
   }
 }

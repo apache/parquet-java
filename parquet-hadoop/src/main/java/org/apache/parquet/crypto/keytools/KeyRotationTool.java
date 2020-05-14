@@ -21,6 +21,7 @@ package org.apache.parquet.crypto.keytools;
 
 
 import java.io.IOException;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -28,11 +29,14 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.apache.parquet.crypto.keytools.KeyToolUtilities.KeyWithMasterID;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
 
 public class KeyRotationTool  {
 
-  public static void rotateMasterKeys(String folderPath, Configuration hadoopConfig) 
+  public static final String TEMP_FILE_PREFIX = "_TMP";
+
+  public static void rotateMasterKeys(String folderPath, Configuration hadoopConfig)
       throws IOException, ParquetCryptoRuntimeException, KeyAccessDeniedException {
 
     Path parentPath = new Path(folderPath);
@@ -47,11 +51,30 @@ public class KeyRotationTool  {
 
       FileKeyMaterialStore sourceKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile);
 
-      EnvelopeKeyManager keyManager = new EnvelopeKeyManager(hadoopConfig, sourceKeyMaterialStore);
+      FileKeyWrapper fileKeyWrapper = new FileKeyWrapper(hadoopConfig, sourceKeyMaterialStore);
 
-      FileKeyMaterialStore tempKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile, "_TMP"); // TODO
+      FileKeyMaterialStore tempKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile, TEMP_FILE_PREFIX);
 
-      keyManager.rotateMasterKeys(tempKeyMaterialStore);
+      FileKeyUnwrapper fileKeyUnwrapper = new FileKeyUnwrapper(hadoopConfig, sourceKeyMaterialStore);
+
+      Set<String> fileKeyIdSet = sourceKeyMaterialStore.getKeyIDSet();
+
+      for (String keyIdInFile : fileKeyIdSet) {
+        boolean footerKey = keyIdInFile.equals(FileKeyWrapper.FOOTER_KEY_ID_IN_FILE);
+        String keyMaterial = sourceKeyMaterialStore.getKeyMaterial(keyIdInFile);
+        KeyWithMasterID key = fileKeyUnwrapper.getDEKandMasterID(keyMaterial);
+        fileKeyWrapper.getEncryptionKeyMetadata(key.getDataKey(), key.getMasterID(), footerKey, tempKeyMaterialStore, keyIdInFile);
+      }
+
+      tempKeyMaterialStore.saveMaterial();
+
+      sourceKeyMaterialStore.removeMaterial();
+
+      tempKeyMaterialStore.moveMaterial(sourceKeyMaterialStore);
+
+      FileKeyWrapper.removeCacheEntriesForAllTokens();
+      FileKeyUnwrapper.removeCacheEntriesForAllTokens();
+
     }
   }
 }

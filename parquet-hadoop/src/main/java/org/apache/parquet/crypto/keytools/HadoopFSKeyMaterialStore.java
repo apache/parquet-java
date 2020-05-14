@@ -34,8 +34,8 @@ import java.util.Set;
 
 public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   
-  public final static String KEY_MATERIAL_FILE_PREXIX = "_KEY_MATERIAL_FOR_";
-  public final static String KEY_MATERIAL_FILE_SUFFIX = ".json";
+  public final static String KEY_MATERIAL_FILE_PREFIX = "_KEY_MATERIAL_FOR_";
+  public final static String KEY_MATERIAL_FILE_SUFFFIX = ".json";
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private final FileSystem hadoopFileSystem;
@@ -52,9 +52,9 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
     if (null != prefix) {
       fullPrefix = prefix;
     }
-    fullPrefix += KEY_MATERIAL_FILE_PREXIX;
+    fullPrefix += KEY_MATERIAL_FILE_PREFIX;
     keyMaterialFile = new Path(parquetFilePath.getParent(),
-      fullPrefix + parquetFilePath.getName() + KEY_MATERIAL_FILE_SUFFIX);
+      fullPrefix + parquetFilePath.getName() + KEY_MATERIAL_FILE_SUFFFIX);
   }
 
   @Override
@@ -89,7 +89,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   }
 
   @Override
-  public void saveFileKeyMaterial() throws ParquetCryptoRuntimeException {
+  public void saveMaterial() throws ParquetCryptoRuntimeException {
     // TODO needed? Path qualifiedPath = parquetFilePath.makeQualified(hadoopFileSystem);
     try (FSDataOutputStream keyMaterialStream = hadoopFileSystem.create(keyMaterialFile)) {
       objectMapper.writeValue(keyMaterialStream, keyMaterialMap);
@@ -99,7 +99,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   }
 
   @Override
-  public Set<String> getFileKeyIDSet() throws ParquetCryptoRuntimeException {
+  public Set<String> getKeyIDSet() throws ParquetCryptoRuntimeException {
     if (null == keyMaterialMap) {
       loadKeyMaterialMap();
     }
@@ -108,27 +108,26 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   }
 
   @Override
-  public void removeFileKeyMaterial() throws ParquetCryptoRuntimeException {
+  public void removeMaterial() throws ParquetCryptoRuntimeException {
     try {
       hadoopFileSystem.delete(keyMaterialFile, false);
     } catch (IOException e) {
-      throw new ParquetCryptoRuntimeException(e); // TODO file names
+      throw new ParquetCryptoRuntimeException("Failed to delete file " + keyMaterialFile, e);
     }
   }
 
   @Override
-  public void moveFileKeyMaterial(FileKeyMaterialStore keyMaterialStore) throws ParquetCryptoRuntimeException {
+  public void moveMaterial(FileKeyMaterialStore keyMaterialStore) throws ParquetCryptoRuntimeException {
     HadoopFSKeyMaterialStore targetStore = (HadoopFSKeyMaterialStore) keyMaterialStore;
     Path targetKeyMaterialFile = targetStore.getStorageFilePath();
     try {
       hadoopFileSystem.rename(keyMaterialFile, targetKeyMaterialFile);
     } catch (IOException e) {
-      throw new ParquetCryptoRuntimeException(e); // TODO file names
+      throw new ParquetCryptoRuntimeException("Failed to rename file " + keyMaterialFile, e);
     }
   }
 
   private Path getStorageFilePath() {
     return keyMaterialFile;
   }
-
 }

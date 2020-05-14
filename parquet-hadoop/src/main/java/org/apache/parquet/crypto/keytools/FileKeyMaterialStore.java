@@ -35,11 +35,11 @@ public interface FileKeyMaterialStore {
 
   public String getKeyMaterial(String keyIDInFile);
 
-  public void saveFileKeyMaterial();
+  public void saveMaterial();
 
-  public Set<String> getFileKeyIDSet();
+  public Set<String> getKeyIDSet();
 
-  public void removeFileKeyMaterial();
+  public void removeMaterial();
 
-  public void moveFileKeyMaterial(FileKeyMaterialStore targetKeyMaterialStore);
+  public void moveMaterial(FileKeyMaterialStore targetKeyMaterialStore);
 }

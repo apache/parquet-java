@@ -45,6 +45,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
   public static final String ENCRYPTION_ALGORITHM_PROPERTY_NAME = "encryption.algorithm";
   public static final String PLAINTEXT_FOOTER_PROPERTY_NAME = "encryption.plaintext.footer";
   public static final String KEY_MATERIAL_INTERNAL_PROPERTY_NAME = "encryption.key.material.internal.storage";
+  
+  public static final int DEK_LENGTH = 16;
 
   private static SecureRandom random = new SecureRandom();
 
@@ -74,7 +76,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       }
     }
 
-    EnvelopeKeyManager keyWrapper = new EnvelopeKeyManager(fileHadoopConfig, keyMaterialStore);
+    FileKeyWrapper keyWrapper = new FileKeyWrapper(fileHadoopConfig, keyMaterialStore);
 
     String algo = fileHadoopConfig.getTrimmed(ENCRYPTION_ALGORITHM_PROPERTY_NAME);
     ParquetCipher cipher;
@@ -91,16 +93,16 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       }
     }
 
-    byte[] footerKey = new byte[16]; //TODO length. configure via properties
-    random.nextBytes(footerKey);
-    byte[] footerKeyMetadata = keyWrapper.getEncryptionKeyMetadata(footerKey, footerKeyId, true);
+    byte[] footerKeyBytes = new byte[DEK_LENGTH];
+    random.nextBytes(footerKeyBytes);
+    byte[] footerKeyMetadata = keyWrapper.getEncryptionKeyMetadata(footerKeyBytes, footerKeyId, true);
 
     Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns = getColumnEncryptionProperties(columnKeysStr, keyWrapper);
 
     String plaintextFooterStr = fileHadoopConfig.getTrimmed(PLAINTEXT_FOOTER_PROPERTY_NAME);
     boolean plaintextFooter = Boolean.parseBoolean(plaintextFooterStr);
 
-    FileEncryptionProperties.Builder propertiesBuilder = FileEncryptionProperties.builder(footerKey)
+    FileEncryptionProperties.Builder propertiesBuilder = FileEncryptionProperties.builder(footerKeyBytes)
         .withFooterKeyMetadata(footerKeyMetadata)
         .withAlgorithm(cipher)
         .withEncryptedColumns(encryptedColumns);
@@ -110,14 +112,14 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     }
 
     if (null != keyMaterialStore) {
-      keyMaterialStore.saveFileKeyMaterial();
+      keyMaterialStore.saveMaterial();
     }
 
     return propertiesBuilder.build();
   }
 
   private Map<ColumnPath, ColumnEncryptionProperties> getColumnEncryptionProperties(String columnKeys,
-      EnvelopeKeyManager keyWrapper) throws ParquetCryptoRuntimeException {
+      FileKeyWrapper keyWrapper) throws ParquetCryptoRuntimeException {
     if (StringUtils.isEmpty(columnKeys)) {
       throw new ParquetCryptoRuntimeException("No column keys configured in encryption.column.keys");
     }
@@ -157,12 +159,12 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
           throw new ParquetCryptoRuntimeException("Multiple keys defined for the same column: " + columnName);
         }
 
-        byte[] columnKeyKey = new byte[16]; //TODO length. configure via properties
-        random.nextBytes(columnKeyKey);
-        byte[] columnKeyKeyMetadata =  keyWrapper.getEncryptionKeyMetadata(columnKeyKey, columnKeyId, false);
+        byte[] columnKeyBytes = new byte[DEK_LENGTH];
+        random.nextBytes(columnKeyBytes);
+        byte[] columnKeyKeyMetadata =  keyWrapper.getEncryptionKeyMetadata(columnKeyBytes, columnKeyId, false);
 
         ColumnEncryptionProperties cmd = ColumnEncryptionProperties.builder(columnPath)
-            .withKey(columnKeyKey)
+            .withKey(columnKeyBytes)
             .withKeyMetaData(columnKeyKeyMetadata)
             .build();
         encryptedColumns.put(columnPath, cmd);
@@ -188,16 +190,15 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       }
     }
 
-    String kmsInstanceID = hadoopConfig.getTrimmed(EnvelopeKeyManager.KMS_INSTANCE_ID_PROPERTY_NAME);
+    String kmsInstanceID = hadoopConfig.getTrimmed(FileKeyWrapper.KMS_INSTANCE_ID_PROPERTY_NAME);
     if (StringUtils.isEmpty(kmsInstanceID)) {
-      kmsInstanceID = EnvelopeKeyManager.DEFAULT_KMS_INSTANCE_ID;
+      kmsInstanceID = FileKeyWrapper.DEFAULT_KMS_INSTANCE_ID;
     }
-    DecryptionKeyRetriever keyRetriever = new EnvelopeKeyRetriever(EnvelopeKeyManager.getKmsClient(hadoopConfig, kmsInstanceID), 
-        hadoopConfig, keyMaterialStore);
+    DecryptionKeyRetriever keyRetriever = new FileKeyUnwrapper(hadoopConfig, keyMaterialStore);
 
     return FileDecryptionProperties.builder()
         .withKeyRetriever(keyRetriever)
-        .withPlaintextFilesAllowed() // TODO make configurable?
+        .withPlaintextFilesAllowed()
         .build();
   }
 }
