@@ -23,12 +23,10 @@ package org.apache.parquet.crypto.keytools;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
-import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-
 
 public interface KmsClient {
   /**
-   * Pass configuration with client-specific parameters.
+   * Pass configuration with KMS-specific parameters.
    * @param configuration Hadoop configuration
    * @param kmsInstanceID ID of the KMS instance handled by this KmsClient. 
    *                      When writing a parquet file, the KMS instance ID has to be specified in configuration, 
@@ -36,12 +34,11 @@ public interface KmsClient {
    *                      When reading a parquet file, the KMS instance ID can be either specified in configuration 
    *                      or read from parquet key material.
    *                      ID can have a default value, for KMS systems that don't work with multiple instances.
-   * @throws ParquetCryptoRuntimeException
    */
   public void initialize(Configuration configuration, String kmsInstanceID);
 
   /**
-   * Wraps a data key - encrypts it with the master key, encodes the result 
+   * Wraps a key - encrypts it with the master key, encodes the result 
    * and potentially adds a KMS-specific metadata.
    * 
    * If your KMS client code throws runtime exceptions related to access/permission problems
@@ -51,13 +48,12 @@ public interface KmsClient {
    * @param masterKeyIdentifier: a string that uniquely identifies the master key in a KMS instance
    * @return
    * @throws KeyAccessDeniedException unauthorized to encrypt with the given master key
-   * @throws ParquetCryptoRuntimeException
    */
   public String wrapKey(byte[] keyBytes, String masterKeyIdentifier)
       throws KeyAccessDeniedException;
 
   /**
-   * Decrypts (unwraps) a data key with the master key. 
+   * Decrypts (unwraps) a key with the master key. 
    * 
    * If your KMS client code throws runtime exceptions related to access/permission problems
    * (such as Hadoop AccessControlException), catch them and throw the KeyAccessDeniedException.
@@ -66,7 +62,6 @@ public interface KmsClient {
    * @param masterKeyIdentifier: a string that uniquely identifies the master key in a KMS instance
    * @return
    * @throws KeyAccessDeniedException unauthorized to unwrap with the given master key
-   * @throws ParquetCryptoRuntimeException
    */
   public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier)
       throws KeyAccessDeniedException;

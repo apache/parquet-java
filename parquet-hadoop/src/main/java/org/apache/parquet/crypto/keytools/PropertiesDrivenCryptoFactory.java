@@ -44,11 +44,10 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
   public static final String FOOTER_KEY_PROPERTY_NAME = "encryption.footer.key";
   public static final String ENCRYPTION_ALGORITHM_PROPERTY_NAME = "encryption.algorithm";
   public static final String PLAINTEXT_FOOTER_PROPERTY_NAME = "encryption.plaintext.footer";
-  public static final String KEY_MATERIAL_INTERNAL_PROPERTY_NAME = "encryption.key.material.internal.storage";
   
   public static final int DEK_LENGTH = 16;
 
-  private static SecureRandom random = new SecureRandom();
+  private static final SecureRandom random = new SecureRandom();
 
   @Override
   public FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
@@ -67,12 +66,12 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     }
 
     FileKeyMaterialStore keyMaterialStore = null;
-    boolean keyMaterialInternalStorage = fileHadoopConfig.getBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
+    boolean keyMaterialInternalStorage = fileHadoopConfig.getBoolean(KeyTookit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
     if (!keyMaterialInternalStorage) {
       try {
         keyMaterialStore = new HadoopFSKeyMaterialStore(tempFilePath.getFileSystem(fileHadoopConfig), tempFilePath);
       } catch (IOException e) {
-        throw new ParquetCryptoRuntimeException("Failed to get filesystem", e);
+        throw new ParquetCryptoRuntimeException("Failed to get key material store", e);
       }
     }
 
@@ -181,18 +180,18 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       throws ParquetCryptoRuntimeException {
 
     FileKeyMaterialStore keyMaterialStore = null; 
-    boolean keyMaterialInternalStorage = hadoopConfig.getBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
+    boolean keyMaterialInternalStorage = hadoopConfig.getBoolean(KeyTookit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
     if (!keyMaterialInternalStorage) {
       try {
         keyMaterialStore = new HadoopFSKeyMaterialStore(filePath.getFileSystem(hadoopConfig), filePath);
       } catch (IOException e) {
-        throw new ParquetCryptoRuntimeException("Failed to get filesystem", e);
+        throw new ParquetCryptoRuntimeException("Failed to get key material store", e);
       }
     }
 
-    String kmsInstanceID = hadoopConfig.getTrimmed(FileKeyWrapper.KMS_INSTANCE_ID_PROPERTY_NAME);
+    String kmsInstanceID = hadoopConfig.getTrimmed(KeyTookit.KMS_INSTANCE_ID_PROPERTY_NAME);
     if (StringUtils.isEmpty(kmsInstanceID)) {
-      kmsInstanceID = FileKeyWrapper.DEFAULT_KMS_INSTANCE_ID;
+      kmsInstanceID = KeyTookit.DEFAULT_KMS_INSTANCE_ID;
     }
     DecryptionKeyRetriever keyRetriever = new FileKeyUnwrapper(hadoopConfig, keyMaterialStore);
 

@@ -24,53 +24,30 @@ package org.apache.parquet.crypto.keytools;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * An abstract class for implementation of a remote-KMS client.
- * Both KMS instance ID and KMS URL need to be defined in order to access such a KMS.
- * The concrete implementation should implement getKeyFromServer() and/or
- * wrapKeyInServer() with unwrapKeyInServer() methods.
- */
-public abstract class RemoteKmsClient implements KmsClient {
-  public static final String KMS_INSTANCE_URL_PROPERTY_NAME = "encryption.kms.instance.url";
-  public static final String WRAP_LOCALLY_PROPERTY_NAME = "encryption.wrap.locally";
 
+public abstract class RemoteKmsClient implements KmsClient {
   protected String kmsInstanceID;
   protected String kmsURL;
   protected Boolean isWrapLocally;
 
   private final int INITIAL_KEY_CACHE_SIZE = 10;
   // MasterKey cache: master keys per key ID (per KMS Client). For local wrapping only.
-  private final Map<String, ExpiringCacheEntry<byte[]>> masterKeyCache = new HashMap<>(INITIAL_KEY_CACHE_SIZE);
-  private long cacheEntryLifetime;
-  private volatile long lastCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute
+  private Map<String, byte[]> masterKeyCache;
 
-  /**
-   *  Initialize the KMS Client with KMS instance ID and URL.
-   *
-   *  When reading a parquet file:
-   *  - the KMS instance ID can be either specified in configuration or read from parquet file key material,
-   *  or be a default if there is a default value for this KMS type.
-   *
-   *  When writing a parquet file:
-   *  - the KMS instance ID has to be specified in configuration, or be a default if there is a default value for this KMS type.
-   *  - The KMS URL has to be specified in configuration specifically, or be a default if there is a default value for this KMS type.
-   *
-   * @param configuration Hadoop configuration
-   * @param kmsInstanceID instance ID of the KMS managed by this KmsClient
-   * @throws IOException
-   */
   @Override
   public void initialize(Configuration configuration, String kmsInstanceID) {
     this.kmsInstanceID = kmsInstanceID;
-    this.kmsURL = configuration.getTrimmed(KMS_INSTANCE_URL_PROPERTY_NAME);
-    this.isWrapLocally = configuration.getBoolean(WRAP_LOCALLY_PROPERTY_NAME, false);
-    this.cacheEntryLifetime = 1000 * configuration.getLong(FileKeyWrapper.TOKEN_LIFETIME_PROPERTY_NAME, 
-        FileKeyWrapper.DEFAULT_CACHE_ENTRY_LIFETIME);
+    this.kmsURL = configuration.getTrimmed(KeyTookit.KMS_INSTANCE_URL_PROPERTY_NAME);
+
+    this.isWrapLocally = configuration.getBoolean(KeyTookit.WRAP_LOCALLY_PROPERTY_NAME, false);
+    if (isWrapLocally) {
+      masterKeyCache = new HashMap<>(INITIAL_KEY_CACHE_SIZE);
+    }
+
     initializeInternal(configuration);
   }
 
@@ -79,87 +56,82 @@ public abstract class RemoteKmsClient implements KmsClient {
     if (isWrapLocally) {
       byte[] masterKey = getKeyFromCacheOrServer(masterKeyIdentifier);
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-      return KeyToolUtilities.wrapKeyLocally(dataKey, masterKey, AAD);
+      return KeyTookit.wrapKeyLocally(dataKey, masterKey, AAD);
     } else {
       return wrapKeyInServer(dataKey, masterKeyIdentifier);
     }
   }
 
   @Override
-  public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier) throws KeyAccessDeniedException, UnsupportedOperationException {
+  public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier) throws KeyAccessDeniedException {
     if (isWrapLocally) {
       byte[] masterKey = getKeyFromCacheOrServer(masterKeyIdentifier);
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-      return KeyToolUtilities.unwrapKeyLocally(wrappedKey, masterKey, AAD);
+      return KeyTookit.unwrapKeyLocally(wrappedKey, masterKey, AAD);
     } else {
       return unwrapKeyInServer(wrappedKey, masterKeyIdentifier);
     }
   }
 
-  /**
-   * Local wrapping only.
-   * Get a master key from server. First check if the key is in local key cache and the cache entry is not expired.
-   * If it is - return the key from the cache entry. Otherwise - getKeyFromServerRemoteCall.
-   * @param keyIdentifier: a string that uniquely identifies the key in KMS
-   * @return master encryption key
-   */
-
   private byte[] getKeyFromCacheOrServer(String keyIdentifier) {
-    // Check caches upon each key retrieval (clean once in cacheEntryLifetime)
-    checkExpiredMasterdKeyCacheEntries();
-    ExpiringCacheEntry<byte[]> keyCacheEntry = masterKeyCache.get(keyIdentifier);
-    if ((null == keyCacheEntry) || keyCacheEntry.isExpired()) {
-      synchronized (masterKeyCache) {
-        keyCacheEntry = masterKeyCache.get(keyIdentifier);
-        if ((null == keyCacheEntry) || keyCacheEntry.isExpired()) {
-          byte[] key = getMasterKeyFromServer(keyIdentifier);
-          keyCacheEntry = new ExpiringCacheEntry<>(key, cacheEntryLifetime);
-          masterKeyCache.put(keyIdentifier, keyCacheEntry);
-        }
-      }
-    }
-    return keyCacheEntry.getCachedItem();
-  }
-
-  private void checkExpiredMasterdKeyCacheEntries() {
-    long now = System.currentTimeMillis();
-    if (now < (lastCacheCleanupTimestamp + cacheEntryLifetime)) {
-      return;
-    }
-
     synchronized (masterKeyCache) {
-      if (now < (lastCacheCleanupTimestamp + cacheEntryLifetime)) {
-        return;
+      byte[] masterKey = masterKeyCache.get(keyIdentifier);
+      if (null == masterKey) {
+        masterKey = getMasterKeyFromServer(keyIdentifier);
+        masterKeyCache.put(keyIdentifier, masterKey);
       }
-      KeyToolUtilities.removeExpiredEntriesFromCache(masterKeyCache);
-      lastCacheCleanupTimestamp = now;
+      return masterKey;
     }
   }
 
   /**
-   * Get master key from server - call the remote KMS server, without using the key cache.
-   * This method should be implemented by the concrete RemoteKmsClient implementation,
-   * or otherwise  throw UnsupportedOperationException.
-   */
-  protected abstract byte[] getMasterKeyFromServer(String masterKeyIdentifier) 
-      throws KeyAccessDeniedException, UnsupportedOperationException;
-
-  /**
-   * Wrap key bytes with master key in remote KMS server.
-   * This method should be implemented by the concrete RemoteKmsClient implementation,
-   * or otherwise  throw UnsupportedOperationException.
+   * Wrap a key with the master key in the remote KMS server.
+   * 
+   * If your KMS client code throws runtime exceptions related to access/permission problems
+   * (such as Hadoop AccessControlException), catch them and throw the KeyAccessDeniedException.
+   * 
+   * @param keyBytes: key bytes to be wrapped
+   * @param masterKeyIdentifier: a string that uniquely identifies the master key in a KMS instance
+   * @return wrappedKey: Encrypts key bytes with the master key, encodes the result  and potentially adds a KMS-specific metadata.
+   * @throws KeyAccessDeniedException unauthorized to encrypt with the given master key
+   * @throws UnsupportedOperationException KMS does not support in-server wrapping 
    */
   protected abstract String wrapKeyInServer(byte[] keyBytes, String masterKeyIdentifier) 
       throws KeyAccessDeniedException, UnsupportedOperationException;
 
   /**
-   * Unwrap key bytes with master key in remote KMS server.
-   * This method should be implemented by the concrete RemoteKmsClient implementation,
-   * or otherwise  throw UnsupportedOperationException.
+   * Unwrap a key with the master key in the remote KMS server. 
+   * 
+   * If your KMS client code throws runtime exceptions related to access/permission problems
+   * (such as Hadoop AccessControlException), catch them and throw the KeyAccessDeniedException.
+   * 
+   * @param wrappedKey String produced by wrapKey operation
+   * @param masterKeyIdentifier: a string that uniquely identifies the master key in a KMS instance
+   * @return key bytes
+   * @throws KeyAccessDeniedException unauthorized to unwrap with the given master key
+   * @throws UnsupportedOperationException KMS does not support in-server unwrapping 
    */
   protected abstract byte[] unwrapKeyInServer(String wrappedKey, String masterKeyIdentifier) 
       throws KeyAccessDeniedException, UnsupportedOperationException;
+  
+  /**
+   * Get master key from the remote KMS server.
+   * Required only for local wrapping. No need to implement if KMS supports in-server wrapping/unwrapping.
+   * 
+   * If your KMS client code throws runtime exceptions related to access/permission problems
+   * (such as Hadoop AccessControlException), catch them and throw the KeyAccessDeniedException.
+   * 
+   * @param masterKeyIdentifier: a string that uniquely identifies the master key in a KMS instance
+   * @throws KeyAccessDeniedException unauthorized to get the master key
+   * @throws UnsupportedOperationException If not implemented, or KMS does not support key fetching 
+   */
+  protected abstract byte[] getMasterKeyFromServer(String masterKeyIdentifier) 
+      throws KeyAccessDeniedException, UnsupportedOperationException;
 
+  /**
+   * Pass configuration with KMS-specific parameters.
+   * @param configuration Hadoop configuration
+   */
   protected abstract void initializeInternal(Configuration configuration) 
       throws KeyAccessDeniedException;
 }

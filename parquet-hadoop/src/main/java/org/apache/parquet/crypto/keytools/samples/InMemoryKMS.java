@@ -26,7 +26,7 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.crypto.keytools.KmsClient;
-import org.apache.parquet.crypto.keytools.KeyToolUtilities;
+import org.apache.parquet.crypto.keytools.KeyTookit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +88,7 @@ public class InMemoryKMS implements KmsClient {
       throw new ParquetCryptoRuntimeException("Key not found: " + masterKeyIdentifier);
     }
     byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-    return KeyToolUtilities.wrapKeyLocally(dataKey, masterKey, AAD);
+    return KeyTookit.wrapKeyLocally(dataKey, masterKey, AAD);
   }
 
   @Override
@@ -98,6 +98,6 @@ public class InMemoryKMS implements KmsClient {
       throw new ParquetCryptoRuntimeException("Key not found: " + masterKeyIdentifier);
     }
     byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-    return KeyToolUtilities.unwrapKeyLocally(wrappedDataKey, masterKey, AAD);
+    return KeyTookit.unwrapKeyLocally(wrappedDataKey, masterKey, AAD);
   }
 }

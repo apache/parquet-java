@@ -27,9 +27,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.apache.parquet.crypto.keytools.FileKeyWrapper;
+import org.apache.parquet.crypto.keytools.KeyTookit;
 import org.apache.parquet.crypto.keytools.RemoteKmsClient;
-import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,28 +44,25 @@ public class VaultClient extends RemoteKmsClient {
   private static final String DEFAULT_TRANSIT_ENGINE = "/v1/transit/";
   private static final String transitWrapEndpoint = "encrypt/";
   private static final String transitUnwrapEndpoint = "decrypt/";
-  private static final String DEFAULT_KV_ENGINE = "/v1/secret/data/keys";
   private static final String tokenHeader="X-Vault-Token";
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private String transitEngine = DEFAULT_TRANSIT_ENGINE;
-  private String getKeyEndpoint = DEFAULT_KV_ENGINE;
   private OkHttpClient httpClient = new OkHttpClient();
 
   private String vaultToken;
 
   @Override
   protected void initializeInternal(Configuration conf) {
-    vaultToken = conf.getTrimmed(FileKeyWrapper.KEY_ACCESS_TOKEN_PROPERTY_NAME);
+    vaultToken = conf.getTrimmed(KeyTookit.KEY_ACCESS_TOKEN_PROPERTY_NAME);
     if (StringUtils.isEmpty(vaultToken)) {
       throw new ParquetCryptoRuntimeException("Missing token");
     }
-    if (FileKeyWrapper.DEFAULT_KMS_INSTANCE_ID != kmsInstanceID) {
+    if (KeyTookit.DEFAULT_KMS_INSTANCE_ID != kmsInstanceID) {
       transitEngine = "/v1/" + kmsInstanceID;
       if (!transitEngine.endsWith("/")) {
         transitEngine += "/";
       }
-      getKeyEndpoint = "/v1/" + kmsInstanceID;
     }
   }
 
@@ -92,39 +88,8 @@ public class VaultClient extends RemoteKmsClient {
 
   @Override
   protected byte[] getMasterKeyFromServer(String masterKeyIdentifier) {
-    LOG.info("masterKeyIdentifier:  " + masterKeyIdentifier);
-
-    final String endpoint = this.kmsURL + getKeyEndpoint;
-    Request request = new Request.Builder()
-        .url(endpoint)
-        .header(tokenHeader,  vaultToken)
-        .get().build();
-
-    String response = executeAndGetResponse(endpoint, request);
-
-    JsonNode keysNode;
-    try {
-      keysNode = objectMapper.readTree(response).get("data").get("data");
-    } catch (IOException e) {
-      throw new ParquetCryptoRuntimeException("Failed to parse vault response. Key " 
-          + masterKeyIdentifier + " not found."  + response);
-    }
-    byte[] matchingValue = null;
-    if (null != keysNode) {
-      try {
-        matchingValue = keysNode.findValue(masterKeyIdentifier).getBinaryValue();
-      } catch (IOException e) {
-        throw new ParquetCryptoRuntimeException("Failed to match vault response. Key " 
-            + masterKeyIdentifier + " not found."  + response);
-      }
-    }
-
-    if(null == matchingValue) {
-      throw new ParquetCryptoRuntimeException("Failed to find vault response. " + 
-          masterKeyIdentifier + " not found."  + response);
-    }
-
-    return matchingValue;
+    // Vault supports in-server wrapping and unwrapping. No need to fetch master keys.
+    throw new UnsupportedOperationException("Use wrap/unwrap instead of fetching master keys");
   }
 
   private String buildPayload(Map<String, String> paramMap) {
