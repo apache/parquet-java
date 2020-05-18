@@ -27,7 +27,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.apache.parquet.crypto.keytools.KeyTookit;
+import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.RemoteKmsClient;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
@@ -54,11 +54,11 @@ public class VaultClient extends RemoteKmsClient {
 
   @Override
   protected void initializeInternal(Configuration conf) {
-    vaultToken = conf.getTrimmed(KeyTookit.KEY_ACCESS_TOKEN_PROPERTY_NAME);
+    vaultToken = conf.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME);
     if (StringUtils.isEmpty(vaultToken)) {
       throw new ParquetCryptoRuntimeException("Missing token");
     }
-    if (KeyTookit.DEFAULT_KMS_INSTANCE_ID != kmsInstanceID) {
+    if (KeyToolkit.DEFAULT_KMS_INSTANCE_ID != kmsInstanceID) {
       transitEngine = "/v1/" + kmsInstanceID;
       if (!transitEngine.endsWith("/")) {
         transitEngine += "/";

@@ -31,7 +31,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.DecryptionKeyRetriever;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.apache.parquet.crypto.keytools.KeyTookit.KeyWithMasterID;
+import org.apache.parquet.crypto.keytools.KeyToolkit.KeyWithMasterID;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
@@ -55,15 +55,15 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     this.hadoopConfiguration = hadoopConfiguration;
     this.keyMaterialStore = keyStore;
 
-    cacheEntryLifetime = 1000l * hadoopConfiguration.getLong(KeyTookit.TOKEN_LIFETIME_PROPERTY_NAME,
-        KeyTookit.DEFAULT_CACHE_ENTRY_LIFETIME);
+    cacheEntryLifetime = 1000l * hadoopConfiguration.getLong(KeyToolkit.TOKEN_LIFETIME_PROPERTY_NAME,
+        KeyToolkit.DEFAULT_CACHE_ENTRY_LIFETIME);
 
     // Check cache upon each file reading (clean once in cacheEntryLifetime)
-    KeyTookit.checkCacheEntriesForExpiredTokens(KEKMapPerToken, lastKekCacheCleanupTimestamp, cacheEntryLifetime);
-    KeyTookit.checkKmsCacheForExpiredTokens(cacheEntryLifetime);
+    KeyToolkit.checkCacheEntriesForExpiredTokens(KEKMapPerToken, lastKekCacheCleanupTimestamp, cacheEntryLifetime);
+    KeyToolkit.checkKmsCacheForExpiredTokens(cacheEntryLifetime);
     
-    String accessToken = hadoopConfiguration.getTrimmed(KeyTookit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
-        KeyTookit.DEFAULT_ACCESS_TOKEN);
+    String accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
+        KeyToolkit.DEFAULT_ACCESS_TOKEN);
 
     ExpiringCacheEntry<Map<String, byte[]>> KEKCacheEntry;
     synchronized (KEKMapPerToken) {
@@ -103,27 +103,27 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
       throw new ParquetCryptoRuntimeException("Failed to parse key material " + keyMaterial, e);
     }
 
-    String keyMaterialType = keyMaterialJson.get(KeyTookit.KEY_MATERIAL_TYPE_FIELD);
-    if (KeyTookit.KEY_MATERIAL_TYPE.equals(keyMaterialType)) {
+    String keyMaterialType = keyMaterialJson.get(KeyToolkit.KEY_MATERIAL_TYPE_FIELD);
+    if (!KeyToolkit.KEY_MATERIAL_TYPE.equals(keyMaterialType)) {
       throw new ParquetCryptoRuntimeException("Wrong key material type: " + keyMaterialType + 
-          " vs " + KeyTookit.KEY_MATERIAL_TYPE_FIELD);
+          " vs " + KeyToolkit.KEY_MATERIAL_TYPE);
     }
 
     if (null == kmsClient) {
       kmsClient = getKmsClientFromConfigOrKeyMaterial(keyMaterialJson);
     }
 
-    boolean doubleWrapping = Boolean.valueOf(keyMaterialJson.get(KeyTookit.DOUBLE_WRAPPING_FIELD));
+    boolean doubleWrapping = Boolean.valueOf(keyMaterialJson.get(KeyToolkit.DOUBLE_WRAPPING_FIELD));
 
-    String masterKeyID = keyMaterialJson.get(KeyTookit.MASTER_KEY_ID_FIELD);
-    String encodedWrappedDatakey = keyMaterialJson.get(KeyTookit.WRAPPED_DEK_FIELD);
+    String masterKeyID = keyMaterialJson.get(KeyToolkit.MASTER_KEY_ID_FIELD);
+    String encodedWrappedDatakey = keyMaterialJson.get(KeyToolkit.WRAPPED_DEK_FIELD);
 
     byte[] dataKey;
     if (!doubleWrapping) {
       dataKey = kmsClient.unwrapKey(encodedWrappedDatakey, masterKeyID);
     } else {
       // Get KEK
-      String encodedKEK_ID = keyMaterialJson.get(KeyTookit.KEK_ID_FIELD);
+      String encodedKEK_ID = keyMaterialJson.get(KeyToolkit.KEK_ID_FIELD);
       final Map<String, String> keyMaterialJsonFinal = keyMaterialJson;
       
       byte[] kekBytes;
@@ -137,7 +137,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
 
       // Decrypt the data key
       byte[]  AAD = Base64.getDecoder().decode(encodedKEK_ID);
-      dataKey =  KeyTookit.unwrapKeyLocally(encodedWrappedDatakey, kekBytes, AAD);
+      dataKey =  KeyToolkit.unwrapKeyLocally(encodedWrappedDatakey, kekBytes, AAD);
     }
 
     return new KeyWithMasterID(dataKey, masterKeyID);
@@ -145,7 +145,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
 
   private byte[] unwrapKek(Map<String, String> keyMaterialJson, String masterKeyID) {
     byte[] kekBytes;
-    String encodedWrappedKEK = keyMaterialJson.get(KeyTookit.WRAPPED_KEK_FIELD);
+    String encodedWrappedKEK = keyMaterialJson.get(KeyToolkit.WRAPPED_KEK_FIELD);
     kekBytes = kmsClient.unwrapKey(encodedWrappedKEK, masterKeyID);
 
     if (null == kekBytes) {
@@ -155,28 +155,28 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
   }
 
   private KmsClient getKmsClientFromConfigOrKeyMaterial(Map<String, String> keyMaterialJson) {
-    String kmsInstanceID = hadoopConfiguration.getTrimmed(KeyTookit.KMS_INSTANCE_ID_PROPERTY_NAME);
+    String kmsInstanceID = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME);
     if (StringUtils.isEmpty(kmsInstanceID)) {
-      kmsInstanceID = keyMaterialJson.get(KeyTookit.KMS_INSTANCE_ID_FIELD);
+      kmsInstanceID = keyMaterialJson.get(KeyToolkit.KMS_INSTANCE_ID_FIELD);
       if (null == kmsInstanceID) {
         throw new ParquetCryptoRuntimeException("KMS instance ID is missing both in properties and file key material");
       }
-      hadoopConfiguration.set(KeyTookit.KMS_INSTANCE_ID_PROPERTY_NAME, kmsInstanceID);
+      hadoopConfiguration.set(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME, kmsInstanceID);
     }
 
-    String kmsInstanceURL = hadoopConfiguration.getTrimmed(KeyTookit.KMS_INSTANCE_URL_PROPERTY_NAME);
+    String kmsInstanceURL = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME);
     if (StringUtils.isEmpty(kmsInstanceURL)) {
-      kmsInstanceURL = keyMaterialJson.get(KeyTookit.KMS_INSTANCE_URL_FIELD);
+      kmsInstanceURL = keyMaterialJson.get(KeyToolkit.KMS_INSTANCE_URL_FIELD);
       if (null == kmsInstanceURL) {
         throw new ParquetCryptoRuntimeException("KMS instance URL is missing both in properties and file key material");
       }
-      hadoopConfiguration.set(KeyTookit.KMS_INSTANCE_URL_PROPERTY_NAME, kmsInstanceURL);
+      hadoopConfiguration.set(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME, kmsInstanceURL);
     }
 
-    String accessToken = hadoopConfiguration.getTrimmed(KeyTookit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
-        KeyTookit.DEFAULT_ACCESS_TOKEN);
+    String accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
+        KeyToolkit.DEFAULT_ACCESS_TOKEN);
 
-    KmsClient kmsClient = KeyTookit.getKmsClient(kmsInstanceID, hadoopConfiguration, accessToken, cacheEntryLifetime);
+    KmsClient kmsClient = KeyToolkit.getKmsClient(kmsInstanceID, hadoopConfiguration, accessToken, cacheEntryLifetime);
     if (null == kmsClient) {
       throw new ParquetCryptoRuntimeException("KMSClient was not successfully created for reading encrypted data.");
     }
@@ -192,7 +192,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
       throw new ParquetCryptoRuntimeException("Failed to parse key metadata " + keyReferenceMetadata, e);
     }
 
-    return keyMetadataJson.get(KeyTookit.KEY_REFERENCE_FIELD);
+    return keyMetadataJson.get(KeyToolkit.KEY_REFERENCE_FIELD);
   }
 
   static void removeCacheEntriesForToken(String accessToken) {

@@ -41,9 +41,9 @@ public abstract class RemoteKmsClient implements KmsClient {
   @Override
   public void initialize(Configuration configuration, String kmsInstanceID) {
     this.kmsInstanceID = kmsInstanceID;
-    this.kmsURL = configuration.getTrimmed(KeyTookit.KMS_INSTANCE_URL_PROPERTY_NAME);
+    this.kmsURL = configuration.getTrimmed(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME);
 
-    this.isWrapLocally = configuration.getBoolean(KeyTookit.WRAP_LOCALLY_PROPERTY_NAME, false);
+    this.isWrapLocally = configuration.getBoolean(KeyToolkit.WRAP_LOCALLY_PROPERTY_NAME, false);
     if (isWrapLocally) {
       masterKeyCache = new HashMap<>(INITIAL_KEY_CACHE_SIZE);
     }
@@ -56,7 +56,7 @@ public abstract class RemoteKmsClient implements KmsClient {
     if (isWrapLocally) {
       byte[] masterKey = getKeyFromCacheOrServer(masterKeyIdentifier);
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-      return KeyTookit.wrapKeyLocally(dataKey, masterKey, AAD);
+      return KeyToolkit.wrapKeyLocally(dataKey, masterKey, AAD);
     } else {
       return wrapKeyInServer(dataKey, masterKeyIdentifier);
     }
@@ -67,7 +67,7 @@ public abstract class RemoteKmsClient implements KmsClient {
     if (isWrapLocally) {
       byte[] masterKey = getKeyFromCacheOrServer(masterKeyIdentifier);
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-      return KeyTookit.unwrapKeyLocally(wrappedKey, masterKey, AAD);
+      return KeyToolkit.unwrapKeyLocally(wrappedKey, masterKey, AAD);
     } else {
       return unwrapKeyInServer(wrappedKey, masterKeyIdentifier);
     }

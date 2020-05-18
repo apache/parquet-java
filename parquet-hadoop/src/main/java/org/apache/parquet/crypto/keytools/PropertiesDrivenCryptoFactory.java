@@ -66,7 +66,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     }
 
     FileKeyMaterialStore keyMaterialStore = null;
-    boolean keyMaterialInternalStorage = fileHadoopConfig.getBoolean(KeyTookit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
+    boolean keyMaterialInternalStorage = fileHadoopConfig.getBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
     if (!keyMaterialInternalStorage) {
       try {
         keyMaterialStore = new HadoopFSKeyMaterialStore(tempFilePath.getFileSystem(fileHadoopConfig), tempFilePath);
@@ -180,7 +180,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       throws ParquetCryptoRuntimeException {
 
     FileKeyMaterialStore keyMaterialStore = null; 
-    boolean keyMaterialInternalStorage = hadoopConfig.getBoolean(KeyTookit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
+    boolean keyMaterialInternalStorage = hadoopConfig.getBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
     if (!keyMaterialInternalStorage) {
       try {
         keyMaterialStore = new HadoopFSKeyMaterialStore(filePath.getFileSystem(hadoopConfig), filePath);
@@ -189,9 +189,9 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       }
     }
 
-    String kmsInstanceID = hadoopConfig.getTrimmed(KeyTookit.KMS_INSTANCE_ID_PROPERTY_NAME);
+    String kmsInstanceID = hadoopConfig.getTrimmed(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME);
     if (StringUtils.isEmpty(kmsInstanceID)) {
-      kmsInstanceID = KeyTookit.DEFAULT_KMS_INSTANCE_ID;
+      kmsInstanceID = KeyToolkit.DEFAULT_KMS_INSTANCE_ID;
     }
     DecryptionKeyRetriever keyRetriever = new FileKeyUnwrapper(hadoopConfig, keyMaterialStore);
 

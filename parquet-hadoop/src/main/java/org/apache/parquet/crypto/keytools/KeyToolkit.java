@@ -44,7 +44,7 @@ import java.util.Map;
 import java.util.Set;
 
 
-public class KeyTookit {
+public class KeyToolkit {
 
   public static final String KMS_CLIENT_CLASS_PROPERTY_NAME = "encryption.kms.client.class";
   public static final String KMS_INSTANCE_ID_PROPERTY_NAME = "encryption.kms.instance.id";
@@ -148,20 +148,25 @@ public class KeyTookit {
       Path parquetFile = fs.getPath();
 
       FileKeyMaterialStore sourceKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile);
-
-      FileKeyWrapper fileKeyWrapper = new FileKeyWrapper(hadoopConfig, sourceKeyMaterialStore);
-
-      FileKeyMaterialStore tempKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile, TEMP_FILE_PREFIX);
-
       FileKeyUnwrapper fileKeyUnwrapper = new FileKeyUnwrapper(hadoopConfig, sourceKeyMaterialStore);
 
+      FileKeyMaterialStore tempKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile, TEMP_FILE_PREFIX);
+      FileKeyWrapper fileKeyWrapper = new FileKeyWrapper(hadoopConfig, tempKeyMaterialStore);
+      
       Set<String> fileKeyIdSet = sourceKeyMaterialStore.getKeyIDSet();
+      
+      // Start with footer key (to get KMS ID, URL, if needed) 
+      String keyMaterial = sourceKeyMaterialStore.getKeyMaterial(FOOTER_KEY_ID_IN_FILE);
+      KeyWithMasterID key = fileKeyUnwrapper.getDEKandMasterID(keyMaterial);
+      fileKeyWrapper.getEncryptionKeyMetadata(key.getDataKey(), key.getMasterID(), true, FOOTER_KEY_ID_IN_FILE);
+      
+      fileKeyIdSet.remove(FOOTER_KEY_ID_IN_FILE);
 
+      // Rotate column keys
       for (String keyIdInFile : fileKeyIdSet) {
-        boolean footerKey = keyIdInFile.equals(FOOTER_KEY_ID_IN_FILE);
-        String keyMaterial = sourceKeyMaterialStore.getKeyMaterial(keyIdInFile);
-        KeyWithMasterID key = fileKeyUnwrapper.getDEKandMasterID(keyMaterial);
-        fileKeyWrapper.getEncryptionKeyMetadata(key.getDataKey(), key.getMasterID(), footerKey, tempKeyMaterialStore, keyIdInFile);
+        keyMaterial = sourceKeyMaterialStore.getKeyMaterial(keyIdInFile);
+        key = fileKeyUnwrapper.getDEKandMasterID(keyMaterial);
+        fileKeyWrapper.getEncryptionKeyMetadata(key.getDataKey(), key.getMasterID(), false, keyIdInFile);
       }
 
       tempKeyMaterialStore.saveMaterial();
@@ -169,15 +174,14 @@ public class KeyTookit {
       sourceKeyMaterialStore.removeMaterial();
 
       tempKeyMaterialStore.moveMaterial(sourceKeyMaterialStore);
-
-      // Clear all per-token caches
-      synchronized (kmsClientCachePerToken) {
-        kmsClientCachePerToken.clear();
-      }
-      FileKeyWrapper.removeCacheEntriesForAllTokens();
-      FileKeyUnwrapper.removeCacheEntriesForAllTokens();
-
     }
+    
+    // Clear all per-token caches
+    synchronized (kmsClientCachePerToken) {
+      kmsClientCachePerToken.clear();
+    }
+    FileKeyWrapper.removeCacheEntriesForAllTokens();
+    FileKeyUnwrapper.removeCacheEntriesForAllTokens();
   }
 
   public static String wrapKeyLocally(byte[] key, byte[] wrappingKey, byte[] AAD) {

@@ -30,7 +30,7 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.apache.parquet.crypto.keytools.KeyTookit.KeyEncryptionKey;
+import org.apache.parquet.crypto.keytools.KeyToolkit.KeyEncryptionKey;
 import org.codehaus.jackson.map.ObjectMapper;
 
 public class FileKeyWrapper {
@@ -40,7 +40,7 @@ public class FileKeyWrapper {
 
   // For every token: a map of MEK_ID to (KEK ID and KEK)
   private static final Map<String, ExpiringCacheEntry<HashMap<String,KeyEncryptionKey>>> KEKMapPerToken =
-      new HashMap<>(KeyTookit.INITIAL_PER_TOKEN_CACHE_SIZE);
+      new HashMap<>(KeyToolkit.INITIAL_PER_TOKEN_CACHE_SIZE);
   private static volatile long lastKekCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute;
 
   //A map of MEK_ID to (KEK ID and KEK) - for the current token
@@ -64,19 +64,19 @@ public class FileKeyWrapper {
   public FileKeyWrapper(Configuration configuration, FileKeyMaterialStore keyMaterialStore) {
     this.hadoopConfiguration = configuration;
 
-    cacheEntryLifetime = 1000l * hadoopConfiguration.getLong(KeyTookit.TOKEN_LIFETIME_PROPERTY_NAME, 
-        KeyTookit.DEFAULT_CACHE_ENTRY_LIFETIME); 
+    cacheEntryLifetime = 1000l * hadoopConfiguration.getLong(KeyToolkit.TOKEN_LIFETIME_PROPERTY_NAME, 
+        KeyToolkit.DEFAULT_CACHE_ENTRY_LIFETIME); 
 
-    kmsInstanceID = hadoopConfiguration.getTrimmed(KeyTookit.KMS_INSTANCE_ID_PROPERTY_NAME, 
-        KeyTookit.DEFAULT_KMS_INSTANCE_ID);
+    kmsInstanceID = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME, 
+        KeyToolkit.DEFAULT_KMS_INSTANCE_ID);
 
-    doubleWrapping =  hadoopConfiguration.getBoolean(KeyTookit.DOUBLE_WRAPPING_PROPERTY_NAME, true);
-    accessToken = hadoopConfiguration.getTrimmed(KeyTookit.KEY_ACCESS_TOKEN_PROPERTY_NAME, KeyTookit.DEFAULT_ACCESS_TOKEN);
+    doubleWrapping =  hadoopConfiguration.getBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, true);
+    accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, KeyToolkit.DEFAULT_ACCESS_TOKEN);
 
-    kmsClient = KeyTookit.getKmsClient(kmsInstanceID, configuration, accessToken, cacheEntryLifetime);
+    kmsClient = KeyToolkit.getKmsClient(kmsInstanceID, configuration, accessToken, cacheEntryLifetime);
 
-    kmsInstanceURL = hadoopConfiguration.getTrimmed(KeyTookit.KMS_INSTANCE_URL_PROPERTY_NAME, 
-        KeyTookit.DEFAULT_KMS_INSTANCE_URL);
+    kmsInstanceURL = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME, 
+        KeyToolkit.DEFAULT_KMS_INSTANCE_URL);
 
     this.keyMaterialStore = keyMaterialStore;
 
@@ -84,8 +84,8 @@ public class FileKeyWrapper {
     keyCounter = 0;
 
     // Check caches upon each file writing (clean once in cacheEntryLifetime)
-    KeyTookit.checkCacheEntriesForExpiredTokens(KEKMapPerToken, lastKekCacheCleanupTimestamp, cacheEntryLifetime);
-    KeyTookit.checkKmsCacheForExpiredTokens(cacheEntryLifetime);
+    KeyToolkit.checkCacheEntriesForExpiredTokens(KEKMapPerToken, lastKekCacheCleanupTimestamp, cacheEntryLifetime);
+    KeyToolkit.checkKmsCacheForExpiredTokens(cacheEntryLifetime);
 
     ExpiringCacheEntry<HashMap<String, KeyEncryptionKey>> KEKCacheEntry;
     synchronized (KEKMapPerToken) {
@@ -99,7 +99,7 @@ public class FileKeyWrapper {
   }
 
   public byte[] getEncryptionKeyMetadata(byte[] dataKey, String masterKeyID, boolean isFooterKey) {
-    return getEncryptionKeyMetadata(dataKey, masterKeyID, isFooterKey, keyMaterialStore, null);
+    return getEncryptionKeyMetadata(dataKey, masterKeyID, isFooterKey, null);
   }
 
   static void removeCacheEntriesForToken(String accessToken) {
@@ -114,8 +114,7 @@ public class FileKeyWrapper {
     }
   }
 
-  byte[] getEncryptionKeyMetadata(byte[] dataKey, String masterKeyID, boolean isFooterKey, 
-      FileKeyMaterialStore targetKeyMaterialStore, String keyIdInFile) {
+  byte[] getEncryptionKeyMetadata(byte[] dataKey, String masterKeyID, boolean isFooterKey, String keyIdInFile) {
     if (null == kmsClient) {
       throw new ParquetCryptoRuntimeException("No KMS client available. See previous errors.");
     }
@@ -136,27 +135,27 @@ public class FileKeyWrapper {
 
       // Encrypt DEK with KEK
       byte[] AAD = keyEncryptionKey.getID();
-      encodedWrappedDEK = KeyTookit.wrapKeyLocally(dataKey, keyEncryptionKey.getBytes(), AAD);
+      encodedWrappedDEK = KeyToolkit.wrapKeyLocally(dataKey, keyEncryptionKey.getBytes(), AAD);
     }
 
     // Pack all into key material JSON
     Map<String, String> keyMaterialMap = new HashMap<String, String>(10);
+    keyMaterialMap.put(KeyToolkit.KEY_MATERIAL_TYPE_FIELD, KeyToolkit.KEY_MATERIAL_TYPE);
     if (isFooterKey) {
-      keyMaterialMap.put(KeyTookit.KEY_MATERIAL_TYPE_FIELD, KeyTookit.KEY_MATERIAL_TYPE);
-      keyMaterialMap.put(KeyTookit.KMS_INSTANCE_ID_FIELD, kmsInstanceID);
-      keyMaterialMap.put(KeyTookit.KMS_INSTANCE_URL_FIELD, kmsInstanceURL);
+      keyMaterialMap.put(KeyToolkit.KMS_INSTANCE_ID_FIELD, kmsInstanceID);
+      keyMaterialMap.put(KeyToolkit.KMS_INSTANCE_URL_FIELD, kmsInstanceURL);
     }
-    if (null == targetKeyMaterialStore) {
-      keyMaterialMap.put(KeyTookit.KEY_MATERIAL_INTERNAL_STORAGE_FIELD, "true"); // TODO use/check
+    if (null == keyMaterialStore) {
+      keyMaterialMap.put(KeyToolkit.KEY_MATERIAL_INTERNAL_STORAGE_FIELD, "true"); // TODO use/check
     }
-    keyMaterialMap.put(KeyTookit.DOUBLE_WRAPPING_FIELD, Boolean.toString(doubleWrapping));
-    keyMaterialMap.put(KeyTookit.MASTER_KEY_ID_FIELD, masterKeyID);
+    keyMaterialMap.put(KeyToolkit.DOUBLE_WRAPPING_FIELD, Boolean.toString(doubleWrapping));
+    keyMaterialMap.put(KeyToolkit.MASTER_KEY_ID_FIELD, masterKeyID);
 
     if (doubleWrapping) {
-      keyMaterialMap.put(KeyTookit.KEK_ID_FIELD, keyEncryptionKey.getEncodedID());
-      keyMaterialMap.put(KeyTookit.WRAPPED_KEK_FIELD, keyEncryptionKey.getWrappedWithCRK());
+      keyMaterialMap.put(KeyToolkit.KEK_ID_FIELD, keyEncryptionKey.getEncodedID());
+      keyMaterialMap.put(KeyToolkit.WRAPPED_KEK_FIELD, keyEncryptionKey.getWrappedWithCRK());
     }
-    keyMaterialMap.put(KeyTookit.WRAPPED_DEK_FIELD, encodedWrappedDEK);
+    keyMaterialMap.put(KeyToolkit.WRAPPED_DEK_FIELD, encodedWrappedDEK);
     String keyMaterial;
     try {
       keyMaterial = objectMapper.writeValueAsString(keyMaterialMap);
@@ -166,19 +165,19 @@ public class FileKeyWrapper {
 
     // Create key metadata
     byte[] keyMetadata = null;
-    if (null != targetKeyMaterialStore) {
+    if (null != keyMaterialStore) {
       if (null == keyIdInFile) {
         if (isFooterKey) {
-          keyIdInFile = KeyTookit.FOOTER_KEY_ID_IN_FILE;
+          keyIdInFile = KeyToolkit.FOOTER_KEY_ID_IN_FILE;
         } else {
-          keyIdInFile = KeyTookit.KEY_ID_IN_FILE_PREFIX + keyCounter;
+          keyIdInFile = KeyToolkit.KEY_ID_IN_FILE_PREFIX + keyCounter;
           keyCounter++;
         }
       }
-      targetKeyMaterialStore.addKeyMaterial(keyIdInFile, keyMaterial);
+      keyMaterialStore.addKeyMaterial(keyIdInFile, keyMaterial);
 
       Map<String, String> keyMetadataMap = new HashMap<String, String>(2);
-      keyMetadataMap.put(KeyTookit.KEY_REFERENCE_FIELD, keyIdInFile);
+      keyMetadataMap.put(KeyToolkit.KEY_REFERENCE_FIELD, keyIdInFile);
 
       String keyMetadataString;
       try {
