@@ -66,7 +66,7 @@ public class AesCipher {
   }
 
   public static byte[] createModuleAAD(byte[] fileAAD, ModuleType moduleType, 
-      short rowGroupOrdinal, short columnOrdinal, short pageOrdinal) {
+      int rowGroupOrdinal, int columnOrdinal, int pageOrdinal) {
     
     byte[] typeOrdinalBytes = new byte[1];
     typeOrdinalBytes[0] = moduleType.getValue();
@@ -78,11 +78,22 @@ public class AesCipher {
     if (rowGroupOrdinal < 0) {
       throw new IllegalArgumentException("Wrong row group ordinal: " + rowGroupOrdinal);
     }
-    byte[] rowGroupOrdinalBytes = shortToBytesLE(rowGroupOrdinal);
+    short shortRGOrdinal = (short) rowGroupOrdinal;
+    if (shortRGOrdinal != rowGroupOrdinal) {
+      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
+          + "more than Short.MAX_VALUE row groups: " + rowGroupOrdinal);
+    }
+    byte[] rowGroupOrdinalBytes = shortToBytesLE(shortRGOrdinal);
+    
     if (columnOrdinal < 0) {
       throw new IllegalArgumentException("Wrong column ordinal: " + columnOrdinal);
     }
-    byte[] columnOrdinalBytes = shortToBytesLE(columnOrdinal);
+    short shortColumOrdinal = (short) columnOrdinal;
+    if (shortColumOrdinal != columnOrdinal) {
+      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
+          + "more than Short.MAX_VALUE columns: " + columnOrdinal);
+    }
+    byte[] columnOrdinalBytes = shortToBytesLE(shortColumOrdinal);
     
     if (ModuleType.DataPage != moduleType && ModuleType.DataPageHeader != moduleType) {
       return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes); 
@@ -91,22 +102,35 @@ public class AesCipher {
     if (pageOrdinal < 0) {
       throw new IllegalArgumentException("Wrong page ordinal: " + pageOrdinal);
     }
-    byte[] pageOrdinalBytes = shortToBytesLE(pageOrdinal);
+    short shortPageOrdinal = (short) pageOrdinal;
+    if (shortPageOrdinal != pageOrdinal) {
+      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
+          + "more than Short.MAX_VALUE pages per chunk: " + pageOrdinal);
+    }
+    byte[] pageOrdinalBytes = shortToBytesLE(shortPageOrdinal);
     
     return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes, pageOrdinalBytes);
   }
 
   public static byte[] createFooterAAD(byte[] aadPrefixBytes) {
-    return createModuleAAD(aadPrefixBytes, ModuleType.Footer, (short) -1, (short) -1, (short) -1);
+    return createModuleAAD(aadPrefixBytes, ModuleType.Footer, -1, -1, -1);
   }
 
   // Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
-  public static void quickUpdatePageAAD(byte[] pageAAD, short newPageOrdinal) {
+  public static void quickUpdatePageAAD(byte[] pageAAD, int newPageOrdinal) {
+    if (null == pageAAD) {
+      throw new IllegalArgumentException("Null pageAAD");
+    }
     if (newPageOrdinal < 0) {
       throw new IllegalArgumentException("Wrong page ordinal: " + newPageOrdinal);
     }
+    short shortPageOrdinal = (short) newPageOrdinal;
+    if (shortPageOrdinal != newPageOrdinal) {
+      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
+          + "more than Short.MAX_VALUE pages per chunk: " + newPageOrdinal);
+    }
     
-    byte[] pageOrdinalBytes = shortToBytesLE(newPageOrdinal);
+    byte[] pageOrdinalBytes = shortToBytesLE(shortPageOrdinal);
     System.arraycopy(pageOrdinalBytes, 0, pageAAD, pageAAD.length - 2, 2);
   }
 

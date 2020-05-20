@@ -70,7 +70,7 @@ class InternalParquetRecordWriter<T> {
   private RecordConsumer recordConsumer;
   
   private InternalFileEncryptor fileEncryptor;
-  private short rowGroupOrdinal;
+  private int rowGroupOrdinal;
 
   /**
    * @param parquetFileWriter the file to write to

@@ -32,9 +32,9 @@ public class InternalColumnEncryptionSetup {
   private final BlockCipher.Encryptor metadataEncryptor;
   private final BlockCipher.Encryptor dataEncryptor;
   private final ColumnCryptoMetaData columnCryptoMetaData;
-  private final short ordinal;
+  private final int ordinal;
 
-  InternalColumnEncryptionSetup(ColumnEncryptionProperties encryptionProperties, short ordinal,
+  InternalColumnEncryptionSetup(ColumnEncryptionProperties encryptionProperties, int ordinal,
       BlockCipher.Encryptor dataEncryptor, BlockCipher.Encryptor metaDataEncryptor) {
     this.encryptionProperties = encryptionProperties;
     this.dataEncryptor = dataEncryptor;
@@ -72,7 +72,7 @@ public class InternalColumnEncryptionSetup {
     return columnCryptoMetaData;
   }
 
-  public short getOrdinal() {
+  public int getOrdinal() {
     return ordinal;
   }
 

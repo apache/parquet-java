@@ -78,7 +78,7 @@ public class InternalFileEncryptor {
   }
 
   public InternalColumnEncryptionSetup getColumnSetup(ColumnPath columnPath, 
-      boolean createIfNull, short ordinal) {
+      boolean createIfNull, int ordinal) {
     InternalColumnEncryptionSetup internalColumnProperties = columnMap.get(columnPath);
 
     if (null != internalColumnProperties) {

@@ -91,9 +91,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
     
     private final BlockCipher.Encryptor headerBlockEncryptor;
     private final BlockCipher.Encryptor pageBlockEncryptor;
-    private final short rowGroupOrdinal;
-    private final short columnOrdinal;
-    private short pageOrdinal;
+    private final int rowGroupOrdinal;
+    private final int columnOrdinal;
+    private int pageOrdinal;
     private final byte[] dataPageAAD;
     private final byte[] dataPageHeaderAAD;
     private final byte[] fileAAD;
@@ -106,8 +106,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
                                   BlockCipher.Encryptor headerBlockEncryptor,
                                   BlockCipher.Encryptor pageBlockEncryptor,
                                   byte[] fileAAD,
-                                  short rowGroupOrdinal,
-                                  short columnOrdinal) {
+                                  int rowGroupOrdinal,
+                                  int columnOrdinal) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
@@ -125,13 +125,13 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
       this.pageOrdinal = -1;
       if (null != headerBlockEncryptor) {
         dataPageHeaderAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPageHeader, 
-            rowGroupOrdinal, columnOrdinal, (short) 0);
+            rowGroupOrdinal, columnOrdinal, 0);
       } else {
         dataPageHeaderAAD = null;
       }
       if (null != pageBlockEncryptor) {
         dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, 
-            rowGroupOrdinal, columnOrdinal, (short) 0);
+            rowGroupOrdinal, columnOrdinal, 0);
       } else {
         dataPageAAD = null;
       }
@@ -156,9 +156,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
                           Encoding rlEncoding,
                           Encoding dlEncoding,
                           Encoding valuesEncoding) throws IOException {
-      if (Short.MAX_VALUE == pageOrdinal) {
-        throw new RuntimeException("Number of pages exceeds maximum: " + Short.MAX_VALUE);
-      }
       pageOrdinal++;
       long uncompressedSize = bytes.size();
       if (uncompressedSize > Integer.MAX_VALUE) {
@@ -236,9 +233,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
         BytesInput repetitionLevels, BytesInput definitionLevels,
         Encoding dataEncoding, BytesInput data,
         Statistics<?> statistics) throws IOException {
-      if (Short.MAX_VALUE == pageOrdinal) {
-        throw new RuntimeException("Number of pages exceeds maximum: " + Short.MAX_VALUE);
-      }
       pageOrdinal++;
       
       int rlByteLength = toIntWithCheck(repetitionLevels.size());
@@ -379,7 +373,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
       BytesInput compressedBytes = compressor.compress(dictionaryBytes);
       if (null != pageBlockEncryptor) {
         byte[] dictonaryPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPage, 
-            rowGroupOrdinal, columnOrdinal, (short) -1);
+            rowGroupOrdinal, columnOrdinal, -1);
         compressedBytes = BytesInput.from(pageBlockEncryptor.encrypt(compressedBytes.toByteArray(), dictonaryPageAAD));
       }
       this.dictionaryPage = new DictionaryPage(BytesInput.copy(compressedBytes), uncompressedSize, 
@@ -411,23 +405,23 @@ class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWriteStore
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
       writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength, 
-          pageWriteChecksumEnabled, null, null, null, (short)-1, (short)-1));
+          pageWriteChecksumEnabled, null, null, null, -1, -1));
     }
   }
   
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
-      int columnIndexTruncateLength, boolean pageWriteChecksumEnabled, InternalFileEncryptor fileEncryptor, short rowGroupOrdinal) {
+      int columnIndexTruncateLength, boolean pageWriteChecksumEnabled, InternalFileEncryptor fileEncryptor, int rowGroupOrdinal) {
     this.schema = schema;
     if (null == fileEncryptor) {
       for (ColumnDescriptor path : schema.getColumns()) {
         writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength, 
-            pageWriteChecksumEnabled, null, null, null, (short)-1, (short)-1));
+            pageWriteChecksumEnabled, null, null, null, -1, -1));
       }
       return;
     }
     
     // Encrypted file
-    short columnOrdinal = -1;
+    int columnOrdinal = -1;
     byte[] fileAAD = fileEncryptor.getFileAAD();
     for (ColumnDescriptor path : schema.getColumns()) {
       columnOrdinal++;

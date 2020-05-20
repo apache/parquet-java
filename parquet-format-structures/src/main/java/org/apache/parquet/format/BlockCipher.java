@@ -19,6 +19,7 @@
 
 package org.apache.parquet.format;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 public interface BlockCipher{
@@ -58,8 +59,9 @@ public interface BlockCipher{
      * @param from Input stream with length and ciphertext.
      * @param AAD - Additional Authenticated Data for the decryption (ignored in case of CTR cipher)
      * @return plaintext -  starts at offset 0 of the output, and fills up the entire byte array.
+     * @throws IOException - Stream I/O problems
      */
-    public byte[] decrypt(InputStream from, byte[] AAD);
+    public byte[] decrypt(InputStream from, byte[] AAD) throws IOException;
   }
 }
 

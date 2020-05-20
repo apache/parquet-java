@@ -80,7 +80,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
         DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount,
         BlockCipher.Decryptor blockDecryptor, byte[] fileAAD, 
-        short rowGroupOrdinal, short columnOrdinal) {
+        int rowGroupOrdinal, int columnOrdinal) {
       this.decompressor = decompressor;
       this.compressedPages = new ArrayDeque<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
@@ -95,20 +95,17 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       this.blockDecryptor = blockDecryptor;
  
       if (null != blockDecryptor) {
-        dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, rowGroupOrdinal, columnOrdinal, (short) 0);
-        dictionaryPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPage, rowGroupOrdinal, columnOrdinal, (short) -1);
+        dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, rowGroupOrdinal, columnOrdinal, 0);
+        dictionaryPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPage, rowGroupOrdinal, columnOrdinal, -1);
       } else {
         dataPageAAD = null;
         dictionaryPageAAD = null;
       }
     }
     
-    private short getPageOrdinal(int currentPageIndex) {
+    private int getPageOrdinal(int currentPageIndex) {
       if (null == offsetIndex) {
-        if (currentPageIndex > Short.MAX_VALUE) {
-          throw new RuntimeException("Page ordinal exceeds limit " + currentPageIndex);
-        }
-        return (short)currentPageIndex;
+        return currentPageIndex;
       }
       
       return offsetIndex.getPageOrdinal(currentPageIndex);

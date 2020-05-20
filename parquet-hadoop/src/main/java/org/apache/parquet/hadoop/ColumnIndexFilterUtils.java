@@ -71,12 +71,8 @@ class ColumnIndexFilterUtils {
     }
     
     @Override
-    public short getPageOrdinal(int pageIndex) {
-      int ordinal = indexMap[pageIndex];
-      if (ordinal > Short.MAX_VALUE) {
-        throw new RuntimeException("Page ordinal exceeds limit " + ordinal);
-      }
-      return (short) ordinal;
+    public int getPageOrdinal(int pageIndex) {
+      return indexMap[pageIndex];
     }
 
     @Override

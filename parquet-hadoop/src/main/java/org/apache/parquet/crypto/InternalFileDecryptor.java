@@ -209,7 +209,7 @@ public class InternalFileDecryptor {
   }
 
   public InternalColumnDecryptionSetup setColumnCryptoMetadata(ColumnPath path, boolean encrypted, 
-      boolean encryptedWithFooterKey, byte[] keyMetadata, short columnOrdinal) {
+      boolean encryptedWithFooterKey, byte[] keyMetadata, int columnOrdinal) {
 
     if (!fileCryptoMetaDataProcessed) {
       throw new ParquetCryptoRuntimeException("Haven't parsed the file crypto metadata yet");

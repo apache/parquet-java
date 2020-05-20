@@ -67,11 +67,8 @@ public class OffsetIndexBuilder {
     }
     
     @Override
-    public short getPageOrdinal(int pageIndex) {
-      if (pageIndex > Short.MAX_VALUE) {
-        throw new IllegalArgumentException("Page ordinal exceeds limit " + pageIndex);
-      }
-      return (short) pageIndex;
+    public int getPageOrdinal(int pageIndex) {
+      return pageIndex;
     }
   }
 

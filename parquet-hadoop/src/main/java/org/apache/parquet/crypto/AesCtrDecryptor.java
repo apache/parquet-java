@@ -88,18 +88,13 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
   }
 
   @Override
-  public byte[] decrypt(InputStream from, byte[] AAD) {
+  public byte[] decrypt(InputStream from, byte[] AAD) throws IOException {
     byte[] lengthBuffer = new byte[SIZE_LENGTH];
     int gotBytes = 0;
 
     // Read the length of encrypted Thrift structure
     while (gotBytes < SIZE_LENGTH) {
-      int n;
-      try {
-        n = from.read(lengthBuffer, gotBytes, SIZE_LENGTH - gotBytes);
-      } catch (IOException e) {
-        throw new ParquetCryptoRuntimeException(e);
-      }
+      int n = from.read(lengthBuffer, gotBytes, SIZE_LENGTH - gotBytes);
       if (n <= 0) {
         throw new ParquetCryptoRuntimeException("Tried to read int (4 bytes), but only got " + gotBytes + " bytes.");
       }

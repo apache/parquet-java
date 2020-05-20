@@ -45,7 +45,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
-import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -56,6 +55,7 @@ import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.crypto.TagVerificationException;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.BloomFilterAlgorithm;
@@ -190,15 +190,11 @@ public class ParquetMetadataConverter {
       cachedEncodingSets = new ConcurrentHashMap<Set<org.apache.parquet.column.Encoding>, Set<org.apache.parquet.column.Encoding>>();
 
   public FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
-    try {
-      return toParquetMetadata(currentVersion, parquetMetadata, null);
-    } catch (IOException e) {
-      throw new ShouldNeverHappenException("Exception can be thrown only with encryption", e);
-    }
+    return toParquetMetadata(currentVersion, parquetMetadata, null);
   }
 
   public FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata,
-      InternalFileEncryptor fileEncryptor) throws IOException {
+      InternalFileEncryptor fileEncryptor) {
     List<BlockMetaData> blocks = parquetMetadata.getBlocks();
     List<RowGroup> rowGroups = new ArrayList<RowGroup>();
     long numRows = 0;
@@ -487,13 +483,13 @@ public class ParquetMetadataConverter {
   }
 
   private void addRowGroup(ParquetMetadata parquetMetadata, List<RowGroup> rowGroups, BlockMetaData block,
-      InternalFileEncryptor fileEncryptor) throws IOException {
+      InternalFileEncryptor fileEncryptor) {
     
     //rowGroup.total_byte_size = ;
     List<ColumnChunkMetaData> columns = block.getColumns();
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
-    short rowGroupOrdinal = (short) rowGroups.size();
-    short columnOrdinal = -1;
+    int rowGroupOrdinal = rowGroups.size();
+    int columnOrdinal = -1;
     ByteArrayOutputStream tempOutStream = null;
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
@@ -531,13 +527,18 @@ public class ParquetMetadataConverter {
       }  else {
         // Serialize and encrypt ColumnMetadata separately 
         byte[] columnMetaDataAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), 
-            ModuleType.ColumnMetaData, rowGroupOrdinal, columnSetup.getOrdinal(), (short) -1);
+            ModuleType.ColumnMetaData, rowGroupOrdinal, columnSetup.getOrdinal(), -1);
         if (null == tempOutStream) {
           tempOutStream = new ByteArrayOutputStream();
         }  else {
           tempOutStream.reset();
         }
-        writeColumnMetaData(metaData, tempOutStream, columnSetup.getMetaDataEncryptor(), columnMetaDataAAD);
+        try {
+          writeColumnMetaData(metaData, tempOutStream, columnSetup.getMetaDataEncryptor(), columnMetaDataAAD);
+        } catch (IOException e) {
+          throw new ParquetCryptoRuntimeException("Failed to serialize and encrypt ColumnMetadata for " +
+                                                  columnMetaData.getPath(), e);
+        }
         columnChunk.setEncrypted_column_metadata(tempOutStream.toByteArray());
         // Keep redacted metadata version for old readers
         if (!fileEncryptor.isFooterEncrypted()) {
@@ -570,7 +571,7 @@ public class ParquetMetadataConverter {
     RowGroup rowGroup = new RowGroup(parquetColumns, block.getTotalByteSize(), block.getRowCount());
     rowGroup.setFile_offset(block.getStartingPos()); 
     rowGroup.setTotal_compressed_size(block.getCompressedSize());
-    rowGroup.setOrdinal(rowGroupOrdinal);
+    rowGroup.setOrdinal((short) rowGroupOrdinal);
     rowGroups.add(rowGroup);
   }
 
@@ -1339,7 +1340,7 @@ public class ParquetMetadataConverter {
         fileDecryptor.setPlaintextFile();
         // Done to detect files that were not encrypted by mistake
         if (!fileDecryptor.plaintextFilesAllowed()) {
-          throw new IOException("Applying decryptor on plaintext file");
+          throw new ParquetCryptoRuntimeException("Applying decryptor on plaintext file");
         }
       } else {  // Encrypted file with plaintext footer
         // if no fileDecryptor, can still read plaintext columns
@@ -1395,7 +1396,7 @@ public class ParquetMetadataConverter {
         }
         List<ColumnChunk> columns = rowGroup.getColumns();
         String filePath = columns.get(0).getFile_path();
-        short columnOrdinal = -1;
+        int columnOrdinal = -1;
         for (ColumnChunk columnChunk : columns) {
           columnOrdinal++;
           if ((filePath == null && columnChunk.getFile_path() != null)

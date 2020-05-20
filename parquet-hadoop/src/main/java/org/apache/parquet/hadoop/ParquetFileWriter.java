@@ -752,7 +752,7 @@ public class ParquetFileWriter {
       List<Encoding> dataEncodings) throws IOException {
     writeColumnChunk(descriptor, valueCount, compressionCodecName, dictionaryPage, bytes,
       uncompressedTotalPageSize, compressedTotalPageSize, totalStats, columnIndexBuilder, offsetIndexBuilder,
-      bloomFilter, rlEncodings, dlEncodings, dataEncodings, null, (short) 0, (short) 0, null);
+      bloomFilter, rlEncodings, dlEncodings, dataEncodings, null, 0, 0, null);
   }
   
   void writeColumnChunk(ColumnDescriptor descriptor,
@@ -770,8 +770,8 @@ public class ParquetFileWriter {
       Set<Encoding> dlEncodings,
       List<Encoding> dataEncodings,
       BlockCipher.Encryptor headerBlockEncryptor,
-      short rowGroupOrdinal, 
-      short columnOrdinal,
+      int rowGroupOrdinal, 
+      int columnOrdinal,
       byte[] fileAAD) throws IOException {
     startColumn(descriptor, valueCount, compressionCodecName);
 
@@ -780,7 +780,7 @@ public class ParquetFileWriter {
       byte[] dictonaryPageHeaderAAD = null;
       if (null != headerBlockEncryptor) {
         dictonaryPageHeaderAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPageHeader, 
-            rowGroupOrdinal, columnOrdinal, (short) -1);
+            rowGroupOrdinal, columnOrdinal, -1);
       }
       writeDictionaryPage(dictionaryPage, headerBlockEncryptor, dictonaryPageHeaderAAD);
     }
@@ -861,10 +861,7 @@ public class ParquetFileWriter {
     LOG.debug("{}: end block", out.getPos());
     currentBlock.setRowCount(currentRecordCount);
     int blockSize = blocks.size();
-    if (fileEncryptor != null && blockSize > Short.MAX_VALUE) {
-      throw new IOException("Number of row groups exceeds short max. Can't set ordinal");
-    }
-    currentBlock.setOrdinal((short) blockSize);
+    currentBlock.setOrdinal(blockSize);
     blocks.add(currentBlock);
     columnIndexes.add(currentColumnIndexes);
     offsetIndexes.add(currentOffsetIndexes);
@@ -1080,11 +1077,11 @@ public class ParquetFileWriter {
         BlockCipher.Encryptor columnIndexEncryptor = null;
         byte[] columnIndexAAD = null;
         if (null != fileEncryptor) {
-          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, (short) cIndex);
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, cIndex);
           if (columnEncryptionSetup.isEncrypted()) {
             columnIndexEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
             columnIndexAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), ModuleType.ColumnIndex, 
-                block.getOrdinal(), columnEncryptionSetup.getOrdinal(), (short)-1);
+                block.getOrdinal(), columnEncryptionSetup.getOrdinal(), -1);
           }
         }
         long offset = out.getPos();
@@ -1120,11 +1117,11 @@ public class ParquetFileWriter {
         BlockCipher.Encryptor offsetIndexEncryptor = null;
         byte[] offsetIndexAAD = null;
         if (null != fileEncryptor) {
-          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, (short) cIndex);
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, cIndex);
           if (columnEncryptionSetup.isEncrypted()) {
             offsetIndexEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
             offsetIndexAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), ModuleType.OffsetIndex, 
-                block.getOrdinal(), columnEncryptionSetup.getOrdinal(), (short)-1);
+                block.getOrdinal(), columnEncryptionSetup.getOrdinal(), -1);
           }
         }
         long offset = out.getPos();
@@ -1159,14 +1156,14 @@ public class ParquetFileWriter {
         byte[] bloomFilterHeaderAAD = null;
         byte[] bloomFilterBitsetAAD = null;
         if (null != fileEncryptor) {
-          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, (short) cIndex);
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, cIndex);
           if (columnEncryptionSetup.isEncrypted()) {
             bloomFilterEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
-            short columnOrdinal = columnEncryptionSetup.getOrdinal();
+            int columnOrdinal = columnEncryptionSetup.getOrdinal();
             bloomFilterHeaderAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), ModuleType.BloomFilterHeader, 
-                block.getOrdinal(), columnOrdinal, (short)-1);
+                block.getOrdinal(), columnOrdinal, -1);
             bloomFilterBitsetAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), ModuleType.BloomFilterBitset, 
-                block.getOrdinal(), columnOrdinal, (short)-1);
+                block.getOrdinal(), columnOrdinal, -1);
           }
         }
         

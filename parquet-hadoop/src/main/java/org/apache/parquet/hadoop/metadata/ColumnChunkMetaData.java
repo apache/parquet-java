@@ -49,7 +49,7 @@ import org.apache.yetus.audience.InterfaceAudience.Private;
 abstract public class ColumnChunkMetaData {
   
   protected ColumnPath path;
-  protected short rowGroupOrdinal = -1;
+  protected int rowGroupOrdinal = -1;
 
   @Deprecated
   public static ColumnChunkMetaData get(
@@ -162,17 +162,17 @@ abstract public class ColumnChunkMetaData {
   
   public static ColumnChunkMetaData getWithEncryptedMetadata(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, 
       PrimitiveType type, byte[] encryptedMetadata, byte[] columnKeyMetadata,
-      InternalFileDecryptor fileDecryptor, short rowGroupOrdinal, short columnOrdinal, 
+      InternalFileDecryptor fileDecryptor, int rowGroupOrdinal, int columnOrdinal, 
       String createdBy) {
     return new EncryptedColumnChunkMetaData(parquetMetadataConverter, path, type, encryptedMetadata, columnKeyMetadata,
         fileDecryptor, rowGroupOrdinal, columnOrdinal, createdBy);
   }
 
-  public void setRowGroupOrdinal (short rowGroupOrdinal) {
+  public void setRowGroupOrdinal (int rowGroupOrdinal) {
     this.rowGroupOrdinal = rowGroupOrdinal;
   }
 
-  public short getRowGroupOrdinal() {
+  public int getRowGroupOrdinal() {
     return rowGroupOrdinal;
   }
 
@@ -571,7 +571,7 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   private final byte[] columnKeyMetadata;
   private final InternalFileDecryptor fileDecryptor; 
 
-  private final short columnOrdinal;
+  private final int columnOrdinal;
   private final PrimitiveType primitiveType;
   private final String createdBy;
 
@@ -581,7 +581,7 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
 
   EncryptedColumnChunkMetaData(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, PrimitiveType type, 
       byte[] encryptedMetadata, byte[] columnKeyMetadata,
-      InternalFileDecryptor fileDecryptor, short rowGroupOrdinal, short columnOrdinal, String createdBy) {
+      InternalFileDecryptor fileDecryptor, int rowGroupOrdinal, int columnOrdinal, String createdBy) {
     super((EncodingStats) null, (ColumnChunkProperties) null);
     this.parquetMetadataConverter = parquetMetadataConverter;
     this.path = path;
@@ -612,7 +612,7 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
     ColumnMetaData metaData;
     ByteArrayInputStream tempInputStream = new ByteArrayInputStream(encryptedMetadata);
     byte[] columnMetaDataAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.ColumnMetaData, 
-        rowGroupOrdinal, columnOrdinal, (short) -1);
+        rowGroupOrdinal, columnOrdinal, -1);
     try {
       metaData = readColumnMetaData(tempInputStream, columnDecryptionSetup.getMetaDataDecryptor(), columnMetaDataAAD);
     } catch (IOException e) {

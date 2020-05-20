@@ -55,7 +55,7 @@ public interface OffsetIndex {
    *         the index of the page
    * @return the original ordinal of the page in the column chunk
    */
-  public short getPageOrdinal(int pageIndex);
+  public int getPageOrdinal(int pageIndex);
 
   /**
    * @param pageIndex

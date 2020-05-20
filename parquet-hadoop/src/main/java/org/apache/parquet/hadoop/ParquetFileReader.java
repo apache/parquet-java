@@ -1174,10 +1174,10 @@ public class ParquetFileReader implements Closeable {
       pageHeader = Util.readPageHeader(f);
     } else {
       byte[] dictionaryPageHeaderAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.DictionaryPageHeader, 
-          meta.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), (short) -1);
+          meta.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), -1);
       pageHeader = Util.readPageHeader(f, columnDecryptionSetup.getMetaDataDecryptor(), dictionaryPageHeaderAAD);
       dictionaryPageAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.DictionaryPage, 
-          meta.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), (short) -1);
+          meta.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), -1);
       pageDecryptor = columnDecryptionSetup.getDataDecryptor();
     }
 
@@ -1245,9 +1245,9 @@ public class ParquetFileReader implements Closeable {
       if (columnDecryptionSetup.isEncrypted()) {
         bloomFilterDecryptor = columnDecryptionSetup.getMetaDataDecryptor();
         bloomFilterHeaderAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.BloomFilterHeader, 
-            meta.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), (short)-1);
+            meta.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), -1);
         bloomFilterBitsetAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.BloomFilterBitset, 
-            meta.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), (short)-1);
+            meta.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), -1);
       }
     }
 
@@ -1308,7 +1308,7 @@ public class ParquetFileReader implements Closeable {
       if (columnDecryptionSetup.isEncrypted()) {
         columnIndexDecryptor = columnDecryptionSetup.getMetaDataDecryptor();
         columnIndexAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.ColumnIndex, 
-            column.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), (short)-1);
+            column.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), -1);
       }
     }
     return ParquetMetadataConverter.fromParquetColumnIndex(column.getPrimitiveType(), 
@@ -1338,7 +1338,7 @@ public class ParquetFileReader implements Closeable {
       if (columnDecryptionSetup.isEncrypted()) {
         offsetIndexDecryptor = columnDecryptionSetup.getMetaDataDecryptor();
         offsetIndexAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.OffsetIndex, 
-            column.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), (short)-1);
+            column.getRowGroupOrdinal(), columnDecryptionSetup.getOrdinal(), -1);
       }
     }
     return ParquetMetadataConverter.fromParquetOffsetIndex(Util.readOffsetIndex(f, offsetIndexDecryptor, offsetIndexAAD));
@@ -1451,11 +1451,11 @@ public class ParquetFileReader implements Closeable {
      * @return the list of pages
      */
     public ColumnChunkPageReader readAllPages() throws IOException {
-      return readAllPages(null, null, null, (short) -1, (short) -1);
+      return readAllPages(null, null, null, -1, -1);
     }
 
     public ColumnChunkPageReader readAllPages(BlockCipher.Decryptor headerBlockDecryptor, BlockCipher.Decryptor pageBlockDecryptor, 
-        byte[] aadPrefix, short rowGroupOrdinal, short columnOrdinal) throws IOException {
+        byte[] aadPrefix, int rowGroupOrdinal, int columnOrdinal) throws IOException {
       List<DataPage> pagesInChunk = new ArrayList<DataPage>();
       DictionaryPage dictionaryPage = null;
       PrimitiveType type = getFileMetaData().getSchema()
@@ -1472,9 +1472,9 @@ public class ParquetFileReader implements Closeable {
         if (null != headerBlockDecryptor) {
           // Important: this verifies file integrity (makes sure dictionary page had not been removed)
           if (null == dictionaryPage && descriptor.metadata.hasDictionaryPage()) {
-            pageHeaderAAD = AesCipher.createModuleAAD(aadPrefix, ModuleType.DictionaryPageHeader, rowGroupOrdinal, columnOrdinal, (short) -1);
+            pageHeaderAAD = AesCipher.createModuleAAD(aadPrefix, ModuleType.DictionaryPageHeader, rowGroupOrdinal, columnOrdinal, -1);
           }  else {
-            short pageOrdinal = getPageOrdinal(dataPageCountReadSoFar);
+            int pageOrdinal = getPageOrdinal(dataPageCountReadSoFar);
             AesCipher.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);
           }
         }
@@ -1578,12 +1578,9 @@ public class ParquetFileReader implements Closeable {
           : dataPageCountReadSoFar < offsetIndex.getPageCount();
     }
 
-    private short getPageOrdinal(int dataPageCountReadSoFar) {
+    private int getPageOrdinal(int dataPageCountReadSoFar) {
       if (null == offsetIndex) {
-        if (dataPageCountReadSoFar > Short.MAX_VALUE) {
-          throw new RuntimeException("Page ordinal exceeds limit " + dataPageCountReadSoFar);
-        }
-        return (short)dataPageCountReadSoFar;
+        return dataPageCountReadSoFar;
       }
 
       return offsetIndex.getPageOrdinal(dataPageCountReadSoFar);
@@ -1777,4 +1774,3 @@ public class ParquetFileReader implements Closeable {
     }
   }
 }
-

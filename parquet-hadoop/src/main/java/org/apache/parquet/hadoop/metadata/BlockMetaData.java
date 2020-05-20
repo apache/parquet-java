@@ -32,7 +32,7 @@ public class BlockMetaData {
   private long rowCount;
   private long totalByteSize;
   private String path;
-  private short ordinal;
+  private int ordinal;
 
   public BlockMetaData() {
   }
@@ -122,7 +122,7 @@ public class BlockMetaData {
   /**
    * @return row group ordinal
    */
-  public short getOrdinal() {
+  public int getOrdinal() {
     return ordinal;
   }
 
@@ -130,7 +130,7 @@ public class BlockMetaData {
   *
   * @param ordinal - row group ordinal
   */
-  public void setOrdinal(short ordinal) {
+  public void setOrdinal(int ordinal) {
     this.ordinal = ordinal;
   }
 }
