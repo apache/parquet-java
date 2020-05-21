@@ -281,7 +281,7 @@ abstract public class ColumnChunkMetaData {
    */
   abstract public Statistics getStatistics();
   
-  abstract public void decryptIfNeededed();
+  abstract public void decryptIfNeeded();
 
   /**
    * @return the reference to the column index
