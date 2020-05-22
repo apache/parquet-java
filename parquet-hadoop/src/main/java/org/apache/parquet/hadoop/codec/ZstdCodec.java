@@ -32,7 +32,7 @@ import java.io.OutputStream;
 
 /**
  * ZSTD compression codec for Parquet.  We do not use the default hadoop
- * one because it requires 1) to set up hadoop on local develop machine;
+ * one because it requires 1) to set up hadoop on local development machine;
  * 2) to upgrade hadoop to the newer version to have ZSTD support which is
  * more cumbersome than upgrading parquet version.
  *
