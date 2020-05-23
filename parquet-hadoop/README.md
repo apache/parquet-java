@@ -330,7 +330,7 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 **Description:** The percentage of bad records to tolerate.  
 **Default value:** `0`
 
-## Class: ZstdCodec
+## Class: ZstandardCodec
 
 **Property:** `parquet.compression.codec.zstd.level`
 **Description:** The compression level of ZSTD. The valid range is 1~22. Generally the higher compression level, the higher compression ratio can be achieved, but the writing time will be longer.     
