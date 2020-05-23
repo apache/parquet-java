@@ -236,6 +236,7 @@ public class TestInputOutputFormat {
     testReadWrite(CompressionCodecName.GZIP);
     testReadWrite(CompressionCodecName.UNCOMPRESSED);
     testReadWrite(CompressionCodecName.SNAPPY);
+    testReadWrite(CompressionCodecName.ZSTD);
   }
 
   @Test

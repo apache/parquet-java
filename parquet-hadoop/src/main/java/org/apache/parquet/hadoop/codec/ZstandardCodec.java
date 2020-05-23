@@ -39,9 +39,9 @@ import java.io.OutputStream;
  * This implementation relies on ZSTD JNI(https://github.com/luben/zstd-jni)
  * which is already a dependency for Parquet. ZSTD JNI ZstdOutputStream and
  * ZstdInputStream use Zstd internally. So no need to create compressor and
- * decompressor in ZstdCodec.
+ * decompressor in ZstandardCodec.
  */
-public class ZstdCodec implements Configurable, CompressionCodec {
+public class ZstandardCodec implements Configurable, CompressionCodec {
 
   public final static String PARQUET_COMPRESS_ZSTD_LEVEL = "parquet.compression.codec.zstd.level";
   public final static int DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL = 3;
