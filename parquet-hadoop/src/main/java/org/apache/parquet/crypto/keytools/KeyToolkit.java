@@ -199,7 +199,7 @@ public class KeyToolkit {
   }
 
   /**
-   * Flush any caches that are tied to the specified accessToken
+   * Flush any caches that are tied to the (compromised) accessToken
    * @param accessToken
    */
   public static void removeCacheEntriesForToken(String accessToken) {

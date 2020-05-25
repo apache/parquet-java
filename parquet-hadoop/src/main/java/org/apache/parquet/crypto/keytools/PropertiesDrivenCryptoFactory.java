@@ -189,10 +189,6 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       }
     }
 
-    String kmsInstanceID = hadoopConfig.getTrimmed(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME);
-    if (StringUtils.isEmpty(kmsInstanceID)) {
-      kmsInstanceID = KmsClient.DEFAULT_KMS_INSTANCE_ID;
-    }
     DecryptionKeyRetriever keyRetriever = new FileKeyUnwrapper(hadoopConfig, keyMaterialStore);
 
     return FileDecryptionProperties.builder()
@@ -201,3 +197,4 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
         .build();
   }
 }
+
