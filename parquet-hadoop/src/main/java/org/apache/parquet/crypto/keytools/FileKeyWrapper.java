@@ -68,15 +68,15 @@ public class FileKeyWrapper {
         KeyToolkit.DEFAULT_CACHE_ENTRY_LIFETIME); 
 
     kmsInstanceID = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME, 
-        KeyToolkit.DEFAULT_KMS_INSTANCE_ID);
+        KmsClient.DEFAULT_KMS_INSTANCE_ID);
 
     doubleWrapping =  hadoopConfiguration.getBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, true);
-    accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, KeyToolkit.DEFAULT_ACCESS_TOKEN);
+    accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, KmsClient.DEFAULT_ACCESS_TOKEN);
 
     kmsClient = KeyToolkit.getKmsClient(kmsInstanceID, configuration, accessToken, cacheEntryLifetime);
 
     kmsInstanceURL = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME, 
-        KeyToolkit.DEFAULT_KMS_INSTANCE_URL);
+        RemoteKmsClient.DEFAULT_KMS_INSTANCE_URL);
 
     this.keyMaterialStore = keyMaterialStore;
 

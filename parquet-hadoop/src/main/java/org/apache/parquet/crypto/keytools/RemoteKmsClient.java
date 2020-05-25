@@ -21,8 +21,10 @@
 
 package org.apache.parquet.crypto.keytools;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -30,16 +32,21 @@ import java.util.Map;
 
 
 public abstract class RemoteKmsClient implements KmsClient {
+  public static final String DEFAULT_KMS_INSTANCE_URL = "DEFAULT";
+  
   protected String kmsInstanceID;
   protected String kmsURL;
+  protected String kmsToken;
   protected Boolean isWrapLocally;
+  protected Configuration hadoopConfiguration;
+  private boolean isDefaultToken;
 
   private final int INITIAL_KEY_CACHE_SIZE = 10;
   // MasterKey cache: master keys per key ID (per KMS Client). For local wrapping only.
   private Map<String, byte[]> masterKeyCache;
 
   @Override
-  public void initialize(Configuration configuration, String kmsInstanceID) {
+  public void initialize(Configuration configuration, String kmsInstanceID, String accessToken) {
     this.kmsInstanceID = kmsInstanceID;
     this.kmsURL = configuration.getTrimmed(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME);
 
@@ -48,7 +55,12 @@ public abstract class RemoteKmsClient implements KmsClient {
       masterKeyCache = new HashMap<>(INITIAL_KEY_CACHE_SIZE);
     }
 
-    initializeInternal(configuration);
+    hadoopConfiguration = configuration;
+    kmsToken = accessToken;
+    
+    isDefaultToken = kmsToken.equals(KmsClient.DEFAULT_ACCESS_TOKEN);
+
+    initializeInternal();
   }
 
   @Override
@@ -58,6 +70,7 @@ public abstract class RemoteKmsClient implements KmsClient {
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
       return KeyToolkit.wrapKeyLocally(dataKey, masterKey, AAD);
     } else {
+      refreshToken();
       return wrapKeyInServer(dataKey, masterKeyIdentifier);
     }
   }
@@ -69,7 +82,18 @@ public abstract class RemoteKmsClient implements KmsClient {
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
       return KeyToolkit.unwrapKeyLocally(wrappedKey, masterKey, AAD);
     } else {
+      refreshToken();
       return unwrapKeyInServer(wrappedKey, masterKeyIdentifier);
+    }
+  }
+  
+  private void refreshToken() {
+    if (isDefaultToken) {
+      return;
+    }
+    kmsToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME);
+    if (StringUtils.isEmpty(kmsToken)) {
+      throw new ParquetCryptoRuntimeException("Empty token");
     }
   }
 
@@ -77,6 +101,7 @@ public abstract class RemoteKmsClient implements KmsClient {
     synchronized (masterKeyCache) {
       byte[] masterKey = masterKeyCache.get(keyIdentifier);
       if (null == masterKey) {
+        refreshToken();
         masterKey = getMasterKeyFromServer(keyIdentifier);
         masterKeyCache.put(keyIdentifier, masterKey);
       }
@@ -130,8 +155,7 @@ public abstract class RemoteKmsClient implements KmsClient {
 
   /**
    * Pass configuration with KMS-specific parameters.
-   * @param configuration Hadoop configuration
    */
-  protected abstract void initializeInternal(Configuration configuration) 
+  protected abstract void initializeInternal() 
       throws KeyAccessDeniedException;
 }

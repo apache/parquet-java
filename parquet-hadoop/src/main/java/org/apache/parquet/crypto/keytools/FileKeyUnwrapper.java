@@ -39,17 +39,16 @@ import org.codehaus.jackson.type.TypeReference;
 public class FileKeyUnwrapper implements DecryptionKeyRetriever {
   // For every token: a map of KEK_ID to KEK bytes
   private static final Map<String, ExpiringCacheEntry<Map<String,byte[]>>> KEKMapPerToken = new HashMap<>();
-
   private volatile static long lastKekCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute
+  private final Map<String,byte[]> KEKPerKekID;
 
-  private final long cacheEntryLifetime;
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private KmsClient kmsClient = null;
   private final FileKeyMaterialStore keyMaterialStore;
   private final Configuration hadoopConfiguration;
- 
-  private final Map<String,byte[]> KEKPerKekID;
+  private final long cacheEntryLifetime;
+  private final String accessToken;
 
   FileKeyUnwrapper(Configuration hadoopConfiguration, FileKeyMaterialStore keyStore) {
     this.hadoopConfiguration = hadoopConfiguration;
@@ -62,8 +61,8 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     KeyToolkit.checkCacheEntriesForExpiredTokens(KEKMapPerToken, lastKekCacheCleanupTimestamp, cacheEntryLifetime);
     KeyToolkit.checkKmsCacheForExpiredTokens(cacheEntryLifetime);
     
-    String accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
-        KeyToolkit.DEFAULT_ACCESS_TOKEN);
+    accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
+        KmsClient.DEFAULT_ACCESS_TOKEN);
 
     ExpiringCacheEntry<Map<String, byte[]>> KEKCacheEntry;
     synchronized (KEKMapPerToken) {
@@ -174,7 +173,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     }
 
     String accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
-        KeyToolkit.DEFAULT_ACCESS_TOKEN);
+        KmsClient.DEFAULT_ACCESS_TOKEN);
 
     KmsClient kmsClient = KeyToolkit.getKmsClient(kmsInstanceID, hadoopConfiguration, accessToken, cacheEntryLifetime);
     if (null == kmsClient) {

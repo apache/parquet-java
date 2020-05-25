@@ -25,6 +25,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 
 public interface KmsClient {
+  
+  public static final String DEFAULT_KMS_INSTANCE_ID = "DEFAULT";
+  public static final String DEFAULT_ACCESS_TOKEN = "DEFAULT";
+  
   /**
    * Pass configuration with KMS-specific parameters.
    * @param configuration Hadoop configuration
@@ -34,8 +38,11 @@ public interface KmsClient {
    *                      When reading a parquet file, the KMS instance ID can be either specified in configuration 
    *                      or read from parquet key material.
    *                      ID can have a default value, for KMS systems that don't work with multiple instances.
+   * @param accessToken KMS access (authorization) token. Can have a default value, for KMS systems that don't work with tokens.
+   *  @throws KeyAccessDeniedException unauthorized to initialize the KMS client
    */
-  public void initialize(Configuration configuration, String kmsInstanceID);
+  public void initialize(Configuration configuration, String kmsInstanceID, String accessToken) 
+      throws KeyAccessDeniedException;
 
   /**
    * Wraps a key - encrypts it with the master key, encodes the result 

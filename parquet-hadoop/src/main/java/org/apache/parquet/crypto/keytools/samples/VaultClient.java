@@ -23,11 +23,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.apache.parquet.crypto.keytools.KeyToolkit;
+import org.apache.parquet.crypto.keytools.KmsClient;
 import org.apache.parquet.crypto.keytools.RemoteKmsClient;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
@@ -50,15 +48,14 @@ public class VaultClient extends RemoteKmsClient {
   private String transitEngine = DEFAULT_TRANSIT_ENGINE;
   private OkHttpClient httpClient = new OkHttpClient();
 
-  private String vaultToken;
 
   @Override
-  protected void initializeInternal(Configuration conf) {
-    vaultToken = conf.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME);
-    if (StringUtils.isEmpty(vaultToken)) {
-      throw new ParquetCryptoRuntimeException("Missing token");
+  protected void initializeInternal() {
+    if (kmsToken.equals(KmsClient.DEFAULT_ACCESS_TOKEN)) {
+      throw new ParquetCryptoRuntimeException("Token not provided");
     }
-    if (KeyToolkit.DEFAULT_KMS_INSTANCE_ID != kmsInstanceID) {
+    
+    if (DEFAULT_KMS_INSTANCE_ID != kmsInstanceID) {
       transitEngine = "/v1/" + kmsInstanceID;
       if (!transitEngine.endsWith("/")) {
         transitEngine += "/";
@@ -89,7 +86,7 @@ public class VaultClient extends RemoteKmsClient {
   @Override
   protected byte[] getMasterKeyFromServer(String masterKeyIdentifier) {
     // Vault supports in-server wrapping and unwrapping. No need to fetch master keys.
-    throw new UnsupportedOperationException("Use wrap/unwrap instead of fetching master keys");
+    throw new UnsupportedOperationException("Use server wrap/unwrap, instead of fetching master keys (local wrap)");
   }
 
   private String buildPayload(Map<String, String> paramMap) {
@@ -109,7 +106,7 @@ public class VaultClient extends RemoteKmsClient {
     final RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE, jPayload);
     Request request = new Request.Builder()
         .url(this.kmsURL + endPoint + masterKeyID)
-        .header(tokenHeader,  vaultToken)
+        .header(tokenHeader,  kmsToken)
         .post(requestBody).build();
 
     return executeAndGetResponse(endPoint, request);

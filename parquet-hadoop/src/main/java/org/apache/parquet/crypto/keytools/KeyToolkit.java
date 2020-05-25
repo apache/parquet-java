@@ -69,10 +69,6 @@ public class KeyToolkit {
   public static final String KEK_ID_FIELD = "keyEncryptionKeyID";
   public static final String WRAPPED_KEK_FIELD = "wrappedKEK";
 
-  public static final String DEFAULT_KMS_INSTANCE_ID = "DEFAULT";
-  public static final String DEFAULT_KMS_INSTANCE_URL = "DEFAULT";
-  public static final String DEFAULT_ACCESS_TOKEN = "DEFAULT";
-
   public static final String FOOTER_KEY_ID_IN_FILE = "kf";
   public static final String KEY_ID_IN_FILE_PREFIX = "k";
 
@@ -147,33 +143,32 @@ public class KeyToolkit {
     for (FileStatus fs : keyMaterialFiles) {
       Path parquetFile = fs.getPath();
 
-      FileKeyMaterialStore sourceKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile);
-      FileKeyUnwrapper fileKeyUnwrapper = new FileKeyUnwrapper(hadoopConfig, sourceKeyMaterialStore);
+      FileKeyMaterialStore keyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile);
+      FileKeyUnwrapper fileKeyUnwrapper = new FileKeyUnwrapper(hadoopConfig, keyMaterialStore);
 
       FileKeyMaterialStore tempKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile, TEMP_FILE_PREFIX);
       FileKeyWrapper fileKeyWrapper = new FileKeyWrapper(hadoopConfig, tempKeyMaterialStore);
       
-      Set<String> fileKeyIdSet = sourceKeyMaterialStore.getKeyIDSet();
+      Set<String> fileKeyIdSet = keyMaterialStore.getKeyIDSet();
       
       // Start with footer key (to get KMS ID, URL, if needed) 
-      String keyMaterial = sourceKeyMaterialStore.getKeyMaterial(FOOTER_KEY_ID_IN_FILE);
+      String keyMaterial = keyMaterialStore.getKeyMaterial(FOOTER_KEY_ID_IN_FILE);
       KeyWithMasterID key = fileKeyUnwrapper.getDEKandMasterID(keyMaterial);
       fileKeyWrapper.getEncryptionKeyMetadata(key.getDataKey(), key.getMasterID(), true, FOOTER_KEY_ID_IN_FILE);
       
       fileKeyIdSet.remove(FOOTER_KEY_ID_IN_FILE);
-
       // Rotate column keys
       for (String keyIdInFile : fileKeyIdSet) {
-        keyMaterial = sourceKeyMaterialStore.getKeyMaterial(keyIdInFile);
+        keyMaterial = keyMaterialStore.getKeyMaterial(keyIdInFile);
         key = fileKeyUnwrapper.getDEKandMasterID(keyMaterial);
         fileKeyWrapper.getEncryptionKeyMetadata(key.getDataKey(), key.getMasterID(), false, keyIdInFile);
       }
 
       tempKeyMaterialStore.saveMaterial();
 
-      sourceKeyMaterialStore.removeMaterial();
+      keyMaterialStore.removeMaterial();
 
-      tempKeyMaterialStore.moveMaterial(sourceKeyMaterialStore);
+      tempKeyMaterialStore.moveMaterial(keyMaterialStore);
     }
     
     // Clear all per-token caches
@@ -281,7 +276,7 @@ public class KeyToolkit {
           + kmsClientClass, e);
     }
 
-    kmsClient.initialize(configuration, kmsInstanceID);
+    kmsClient.initialize(configuration, kmsInstanceID, accessToken);
 
     return kmsClient;
   }
