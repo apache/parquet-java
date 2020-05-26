@@ -27,6 +27,8 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
@@ -39,12 +41,12 @@ public class FileKeyWrapper {
   public static final int KEK_ID_LENGTH = 16;
 
   // For every token: a map of MEK_ID to (KEK ID and KEK)
-  private static final Map<String, ExpiringCacheEntry<HashMap<String,KeyEncryptionKey>>> KEKMapPerToken =
-      new HashMap<>(KeyToolkit.INITIAL_PER_TOKEN_CACHE_SIZE);
+  private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String, KeyEncryptionKey>>> KEKMapPerToken =
+    new ConcurrentHashMap<>(KeyToolkit.INITIAL_PER_TOKEN_CACHE_SIZE);
   private static volatile long lastKekCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute;
 
   //A map of MEK_ID to (KEK ID and KEK) - for the current token
-  private final Map<String,KeyEncryptionKey> KEKPerMasterKeyID;
+  private final ConcurrentMap<String, KeyEncryptionKey> KEKPerMasterKeyID;
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -87,13 +89,15 @@ public class FileKeyWrapper {
     KeyToolkit.checkCacheEntriesForExpiredTokens(KEKMapPerToken, lastKekCacheCleanupTimestamp, cacheEntryLifetime);
     KeyToolkit.checkKmsCacheForExpiredTokens(cacheEntryLifetime);
 
-    ExpiringCacheEntry<HashMap<String, KeyEncryptionKey>> KEKCacheEntry;
+    ExpiringCacheEntry<ConcurrentMap<String, KeyEncryptionKey>> KEKCacheEntry = KEKMapPerToken.get(accessToken);
+    if ((null == KEKCacheEntry) || KEKCacheEntry.isExpired()) {
     synchronized (KEKMapPerToken) {
       KEKCacheEntry = KEKMapPerToken.get(accessToken);
       if ((null == KEKCacheEntry) || KEKCacheEntry.isExpired()) {
-        KEKCacheEntry = new ExpiringCacheEntry<>(new HashMap<String, KeyEncryptionKey>(), cacheEntryLifetime);
+          KEKCacheEntry = new ExpiringCacheEntry<>(new ConcurrentHashMap<String, KeyEncryptionKey>(), cacheEntryLifetime);
         KEKMapPerToken.put(accessToken, KEKCacheEntry);
       }
+    }
     }
     KEKPerMasterKeyID = KEKCacheEntry.getCachedItem();
   }
@@ -124,14 +128,9 @@ public class FileKeyWrapper {
     if (!doubleWrapping) {
       encodedWrappedDEK = kmsClient.wrapKey(dataKey, masterKeyID);
     } else {
-      // Find or generate KEK for Master Key ID
-      synchronized (KEKPerMasterKeyID) {
-        keyEncryptionKey = KEKPerMasterKeyID.get(masterKeyID);
-        if (null == keyEncryptionKey) {
-          keyEncryptionKey = createKeyEncryptionKey(masterKeyID);
-          KEKPerMasterKeyID.put(masterKeyID, keyEncryptionKey);
-        }
-      }
+      // Find in cache, or generate KEK for Master Key ID
+      keyEncryptionKey = KEKPerMasterKeyID.computeIfAbsent(masterKeyID,
+        (k) -> createKeyEncryptionKey(masterKeyID));
 
       // Encrypt DEK with KEK
       byte[] AAD = keyEncryptionKey.getID();

@@ -27,8 +27,8 @@ import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 
 public abstract class RemoteKmsClient implements KmsClient {
@@ -43,7 +43,7 @@ public abstract class RemoteKmsClient implements KmsClient {
 
   private final int INITIAL_KEY_CACHE_SIZE = 10;
   // MasterKey cache: master keys per key ID (per KMS Client). For local wrapping only.
-  private Map<String, byte[]> masterKeyCache;
+  private ConcurrentMap<String, byte[]> masterKeyCache;
 
   @Override
   public void initialize(Configuration configuration, String kmsInstanceID, String accessToken) {
@@ -52,7 +52,7 @@ public abstract class RemoteKmsClient implements KmsClient {
 
     this.isWrapLocally = configuration.getBoolean(KeyToolkit.WRAP_LOCALLY_PROPERTY_NAME, false);
     if (isWrapLocally) {
-      masterKeyCache = new HashMap<>(INITIAL_KEY_CACHE_SIZE);
+      masterKeyCache = new ConcurrentHashMap<>(INITIAL_KEY_CACHE_SIZE);
     }
 
     hadoopConfiguration = configuration;
@@ -66,7 +66,8 @@ public abstract class RemoteKmsClient implements KmsClient {
   @Override
   public String wrapKey(byte[] dataKey, String masterKeyIdentifier) throws KeyAccessDeniedException {
     if (isWrapLocally) {
-      byte[] masterKey = getKeyFromCacheOrServer(masterKeyIdentifier);
+      byte[] masterKey =  masterKeyCache.computeIfAbsent(masterKeyIdentifier,
+        (k) -> getKeyFromServer(masterKeyIdentifier));
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
       return KeyToolkit.wrapKeyLocally(dataKey, masterKey, AAD);
     } else {
@@ -78,7 +79,8 @@ public abstract class RemoteKmsClient implements KmsClient {
   @Override
   public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier) throws KeyAccessDeniedException {
     if (isWrapLocally) {
-      byte[] masterKey = getKeyFromCacheOrServer(masterKeyIdentifier);
+      byte[] masterKey = masterKeyCache.computeIfAbsent(masterKeyIdentifier,
+        (k) -> getKeyFromServer(masterKeyIdentifier));
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
       return KeyToolkit.unwrapKeyLocally(wrappedKey, masterKey, AAD);
     } else {
@@ -97,16 +99,8 @@ public abstract class RemoteKmsClient implements KmsClient {
     }
   }
 
-  private byte[] getKeyFromCacheOrServer(String keyIdentifier) {
-    synchronized (masterKeyCache) {
-      byte[] masterKey = masterKeyCache.get(keyIdentifier);
-      if (null == masterKey) {
-        refreshToken();
-        masterKey = getMasterKeyFromServer(keyIdentifier);
-        masterKeyCache.put(keyIdentifier, masterKey);
-      }
-      return masterKey;
-    }
+  private byte[] getKeyFromServer(String keyIdentifier) {
+    return getMasterKeyFromServer(keyIdentifier);
   }
 
   /**

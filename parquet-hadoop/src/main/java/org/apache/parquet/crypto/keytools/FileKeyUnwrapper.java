@@ -24,8 +24,9 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -38,9 +39,10 @@ import org.codehaus.jackson.type.TypeReference;
 
 public class FileKeyUnwrapper implements DecryptionKeyRetriever {
   // For every token: a map of KEK_ID to KEK bytes
-  private static final Map<String, ExpiringCacheEntry<Map<String,byte[]>>> KEKMapPerToken = new HashMap<>();
+  private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String,byte[]>>> KEKMapPerToken = new ConcurrentHashMap<>();
   private volatile static long lastKekCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute
-  private final Map<String,byte[]> KEKPerKekID;
+  //A map of KEK_ID to KEK - for the current token
+  private final ConcurrentMap<String,byte[]> KEKPerKekID;
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -64,13 +66,15 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
         KmsClient.DEFAULT_ACCESS_TOKEN);
 
-    ExpiringCacheEntry<Map<String, byte[]>> KEKCacheEntry;
+    ExpiringCacheEntry<ConcurrentMap<String, byte[]>> KEKCacheEntry = KEKMapPerToken.get(accessToken);
+    if (null == KEKCacheEntry || KEKCacheEntry.isExpired()) {
     synchronized (KEKMapPerToken) {
       KEKCacheEntry = KEKMapPerToken.get(accessToken);
       if (null == KEKCacheEntry || KEKCacheEntry.isExpired()) {
-        KEKCacheEntry = new ExpiringCacheEntry<>(new HashMap<String,byte[]>(), cacheEntryLifetime);
+          KEKCacheEntry = new ExpiringCacheEntry<>(new ConcurrentHashMap<String, byte[]>(), cacheEntryLifetime);
         KEKMapPerToken.put(accessToken, KEKCacheEntry);
       }
+    }
     }
     
     KEKPerKekID = KEKCacheEntry.getCachedItem();
@@ -125,14 +129,8 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
       String encodedKEK_ID = keyMaterialJson.get(KeyToolkit.KEK_ID_FIELD);
       final Map<String, String> keyMaterialJsonFinal = keyMaterialJson;
       
-      byte[] kekBytes;
-      synchronized (KEKPerKekID) {
-        kekBytes = KEKPerKekID.get(encodedKEK_ID);
-        if (null == kekBytes) {
-          kekBytes = unwrapKek(keyMaterialJsonFinal, masterKeyID);
-          KEKPerKekID.put(encodedKEK_ID, kekBytes);
-        }
-      }
+      byte[] kekBytes = KEKPerKekID.computeIfAbsent(encodedKEK_ID,
+        (k) -> unwrapKek(keyMaterialJsonFinal, masterKeyID));
 
       // Decrypt the data key
       byte[]  AAD = Base64.getDecoder().decode(encodedKEK_ID);
@@ -171,9 +169,6 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
       }
       hadoopConfiguration.set(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME, kmsInstanceURL);
     }
-
-    String accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
-        KmsClient.DEFAULT_ACCESS_TOKEN);
 
     KmsClient kmsClient = KeyToolkit.getKmsClient(kmsInstanceID, hadoopConfiguration, accessToken, cacheEntryLifetime);
     if (null == kmsClient) {
