@@ -475,7 +475,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     WriteContext fileWriteContext = writeSupport.init(conf);
     
-    FileEncryptionProperties encryptionProperties = getEncryptionProperties(conf, file, fileWriteContext);
+    FileEncryptionProperties encryptionProperties = createEncryptionProperties(conf, file, fileWriteContext);
     
     ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
         fileWriteContext.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
@@ -545,8 +545,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return memoryManager;
   }
   
-  private FileEncryptionProperties getEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath, 
-      WriteContext fileWriteContext) throws IOException {
+  private static FileEncryptionProperties createEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath, 
+      WriteContext fileWriteContext) {
     EncryptionPropertiesFactory cryptoFactory = EncryptionPropertiesFactory.loadFactory(fileHadoopConfig);
     if (null == cryptoFactory) {
       return null;

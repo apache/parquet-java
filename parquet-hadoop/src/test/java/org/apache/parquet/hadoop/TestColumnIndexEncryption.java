@@ -54,6 +54,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -66,9 +67,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
+import org.apache.parquet.crypto.DecryptionKeyRetriever;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
-import org.apache.parquet.crypto.StringKeyIdRetriever;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
@@ -121,6 +122,23 @@ public class TestColumnIndexEncryption {
   private static final byte[] FOOTER_ENCRYPTION_KEY = new String("0123456789012345").getBytes();
   private static final byte[] COLUMN_ENCRYPTION_KEY1 = new String("1234567890123450").getBytes();
   private static final byte[] COLUMN_ENCRYPTION_KEY2 = new String("1234567890123451").getBytes();
+  
+//Simple key retriever, based on UTF8 strings as key identifiers
+ static class StringKeyIdRetriever implements DecryptionKeyRetriever{
+
+   private final Hashtable<String,byte[]> keyMap = new Hashtable<String,byte[]>();
+
+   public void putKey(String keyId, byte[] keyBytes) {
+     keyMap.put(keyId, keyBytes);
+   }
+
+   @Override
+   public byte[] getKey(byte[] keyMetaData) {
+     String keyId = new String(keyMetaData, StandardCharsets.UTF_8);
+     return keyMap.get(keyId);
+   }
+ }
+
 
   @Parameters
   public static Collection<Object[]> params() {
@@ -225,11 +243,6 @@ public class TestColumnIndexEncryption {
 
   private List<User> readUsers(Filter filter, boolean useOtherFiltering, boolean useColumnIndexFilter)
       throws IOException {
-    /*
-    byte[] keyBytes = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-    FileDecryptionProperties fileDecryptionProperties = FileDecryptionProperties.builder()
-        .withFooterKey(keyBytes)
-        .build();*/
     
     StringKeyIdRetriever kr1 = new StringKeyIdRetriever();
     kr1.putKey("kf", FOOTER_ENCRYPTION_KEY);
@@ -249,14 +262,7 @@ public class TestColumnIndexEncryption {
         .useColumnIndexFilter(useColumnIndexFilter));
   }
 
-  private List<User> readUsersWithProjection(Filter filter, MessageType schema, boolean useOtherFiltering, boolean useColumnIndexFilter) throws IOException {
-    /*
-    byte[] keyBytes = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-    FileDecryptionProperties fileDecryptionProperties = FileDecryptionProperties.builder()
-        .withFooterKey(keyBytes)
-        .build();*/
-    
-    
+  private List<User> readUsersWithProjection(Filter filter, MessageType schema, boolean useOtherFiltering, boolean useColumnIndexFilter) throws IOException {    
     StringKeyIdRetriever kr1 = new StringKeyIdRetriever();
     kr1.putKey("kf", FOOTER_ENCRYPTION_KEY);
     kr1.putKey("kc1", COLUMN_ENCRYPTION_KEY1);
@@ -316,12 +322,8 @@ public class TestColumnIndexEncryption {
   public static void createFile() throws IOException {
     int pageSize = DATA.size() / 10;     // Ensure that several pages will be created
     int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
-    /*
-    byte[] keyBytes = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-    FileEncryptionProperties encryptionProperties = FileEncryptionProperties.builder(keyBytes)
-        .build();*/
     
-    // Encryption configuration 2: Encrypt two columns and the footer, with different keys.
+    // Encryption configuration: Encrypt two columns and the footer, with different keys.
     ColumnEncryptionProperties columnProperties1 = ColumnEncryptionProperties
         .builder("id")
         .withKey(COLUMN_ENCRYPTION_KEY1)
@@ -350,6 +352,7 @@ public class TestColumnIndexEncryption {
         .withEncryption(encryptionProperties)
         .withWriterVersion(WriterVersion.PARQUET_1_0),
         DATA);
+    
     PhoneBookWriter.write(ExampleParquetWriter.builder(FILE_V2)
         .withWriteMode(OVERWRITE)
         .withRowGroupSize(rowGroupSize)

@@ -1410,9 +1410,6 @@ public class ParquetMetadataConverter {
           boolean encryptedMetadata = false;
           
           if (null == cryptoMetaData) { // Plaintext column
-            if (null == metaData) {
-              throw new IOException("ColumnMetaData not set in plaintext column");
-            }
             columnPath = getPath(metaData);
             if (null != fileDecryptor && !fileDecryptor.plaintextFile()) {
               // mark this column as plaintext in encrypted file decryptor
@@ -1422,13 +1419,13 @@ public class ParquetMetadataConverter {
             boolean encryptedWithFooterKey = cryptoMetaData.isSetENCRYPTION_WITH_FOOTER_KEY();
             if (encryptedWithFooterKey) { // Column encrypted with footer key
               if (!encryptedFooter) {
-                throw new IOException("Column encrypted with footer key in file with plaintext footer");
+                throw new ParquetCryptoRuntimeException("Column encrypted with footer key in file with plaintext footer");
               }
               if (null == metaData) {
-                throw new IOException("ColumnMetaData not set in Encryption with Footer key");
+                throw new ParquetCryptoRuntimeException("ColumnMetaData not set in Encryption with Footer key");
               }
               if (null == fileDecryptor) {
-                throw new IOException("Column encrypted with footer key: No keys available");
+                throw new ParquetCryptoRuntimeException("Column encrypted with footer key: No keys available");
               }
               columnPath = getPath(metaData);
               fileDecryptor.setColumnCryptoMetadata(columnPath, true, true, (byte[]) null, columnOrdinal);
@@ -1675,7 +1672,7 @@ public class ParquetMetadataConverter {
             dataEncoding,
             rlByteLength, dlByteLength), to);
   }
-  
+
   public void writeDataPageV1Header(
       int uncompressedSize,
       int compressedSize,
@@ -1687,7 +1684,7 @@ public class ParquetMetadataConverter {
     writeDataPageV1Header(uncompressedSize, compressedSize, valueCount,
         rlEncoding, dlEncoding, valuesEncoding, to, null, null);
   }
-  
+
   public void writeDataPageV1Header(
       int uncompressedSize,
       int compressedSize,
@@ -1706,7 +1703,7 @@ public class ParquetMetadataConverter {
                                       valuesEncoding), 
                     to, blockEncryptor, AAD);
   }
-  
+
   public void writeDataPageV1Header(
       int uncompressedSize,
       int compressedSize,
@@ -1719,7 +1716,7 @@ public class ParquetMetadataConverter {
     writeDataPageV1Header(uncompressedSize, compressedSize, valueCount,
         rlEncoding, dlEncoding, valuesEncoding, crc, to, null, null);
   }
-  
+
   public void writeDataPageV1Header(
       int uncompressedSize,
       int compressedSize,
@@ -1740,7 +1737,7 @@ public class ParquetMetadataConverter {
                                       crc), 
                     to, blockEncryptor, AAD);
   }
-  
+
   public void writeDataPageV2Header(
       int uncompressedSize, int compressedSize,
       int valueCount, int nullCount, int rowCount,
@@ -1751,7 +1748,7 @@ public class ParquetMetadataConverter {
         valueCount, nullCount, rowCount, dataEncoding,
         rlByteLength, dlByteLength, to, null, null);
   }
-  
+
   public void writeDataPageV2Header(
       int uncompressedSize, int compressedSize,
       int valueCount, int nullCount, int rowCount,
@@ -1781,14 +1778,14 @@ public class ParquetMetadataConverter {
     pageHeader.setData_page_header_v2(dataPageHeaderV2);
     return pageHeader;
   }
-  
+
   public void writeDictionaryPageHeader(
       int uncompressedSize, int compressedSize, int valueCount,
       org.apache.parquet.column.Encoding valuesEncoding, OutputStream to) throws IOException {
     writeDictionaryPageHeader(uncompressedSize, compressedSize, valueCount,
         valuesEncoding, to, null, null);
   }
-  
+
   public void writeDictionaryPageHeader(
       int uncompressedSize, int compressedSize, int valueCount,
       org.apache.parquet.column.Encoding valuesEncoding, OutputStream to,
@@ -1797,14 +1794,14 @@ public class ParquetMetadataConverter {
     pageHeader.setDictionary_page_header(new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding)));
     writePageHeader(pageHeader, to, blockEncryptor, AAD);
   }
-  
+
   public void writeDictionaryPageHeader(
       int uncompressedSize, int compressedSize, int valueCount,
       org.apache.parquet.column.Encoding valuesEncoding, int crc, OutputStream to) throws IOException {
     writeDictionaryPageHeader(uncompressedSize, compressedSize, valueCount,
         valuesEncoding, crc, to, null, null);
   }
-  
+
   public void writeDictionaryPageHeader(
       int uncompressedSize, int compressedSize, int valueCount,
       org.apache.parquet.column.Encoding valuesEncoding, int crc, OutputStream to,

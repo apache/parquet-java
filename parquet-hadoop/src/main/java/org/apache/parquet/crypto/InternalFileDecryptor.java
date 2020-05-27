@@ -295,5 +295,9 @@ public class InternalFileDecryptor {
   public boolean plaintextFile() {
     return plaintextFile;
   }
+
+  public FileDecryptionProperties getDecryptionProperties() {
+    return fileDecryptionProperties;
+  }
 }
 

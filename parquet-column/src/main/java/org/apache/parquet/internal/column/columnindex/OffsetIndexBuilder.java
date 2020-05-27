@@ -176,6 +176,4 @@ public class OffsetIndexBuilder {
 
     return offsetIndex;
   }
-
 }
-

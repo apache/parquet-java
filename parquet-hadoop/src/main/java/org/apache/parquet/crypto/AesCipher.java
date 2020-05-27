@@ -81,7 +81,7 @@ public class AesCipher {
     short shortRGOrdinal = (short) rowGroupOrdinal;
     if (shortRGOrdinal != rowGroupOrdinal) {
       throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
-          + "more than Short.MAX_VALUE row groups: " + rowGroupOrdinal);
+          + "more than " + Short.MAX_VALUE + " row groups: " + rowGroupOrdinal);
     }
     byte[] rowGroupOrdinalBytes = shortToBytesLE(shortRGOrdinal);
     
@@ -91,7 +91,7 @@ public class AesCipher {
     short shortColumOrdinal = (short) columnOrdinal;
     if (shortColumOrdinal != columnOrdinal) {
       throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
-          + "more than Short.MAX_VALUE columns: " + columnOrdinal);
+          + "more than " + Short.MAX_VALUE + " columns: " + columnOrdinal);
     }
     byte[] columnOrdinalBytes = shortToBytesLE(shortColumOrdinal);
     
@@ -105,7 +105,7 @@ public class AesCipher {
     short shortPageOrdinal = (short) pageOrdinal;
     if (shortPageOrdinal != pageOrdinal) {
       throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
-          + "more than Short.MAX_VALUE pages per chunk: " + pageOrdinal);
+          + "more than " + Short.MAX_VALUE + " pages per chunk: " + pageOrdinal);
     }
     byte[] pageOrdinalBytes = shortToBytesLE(shortPageOrdinal);
     
@@ -118,16 +118,14 @@ public class AesCipher {
 
   // Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
   public static void quickUpdatePageAAD(byte[] pageAAD, int newPageOrdinal) {
-    if (null == pageAAD) {
-      throw new IllegalArgumentException("Null pageAAD");
-    }
+    java.util.Objects.requireNonNull(pageAAD);
     if (newPageOrdinal < 0) {
       throw new IllegalArgumentException("Wrong page ordinal: " + newPageOrdinal);
     }
     short shortPageOrdinal = (short) newPageOrdinal;
     if (shortPageOrdinal != newPageOrdinal) {
       throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
-          + "more than Short.MAX_VALUE pages per chunk: " + newPageOrdinal);
+          + "more than " + Short.MAX_VALUE + " pages per chunk: " + newPageOrdinal);
     }
     
     byte[] pageOrdinalBytes = shortToBytesLE(shortPageOrdinal);

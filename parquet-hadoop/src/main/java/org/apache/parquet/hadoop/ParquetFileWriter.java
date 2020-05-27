@@ -26,7 +26,6 @@ import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,6 +61,7 @@ import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
 import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.BlockCipher;
@@ -343,7 +343,7 @@ public class ParquetFileWriter {
         for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnEncryptionProperties.entrySet()) {
           String[] path = entry.getKey().toArray();
           if(!schema.containsPath(path)) {
-            throw new IOException("Encrypted column " + Arrays.toString(path) + " not in file schema");
+            throw new ParquetCryptoRuntimeException("Encrypted column " + Arrays.toString(path) + " not in file schema");
           }
         }
       }
@@ -860,8 +860,7 @@ public class ParquetFileWriter {
     state = state.endBlock();
     LOG.debug("{}: end block", out.getPos());
     currentBlock.setRowCount(currentRecordCount);
-    int blockSize = blocks.size();
-    currentBlock.setOrdinal(blockSize);
+    currentBlock.setOrdinal(blocks.size());
     blocks.add(currentBlock);
     columnIndexes.add(currentColumnIndexes);
     offsetIndexes.add(currentOffsetIndexes);
@@ -1220,6 +1219,7 @@ public class ParquetFileWriter {
           signature, AesCipher.NONCE_LENGTH, AesCipher.GCM_TAG_LENGTH); // copy GCM Tag
       out.write(serializedFooter);
       out.write(signature);
+      LOG.debug("{}: footer and signature length = {}" , out.getPos(), (out.getPos() - footerIndex));
       BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
       out.write(MAGIC);
       return;

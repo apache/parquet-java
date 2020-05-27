@@ -87,7 +87,7 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
     while (gotBytes < SIZE_LENGTH) {
       int n = from.read(lengthBuffer, gotBytes, SIZE_LENGTH - gotBytes);
       if (n <= 0) {
-        throw new ParquetCryptoRuntimeException("Tried to read int (4 bytes), but only got " + gotBytes + " bytes.");
+        throw new IOException("Tried to read int (4 bytes), but only got " + gotBytes + " bytes.");
       }
       gotBytes += n;
     }
@@ -99,7 +99,7 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
         ((lengthBuffer[0] & 0xff));
 
     if (ciphertextLength < 1) {
-      throw new ParquetCryptoRuntimeException("Wrong length of encrypted metadata: " + ciphertextLength);
+      throw new IOException("Wrong length of encrypted metadata: " + ciphertextLength);
     }
 
     byte[] ciphertextBuffer = new byte[ciphertextLength];
@@ -108,7 +108,7 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
     while (gotBytes < ciphertextLength) {
       int n = from.read(ciphertextBuffer, gotBytes, ciphertextLength - gotBytes);
       if (n <= 0) {
-        throw new ParquetCryptoRuntimeException("Tried to read " + ciphertextLength + " bytes, but only got " + gotBytes + " bytes.");
+        throw new IOException("Tried to read " + ciphertextLength + " bytes, but only got " + gotBytes + " bytes.");
       }
       gotBytes += n;
     }

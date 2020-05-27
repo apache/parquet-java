@@ -194,23 +194,6 @@ public class ParquetWriter<T> implements Closeable {
         compressionCodecName, blockSize, pageSize, dictionaryPageSize,
         enableDictionary, validating, writerVersion, conf);
   }
-
-  @Deprecated
-  public ParquetWriter(
-      Path file,
-      WriteSupport<T> writeSupport,
-      CompressionCodecName compressionCodecName,
-      int blockSize,
-      int pageSize,
-      int dictionaryPageSize,
-      boolean enableDictionary,
-      boolean validating,
-      WriterVersion writerVersion,
-      Configuration conf, FileEncryptionProperties encryptionProperties) throws IOException {
-    this(file, ParquetFileWriter.Mode.CREATE, writeSupport,
-        compressionCodecName, blockSize, pageSize, dictionaryPageSize,
-        enableDictionary, validating, writerVersion, conf, encryptionProperties);
-  }
   
   /**
    * Create a new ParquetWriter.
@@ -251,30 +234,6 @@ public class ParquetWriter<T> implements Closeable {
             .withDictionaryEncoding(enableDictionary)
             .withWriterVersion(writerVersion)
             .build(), null);
-  }
-  
-  @Deprecated
-  public ParquetWriter(
-      Path file,
-      ParquetFileWriter.Mode mode,
-      WriteSupport<T> writeSupport,
-      CompressionCodecName compressionCodecName,
-      int blockSize,
-      int pageSize,
-      int dictionaryPageSize,
-      boolean enableDictionary,
-      boolean validating,
-      WriterVersion writerVersion,
-      Configuration conf, FileEncryptionProperties encryptionProperties) throws IOException {
-    this(HadoopOutputFile.fromPath(file, conf),
-        mode, writeSupport, compressionCodecName, blockSize,
-        validating, conf, MAX_PADDING_SIZE_DEFAULT,
-        ParquetProperties.builder()
-            .withPageSize(pageSize)
-            .withDictionaryPageSize(dictionaryPageSize)
-            .withDictionaryEncoding(enableDictionary)
-            .withWriterVersion(writerVersion)
-            .build(), encryptionProperties);
   }
 
   /**
@@ -682,4 +641,3 @@ public class ParquetWriter<T> implements Closeable {
     }
   }
 }
-

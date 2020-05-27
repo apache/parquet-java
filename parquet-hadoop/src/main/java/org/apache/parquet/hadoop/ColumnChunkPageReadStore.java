@@ -166,7 +166,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
             }
             return decompressedPage;
           } catch (IOException e) {
-            throw new ParquetDecodingException("could not decrypt or decompress page", e);
+            throw new ParquetDecodingException("could not decompress page", e);
           }
         }
 
@@ -181,7 +181,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
             try {
               pageBytes = BytesInput.from(blockDecryptor.decrypt(pageBytes.toByteArray(), dataPageAAD));
             } catch (IOException e) {
-              throw new ParquetDecodingException("could not decrypt page", e);
+              throw new ParquetDecodingException("could not convert page ByteInput to byte array", e);
             }
           }
           if (dataPageV2.isCompressed()) {

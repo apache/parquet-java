@@ -69,4 +69,3 @@ public interface OffsetIndex {
     return (nextPageIndex >= getPageCount() ? rowGroupRowCount : getFirstRowIndex(nextPageIndex)) - 1;
   }
 }
-

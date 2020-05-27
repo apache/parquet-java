@@ -47,8 +47,6 @@ import org.apache.yetus.audience.InterfaceAudience.Private;
  * Column meta data for a block stored in the file footer and passed in the InputSplit
  */
 abstract public class ColumnChunkMetaData {
-  
-  protected ColumnPath path;
   protected int rowGroupOrdinal = -1;
 
   @Deprecated
@@ -160,6 +158,10 @@ abstract public class ColumnChunkMetaData {
     }
   }
   
+  // In sensitive columns, the ColumnMetaData structure is encrypted (with column-specific keys), making the fields like Statistics invisible.
+  // Decryption is not performed pro-actively, due to performance and authorization reasons.
+  // This method creates an a shell ColumnChunkMetaData object that keeps the encrypted metadata and the decryption tools.
+  // These tools will activated later - when/if the column is projected.
   public static ColumnChunkMetaData getWithEncryptedMetadata(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, 
       PrimitiveType type, byte[] encryptedMetadata, byte[] columnKeyMetadata,
       InternalFileDecryptor fileDecryptor, int rowGroupOrdinal, int columnOrdinal, 
@@ -180,7 +182,7 @@ abstract public class ColumnChunkMetaData {
    * @return the offset of the first byte in the chunk
    */
   public long getStartingPos() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     long dictionaryPageOffset = getDictionaryPageOffset();
     long firstDataPageOffset = getFirstDataPageOffset();
     if (dictionaryPageOffset > 0 && dictionaryPageOffset < firstDataPageOffset) {
@@ -219,8 +221,12 @@ abstract public class ColumnChunkMetaData {
     this.properties = columnChunkProperties;
   }
 
+  protected void decryptIfNeeded() {
+    return;
+  }
+
   public CompressionCodecName getCodec() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return properties.getCodec();
   }
 
@@ -229,7 +235,6 @@ abstract public class ColumnChunkMetaData {
    * @return column identifier
    */
   public ColumnPath getPath() {
-    if (null != path) return path;
     return properties.getPath();
   }
 
@@ -239,7 +244,7 @@ abstract public class ColumnChunkMetaData {
    */
   @Deprecated
   public PrimitiveTypeName getType() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return properties.getType();
   }
 
@@ -247,7 +252,7 @@ abstract public class ColumnChunkMetaData {
    * @return the primitive type object of the column
    */
   public PrimitiveType getPrimitiveType() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return properties.getPrimitiveType();
   }
 
@@ -280,14 +285,13 @@ abstract public class ColumnChunkMetaData {
    * @return the stats for this column
    */
   abstract public Statistics getStatistics();
-  
-  abstract public void decryptIfNeeded();
 
   /**
    * @return the reference to the column index
    */
   @Private
   public IndexReference getColumnIndexReference() {
+    decryptIfNeeded();
     return columnIndexReference;
   }
 
@@ -305,6 +309,7 @@ abstract public class ColumnChunkMetaData {
    */
   @Private
   public IndexReference getOffsetIndexReference() {
+    decryptIfNeeded();
     return offsetIndexReference;
   }
 
@@ -331,7 +336,7 @@ abstract public class ColumnChunkMetaData {
    */
   @Private
   public long getBloomFilterOffset() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return bloomFilterOffset;
   }
 
@@ -339,18 +344,18 @@ abstract public class ColumnChunkMetaData {
    * @return all the encodings used in this column
    */
   public Set<Encoding> getEncodings() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return properties.getEncodings();
   }
 
   public EncodingStats getEncodingStats() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return encodingStats;
   }
 
   @Override
   public String toString() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return "ColumnMetaData{" + properties.toString() + ", " + getFirstDataPageOffset() + "}";
   }
   
@@ -470,10 +475,6 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   public Statistics getStatistics() {
    return statistics;
   }
-  
-  @Override
-  public void decryptIfNeededed() {
-  }
 }
 
 class LongColumnChunkMetaData extends ColumnChunkMetaData {
@@ -559,10 +560,6 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   public Statistics getStatistics() {
    return statistics;
   }
-  
-  @Override
-  public void decryptIfNeededed() {
-  }
 }
 
 class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
@@ -574,10 +571,10 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   private final int columnOrdinal;
   private final PrimitiveType primitiveType;
   private final String createdBy;
+  private ColumnPath path;
 
   private boolean decrypted;
   private ColumnChunkMetaData shadowColumnChunkMetaData;
-
 
   EncryptedColumnChunkMetaData(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, PrimitiveType type, 
       byte[] encryptedMetadata, byte[] columnKeyMetadata,
@@ -597,7 +594,7 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   }
 
   @Override
-  public void decryptIfNeededed() {
+  protected void decryptIfNeeded() {
     if (decrypted) return;
 
     if (null == fileDecryptor) {
@@ -608,7 +605,6 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
     InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.setColumnCryptoMetadata(path, true, false, 
         columnKeyMetadata, columnOrdinal);
     
-
     ColumnMetaData metaData;
     ByteArrayInputStream tempInputStream = new ByteArrayInputStream(encryptedMetadata);
     byte[] columnMetaDataAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.ColumnMetaData, 
@@ -626,38 +622,43 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   }
 
   @Override
+  public ColumnPath getPath() {
+    return path;
+  }
+
+  @Override
   public long getFirstDataPageOffset() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return shadowColumnChunkMetaData.getFirstDataPageOffset();
   }
 
   @Override
   public long getDictionaryPageOffset() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return shadowColumnChunkMetaData.getDictionaryPageOffset();
   }
 
   @Override
   public long getValueCount() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return shadowColumnChunkMetaData.getValueCount();
   }
 
   @Override
   public long getTotalUncompressedSize() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return shadowColumnChunkMetaData.getTotalUncompressedSize();
   }
 
   @Override
   public long getTotalSize() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return shadowColumnChunkMetaData.getTotalSize();
   }
 
   @Override
   public Statistics getStatistics() {
-    decryptIfNeededed();
+    decryptIfNeeded();
     return shadowColumnChunkMetaData.getStatistics();
   }
 }
