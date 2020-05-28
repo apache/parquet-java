@@ -96,7 +96,7 @@ public class TestZstandardCodec {
     JobConf jobConf = new JobConf();
     Configuration conf = new Configuration();
     jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, 18);
-    jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, 4);
+    jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, 4);
     RunningJob mapRedJob = runMapReduceJob(CompressionCodecName.ZSTD, jobConf, conf);
     assert(mapRedJob.isSuccessful());
   }
