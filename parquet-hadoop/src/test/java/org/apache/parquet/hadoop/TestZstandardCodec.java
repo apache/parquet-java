@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -93,22 +94,30 @@ public class TestZstandardCodec {
 
   @Test
   public void testZstdConfWithMr() throws Exception {
-    JobConf jobConf = new JobConf();
-    Configuration conf = new Configuration();
-    jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, 18);
-    jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, 4);
-    RunningJob mapRedJob = runMapReduceJob(CompressionCodecName.ZSTD, jobConf, conf);
-    assert(mapRedJob.isSuccessful());
+    long fileSizeLowLevel = runMrWithConf(1);
+    // Clear the cache so that a new codec can be created with new configuration
+    CodecFactory.CODEC_BY_NAME.clear();
+    long fileSizeHighLevel = runMrWithConf(22);
+    assert (fileSizeLowLevel > fileSizeHighLevel);
   }
 
-  private RunningJob runMapReduceJob(CompressionCodecName codec, JobConf jobConf, Configuration conf) throws IOException, ClassNotFoundException, InterruptedException {
+  private long runMrWithConf(int level) throws Exception {
+    JobConf jobConf = new JobConf();
+    Configuration conf = new Configuration();
+    jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, level);
+    jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, 4);
+    Path path = new Path(Files.createTempDirectory("zstd" + level).toAbsolutePath().toString());
+    RunningJob mapRedJob = runMapReduceJob(CompressionCodecName.ZSTD, jobConf, conf, path);
+    assert(mapRedJob.isSuccessful());
+    return getFileSize(path, conf);
+  }
+
+  private RunningJob runMapReduceJob(CompressionCodecName codec, JobConf jobConf, Configuration conf, Path parquetPath) throws IOException, ClassNotFoundException, InterruptedException {
     String writeSchema = "message example {\n" +
       "required int32 line;\n" +
       "required binary content;\n" +
       "}";
 
-    String tempDir = Files.createTempDirectory("zstd").toAbsolutePath().toString();
-    Path parquetPath = new Path(tempDir);
     FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
     jobConf.setInputFormat(TextInputFormat.class);
@@ -122,6 +131,15 @@ public class TestZstandardCodec {
 
     jobConf.setMapperClass(TestZstandardCodec.DumpMapper.class);
     return JobClient.runJob(jobConf);
+  }
+
+  private long getFileSize(Path parquetPath, Configuration conf) throws IOException {
+    for (FileStatus file : parquetPath.getFileSystem(conf).listStatus(parquetPath)) {
+      if (file.getPath().getName().endsWith(".parquet")) {
+        return file.getLen();
+      }
+    }
+    return -1;
   }
 
   public static class DumpMapper implements org.apache.hadoop.mapred.Mapper<LongWritable, Text, Void, Group> {
