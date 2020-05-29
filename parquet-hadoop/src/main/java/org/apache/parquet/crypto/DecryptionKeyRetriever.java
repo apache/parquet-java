@@ -19,8 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-import java.io.IOException;
-
 /**
  * Interface for classes retrieving encryption keys using the key metadata.
  * Implementations must be thread-safe, if same KeyRetriever object is passed to multiple file readers.
@@ -35,7 +33,7 @@ public interface DecryptionKeyRetriever {
    * @param keyMetaData arbitrary byte array with encryption key metadata
    * @return encryption key. Key length can be either 16, 24 or 32 bytes.
    * @throws KeyAccessDeniedException thrown upon access control problems (authentication or authorization)
-   * @throws IOException thrown upon key retrieval problems unrelated to access control
+   * @throws ParquetCryptoRuntimeException thrown upon key retrieval problems unrelated to access control
    */
-  public byte[] getKey(byte[] keyMetaData) throws KeyAccessDeniedException, IOException;
+  public byte[] getKey(byte[] keyMetaData) throws KeyAccessDeniedException, ParquetCryptoRuntimeException;
 }

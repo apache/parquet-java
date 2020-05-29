@@ -19,12 +19,21 @@
 
 package org.apache.parquet.crypto;
 
-import java.security.KeyException;
 
-public class KeyAccessDeniedException extends KeyException {
+public class KeyAccessDeniedException extends ParquetCryptoRuntimeException {
   private static final long serialVersionUID = 1L;
 
-  public KeyAccessDeniedException(String keyID) {
-    super(keyID);
+  public KeyAccessDeniedException() {}
+
+  public KeyAccessDeniedException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public KeyAccessDeniedException(String message) {
+    super(message);
+  }
+
+  public KeyAccessDeniedException(Throwable cause) {
+    super(cause);
   }
 }

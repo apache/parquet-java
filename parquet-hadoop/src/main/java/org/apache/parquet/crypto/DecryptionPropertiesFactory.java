@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 /**
  * DecryptionPropertiesFactory interface enables transparent activation of Parquet decryption.
  *
- * It's customized implementations produce decryption properties for each Parquet file, using the input information
+ * Its customized implementations produce decryption properties for each Parquet file, using the input information
  * available in Parquet file readers: file path and Hadoop configuration properties that can pass custom parameters
  * required by a crypto factory. A factory implementation can use or ignore any of these inputs.
  *
@@ -52,7 +52,8 @@ public interface DecryptionPropertiesFactory {
    *
    * @param conf Configuration where user specifies the class path
    * @return object with class DecryptionPropertiesFactory if user specified the class path and invoking of
-   * the class succeeds, null if user doesn't specify the class path
+   * the class succeeds. Null if user doesn't specify the class path (no decryption factory then - not required for plaintext files.
+   * Or for plaintext columns in encrypted files with plaintext footer).
    * @throws BadConfigurationException if the instantiation of the configured class fails
    */
   static DecryptionPropertiesFactory loadFactory(Configuration conf) {
@@ -79,7 +80,8 @@ public interface DecryptionPropertiesFactory {
    * @param hadoopConfig Configuration that is used to pass the needed information, e.g. KMS uri
    * @param filePath File path of the parquet file
    *                 Can be used for AAD prefix verification, part of key metadata etc
-   * @return object with class of FileDecryptionProperties
+   * @return object with class of FileDecryptionProperties. Null return value means no decryption properties
+   * are available for the file (not required for plaintext files. Or for plaintext columns in encrypted files with plaintext footer).
    * @throws ParquetCryptoRuntimeException if there is an exception while creating the object
    */
   FileDecryptionProperties getFileDecryptionProperties(Configuration hadoopConfig, Path filePath) throws ParquetCryptoRuntimeException;

@@ -19,21 +19,21 @@
 
 package org.apache.parquet.crypto;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Hashtable;
 
-// Simple key retriever, based on UTF8 strings as key identifiers
-public class StringKeyIdRetriever implements DecryptionKeyRetriever{
+public class TagVerificationException extends ParquetCryptoRuntimeException {
+  private static final long serialVersionUID = 1L;
 
-  private final Hashtable<String,byte[]> keyMap = new Hashtable<String,byte[]>();
+  public TagVerificationException() {}
 
-  public void putKey(String keyId, byte[] keyBytes) {
-    keyMap.put(keyId, keyBytes);
+  public TagVerificationException(String message, Throwable cause) {
+    super(message, cause);
   }
 
-  @Override
-  public byte[] getKey(byte[] keyMetaData) {
-    String keyId = new String(keyMetaData, StandardCharsets.UTF_8);
-    return keyMap.get(keyId);
+  public TagVerificationException(String message) {
+    super(message);
+  }
+
+  public TagVerificationException(Throwable cause) {
+    super(cause);
   }
 }

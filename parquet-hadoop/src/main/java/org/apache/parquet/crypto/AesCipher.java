@@ -24,7 +24,6 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 
-import java.io.IOException;
 import java.security.SecureRandom;
 
 public class AesCipher {
@@ -44,7 +43,7 @@ public class AesCipher {
   protected Cipher cipher;
   protected final byte[] localNonce;
 
-  AesCipher(AesMode mode, byte[] keyBytes) throws IllegalArgumentException, IOException {
+  AesCipher(AesMode mode, byte[] keyBytes) {
     if (null == keyBytes) {
       throw new IllegalArgumentException("Null key bytes");
     }
@@ -67,30 +66,69 @@ public class AesCipher {
   }
 
   public static byte[] createModuleAAD(byte[] fileAAD, ModuleType moduleType, 
-      short rowGroupOrdinal, short columnOrdinal, short pageOrdinal) {
+      int rowGroupOrdinal, int columnOrdinal, int pageOrdinal) {
+    
     byte[] typeOrdinalBytes = new byte[1];
     typeOrdinalBytes[0] = moduleType.getValue();
+    
     if (ModuleType.Footer == moduleType) {
       return concatByteArrays(fileAAD, typeOrdinalBytes);      
     }
 
-    byte[] rowGroupOrdinalBytes = shortToBytesLE(rowGroupOrdinal);
-    byte[] columnOrdinalBytes = shortToBytesLE(columnOrdinal);
+    if (rowGroupOrdinal < 0) {
+      throw new IllegalArgumentException("Wrong row group ordinal: " + rowGroupOrdinal);
+    }
+    short shortRGOrdinal = (short) rowGroupOrdinal;
+    if (shortRGOrdinal != rowGroupOrdinal) {
+      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
+          + "more than " + Short.MAX_VALUE + " row groups: " + rowGroupOrdinal);
+    }
+    byte[] rowGroupOrdinalBytes = shortToBytesLE(shortRGOrdinal);
+    
+    if (columnOrdinal < 0) {
+      throw new IllegalArgumentException("Wrong column ordinal: " + columnOrdinal);
+    }
+    short shortColumOrdinal = (short) columnOrdinal;
+    if (shortColumOrdinal != columnOrdinal) {
+      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
+          + "more than " + Short.MAX_VALUE + " columns: " + columnOrdinal);
+    }
+    byte[] columnOrdinalBytes = shortToBytesLE(shortColumOrdinal);
+    
     if (ModuleType.DataPage != moduleType && ModuleType.DataPageHeader != moduleType) {
       return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes); 
     }
 
-    byte[] pageOrdinalBytes = shortToBytesLE(pageOrdinal);
+    if (pageOrdinal < 0) {
+      throw new IllegalArgumentException("Wrong page ordinal: " + pageOrdinal);
+    }
+    short shortPageOrdinal = (short) pageOrdinal;
+    if (shortPageOrdinal != pageOrdinal) {
+      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
+          + "more than " + Short.MAX_VALUE + " pages per chunk: " + pageOrdinal);
+    }
+    byte[] pageOrdinalBytes = shortToBytesLE(shortPageOrdinal);
+    
     return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes, pageOrdinalBytes);
   }
 
   public static byte[] createFooterAAD(byte[] aadPrefixBytes) {
-    return createModuleAAD(aadPrefixBytes, ModuleType.Footer, (short) -1, (short) -1, (short) -1);
+    return createModuleAAD(aadPrefixBytes, ModuleType.Footer, -1, -1, -1);
   }
 
   // Update last two bytes with new page ordinal (instead of creating new page AAD from scratch)
-  public static void quickUpdatePageAAD(byte[] pageAAD, short newPageOrdinal) {
-    byte[] pageOrdinalBytes = shortToBytesLE(newPageOrdinal);
+  public static void quickUpdatePageAAD(byte[] pageAAD, int newPageOrdinal) {
+    java.util.Objects.requireNonNull(pageAAD);
+    if (newPageOrdinal < 0) {
+      throw new IllegalArgumentException("Wrong page ordinal: " + newPageOrdinal);
+    }
+    short shortPageOrdinal = (short) newPageOrdinal;
+    if (shortPageOrdinal != newPageOrdinal) {
+      throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
+          + "more than " + Short.MAX_VALUE + " pages per chunk: " + newPageOrdinal);
+    }
+    
+    byte[] pageOrdinalBytes = shortToBytesLE(shortPageOrdinal);
     System.arraycopy(pageOrdinalBytes, 0, pageAAD, pageAAD.length - 2, 2);
   }
 

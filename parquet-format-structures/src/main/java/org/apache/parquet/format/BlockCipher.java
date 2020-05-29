@@ -35,9 +35,8 @@ public interface BlockCipher{
      * The ciphertext starts at offset 4  and fills up the rest of the returned byte array.
      * The ciphertext includes the nonce and (in case of GCM cipher) the tag, as detailed in the 
      * Parquet Modular Encryption specification.
-     * @throws IOException thrown upon any crypto problem encountered during encryption
      */
-    public byte[] encrypt(byte[] plaintext, byte[] AAD) throws IOException;
+    public byte[] encrypt(byte[] plaintext, byte[] AAD);
   }
 
 
@@ -51,9 +50,8 @@ public interface BlockCipher{
      * Parquet Modular Encryption specification.
      * @param AAD - Additional Authenticated Data for the decryption (ignored in case of CTR cipher)
      * @return plaintext - starts at offset 0 of the output value, and fills up the entire byte array.
-     * @throws IOException thrown upon any crypto problem encountered during decryption
      */
-    public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD) throws IOException;
+    public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD);
 
     /**
      * Convenience decryption method that reads the length and ciphertext from the input stream.
@@ -61,7 +59,7 @@ public interface BlockCipher{
      * @param from Input stream with length and ciphertext.
      * @param AAD - Additional Authenticated Data for the decryption (ignored in case of CTR cipher)
      * @return plaintext -  starts at offset 0 of the output, and fills up the entire byte array.
-     * @throws IOException thrown upon any crypto or IO problem encountered during decryption
+     * @throws IOException - Stream I/O problems
      */
     public byte[] decrypt(InputStream from, byte[] AAD) throws IOException;
   }

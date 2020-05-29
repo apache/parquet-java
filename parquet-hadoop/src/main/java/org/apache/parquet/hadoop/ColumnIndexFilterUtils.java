@@ -69,6 +69,11 @@ class ColumnIndexFilterUtils {
       this.offsetIndex = offsetIndex;
       this.indexMap = indexMap;
     }
+    
+    @Override
+    public int getPageOrdinal(int pageIndex) {
+      return indexMap[pageIndex];
+    }
 
     @Override
     public int getPageCount() {
