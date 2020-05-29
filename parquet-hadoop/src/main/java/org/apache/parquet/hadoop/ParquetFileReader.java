@@ -1180,14 +1180,11 @@ public class ParquetFileReader implements Closeable {
    */
   public BloomFilter readBloomFilter(ColumnChunkMetaData meta) throws IOException {
     long bloomFilterOffset = meta.getBloomFilterOffset();
-
-    if (0 == bloomFilterOffset) { // TODO Junjie - is there a better way to handle this?
+    if (0 == bloomFilterOffset) {
       return null;
     }
 
-    f.seek(bloomFilterOffset);
-    BloomFilterHeader bloomFilterHeader;
-
+    // Prepare to decrypt Bloom filter (for encrypted columns)
     BlockCipher.Decryptor bloomFilterDecryptor = null;
     byte[] bloomFilterHeaderAAD = null;
     byte[] bloomFilterBitsetAAD = null;
@@ -1203,6 +1200,8 @@ public class ParquetFileReader implements Closeable {
     }
 
     // Read Bloom filter data header.
+    f.seek(bloomFilterOffset);
+    BloomFilterHeader bloomFilterHeader;
     try {
       bloomFilterHeader = Util.readBloomFilterHeader(f, bloomFilterDecryptor, bloomFilterHeaderAAD);
     } catch (IOException e) {

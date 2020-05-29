@@ -202,10 +202,10 @@ abstract public class ColumnChunkMetaData {
     return (value >= 0) && (value + Integer.MIN_VALUE <= Integer.MAX_VALUE);
   }
 
-  protected EncodingStats encodingStats;
+  EncodingStats encodingStats;
 
   // we save 3 references by storing together the column properties that have few distinct values
-  protected ColumnChunkProperties properties;
+  ColumnChunkProperties properties;
 
   private IndexReference columnIndexReference;
   private IndexReference offsetIndexReference;
