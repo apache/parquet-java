@@ -1,0 +1,40 @@
+name: parquetmr
+description: Lyft fork of the Apache Parquet project
+repository: git@github.com:lyft/parquet-mr.git 
+slack: '#data-platform-dev'
+team_email: data-platform-dev@lyft.com
+containers:
+  - name: code
+    command: /code/ops/base/entrypoint.sh
+groups:
+  - name: dev
+    members:
+      - parquetmr.code
+
+tests:
+  - name: unittest
+    type: execution
+    group: parquetmr.dev
+    container: parquetmr.code
+    command: mvn -pl ql test surefire-report:report-only
+
+test_logs:
+  - /code/lyft-hive/ql/target/surefire-reports
+  - /code/lyft-hive/ql/target/site/surefire-report.html
+
+deploy:
+  - name: production
+    legacy: true
+    orca:
+      - region: iad
+    automatic: true
+
+builder:
+  name: docker_build
+  params:
+    dockerfile: Dockerfile
+
+languages:
+  - java
+
+image_type: library
