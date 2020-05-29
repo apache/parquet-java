@@ -25,20 +25,19 @@ import javax.crypto.spec.IvParameterSpec;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.format.BlockCipher;
 
-import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
 
   private final byte[] ctrIV;
 
-  AesCtrEncryptor(byte[] keyBytes) throws IllegalArgumentException, IOException {
+  AesCtrEncryptor(byte[] keyBytes) {
     super(AesMode.CTR, keyBytes);
 
     try {
       cipher = Cipher.getInstance(AesMode.CTR.getCipherName());
     } catch (GeneralSecurityException e) {
-      throw new IOException("Failed to create CTR cipher", e);
+      throw new ParquetCryptoRuntimeException("Failed to create CTR cipher", e);
     }
 
     ctrIV = new byte[CTR_IV_LENGTH];
@@ -47,20 +46,19 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
   }
 
   @Override
-  public byte[] encrypt(byte[] plainText, byte[] AAD)  throws IOException {
+  public byte[] encrypt(byte[] plainText, byte[] AAD) {
     return encrypt(true, plainText, AAD);
   }
 
-  public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] AAD)  throws IOException {
+  public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] AAD) {
     randomGenerator.nextBytes(localNonce);
     return encrypt(writeLength, plainText, localNonce, AAD);
   }
 
-  public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD)  
-      throws IOException {
+  public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD) { 
 
     if (nonce.length != NONCE_LENGTH) {
-      throw new IOException("Wrong nonce length " + nonce.length);
+      throw new ParquetCryptoRuntimeException("Wrong nonce length " + nonce.length);
     }
     int plainTextLength = plainText.length;
     int cipherTextLength = NONCE_LENGTH + plainTextLength;
@@ -84,7 +82,7 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
 
       cipher.doFinal(plainText, inputOffset, inputLength, cipherText, outputOffset);
     }  catch (GeneralSecurityException e) {
-      throw new IOException("Failed to encrypt", e);
+      throw new ParquetCryptoRuntimeException("Failed to encrypt", e);
     }
 
     // Add ciphertext length

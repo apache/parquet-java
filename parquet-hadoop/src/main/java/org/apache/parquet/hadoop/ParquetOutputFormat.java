@@ -37,6 +37,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.crypto.EncryptionPropertiesFactory;
+import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
@@ -471,10 +473,13 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Parquet properties are:\n{}", props);
     }
 
-    WriteContext init = writeSupport.init(conf);
+    WriteContext fileWriteContext = writeSupport.init(conf);
+    
+    FileEncryptionProperties encryptionProperties = createEncryptionProperties(conf, file, fileWriteContext);
+    
     ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
-        init.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
-        props.getStatisticsTruncateLength(), props.getPageWriteChecksumEnabled());
+        fileWriteContext.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
+        props.getStatisticsTruncateLength(), props.getPageWriteChecksumEnabled(), encryptionProperties);
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
@@ -494,8 +499,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return new ParquetRecordWriter<T>(
         w,
         writeSupport,
-        init.getSchema(),
-        init.getExtraMetaData(),
+        fileWriteContext.getSchema(),
+        fileWriteContext.getExtraMetaData(),
         blockSize,
         codec,
         validating,
@@ -538,5 +543,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public synchronized static MemoryManager getMemoryManager() {
     return memoryManager;
+  }
+  
+  private static FileEncryptionProperties createEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath, 
+      WriteContext fileWriteContext) {
+    EncryptionPropertiesFactory cryptoFactory = EncryptionPropertiesFactory.loadFactory(fileHadoopConfig);
+    if (null == cryptoFactory) {
+      return null;
+    }
+    return cryptoFactory.getFileEncryptionProperties(fileHadoopConfig, tempFilePath, fileWriteContext);
   }
 }

@@ -151,7 +151,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     long[] rowGroupOffsets = split.getRowGroupOffsets();
 
     // if task.side.metadata is set, rowGroupOffsets is null
-    ParquetReadOptions.Builder optionsBuilder = HadoopReadOptions.builder(configuration);
+    ParquetReadOptions.Builder optionsBuilder = HadoopReadOptions.builder(configuration, path);
     if (rowGroupOffsets != null) {
       optionsBuilder.withOffsets(rowGroupOffsets);
     } else {

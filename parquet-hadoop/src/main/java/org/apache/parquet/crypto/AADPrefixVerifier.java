@@ -19,8 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-import java.io.IOException;
-
 public interface AADPrefixVerifier {
 
   /**
@@ -28,7 +26,7 @@ public interface AADPrefixVerifier {
    * Must be thread-safe.
    * 
    * @param aadPrefix AAD Prefix
-   * @throws IOException Throw exception if AAD prefix is wrong.
+   * @throws ParquetCryptoRuntimeException Throw exception if AAD prefix is wrong.
    */
-  public void verify(byte[] aadPrefix) throws IOException;
+  public void verify(byte[] aadPrefix) throws ParquetCryptoRuntimeException;
 }

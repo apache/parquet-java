@@ -24,7 +24,6 @@ import org.apache.parquet.format.FileCryptoMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.EncryptionAlgorithm;
 
-import java.io.IOException;
 import java.util.HashMap;
 
 public class InternalFileEncryptor {
@@ -41,7 +40,7 @@ public class InternalFileEncryptor {
   private BlockCipher.Encryptor aesCtrEncryptorWithFooterKey;
   private boolean fileCryptoMetaDataCreated;
 
-  public InternalFileEncryptor(FileEncryptionProperties fileEncryptionProperties) throws IOException {
+  public InternalFileEncryptor(FileEncryptionProperties fileEncryptionProperties) {
     this.fileEncryptionProperties = fileEncryptionProperties;
     algorithm = fileEncryptionProperties.getAlgorithm();
     footerKey = fileEncryptionProperties.getFooterKey();
@@ -52,7 +51,7 @@ public class InternalFileEncryptor {
     fileCryptoMetaDataCreated = false;
   }
 
-  private BlockCipher.Encryptor getThriftModuleEncryptor(byte[] columnKey) throws IOException {
+  private BlockCipher.Encryptor getThriftModuleEncryptor(byte[] columnKey) {
     if (null == columnKey) { // Encryptor with footer key
       if (null == aesGcmEncryptorWithFooterKey) {
         aesGcmEncryptorWithFooterKey = ModuleCipherFactory.getEncryptor(AesMode.GCM, footerKey);
@@ -63,7 +62,7 @@ public class InternalFileEncryptor {
     }
   }
 
-  private BlockCipher.Encryptor getDataModuleEncryptor(byte[] columnKey) throws IOException {
+  private BlockCipher.Encryptor getDataModuleEncryptor(byte[] columnKey) {
     if (algorithm.isSetAES_GCM_V1()) {
       return getThriftModuleEncryptor(columnKey);
     }
@@ -79,27 +78,27 @@ public class InternalFileEncryptor {
   }
 
   public InternalColumnEncryptionSetup getColumnSetup(ColumnPath columnPath, 
-      boolean createIfNull, short ordinal) throws IOException {
+      boolean createIfNull, int ordinal) {
     InternalColumnEncryptionSetup internalColumnProperties = columnMap.get(columnPath);
 
     if (null != internalColumnProperties) {
       if (ordinal != internalColumnProperties.getOrdinal()) {
-        throw new IOException("Column ordinal doesnt match " + columnPath + 
+        throw new ParquetCryptoRuntimeException("Column ordinal doesnt match " + columnPath + 
             ": " + ordinal + ", "+internalColumnProperties.getOrdinal());
       }
       return internalColumnProperties;
     }
 
     if (!createIfNull) {
-      throw new IOException("No encryption setup found for column " + columnPath);
+      throw new ParquetCryptoRuntimeException("No encryption setup found for column " + columnPath);
     }
     if (fileCryptoMetaDataCreated) {
-      throw new IOException("Re-use: No encryption setup for column " + columnPath);
+      throw new ParquetCryptoRuntimeException("Re-use: No encryption setup for column " + columnPath);
     }
 
     ColumnEncryptionProperties columnProperties = fileEncryptionProperties.getColumnProperties(columnPath);
     if (null == columnProperties) {
-      throw new IOException("No encryption properties for column " + columnPath);
+      throw new ParquetCryptoRuntimeException("No encryption properties for column " + columnPath);
     }
     if (columnProperties.isEncrypted()) {
       if (columnProperties.isEncryptedWithFooterKey()) {
@@ -118,14 +117,14 @@ public class InternalFileEncryptor {
     return internalColumnProperties;
   }
 
-  public BlockCipher.Encryptor getFooterEncryptor() throws IOException  {
+  public BlockCipher.Encryptor getFooterEncryptor()  {
     if (!encryptFooter) return null;
     return getThriftModuleEncryptor(null);
   }
 
-  public FileCryptoMetaData getFileCryptoMetaData() throws IOException {
+  public FileCryptoMetaData getFileCryptoMetaData() {
     if (!encryptFooter) {
-      throw new IOException("Requesting FileCryptoMetaData in file with unencrypted footer");
+      throw new ParquetCryptoRuntimeException("Requesting FileCryptoMetaData in file with unencrypted footer");
     }
     FileCryptoMetaData fileCryptoMetaData = new FileCryptoMetaData(algorithm);
     if (null != footerKeyMetadata) {
@@ -159,16 +158,16 @@ public class InternalFileEncryptor {
     return this.fileAAD;
   }
 
-  public byte[] getFooterSigningKeyMetaData()  throws IOException {
+  public byte[] getFooterSigningKeyMetaData() {
     if (encryptFooter) {
-      throw new IOException("Requesting signing footer key metadata in file with encrypted footer");
+      throw new ParquetCryptoRuntimeException("Requesting signing footer key metadata in file with encrypted footer");
     }
     return footerKeyMetadata;
   }
 
-  public AesGcmEncryptor getSignedFooterEncryptor() throws IOException  {
+  public AesGcmEncryptor getSignedFooterEncryptor() {
     if (encryptFooter) {
-      throw new IOException("Requesting signed footer encryptor in file with encrypted footer");
+      throw new ParquetCryptoRuntimeException("Requesting signed footer encryptor in file with encrypted footer");
     }
     return (AesGcmEncryptor) ModuleCipherFactory.getEncryptor(AesMode.GCM, footerKey);
   }

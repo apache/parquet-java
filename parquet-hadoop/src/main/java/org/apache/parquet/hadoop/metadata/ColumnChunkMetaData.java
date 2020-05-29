@@ -18,12 +18,25 @@
  */
 package org.apache.parquet.hadoop.metadata;
 
+import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
+import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
+import static org.apache.parquet.format.Util.readColumnMetaData;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.Set;
 
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.crypto.AesCipher;
+import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
+import org.apache.parquet.crypto.InternalFileDecryptor;
+import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.apache.parquet.format.ColumnMetaData;
+import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -34,6 +47,7 @@ import org.apache.yetus.audience.InterfaceAudience.Private;
  * Column meta data for a block stored in the file footer and passed in the InputSplit
  */
 abstract public class ColumnChunkMetaData {
+  protected int rowGroupOrdinal = -1;
 
   @Deprecated
   public static ColumnChunkMetaData get(
@@ -98,6 +112,7 @@ abstract public class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
+    
     return get(path, Types.optional(type).named("fake_type"), codec, encodingStats, encodings, statistics,
         firstDataPage, dictionaryPageOffset, valueCount, totalSize, totalUncompressedSize);
   }
@@ -114,6 +129,7 @@ abstract public class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
+
     // to save space we store those always positive longs in ints when they fit.
     if (positiveLongFitsInAnInt(firstDataPage)
         && positiveLongFitsInAnInt(dictionaryPageOffset)
@@ -141,11 +157,32 @@ abstract public class ColumnChunkMetaData {
           totalUncompressedSize);
     }
   }
+  
+  // In sensitive columns, the ColumnMetaData structure is encrypted (with column-specific keys), making the fields like Statistics invisible.
+  // Decryption is not performed pro-actively, due to performance and authorization reasons.
+  // This method creates an a shell ColumnChunkMetaData object that keeps the encrypted metadata and the decryption tools.
+  // These tools will activated later - when/if the column is projected.
+  public static ColumnChunkMetaData getWithEncryptedMetadata(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, 
+      PrimitiveType type, byte[] encryptedMetadata, byte[] columnKeyMetadata,
+      InternalFileDecryptor fileDecryptor, int rowGroupOrdinal, int columnOrdinal, 
+      String createdBy) {
+    return new EncryptedColumnChunkMetaData(parquetMetadataConverter, path, type, encryptedMetadata, columnKeyMetadata,
+        fileDecryptor, rowGroupOrdinal, columnOrdinal, createdBy);
+  }
+
+  public void setRowGroupOrdinal (int rowGroupOrdinal) {
+    this.rowGroupOrdinal = rowGroupOrdinal;
+  }
+
+  public int getRowGroupOrdinal() {
+    return rowGroupOrdinal;
+  }
 
   /**
    * @return the offset of the first byte in the chunk
    */
   public long getStartingPos() {
+    decryptIfNeeded();
     long dictionaryPageOffset = getDictionaryPageOffset();
     long firstDataPageOffset = getFirstDataPageOffset();
     if (dictionaryPageOffset > 0 && dictionaryPageOffset < firstDataPageOffset) {
@@ -165,10 +202,10 @@ abstract public class ColumnChunkMetaData {
     return (value >= 0) && (value + Integer.MIN_VALUE <= Integer.MAX_VALUE);
   }
 
-  private final EncodingStats encodingStats;
+  EncodingStats encodingStats;
 
   // we save 3 references by storing together the column properties that have few distinct values
-  private final ColumnChunkProperties properties;
+  ColumnChunkProperties properties;
 
   private IndexReference columnIndexReference;
   private IndexReference offsetIndexReference;
@@ -184,7 +221,12 @@ abstract public class ColumnChunkMetaData {
     this.properties = columnChunkProperties;
   }
 
+  protected void decryptIfNeeded() {
+    return;
+  }
+
   public CompressionCodecName getCodec() {
+    decryptIfNeeded();
     return properties.getCodec();
   }
 
@@ -202,6 +244,7 @@ abstract public class ColumnChunkMetaData {
    */
   @Deprecated
   public PrimitiveTypeName getType() {
+    decryptIfNeeded();
     return properties.getType();
   }
 
@@ -209,6 +252,7 @@ abstract public class ColumnChunkMetaData {
    * @return the primitive type object of the column
    */
   public PrimitiveType getPrimitiveType() {
+    decryptIfNeeded();
     return properties.getPrimitiveType();
   }
 
@@ -247,6 +291,7 @@ abstract public class ColumnChunkMetaData {
    */
   @Private
   public IndexReference getColumnIndexReference() {
+    decryptIfNeeded();
     return columnIndexReference;
   }
 
@@ -264,6 +309,7 @@ abstract public class ColumnChunkMetaData {
    */
   @Private
   public IndexReference getOffsetIndexReference() {
+    decryptIfNeeded();
     return offsetIndexReference;
   }
 
@@ -290,6 +336,7 @@ abstract public class ColumnChunkMetaData {
    */
   @Private
   public long getBloomFilterOffset() {
+    decryptIfNeeded();
     return bloomFilterOffset;
   }
 
@@ -297,16 +344,30 @@ abstract public class ColumnChunkMetaData {
    * @return all the encodings used in this column
    */
   public Set<Encoding> getEncodings() {
+    decryptIfNeeded();
     return properties.getEncodings();
   }
 
   public EncodingStats getEncodingStats() {
+    decryptIfNeeded();
     return encodingStats;
   }
 
   @Override
   public String toString() {
+    decryptIfNeeded();
     return "ColumnMetaData{" + properties.toString() + ", " + getFirstDataPageOffset() + "}";
+  }
+  
+  public boolean hasDictionaryPage() { 
+    EncodingStats stats = getEncodingStats();
+    if (stats != null) {
+      // ensure there is a dictionary page and that it is used to encode data pages
+      return stats.hasDictionaryPages() && stats.hasDictionaryEncodedPages();
+    }
+
+    Set<Encoding> encodings = getEncodings();
+    return (encodings.contains(PLAIN_DICTIONARY) || encodings.contains(RLE_DICTIONARY));
   }
 }
 
@@ -415,6 +476,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
    return statistics;
   }
 }
+
 class LongColumnChunkMetaData extends ColumnChunkMetaData {
 
   private final long firstDataPageOffset;
@@ -500,3 +562,103 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   }
 }
 
+class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
+  private final ParquetMetadataConverter parquetMetadataConverter;
+  private final byte[] encryptedMetadata;
+  private final byte[] columnKeyMetadata;
+  private final InternalFileDecryptor fileDecryptor; 
+
+  private final int columnOrdinal;
+  private final PrimitiveType primitiveType;
+  private final String createdBy;
+  private ColumnPath path;
+
+  private boolean decrypted;
+  private ColumnChunkMetaData shadowColumnChunkMetaData;
+
+  EncryptedColumnChunkMetaData(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, PrimitiveType type, 
+      byte[] encryptedMetadata, byte[] columnKeyMetadata,
+      InternalFileDecryptor fileDecryptor, int rowGroupOrdinal, int columnOrdinal, String createdBy) {
+    super((EncodingStats) null, (ColumnChunkProperties) null);
+    this.parquetMetadataConverter = parquetMetadataConverter;
+    this.path = path;
+    this.encryptedMetadata = encryptedMetadata;
+    this.columnKeyMetadata = columnKeyMetadata;
+    this.fileDecryptor = fileDecryptor;
+    this.rowGroupOrdinal = rowGroupOrdinal;
+    this.columnOrdinal = columnOrdinal;
+    this.primitiveType = type;
+    this.createdBy = createdBy;
+
+    this.decrypted = false;
+  }
+
+  @Override
+  protected void decryptIfNeeded() {
+    if (decrypted) return;
+
+    if (null == fileDecryptor) {
+      throw new ParquetCryptoRuntimeException(path + ". Null File Decryptor");
+    }
+
+    // Decrypt the ColumnMetaData
+    InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.setColumnCryptoMetadata(path, true, false, 
+        columnKeyMetadata, columnOrdinal);
+    
+    ColumnMetaData metaData;
+    ByteArrayInputStream tempInputStream = new ByteArrayInputStream(encryptedMetadata);
+    byte[] columnMetaDataAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.ColumnMetaData, 
+        rowGroupOrdinal, columnOrdinal, -1);
+    try {
+      metaData = readColumnMetaData(tempInputStream, columnDecryptionSetup.getMetaDataDecryptor(), columnMetaDataAAD);
+    } catch (IOException e) {
+      throw new ParquetCryptoRuntimeException(path + ". Failed to decrypt column metadata", e);
+    }
+    decrypted = true;
+    shadowColumnChunkMetaData = parquetMetadataConverter.buildColumnChunkMetaData(metaData, path, primitiveType, createdBy);
+    this.encodingStats = shadowColumnChunkMetaData.encodingStats;
+    this.properties = shadowColumnChunkMetaData.properties;
+    setBloomFilterOffset(metaData.bloom_filter_offset);
+  }
+
+  @Override
+  public ColumnPath getPath() {
+    return path;
+  }
+
+  @Override
+  public long getFirstDataPageOffset() {
+    decryptIfNeeded();
+    return shadowColumnChunkMetaData.getFirstDataPageOffset();
+  }
+
+  @Override
+  public long getDictionaryPageOffset() {
+    decryptIfNeeded();
+    return shadowColumnChunkMetaData.getDictionaryPageOffset();
+  }
+
+  @Override
+  public long getValueCount() {
+    decryptIfNeeded();
+    return shadowColumnChunkMetaData.getValueCount();
+  }
+
+  @Override
+  public long getTotalUncompressedSize() {
+    decryptIfNeeded();
+    return shadowColumnChunkMetaData.getTotalUncompressedSize();
+  }
+
+  @Override
+  public long getTotalSize() {
+    decryptIfNeeded();
+    return shadowColumnChunkMetaData.getTotalSize();
+  }
+
+  @Override
+  public Statistics getStatistics() {
+    decryptIfNeeded();
+    return shadowColumnChunkMetaData.getStatistics();
+  }
+}
