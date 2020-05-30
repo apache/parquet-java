@@ -233,7 +233,7 @@ public class ParquetReadOptions {
     }
 
     public Builder useBloomFilter(boolean useBloomFilter) {
-      this.useDictionaryFilter = useBloomFilter;
+      this.useBloomFilter = useBloomFilter;
       return this;
     }
 
