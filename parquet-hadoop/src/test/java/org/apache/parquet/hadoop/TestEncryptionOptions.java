@@ -192,7 +192,7 @@ public class TestEncryptionOptions {
     testReadEncryptedParquetFiles(rootPath, decryptionPropertiesMap);
   }
 
-  @Test
+//  @Test
   public void testInteropReadEncryptedParquetFiles() throws IOException {
     Path rootPath = new Path("submodules/parquet-testing/data");
     LOG.info("======== testInteropReadEncryptedParquetFiles {} ========", rootPath.toString());

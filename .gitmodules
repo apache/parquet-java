@@ -1,3 +1,0 @@
-[submodule "parquet-hadoop/submodules/parquet-testing"]
-	path = parquet-hadoop/submodules/parquet-testing
-	url = https://github.com/apache/parquet-testing.git
