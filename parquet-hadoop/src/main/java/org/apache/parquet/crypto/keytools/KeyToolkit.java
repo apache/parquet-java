@@ -172,8 +172,13 @@ public class KeyToolkit {
       tempKeyMaterialStore.moveMaterialTo(keyMaterialStore);
     }
 
-    // Clear all per-token caches
-    kmsClientCachePerToken.clear();
+    removeCacheEntriesForAllTokens();
+  }
+  
+  public static void removeCacheEntriesForAllTokens() {
+    synchronized (kmsClientCachePerToken) {
+      kmsClientCachePerToken.clear();
+    }
     FileKeyWrapper.removeCacheEntriesForAllTokens();
     FileKeyUnwrapper.removeCacheEntriesForAllTokens();
   }
