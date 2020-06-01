@@ -21,6 +21,7 @@ package org.apache.parquet.crypto;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
+import org.apache.parquet.crypto.keytools.KmsClient;
 import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
 import org.apache.parquet.crypto.keytools.samples.InMemoryKMS;
 import org.apache.parquet.crypto.mocks.RemoteKmsClientMock;
@@ -212,7 +213,7 @@ public class TestPropertiesDrivenEncryption {
 
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
     for (Map.Entry<EncryptionConfiguration, Configuration> encryptionConfigurationEntry : encryptionPropertiesMap.entrySet()) {
-      KeyToolkit.removeCacheEntriesForToken(KeyToolkit.DEFAULT_ACCESS_TOKEN);
+      KeyToolkit.removeCacheEntriesForAllTokens();
       EncryptionConfiguration encryptionConfiguration = encryptionConfigurationEntry.getKey();
       Configuration conf = encryptionConfigurationEntry.getValue();
 
@@ -262,7 +263,7 @@ public class TestPropertiesDrivenEncryption {
       File[] listOfFiles = folder.listFiles();
 
       for (int fileNum = 0; fileNum < listOfFiles.length; fileNum++) {
-        KeyToolkit.removeCacheEntriesForToken(KeyToolkit.DEFAULT_ACCESS_TOKEN);
+        KeyToolkit.removeCacheEntriesForAllTokens();
         Path file = new Path(listOfFiles[fileNum].getAbsolutePath());
         if (!file.getName().endsWith(".parquet.encrypted") && !file.getName().endsWith(".parquet")) { // Skip non-parquet files
           continue;

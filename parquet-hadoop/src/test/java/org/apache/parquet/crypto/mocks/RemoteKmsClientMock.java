@@ -41,7 +41,7 @@ public class RemoteKmsClientMock extends RemoteKmsClient {
 
 
   @Override
-  protected void initializeInternal(Configuration configuration) throws KeyAccessDeniedException {
+  protected void initializeInternal() throws KeyAccessDeniedException {
     keyMap = new HashMap<>(3);
     keyMap.put(FOOTER_MASTER_KEY_ID, FOOTER_MASTER_KEY);
     keyMap.put(COLUMN_MASTER_KEY1_ID, COLUMN_MASTER_KEY1);
