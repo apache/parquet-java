@@ -69,7 +69,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     boolean keyMaterialInternalStorage = fileHadoopConfig.getBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
     if (!keyMaterialInternalStorage) {
       try {
-        keyMaterialStore = new HadoopFSKeyMaterialStore(tempFilePath.getFileSystem(fileHadoopConfig), tempFilePath);
+        keyMaterialStore = new HadoopFSKeyMaterialStore(tempFilePath.getFileSystem(fileHadoopConfig));
+        keyMaterialStore.initialize(tempFilePath, fileHadoopConfig, false);
       } catch (IOException e) {
         throw new ParquetCryptoRuntimeException("Failed to get key material store", e);
       }
@@ -183,7 +184,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     boolean keyMaterialInternalStorage = hadoopConfig.getBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, true);
     if (!keyMaterialInternalStorage) {
       try {
-        keyMaterialStore = new HadoopFSKeyMaterialStore(filePath.getFileSystem(hadoopConfig), filePath);
+        keyMaterialStore = new HadoopFSKeyMaterialStore(filePath.getFileSystem(hadoopConfig));
+        keyMaterialStore.initialize(filePath, hadoopConfig, false);
       } catch (IOException e) {
         throw new ParquetCryptoRuntimeException("Failed to get key material store", e);
       }

@@ -21,12 +21,12 @@ package org.apache.parquet.crypto.keytools;
 
 import java.util.Set;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 public interface FileKeyMaterialStore {
 
-  // TODO comments
-  public void initialize(Path parquetFilePath);
+  public void initialize(Path parquetFilePath, Configuration hadoopConfig, boolean tempStore);
 
   public void addKeyMaterial(String keyIDInFile, String keyMaterial);
 
@@ -38,5 +38,5 @@ public interface FileKeyMaterialStore {
 
   public void removeMaterial();
 
-  public void moveMaterial(FileKeyMaterialStore targetKeyMaterialStore);
+  public void moveMaterialTo(FileKeyMaterialStore targetKeyMaterialStore);
 }

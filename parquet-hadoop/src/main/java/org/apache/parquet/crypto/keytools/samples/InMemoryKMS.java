@@ -41,7 +41,7 @@ public class InMemoryKMS implements KmsClient {
   private Map<String,byte[]> newMasterKeyMap;
 
   @Override
-  public void initialize(Configuration configuration, String kmsInstanceID, String accessToken) {
+  public void initialize(Configuration configuration, String kmsInstanceID, String token) {
 
     // Parse master  keys
     String[] masterKeys = configuration.getTrimmedStrings(KEY_LIST_PROPERTY_NAME);

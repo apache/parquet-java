@@ -38,7 +38,6 @@ import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,12 +75,10 @@ public class KeyToolkit {
 
   public static final long DEFAULT_CACHE_ENTRY_LIFETIME = 10 * 60; // 10 minutes
   public static final int INITIAL_PER_TOKEN_CACHE_SIZE = 5;
-  public static final String TEMP_FILE_PREFIX = "_TMP";
-
 
   // For every token: a map of KMSInstanceId to kmsClient
   private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String, KmsClient>>> kmsClientCachePerToken =
-    new ConcurrentHashMap<>(INITIAL_PER_TOKEN_CACHE_SIZE);
+      new ConcurrentHashMap<>(INITIAL_PER_TOKEN_CACHE_SIZE);
   private static volatile long lastKmsCacheCleanupTimestamp = System.currentTimeMillis() + 60l * 1000; // grace period of 1 minute
 
   static class KeyWithMasterID {
@@ -145,19 +142,21 @@ public class KeyToolkit {
     for (FileStatus fs : keyMaterialFiles) {
       Path parquetFile = fs.getPath();
 
-      FileKeyMaterialStore keyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile);
+      FileKeyMaterialStore keyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem);
+      keyMaterialStore.initialize(parquetFile, hadoopConfig, false);
       FileKeyUnwrapper fileKeyUnwrapper = new FileKeyUnwrapper(hadoopConfig, keyMaterialStore);
 
-      FileKeyMaterialStore tempKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem, parquetFile, TEMP_FILE_PREFIX);
+      FileKeyMaterialStore tempKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem);
+      tempKeyMaterialStore.initialize(parquetFile, hadoopConfig, true);
       FileKeyWrapper fileKeyWrapper = new FileKeyWrapper(hadoopConfig, tempKeyMaterialStore);
-      
+
       Set<String> fileKeyIdSet = keyMaterialStore.getKeyIDSet();
-      
+
       // Start with footer key (to get KMS ID, URL, if needed) 
       String keyMaterial = keyMaterialStore.getKeyMaterial(FOOTER_KEY_ID_IN_FILE);
       KeyWithMasterID key = fileKeyUnwrapper.getDEKandMasterID(keyMaterial);
       fileKeyWrapper.getEncryptionKeyMetadata(key.getDataKey(), key.getMasterID(), true, FOOTER_KEY_ID_IN_FILE);
-      
+
       fileKeyIdSet.remove(FOOTER_KEY_ID_IN_FILE);
       // Rotate column keys
       for (String keyIdInFile : fileKeyIdSet) {
@@ -170,11 +169,11 @@ public class KeyToolkit {
 
       keyMaterialStore.removeMaterial();
 
-      tempKeyMaterialStore.moveMaterial(keyMaterialStore);
+      tempKeyMaterialStore.moveMaterialTo(keyMaterialStore);
     }
-    
+
     // Clear all per-token caches
-      kmsClientCachePerToken.clear();
+    kmsClientCachePerToken.clear();
     FileKeyWrapper.removeCacheEntriesForAllTokens();
     FileKeyUnwrapper.removeCacheEntriesForAllTokens();
   }
@@ -203,7 +202,9 @@ public class KeyToolkit {
    * @param accessToken
    */
   public static void removeCacheEntriesForToken(String accessToken) {
+    synchronized (kmsClientCachePerToken) {
       kmsClientCachePerToken.remove(accessToken);
+    }
 
     FileKeyWrapper.removeCacheEntriesForToken(accessToken);
 
@@ -211,42 +212,37 @@ public class KeyToolkit {
   }
 
 
-  static <E> void checkCacheEntriesForExpiredTokens(Map<String, ExpiringCacheEntry<E>> cache, long lastCacheCleanupTimestamp, 
-      long cacheEntryLifetime) {
+  static void checkKmsCacheForExpiredTokens(long cacheEntryLifetime) {
     long now = System.currentTimeMillis();
 
-    if (now > (lastCacheCleanupTimestamp + cacheEntryLifetime)) {
-      synchronized (cache) {
-        if (now > (lastCacheCleanupTimestamp + cacheEntryLifetime)) {
-          removeExpiredEntriesFromCache(cache);
-          lastCacheCleanupTimestamp = now;
+    if (now > (lastKmsCacheCleanupTimestamp + cacheEntryLifetime)) {
+      synchronized (kmsClientCachePerToken) {
+        if (now > (lastKmsCacheCleanupTimestamp + cacheEntryLifetime)) {
+          removeExpiredEntriesFromCache(kmsClientCachePerToken);
+          lastKmsCacheCleanupTimestamp = now;
         }
       }
     }
-  }
-
-  static void checkKmsCacheForExpiredTokens(long cacheEntryLifetime) {
-    checkCacheEntriesForExpiredTokens(kmsClientCachePerToken, lastKmsCacheCleanupTimestamp, cacheEntryLifetime);
   }
 
   static KmsClient getKmsClient(String kmsInstanceID, Configuration configuration, String accessToken, long cacheEntryLifetime) {
     // Try cache first
     ExpiringCacheEntry<ConcurrentMap<String, KmsClient>> kmsClientCachePerTokenEntry = kmsClientCachePerToken.get(accessToken);
     if ((null == kmsClientCachePerTokenEntry) || kmsClientCachePerTokenEntry.isExpired()) {
-    synchronized (kmsClientCachePerToken) {
-      kmsClientCachePerTokenEntry = kmsClientCachePerToken.get(accessToken);
-      if ((null == kmsClientCachePerTokenEntry) || kmsClientCachePerTokenEntry.isExpired()) {
+      synchronized (kmsClientCachePerToken) {
+        kmsClientCachePerTokenEntry = kmsClientCachePerToken.get(accessToken);
+        if ((null == kmsClientCachePerTokenEntry) || kmsClientCachePerTokenEntry.isExpired()) {
           ConcurrentMap<String, KmsClient> kmsClientPerToken = new ConcurrentHashMap<>();
-        kmsClientCachePerTokenEntry = new ExpiringCacheEntry<>(kmsClientPerToken, cacheEntryLifetime);
-        kmsClientCachePerToken.put(accessToken, kmsClientCachePerTokenEntry);
-      }
+          kmsClientCachePerTokenEntry = new ExpiringCacheEntry<>(kmsClientPerToken, cacheEntryLifetime);
+          kmsClientCachePerToken.put(accessToken, kmsClientCachePerTokenEntry);
+        }
       }
     }
 
     Map<String, KmsClient> kmsClientPerKmsInstanceCache = kmsClientCachePerTokenEntry.getCachedItem();
     KmsClient kmsClient =
-      kmsClientPerKmsInstanceCache.computeIfAbsent(kmsInstanceID,
-        (k) -> createAndInitKmsClient(kmsInstanceID, configuration, accessToken));
+        kmsClientPerKmsInstanceCache.computeIfAbsent(kmsInstanceID,
+            (k) -> createAndInitKmsClient(kmsInstanceID, configuration, accessToken));
 
     return kmsClient;
   }

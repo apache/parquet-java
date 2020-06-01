@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentMap;
 
 public abstract class RemoteKmsClient implements KmsClient {
   public static final String DEFAULT_KMS_INSTANCE_URL = "DEFAULT";
-  
+
   protected String kmsInstanceID;
   protected String kmsURL;
   protected String kmsToken;
@@ -57,7 +57,7 @@ public abstract class RemoteKmsClient implements KmsClient {
 
     hadoopConfiguration = configuration;
     kmsToken = accessToken;
-    
+
     isDefaultToken = kmsToken.equals(KmsClient.DEFAULT_ACCESS_TOKEN);
 
     initializeInternal();
@@ -67,7 +67,7 @@ public abstract class RemoteKmsClient implements KmsClient {
   public String wrapKey(byte[] dataKey, String masterKeyIdentifier) throws KeyAccessDeniedException {
     if (isWrapLocally) {
       byte[] masterKey =  masterKeyCache.computeIfAbsent(masterKeyIdentifier,
-        (k) -> getKeyFromServer(masterKeyIdentifier));
+          (k) -> getKeyFromServer(masterKeyIdentifier));
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
       return KeyToolkit.wrapKeyLocally(dataKey, masterKey, AAD);
     } else {
@@ -80,7 +80,7 @@ public abstract class RemoteKmsClient implements KmsClient {
   public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier) throws KeyAccessDeniedException {
     if (isWrapLocally) {
       byte[] masterKey = masterKeyCache.computeIfAbsent(masterKeyIdentifier,
-        (k) -> getKeyFromServer(masterKeyIdentifier));
+          (k) -> getKeyFromServer(masterKeyIdentifier));
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
       return KeyToolkit.unwrapKeyLocally(wrappedKey, masterKey, AAD);
     } else {
@@ -88,7 +88,7 @@ public abstract class RemoteKmsClient implements KmsClient {
       return unwrapKeyInServer(wrappedKey, masterKeyIdentifier);
     }
   }
-  
+
   private void refreshToken() {
     if (isDefaultToken) {
       return;
@@ -100,6 +100,7 @@ public abstract class RemoteKmsClient implements KmsClient {
   }
 
   private byte[] getKeyFromServer(String keyIdentifier) {
+    refreshToken();
     return getMasterKeyFromServer(keyIdentifier);
   }
 
@@ -132,7 +133,7 @@ public abstract class RemoteKmsClient implements KmsClient {
    */
   protected abstract byte[] unwrapKeyInServer(String wrappedKey, String masterKeyIdentifier) 
       throws KeyAccessDeniedException, UnsupportedOperationException;
-  
+
   /**
    * Get master key from the remote KMS server.
    * Required only for local wrapping. No need to implement if KMS supports in-server wrapping/unwrapping.

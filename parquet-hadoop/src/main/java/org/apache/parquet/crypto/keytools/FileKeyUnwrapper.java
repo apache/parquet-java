@@ -60,23 +60,23 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
         KeyToolkit.DEFAULT_CACHE_ENTRY_LIFETIME);
 
     // Check cache upon each file reading (clean once in cacheEntryLifetime)
-    KeyToolkit.checkCacheEntriesForExpiredTokens(KEKMapPerToken, lastKekCacheCleanupTimestamp, cacheEntryLifetime);
     KeyToolkit.checkKmsCacheForExpiredTokens(cacheEntryLifetime);
-    
+    checkKekCacheForExpiredTokens();
+
     accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
         KmsClient.DEFAULT_ACCESS_TOKEN);
 
     ExpiringCacheEntry<ConcurrentMap<String, byte[]>> KEKCacheEntry = KEKMapPerToken.get(accessToken);
     if (null == KEKCacheEntry || KEKCacheEntry.isExpired()) {
-    synchronized (KEKMapPerToken) {
-      KEKCacheEntry = KEKMapPerToken.get(accessToken);
-      if (null == KEKCacheEntry || KEKCacheEntry.isExpired()) {
+      synchronized (KEKMapPerToken) {
+        KEKCacheEntry = KEKMapPerToken.get(accessToken);
+        if (null == KEKCacheEntry || KEKCacheEntry.isExpired()) {
           KEKCacheEntry = new ExpiringCacheEntry<>(new ConcurrentHashMap<String, byte[]>(), cacheEntryLifetime);
-        KEKMapPerToken.put(accessToken, KEKCacheEntry);
+          KEKMapPerToken.put(accessToken, KEKCacheEntry);
+        }
       }
     }
-    }
-    
+
     KEKPerKekID = KEKCacheEntry.getCachedItem();
   }
 
@@ -95,6 +95,19 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     }
 
     return getDEKandMasterID(keyMaterial).getDataKey();
+  }
+
+  private void checkKekCacheForExpiredTokens() {
+    long now = System.currentTimeMillis();
+
+    if (now > (lastKekCacheCleanupTimestamp + cacheEntryLifetime)) {
+      synchronized (KEKMapPerToken) {
+        if (now > (lastKekCacheCleanupTimestamp + cacheEntryLifetime)) {
+          KeyToolkit.removeExpiredEntriesFromCache(KEKMapPerToken);
+          lastKekCacheCleanupTimestamp = now;
+        }
+      }
+    }
   }
 
   KeyWithMasterID getDEKandMasterID(String keyMaterial)  {
@@ -128,9 +141,9 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
       // Get KEK
       String encodedKEK_ID = keyMaterialJson.get(KeyToolkit.KEK_ID_FIELD);
       final Map<String, String> keyMaterialJsonFinal = keyMaterialJson;
-      
+
       byte[] kekBytes = KEKPerKekID.computeIfAbsent(encodedKEK_ID,
-        (k) -> unwrapKek(keyMaterialJsonFinal, masterKeyID));
+          (k) -> unwrapKek(keyMaterialJsonFinal, masterKeyID));
 
       // Decrypt the data key
       byte[]  AAD = Base64.getDecoder().decode(encodedKEK_ID);
