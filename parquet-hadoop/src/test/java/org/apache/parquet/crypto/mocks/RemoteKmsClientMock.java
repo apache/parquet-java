@@ -19,7 +19,6 @@
 package org.apache.parquet.crypto.mocks;
 
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.RemoteKmsClient;

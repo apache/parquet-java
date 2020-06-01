@@ -24,7 +24,6 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
@@ -37,6 +36,8 @@ import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+
+import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
 
 public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactory, DecryptionPropertiesFactory {
 
@@ -57,11 +58,11 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     String columnKeysStr = fileHadoopConfig.getTrimmed(COLUMN_KEYS_PROPERTY_NAME);
 
     // File shouldn't be encrypted
-    if (StringUtils.isEmpty(footerKeyId) && StringUtils.isEmpty(columnKeysStr)) {
+    if (stringIsEmpty(footerKeyId) && stringIsEmpty(columnKeysStr)) {
       return null; 
     }
 
-    if (StringUtils.isEmpty(footerKeyId)) {
+    if (stringIsEmpty(footerKeyId)) {
       throw new ParquetCryptoRuntimeException("Undefined footer key");
     }
 
@@ -80,7 +81,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
     String algo = fileHadoopConfig.getTrimmed(ENCRYPTION_ALGORITHM_PROPERTY_NAME);
     ParquetCipher cipher;
-    if (StringUtils.isEmpty(algo)) {
+    if (stringIsEmpty(algo)) {
       cipher = ParquetCipher.AES_GCM_V1;
     } else {
       if (algo.equalsIgnoreCase("AES_GCM_V1")) {
@@ -120,7 +121,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
   private Map<ColumnPath, ColumnEncryptionProperties> getColumnEncryptionProperties(String columnKeys,
       FileKeyWrapper keyWrapper) throws ParquetCryptoRuntimeException {
-    if (StringUtils.isEmpty(columnKeys)) {
+    if (stringIsEmpty(columnKeys)) {
       throw new ParquetCryptoRuntimeException("No column keys configured in encryption.column.keys");
     }
     Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns = new HashMap<ColumnPath, ColumnEncryptionProperties>();

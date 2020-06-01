@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.DecryptionKeyRetriever;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
@@ -36,6 +35,7 @@ import org.apache.parquet.crypto.keytools.KeyToolkit.KeyWithMasterID;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
+import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
 
 public class FileKeyUnwrapper implements DecryptionKeyRetriever {
   // For every token: a map of KEK_ID to KEK bytes
@@ -166,7 +166,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
 
   private KmsClient getKmsClientFromConfigOrKeyMaterial(Map<String, String> keyMaterialJson) {
     String kmsInstanceID = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME);
-    if (StringUtils.isEmpty(kmsInstanceID)) {
+    if (stringIsEmpty(kmsInstanceID)) {
       kmsInstanceID = keyMaterialJson.get(KeyToolkit.KMS_INSTANCE_ID_FIELD);
       if (null == kmsInstanceID) {
         throw new ParquetCryptoRuntimeException("KMS instance ID is missing both in properties and file key material");
@@ -175,7 +175,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     }
 
     String kmsInstanceURL = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME);
-    if (StringUtils.isEmpty(kmsInstanceURL)) {
+    if (stringIsEmpty(kmsInstanceURL)) {
       kmsInstanceURL = keyMaterialJson.get(KeyToolkit.KMS_INSTANCE_URL_FIELD);
       if (null == kmsInstanceURL) {
         throw new ParquetCryptoRuntimeException("KMS instance URL is missing both in properties and file key material");

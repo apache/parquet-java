@@ -282,6 +282,10 @@ public class KeyToolkit {
     return accessToken.substring(accessToken.length() - maxTokenDisplayLength);
   }
 
+  static boolean stringIsEmpty(String str) {
+    return (null == str) || str.isEmpty();
+  }
+
   static <E> void removeExpiredEntriesFromCache(Map<String, ExpiringCacheEntry<E>> cache) {
     Set<Map.Entry<String, ExpiringCacheEntry<E>>> cacheEntries = cache.entrySet();
     List<String> expiredKeys = new ArrayList<>(cacheEntries.size());

@@ -21,7 +21,6 @@ package org.apache.parquet.crypto;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
-import org.apache.parquet.crypto.keytools.KmsClient;
 import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
 import org.apache.parquet.crypto.keytools.samples.InMemoryKMS;
 import org.apache.parquet.crypto.mocks.RemoteKmsClientMock;

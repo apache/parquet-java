@@ -21,7 +21,6 @@
 
 package org.apache.parquet.crypto.keytools;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
@@ -29,6 +28,8 @@ import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
+import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
 
 
 public abstract class RemoteKmsClient implements KmsClient {
@@ -94,7 +95,7 @@ public abstract class RemoteKmsClient implements KmsClient {
       return;
     }
     kmsToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME);
-    if (StringUtils.isEmpty(kmsToken)) {
+    if (stringIsEmpty(kmsToken)) {
       throw new ParquetCryptoRuntimeException("Empty token");
     }
   }
