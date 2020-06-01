@@ -479,7 +479,9 @@ public class ParquetMetadataConverter {
           columnMetaData.getTotalUncompressedSize(),
           columnMetaData.getTotalSize(),
           columnMetaData.getFirstDataPageOffset());
-      columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
+      if (columnMetaData.getEncodingStats() != null && columnMetaData.getEncodingStats().hasDictionaryPages()) {
+        columnChunk.meta_data.setDictionary_page_offset(columnMetaData.getDictionaryPageOffset());
+      }
       columnChunk.meta_data.setBloom_filter_offset(columnMetaData.getBloomFilterOffset());
       if (!columnMetaData.getStatistics().isEmpty()) {
         columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics(), this.statisticsTruncateLength));
