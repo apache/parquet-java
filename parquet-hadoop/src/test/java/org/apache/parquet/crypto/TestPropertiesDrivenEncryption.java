@@ -21,6 +21,9 @@ package org.apache.parquet.crypto;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
+import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
+import org.apache.parquet.crypto.keytools.samples.InMemoryKMS;
+import org.apache.parquet.crypto.mocks.RemoteKmsClientMock;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -337,16 +340,7 @@ public class TestPropertiesDrivenEncryption {
       EncryptionConfiguration encryptionConfiguration = encryptionConfigurations[i];
       Configuration conf = new Configuration();
       // Configuration properties common to all encryption modes
-      if (isWrapLocally) {
-        conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, "org.apache.parquet.crypto.keytools.samples.InMemoryKMS");
-      } else {
-        conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, "org.apache.parquet.crypto.mocks.RemoteKmsClientMock");
-      }
-      conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
-        "org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory");
-      conf.setBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, isKeyMaterialInternalStorage);
-      conf.setBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, isDoubleWrapping);
-      conf.setBoolean(KeyToolkit.WRAP_LOCALLY_PROPERTY_NAME, isWrapLocally);
+      setCommonKMSProperties(conf);
 
       switch (encryptionConfiguration) {
         case ENCRYPT_COLUMNS_AND_FOOTER:
@@ -390,6 +384,19 @@ public class TestPropertiesDrivenEncryption {
     return encryptionPropertiesMap;
   }
 
+  private void setCommonKMSProperties(Configuration conf) {
+    if (isWrapLocally) {
+      conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, InMemoryKMS.class.getName());
+    } else {
+      conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, RemoteKmsClientMock.class.getName());
+    }
+    conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
+      PropertiesDrivenCryptoFactory.class.getName());
+    conf.setBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, isKeyMaterialInternalStorage);
+    conf.setBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, isDoubleWrapping);
+    conf.setBoolean(KeyToolkit.WRAP_LOCALLY_PROPERTY_NAME, isWrapLocally);
+  }
+
 
   /**
    * Create a number of Decryption configurations
@@ -401,16 +408,7 @@ public class TestPropertiesDrivenEncryption {
     for (DecryptionConfiguration decryptionConfiguration : decryptionConfigurations) {
       Configuration conf = new Configuration();
       // Configuration properties common to all decryption modes
-      if (isWrapLocally) {
-        conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, "org.apache.parquet.crypto.keytools.samples.InMemoryKMS");
-      } else {
-        conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, "org.apache.parquet.crypto.mocks.RemoteKmsClientMock");
-      }
-      conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
-        "org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory");
-      conf.setBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, isKeyMaterialInternalStorage);
-      conf.setBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, isDoubleWrapping);
-      conf.setBoolean(KeyToolkit.WRAP_LOCALLY_PROPERTY_NAME, isWrapLocally);
+      setCommonKMSProperties(conf);
 
       switch (decryptionConfiguration) {
         case DECRYPT_WITH_KEY_RETRIEVER:
