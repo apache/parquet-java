@@ -92,13 +92,16 @@ public class TestZstandardCodec {
     return decompressed;
   }
 
+  /**
+   *  This test is to verify that the properties are passed through from the config to the codec. 
+   */
   @Test
   public void testZstdConfWithMr() throws Exception {
     long fileSizeLowLevel = runMrWithConf(1);
     // Clear the cache so that a new codec can be created with new configuration
     CodecFactory.CODEC_BY_NAME.clear();
     long fileSizeHighLevel = runMrWithConf(22);
-    assert (fileSizeLowLevel > fileSizeHighLevel);
+    Assert.assertTrue(fileSizeLowLevel > fileSizeHighLevel);
   }
 
   private long runMrWithConf(int level) throws Exception {
@@ -108,7 +111,7 @@ public class TestZstandardCodec {
     jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, 4);
     Path path = new Path(Files.createTempDirectory("zstd" + level).toAbsolutePath().toString());
     RunningJob mapRedJob = runMapReduceJob(CompressionCodecName.ZSTD, jobConf, conf, path);
-    assert(mapRedJob.isSuccessful());
+    Assert.assertTrue(mapRedJob.isSuccessful());
     return getFileSize(path, conf);
   }
 
