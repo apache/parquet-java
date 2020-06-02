@@ -78,6 +78,12 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromString("oneValue"));
     inOrder.verify(readConsumerMock).endField("one", 0);
+    inOrder.verify(readConsumerMock).startField("two", 1);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromString(""));
+    inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).startField("three", 2);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromString(""));
+    inOrder.verify(readConsumerMock).endField("three", 2);
 
     inOrder.verify(readConsumerMock).endMessage();
     Mockito.verifyNoMoreInteractions(readConsumerMock);
@@ -244,9 +250,9 @@ public class ProtoWriteSupportTest {
     RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
-    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock, conf);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.RepeatedIntMessage.class, readConsumerMock, conf);
 
-    TestProtobuf.RepeatedIntMessage.Builder msg = TestProtobuf.RepeatedIntMessage.newBuilder();
+    TestProto3.RepeatedIntMessage.Builder msg = TestProto3.RepeatedIntMessage.newBuilder();
 
     instance.write(msg.build());
 
@@ -260,9 +266,9 @@ public class ProtoWriteSupportTest {
   @Test
   public void testProto3RepeatedIntMessageEmpty() throws Exception {
     RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
-    ProtoWriteSupport instance = createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock);
+    ProtoWriteSupport instance = createReadConsumerInstance(TestProto3.RepeatedIntMessage.class, readConsumerMock);
 
-    TestProtobuf.RepeatedIntMessage.Builder msg = TestProtobuf.RepeatedIntMessage.newBuilder();
+    TestProto3.RepeatedIntMessage.Builder msg = TestProto3.RepeatedIntMessage.newBuilder();
 
     instance.write(msg.build());
 
@@ -591,6 +597,9 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startField("two", 1);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
     inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).startField("three", 2);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("three", 2);
     inOrder.verify(readConsumerMock).endGroup();
 
     inOrder.verify(readConsumerMock).endField("inner", 0);
@@ -626,6 +635,9 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startField("two", 1);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
     inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).startField("three", 2);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("three", 2);
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("element", 0);
 
@@ -743,13 +755,25 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
     inOrder.verify(readConsumerMock).endField("one", 0);
+    inOrder.verify(readConsumerMock).startField("two", 1);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).startField("three", 2);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("three", 2);
     inOrder.verify(readConsumerMock).endGroup();
 
     //second inner message
     inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("one", 0);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("one", 0);
     inOrder.verify(readConsumerMock).startField("two", 1);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
     inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).startField("three", 2);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("three", 2);
     inOrder.verify(readConsumerMock).endGroup();
 
     inOrder.verify(readConsumerMock).endField("inner", 0);
@@ -784,6 +808,12 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
     inOrder.verify(readConsumerMock).endField("one", 0);
+    inOrder.verify(readConsumerMock).startField("two", 1);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).startField("three", 2);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("three", 2);
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("element", 0);
     inOrder.verify(readConsumerMock).endGroup();
@@ -792,9 +822,15 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("element", 0);
     inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("one", 0);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("one", 0);
     inOrder.verify(readConsumerMock).startField("two", 1);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
     inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).startField("three", 2);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("three", 2);
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("element", 0);
     inOrder.verify(readConsumerMock).endGroup();
@@ -851,6 +887,12 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
     inOrder.verify(readConsumerMock).endField("one", 0);
+    inOrder.verify(readConsumerMock).startField("two", 1);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).startField("three", 2);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
+    inOrder.verify(readConsumerMock).endField("three", 2);
     inOrder.verify(readConsumerMock).endGroup();
 
     inOrder.verify(readConsumerMock).endField("inner", 0);

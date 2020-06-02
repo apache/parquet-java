@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,8 +18,10 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
+import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.fs.Path;
 
 import java.io.File;
@@ -27,7 +29,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
@@ -77,12 +78,27 @@ public class TestUtils {
 
     checkSameBuilderInstance(messages);
 
-    List<MessageOrBuilder> input = cloneList(messages);
-
     List<MessageOrBuilder> output = (List<MessageOrBuilder>) writeAndRead(messages);
 
     List<Message> outputAsMessages = asMessages(output);
-    assertEquals("The protocol buffers are not same:\n", asMessages(input), outputAsMessages);
+    Descriptors.Descriptor messageDescriptor = Protobufs.getMessageDescriptor(asMessage(messages[0]).getClass());
+    Descriptors.FileDescriptor.Syntax syntax = messageDescriptor.getFile().getSyntax();
+    for (int i = 0 ; i < messages.length ; i++) {
+      if (Descriptors.FileDescriptor.Syntax.PROTO2.equals(syntax)) {
+        com.google.common.truth.extensions.proto.ProtoTruth.assertThat(outputAsMessages.get(i))
+          .ignoringRepeatedFieldOrder()
+          .reportingMismatchesOnly()
+          .isEqualTo(asMessage(messages[i]));
+      } else if (Descriptors.FileDescriptor.Syntax.PROTO3.equals(syntax)) {
+        // proto3 will return default values for absent fields which is what is returned in output
+        // this is why we can ignore absent fields here
+        com.google.common.truth.extensions.proto.ProtoTruth.assertThat(outputAsMessages.get(i))
+          .ignoringRepeatedFieldOrder()
+          .ignoringFieldAbsence()
+          .reportingMismatchesOnly()
+          .isEqualTo(asMessage(messages[i]));
+      }
+    }
     return (List<T>) outputAsMessages;
   }
 
