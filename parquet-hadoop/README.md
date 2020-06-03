@@ -324,9 +324,20 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 **Property:** `parquet.read.schema`  
 **Description:** The read projection schema.
 
-
 ## Class: UnmaterializableRecordCounter
 
 **Property:** `parquet.read.bad.record.threshold`  
 **Description:** The percentage of bad records to tolerate.  
+**Default value:** `0`
+
+## Class: ZstandardCodec
+
+**Property:** `parquet.compression.codec.zstd.level`  
+**Description:** The compression level of ZSTD. The valid range is 1~22. Generally the higher compression level, the higher compression ratio can be achieved, but the writing time will be longer.  
+**Default value:** `3`
+
+---
+
+**Property:** `parquet.compression.codec.zstd.workers`  
+**Description:** The number of threads will be spawned to compress in parallel. More workers improve speed, but also increase memory usage. When it is 0, it works as single-threaded mode.  
 **Default value:** `0`
