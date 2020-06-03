@@ -105,6 +105,7 @@
     <jackson2.version>2.3.1</jackson2.version>
     <jcommander.version>1.35</jcommander.version>
     <commons-codec.version>1.10</commons-codec.version>
+    <zstd-jni.version>1.4.0-1</zstd-jni.version>
   </properties>
 
   <modules>
