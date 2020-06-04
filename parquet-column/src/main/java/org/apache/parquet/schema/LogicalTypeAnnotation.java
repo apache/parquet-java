@@ -130,6 +130,12 @@ public abstract class LogicalTypeAnnotation {
         return bsonType();
       }
     },
+    UUID {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return uuidType();
+      }
+    },
     INTERVAL {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
@@ -284,6 +290,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static BsonLogicalTypeAnnotation bsonType() {
     return BsonLogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static UUIDLogicalTypeAnnotation uuidType() {
+    return UUIDLogicalTypeAnnotation.INSTANCE;
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -861,6 +871,36 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  public static class UUIDLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final UUIDLogicalTypeAnnotation INSTANCE = new UUIDLogicalTypeAnnotation();
+    public static final int BYTES = 16;
+
+    private UUIDLogicalTypeAnnotation() {
+    }
+
+    @Override
+    @InterfaceAudience.Private
+    public OriginalType toOriginalType() {
+      // No OriginalType for UUID
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.UUID;
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.UUID_STRINGIFIER;
+    }
+  }
+
   // This logical type annotation is implemented to support backward compatibility with ConvertedType.
   // The new logical type representation in parquet-format doesn't have any interval type,
   // thus this annotation is mapped to UNKNOWN.
@@ -1006,6 +1046,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(BsonLogicalTypeAnnotation bsonLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(UUIDLogicalTypeAnnotation uuidLogicalType) {
       return empty();
     }
 

@@ -30,6 +30,7 @@ import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.reflect.AvroSchema;
 import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.specific.SpecificData;
+import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -41,8 +42,10 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
+import static org.apache.parquet.avro.AvroTestUtil.conf;
 import static org.apache.parquet.avro.AvroTestUtil.read;
 
 /**
@@ -358,6 +361,43 @@ public class TestReflectLogicalTypes {
   }
 
   @Test
+  public void testReadUUIDWithParquetUUID() throws IOException {
+    Schema uuidSchema = SchemaBuilder.record(RecordWithUUID.class.getName())
+        .fields().requiredString("uuid").endRecord();
+    LogicalTypes.uuid().addToSchema(uuidSchema.getField("uuid").schema());
+
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = UUID.randomUUID();
+
+    RecordWithStringUUID r1 = new RecordWithStringUUID();
+    r1.uuid = u1.toString();
+    RecordWithStringUUID r2 = new RecordWithStringUUID();
+    r2.uuid = u2.toString();
+
+    List<RecordWithUUID> expected = Arrays.asList(
+        new RecordWithUUID(), new RecordWithUUID());
+    expected.get(0).uuid = u1;
+    expected.get(1).uuid = u2;
+
+    File test = write(
+        AvroTestUtil.conf(AvroWriteSupport.WRITE_PARQUET_UUID, true),
+        uuidSchema, r1, r2);
+
+    Assert.assertEquals("Should convert Strings to UUIDs",
+        expected, read(REFLECT, uuidSchema, test));
+
+    // verify that the field's type overrides the logical type
+    Schema uuidStringSchema = SchemaBuilder
+        .record(RecordWithStringUUID.class.getName())
+        .fields().requiredString("uuid").endRecord();
+    LogicalTypes.uuid().addToSchema(uuidStringSchema.getField("uuid").schema());
+
+    Assert.assertEquals("Should not convert to UUID if accessor is String",
+        Arrays.asList(r1, r2),
+        read(REFLECT, uuidStringSchema, test));
+  }
+
+  @Test
   public void testWriteUUID() throws IOException {
     Schema uuidSchema = SchemaBuilder.record(RecordWithUUID.class.getName())
         .fields().requiredString("uuid").endRecord();
@@ -394,6 +434,41 @@ public class TestReflectLogicalTypes {
   }
 
   @Test
+  public void testWriteUUIDWithParuetUUID() throws IOException {
+    Schema uuidSchema = SchemaBuilder.record(RecordWithUUID.class.getName())
+        .fields().requiredString("uuid").endRecord();
+    LogicalTypes.uuid().addToSchema(uuidSchema.getField("uuid").schema());
+
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = UUID.randomUUID();
+
+    RecordWithUUID r1 = new RecordWithUUID();
+    r1.uuid = u1;
+    RecordWithUUID r2 = new RecordWithUUID();
+    r2.uuid = u2;
+
+    List<RecordWithStringUUID> expected = Arrays.asList(
+        new RecordWithStringUUID(), new RecordWithStringUUID());
+    expected.get(0).uuid = u1.toString();
+    expected.get(1).uuid = u2.toString();
+
+    File test = write(
+        AvroTestUtil.conf(AvroWriteSupport.WRITE_PARQUET_UUID, true),
+        REFLECT, uuidSchema, r1, r2);
+
+    Assert.assertEquals("Should read UUID objects",
+        Arrays.asList(r1, r2),
+        read(REFLECT, uuidSchema, test));
+
+    Schema uuidStringSchema = SchemaBuilder.record(RecordWithStringUUID.class.getName())
+        .fields().requiredString("uuid").endRecord();
+    LogicalTypes.uuid().addToSchema(uuidStringSchema.getField("uuid").schema());
+    Assert.assertEquals("Should read uuid as Strings",
+        expected,
+        read(ReflectData.get(), uuidStringSchema, test));
+  }
+
+  @Test
   public void testWriteNullableUUID() throws IOException {
     Schema nullableUuidSchema = SchemaBuilder.record(RecordWithUUID.class.getName())
         .fields().optionalString("uuid").endRecord();
@@ -419,6 +494,45 @@ public class TestReflectLogicalTypes {
     Schema nullableUuidStringSchema = SchemaBuilder
         .record(RecordWithStringUUID.class.getName())
         .fields().optionalString("uuid").endRecord();
+
+    Assert.assertEquals("Should read uuid as String without UUID conversion",
+        expected,
+        read(REFLECT, nullableUuidStringSchema, test));
+  }
+
+  @Test
+  public void testWriteNullableUUIDWithParquetUUID() throws IOException {
+    Schema nullableUuidSchema = SchemaBuilder.record(RecordWithUUID.class.getName())
+        .fields().optionalString("uuid").endRecord();
+    LogicalTypes.uuid().addToSchema(
+        nullableUuidSchema.getField("uuid").schema().getTypes().get(1));
+
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = null;
+
+    RecordWithUUID r1 = new RecordWithUUID();
+    r1.uuid = u1;
+    RecordWithUUID r2 = new RecordWithUUID();
+    r2.uuid = u2;
+
+    List<RecordWithStringUUID> expected = Arrays.asList(
+        new RecordWithStringUUID(), new RecordWithStringUUID());
+    expected.get(0).uuid = u1.toString();
+    expected.get(1).uuid = null;
+
+    File test = write(
+        AvroTestUtil.conf(AvroWriteSupport.WRITE_PARQUET_UUID, true),
+        REFLECT, nullableUuidSchema, r1, r2);
+
+    Assert.assertEquals("Should read uuid as UUID objects",
+        Arrays.asList(r1, r2),
+        read(REFLECT, nullableUuidSchema, test));
+
+    Schema nullableUuidStringSchema = SchemaBuilder
+        .record(RecordWithStringUUID.class.getName())
+        .fields().optionalString("uuid").endRecord();
+    LogicalTypes.uuid().addToSchema(
+        nullableUuidStringSchema.getField("uuid").schema().getTypes().get(1));
 
     Assert.assertEquals("Should read uuid as String without UUID conversion",
         expected,
@@ -499,6 +613,42 @@ public class TestReflectLogicalTypes {
   }
 
   @Test
+  public void testReadUUIDGenericRecordWithParquetUUID() throws IOException {
+    Schema uuidSchema = SchemaBuilder.record("RecordWithUUID")
+        .fields().requiredString("uuid").endRecord();
+    LogicalTypes.uuid().addToSchema(uuidSchema.getField("uuid").schema());
+
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = UUID.randomUUID();
+
+    RecordWithStringUUID r1 = new RecordWithStringUUID();
+    r1.uuid = u1.toString();
+    RecordWithStringUUID r2 = new RecordWithStringUUID();
+    r2.uuid = u2.toString();
+
+    List<GenericData.Record> expected = Arrays.asList(
+        new GenericData.Record(uuidSchema), new GenericData.Record(uuidSchema));
+    expected.get(0).put("uuid", u1);
+    expected.get(1).put("uuid", u2);
+
+    File test = write(
+        AvroTestUtil.conf(AvroWriteSupport.WRITE_PARQUET_UUID, true),
+        uuidSchema, r1, r2);
+
+    Assert.assertEquals("Should convert Strings to UUIDs",
+        expected, read(REFLECT, uuidSchema, test));
+
+    Schema uuidStringSchema = SchemaBuilder
+        .record(RecordWithStringUUID.class.getName())
+        .fields().requiredString("uuid").endRecord();
+    LogicalTypes.uuid().addToSchema(uuidStringSchema.getField("uuid").schema());
+
+    Assert.assertEquals("Should not convert to UUID if accessor is String",
+        Arrays.asList(r1, r2),
+        read(REFLECT, uuidStringSchema, test));
+  }
+
+  @Test
   public void testReadUUIDArray() throws IOException {
     Schema uuidArraySchema = SchemaBuilder.record(RecordWithUUIDArray.class.getName())
         .fields()
@@ -517,6 +667,31 @@ public class TestReflectLogicalTypes {
     expected.uuids = new UUID[] {u1, u2};
 
     File test = write(uuidArraySchema, r);
+
+    Assert.assertEquals("Should convert Strings to UUIDs",
+        expected,
+        read(REFLECT, uuidArraySchema, test).get(0));
+  }
+
+  @Test
+  public void testReadUUIDArrayWithParquetUUID() throws IOException {
+    Schema uuidArraySchema = SchemaBuilder.record(RecordWithUUIDArray.class.getName())
+        .fields()
+        .name("uuids").type().array().items().stringType().noDefault()
+        .endRecord();
+    LogicalTypes.uuid().addToSchema(
+        uuidArraySchema.getField("uuids").schema().getElementType());
+
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = UUID.randomUUID();
+
+    GenericRecord r = new GenericData.Record(uuidArraySchema);
+    r.put("uuids", Arrays.asList(u1.toString(), u2.toString()));
+
+    RecordWithUUIDArray expected = new RecordWithUUIDArray();
+    expected.uuids = new UUID[] {u1, u2};
+
+    File test = write(AvroTestUtil.conf(AvroWriteSupport.WRITE_PARQUET_UUID, true), uuidArraySchema, r);
 
     Assert.assertEquals("Should convert Strings to UUIDs",
         expected,
@@ -559,6 +734,43 @@ public class TestReflectLogicalTypes {
   }
 
   @Test
+  public void testWriteUUIDArrayWithParquetUUID() throws IOException {
+    Schema uuidArraySchema = SchemaBuilder.record(RecordWithUUIDArray.class.getName())
+        .fields()
+        .name("uuids").type().array().items().stringType().noDefault()
+        .endRecord();
+    LogicalTypes.uuid().addToSchema(
+        uuidArraySchema.getField("uuids").schema().getElementType());
+
+    Schema stringArraySchema = SchemaBuilder.record("RecordWithUUIDArray")
+        .fields()
+        .name("uuids").type().array().items().stringType().noDefault()
+        .endRecord();
+    LogicalTypes.uuid().addToSchema(
+        stringArraySchema.getField("uuids").schema().getElementType());
+    stringArraySchema.getField("uuids").schema()
+        .addProp(SpecificData.CLASS_PROP, List.class.getName());
+
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = UUID.randomUUID();
+
+    GenericRecord expected = new GenericData.Record(stringArraySchema);
+    List<String> uuids = new ArrayList<String>();
+    uuids.add(u1.toString());
+    uuids.add(u2.toString());
+    expected.put("uuids", uuids);
+
+    RecordWithUUIDArray r = new RecordWithUUIDArray();
+    r.uuids = new UUID[] {u1, u2};
+
+    File test = write(AvroTestUtil.conf(AvroWriteSupport.WRITE_PARQUET_UUID, true), REFLECT, uuidArraySchema, r);
+
+    Assert.assertEquals("Should read UUIDs as Strings",
+        expected,
+        read(ReflectData.get(), stringArraySchema, test).get(0));
+  }
+
+  @Test
   public void testReadUUIDList() throws IOException {
     Schema uuidListSchema = SchemaBuilder.record(RecordWithUUIDList.class.getName())
         .fields()
@@ -579,6 +791,32 @@ public class TestReflectLogicalTypes {
     expected.uuids = Arrays.asList(u1, u2);
 
     File test = write(uuidListSchema, r);
+
+    Assert.assertEquals("Should convert Strings to UUIDs",
+        expected, read(REFLECT, uuidListSchema, test).get(0));
+  }
+
+  @Test
+  public void testReadUUIDListWithParquetUUID() throws IOException {
+    Schema uuidListSchema = SchemaBuilder.record(RecordWithUUIDList.class.getName())
+        .fields()
+        .name("uuids").type().array().items().stringType().noDefault()
+        .endRecord();
+    uuidListSchema.getField("uuids").schema().addProp(
+        SpecificData.CLASS_PROP, List.class.getName());
+    LogicalTypes.uuid().addToSchema(
+        uuidListSchema.getField("uuids").schema().getElementType());
+
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = UUID.randomUUID();
+
+    GenericRecord r = new GenericData.Record(uuidListSchema);
+    r.put("uuids", Arrays.asList(u1.toString(), u2.toString()));
+
+    RecordWithUUIDList expected = new RecordWithUUIDList();
+    expected.uuids = Arrays.asList(u1, u2);
+
+    File test = write(AvroTestUtil.conf(AvroWriteSupport.WRITE_PARQUET_UUID, true), uuidListSchema, r);
 
     Assert.assertEquals("Should convert Strings to UUIDs",
         expected, read(REFLECT, uuidListSchema, test).get(0));
@@ -618,13 +856,60 @@ public class TestReflectLogicalTypes {
         read(REFLECT, stringArraySchema, test).get(0));
   }
 
+  @Test
+  public void testWriteUUIDListWithParquetUUID() throws IOException {
+    Schema uuidListSchema = SchemaBuilder.record(RecordWithUUIDList.class.getName())
+        .fields()
+        .name("uuids").type().array().items().stringType().noDefault()
+        .endRecord();
+    uuidListSchema.getField("uuids").schema().addProp(
+        SpecificData.CLASS_PROP, List.class.getName());
+    LogicalTypes.uuid().addToSchema(
+        uuidListSchema.getField("uuids").schema().getElementType());
+
+    Schema reflectSchema = SchemaBuilder.record("RecordWithUUIDArray")
+        .fields()
+        .name("uuids").type().array().items().stringType().noDefault()
+        .endRecord();
+    reflectSchema.getField("uuids").schema()
+        .addProp(SpecificData.CLASS_PROP, List.class.getName());
+    LogicalTypes.uuid().addToSchema(
+        reflectSchema.getField("uuids").schema().getElementType());
+
+    UUID u1 = UUID.randomUUID();
+    UUID u2 = UUID.randomUUID();
+
+    GenericRecord expected = new GenericData.Record(reflectSchema);
+    expected.put("uuids", Arrays.asList(u1, u2));
+
+    RecordWithUUIDList r = new RecordWithUUIDList();
+    r.uuids = Arrays.asList(u1, u2);
+
+    File test = write(AvroTestUtil.conf(AvroWriteSupport.WRITE_PARQUET_UUID, true), REFLECT, uuidListSchema, r);
+
+    Assert.assertEquals("Should read UUID objects",
+        expected,
+        read(REFLECT, reflectSchema, test).get(0));
+  }
+
+  @SuppressWarnings("unchecked")
   private <D> File write(Schema schema, D... data) throws IOException {
     return write(ReflectData.get(), schema, data);
   }
 
   @SuppressWarnings("unchecked")
+  private <D> File write(Configuration conf, Schema schema, D... data) throws IOException {
+    return write(conf, ReflectData.get(), schema, data);
+  }
+
+  @SuppressWarnings("unchecked")
   private <D> File write(GenericData model, Schema schema, D... data) throws IOException {
     return AvroTestUtil.write(temp, model, schema, data);
+  }
+
+  @SuppressWarnings("unchecked")
+  private <D> File write(Configuration conf, GenericData model, Schema schema, D... data) throws IOException {
+    return AvroTestUtil.write(temp, conf, model, schema, data);
   }
 }
 
@@ -645,7 +930,7 @@ class RecordWithUUID {
       return false;
     }
     RecordWithUUID that = (RecordWithUUID) obj;
-    return this.uuid.equals(that.uuid);
+    return Objects.equals(this.uuid, that.uuid);
   }
 }
 
@@ -666,7 +951,7 @@ class RecordWithStringUUID {
       return false;
     }
     RecordWithStringUUID that = (RecordWithStringUUID) obj;
-    return this.uuid.equals(that.uuid);
+    return Objects.equals(this.uuid, that.uuid);
   }
 }
 

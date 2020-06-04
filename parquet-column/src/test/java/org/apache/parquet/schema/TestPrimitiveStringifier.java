@@ -52,6 +52,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.parquet.TestUtils;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
 
@@ -84,8 +85,7 @@ public class TestPrimitiveStringifier {
 
     assertEquals("null", stringifier.stringify(null));
     assertEquals("0x", stringifier.stringify(Binary.EMPTY));
-    assertEquals("0x0123456789ABCDEF", stringifier.stringify(Binary.fromConstantByteArray(
-        new byte[] { 0x01, 0x23, 0x45, 0x67, (byte) 0x89, (byte) 0xAB, (byte) 0xCD, (byte) 0xEF })));
+    assertEquals("0x0123456789ABCDEF", stringifier.stringify(toBinary(0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF)));
   }
 
   @Test
@@ -309,6 +309,40 @@ public class TestPrimitiveStringifier {
     checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE, Binary.class);
   }
 
+  @Test
+  public void testUUIDStringifier() {
+    PrimitiveStringifier stringifier = PrimitiveStringifier.UUID_STRINGIFIER;
+
+    assertEquals("00112233-4455-6677-8899-aabbccddeeff", stringifier.stringify(
+        toBinary(0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff)));
+    assertEquals("00000000-0000-0000-0000-000000000000", stringifier.stringify(
+        toBinary(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)));
+    assertEquals("ffffffff-ffff-ffff-ffff-ffffffffffff", stringifier.stringify(
+        toBinary(0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)));
+    assertEquals("0eb1497c-19b6-42bc-b028-b4b612bed141", stringifier.stringify(
+        toBinary(0x0e, 0xb1, 0x49, 0x7c, 0x19, 0xb6, 0x42, 0xbc, 0xb0, 0x28, 0xb4, 0xb6, 0x12, 0xbe, 0xd1, 0x41)));
+
+    // Check that the stringifier does not care about the length, it always takes the first 16 bytes
+    assertEquals("87a09cca-3b1e-4a0a-9c77-591924c3b57b", stringifier.stringify(
+        toBinary(0x87, 0xa0, 0x9c, 0xca, 0x3b, 0x1e, 0x4a, 0x0a, 0x9c, 0x77, 0x59, 0x19, 0x24, 0xc3, 0xb5, 0x7b, 0x00,
+            0x00, 0x00)));
+
+    // As there is no validation implemented, if the 16 bytes is not available, the array will be over-indexed
+    TestUtils.assertThrows("Expected exception for over-indexing", ArrayIndexOutOfBoundsException.class,
+        () -> stringifier.stringify(
+            toBinary(0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee)));
+
+    checkThrowingUnsupportedException(stringifier, Binary.class);
+  }
+
+  private Binary toBinary(int...bytes) {
+    byte[] array = new byte[bytes.length];
+    for (int i = 0; i < array.length; ++i) {
+      array[i] = (byte) bytes[i];
+    }
+    return Binary.fromConstantByteArray(array);
+  }
+
   private void checkThrowingUnsupportedException(PrimitiveStringifier stringifier, Class<?>... excludes) {
     Set<Class<?>> set = new HashSet<>(asList(excludes));
     if (!set.contains(Integer.TYPE)) {
@@ -354,5 +388,4 @@ public class TestPrimitiveStringifier {
       }
     }
   }
-
 }

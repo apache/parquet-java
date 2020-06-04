@@ -32,6 +32,7 @@ import java.nio.ByteOrder;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import javax.naming.OperationNotSupportedException;
@@ -421,4 +422,30 @@ public abstract class PrimitiveStringifier {
       }
     };
   }
+
+  static final PrimitiveStringifier UUID_STRINGIFIER = new PrimitiveStringifier("UUID_STRINGIFIER") {
+    private final char[] digit = "0123456789abcdef".toCharArray();
+    @Override
+    public String stringify(Binary value) {
+      byte[] bytes = value.getBytesUnsafe();
+      StringBuilder builder = new StringBuilder(36);
+      appendHex(bytes, 0, 4, builder);
+      builder.append('-');
+      appendHex(bytes, 4, 2, builder);
+      builder.append('-');
+      appendHex(bytes, 6, 2, builder);
+      builder.append('-');
+      appendHex(bytes, 8, 2, builder);
+      builder.append('-');
+      appendHex(bytes, 10, 6, builder);
+      return builder.toString();
+    }
+
+    private void appendHex(byte[] array, int offset, int length, StringBuilder builder) {
+      for (int i = offset, n = offset + length; i < n; ++i) {
+        int value = array[i] & 0xff;
+        builder.append(digit[value >>> 4]).append(digit[value & 0x0f]);
+      }
+    }
+  };
 }

@@ -33,6 +33,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.junit.Assert;
 import org.junit.rules.TemporaryFolder;
 
@@ -82,15 +83,17 @@ public class AvroTestUtil {
   }
 
   public static <D> List<D> read(GenericData model, Schema schema, File file) throws IOException {
+    return read(new Configuration(false), model, schema, file);
+  }
+
+  public static <D> List<D> read(Configuration conf, GenericData model, Schema schema, File file) throws IOException {
     List<D> data = new ArrayList<D>();
-    Configuration conf = new Configuration(false);
     AvroReadSupport.setRequestedProjection(conf, schema);
     AvroReadSupport.setAvroReadSchema(conf, schema);
 
     try (ParquetReader<D> fileReader = AvroParquetReader
-      .<D>builder(new Path(file.toString()))
+      .<D>builder(HadoopInputFile.fromPath(new Path(file.toString()), conf))
       .withDataModel(model) // reflect disables compatibility
-      .withConf(conf)
       .build()) {
       D datum;
       while ((datum = fileReader.read()) != null) {
@@ -103,6 +106,12 @@ public class AvroTestUtil {
 
   @SuppressWarnings("unchecked")
   public static <D> File write(TemporaryFolder temp, GenericData model, Schema schema, D... data) throws IOException {
+    return write(temp, new Configuration(false), model, schema, data);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <D> File write(TemporaryFolder temp, Configuration conf, GenericData model, Schema schema, D... data)
+      throws IOException {
     File file = temp.newFile();
     Assert.assertTrue(file.delete());
 
@@ -117,5 +126,11 @@ public class AvroTestUtil {
     }
 
     return file;
+  }
+
+  public static Configuration conf(String name, boolean value) {
+    Configuration conf = new Configuration(false);
+    conf.setBoolean(name, value);
+    return conf;
   }
 }

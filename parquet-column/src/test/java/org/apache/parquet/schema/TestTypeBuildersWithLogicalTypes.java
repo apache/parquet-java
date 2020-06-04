@@ -36,6 +36,7 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.jsonType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.uuidType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
@@ -45,6 +46,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
 
 public class TestTypeBuildersWithLogicalTypes {
   @Test
@@ -387,6 +389,18 @@ public class TestTypeBuildersWithLogicalTypes {
     Types.required(BINARY)
       .as(LogicalTypeAnnotation.decimalType(3, 4))
       .precision(5).named("aDecimal");
+  }
+
+  @Test
+  public void testUUIDLogicalType() {
+    assertEquals(
+        "required fixed_len_byte_array(16) uuid_field (UUID)",
+        Types.required(FIXED_LEN_BYTE_ARRAY).length(16).as(uuidType()).named("uuid_field").toString());
+
+    assertThrows("Should fail with invalid length", IllegalStateException.class,
+        () -> Types.required(FIXED_LEN_BYTE_ARRAY).length(10).as(uuidType()).named("uuid_field").toString());
+    assertThrows("Should fail with invalid type", IllegalStateException.class,
+        () -> Types.required(BINARY).as(uuidType()).named("uuid_field").toString());
   }
 
   /**

@@ -95,6 +95,7 @@ import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.format.Statistics;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
+import org.apache.parquet.format.UUIDType;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -107,6 +108,8 @@ import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
+import org.apache.parquet.schema.LogicalTypeAnnotation.LogicalTypeAnnotationVisitor;
+import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
@@ -450,6 +453,11 @@ public class ParquetMetadataConverter {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
       return of(LogicalType.BSON(new BsonType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(UUIDLogicalTypeAnnotation uuidLogicalType) {
+      return of(LogicalType.UUID(new UUIDType()));
     }
 
     @Override
@@ -838,6 +846,11 @@ public class ParquetMetadataConverter {
         }
 
         @Override
+        public Optional<SortOrder> visit(UUIDLogicalTypeAnnotation uuidLogicalType) {
+          return of(SortOrder.UNSIGNED);
+        }
+
+        @Override
         public Optional<SortOrder> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
           return of(SortOrder.UNSIGNED);
         }
@@ -1013,6 +1026,8 @@ public class ParquetMetadataConverter {
       case TIMESTAMP:
         TimestampType timestamp = type.getTIMESTAMP();
         return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
+      case UUID:
+        return LogicalTypeAnnotation.uuidType();
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
