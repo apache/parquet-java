@@ -125,6 +125,7 @@ public class TestEncryptionOptions {
   @Rule
   public ErrorCollector errorCollector = new ErrorCollector();
 
+private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data";
   private static final byte[] FOOTER_ENCRYPTION_KEY = "0123456789012345".getBytes();
   private static final byte[] COLUMN_ENCRYPTION_KEY1 = "1234567890123450".getBytes();
   private static final byte[] COLUMN_ENCRYPTION_KEY2 = "1234567890123451".getBytes();
@@ -194,7 +195,7 @@ public class TestEncryptionOptions {
 
   @Test
   public void testInteropReadEncryptedParquetFiles() throws IOException {
-    Path rootPath = new Path("submodules/parquet-testing/data");
+    Path rootPath = new Path(PARQUET_TESTING_PATH);
     LOG.info("======== testInteropReadEncryptedParquetFiles {} ========", rootPath.toString());
     byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
     // This array will hold various decryption configurations.
