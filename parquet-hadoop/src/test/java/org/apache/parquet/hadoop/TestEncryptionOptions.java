@@ -133,6 +133,21 @@ public class TestEncryptionOptions {
   @Rule
   public ErrorCollector errorCollector = new ErrorCollector();
 
+  private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data";
+  private static final int RANDOM_SEED = 42;
+  private static final int FIXED_LENGTH = 10;
+  private static final Random RANDOM = new Random(RANDOM_SEED);
+  private static final RandomValues.IntGenerator intGenerator
+    = new RandomValues.IntGenerator(RANDOM_SEED);
+  private static final RandomValues.FloatGenerator floatGenerator
+    = new RandomValues.FloatGenerator(RANDOM_SEED);
+  private static final RandomValues.DoubleGenerator doubleGenerator
+    = new RandomValues.DoubleGenerator(RANDOM_SEED);
+  private static final RandomValues.BinaryGenerator binaryGenerator
+    = new RandomValues.BinaryGenerator(RANDOM_SEED);
+  private static final RandomValues.FixedGenerator fixedBinaryGenerator
+    = new RandomValues.FixedGenerator(RANDOM_SEED, FIXED_LENGTH);
+
   private static final byte[] FOOTER_ENCRYPTION_KEY = "0123456789012345".getBytes();
   private static final byte[][] COLUMN_ENCRYPTION_KEYS = { "1234567890123450".getBytes(),
     "1234567890123451".getBytes(), "1234567890123452".getBytes(), "1234567890123453".getBytes(),
