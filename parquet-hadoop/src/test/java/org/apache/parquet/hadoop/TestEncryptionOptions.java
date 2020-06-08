@@ -22,19 +22,21 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.ColumnDecryptionProperties;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
+import org.apache.parquet.crypto.DecryptionKeyRetrieverMock;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
-import org.apache.parquet.crypto.DecryptionKeyRetriever;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
-import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
+import org.apache.parquet.statistics.RandomValues;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ErrorCollector;
@@ -42,19 +44,25 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
-import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
 /*
  * This file contains samples for writing and reading encrypted Parquet files in different
@@ -82,24 +90,24 @@ import static org.mockito.Mockito.when;
  * here:
  * https://github.com/apache/parquet-format/blob/encryption/Encryption.md
  *
- * The write sample creates files with eight columns in the following
+ * The write sample creates files with seven columns in the following
  * encryption configurations:
  *
  *  UNIFORM_ENCRYPTION:             Encrypt all columns and the footer with the same key.
  *                                  (uniform encryption)
- *  ENCRYPT_COLUMNS_AND_FOOTER:     Encrypt two columns and the footer, with different
+ *  ENCRYPT_COLUMNS_AND_FOOTER:     Encrypt six columns and the footer, with different
  *                                  keys.
- *  ENCRYPT_COLUMNS_PLAINTEXT_FOOTER: Encrypt two columns, with different keys.
+ *  ENCRYPT_COLUMNS_PLAINTEXT_FOOTER: Encrypt six columns, with different keys.
  *                                  Do not encrypt footer (to enable legacy readers)
  *                                  - plaintext footer mode.
- *  ENCRYPT_COLUMNS_AND_FOOTER_AAD: Encrypt two columns and the footer, with different
+ *  ENCRYPT_COLUMNS_AND_FOOTER_AAD: Encrypt six columns and the footer, with different
  *                                  keys. Supply aad_prefix for file identity
  *                                  verification.
- *  ENCRYPT_COLUMNS_AND_FOOTER_DISABLE_AAD_STORAGE:   Encrypt two columns and the footer,
+ *  ENCRYPT_COLUMNS_AND_FOOTER_DISABLE_AAD_STORAGE:   Encrypt six columns and the footer,
  *                                  with different keys. Supply aad_prefix, and call
  *                                  disable_aad_prefix_storage to prevent file
  *                                  identity storage in file metadata.
- *  ENCRYPT_COLUMNS_AND_FOOTER_CTR: Encrypt two columns and the footer, with different
+ *  ENCRYPT_COLUMNS_AND_FOOTER_CTR: Encrypt six columns and the footer, with different
  *                                  keys. Use the alternative (AES_GCM_CTR_V1) algorithm.
  *  NO_ENCRYPTION:                  Do not encrypt anything
  *
@@ -108,9 +116,9 @@ import static org.mockito.Mockito.when;
  * encrypted files in the input directory:
  *
  *  DECRYPT_WITH_KEY_RETRIEVER:     Decrypt using key retriever that holds the keys of
- *                                  two encrypted columns and the footer key.
+ *                                  the encrypted columns and the footer key.
  *  DECRYPT_WITH_KEY_RETRIEVER_AAD: Decrypt using key retriever that holds the keys of
- *                                  two encrypted columns and the footer key. Supplies
+ *                                  the encrypted columns and the footer key. Supplies
  *                                  aad_prefix to verify file identity.
  *  DECRYPT_WITH_EXPLICIT_KEYS:     Decrypt using explicit column and footer keys
  *                                  (instead of key retrieval callback).
@@ -125,57 +133,110 @@ public class TestEncryptionOptions {
   @Rule
   public ErrorCollector errorCollector = new ErrorCollector();
 
-private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data";
   private static final byte[] FOOTER_ENCRYPTION_KEY = "0123456789012345".getBytes();
-  private static final byte[] COLUMN_ENCRYPTION_KEY1 = "1234567890123450".getBytes();
-  private static final byte[] COLUMN_ENCRYPTION_KEY2 = "1234567890123451".getBytes();
+  private static final byte[][] COLUMN_ENCRYPTION_KEYS = { "1234567890123450".getBytes(),
+    "1234567890123451".getBytes(), "1234567890123452".getBytes(), "1234567890123453".getBytes(),
+    "1234567890123454".getBytes(), "1234567890123455".getBytes()};
+  private static final String[] COLUMN_ENCRYPTION_KEY_IDS = { "kc1", "kc2", "kc3", "kc4", "kc5", "kc6"};
   private static final String FOOTER_ENCRYPTION_KEY_ID = "kf";
-  private static final String COLUMN_ENCRYPTION_KEY1_ID = "kc1";
-  private static final String COLUMN_ENCRYPTION_KEY2_ID = "kc2";
   private static final String AAD_PREFIX_STRING = "tester";
   private static final String BOOLEAN_FIELD_NAME = "boolean_field";
   private static final String INT32_FIELD_NAME = "int32_field";
   private static final String FLOAT_FIELD_NAME = "float_field";
   private static final String DOUBLE_FIELD_NAME = "double_field";
+  private static final String BINARY_FIELD_NAME = "ba_field";
+  private static final String FIXED_LENGTH_BINARY_FIELD_NAME = "flba_field";
+  private static final String PLAINTEXT_INT32_FIELD_NAME = "plain_int32_field";
+
+  private static final byte[] footerKeyMetadata = FOOTER_ENCRYPTION_KEY_ID.getBytes(StandardCharsets.UTF_8);
+  private static final byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
+
+  private static final int ROW_COUNT = 10000;
+  private static final List<SingleRow> DATA = Collections.unmodifiableList(generateRandomData(ROW_COUNT));
+  private static final List<SingleRow> LINEAR_DATA = Collections.unmodifiableList(generateLinearData(250));
+
+  private static final MessageType SCHEMA =
+    new MessageType("schema",
+      new PrimitiveType(REQUIRED, BOOLEAN, BOOLEAN_FIELD_NAME),
+      new PrimitiveType(REQUIRED, INT32, INT32_FIELD_NAME),
+      new PrimitiveType(REQUIRED, FLOAT, FLOAT_FIELD_NAME),
+      new PrimitiveType(REQUIRED, DOUBLE, DOUBLE_FIELD_NAME),
+      new PrimitiveType(OPTIONAL, BINARY, BINARY_FIELD_NAME),
+      Types.required(FIXED_LEN_BYTE_ARRAY).length(FIXED_LENGTH).named(FIXED_LENGTH_BINARY_FIELD_NAME),
+      new PrimitiveType(OPTIONAL, INT32, PLAINTEXT_INT32_FIELD_NAME));
+
+  private static final DecryptionKeyRetrieverMock decryptionKeyRetrieverMock = new DecryptionKeyRetrieverMock()
+    .putKey(FOOTER_ENCRYPTION_KEY_ID, FOOTER_ENCRYPTION_KEY)
+    .putKey(COLUMN_ENCRYPTION_KEY_IDS[0], COLUMN_ENCRYPTION_KEYS[0])
+    .putKey(COLUMN_ENCRYPTION_KEY_IDS[1], COLUMN_ENCRYPTION_KEYS[1])
+    .putKey(COLUMN_ENCRYPTION_KEY_IDS[2], COLUMN_ENCRYPTION_KEYS[2])
+    .putKey(COLUMN_ENCRYPTION_KEY_IDS[3], COLUMN_ENCRYPTION_KEYS[3])
+    .putKey(COLUMN_ENCRYPTION_KEY_IDS[4], COLUMN_ENCRYPTION_KEYS[4])
+    .putKey(COLUMN_ENCRYPTION_KEY_IDS[5], COLUMN_ENCRYPTION_KEYS[5]);
 
   public enum EncryptionConfiguration {
-    UNIFORM_ENCRYPTION("UNIFORM_ENCRYPTION"),
-    ENCRYPT_COLUMNS_AND_FOOTER("ENCRYPT_COLUMNS_AND_FOOTER"),
-    ENCRYPT_COLUMNS_PLAINTEXT_FOOTER("ENCRYPT_COLUMNS_PLAINTEXT_FOOTER"),
-    ENCRYPT_COLUMNS_AND_FOOTER_AAD("ENCRYPT_COLUMNS_AND_FOOTER_AAD"),
-    ENCRYPT_COLUMNS_AND_FOOTER_DISABLE_AAD_STORAGE("ENCRYPT_COLUMNS_AND_FOOTER_DISABLE_AAD_STORAGE"),
-    ENCRYPT_COLUMNS_AND_FOOTER_CTR("ENCRYPT_COLUMNS_AND_FOOTER_CTR"),
-    NO_ENCRYPTION("NO_ENCRYPTION");
+    UNIFORM_ENCRYPTION {
+      public FileEncryptionProperties getEncryptionProperties() {
+        return getUniformEncryptionEncryptionProperties();
+      }
+    },
+    ENCRYPT_COLUMNS_AND_FOOTER {
+      public FileEncryptionProperties getEncryptionProperties() {
+        return getEncryptColumnsAndFooterEncryptionProperties();
+      }
+    },
+    ENCRYPT_COLUMNS_PLAINTEXT_FOOTER {
+      public FileEncryptionProperties getEncryptionProperties() {
+        return getPlaintextFooterEncryptionProperties();
+      }
+    },
+    ENCRYPT_COLUMNS_AND_FOOTER_AAD {
+      public FileEncryptionProperties getEncryptionProperties() {
+        return getEncryptWithAADEncryptionProperties();
+      }
+    },
+    ENCRYPT_COLUMNS_AND_FOOTER_DISABLE_AAD_STORAGE {
+      public FileEncryptionProperties getEncryptionProperties() {
+        return getDisableAADStorageEncryptionProperties();
+      }
+    },
+    ENCRYPT_COLUMNS_AND_FOOTER_CTR {
+      public FileEncryptionProperties getEncryptionProperties() {
+        return getCTREncryptionProperties();
+      }
+    },
+    NO_ENCRYPTION {
+      public FileEncryptionProperties getEncryptionProperties() {
+        return null;
+      }
+    };
 
-    private final String configurationName;
-
-    EncryptionConfiguration(String configurationName) {
-      this.configurationName = configurationName;
-    }
-
-    @Override
-    public String toString() {
-      return configurationName;
-    }
+    abstract public FileEncryptionProperties getEncryptionProperties();
   }
 
-
   public enum DecryptionConfiguration {
-    DECRYPT_WITH_KEY_RETRIEVER("DECRYPT_WITH_KEY_RETRIEVER"),
-    DECRYPT_WITH_KEY_RETRIEVER_AAD("DECRYPT_WITH_KEY_RETRIEVER_AAD"),
-    DECRYPT_WITH_EXPLICIT_KEYS("DECRYPT_WITH_EXPLICIT_KEYS"),
-    NO_DECRYPTION("NO_DECRYPTION");
+    DECRYPT_WITH_KEY_RETRIEVER {
+      public FileDecryptionProperties getDecryptionProperties() {
+        return getKeyRetrieverDecryptionProperties();
+      }
+    },
+    DECRYPT_WITH_KEY_RETRIEVER_AAD {
+      public FileDecryptionProperties getDecryptionProperties() {
+        return getKeyRetrieverAADDecryptionProperties();
+      }
+    },
+    DECRYPT_WITH_EXPLICIT_KEYS {
+      public FileDecryptionProperties getDecryptionProperties() {
+        return getExplicitKeysDecryptionProperties();
+      }
+    },
+    NO_DECRYPTION {
+      public FileDecryptionProperties getDecryptionProperties() {
+        return null;
+      }
+    };
 
-    private final String configurationName;
-
-    DecryptionConfiguration(String configurationName) {
-      this.configurationName = configurationName;
-    }
-
-    @Override
-    public String toString() {
-      return configurationName;
-    }
+    abstract public FileDecryptionProperties getDecryptionProperties();
   }
 
   @Test
@@ -183,14 +244,10 @@ private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data
     Path rootPath = new Path(temporaryFolder.getRoot().getPath());
     LOG.info("======== testWriteReadEncryptedParquetFiles {} ========", rootPath.toString());
     byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
-    // This array will hold various encryption configuraions.
-    Map<EncryptionConfiguration, FileEncryptionProperties> encryptionPropertiesMap =
-      getEncryptionConfigurations(AADPrefix);
-    testWriteEncryptedParquetFiles(rootPath, encryptionPropertiesMap);
-    // This array will hold various decryption configurations.
-    Map<DecryptionConfiguration, FileDecryptionProperties> decryptionPropertiesMap =
-      getDecryptionConfigurations(AADPrefix);
-    testReadEncryptedParquetFiles(rootPath, decryptionPropertiesMap);
+    // Write using various encryption configuraions
+    testWriteEncryptedParquetFiles(rootPath, DATA);
+    // Read using various decryption configurations.
+    testReadEncryptedParquetFiles(rootPath, DATA);
   }
 
   @Test
@@ -198,78 +255,200 @@ private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data
     Path rootPath = new Path(PARQUET_TESTING_PATH);
     LOG.info("======== testInteropReadEncryptedParquetFiles {} ========", rootPath.toString());
     byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
-    // This array will hold various decryption configurations.
-    Map<DecryptionConfiguration, FileDecryptionProperties> decryptionPropertiesMap =
-      getDecryptionConfigurations(AADPrefix);
-    testReadEncryptedParquetFiles(rootPath, decryptionPropertiesMap);
+    // Read using various decryption configurations.
+    testInteropReadEncryptedParquetFiles(rootPath, true/*readOnlyEncrypted*/, LINEAR_DATA);
   }
 
-  private void testWriteEncryptedParquetFiles(Path root, Map<EncryptionConfiguration, FileEncryptionProperties> encryptionPropertiesMap) throws IOException {
-    Configuration conf = new Configuration();
-    int numberOfEncryptionModes = encryptionPropertiesMap.size();
+  private static List<SingleRow> generateRandomData(int rowCount) {
+    List<SingleRow> dataList = new ArrayList<>(rowCount);
+    for (int row = 0; row < rowCount; ++row) {
+      SingleRow newRow = new SingleRow(RANDOM.nextBoolean(),
+        intGenerator.nextValue(),  floatGenerator.nextValue(),
+        doubleGenerator.nextValue(), binaryGenerator.nextValue().getBytes(),
+        fixedBinaryGenerator.nextValue().getBytes(), intGenerator.nextValue());
+      dataList.add(newRow);
+    }
+    return dataList;
+  }
 
-    MessageType schema = parseMessageType(
-      "message test { "
-        + "required boolean " + BOOLEAN_FIELD_NAME + "; "
-        + "required int32 " + INT32_FIELD_NAME + "; "
-        + "required float " + FLOAT_FIELD_NAME + "; "
-        + "required double " + DOUBLE_FIELD_NAME + "; "
-        + "} ");
+  private static List<SingleRow> generateLinearData(int rowCount) {
+    List<SingleRow> dataList = new ArrayList<>(rowCount);
+    String baseStr = "parquet";
+    for (int row = 0; row < rowCount; ++row) {
+      boolean boolean_val = ((row % 2) == 0) ? true : false;
+      float float_val = (float) row * 1.1f;
+      double double_val = (row * 1.1111111);
 
-    GroupWriteSupport.setSchema(schema, conf);
-    SimpleGroupFactory f = new SimpleGroupFactory(schema);
-
-
-    for (Map.Entry<EncryptionConfiguration, FileEncryptionProperties> encryptionConfigurationEntry : encryptionPropertiesMap.entrySet()) {
-      EncryptionConfiguration encryptionConfiguration = encryptionConfigurationEntry.getKey();
-      Path file = new Path(root, encryptionConfiguration.toString() + ".parquet.encrypted");
-
-      LOG.info("\nWrite " + file.toString());
-      ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
-        .withWriteMode(OVERWRITE)
-        .withType(schema)
-        .withEncryption(encryptionConfigurationEntry.getValue())
-        .build();
-
-      for (int i = 0; i < 100; i++) {
-        boolean expect = false;
-        if ((i % 2) == 0)
-          expect = true;
-        float float_val = (float) i * 1.1f;
-        double double_val = (i * 1.1111111);
-
-        writer.write(
-          f.newGroup()
-            .append(BOOLEAN_FIELD_NAME, expect)
-            .append(INT32_FIELD_NAME, i)
-            .append(FLOAT_FIELD_NAME, float_val)
-            .append(DOUBLE_FIELD_NAME, double_val));
-
+      byte[] binary_val = null;
+      if ((row % 2) == 0) {
+        char firstChar = (char) ((int) '0' + row / 100);
+        char secondChar = (char) ((int) '0' + (row / 10) % 10);
+        char thirdChar = (char) ((int) '0' + row % 10);
+        binary_val = (baseStr + firstChar + secondChar + thirdChar).getBytes(StandardCharsets.UTF_8);
       }
-      writer.close();
+      char[] fixed = new char[FIXED_LENGTH];
+      char[] aChar = Character.toChars(row);
+      Arrays.fill(fixed, aChar[0]);
+
+      SingleRow newRow = new SingleRow(boolean_val,
+        row, float_val, double_val,
+        binary_val, new String(fixed).getBytes(StandardCharsets.UTF_8), null/*plaintext_int32_field*/);
+      dataList.add(newRow);
+    }
+    return dataList;
+  }
+
+  public static class SingleRow {
+    public final boolean boolean_field;
+    public final int int32_field;
+    public final float float_field;
+    public final double double_field;
+    public final byte[] ba_field;
+    public final byte[] flba_field;
+    public final Integer plaintext_int32_field; // Can be null, since it doesn't exist in C++-created files yet.
+
+    public SingleRow(boolean boolean_field,
+                     int int32_field,
+                     float float_field,
+                     double double_field,
+                     byte[] ba_field,
+                     byte[] flba_field,
+                     Integer plaintext_int32_field) {
+      this.boolean_field = boolean_field;
+      this.int32_field = int32_field;
+      this.float_field = float_field;
+      this.double_field = double_field;
+      this.ba_field = ba_field;
+      this.flba_field = flba_field;
+      this.plaintext_int32_field = plaintext_int32_field;
     }
   }
 
-  private void testReadEncryptedParquetFiles(Path root, Map<DecryptionConfiguration, FileDecryptionProperties> decryptionPropertiesMap) throws IOException {
+  private void testWriteEncryptedParquetFiles(Path root, List<SingleRow> data) throws IOException {
     Configuration conf = new Configuration();
 
-    for (Map.Entry<DecryptionConfiguration, FileDecryptionProperties> decryptionConfigurationEntry : decryptionPropertiesMap.entrySet()) {
-      DecryptionConfiguration decryptionConfiguration = decryptionConfigurationEntry.getKey();
-      LOG.info("==> Decryption configuration {}", decryptionConfiguration);
-      FileDecryptionProperties fileDecryptionProperties = decryptionConfigurationEntry.getValue();
+    int pageSize = data.size() / 10;     // Ensure that several pages will be created
+    int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
 
-      File folder = new File(root.toString());
-      File[] listOfFiles = folder.listFiles();
+    SimpleGroupFactory f = new SimpleGroupFactory(SCHEMA);
 
-      for (int fileNum = 0; fileNum < listOfFiles.length; fileNum++) {
-        Path file = new Path(listOfFiles[fileNum].getAbsolutePath());
-        if (!file.getName().endsWith("parquet.encrypted")) { // Skip non encrypted files
+    EncryptionConfiguration[] encryptionConfigurations = EncryptionConfiguration.values();
+    for (EncryptionConfiguration encryptionConfiguration : encryptionConfigurations) {
+      Path file = new Path(root, getFileName(encryptionConfiguration));
+      FileEncryptionProperties encryptionProperties = encryptionConfiguration.getEncryptionProperties();
+      LOG.info("\nWrite " + file.toString());
+      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
+        .withWriteMode(OVERWRITE)
+        .withRowGroupSize(rowGroupSize)
+        .withPageSize(pageSize)
+        .withType(SCHEMA)
+        .withConf(conf)
+        .withEncryption(encryptionProperties)
+        .build()) {
+
+        for (SingleRow singleRow : data) {
+          writer.write(
+            f.newGroup()
+              .append(BOOLEAN_FIELD_NAME, singleRow.boolean_field)
+              .append(INT32_FIELD_NAME, singleRow.int32_field)
+              .append(FLOAT_FIELD_NAME, singleRow.float_field)
+              .append(DOUBLE_FIELD_NAME, singleRow.double_field)
+              .append(BINARY_FIELD_NAME, Binary.fromConstantByteArray(singleRow.ba_field))
+              .append(FIXED_LENGTH_BINARY_FIELD_NAME, Binary.fromConstantByteArray(singleRow.flba_field))
+              .append(PLAINTEXT_INT32_FIELD_NAME, singleRow.plaintext_int32_field));
+
+        }
+      }
+    }
+  }
+
+  private String getFileName(EncryptionConfiguration encryptionConfiguration) {
+    return encryptionConfiguration.toString().toLowerCase() + ".parquet.encrypted";
+  }
+
+  private void testReadEncryptedParquetFiles(Path root, List<SingleRow> data) {
+    Configuration conf = new Configuration();
+    DecryptionConfiguration[] decryptionConfigurations = DecryptionConfiguration.values();
+    for (DecryptionConfiguration decryptionConfiguration : decryptionConfigurations) {
+      EncryptionConfiguration[] encryptionConfigurations = EncryptionConfiguration.values();
+      for (EncryptionConfiguration encryptionConfiguration : encryptionConfigurations) {
+        Path file = new Path(root, getFileName(encryptionConfiguration));
+        LOG.info("==> Decryption configuration {}", decryptionConfiguration);
+        FileDecryptionProperties fileDecryptionProperties = decryptionConfiguration.getDecryptionProperties();
+
+        LOG.info("--> Read file {} {}", file.toString(), encryptionConfiguration);
+
+        // Read only the non-encrypted columns
+        if ((decryptionConfiguration == DecryptionConfiguration.NO_DECRYPTION) &&
+          (encryptionConfiguration == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER)) {
+          conf.set("parquet.read.schema", Types.buildMessage()
+            .optional(INT32).named(PLAINTEXT_INT32_FIELD_NAME)
+            .named("FormatTestObject").toString());
+        }
+
+        int rowNum = 0;
+        try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
+          .withConf(conf)
+          .withDecryption(fileDecryptionProperties)
+          .build()) {
+          for (Group group = reader.read(); group != null; group = reader.read()) {
+            SingleRow rowExpected = data.get(rowNum++);
+            // plaintext columns
+            if ((null != rowExpected.plaintext_int32_field) &&
+              rowExpected.plaintext_int32_field != group.getInteger(PLAINTEXT_INT32_FIELD_NAME, 0)) {
+              addErrorToErrorCollectorAndLog("Wrong int", encryptionConfiguration, decryptionConfiguration);
+            }
+            // encrypted columns
+            if (decryptionConfiguration != DecryptionConfiguration.NO_DECRYPTION) {
+              if (rowExpected.boolean_field != group.getBoolean(BOOLEAN_FIELD_NAME, 0)) {
+                addErrorToErrorCollectorAndLog("Wrong bool", encryptionConfiguration, decryptionConfiguration);
+              }
+              if (rowExpected.int32_field != group.getInteger(INT32_FIELD_NAME, 0)) {
+                addErrorToErrorCollectorAndLog("Wrong int", encryptionConfiguration, decryptionConfiguration);
+              }
+              if (rowExpected.float_field != group.getFloat(FLOAT_FIELD_NAME, 0)) {
+                addErrorToErrorCollectorAndLog("Wrong float", encryptionConfiguration, decryptionConfiguration);
+              }
+              if (rowExpected.double_field != group.getDouble(DOUBLE_FIELD_NAME, 0)) {
+                addErrorToErrorCollectorAndLog("Wrong double", encryptionConfiguration, decryptionConfiguration);
+              }
+              if ((null != rowExpected.ba_field) &&
+                !Arrays.equals(rowExpected.ba_field, group.getBinary(BINARY_FIELD_NAME, 0).getBytes())) {
+                addErrorToErrorCollectorAndLog("Wrong byte array", encryptionConfiguration, decryptionConfiguration);
+              }
+              if (!Arrays.equals(rowExpected.flba_field,
+                group.getBinary(FIXED_LENGTH_BINARY_FIELD_NAME, 0).getBytes())) {
+                addErrorToErrorCollectorAndLog("Wrong fixed-length byte array",
+                  encryptionConfiguration, decryptionConfiguration);
+              }
+            }
+          }
+        } catch (ParquetCryptoRuntimeException e) {
+          String errorMessage = e.getMessage();
+          checkResult(file.getName(), decryptionConfiguration, (null == errorMessage ? e.toString() : errorMessage));
+        } catch (Exception e) {
+          addErrorToErrorCollectorAndLog(
+            "Unexpected exception: " + e.getClass().getName() + " with message: " + e.getMessage(),
+            encryptionConfiguration, decryptionConfiguration);
+        }
+        conf.unset("parquet.read.schema");
+      }
+    }
+  }
+
+  private void testInteropReadEncryptedParquetFiles(Path root, boolean readOnlyEncrypted, List<SingleRow> data) throws IOException {
+    Configuration conf = new Configuration();
+    DecryptionConfiguration[] decryptionConfigurations = DecryptionConfiguration.values();
+    for (DecryptionConfiguration decryptionConfiguration : decryptionConfigurations) {
+      EncryptionConfiguration[] encryptionConfigurations = EncryptionConfiguration.values();
+      for (EncryptionConfiguration encryptionConfiguration : encryptionConfigurations) {
+        if (readOnlyEncrypted && (EncryptionConfiguration.NO_ENCRYPTION == encryptionConfiguration)) {
           continue;
         }
-        EncryptionConfiguration encryptionConfiguration = getEncryptionConfigurationFromFilename(file.getName());
-        if (null == encryptionConfiguration) {
-          continue;
-        }
+        Path file = new Path(root, getFileName(encryptionConfiguration));
+        LOG.info("==> Decryption configuration {}", decryptionConfiguration);
+        FileDecryptionProperties fileDecryptionProperties = decryptionConfiguration.getDecryptionProperties();
+
         LOG.info("--> Read file {} {}", file.toString(), encryptionConfiguration);
 
         // Read only the non-encrypted columns
@@ -281,39 +460,37 @@ private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data
             .named("FormatTestObject").toString());
         }
 
-        ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
+        int rowNum = 0;
+        try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
           .withConf(conf)
           .withDecryption(fileDecryptionProperties)
-          .build();
-
-        try {
-          for (int i = 0; i < 500; i++) {
-            Group group = null;
-            group = reader.read();
-            boolean expect = false;
-            if ((i % 2) == 0)
-              expect = true;
-            boolean bool_res = group.getBoolean(BOOLEAN_FIELD_NAME, 0);
-            if (bool_res != expect)
+          .build()) {
+          for (Group group = reader.read(); group != null; group = reader.read()) {
+            SingleRow rowExpected = data.get(rowNum++);
+            // plaintext columns
+            if (rowExpected.boolean_field != group.getBoolean(BOOLEAN_FIELD_NAME, 0)) {
               addErrorToErrorCollectorAndLog("Wrong bool", encryptionConfiguration, decryptionConfiguration);
-            int int_res = group.getInteger(INT32_FIELD_NAME, 0);
-            if (int_res != i)
+            }
+            if (rowExpected.int32_field != group.getInteger(INT32_FIELD_NAME, 0)) {
               addErrorToErrorCollectorAndLog("Wrong int", encryptionConfiguration, decryptionConfiguration);
+            }
+            // encrypted columns
             if (decryptionConfiguration != DecryptionConfiguration.NO_DECRYPTION) {
-              float float_res = group.getFloat(FLOAT_FIELD_NAME, 0);
-              float tmp1 = (float) i * 1.1f;
-              if (float_res != tmp1)
+              if (rowExpected.float_field != group.getFloat(FLOAT_FIELD_NAME, 0)) {
                 addErrorToErrorCollectorAndLog("Wrong float", encryptionConfiguration, decryptionConfiguration);
-
-              double double_res = group.getDouble(DOUBLE_FIELD_NAME, 0);
-              double tmp = (i * 1.1111111);
-              if (double_res != tmp)
+              }
+              if (rowExpected.double_field != group.getDouble(DOUBLE_FIELD_NAME, 0)) {
                 addErrorToErrorCollectorAndLog("Wrong double", encryptionConfiguration, decryptionConfiguration);
+              }
             }
           }
-        } catch (Exception e) {
+        } catch (ParquetCryptoRuntimeException e) {
           String errorMessage = e.getMessage();
-          checkResult(file.getName(), decryptionConfiguration, (null == errorMessage ? "" : errorMessage));
+          checkResult(file.getName(), decryptionConfiguration, (null == errorMessage ? e.toString() : errorMessage));
+        } catch (Exception e) {
+          addErrorToErrorCollectorAndLog(
+            "Unexpected exception: " + e.getClass().getName() + " with message: " + e.getMessage(),
+            encryptionConfiguration, decryptionConfiguration);
         }
         conf.unset("parquet.read.schema");
       }
@@ -322,241 +499,8 @@ private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data
 
 
   /**
-   * Create a number of Encryption configurations
-   * @param AADPrefix
-   * @return
+   * Check that the decryption result is as expected.
    */
-  private Map<EncryptionConfiguration, FileEncryptionProperties> getEncryptionConfigurations(byte[] AADPrefix) {
-    EncryptionConfiguration[] encryptionConfigurations = EncryptionConfiguration.values();
-    Map<EncryptionConfiguration, FileEncryptionProperties> encryptionPropertiesMap = new HashMap<>(encryptionConfigurations.length);
-
-    String footerKeyName = FOOTER_ENCRYPTION_KEY_ID;
-    byte[] footerKeyMetadata = footerKeyName.getBytes(StandardCharsets.UTF_8);
-
-    for (int i = 0; i < encryptionConfigurations.length; ++i) {
-      EncryptionConfiguration encryptionConfiguration = encryptionConfigurations[i];
-      switch (encryptionConfiguration) {
-        case UNIFORM_ENCRYPTION:
-          // Encryption configuration 1: Encrypt all columns and the footer with the same key.
-          // (uniform encryption)
-
-          // Add to list of encryption configurations.
-          encryptionPropertiesMap.put(EncryptionConfiguration.UNIFORM_ENCRYPTION,
-            FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-              .withFooterKeyMetadata(footerKeyMetadata).build());
-
-          break;
-        case ENCRYPT_COLUMNS_AND_FOOTER:
-          // Encryption configuration 2: Encrypt two columns and the footer, with different keys.
-          ColumnEncryptionProperties columnProperties20 = ColumnEncryptionProperties
-            .builder(DOUBLE_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY1)
-            .withKeyID(COLUMN_ENCRYPTION_KEY1_ID)
-            .build();
-
-          ColumnEncryptionProperties columnProperties21 = ColumnEncryptionProperties
-            .builder(FLOAT_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY2)
-            .withKeyID(COLUMN_ENCRYPTION_KEY2_ID)
-            .build();
-          Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap2 = new HashMap<>();
-
-          columnPropertiesMap2.put(columnProperties20.getPath(), columnProperties20);
-          columnPropertiesMap2.put(columnProperties21.getPath(), columnProperties21);
-
-          encryptionPropertiesMap.put(EncryptionConfiguration.ENCRYPT_COLUMNS_AND_FOOTER,
-            FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-              .withFooterKeyMetadata(footerKeyMetadata)
-              .withEncryptedColumns(columnPropertiesMap2)
-              .build());
-          break;
-
-        case ENCRYPT_COLUMNS_PLAINTEXT_FOOTER:
-          // Encryption configuration 3: Encrypt two columns, with different keys.
-          // Don't encrypt footer.
-          // (plaintext footer mode, readable by legacy readers)
-          Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap3 = new HashMap<>();
-          ColumnEncryptionProperties columnProperties30 = ColumnEncryptionProperties
-            .builder(DOUBLE_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY1)
-            .withKeyID(COLUMN_ENCRYPTION_KEY1_ID)
-            .build();
-
-          ColumnEncryptionProperties columnProperties31 = ColumnEncryptionProperties
-            .builder(FLOAT_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY2)
-            .withKeyID(COLUMN_ENCRYPTION_KEY2_ID)
-            .build();
-          columnPropertiesMap3.put(columnProperties30.getPath(), columnProperties30);
-          columnPropertiesMap3.put(columnProperties31.getPath(), columnProperties31);
-
-          encryptionPropertiesMap.put(EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER,
-            FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-              .withFooterKeyMetadata(footerKeyMetadata)
-              .withEncryptedColumns(columnPropertiesMap3)
-              .withPlaintextFooter()
-              .build());
-          break;
-
-        case ENCRYPT_COLUMNS_AND_FOOTER_AAD:
-          // Encryption configuration 4: Encrypt two columns and the footer, with different keys.
-          // Use aad_prefix.
-          Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap4 = new HashMap<>();
-          ColumnEncryptionProperties columnProperties40 = ColumnEncryptionProperties
-            .builder(DOUBLE_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY1)
-            .withKeyID(COLUMN_ENCRYPTION_KEY1_ID)
-            .build();
-
-          ColumnEncryptionProperties columnProperties41 = ColumnEncryptionProperties
-            .builder(FLOAT_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY2)
-            .withKeyID(COLUMN_ENCRYPTION_KEY2_ID)
-            .build();
-          columnPropertiesMap4.put(columnProperties40.getPath(), columnProperties40);
-          columnPropertiesMap4.put(columnProperties41.getPath(), columnProperties41);
-
-          encryptionPropertiesMap.put(EncryptionConfiguration.ENCRYPT_COLUMNS_AND_FOOTER_AAD,
-            FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-              .withFooterKeyMetadata(footerKeyMetadata)
-              .withEncryptedColumns(columnPropertiesMap4)
-              .withAADPrefix(AADPrefix)
-              .build());
-          break;
-
-        case ENCRYPT_COLUMNS_AND_FOOTER_DISABLE_AAD_STORAGE:
-          // Encryption configuration 5: Encrypt two columns and the footer, with different keys.
-          // Use aad_prefix and disable_aad_prefix_storage.
-          Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap5 = new HashMap<>();
-          ColumnEncryptionProperties columnProperties50 = ColumnEncryptionProperties
-            .builder(DOUBLE_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY1)
-            .withKeyID(COLUMN_ENCRYPTION_KEY1_ID)
-            .build();
-
-          ColumnEncryptionProperties columnProperties51 = ColumnEncryptionProperties
-            .builder(FLOAT_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY2)
-            .withKeyID(COLUMN_ENCRYPTION_KEY2_ID)
-            .build();
-          columnPropertiesMap5.put(columnProperties50.getPath(), columnProperties50);
-          columnPropertiesMap5.put(columnProperties51.getPath(), columnProperties51);
-
-          encryptionPropertiesMap.put(EncryptionConfiguration.ENCRYPT_COLUMNS_AND_FOOTER_DISABLE_AAD_STORAGE,
-            FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-              .withFooterKeyMetadata(footerKeyMetadata)
-              .withEncryptedColumns(columnPropertiesMap5)
-              .withAADPrefix(AADPrefix)
-              .withoutAADPrefixStorage()
-              .build());
-          break;
-
-        case ENCRYPT_COLUMNS_AND_FOOTER_CTR:
-          // Encryption configuration 6: Encrypt two columns and the footer, with different keys.
-          // Use AES_GCM_CTR_V1 algorithm.
-          Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap6 = new HashMap<>();
-          ColumnEncryptionProperties columnProperties60 = ColumnEncryptionProperties
-            .builder(DOUBLE_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY1)
-            .withKeyID(COLUMN_ENCRYPTION_KEY1_ID)
-            .build();
-
-          ColumnEncryptionProperties columnProperties61 = ColumnEncryptionProperties
-            .builder(FLOAT_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY2)
-            .withKeyID(COLUMN_ENCRYPTION_KEY2_ID)
-            .build();
-          columnPropertiesMap6.put(columnProperties60.getPath(), columnProperties60);
-          columnPropertiesMap6.put(columnProperties61.getPath(), columnProperties61);
-
-          encryptionPropertiesMap.put(EncryptionConfiguration.ENCRYPT_COLUMNS_AND_FOOTER_CTR,
-            FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-              .withFooterKeyMetadata(footerKeyMetadata)
-              .withEncryptedColumns(columnPropertiesMap6)
-              .withAlgorithm(ParquetCipher.AES_GCM_CTR_V1)
-              .build());
-          break;
-
-        case NO_ENCRYPTION:
-          // Encryption configuration 7: Do not encrypt anything
-          encryptionPropertiesMap.put(EncryptionConfiguration.NO_ENCRYPTION, null);
-          break;
-      }
-    }
-    return encryptionPropertiesMap;
-  }
-
-  /**
-   * Create a number of Decryption configurations
-   * @param AADPrefix
-   * @return
-   */
-  private Map<DecryptionConfiguration, FileDecryptionProperties>  getDecryptionConfigurations(byte[] AADPrefix) {
-    DecryptionConfiguration[] decryptionConfigurations = DecryptionConfiguration.values();
-    Map<DecryptionConfiguration, FileDecryptionProperties> decryptionPropertiesMap = new HashMap<>(decryptionConfigurations.length);
-
-    DecryptionKeyRetriever decryptionKeyRetrieverMock = mock(DecryptionKeyRetriever.class);
-    when(decryptionKeyRetrieverMock.getKey(FOOTER_ENCRYPTION_KEY_ID.getBytes(StandardCharsets.UTF_8)))
-      .thenReturn(FOOTER_ENCRYPTION_KEY);
-    when(decryptionKeyRetrieverMock.getKey(COLUMN_ENCRYPTION_KEY1_ID.getBytes(StandardCharsets.UTF_8)))
-      .thenReturn(COLUMN_ENCRYPTION_KEY1);
-    when(decryptionKeyRetrieverMock.getKey(COLUMN_ENCRYPTION_KEY2_ID.getBytes(StandardCharsets.UTF_8)))
-      .thenReturn(COLUMN_ENCRYPTION_KEY2);
-
-    for (DecryptionConfiguration decryptionConfiguration : decryptionConfigurations) {
-      switch (decryptionConfiguration) {
-        case DECRYPT_WITH_KEY_RETRIEVER:
-          // Decryption configuration 1: Decrypt using key retriever callback that holds the keys
-          // of two encrypted columns and the footer key.
-          decryptionPropertiesMap.put(DecryptionConfiguration.DECRYPT_WITH_KEY_RETRIEVER,
-            FileDecryptionProperties.builder()
-              .withKeyRetriever(decryptionKeyRetrieverMock)
-              .build());
-          break;
-
-        case DECRYPT_WITH_KEY_RETRIEVER_AAD:
-          // Decryption configuration 2: Decrypt using key retriever callback that holds the keys
-          // of two encrypted columns and the footer key. Supply aad_prefix.
-          decryptionPropertiesMap.put(DecryptionConfiguration.DECRYPT_WITH_KEY_RETRIEVER_AAD,
-            FileDecryptionProperties.builder()
-              .withKeyRetriever(decryptionKeyRetrieverMock)
-              .withAADPrefix(AADPrefix)
-              .build());
-          break;
-
-        case DECRYPT_WITH_EXPLICIT_KEYS:
-          // Decryption configuration 3: Decrypt using explicit column and footer keys. Supply
-          // aad_prefix.
-          Map<ColumnPath, ColumnDecryptionProperties> columnMap = new HashMap<>();
-          ColumnDecryptionProperties columnDecryptionProps0 = ColumnDecryptionProperties
-            .builder(DOUBLE_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY1)
-            .build();
-
-          ColumnDecryptionProperties columnDecryptionProps1 = ColumnDecryptionProperties
-            .builder(FLOAT_FIELD_NAME)
-            .withKey(COLUMN_ENCRYPTION_KEY2)
-            .build();
-
-          columnMap.put(columnDecryptionProps0.getPath(), columnDecryptionProps0);
-          columnMap.put(columnDecryptionProps1.getPath(), columnDecryptionProps1);
-
-          decryptionPropertiesMap.put(DecryptionConfiguration.DECRYPT_WITH_EXPLICIT_KEYS,
-            FileDecryptionProperties.builder().withColumnKeys(columnMap).
-              withFooterKey(FOOTER_ENCRYPTION_KEY).build());
-          break;
-
-        case NO_DECRYPTION:
-          // Decryption configuration 4: Do not decrypt anything.
-          decryptionPropertiesMap.put(DecryptionConfiguration.NO_DECRYPTION, null);
-          break;
-      }
-    }
-    return decryptionPropertiesMap;
-  }
-
-
-  // Check that the decryption result is as expected.
   private void checkResult(String file, DecryptionConfiguration decryptionConfiguration, String exceptionMsg) {
     // Extract encryptionConfigurationNumber from the parquet file name.
     EncryptionConfiguration encryptionConfiguration = getEncryptionConfigurationFromFilename(file);
@@ -620,7 +564,7 @@ private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data
         return;
       }
     }
-    if (null != exceptionMsg && !exceptionMsg.equals("")) {
+    if (null != exceptionMsg && !exceptionMsg.isEmpty()) {
       addErrorToErrorCollectorAndLog("Didn't expect an exception", exceptionMsg,
         encryptionConfiguration, decryptionConfiguration);
     }
@@ -657,5 +601,202 @@ private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data
 
     errorCollector.addError(new Throwable(fullErrorMessage));
     LOG.error(fullErrorMessage);
+  }
+
+  private static Map<ColumnPath, ColumnEncryptionProperties> getColumnEncryptionPropertiesMap() {
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = new HashMap<>();
+
+    ColumnEncryptionProperties columnPropertiesDouble = ColumnEncryptionProperties
+      .builder(DOUBLE_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[0])
+      .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[0])
+      .build();
+    columnPropertiesMap.put(columnPropertiesDouble.getPath(), columnPropertiesDouble);
+
+    ColumnEncryptionProperties columnPropertiesFloat = ColumnEncryptionProperties
+      .builder(FLOAT_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[1])
+      .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[1])
+      .build();
+    columnPropertiesMap.put(columnPropertiesFloat.getPath(), columnPropertiesFloat);
+
+    ColumnEncryptionProperties columnPropertiesBool = ColumnEncryptionProperties
+      .builder(BOOLEAN_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[2])
+      .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[2])
+      .build();
+    columnPropertiesMap.put(columnPropertiesBool.getPath(), columnPropertiesBool);
+
+    ColumnEncryptionProperties columnPropertiesInt32 = ColumnEncryptionProperties
+      .builder(INT32_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[3])
+      .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[3])
+      .build();
+    columnPropertiesMap.put(columnPropertiesInt32.getPath(), columnPropertiesInt32);
+
+    ColumnEncryptionProperties columnPropertiesBinary = ColumnEncryptionProperties
+      .builder(BINARY_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[4])
+      .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[4])
+      .build();
+    columnPropertiesMap.put(columnPropertiesBinary.getPath(), columnPropertiesBinary);
+
+    ColumnEncryptionProperties columnPropertiesFixed = ColumnEncryptionProperties
+      .builder(FIXED_LENGTH_BINARY_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[5])
+      .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[5])
+      .build();
+    columnPropertiesMap.put(columnPropertiesFixed.getPath(), columnPropertiesFixed);
+
+    return columnPropertiesMap;
+  }
+
+  private static Map<ColumnPath, ColumnDecryptionProperties> getColumnDecryptionPropertiesMap() {
+    Map<ColumnPath, ColumnDecryptionProperties> columnMap = new HashMap<>();
+
+    ColumnDecryptionProperties columnDecryptionPropsDouble = ColumnDecryptionProperties
+      .builder(DOUBLE_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[0])
+      .build();
+    columnMap.put(columnDecryptionPropsDouble.getPath(), columnDecryptionPropsDouble);
+
+    ColumnDecryptionProperties columnDecryptionPropsFloat = ColumnDecryptionProperties
+      .builder(FLOAT_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[1])
+      .build();
+    columnMap.put(columnDecryptionPropsFloat.getPath(), columnDecryptionPropsFloat);
+
+    ColumnDecryptionProperties columnDecryptionPropsBool = ColumnDecryptionProperties
+      .builder(BOOLEAN_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[2])
+      .build();
+    columnMap.put(columnDecryptionPropsBool.getPath(), columnDecryptionPropsBool);
+
+    ColumnDecryptionProperties columnDecryptionPropsInt32 = ColumnDecryptionProperties
+      .builder(INT32_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[3])
+      .build();
+    columnMap.put(columnDecryptionPropsInt32.getPath(), columnDecryptionPropsInt32);
+
+    ColumnDecryptionProperties columnDecryptionPropsBinary = ColumnDecryptionProperties
+      .builder(BINARY_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[4])
+      .build();
+    columnMap.put(columnDecryptionPropsBinary.getPath(), columnDecryptionPropsBinary);
+
+    ColumnDecryptionProperties columnDecryptionPropsFixed = ColumnDecryptionProperties
+      .builder(FIXED_LENGTH_BINARY_FIELD_NAME)
+      .withKey(COLUMN_ENCRYPTION_KEYS[5])
+      .build();
+    columnMap.put(columnDecryptionPropsFixed.getPath(), columnDecryptionPropsFixed);
+
+    return columnMap;
+  }
+
+  /**
+   * Encryption configuration 1: Encrypt all columns and the footer with the same key.
+   */
+  private static FileEncryptionProperties getUniformEncryptionEncryptionProperties() {
+    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+      .withFooterKeyMetadata(footerKeyMetadata).build();
+  }
+
+  /**
+   * Encryption configuration 2: Encrypt six columns and the footer, with different keys.
+   */
+  private static FileEncryptionProperties getEncryptColumnsAndFooterEncryptionProperties() {
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+      .withFooterKeyMetadata(footerKeyMetadata)
+      .withEncryptedColumns(columnPropertiesMap)
+      .build();
+  }
+
+  /**
+   * Encryption configuration 3: Encrypt six columns, with different keys.
+   * Don't encrypt footer.
+   * (plaintext footer mode, readable by legacy readers)
+   */
+  private static FileEncryptionProperties getPlaintextFooterEncryptionProperties() {
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+      .withFooterKeyMetadata(footerKeyMetadata)
+      .withEncryptedColumns(columnPropertiesMap)
+      .withPlaintextFooter()
+      .build();
+  }
+
+  /**
+   * Encryption configuration 4: Encrypt six columns and the footer, with different keys.
+   * Use aad_prefix.
+   */
+  private static FileEncryptionProperties getEncryptWithAADEncryptionProperties() {
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+      .withFooterKeyMetadata(footerKeyMetadata)
+      .withEncryptedColumns(columnPropertiesMap)
+      .withAADPrefix(AADPrefix)
+      .build();
+  }
+
+  /**
+   * Encryption configuration 5: Encrypt six columns and the footer, with different keys.
+   * Use aad_prefix and disable_aad_prefix_storage.
+   */
+  private static FileEncryptionProperties getDisableAADStorageEncryptionProperties() {
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+      .withFooterKeyMetadata(footerKeyMetadata)
+      .withEncryptedColumns(columnPropertiesMap)
+      .withAADPrefix(AADPrefix)
+      .withoutAADPrefixStorage()
+      .build();
+  }
+
+  /**
+   *  Encryption configuration 6: Encrypt six columns and the footer, with different keys.
+   *  Use AES_GCM_CTR_V1 algorithm.
+   */
+  private static FileEncryptionProperties getCTREncryptionProperties() {
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+      .withFooterKeyMetadata(footerKeyMetadata)
+      .withEncryptedColumns(columnPropertiesMap)
+      .withAlgorithm(ParquetCipher.AES_GCM_CTR_V1)
+      .build();
+  }
+
+
+  /**
+   * Decryption configuration 1: Decrypt using key retriever callback that holds the keys
+   * of the encrypted columns and the footer key.
+   */
+  private static FileDecryptionProperties getKeyRetrieverDecryptionProperties() {
+    return FileDecryptionProperties.builder()
+      .withKeyRetriever(decryptionKeyRetrieverMock)
+      .build();
+  }
+
+  /**
+   * Decryption configuration 2: Decrypt using key retriever callback that holds the keys
+   * of the encrypted columns and the footer key. Supply aad_prefix.
+   */
+  private static FileDecryptionProperties getKeyRetrieverAADDecryptionProperties() {
+    return FileDecryptionProperties.builder()
+      .withKeyRetriever(decryptionKeyRetrieverMock)
+      .withAADPrefix(AADPrefix)
+      .build();
+  }
+
+  /**
+   * Decryption configuration 3: Decrypt using explicit column and footer keys.
+   */
+  private static FileDecryptionProperties getExplicitKeysDecryptionProperties() {
+    Map<ColumnPath, ColumnDecryptionProperties> columnMap = getColumnDecryptionPropertiesMap();
+
+    return FileDecryptionProperties.builder()
+      .withColumnKeys(columnMap)
+      .withFooterKey(FOOTER_ENCRYPTION_KEY)
+      .build();
   }
 }

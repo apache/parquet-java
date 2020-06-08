@@ -43,12 +43,9 @@ import static org.apache.parquet.schema.Types.required;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,7 +66,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
-import org.apache.parquet.crypto.DecryptionKeyRetriever;
+import org.apache.parquet.crypto.DecryptionKeyRetrieverMock;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -267,13 +264,10 @@ public class TestColumnIndexFiltering {
   private FileDecryptionProperties getFileDecryptionProperties() {
     FileDecryptionProperties decryptionProperties = null;
     if (isEncrypted) {
-      DecryptionKeyRetriever decryptionKeyRetrieverMock = mock(DecryptionKeyRetriever.class);
-      when(decryptionKeyRetrieverMock.getKey(FOOTER_ENCRYPTION_KEY_ID.getBytes(StandardCharsets.UTF_8)))
-        .thenReturn(FOOTER_ENCRYPTION_KEY);
-      when(decryptionKeyRetrieverMock.getKey(COLUMN_ENCRYPTION_KEY1_ID.getBytes(StandardCharsets.UTF_8)))
-        .thenReturn(COLUMN_ENCRYPTION_KEY1);
-      when(decryptionKeyRetrieverMock.getKey(COLUMN_ENCRYPTION_KEY2_ID.getBytes(StandardCharsets.UTF_8)))
-        .thenReturn(COLUMN_ENCRYPTION_KEY2);
+      DecryptionKeyRetrieverMock decryptionKeyRetrieverMock = new DecryptionKeyRetrieverMock()
+        .putKey(FOOTER_ENCRYPTION_KEY_ID, FOOTER_ENCRYPTION_KEY)
+        .putKey(COLUMN_ENCRYPTION_KEY1_ID, COLUMN_ENCRYPTION_KEY1)
+        .putKey(COLUMN_ENCRYPTION_KEY2_ID, COLUMN_ENCRYPTION_KEY2);
 
       decryptionProperties = FileDecryptionProperties.builder()
         .withKeyRetriever(decryptionKeyRetrieverMock)
