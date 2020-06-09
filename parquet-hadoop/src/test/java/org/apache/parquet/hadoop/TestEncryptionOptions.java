@@ -191,33 +191,82 @@ public class TestEncryptionOptions {
 
   public enum EncryptionConfiguration {
     UNIFORM_ENCRYPTION {
+      /**
+       * Encryption configuration 1: Encrypt all columns and the footer with the same key.
+       */
       public FileEncryptionProperties getEncryptionProperties() {
-        return getUniformEncryptionEncryptionProperties();
+        return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+          .withFooterKeyMetadata(footerKeyMetadata).build();
       }
     },
     ENCRYPT_COLUMNS_AND_FOOTER {
+      /**
+       * Encryption configuration 2: Encrypt six columns and the footer, with different keys.
+       */
       public FileEncryptionProperties getEncryptionProperties() {
-        return getEncryptColumnsAndFooterEncryptionProperties();
+        Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+        return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+          .withFooterKeyMetadata(footerKeyMetadata)
+          .withEncryptedColumns(columnPropertiesMap)
+          .build();
       }
     },
     ENCRYPT_COLUMNS_PLAINTEXT_FOOTER {
+      /**
+       * Encryption configuration 3: Encrypt six columns, with different keys.
+       * Don't encrypt footer.
+       * (plaintext footer mode, readable by legacy readers)
+       */
       public FileEncryptionProperties getEncryptionProperties() {
-        return getPlaintextFooterEncryptionProperties();
+        Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+        return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+          .withFooterKeyMetadata(footerKeyMetadata)
+          .withEncryptedColumns(columnPropertiesMap)
+          .withPlaintextFooter()
+          .build();
       }
     },
     ENCRYPT_COLUMNS_AND_FOOTER_AAD {
+      /**
+       * Encryption configuration 4: Encrypt six columns and the footer, with different keys.
+       * Use aad_prefix.
+       */
       public FileEncryptionProperties getEncryptionProperties() {
-        return getEncryptWithAADEncryptionProperties();
+        Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+        return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+          .withFooterKeyMetadata(footerKeyMetadata)
+          .withEncryptedColumns(columnPropertiesMap)
+          .withAADPrefix(AADPrefix)
+          .build();
       }
     },
     ENCRYPT_COLUMNS_AND_FOOTER_DISABLE_AAD_STORAGE {
+      /**
+       * Encryption configuration 5: Encrypt six columns and the footer, with different keys.
+       * Use aad_prefix and disable_aad_prefix_storage.
+       */
       public FileEncryptionProperties getEncryptionProperties() {
-        return getDisableAADStorageEncryptionProperties();
+        Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+        return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+          .withFooterKeyMetadata(footerKeyMetadata)
+          .withEncryptedColumns(columnPropertiesMap)
+          .withAADPrefix(AADPrefix)
+          .withoutAADPrefixStorage()
+          .build();
       }
     },
     ENCRYPT_COLUMNS_AND_FOOTER_CTR {
+      /**
+       *  Encryption configuration 6: Encrypt six columns and the footer, with different keys.
+       *  Use AES_GCM_CTR_V1 algorithm.
+       */
       public FileEncryptionProperties getEncryptionProperties() {
-        return getCTREncryptionProperties();
+        Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+        return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+          .withFooterKeyMetadata(footerKeyMetadata)
+          .withEncryptedColumns(columnPropertiesMap)
+          .withAlgorithm(ParquetCipher.AES_GCM_CTR_V1)
+          .build();
       }
     },
     NO_ENCRYPTION {
@@ -231,18 +280,39 @@ public class TestEncryptionOptions {
 
   public enum DecryptionConfiguration {
     DECRYPT_WITH_KEY_RETRIEVER {
+      /**
+       * Decryption configuration 1: Decrypt using key retriever callback that holds the keys
+       * of the encrypted columns and the footer key.
+       */
       public FileDecryptionProperties getDecryptionProperties() {
-        return getKeyRetrieverDecryptionProperties();
+        return FileDecryptionProperties.builder()
+          .withKeyRetriever(decryptionKeyRetrieverMock)
+          .build();
       }
     },
     DECRYPT_WITH_KEY_RETRIEVER_AAD {
+      /**
+       * Decryption configuration 2: Decrypt using key retriever callback that holds the keys
+       * of the encrypted columns and the footer key. Supply aad_prefix.
+       */
       public FileDecryptionProperties getDecryptionProperties() {
-        return getKeyRetrieverAADDecryptionProperties();
+        return FileDecryptionProperties.builder()
+          .withKeyRetriever(decryptionKeyRetrieverMock)
+          .withAADPrefix(AADPrefix)
+          .build();
       }
     },
     DECRYPT_WITH_EXPLICIT_KEYS {
+      /**
+       * Decryption configuration 3: Decrypt using explicit column and footer keys.
+       */
       public FileDecryptionProperties getDecryptionProperties() {
-        return getExplicitKeysDecryptionProperties();
+        Map<ColumnPath, ColumnDecryptionProperties> columnMap = getColumnDecryptionPropertiesMap();
+
+        return FileDecryptionProperties.builder()
+          .withColumnKeys(columnMap)
+          .withFooterKey(FOOTER_ENCRYPTION_KEY)
+          .build();
       }
     },
     NO_DECRYPTION {
@@ -409,8 +479,7 @@ public class TestEncryptionOptions {
           for (Group group = reader.read(); group != null; group = reader.read()) {
             SingleRow rowExpected = data.get(rowNum++);
             // plaintext columns
-            if ((null != rowExpected.plaintext_int32_field) &&
-              rowExpected.plaintext_int32_field != group.getInteger(PLAINTEXT_INT32_FIELD_NAME, 0)) {
+            if (rowExpected.plaintext_int32_field != group.getInteger(PLAINTEXT_INT32_FIELD_NAME, 0)) {
               addErrorToErrorCollectorAndLog("Wrong int", encryptionConfiguration, decryptionConfiguration);
             }
             // encrypted columns
@@ -706,112 +775,5 @@ public class TestEncryptionOptions {
     columnMap.put(columnDecryptionPropsFixed.getPath(), columnDecryptionPropsFixed);
 
     return columnMap;
-  }
-
-  /**
-   * Encryption configuration 1: Encrypt all columns and the footer with the same key.
-   */
-  private static FileEncryptionProperties getUniformEncryptionEncryptionProperties() {
-    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-      .withFooterKeyMetadata(footerKeyMetadata).build();
-  }
-
-  /**
-   * Encryption configuration 2: Encrypt six columns and the footer, with different keys.
-   */
-  private static FileEncryptionProperties getEncryptColumnsAndFooterEncryptionProperties() {
-    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
-    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-      .withFooterKeyMetadata(footerKeyMetadata)
-      .withEncryptedColumns(columnPropertiesMap)
-      .build();
-  }
-
-  /**
-   * Encryption configuration 3: Encrypt six columns, with different keys.
-   * Don't encrypt footer.
-   * (plaintext footer mode, readable by legacy readers)
-   */
-  private static FileEncryptionProperties getPlaintextFooterEncryptionProperties() {
-    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
-    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-      .withFooterKeyMetadata(footerKeyMetadata)
-      .withEncryptedColumns(columnPropertiesMap)
-      .withPlaintextFooter()
-      .build();
-  }
-
-  /**
-   * Encryption configuration 4: Encrypt six columns and the footer, with different keys.
-   * Use aad_prefix.
-   */
-  private static FileEncryptionProperties getEncryptWithAADEncryptionProperties() {
-    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
-    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-      .withFooterKeyMetadata(footerKeyMetadata)
-      .withEncryptedColumns(columnPropertiesMap)
-      .withAADPrefix(AADPrefix)
-      .build();
-  }
-
-  /**
-   * Encryption configuration 5: Encrypt six columns and the footer, with different keys.
-   * Use aad_prefix and disable_aad_prefix_storage.
-   */
-  private static FileEncryptionProperties getDisableAADStorageEncryptionProperties() {
-    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
-    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-      .withFooterKeyMetadata(footerKeyMetadata)
-      .withEncryptedColumns(columnPropertiesMap)
-      .withAADPrefix(AADPrefix)
-      .withoutAADPrefixStorage()
-      .build();
-  }
-
-  /**
-   *  Encryption configuration 6: Encrypt six columns and the footer, with different keys.
-   *  Use AES_GCM_CTR_V1 algorithm.
-   */
-  private static FileEncryptionProperties getCTREncryptionProperties() {
-    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
-    return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-      .withFooterKeyMetadata(footerKeyMetadata)
-      .withEncryptedColumns(columnPropertiesMap)
-      .withAlgorithm(ParquetCipher.AES_GCM_CTR_V1)
-      .build();
-  }
-
-
-  /**
-   * Decryption configuration 1: Decrypt using key retriever callback that holds the keys
-   * of the encrypted columns and the footer key.
-   */
-  private static FileDecryptionProperties getKeyRetrieverDecryptionProperties() {
-    return FileDecryptionProperties.builder()
-      .withKeyRetriever(decryptionKeyRetrieverMock)
-      .build();
-  }
-
-  /**
-   * Decryption configuration 2: Decrypt using key retriever callback that holds the keys
-   * of the encrypted columns and the footer key. Supply aad_prefix.
-   */
-  private static FileDecryptionProperties getKeyRetrieverAADDecryptionProperties() {
-    return FileDecryptionProperties.builder()
-      .withKeyRetriever(decryptionKeyRetrieverMock)
-      .withAADPrefix(AADPrefix)
-      .build();
-  }
-
-  /**
-   * Decryption configuration 3: Decrypt using explicit column and footer keys.
-   */
-  private static FileDecryptionProperties getExplicitKeysDecryptionProperties() {
-    Map<ColumnPath, ColumnDecryptionProperties> columnMap = getColumnDecryptionPropertiesMap();
-
-    return FileDecryptionProperties.builder()
-      .withColumnKeys(columnMap)
-      .withFooterKey(FOOTER_ENCRYPTION_KEY)
-      .build();
   }
 }

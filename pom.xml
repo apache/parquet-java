@@ -221,16 +221,22 @@
           <version>${exec-maven-plugin.version}</version>
           <executions>
             <execution>
+              <id>git submodule update</id>
               <phase>initialize</phase>
-              <id>invoke build</id>
+              <configuration>
+                <executable>git</executable>
+                <arguments>
+                  <argument>submodule</argument>
+                  <argument>update</argument>
+                  <argument>--init</argument>
+                  <argument>--recursive</argument>
+                </arguments>
+              </configuration>
               <goals>
                 <goal>exec</goal>
               </goals>
             </execution>
           </executions>
-          <configuration>
-            <executable>dev/submodule-update.sh</executable>
-          </configuration>
         </plugin>
 
         <plugin>

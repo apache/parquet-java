@@ -1,6 +1,3 @@
-package org.apache.parquet.crypto;
-
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -19,6 +16,7 @@ package org.apache.parquet.crypto;
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.parquet.crypto;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
