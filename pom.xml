@@ -105,6 +105,7 @@
     <mockito.version>1.10.19</mockito.version>
     <net.openhft.version>0.9</net.openhft.version>
     <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
+    <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
@@ -214,6 +215,30 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>${exec-maven-plugin.version}</version>
+          <executions>
+            <execution>
+              <id>git submodule update</id>
+              <phase>initialize</phase>
+              <configuration>
+                <executable>git</executable>
+                <arguments>
+                  <argument>submodule</argument>
+                  <argument>update</argument>
+                  <argument>--init</argument>
+                  <argument>--recursive</argument>
+                </arguments>
+              </configuration>
+              <goals>
+                <goal>exec</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+
         <plugin>
           <!-- Disable the source artifact from ASF parent -->
           <artifactId>maven-assembly-plugin</artifactId>
@@ -465,6 +490,7 @@
             <exclude>**/target/**</exclude>
             <exclude>.git/**</exclude>
             <exclude>.gitignore</exclude>
+            <exclude>.gitmodules</exclude>
             <exclude>.idea/**</exclude>
             <exclude>*/jdiff/*.xml</exclude>
             <exclude>.travis.yml</exclude>
