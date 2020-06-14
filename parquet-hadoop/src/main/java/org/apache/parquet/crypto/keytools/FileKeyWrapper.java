@@ -17,8 +17,6 @@
  * under the License.
  */
 
-
-
 package org.apache.parquet.crypto.keytools;
 
 import java.io.IOException;
