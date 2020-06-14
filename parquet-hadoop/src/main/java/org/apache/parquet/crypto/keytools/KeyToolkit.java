@@ -17,8 +17,6 @@
  * under the License.
  */
 
-
-
 package org.apache.parquet.crypto.keytools;
 
 import org.apache.hadoop.conf.Configuration;
