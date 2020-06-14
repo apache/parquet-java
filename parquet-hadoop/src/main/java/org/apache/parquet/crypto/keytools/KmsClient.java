@@ -17,8 +17,6 @@
  * under the License.
  */
 
-
-
 package org.apache.parquet.crypto.keytools;
 
 import org.apache.hadoop.conf.Configuration;
@@ -26,22 +24,21 @@ import org.apache.parquet.crypto.KeyAccessDeniedException;
 
 public interface KmsClient {
   
-  public static final String DEFAULT_KMS_INSTANCE_ID = "DEFAULT";
-  public static final String DEFAULT_ACCESS_TOKEN = "DEFAULT";
+  public static final String KMS_INSTANCE_ID_DEFAULT = "DEFAULT";
+  public static final String KMS_INSTANCE_URL_DEFAULT = "DEFAULT";
+  public static final String KEY_ACCESS_TOKEN_DEFAULT = "DEFAULT";
   
   /**
    * Pass configuration with KMS-specific parameters.
    * @param configuration Hadoop configuration
-   * @param kmsInstanceID ID of the KMS instance handled by this KmsClient. 
-   *                      When writing a parquet file, the KMS instance ID has to be specified in configuration, 
-   *                      and will be stored in parquet key material. 
-   *                      When reading a parquet file, the KMS instance ID can be either specified in configuration 
-   *                      or read from parquet key material.
-   *                      ID can have a default value, for KMS systems that don't work with multiple instances.
-   * @param accessToken KMS access (authorization) token. Can have a default value, for KMS systems that don't work with tokens.
-   *  @throws KeyAccessDeniedException unauthorized to initialize the KMS client
+   * @param kmsInstanceID ID of the KMS instance handled by this KmsClient. Use the default value, for KMS systems 
+   *                      that don't work with multiple instances.
+   * @param kmsInstanceURL URL of the KMS instance handled by this KmsClient. Use the default value, for KMS systems 
+   *                      that don't work with URLs.
+   * @param accessToken KMS access (authorization) token. Use the default value, for KMS systems that don't work with tokens.
+   * @throws KeyAccessDeniedException unauthorized to initialize the KMS client
    */
-  public void initialize(Configuration configuration, String kmsInstanceID, String accessToken) 
+  public void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) 
       throws KeyAccessDeniedException;
 
   /**
@@ -53,7 +50,7 @@ public interface KmsClient {
    * 
    * @param keyBytes: key bytes to be wrapped
    * @param masterKeyIdentifier: a string that uniquely identifies the master key in a KMS instance
-   * @return
+   * @return wrapped key
    * @throws KeyAccessDeniedException unauthorized to encrypt with the given master key
    */
   public String wrapKey(byte[] keyBytes, String masterKeyIdentifier)
@@ -67,7 +64,7 @@ public interface KmsClient {
    * 
    * @param wrappedKey String produced by wrapKey operation
    * @param masterKeyIdentifier: a string that uniquely identifies the master key in a KMS instance
-   * @return
+   * @return unwrapped key bytes
    * @throws KeyAccessDeniedException unauthorized to unwrap with the given master key
    */
   public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier)

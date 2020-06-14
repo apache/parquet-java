@@ -27,6 +27,7 @@ import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.apache.parquet.crypto.SingleRow;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -34,9 +35,7 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
-import org.apache.parquet.statistics.RandomValues;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ErrorCollector;
@@ -46,7 +45,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,14 +53,8 @@ import java.util.Map;
 import java.util.Random;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
 /*
  * This file contains samples for writing and reading encrypted Parquet files in different
@@ -134,19 +126,6 @@ public class TestEncryptionOptions {
   public ErrorCollector errorCollector = new ErrorCollector();
 
   private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data";
-  private static final int RANDOM_SEED = 42;
-  private static final int FIXED_LENGTH = 10;
-  private static final Random RANDOM = new Random(RANDOM_SEED);
-  private static final RandomValues.IntGenerator intGenerator
-    = new RandomValues.IntGenerator(RANDOM_SEED);
-  private static final RandomValues.FloatGenerator floatGenerator
-    = new RandomValues.FloatGenerator(RANDOM_SEED);
-  private static final RandomValues.DoubleGenerator doubleGenerator
-    = new RandomValues.DoubleGenerator(RANDOM_SEED);
-  private static final RandomValues.BinaryGenerator binaryGenerator
-    = new RandomValues.BinaryGenerator(RANDOM_SEED);
-  private static final RandomValues.FixedGenerator fixedBinaryGenerator
-    = new RandomValues.FixedGenerator(RANDOM_SEED, FIXED_LENGTH);
 
   private static final byte[] FOOTER_ENCRYPTION_KEY = "0123456789012345".getBytes();
   private static final byte[][] COLUMN_ENCRYPTION_KEYS = { "1234567890123450".getBytes(),
@@ -155,30 +134,15 @@ public class TestEncryptionOptions {
   private static final String[] COLUMN_ENCRYPTION_KEY_IDS = { "kc1", "kc2", "kc3", "kc4", "kc5", "kc6"};
   private static final String FOOTER_ENCRYPTION_KEY_ID = "kf";
   private static final String AAD_PREFIX_STRING = "tester";
-  private static final String BOOLEAN_FIELD_NAME = "boolean_field";
-  private static final String INT32_FIELD_NAME = "int32_field";
-  private static final String FLOAT_FIELD_NAME = "float_field";
-  private static final String DOUBLE_FIELD_NAME = "double_field";
-  private static final String BINARY_FIELD_NAME = "ba_field";
-  private static final String FIXED_LENGTH_BINARY_FIELD_NAME = "flba_field";
-  private static final String PLAINTEXT_INT32_FIELD_NAME = "plain_int32_field";
 
   private static final byte[] footerKeyMetadata = FOOTER_ENCRYPTION_KEY_ID.getBytes(StandardCharsets.UTF_8);
   private static final byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
 
   private static final int ROW_COUNT = 10000;
-  private static final List<SingleRow> DATA = Collections.unmodifiableList(generateRandomData(ROW_COUNT));
-  private static final List<SingleRow> LINEAR_DATA = Collections.unmodifiableList(generateLinearData(250));
+  private static final List<SingleRow> DATA = Collections.unmodifiableList(SingleRow.generateRandomData(ROW_COUNT));
+  private static final List<SingleRow> LINEAR_DATA = Collections.unmodifiableList(SingleRow.generateLinearData(250));
 
-  private static final MessageType SCHEMA =
-    new MessageType("schema",
-      new PrimitiveType(REQUIRED, BOOLEAN, BOOLEAN_FIELD_NAME),
-      new PrimitiveType(REQUIRED, INT32, INT32_FIELD_NAME),
-      new PrimitiveType(REQUIRED, FLOAT, FLOAT_FIELD_NAME),
-      new PrimitiveType(REQUIRED, DOUBLE, DOUBLE_FIELD_NAME),
-      new PrimitiveType(OPTIONAL, BINARY, BINARY_FIELD_NAME),
-      Types.required(FIXED_LEN_BYTE_ARRAY).length(FIXED_LENGTH).named(FIXED_LENGTH_BINARY_FIELD_NAME),
-      new PrimitiveType(OPTIONAL, INT32, PLAINTEXT_INT32_FIELD_NAME));
+  private static final MessageType SCHEMA = SingleRow.getSchema();
 
   private static final DecryptionKeyRetrieverMock decryptionKeyRetrieverMock = new DecryptionKeyRetrieverMock()
     .putKey(FOOTER_ENCRYPTION_KEY_ID, FOOTER_ENCRYPTION_KEY)
@@ -344,71 +308,6 @@ public class TestEncryptionOptions {
     testInteropReadEncryptedParquetFiles(rootPath, true/*readOnlyEncrypted*/, LINEAR_DATA);
   }
 
-  private static List<SingleRow> generateRandomData(int rowCount) {
-    List<SingleRow> dataList = new ArrayList<>(rowCount);
-    for (int row = 0; row < rowCount; ++row) {
-      SingleRow newRow = new SingleRow(RANDOM.nextBoolean(),
-        intGenerator.nextValue(),  floatGenerator.nextValue(),
-        doubleGenerator.nextValue(), binaryGenerator.nextValue().getBytes(),
-        fixedBinaryGenerator.nextValue().getBytes(), intGenerator.nextValue());
-      dataList.add(newRow);
-    }
-    return dataList;
-  }
-
-  private static List<SingleRow> generateLinearData(int rowCount) {
-    List<SingleRow> dataList = new ArrayList<>(rowCount);
-    String baseStr = "parquet";
-    for (int row = 0; row < rowCount; ++row) {
-      boolean boolean_val = ((row % 2) == 0) ? true : false;
-      float float_val = (float) row * 1.1f;
-      double double_val = (row * 1.1111111);
-
-      byte[] binary_val = null;
-      if ((row % 2) == 0) {
-        char firstChar = (char) ((int) '0' + row / 100);
-        char secondChar = (char) ((int) '0' + (row / 10) % 10);
-        char thirdChar = (char) ((int) '0' + row % 10);
-        binary_val = (baseStr + firstChar + secondChar + thirdChar).getBytes(StandardCharsets.UTF_8);
-      }
-      char[] fixed = new char[FIXED_LENGTH];
-      char[] aChar = Character.toChars(row);
-      Arrays.fill(fixed, aChar[0]);
-
-      SingleRow newRow = new SingleRow(boolean_val,
-        row, float_val, double_val,
-        binary_val, new String(fixed).getBytes(StandardCharsets.UTF_8), null/*plaintext_int32_field*/);
-      dataList.add(newRow);
-    }
-    return dataList;
-  }
-
-  public static class SingleRow {
-    public final boolean boolean_field;
-    public final int int32_field;
-    public final float float_field;
-    public final double double_field;
-    public final byte[] ba_field;
-    public final byte[] flba_field;
-    public final Integer plaintext_int32_field; // Can be null, since it doesn't exist in C++-created files yet.
-
-    public SingleRow(boolean boolean_field,
-                     int int32_field,
-                     float float_field,
-                     double double_field,
-                     byte[] ba_field,
-                     byte[] flba_field,
-                     Integer plaintext_int32_field) {
-      this.boolean_field = boolean_field;
-      this.int32_field = int32_field;
-      this.float_field = float_field;
-      this.double_field = double_field;
-      this.ba_field = ba_field;
-      this.flba_field = flba_field;
-      this.plaintext_int32_field = plaintext_int32_field;
-    }
-  }
-
   private void testWriteEncryptedParquetFiles(Path root, List<SingleRow> data) throws IOException {
     Configuration conf = new Configuration();
 
@@ -434,13 +333,13 @@ public class TestEncryptionOptions {
         for (SingleRow singleRow : data) {
           writer.write(
             f.newGroup()
-              .append(BOOLEAN_FIELD_NAME, singleRow.boolean_field)
-              .append(INT32_FIELD_NAME, singleRow.int32_field)
-              .append(FLOAT_FIELD_NAME, singleRow.float_field)
-              .append(DOUBLE_FIELD_NAME, singleRow.double_field)
-              .append(BINARY_FIELD_NAME, Binary.fromConstantByteArray(singleRow.ba_field))
-              .append(FIXED_LENGTH_BINARY_FIELD_NAME, Binary.fromConstantByteArray(singleRow.flba_field))
-              .append(PLAINTEXT_INT32_FIELD_NAME, singleRow.plaintext_int32_field));
+              .append(SingleRow.BOOLEAN_FIELD_NAME, singleRow.boolean_field)
+              .append(SingleRow.INT32_FIELD_NAME, singleRow.int32_field)
+              .append(SingleRow.FLOAT_FIELD_NAME, singleRow.float_field)
+              .append(SingleRow.DOUBLE_FIELD_NAME, singleRow.double_field)
+              .append(SingleRow.BINARY_FIELD_NAME, Binary.fromConstantByteArray(singleRow.ba_field))
+              .append(SingleRow.FIXED_LENGTH_BINARY_FIELD_NAME, Binary.fromConstantByteArray(singleRow.flba_field))
+              .append(SingleRow.PLAINTEXT_INT32_FIELD_NAME, singleRow.plaintext_int32_field));
 
         }
       }
@@ -467,7 +366,7 @@ public class TestEncryptionOptions {
         if ((decryptionConfiguration == DecryptionConfiguration.NO_DECRYPTION) &&
           (encryptionConfiguration == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER)) {
           conf.set("parquet.read.schema", Types.buildMessage()
-            .optional(INT32).named(PLAINTEXT_INT32_FIELD_NAME)
+            .optional(INT32).named(SingleRow.PLAINTEXT_INT32_FIELD_NAME)
             .named("FormatTestObject").toString());
         }
 
@@ -479,38 +378,38 @@ public class TestEncryptionOptions {
           for (Group group = reader.read(); group != null; group = reader.read()) {
             SingleRow rowExpected = data.get(rowNum++);
             // plaintext columns
-            if (rowExpected.plaintext_int32_field != group.getInteger(PLAINTEXT_INT32_FIELD_NAME, 0)) {
+            if (rowExpected.plaintext_int32_field != group.getInteger(SingleRow.PLAINTEXT_INT32_FIELD_NAME, 0)) {
               addErrorToErrorCollectorAndLog("Wrong int", encryptionConfiguration, decryptionConfiguration);
             }
             // encrypted columns
             if (decryptionConfiguration != DecryptionConfiguration.NO_DECRYPTION) {
-              if (rowExpected.boolean_field != group.getBoolean(BOOLEAN_FIELD_NAME, 0)) {
+              if (rowExpected.boolean_field != group.getBoolean(SingleRow.BOOLEAN_FIELD_NAME, 0)) {
                 addErrorToErrorCollectorAndLog("Wrong bool", encryptionConfiguration, decryptionConfiguration);
               }
-              if (rowExpected.int32_field != group.getInteger(INT32_FIELD_NAME, 0)) {
+              if (rowExpected.int32_field != group.getInteger(SingleRow.INT32_FIELD_NAME, 0)) {
                 addErrorToErrorCollectorAndLog("Wrong int", encryptionConfiguration, decryptionConfiguration);
               }
-              if (rowExpected.float_field != group.getFloat(FLOAT_FIELD_NAME, 0)) {
+              if (rowExpected.float_field != group.getFloat(SingleRow.FLOAT_FIELD_NAME, 0)) {
                 addErrorToErrorCollectorAndLog("Wrong float", encryptionConfiguration, decryptionConfiguration);
               }
-              if (rowExpected.double_field != group.getDouble(DOUBLE_FIELD_NAME, 0)) {
+              if (rowExpected.double_field != group.getDouble(SingleRow.DOUBLE_FIELD_NAME, 0)) {
                 addErrorToErrorCollectorAndLog("Wrong double", encryptionConfiguration, decryptionConfiguration);
               }
               if ((null != rowExpected.ba_field) &&
-                !Arrays.equals(rowExpected.ba_field, group.getBinary(BINARY_FIELD_NAME, 0).getBytes())) {
+                !Arrays.equals(rowExpected.ba_field, group.getBinary(SingleRow.BINARY_FIELD_NAME, 0).getBytes())) {
                 addErrorToErrorCollectorAndLog("Wrong byte array", encryptionConfiguration, decryptionConfiguration);
               }
               if (!Arrays.equals(rowExpected.flba_field,
-                group.getBinary(FIXED_LENGTH_BINARY_FIELD_NAME, 0).getBytes())) {
+                group.getBinary(SingleRow.FIXED_LENGTH_BINARY_FIELD_NAME, 0).getBytes())) {
                 addErrorToErrorCollectorAndLog("Wrong fixed-length byte array",
                   encryptionConfiguration, decryptionConfiguration);
               }
             }
           }
         } catch (ParquetCryptoRuntimeException e) {
-          String errorMessage = e.getMessage();
-          checkResult(file.getName(), decryptionConfiguration, (null == errorMessage ? e.toString() : errorMessage));
+          checkResult(file.getName(), decryptionConfiguration, e);
         } catch (Exception e) {
+          e.printStackTrace();
           addErrorToErrorCollectorAndLog(
             "Unexpected exception: " + e.getClass().getName() + " with message: " + e.getMessage(),
             encryptionConfiguration, decryptionConfiguration);
@@ -539,8 +438,8 @@ public class TestEncryptionOptions {
         if ((decryptionConfiguration == DecryptionConfiguration.NO_DECRYPTION) &&
           (encryptionConfiguration == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAINTEXT_FOOTER)) {
           conf.set("parquet.read.schema", Types.buildMessage()
-            .required(BOOLEAN).named(BOOLEAN_FIELD_NAME)
-            .required(INT32).named(INT32_FIELD_NAME)
+            .required(BOOLEAN).named(SingleRow.BOOLEAN_FIELD_NAME)
+            .required(INT32).named(SingleRow.INT32_FIELD_NAME)
             .named("FormatTestObject").toString());
         }
 
@@ -552,26 +451,26 @@ public class TestEncryptionOptions {
           for (Group group = reader.read(); group != null; group = reader.read()) {
             SingleRow rowExpected = data.get(rowNum++);
             // plaintext columns
-            if (rowExpected.boolean_field != group.getBoolean(BOOLEAN_FIELD_NAME, 0)) {
+            if (rowExpected.boolean_field != group.getBoolean(SingleRow.BOOLEAN_FIELD_NAME, 0)) {
               addErrorToErrorCollectorAndLog("Wrong bool", encryptionConfiguration, decryptionConfiguration);
             }
-            if (rowExpected.int32_field != group.getInteger(INT32_FIELD_NAME, 0)) {
+            if (rowExpected.int32_field != group.getInteger(SingleRow.INT32_FIELD_NAME, 0)) {
               addErrorToErrorCollectorAndLog("Wrong int", encryptionConfiguration, decryptionConfiguration);
             }
             // encrypted columns
             if (decryptionConfiguration != DecryptionConfiguration.NO_DECRYPTION) {
-              if (rowExpected.float_field != group.getFloat(FLOAT_FIELD_NAME, 0)) {
+              if (rowExpected.float_field != group.getFloat(SingleRow.FLOAT_FIELD_NAME, 0)) {
                 addErrorToErrorCollectorAndLog("Wrong float", encryptionConfiguration, decryptionConfiguration);
               }
-              if (rowExpected.double_field != group.getDouble(DOUBLE_FIELD_NAME, 0)) {
+              if (rowExpected.double_field != group.getDouble(SingleRow.DOUBLE_FIELD_NAME, 0)) {
                 addErrorToErrorCollectorAndLog("Wrong double", encryptionConfiguration, decryptionConfiguration);
               }
             }
           }
         } catch (ParquetCryptoRuntimeException e) {
-          String errorMessage = e.getMessage();
-          checkResult(file.getName(), decryptionConfiguration, (null == errorMessage ? e.toString() : errorMessage));
+          checkResult(file.getName(), decryptionConfiguration, e);
         } catch (Exception e) {
+          e.printStackTrace();
           addErrorToErrorCollectorAndLog(
             "Unexpected exception: " + e.getClass().getName() + " with message: " + e.getMessage(),
             encryptionConfiguration, decryptionConfiguration);
@@ -585,7 +484,10 @@ public class TestEncryptionOptions {
   /**
    * Check that the decryption result is as expected.
    */
-  private void checkResult(String file, DecryptionConfiguration decryptionConfiguration, String exceptionMsg) {
+  private void checkResult(String file, DecryptionConfiguration decryptionConfiguration,
+                           ParquetCryptoRuntimeException exception) {
+    String errorMessage = exception.getMessage();
+    String exceptionMsg = (null == errorMessage ? exception.toString() : errorMessage);
     // Extract encryptionConfigurationNumber from the parquet file name.
     EncryptionConfiguration encryptionConfiguration = getEncryptionConfigurationFromFilename(file);
 
@@ -648,10 +550,9 @@ public class TestEncryptionOptions {
         return;
       }
     }
-    if (null != exceptionMsg && !exceptionMsg.isEmpty()) {
-      addErrorToErrorCollectorAndLog("Didn't expect an exception", exceptionMsg,
-        encryptionConfiguration, decryptionConfiguration);
-    }
+    exception.printStackTrace();
+    addErrorToErrorCollectorAndLog("Didn't expect an exception", exceptionMsg,
+      encryptionConfiguration, decryptionConfiguration);
   }
 
   private EncryptionConfiguration getEncryptionConfigurationFromFilename(String file) {
@@ -691,42 +592,42 @@ public class TestEncryptionOptions {
     Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = new HashMap<>();
 
     ColumnEncryptionProperties columnPropertiesDouble = ColumnEncryptionProperties
-      .builder(DOUBLE_FIELD_NAME)
+      .builder(SingleRow.DOUBLE_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[0])
       .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[0])
       .build();
     columnPropertiesMap.put(columnPropertiesDouble.getPath(), columnPropertiesDouble);
 
     ColumnEncryptionProperties columnPropertiesFloat = ColumnEncryptionProperties
-      .builder(FLOAT_FIELD_NAME)
+      .builder(SingleRow.FLOAT_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[1])
       .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[1])
       .build();
     columnPropertiesMap.put(columnPropertiesFloat.getPath(), columnPropertiesFloat);
 
     ColumnEncryptionProperties columnPropertiesBool = ColumnEncryptionProperties
-      .builder(BOOLEAN_FIELD_NAME)
+      .builder(SingleRow.BOOLEAN_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[2])
       .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[2])
       .build();
     columnPropertiesMap.put(columnPropertiesBool.getPath(), columnPropertiesBool);
 
     ColumnEncryptionProperties columnPropertiesInt32 = ColumnEncryptionProperties
-      .builder(INT32_FIELD_NAME)
+      .builder(SingleRow.INT32_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[3])
       .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[3])
       .build();
     columnPropertiesMap.put(columnPropertiesInt32.getPath(), columnPropertiesInt32);
 
     ColumnEncryptionProperties columnPropertiesBinary = ColumnEncryptionProperties
-      .builder(BINARY_FIELD_NAME)
+      .builder(SingleRow.BINARY_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[4])
       .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[4])
       .build();
     columnPropertiesMap.put(columnPropertiesBinary.getPath(), columnPropertiesBinary);
 
     ColumnEncryptionProperties columnPropertiesFixed = ColumnEncryptionProperties
-      .builder(FIXED_LENGTH_BINARY_FIELD_NAME)
+      .builder(SingleRow.FIXED_LENGTH_BINARY_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[5])
       .withKeyID(COLUMN_ENCRYPTION_KEY_IDS[5])
       .build();
@@ -739,37 +640,37 @@ public class TestEncryptionOptions {
     Map<ColumnPath, ColumnDecryptionProperties> columnMap = new HashMap<>();
 
     ColumnDecryptionProperties columnDecryptionPropsDouble = ColumnDecryptionProperties
-      .builder(DOUBLE_FIELD_NAME)
+      .builder(SingleRow.DOUBLE_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[0])
       .build();
     columnMap.put(columnDecryptionPropsDouble.getPath(), columnDecryptionPropsDouble);
 
     ColumnDecryptionProperties columnDecryptionPropsFloat = ColumnDecryptionProperties
-      .builder(FLOAT_FIELD_NAME)
+      .builder(SingleRow.FLOAT_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[1])
       .build();
     columnMap.put(columnDecryptionPropsFloat.getPath(), columnDecryptionPropsFloat);
 
     ColumnDecryptionProperties columnDecryptionPropsBool = ColumnDecryptionProperties
-      .builder(BOOLEAN_FIELD_NAME)
+      .builder(SingleRow.BOOLEAN_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[2])
       .build();
     columnMap.put(columnDecryptionPropsBool.getPath(), columnDecryptionPropsBool);
 
     ColumnDecryptionProperties columnDecryptionPropsInt32 = ColumnDecryptionProperties
-      .builder(INT32_FIELD_NAME)
+      .builder(SingleRow.INT32_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[3])
       .build();
     columnMap.put(columnDecryptionPropsInt32.getPath(), columnDecryptionPropsInt32);
 
     ColumnDecryptionProperties columnDecryptionPropsBinary = ColumnDecryptionProperties
-      .builder(BINARY_FIELD_NAME)
+      .builder(SingleRow.BINARY_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[4])
       .build();
     columnMap.put(columnDecryptionPropsBinary.getPath(), columnDecryptionPropsBinary);
 
     ColumnDecryptionProperties columnDecryptionPropsFixed = ColumnDecryptionProperties
-      .builder(FIXED_LENGTH_BINARY_FIELD_NAME)
+      .builder(SingleRow.FIXED_LENGTH_BINARY_FIELD_NAME)
       .withKey(COLUMN_ENCRYPTION_KEYS[5])
       .build();
     columnMap.put(columnDecryptionPropsFixed.getPath(), columnDecryptionPropsFixed);

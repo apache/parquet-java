@@ -22,11 +22,15 @@ package org.apache.parquet.crypto;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.FileCryptoMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.parquet.format.EncryptionAlgorithm;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class InternalFileEncryptor {
+  private static final Logger LOG = LoggerFactory.getLogger(InternalFileEncryptor.class);
 
   private final EncryptionAlgorithm algorithm;
   private final FileEncryptionProperties fileEncryptionProperties;
@@ -42,6 +46,9 @@ public class InternalFileEncryptor {
 
   public InternalFileEncryptor(FileEncryptionProperties fileEncryptionProperties) {
     this.fileEncryptionProperties = fileEncryptionProperties;
+    if (LOG.isDebugEnabled()) {
+      fileEncryptorLog();
+    }
     algorithm = fileEncryptionProperties.getAlgorithm();
     footerKey = fileEncryptionProperties.getFooterKey();
     encryptFooter =  fileEncryptionProperties.encryptedFooter();
@@ -170,5 +177,20 @@ public class InternalFileEncryptor {
       throw new ParquetCryptoRuntimeException("Requesting signed footer encryptor in file with encrypted footer");
     }
     return (AesGcmEncryptor) ModuleCipherFactory.getEncryptor(AesMode.GCM, footerKey);
+  }
+
+  private void fileEncryptorLog() {
+    String encryptedColumnList;
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap = fileEncryptionProperties.getEncryptedColumns();
+    if (null != columnPropertyMap) {
+      encryptedColumnList = "";
+      for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnPropertyMap.entrySet()) {
+        encryptedColumnList += entry.getKey() + "; ";
+      }
+    } else {
+      encryptedColumnList = "Every column will be encrypted with footer key.";
+    }
+    LOG.debug("File Encryptor. Algo: {}. Encrypted footer: {}.  Encrypted columns: {}", 
+        fileEncryptionProperties.getAlgorithm(), fileEncryptionProperties.encryptedFooter(), encryptedColumnList);
   }
 }

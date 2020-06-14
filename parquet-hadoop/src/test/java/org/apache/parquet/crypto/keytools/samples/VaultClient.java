@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.crypto.keytools.samples;
 
+import okhttp3.ConnectionSpec;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -33,10 +34,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * An example of KmsClient implementation. Not for production use!
+ */
 public class VaultClient extends RemoteKmsClient {
   private static final Logger LOG = LoggerFactory.getLogger(VaultClient.class);
   private static final MediaType JSON_MEDIA_TYPE = MediaType.get("application/json; charset=utf-8");
@@ -46,22 +51,34 @@ public class VaultClient extends RemoteKmsClient {
   private static final String tokenHeader="X-Vault-Token";
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  private String transitEngine = DEFAULT_TRANSIT_ENGINE;
-  private OkHttpClient httpClient = new OkHttpClient();
-
+  private String endPointPrefix;
+  private OkHttpClient httpClient = new OkHttpClient.Builder()
+    .connectionSpecs(Arrays.asList(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
+    .build();
 
   @Override
   protected void initializeInternal() {
-    if (kmsToken.equals(KmsClient.DEFAULT_ACCESS_TOKEN)) {
-      throw new ParquetCryptoRuntimeException("Token not provided");
+    if (isDefaultToken) {
+      throw new ParquetCryptoRuntimeException("Vault token not provided");
     }
-    
-    if (DEFAULT_KMS_INSTANCE_ID != kmsInstanceID) {
+
+    if (kmsInstanceURL.equals(KmsClient.KMS_INSTANCE_URL_DEFAULT)) {
+      throw new ParquetCryptoRuntimeException("Vault URL not provided");
+    }
+
+    if (!kmsInstanceURL.endsWith("/")) {
+      kmsInstanceURL += "/";
+    }
+
+    String transitEngine = DEFAULT_TRANSIT_ENGINE;
+    if (!kmsInstanceID.equals(KmsClient.KMS_INSTANCE_ID_DEFAULT)) {
       transitEngine = "/v1/" + kmsInstanceID;
       if (!transitEngine.endsWith("/")) {
         transitEngine += "/";
       }
     }
+
+    endPointPrefix = kmsInstanceURL + transitEngine;
   }
 
   @Override
@@ -69,7 +86,7 @@ public class VaultClient extends RemoteKmsClient {
     Map<String, String> writeKeyMap = new HashMap<String, String>(1);
     final String dataKeyStr = Base64.getEncoder().encodeToString(dataKey);
     writeKeyMap.put("plaintext", dataKeyStr);
-    String response = getContentFromTransitEngine(transitEngine + transitWrapEndpoint, buildPayload(writeKeyMap), masterKeyIdentifier);
+    String response = getContentFromTransitEngine(endPointPrefix + transitWrapEndpoint, buildPayload(writeKeyMap), masterKeyIdentifier);
     String ciphertext = parseReturn(response, "ciphertext");
     return ciphertext;
   }
@@ -78,7 +95,7 @@ public class VaultClient extends RemoteKmsClient {
   public byte[] unwrapKeyInServer(String wrappedKey, String masterKeyIdentifier) {
     Map<String, String> writeKeyMap = new HashMap<String, String>(1);
     writeKeyMap.put("ciphertext", wrappedKey);
-    String response = getContentFromTransitEngine(transitEngine + transitUnwrapEndpoint, buildPayload(writeKeyMap), masterKeyIdentifier);
+    String response = getContentFromTransitEngine(endPointPrefix + transitUnwrapEndpoint, buildPayload(writeKeyMap), masterKeyIdentifier);
     String plaintext = parseReturn(response, "plaintext");
     final byte[] key = Base64.getDecoder().decode(plaintext);
     return key;
@@ -106,7 +123,7 @@ public class VaultClient extends RemoteKmsClient {
 
     final RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE, jPayload);
     Request request = new Request.Builder()
-        .url(this.kmsURL + endPoint + masterKeyID)
+        .url(endPoint + masterKeyID)
         .header(tokenHeader,  kmsToken)
         .post(requestBody).build();
 
@@ -149,5 +166,4 @@ public class VaultClient extends RemoteKmsClient {
     }
     return matchingValue;
   }
-
 }

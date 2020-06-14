@@ -43,7 +43,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   private FileSystem hadoopFileSystem;
   private Map<String, String> keyMaterialMap;
   private Path keyMaterialFile;
-  
+
   HadoopFSKeyMaterialStore(FileSystem hadoopFileSystem) {
     this.hadoopFileSystem = hadoopFileSystem;
   }
@@ -71,7 +71,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
     }
     return keyMaterialMap.get(keyIDInFile);
   }
-  
+
   private void loadKeyMaterialMap() {
     try (FSDataInputStream keyMaterialStream = hadoopFileSystem.open(keyMaterialFile)) {
       JsonNode keyMaterialJson = objectMapper.readTree(keyMaterialStream);
@@ -84,7 +84,6 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
 
   @Override
   public void saveMaterial() throws ParquetCryptoRuntimeException {
-    // TODO needed? Path qualifiedPath = parquetFilePath.makeQualified(hadoopFileSystem);
     try (FSDataOutputStream keyMaterialStream = hadoopFileSystem.create(keyMaterialFile)) {
       objectMapper.writeValue(keyMaterialStream, keyMaterialMap);
     } catch (IOException e) {
@@ -112,7 +111,14 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
 
   @Override
   public void moveMaterialTo(FileKeyMaterialStore keyMaterialStore) throws ParquetCryptoRuntimeException {
-    HadoopFSKeyMaterialStore targetStore = (HadoopFSKeyMaterialStore) keyMaterialStore;
+    // Currently supports only moving to a HadoopFSKeyMaterialStore
+    HadoopFSKeyMaterialStore targetStore;
+    try {
+      targetStore = (HadoopFSKeyMaterialStore) keyMaterialStore;
+    } catch (ClassCastException e) {
+      throw new IllegalArgumentException("Currently supports only moving to HadoopFSKeyMaterialStore, not to " +
+          keyMaterialStore.getClass(), e);
+    }
     Path targetKeyMaterialFile = targetStore.getStorageFilePath();
     try {
       hadoopFileSystem.rename(keyMaterialFile, targetKeyMaterialFile);

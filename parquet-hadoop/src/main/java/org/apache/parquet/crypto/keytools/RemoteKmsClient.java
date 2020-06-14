@@ -17,73 +17,132 @@
  * under the License.
  */
 
-
-
 package org.apache.parquet.crypto.keytools;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
 
-
 public abstract class RemoteKmsClient implements KmsClient {
-  public static final String DEFAULT_KMS_INSTANCE_URL = "DEFAULT";
+
+  public static final String LOCAL_WRAP_NO_KEY_VERSION = "NO_VERSION";
 
   protected String kmsInstanceID;
-  protected String kmsURL;
+  protected String kmsInstanceURL;
   protected String kmsToken;
   protected Boolean isWrapLocally;
   protected Configuration hadoopConfiguration;
-  private boolean isDefaultToken;
+  protected boolean isDefaultToken;
 
-  private final int INITIAL_KEY_CACHE_SIZE = 10;
   // MasterKey cache: master keys per key ID (per KMS Client). For local wrapping only.
   private ConcurrentMap<String, byte[]> masterKeyCache;
 
-  @Override
-  public void initialize(Configuration configuration, String kmsInstanceID, String accessToken) {
-    this.kmsInstanceID = kmsInstanceID;
-    this.kmsURL = configuration.getTrimmed(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME);
+  static class LocalKeyWrap {
+    public static final String LOCAL_WRAP_KEY_VERSION_FIELD = "masterKeyVersion";
+    public static final String LOCAL_WRAP_ENCRYPTED_KEY_FIELD = "encryptedKey";
 
-    this.isWrapLocally = configuration.getBoolean(KeyToolkit.WRAP_LOCALLY_PROPERTY_NAME, false);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private String encryptedEncodedKey;
+    private String masterKeyVersion;
+
+    private LocalKeyWrap(String masterKeyVersion, String encryptedEncodedKey) {
+      this.masterKeyVersion = masterKeyVersion;
+      this.encryptedEncodedKey = encryptedEncodedKey;
+    }
+
+    private static String createSerialized(String encryptedEncodedKey) {
+      Map<String, String> keyWrapMap = new HashMap<String, String>(2);
+      keyWrapMap.put(LOCAL_WRAP_KEY_VERSION_FIELD, LOCAL_WRAP_NO_KEY_VERSION);
+      keyWrapMap.put(LOCAL_WRAP_ENCRYPTED_KEY_FIELD, encryptedEncodedKey);
+      try {
+        return OBJECT_MAPPER.writeValueAsString(keyWrapMap);
+      } catch (IOException e) {
+        throw new ParquetCryptoRuntimeException("Failed to serialize local key wrap map", e);
+      }
+    }
+
+    private static LocalKeyWrap parse(String wrappedKey) {
+      Map<String, String> keyWrapMap = null;
+      try {
+        keyWrapMap = OBJECT_MAPPER.readValue(new StringReader(wrappedKey),
+            new TypeReference<Map<String, String>>() {});
+      } catch (IOException e) {
+        throw new ParquetCryptoRuntimeException("Failed to parse local key wrap json " + wrappedKey, e);
+      }
+      String encryptedEncodedKey = keyWrapMap.get(LOCAL_WRAP_ENCRYPTED_KEY_FIELD);
+      String masterKeyVersion = keyWrapMap.get(LOCAL_WRAP_KEY_VERSION_FIELD);
+
+      return new LocalKeyWrap(masterKeyVersion, encryptedEncodedKey);
+    }
+
+    private String getMasterKeyVersion() {
+      return masterKeyVersion;
+    }
+
+    private String getEncryptedKey() {
+      return encryptedEncodedKey;
+    }
+  }
+
+  @Override
+  public void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
+    this.kmsInstanceID = kmsInstanceID;
+    this.kmsInstanceURL = kmsInstanceURL;
+
+    this.isWrapLocally = configuration.getBoolean(KeyToolkit.WRAP_LOCALLY_PROPERTY_NAME, KeyToolkit.WRAP_LOCALLY_DEFAULT);
     if (isWrapLocally) {
-      masterKeyCache = new ConcurrentHashMap<>(INITIAL_KEY_CACHE_SIZE);
+      masterKeyCache = new ConcurrentHashMap<>();
     }
 
     hadoopConfiguration = configuration;
     kmsToken = accessToken;
 
-    isDefaultToken = kmsToken.equals(KmsClient.DEFAULT_ACCESS_TOKEN);
+    isDefaultToken = kmsToken.equals(KmsClient.KEY_ACCESS_TOKEN_DEFAULT);
 
     initializeInternal();
   }
 
   @Override
-  public String wrapKey(byte[] dataKey, String masterKeyIdentifier) throws KeyAccessDeniedException {
+  public String wrapKey(byte[] key, String masterKeyIdentifier) throws KeyAccessDeniedException {
     if (isWrapLocally) {
       byte[] masterKey =  masterKeyCache.computeIfAbsent(masterKeyIdentifier,
           (k) -> getKeyFromServer(masterKeyIdentifier));
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-      return KeyToolkit.wrapKeyLocally(dataKey, masterKey, AAD);
+      String encryptedEncodedKey =  KeyToolkit.encryptKeyLocally(key, masterKey, AAD);
+      return LocalKeyWrap.createSerialized(encryptedEncodedKey);
     } else {
       refreshToken();
-      return wrapKeyInServer(dataKey, masterKeyIdentifier);
+      return wrapKeyInServer(key, masterKeyIdentifier);
     }
   }
 
   @Override
   public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier) throws KeyAccessDeniedException {
     if (isWrapLocally) {
+      LocalKeyWrap keyWrap = LocalKeyWrap.parse(wrappedKey);
+      String masterKeyVersion = keyWrap.getMasterKeyVersion();
+      if (!LOCAL_WRAP_NO_KEY_VERSION.equals(masterKeyVersion)) {
+        throw new ParquetCryptoRuntimeException("Master key versions are not supported for local wrapping: "
+          + masterKeyVersion);
+      }
+      String encryptedEncodedKey = keyWrap.getEncryptedKey();
       byte[] masterKey = masterKeyCache.computeIfAbsent(masterKeyIdentifier,
           (k) -> getKeyFromServer(masterKeyIdentifier));
       byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-      return KeyToolkit.unwrapKeyLocally(wrappedKey, masterKey, AAD);
+      return KeyToolkit.decryptKeyLocally(encryptedEncodedKey, masterKey, AAD);
     } else {
       refreshToken();
       return unwrapKeyInServer(wrappedKey, masterKeyIdentifier);
@@ -143,6 +202,7 @@ public abstract class RemoteKmsClient implements KmsClient {
    * (such as Hadoop AccessControlException), catch them and throw the KeyAccessDeniedException.
    * 
    * @param masterKeyIdentifier: a string that uniquely identifies the master key in a KMS instance
+   * @return master key bytes
    * @throws KeyAccessDeniedException unauthorized to get the master key
    * @throws UnsupportedOperationException If not implemented, or KMS does not support key fetching 
    */
