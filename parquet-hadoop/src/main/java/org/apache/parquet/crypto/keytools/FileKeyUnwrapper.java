@@ -44,7 +44,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
   private volatile static long lastKekCacheCleanupTimestamp = System.currentTimeMillis() + 60 * 1000; // grace period of 1 minute
 
   //A map of KEK_ID to KEK - for the current token
-  private final ConcurrentMap<String,byte[]> KEKPerKekID;
+  private final ConcurrentMap<String,byte[]> kekPerKekID;
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
