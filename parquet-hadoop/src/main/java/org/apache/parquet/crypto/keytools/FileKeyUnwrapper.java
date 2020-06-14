@@ -39,7 +39,8 @@ import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
 
 public class FileKeyUnwrapper implements DecryptionKeyRetriever {
   // For every token: a map of KEK_ID to KEK bytes
-  private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String,byte[]>>> KEKMapPerToken = new ConcurrentHashMap<>();
+  private static final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String,byte[]>>> KEK_MAP_PER_TOKEN = new ConcurrentHashMap<>();
+
   private volatile static long lastKekCacheCleanupTimestamp = System.currentTimeMillis() + 60 * 1000; // grace period of 1 minute
 
   //A map of KEK_ID to KEK - for the current token
