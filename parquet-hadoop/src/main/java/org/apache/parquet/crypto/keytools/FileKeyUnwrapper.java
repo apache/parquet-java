@@ -68,7 +68,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     accessToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME, 
         KmsClient.DEFAULT_ACCESS_TOKEN);
 
-    ExpiringCacheEntry<ConcurrentMap<String, byte[]>> KEKCacheEntry = KEKMapPerToken.get(accessToken);
+    ExpiringCacheEntry<ConcurrentMap<String, byte[]>> kekCacheEntry = KEKMapPerToken.get(accessToken);
     if (null == KEKCacheEntry || KEKCacheEntry.isExpired()) {
       synchronized (KEKMapPerToken) {
         KEKCacheEntry = KEKMapPerToken.get(accessToken);
