@@ -78,6 +78,7 @@ public class CompressionConveterTest {
   private Map<String, String> extraMeta
     = ImmutableMap.of("key1", "value1", "key2", "value2");
   private CompressionConverter compressionConverter = new CompressionConverter();
+  private Random rnd = new Random(5);
 
   @Test
   public void testTransCompression() throws Exception {
@@ -268,7 +269,7 @@ public class CompressionConveterTest {
     char[] chars = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'x', 'z', 'y'};
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < 100; i++) {
-      sb.append(chars[new Random().nextInt(10)]);
+      sb.append(chars[rnd.nextInt(10)]);
     }
     return sb.toString();
   }

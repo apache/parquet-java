@@ -180,9 +180,7 @@ public class CompressionConverter {
 
   private Statistics convertStatistics(String createdBy, PrimitiveType type, org.apache.parquet.format.Statistics pageStatistics,
                                        ColumnIndex columnIndex, int pageIndex, ParquetMetadataConverter converter) throws IOException {
-    if (pageStatistics != null) {
-      return converter.fromParquetStatistics(createdBy, pageStatistics, type);
-    } else if (columnIndex != null) {
+    if (columnIndex != null) {
       if (columnIndex.getNullPages() == null) {
         throw new IOException("columnIndex has null variable 'nullPages' which indicates corrupted data for type: " +  type.getName());
       }
@@ -197,6 +195,8 @@ public class CompressionConverter {
         statsBuilder.withMax(columnIndex.getMaxValues().get(pageIndex).array().clone());
       }
       return statsBuilder.build();
+    } else if (pageStatistics != null) {
+      return converter.fromParquetStatistics(createdBy, pageStatistics, type);
     } else {
       return null;
     }
