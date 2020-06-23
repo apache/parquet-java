@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -210,9 +210,9 @@ public class TestThriftToParquetFileWriter {
       assertEquals(listMap.names.size(),
           g.getGroup("names", 0).getFieldRepetitionCount("names_tuple"));
       assertEquals(listMap.names.get(0).size(),
-          g.getGroup("names", 0).getGroup("names_tuple", 0).getFieldRepetitionCount("map"));
+          g.getGroup("names", 0).getGroup("names_tuple", 0).getFieldRepetitionCount("key_value"));
       assertEquals(listMap.names.get(1).size(),
-          g.getGroup("names", 0).getGroup("names_tuple", 1).getFieldRepetitionCount("map"));
+          g.getGroup("names", 0).getGroup("names_tuple", 1).getFieldRepetitionCount("key_value"));
     }
   }
 
@@ -228,9 +228,9 @@ public class TestThriftToParquetFileWriter {
     Group g = null;
     while((g = reader.read()) != null) {
       assertEquals("key",
-          g.getGroup("names", 0).getGroup("map",0).getBinary("key", 0).toStringUsingUTF8());
+          g.getGroup("names", 0).getGroup("key_value",0).getBinary("key", 0).toStringUsingUTF8());
       assertEquals(map.get("key").size(),
-          g.getGroup("names", 0).getGroup("map",0).getGroup("value", 0).getFieldRepetitionCount(0));
+          g.getGroup("names", 0).getGroup("key_value",0).getGroup("value", 0).getFieldRepetitionCount(0));
     }
   }
 
@@ -246,13 +246,13 @@ public class TestThriftToParquetFileWriter {
     Group g = null;
     while((g = reader.read()) != null) {
       assertEquals("key1",
-          g.getGroup("names", 0).getGroup("map",0).getGroup("key", 0).getBinary("key_tuple", 0).toStringUsingUTF8());
+          g.getGroup("names", 0).getGroup("key_value",0).getGroup("key", 0).getBinary("key_tuple", 0).toStringUsingUTF8());
       assertEquals("key2",
-          g.getGroup("names", 0).getGroup("map",0).getGroup("key", 0).getBinary("key_tuple", 1).toStringUsingUTF8());
+          g.getGroup("names", 0).getGroup("key_value",0).getGroup("key", 0).getBinary("key_tuple", 1).toStringUsingUTF8());
       assertEquals("val1",
-          g.getGroup("names", 0).getGroup("map",0).getGroup("value", 0).getBinary("value_tuple", 0).toStringUsingUTF8());
+          g.getGroup("names", 0).getGroup("key_value",0).getGroup("value", 0).getBinary("value_tuple", 0).toStringUsingUTF8());
       assertEquals("val2",
-          g.getGroup("names", 0).getGroup("map",0).getGroup("value", 0).getBinary("value_tuple", 1).toStringUsingUTF8());
+          g.getGroup("names", 0).getGroup("key_value",0).getGroup("value", 0).getBinary("value_tuple", 1).toStringUsingUTF8());
     }
   }
 

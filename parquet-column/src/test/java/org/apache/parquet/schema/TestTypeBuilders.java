@@ -486,7 +486,7 @@ public class TestTypeBuilders {
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
     GroupType expected = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED,
-        "map",
+        "key_value",
         typeList));
     GroupType actual = Types.requiredMap()
         .key(INT64)
@@ -501,7 +501,7 @@ public class TestTypeBuilders {
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
     GroupType expected = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED,
-        "map",
+        "key_value",
         typeList));
     GroupType actual = Types.optionalMap()
         .key(INT64)
@@ -515,7 +515,7 @@ public class TestTypeBuilders {
     List<Type> typeList = new ArrayList<>();
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
-    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual = Types.buildMessage().requiredMap()
@@ -530,7 +530,7 @@ public class TestTypeBuilders {
     List<Type> typeList = new ArrayList<>();
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new PrimitiveType(OPTIONAL, INT64, "value"));
-    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual = Types.buildMessage().requiredMap()
@@ -554,7 +554,7 @@ public class TestTypeBuilders {
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(OPTIONAL, "value", valueFields));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     GroupType actual = Types.optionalMap()
@@ -582,7 +582,7 @@ public class TestTypeBuilders {
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(REQUIRED, "value", valueFields));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -611,7 +611,7 @@ public class TestTypeBuilders {
 
     typeList.add(new PrimitiveType(OPTIONAL, DOUBLE, "value"));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -637,7 +637,7 @@ public class TestTypeBuilders {
 
     typeList.add(new PrimitiveType(REQUIRED, DOUBLE, "value"));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -666,7 +666,7 @@ public class TestTypeBuilders {
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(OPTIONAL, "value", valueFields));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -693,7 +693,7 @@ public class TestTypeBuilders {
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(REQUIRED, "value", valueFields));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -727,7 +727,7 @@ public class TestTypeBuilders {
     valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
     typeList.add(new GroupType(OPTIONAL, "value", valueFields));
 
-    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -761,7 +761,7 @@ public class TestTypeBuilders {
                         "list",
                         new PrimitiveType(OPTIONAL, INT64, "element"))));
 
-        GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
                 typeList));
 
         MessageType expected = new MessageType("mapParent", map);
@@ -786,7 +786,7 @@ public class TestTypeBuilders {
                         "list",
                         new PrimitiveType(OPTIONAL, INT64, "element"))));
 
-        GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
                 typeList));
 
         MessageType expected = new MessageType("mapParent", map);
@@ -811,9 +811,9 @@ public class TestTypeBuilders {
 
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new GroupType(REQUIRED, "value", OriginalType.MAP,
-        new GroupType(REPEATED, "map", innerMapTypeList)));
+        new GroupType(REPEATED, "key_value", innerMapTypeList)));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -839,9 +839,9 @@ public class TestTypeBuilders {
 
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new GroupType(OPTIONAL, "value", OriginalType.MAP,
-        new GroupType(REPEATED, "map", innerMapTypeList)));
+        new GroupType(REPEATED, "key_value", innerMapTypeList)));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -869,7 +869,7 @@ public class TestTypeBuilders {
             "list",
             new PrimitiveType(OPTIONAL, INT64, "element"))));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -898,7 +898,7 @@ public class TestTypeBuilders {
             "list",
             new PrimitiveType(OPTIONAL, INT64, "element"))));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -928,9 +928,9 @@ public class TestTypeBuilders {
         "first"
     )));
     typeList.add(new GroupType(REQUIRED, "value", OriginalType.MAP,
-        new GroupType(REPEATED, "map", innerMapTypeList)));
+        new GroupType(REPEATED, "key_value", innerMapTypeList)));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -961,9 +961,9 @@ public class TestTypeBuilders {
         "first"
     )));
     typeList.add(new GroupType(OPTIONAL, "value", OriginalType.MAP,
-        new GroupType(REPEATED, "map", innerMapTypeList)));
+        new GroupType(REPEATED, "key_value", innerMapTypeList)));
 
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -986,7 +986,7 @@ public class TestTypeBuilders {
     List<Type> typeList = new ArrayList<>();
 
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -1004,7 +1004,7 @@ public class TestTypeBuilders {
     List<Type> typeList = new ArrayList<>();
 
     typeList.add(new PrimitiveType(REQUIRED, BINARY, "key", OriginalType.UTF8));
-    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value",
         typeList));
 
     MessageType expected = new MessageType("mapParent", map);
@@ -1022,7 +1022,7 @@ public class TestTypeBuilders {
     Type valueType = Types.required(BOOLEAN).named("value");
 
     GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP,
-        new GroupType(REPEATED, "map", new Type[] {
+        new GroupType(REPEATED, "key_value", new Type[] {
             keyType,
             valueType
         }));
@@ -1204,7 +1204,7 @@ public class TestTypeBuilders {
     List<Type> fields = new ArrayList<>();
     fields.add(new GroupType(REQUIRED, "element", OriginalType.MAP,
         new GroupType(REPEATED,
-            "map",
+            "key_value",
             innerFields)));
     GroupType expected = new GroupType(OPTIONAL, "myList", OriginalType.LIST,
         new GroupType(REPEATED,
@@ -1230,7 +1230,7 @@ public class TestTypeBuilders {
     List<Type> fields = new ArrayList<>();
     fields.add(new GroupType(OPTIONAL, "element", OriginalType.MAP,
         new GroupType(REPEATED,
-            "map",
+            "key_value",
             innerFields)));
     GroupType expected = new GroupType(OPTIONAL, "myList", OriginalType.LIST,
         new GroupType(REPEATED,

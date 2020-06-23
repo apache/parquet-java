@@ -62,6 +62,7 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
  */
 public class PigSchemaConverter {
   private static final Logger LOG = LoggerFactory.getLogger(PigSchemaConverter.class);
+  private static final String MAP_REPEATED_NAME = "key_value";
   static final String ARRAY_VALUE_NAME = "value";
   private ColumnAccess columnAccess;
 
@@ -459,7 +460,7 @@ public class PigSchemaConverter {
       throw new SchemaConversionException("Invalid map schema, cannot infer innerschema: ", fe);
     }
     Type convertedValue = convertWithName(innerField, "value");
-    return ConversionPatterns.stringKeyMapType(Repetition.OPTIONAL, alias, name(innerField.alias, "map"),
+    return ConversionPatterns.stringKeyMapType(Repetition.OPTIONAL, alias, name(innerField.alias, MAP_REPEATED_NAME),
         convertedValue);
   }
 

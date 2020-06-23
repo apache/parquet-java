@@ -282,7 +282,7 @@ public class ParquetMetadataConverter {
   }
 
   LogicalType convertToLogicalType(LogicalTypeAnnotation logicalTypeAnnotation) {
-    return logicalTypeAnnotation.accept(LOGICAL_TYPE_ANNOTATION_VISITOR).get();
+    return logicalTypeAnnotation.accept(LOGICAL_TYPE_ANNOTATION_VISITOR).orElse(null);
   }
 
   ConvertedType convertToConvertedType(LogicalTypeAnnotation logicalTypeAnnotation) {
@@ -462,11 +462,6 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
-      return of(LogicalType.UNKNOWN(new NullType()));
-    }
-
-    @Override
-    public Optional<LogicalType> visit(LogicalTypeAnnotation.MapKeyValueTypeAnnotation mapKeyValueLogicalType) {
       return of(LogicalType.UNKNOWN(new NullType()));
     }
   }
