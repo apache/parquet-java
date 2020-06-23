@@ -613,8 +613,8 @@ public class ParquetFileReader implements Closeable {
     return new ParquetFileReader(file, options);
   }
 
+  protected final SeekableInputStream f;
   private final InputFile file;
-  private final SeekableInputStream f;
   private final ParquetReadOptions options;
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<>();
   private final FileMetaData fileMetaData; // may be null
