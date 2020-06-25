@@ -36,9 +36,9 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.uuidType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -69,6 +69,8 @@ import java.util.TreeSet;
 
 import com.google.common.collect.Sets;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.UTF8;
 import org.apache.parquet.FixedBinaryTestUtils;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
@@ -83,11 +85,17 @@ import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.StringType;
 import org.apache.parquet.format.Util;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -99,10 +107,10 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.LogicalTypeAnnotation.MapKeyValueTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
 import org.apache.parquet.example.Paper;
 import org.apache.parquet.format.ColumnChunk;
@@ -123,6 +131,7 @@ import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types;
 
 import com.google.common.collect.Lists;
+import org.junit.rules.TemporaryFolder;
 
 public class TestParquetMetadataConverter {
   private static SecureRandom random = new SecureRandom();
@@ -130,6 +139,9 @@ public class TestParquetMetadataConverter {
   private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();
   private static final String NUMBER = "0123456789";
   private static final String DATA_FOR_RANDOM_STRING = CHAR_LOWER + CHAR_UPPER + NUMBER;
+
+  @Rule
+  public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
   public void testPageHeader() throws IOException {
@@ -156,7 +168,7 @@ public class TestParquetMetadataConverter {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     List<SchemaElement> schemaElements = parquetMetadataConverter.toParquetSchema(
         Types.buildMessage()
-            .required(BINARY)
+            .required(PrimitiveTypeName.BINARY)
                 .as(OriginalType.DECIMAL).precision(9).scale(2)
                 .named("aBinaryDecimal")
             .optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(4)
@@ -246,7 +258,7 @@ public class TestParquetMetadataConverter {
   public void testLogicalTypesBackwardCompatibleWithConvertedTypes() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     MessageType expected = Types.buildMessage()
-      .required(BINARY)
+      .required(PrimitiveTypeName.BINARY)
       .as(OriginalType.DECIMAL).precision(9).scale(2)
       .named("aBinaryDecimal")
       .named("Message");
@@ -262,12 +274,12 @@ public class TestParquetMetadataConverter {
   public void testIncompatibleLogicalAndConvertedTypes() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     MessageType schema = Types.buildMessage()
-      .required(BINARY)
+      .required(PrimitiveTypeName.BINARY)
       .as(OriginalType.DECIMAL).precision(9).scale(2)
       .named("aBinary")
       .named("Message");
     MessageType expected = Types.buildMessage()
-      .required(BINARY)
+      .required(PrimitiveTypeName.BINARY)
       .as(LogicalTypeAnnotation.jsonType())
       .named("aBinary")
       .named("Message");
@@ -326,31 +338,6 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testMapLogicalType() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    MessageType expected = Types.buildMessage()
-      .requiredGroup().as(mapType())
-      .repeatedGroup().as(MapKeyValueTypeAnnotation.getInstance())
-      .required(BINARY).as(stringType()).named("key")
-      .required(PrimitiveTypeName.INT32).named("value")
-      .named("key_value")
-      .named("testMap")
-      .named("Message");
-
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
-    assertEquals(5, parquetSchema.size());
-    assertEquals(new SchemaElement("Message").setNum_children(1), parquetSchema.get(0));
-    assertEquals(new SchemaElement("testMap").setRepetition_type(FieldRepetitionType.REQUIRED).setNum_children(1).setConverted_type(ConvertedType.MAP).setLogicalType(LogicalType.MAP(new MapType())), parquetSchema.get(1));
-    // PARQUET-1879 ensure that LogicalType is not written (null) but ConvertedType is MAP_KEY_VALUE for backwards-compatibility
-    assertEquals(new SchemaElement("key_value").setRepetition_type(FieldRepetitionType.REPEATED).setNum_children(2).setConverted_type(ConvertedType.MAP_KEY_VALUE).setLogicalType(null), parquetSchema.get(2));
-    assertEquals(new SchemaElement("key").setType(Type.BYTE_ARRAY).setRepetition_type(FieldRepetitionType.REQUIRED).setConverted_type(ConvertedType.UTF8).setLogicalType(LogicalType.STRING(new StringType())), parquetSchema.get(3));
-    assertEquals(new SchemaElement("value").setType(Type.INT32).setRepetition_type(FieldRepetitionType.REQUIRED).setConverted_type(null).setLogicalType(null), parquetSchema.get(4));
-
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-    assertEquals(expected, schema);
-  }
-
-  @Test
   public void testLogicalToConvertedTypeConversion() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
@@ -391,7 +378,7 @@ public class TestParquetMetadataConverter {
 
     assertEquals(ConvertedType.LIST, parquetMetadataConverter.convertToConvertedType(listType()));
     assertEquals(ConvertedType.MAP, parquetMetadataConverter.convertToConvertedType(mapType()));
-    assertEquals(ConvertedType.MAP_KEY_VALUE, parquetMetadataConverter.convertToConvertedType(MapKeyValueTypeAnnotation.getInstance()));
+    assertEquals(ConvertedType.MAP_KEY_VALUE, parquetMetadataConverter.convertToConvertedType(LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance()));
   }
 
   @Test
@@ -582,7 +569,7 @@ public class TestParquetMetadataConverter {
 
   private ColumnChunkMetaData createColumnChunkMetaData() {
     Set<org.apache.parquet.column.Encoding> e = new HashSet<org.apache.parquet.column.Encoding>();
-    PrimitiveTypeName t = BINARY;
+    PrimitiveTypeName t = PrimitiveTypeName.BINARY;
     ColumnPath p = ColumnPath.get("foo");
     CompressionCodecName c = CompressionCodecName.GZIP;
     BinaryStatistics s = new BinaryStatistics();
@@ -677,7 +664,7 @@ public class TestParquetMetadataConverter {
         formatStats.isSetNull_count());
 
     Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
-        Version.FULL_VERSION, formatStats, new PrimitiveType(Repetition.OPTIONAL, BINARY, ""),
+        Version.FULL_VERSION, formatStats, new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, ""),
         ParquetMetadataConverter.SortOrder.SIGNED);
 
     Assert.assertTrue(roundTripStats.isEmpty());
@@ -899,7 +886,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(Binary.fromString("z"));
     stats.incrementNumNulls();
 
-    PrimitiveType binaryType = Types.required(BINARY)
+    PrimitiveType binaryType = Types.required(PrimitiveTypeName.BINARY)
         .as(OriginalType.UTF8).named("b");
     Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION,
@@ -930,7 +917,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(Binary.fromString("A"));
     stats.incrementNumNulls();
 
-    PrimitiveType binaryType = Types.required(BINARY).as(OriginalType.UTF8).named("b");
+    PrimitiveType binaryType = Types.required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("b");
     Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION,
         ParquetMetadataConverter.toParquetStatistics(stats),
@@ -963,7 +950,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(Binary.fromString("z"));
     stats.incrementNumNulls();
 
-    PrimitiveType binaryType = Types.required(BINARY)
+    PrimitiveType binaryType = Types.required(PrimitiveTypeName.BINARY)
         .as(OriginalType.UTF8).named("b");
     Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION,
@@ -1049,7 +1036,7 @@ public class TestParquetMetadataConverter {
     testV2OnlyStats(Types.optional(PrimitiveTypeName.INT64).as(OriginalType.UINT_64).named(""),
         0x7FFFFFFFFFFFFFFFL,
         0x8000000000000000L);
-    testV2OnlyStats(Types.optional(BINARY).as(OriginalType.DECIMAL).precision(6).named(""),
+    testV2OnlyStats(Types.optional(PrimitiveTypeName.BINARY).as(OriginalType.DECIMAL).precision(6).named(""),
         new BigInteger("-765875"),
         new BigInteger("876856"));
     testV2OnlyStats(
@@ -1082,7 +1069,7 @@ public class TestParquetMetadataConverter {
     testV2StatsEqualMinMax(Types.optional(PrimitiveTypeName.INT64).as(OriginalType.UINT_64).named(""),
         -2389943895984985L,
         -2389943895984985L);
-    testV2StatsEqualMinMax(Types.optional(BINARY).as(OriginalType.DECIMAL).precision(6).named(""),
+    testV2StatsEqualMinMax(Types.optional(PrimitiveTypeName.BINARY).as(OriginalType.DECIMAL).precision(6).named(""),
         new BigInteger("823749"),
         new BigInteger("823749"));
     testV2StatsEqualMinMax(
@@ -1288,5 +1275,95 @@ public class TestParquetMetadataConverter {
     assertNull("Should ignore unsupported types",
         ParquetMetadataConverter.fromParquetColumnIndex(Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
             .length(12).as(OriginalType.INTERVAL).named("test_interval"), parquetColumnIndex));
+  }
+
+  @Test
+  public void testMapLogicalType() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    MessageType expected = Types.buildMessage()
+      .requiredGroup().as(mapType())
+      .repeatedGroup().as(LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance())
+      .required(PrimitiveTypeName.BINARY).as(stringType()).named("key")
+      .required(PrimitiveTypeName.INT32).named("value")
+      .named("key_value")
+      .named("testMap")
+      .named("Message");
+
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    assertEquals(5, parquetSchema.size());
+    assertEquals(new SchemaElement("Message").setNum_children(1), parquetSchema.get(0));
+    assertEquals(new SchemaElement("testMap").setRepetition_type(FieldRepetitionType.REQUIRED).setNum_children(1).setConverted_type(ConvertedType.MAP).setLogicalType(LogicalType.MAP(new MapType())), parquetSchema.get(1));
+    // PARQUET-1879 ensure that LogicalType is not written (null) but ConvertedType is MAP_KEY_VALUE for backwards-compatibility
+    assertEquals(new SchemaElement("key_value").setRepetition_type(FieldRepetitionType.REPEATED).setNum_children(2).setConverted_type(ConvertedType.MAP_KEY_VALUE).setLogicalType(null), parquetSchema.get(2));
+    assertEquals(new SchemaElement("key").setType(Type.BYTE_ARRAY).setRepetition_type(FieldRepetitionType.REQUIRED).setConverted_type(ConvertedType.UTF8).setLogicalType(LogicalType.STRING(new StringType())), parquetSchema.get(3));
+    assertEquals(new SchemaElement("value").setType(Type.INT32).setRepetition_type(FieldRepetitionType.REQUIRED).setConverted_type(null).setLogicalType(null), parquetSchema.get(4));
+
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertEquals(expected, schema);
+  }
+
+  @Test
+  public void testMapLogicalTypeReadWrite() throws Exception {
+    MessageType messageType = Types.buildMessage()
+      .requiredGroup().as(mapType())
+      .repeatedGroup().as(LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance())
+      .required(PrimitiveTypeName.BINARY).as(stringType()).named("key")
+      .required(PrimitiveTypeName.INT64).named("value")
+      .named("key_value")
+      .named("testMap")
+      .named("example");
+
+    verifyMapMessageType(messageType, "key_value");
+  }
+
+  @Test
+  public void testMapConvertedTypeReadWrite() throws Exception {
+    List<SchemaElement> oldConvertedTypeSchemaElements = new ArrayList<>();
+    oldConvertedTypeSchemaElements.add(new SchemaElement("example").setNum_children(1));
+    oldConvertedTypeSchemaElements.add(new SchemaElement("testMap").setRepetition_type(FieldRepetitionType.REQUIRED).setNum_children(1).setConverted_type(ConvertedType.MAP).setLogicalType(null));
+    oldConvertedTypeSchemaElements.add(new SchemaElement("map").setRepetition_type(FieldRepetitionType.REPEATED).setNum_children(2).setConverted_type(ConvertedType.MAP_KEY_VALUE).setLogicalType(null));
+    oldConvertedTypeSchemaElements.add(new SchemaElement("key").setType(Type.BYTE_ARRAY).setRepetition_type(FieldRepetitionType.REQUIRED).setConverted_type(ConvertedType.UTF8).setLogicalType(null));
+    oldConvertedTypeSchemaElements.add(new SchemaElement("value").setType(Type.INT64).setRepetition_type(FieldRepetitionType.REQUIRED).setConverted_type(null).setLogicalType(null));
+
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    MessageType messageType = parquetMetadataConverter.fromParquetSchema(oldConvertedTypeSchemaElements, null);
+
+    verifyMapMessageType(messageType, "map");
+  }
+
+  private void verifyMapMessageType(final MessageType messageType, final String keyValueName) throws IOException {
+    Path file = new Path(temporaryFolder.newFolder("verifyMapMessageType").getPath(), keyValueName + ".parquet");
+
+    try (ParquetWriter<Group> writer =
+           ExampleParquetWriter
+             .builder(file)
+             .withType(messageType)
+             .build()) {
+      final Group group = new SimpleGroup(messageType);
+      final Group mapGroup = group.addGroup("testMap");
+
+      for (int index = 0; index < 5; index++) {
+        final Group keyValueGroup = mapGroup.addGroup(keyValueName);
+        keyValueGroup.add("key", Binary.fromString("key" + index));
+        keyValueGroup.add("value", 100L + index);
+      }
+
+      writer.write(group);
+    }
+
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).build()) {
+      Group group = reader.read();
+
+      assertNotNull(group);
+
+      Group testMap = group.getGroup("testMap", 0);
+      assertNotNull(testMap);
+      assertEquals(5, testMap.getFieldRepetitionCount(keyValueName));
+
+      for (int index = 0; index < 5; index++) {
+        assertEquals("key" + index, testMap.getGroup(keyValueName, index).getString("key", 0));
+        assertEquals(100L + index, testMap.getGroup(keyValueName, index).getLong("value", 0));
+      }
+    }
   }
 }
