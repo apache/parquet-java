@@ -39,6 +39,7 @@ public class BenchmarkFiles {
 //  public final Path parquetFile_1M_LZO = new Path("target/tests/ParquetBenchmarks/PARQUET-1M-LZO");
   public static final Path file_1M_SNAPPY = new Path(TARGET_DIR + "/PARQUET-1M-SNAPPY");
   public static final Path file_1M_GZIP = new Path(TARGET_DIR + "/PARQUET-1M-GZIP");
+  public static final Path file_1M_AIRLIFT_GZIP = new Path(TARGET_DIR + "/PARQUET-1M-AIRLIFT-GZIP");
 
   // Page checksum files
   public static final Path file_100K_CHECKSUMS_UNCOMPRESSED = new Path(TARGET_DIR + "/PARQUET-100K-CHECKSUMS-UNCOMPRESSED");
@@ -53,7 +54,11 @@ public class BenchmarkFiles {
   public static final Path file_1M_CHECKSUMS_GZIP = new Path(TARGET_DIR + "/PARQUET-1M-CHECKSUMS-GZIP");
   public static final Path file_1M_NOCHECKSUMS_GZIP = new Path(TARGET_DIR + "/PARQUET-1M-NOCHECKSUMS-GZIP");
   public static final Path file_10M_CHECKSUMS_GZIP = new Path(TARGET_DIR + "/PARQUET-10M-CHECKSUMS-GZIP");
+  public static final Path file_10M_CHECKSUMS_AIRLIFT_GZIP = new Path(TARGET_DIR + "/PARQUET-10M-CHECKSUMS-AIRLIFT" +
+    "-ZIP");
   public static final Path file_10M_NOCHECKSUMS_GZIP = new Path(TARGET_DIR + "/PARQUET-10M-NOCHECKSUMS-GZIP");
+  public static final Path file_10M_NOCHECKSUMS_AIRLIFT_GZIP = new Path(TARGET_DIR + "/PARQUET-10M-AIRLIFT" +
+    "-NOCHECKSUMS-GZIP");
 
   public static final Path file_100K_CHECKSUMS_SNAPPY = new Path(TARGET_DIR + "/PARQUET-100K-CHECKSUMS-SNAPPY");
   public static final Path file_100K_NOCHECKSUMS_SNAPPY = new Path(TARGET_DIR + "/PARQUET-100K-NOCHECKSUMS-SNAPPY");

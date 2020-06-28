@@ -163,6 +163,11 @@ public class ParquetReader<T> implements Closeable {
     }
   }
 
+  // Visible for testing purposes only
+  ParquetReadOptions readOptions() {
+    return options;
+  }
+
   public static <T> Builder<T> read(InputFile file) throws IOException {
     return new Builder<>(file);
   }
@@ -291,6 +296,11 @@ public class ParquetReader<T> implements Closeable {
 
     public Builder<T> useBloomFilter() {
       optionsBuilder.useBloomFilter();
+      return this;
+    }
+
+    public Builder<T> useAirliftCompressors(boolean useAirliftCompressors) {
+      optionsBuilder.useAirliftCompressors(useAirliftCompressors);
       return this;
     }
 

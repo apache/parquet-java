@@ -69,7 +69,7 @@ public class CompressionConverter {
   }
 
   public void processBlocks(TransParquetFileReader reader, ParquetFileWriter writer, ParquetMetadata meta, MessageType schema,
-                             String createdBy, CompressionCodecName codecName) throws IOException {
+                             String createdBy, CompressionCodecName codecName, boolean useAirliftCompressors) throws IOException {
     int blockIndex = 0;
     PageReadStore store = reader.readNextRowGroup();
     while (store != null) {
@@ -83,7 +83,7 @@ public class CompressionConverter {
         ColumnReadStoreImpl crstore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, createdBy);
         ColumnDescriptor columnDescriptor = descriptorsMap.get(chunk.getPath());
         writer.startColumn(columnDescriptor, crstore.getColumnReader(columnDescriptor).getTotalValueCount(), codecName);
-        processChunk(reader, writer, chunk, createdBy, codecName);
+        processChunk(reader, writer, chunk, createdBy, codecName, useAirliftCompressors);
         writer.endColumn();
       }
       writer.endBlock();
@@ -93,8 +93,8 @@ public class CompressionConverter {
   }
 
   private void processChunk(TransParquetFileReader reader, ParquetFileWriter writer, ColumnChunkMetaData chunk,
-                            String createdBy, CompressionCodecName codecName) throws IOException {
-    CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
+                            String createdBy, CompressionCodecName codecName, boolean useAirliftCompressors) throws IOException {
+    CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0, useAirliftCompressors);
     CompressionCodecFactory.BytesInputDecompressor decompressor = codecFactory.getDecompressor(chunk.getCodec());
     CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(codecName);
     ColumnIndex columnIndex = reader.readColumnIndex(chunk);

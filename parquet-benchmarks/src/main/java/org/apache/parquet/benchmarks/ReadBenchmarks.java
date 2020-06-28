@@ -128,4 +128,12 @@ public class ReadBenchmarks {
   {
     read(file_1M_GZIP, ONE_MILLION, blackhole);
   }
+
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
+  public void read1MRowsDefaultBlockAndPageSizeAirliftGZIP(Blackhole blackhole)
+    throws IOException
+  {
+    read(file_1M_AIRLIFT_GZIP, ONE_MILLION, blackhole);
+  }
 }

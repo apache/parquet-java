@@ -24,6 +24,7 @@ import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
+import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.util.HadoopCodecs;
 
 import java.util.Map;
@@ -31,6 +32,7 @@ import java.util.Map;
 import static org.apache.parquet.hadoop.ParquetInputFormat.COLUMN_INDEX_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.AIRLIFT_COMPRESSORS_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
 import static org.apache.parquet.hadoop.ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
@@ -49,6 +51,7 @@ public class HadoopReadOptions extends ParquetReadOptions {
                             boolean useColumnIndexFilter,
                             boolean usePageChecksumVerification,
                             boolean useBloomFilter,
+                            boolean useAirliftCompressors,
                             FilterCompat.Filter recordFilter,
                             MetadataFilter metadataFilter,
                             CompressionCodecFactory codecFactory,
@@ -57,9 +60,9 @@ public class HadoopReadOptions extends ParquetReadOptions {
                             Map<String, String> properties,
                             Configuration conf) {
     super(
-        useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter, useColumnIndexFilter,
-        usePageChecksumVerification, useBloomFilter, recordFilter, metadataFilter, codecFactory, allocator,
-        maxAllocationSize, properties
+      useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter, useColumnIndexFilter,
+      usePageChecksumVerification, useBloomFilter, useAirliftCompressors, recordFilter, metadataFilter,
+      codecFactory, allocator, maxAllocationSize, properties
     );
     this.conf = conf;
   }
@@ -94,7 +97,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
       usePageChecksumVerification(conf.getBoolean(PAGE_VERIFY_CHECKSUM_ENABLED,
         usePageChecksumVerification));
       useBloomFilter(conf.getBoolean(BLOOM_FILTERING_ENABLED, true));
-      withCodecFactory(HadoopCodecs.newFactory(conf, 0));
+      withCodecFactory(HadoopCodecs.newFactory(conf, 0,
+        conf.getBoolean(AIRLIFT_COMPRESSORS_ENABLED, useAirliftCompressors)));
       withRecordFilter(getFilter(conf));
       withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
       String badRecordThresh = conf.get(BAD_RECORD_THRESHOLD_CONF_KEY);
@@ -107,8 +111,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
     public ParquetReadOptions build() {
       return new HadoopReadOptions(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, recordFilter, metadataFilter,
-        codecFactory, allocator, maxAllocationSize, properties, conf);
+        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, useAirliftCompressors, recordFilter,
+        metadataFilter, codecFactory, allocator, maxAllocationSize, properties, conf);
     }
   }
 }

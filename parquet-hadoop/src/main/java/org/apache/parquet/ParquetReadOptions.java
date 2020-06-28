@@ -43,6 +43,7 @@ public class ParquetReadOptions {
   private static final int ALLOCATION_SIZE_DEFAULT = 8388608; // 8MB
   private static final boolean PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT = false;
   private static final boolean BLOOM_FILTER_ENABLED_DEFAULT = true;
+  private static final boolean AIRLIFT_COMPRESSORS_ENABLED_DEFAULT = false;
 
   private final boolean useSignedStringMinMax;
   private final boolean useStatsFilter;
@@ -51,6 +52,7 @@ public class ParquetReadOptions {
   private final boolean useColumnIndexFilter;
   private final boolean usePageChecksumVerification;
   private final boolean useBloomFilter;
+  private final boolean useAirliftCompressors;
   private final FilterCompat.Filter recordFilter;
   private final ParquetMetadataConverter.MetadataFilter metadataFilter;
   private final CompressionCodecFactory codecFactory;
@@ -65,6 +67,7 @@ public class ParquetReadOptions {
                      boolean useColumnIndexFilter,
                      boolean usePageChecksumVerification,
                      boolean useBloomFilter,
+                     boolean useAirliftCompressors,
                      FilterCompat.Filter recordFilter,
                      ParquetMetadataConverter.MetadataFilter metadataFilter,
                      CompressionCodecFactory codecFactory,
@@ -78,9 +81,14 @@ public class ParquetReadOptions {
     this.useColumnIndexFilter = useColumnIndexFilter;
     this.usePageChecksumVerification = usePageChecksumVerification;
     this.useBloomFilter = useBloomFilter;
+    this.useAirliftCompressors = useAirliftCompressors;
     this.recordFilter = recordFilter;
     this.metadataFilter = metadataFilter;
-    this.codecFactory = codecFactory;
+    if (codecFactory != null) {
+      this.codecFactory = codecFactory.withAirliftCompressors(useAirliftCompressors);
+    } else {
+      this.codecFactory = null;
+    }
     this.allocator = allocator;
     this.maxAllocationSize = maxAllocationSize;
     this.properties = Collections.unmodifiableMap(properties);
@@ -109,6 +117,8 @@ public class ParquetReadOptions {
   public boolean useBloomFilter() {
     return useBloomFilter;
   }
+
+  public boolean useAirliftCompressors() { return useAirliftCompressors; }
 
   public boolean usePageChecksumVerification() {
     return usePageChecksumVerification;
@@ -160,10 +170,11 @@ public class ParquetReadOptions {
     protected boolean useColumnIndexFilter = COLUMN_INDEX_FILTERING_ENABLED_DEFAULT;
     protected boolean usePageChecksumVerification = PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT;
     protected boolean useBloomFilter = BLOOM_FILTER_ENABLED_DEFAULT;
+    protected boolean useAirliftCompressors = AIRLIFT_COMPRESSORS_ENABLED_DEFAULT;
     protected FilterCompat.Filter recordFilter = null;
     protected ParquetMetadataConverter.MetadataFilter metadataFilter = NO_FILTER;
     // the page size parameter isn't used when only using the codec factory to get decompressors
-    protected CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
+    protected CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0, useAirliftCompressors);
     protected ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     protected int maxAllocationSize = ALLOCATION_SIZE_DEFAULT;
     protected Map<String, String> properties = new HashMap<>();
@@ -262,6 +273,11 @@ public class ParquetReadOptions {
       return this;
     }
 
+    public Builder useAirliftCompressors(boolean useAirliftCompressors) {
+      this.useAirliftCompressors = useAirliftCompressors;
+      return this;
+    }
+
     public Builder withAllocator(ByteBufferAllocator allocator) {
       this.allocator = allocator;
       return this;
@@ -291,6 +307,7 @@ public class ParquetReadOptions {
       withMetadataFilter(options.metadataFilter);
       withCodecFactory(options.codecFactory);
       withAllocator(options.allocator);
+      useAirliftCompressors(options.useAirliftCompressors);
       withPageChecksumVerification(options.usePageChecksumVerification);
       for (Map.Entry<String, String> keyValue : options.properties.entrySet()) {
         set(keyValue.getKey(), keyValue.getValue());
@@ -301,8 +318,8 @@ public class ParquetReadOptions {
     public ParquetReadOptions build() {
       return new ParquetReadOptions(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, recordFilter, metadataFilter,
-        codecFactory, allocator, maxAllocationSize, properties);
+        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, useAirliftCompressors,
+        recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, properties);
     }
   }
 }

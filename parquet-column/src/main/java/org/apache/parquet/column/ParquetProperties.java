@@ -57,6 +57,7 @@ public class ParquetProperties {
   public static final int DEFAULT_PAGE_ROW_COUNT_LIMIT = 20_000;
   public static final int DEFAULT_MAX_BLOOM_FILTER_BYTES = 1024 * 1024;
   public static final boolean DEFAULT_BLOOM_FILTER_ENABLED = false;
+  public static final boolean DEFAULT_AIRLIFT_COMPRESSORS_ENABLED = false;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
@@ -102,6 +103,7 @@ public class ParquetProperties {
   private final ColumnProperty<Long> bloomFilterNDVs;
   private final int maxBloomFilterBytes;
   private final ColumnProperty<Boolean> bloomFilterEnabled;
+  private final boolean useAirliftCompressors;
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final boolean enableByteStreamSplit;
@@ -127,6 +129,7 @@ public class ParquetProperties {
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.enableByteStreamSplit = builder.enableByteStreamSplit;
+    this.useAirliftCompressors = builder.useAirliftCompressors;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -262,6 +265,10 @@ public class ParquetProperties {
     return bloomFilterEnabled.getValue(column);
   }
 
+  public boolean useAirliftCompressors() {
+    return useAirliftCompressors;
+  }
+
   public int getMaxBloomFilterBytes() {
     return maxBloomFilterBytes;
   }
@@ -286,6 +293,7 @@ public class ParquetProperties {
         + "Truncate length for column indexes is: " + getColumnIndexTruncateLength() + '\n'
         + "Truncate length for statistics min/max  is: " + getStatisticsTruncateLength() + '\n'
         + "Bloom filter enabled: " + bloomFilterEnabled + '\n'
+        + "Airlift compressors enabled: " + useAirliftCompressors + '\n'
         + "Max Bloom filter size for a column is " + getMaxBloomFilterBytes() + '\n'
         + "Bloom filter expected number of distinct values are: " + bloomFilterNDVs + '\n'
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
@@ -310,6 +318,7 @@ public class ParquetProperties {
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private boolean enableByteStreamSplit = DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED;
+    private boolean useAirliftCompressors = DEFAULT_AIRLIFT_COMPRESSORS_ENABLED;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -333,6 +342,7 @@ public class ParquetProperties {
       this.bloomFilterEnabled = ColumnProperty.<Boolean>builder(toCopy.bloomFilterEnabled);
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.enableByteStreamSplit = toCopy.enableByteStreamSplit;
+      this.useAirliftCompressors = toCopy.useAirliftCompressors;
     }
 
     /**
@@ -481,6 +491,11 @@ public class ParquetProperties {
      */
     public Builder withBloomFilterEnabled(boolean enabled) {
       this.bloomFilterEnabled.withDefaultValue(enabled);
+      return this;
+    }
+
+    public Builder withAirliftCompressorsEnabled(boolean useAirliftCompressors) {
+      this.useAirliftCompressors = useAirliftCompressors;
       return this;
     }
 

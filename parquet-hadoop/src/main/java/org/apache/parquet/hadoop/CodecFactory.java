@@ -49,6 +49,7 @@ public class CodecFactory implements CompressionCodecFactory {
 
   protected final Configuration configuration;
   protected final int pageSize;
+  private final boolean useAirliftCompressors;
 
   /**
    * Create a new codec factory.
@@ -60,8 +61,23 @@ public class CodecFactory implements CompressionCodecFactory {
    *                 decompressors this parameter has no impact on the function of the factory
    */
   public CodecFactory(Configuration configuration, int pageSize) {
+    this(configuration, pageSize, false);
+  }
+
+  /**
+   * Create a new codec factory.
+   *
+   * @param configuration         used to pass compression codec configuration information
+   * @param pageSize              the expected page size, does not set a hard limit, currently just used to set the
+   *                              initial size of the output stream used when compressing a buffer. If this factory is
+   *                              only used to construct decompressors this parameter has no impact on the function of
+   *                              the factory
+   * @param useAirliftCompressors whether to use Airlift based compressors and decompressors
+   */
+  public CodecFactory(Configuration configuration, int pageSize, boolean useAirliftCompressors) {
     this.configuration = configuration;
     this.pageSize = pageSize;
+    this.useAirliftCompressors = useAirliftCompressors;
   }
 
   /**
@@ -186,6 +202,9 @@ public class CodecFactory implements CompressionCodecFactory {
 
   @Override
   public BytesCompressor getCompressor(CompressionCodecName codecName) {
+    if (useAirliftCompressors && AirliftCompressorCodecFactory.isSupported(codecName)) {
+      return new AirliftCompressorCodecFactory(pageSize).getCompressor(codecName);
+    }
     BytesCompressor comp = compressors.get(codecName);
     if (comp == null) {
       comp = createCompressor(codecName);
@@ -196,6 +215,9 @@ public class CodecFactory implements CompressionCodecFactory {
 
   @Override
   public BytesDecompressor getDecompressor(CompressionCodecName codecName) {
+    if (useAirliftCompressors && AirliftCompressorCodecFactory.isSupported(codecName)) {
+      return new AirliftCompressorCodecFactory(pageSize).getDecompressor(codecName);
+    }
     BytesDecompressor decomp = decompressors.get(codecName);
     if (decomp == null) {
       decomp = createDecompressor(codecName);
@@ -254,6 +276,11 @@ public class CodecFactory implements CompressionCodecFactory {
       decompressor.release();
     }
     decompressors.clear();
+  }
+
+  @Override
+  public CompressionCodecFactory withAirliftCompressors(boolean useAirlift) {
+    return new CodecFactory(configuration, pageSize, useAirlift);
   }
 
   /**

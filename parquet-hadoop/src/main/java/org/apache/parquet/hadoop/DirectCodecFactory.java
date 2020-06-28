@@ -17,8 +17,7 @@
  */
 package org.apache.parquet.hadoop;
 
-
-
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 import java.io.IOException;
@@ -27,13 +26,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.commons.pool.BasePoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
@@ -139,6 +138,13 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
+  @Override
+  public CompressionCodecFactory withAirliftCompressors(boolean useAirliftCompressors) {
+    // Airlift based compressors cannot be created using DirectCodecFactory.
+    // So returning the instance itself instead of creating a new one.
+    return this;
+  }
+
   public void close() {
     release();
   }
@@ -149,34 +155,25 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
    */
   public class IndirectDecompressor extends BytesDecompressor {
     private final Decompressor decompressor;
+    private final CompressionCodec codec;
 
     public IndirectDecompressor(CompressionCodec codec) {
       this.decompressor = DirectCodecPool.INSTANCE.codec(codec).borrowDecompressor();
+      this.codec = codec;
     }
 
     @Override
     public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
       decompressor.reset();
-      byte[] inputBytes = bytes.toByteArray();
-      decompressor.setInput(inputBytes, 0, inputBytes.length);
-      byte[] output = new byte[uncompressedSize];
-      decompressor.decompress(output, 0, uncompressedSize);
-      return BytesInput.from(output);
+      InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
+      return BytesInput.from(is, uncompressedSize);
     }
 
     @Override
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
         throws IOException {
-
       decompressor.reset();
-      byte[] inputBytes = new byte[compressedSize];
-      input.position(0);
-      input.get(inputBytes);
-      decompressor.setInput(inputBytes, 0, inputBytes.length);
-      byte[] outputBytes = new byte[uncompressedSize];
-      decompressor.decompress(outputBytes, 0, uncompressedSize);
-      output.clear();
-      output.put(outputBytes);
+      output.put(decompress(BytesInput.from(input), uncompressedSize).toByteBuffer());
     }
 
     @Override

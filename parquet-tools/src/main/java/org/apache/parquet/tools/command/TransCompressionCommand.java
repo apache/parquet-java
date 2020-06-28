@@ -22,6 +22,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -41,21 +42,24 @@ public class TransCompressionCommand extends ArgsOnlyCommand {
     "<input> <output> <codec_name>",
 
     "where <input> is the source parquet file",
-    "    <output> is the destination parquet file," +
-    "    <new_codec_name> is the codec name in the case sensitive format to be translated to, e.g. SNAPPY, GZIP, ZSTD, LZO, LZ4, BROTLI, UNCOMPRESSED"
+    "    <output> is the destination parquet file",
+    "    <new_codec_name> is the codec name in the case sensitive format to be translated to, e.g. SNAPPY, GZIP, " +
+      "ZSTD, LZO, LZ4, BROTLI, UNCOMPRESSED",
+    "    <use_airlift_compressors> optional flag (case insensitive true or false) to determine whether to use Airlift" +
+      " based compressors for GZIP, LZ0 or LZ4"
   };
 
   private Configuration conf;
   private CompressionConverter compressionConverter;
 
   public TransCompressionCommand() {
-    super(3, 3);
+    super(3, 4);
     this.conf = new Configuration();
     compressionConverter = new CompressionConverter();
   }
 
   public TransCompressionCommand(Configuration conf) {
-    super(3, 3);
+    super(3, 4);
     this.conf = conf;
     compressionConverter = new CompressionConverter();
   }
@@ -78,15 +82,36 @@ public class TransCompressionCommand extends ArgsOnlyCommand {
     Path outPath = new Path(args.get(1));
     CompressionCodecName codecName = CompressionCodecName.valueOf(args.get(2));
 
+    boolean useAirliftCompressors = false;
+    if (args.size() > 3) {
+      useAirliftCompressors = validateAirliftCompressorArg(args, codecName);
+    }
+
     ParquetMetadata metaData = ParquetFileReader.readFooter(conf, inPath, NO_FILTER);
     MessageType schema = metaData.getFileMetaData().getSchema();
     ParquetFileWriter writer = new ParquetFileWriter(conf, schema, outPath, ParquetFileWriter.Mode.CREATE);
     writer.start();
 
     try (TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(inPath, conf), HadoopReadOptions.builder(conf).build())) {
-      compressionConverter.processBlocks(reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(), codecName);
+      compressionConverter.processBlocks(reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(),
+        codecName, useAirliftCompressors);
     } finally {
       writer.end(metaData.getFileMetaData().getKeyValueMetaData());
     }
+  }
+
+  private static boolean validateAirliftCompressorArg(List<String> args, CompressionCodecName codecName) {
+    String useAirliftArg = args.get(3);
+    Preconditions.checkArgument(
+      useAirliftArg.equalsIgnoreCase("true") || useAirliftArg.equalsIgnoreCase("false"),
+      "Illegal argument - valid values are true or false (case insensitive)");
+    boolean useAirliftCompressors = Boolean.valueOf(useAirliftArg);
+    if (useAirliftCompressors) {
+      Preconditions.checkArgument(
+        codecName.equals("GZIP") || codecName.equals("LZ0") || codecName.equals("LZ4"),
+        "Airlift compressors are not supported for codec" + codecName);
+      return true;
+    }
+    return false;
   }
 }
