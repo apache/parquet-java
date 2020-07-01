@@ -49,6 +49,18 @@ public abstract class RemoteKmsClient implements KmsClient {
   // MasterKey cache: master keys per key ID (per KMS Client). For local wrapping only.
   private ConcurrentMap<String, byte[]> masterKeyCache;
 
+  /**
+   * KMS systems wrap keys by encrypting them by master keys, and attaching additional information (such as the version 
+   * number of the masker key) to the result of encryption. The master key version is required in  key rotation.
+   * Currently, the local wrapping mode does not support key rotation (because not all KMS systems allow to fetch a master
+   * key by its ID and version number). Still, the local wrapping mode adds a placeholder for the master key version, that will
+   * enable support for key rotation in this mode in the future, with appropriate KMS systems. This will also enable backward
+   * compatibility, where future readers will be able to extract master key version in the files written by the current code.
+   * 
+   * LocalKeyWrap class writes (and reads) the "key wrap" as a flat json with the following fields:
+   * 1. "masterKeyVersion" - a String, with the master key version. In the current version, only one value is allowed - "NO_VERSION".
+   * 2. "encryptedKey" - a String, with the key encrypted by the master key (base64-encoded).
+   */
   static class LocalKeyWrap {
     public static final String LOCAL_WRAP_KEY_VERSION_FIELD = "masterKeyVersion";
     public static final String LOCAL_WRAP_ENCRYPTED_KEY_FIELD = "encryptedKey";

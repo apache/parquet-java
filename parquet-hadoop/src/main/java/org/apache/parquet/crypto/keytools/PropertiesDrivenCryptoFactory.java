@@ -23,9 +23,7 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -46,10 +44,8 @@ import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
 
 public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactory, DecryptionPropertiesFactory {
   private static final Logger LOG = LoggerFactory.getLogger(PropertiesDrivenCryptoFactory.class);
-  
-  private static final Integer[] ACCEPTABLE_DATA_KEY_LENGTHS = {128, 192, 256};
-  private static final Set<Integer> ACCEPTABLE_DATA_KEY_LENGTHS_SET =
-    new HashSet<>(Arrays.asList(ACCEPTABLE_DATA_KEY_LENGTHS));
+
+  private static final int[] ACCEPTABLE_DATA_KEY_LENGTHS = {128, 192, 256};
 
   /**
    * List of columns to encrypt, with master key IDs (see HIVE-21848).
@@ -117,7 +113,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     int dekLengthBits = fileHadoopConfig.getInt(KeyToolkit.DATA_KEY_LENGTH_PROPERTY_NAME,
         KeyToolkit.DATA_KEY_LENGTH_DEFAULT);
 
-    if (!ACCEPTABLE_DATA_KEY_LENGTHS_SET.contains(dekLengthBits)) {
+    if (Arrays.binarySearch(ACCEPTABLE_DATA_KEY_LENGTHS, dekLengthBits) < 0) {
       throw new ParquetCryptoRuntimeException("Wrong data key length : " + dekLengthBits);
     }
 
