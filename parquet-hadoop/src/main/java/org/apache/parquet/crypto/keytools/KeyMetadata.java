@@ -66,23 +66,23 @@ public class KeyMetadata {
 
   static KeyMetadata parse(byte[] keyMetadataBytes) {
     String keyMetaDataString = new String(keyMetadataBytes, StandardCharsets.UTF_8);
-    Map<String, String> keyMetadataJson = null;
+    Map<String, Object> keyMetadataJson = null;
     try {
       keyMetadataJson = OBJECT_MAPPER.readValue(new StringReader(keyMetaDataString),
-          new TypeReference<Map<String, String>>() {});
+          new TypeReference<Map<String, Object>>() {});
     } catch (IOException e) {
       throw new ParquetCryptoRuntimeException("Failed to parse key metadata " + keyMetaDataString, e);
     }
 
     // 1. Extract "key material type", and make sure it is supported
-    String keyMaterialType = keyMetadataJson.get(KeyMaterial.KEY_MATERIAL_TYPE_FIELD);
+    String keyMaterialType = (String) keyMetadataJson.get(KeyMaterial.KEY_MATERIAL_TYPE_FIELD);
     if (!KeyMaterial.KEY_MATERIAL_TYPE1.equals(keyMaterialType)) {
       throw new ParquetCryptoRuntimeException("Wrong key material type: " + keyMaterialType + 
           " vs " + KeyMaterial.KEY_MATERIAL_TYPE1);
     }
 
     // 2. Check if "key material" is stored internally in Parquet file key metadata, or is stored externally
-    boolean isInternalStorage = Boolean.parseBoolean(keyMetadataJson.get(KEY_MATERIAL_INTERNAL_STORAGE_FIELD));
+    Boolean isInternalStorage = (Boolean) keyMetadataJson.get(KEY_MATERIAL_INTERNAL_STORAGE_FIELD);
     String keyReference;
     KeyMaterial keyMaterial;
 
@@ -92,7 +92,7 @@ public class KeyMetadata {
       keyReference = null;
     } else {
       // 3.2 "key material" is stored externally. "key metadata" keeps a reference to it
-      keyReference = keyMetadataJson.get(KEY_REFERENCE_FIELD);
+      keyReference = (String) keyMetadataJson.get(KEY_REFERENCE_FIELD);
       keyMaterial = null;
     }
 
@@ -101,11 +101,11 @@ public class KeyMetadata {
 
   // For external material only. For internal material, create serialized KeyMaterial directly
   static String createSerializedForExternalMaterial(String keyReference) {
-    Map<String, String> keyMetadataMap = new HashMap<String, String>(3);
+    Map<String, Object> keyMetadataMap = new HashMap<String, Object>(3);
     // 1. Write "key material type"
     keyMetadataMap.put(KeyMaterial.KEY_MATERIAL_TYPE_FIELD, KeyMaterial.KEY_MATERIAL_TYPE1);
     // 2. Write internal storage as false
-    keyMetadataMap.put(KEY_MATERIAL_INTERNAL_STORAGE_FIELD, "false");
+    keyMetadataMap.put(KEY_MATERIAL_INTERNAL_STORAGE_FIELD, Boolean.FALSE);
     // 3. For externally stored "key material", "key metadata" keeps only a reference to it
     keyMetadataMap.put(KEY_REFERENCE_FIELD, keyReference);
 

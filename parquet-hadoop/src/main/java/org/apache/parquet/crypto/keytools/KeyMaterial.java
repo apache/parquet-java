@@ -91,15 +91,15 @@ public class KeyMaterial {
 
   // parses external key material
   static KeyMaterial parse(String keyMaterialString) {
-    Map<String, String> keyMaterialJson = null;
+    Map<String, Object> keyMaterialJson = null;
     try {
       keyMaterialJson = OBJECT_MAPPER.readValue(new StringReader(keyMaterialString),
-          new TypeReference<Map<String, String>>() {});
+          new TypeReference<Map<String, Object>>() {});
     } catch (IOException e) {
       throw new ParquetCryptoRuntimeException("Failed to parse key metadata " + keyMaterialString, e);
     }
     // 1. External key material - extract "key material type", and make sure it is supported
-    String keyMaterialType = keyMaterialJson.get(KEY_MATERIAL_TYPE_FIELD);
+    String keyMaterialType = (String) keyMaterialJson.get(KEY_MATERIAL_TYPE_FIELD);
     if (!KEY_MATERIAL_TYPE1.equals(keyMaterialType)) {
       throw new ParquetCryptoRuntimeException("Wrong key material type: " + keyMaterialType + 
           " vs " + KEY_MATERIAL_TYPE1);
@@ -109,30 +109,30 @@ public class KeyMaterial {
   }
 
   // parses fields common to internal and external key material
-  static KeyMaterial parse(Map<String, String> keyMaterialJson) {
+  static KeyMaterial parse(Map<String, Object> keyMaterialJson) {
     // 2. Check if "key material" belongs to file footer key
-    boolean isFooterKey = Boolean.valueOf(keyMaterialJson.get(IS_FOOTER_KEY_FIELD));
+    Boolean isFooterKey = (Boolean) keyMaterialJson.get(IS_FOOTER_KEY_FIELD);
     String kmsInstanceID = null;
     String kmsInstanceURL = null;
     if (isFooterKey) {
       // 3.  For footer key, extract KMS Instance ID
-      kmsInstanceID = keyMaterialJson.get(KMS_INSTANCE_ID_FIELD);
+      kmsInstanceID = (String) keyMaterialJson.get(KMS_INSTANCE_ID_FIELD);
       // 4.  For footer key, extract KMS Instance URL
-      kmsInstanceURL = keyMaterialJson.get(KMS_INSTANCE_URL_FIELD);
+      kmsInstanceURL = (String) keyMaterialJson.get(KMS_INSTANCE_URL_FIELD);
     }
     // 5. Extract master key ID
-    String masterKeyID = keyMaterialJson.get(MASTER_KEY_ID_FIELD);
+    String masterKeyID = (String) keyMaterialJson.get(MASTER_KEY_ID_FIELD);
     // 6. Extract wrapped DEK
-    String  encodedWrappedDEK = keyMaterialJson.get(WRAPPED_DEK_FIELD);
+    String  encodedWrappedDEK = (String) keyMaterialJson.get(WRAPPED_DEK_FIELD);
     String kekID = null;
     String encodedWrappedKEK = null;
     // 7. Check if "key material" was generated in double wrapping mode
-    boolean isDoubleWrapped = Boolean.valueOf(keyMaterialJson.get(DOUBLE_WRAPPING_FIELD));
+    Boolean isDoubleWrapped = (Boolean) keyMaterialJson.get(DOUBLE_WRAPPING_FIELD);
     if (isDoubleWrapped) {
       // 8. In double wrapping mode, extract KEK ID
-      kekID = keyMaterialJson.get(KEK_ID_FIELD);
+      kekID = (String) keyMaterialJson.get(KEK_ID_FIELD);
       // 9. In double wrapping mode, extract wrapped KEK
-      encodedWrappedKEK = keyMaterialJson.get(WRAPPED_KEK_FIELD);
+      encodedWrappedKEK = (String) keyMaterialJson.get(WRAPPED_KEK_FIELD);
     }
 
     return new KeyMaterial(isFooterKey, kmsInstanceID, kmsInstanceURL, masterKeyID, isDoubleWrapped, kekID, encodedWrappedKEK, encodedWrappedDEK);
@@ -140,16 +140,16 @@ public class KeyMaterial {
 
   static String createSerialized(boolean isFooterKey, String kmsInstanceID, String kmsInstanceURL, String masterKeyID, 
       boolean isDoubleWrapped, String kekID, String encodedWrappedKEK, String encodedWrappedDEK, boolean isInternalStorage) {
-    Map<String, String> keyMaterialMap = new HashMap<String, String>(10);
+    Map<String, Object> keyMaterialMap = new HashMap<String, Object>(10);
     // 1. Write "key material type"
     keyMaterialMap.put(KEY_MATERIAL_TYPE_FIELD, KEY_MATERIAL_TYPE1);
     if (isInternalStorage) {
       // for internal storage, key material and key metadata are the same.
       // adding the "internalStorage" field that belongs to KeyMetadata.
-      keyMaterialMap.put(KeyMetadata.KEY_MATERIAL_INTERNAL_STORAGE_FIELD, "true");
+      keyMaterialMap.put(KeyMetadata.KEY_MATERIAL_INTERNAL_STORAGE_FIELD, Boolean.TRUE);
     }
     // 2. Write isFooterKey
-    keyMaterialMap.put(IS_FOOTER_KEY_FIELD, Boolean.toString(isFooterKey));
+    keyMaterialMap.put(IS_FOOTER_KEY_FIELD, Boolean.valueOf(isFooterKey));
     if (isFooterKey) {
       // 3. For footer key, write KMS Instance ID
       keyMaterialMap.put(KMS_INSTANCE_ID_FIELD, kmsInstanceID);
@@ -161,7 +161,7 @@ public class KeyMaterial {
     // 6. Write wrapped DEK
     keyMaterialMap.put(WRAPPED_DEK_FIELD, encodedWrappedDEK);
     // 7. Write isDoubleWrapped
-    keyMaterialMap.put(DOUBLE_WRAPPING_FIELD, Boolean.toString(isDoubleWrapped));
+    keyMaterialMap.put(DOUBLE_WRAPPING_FIELD, Boolean.valueOf(isDoubleWrapped));
     if (isDoubleWrapped) {
       // 8. In double wrapping mode, write KEK ID
       keyMaterialMap.put(KEK_ID_FIELD, kekID);
