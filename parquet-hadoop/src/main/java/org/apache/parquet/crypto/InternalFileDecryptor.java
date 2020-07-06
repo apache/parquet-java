@@ -22,10 +22,14 @@ package org.apache.parquet.crypto;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.EncryptionAlgorithm;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.HashMap;
 
 public class InternalFileDecryptor {
+  private static final Logger LOG = LoggerFactory.getLogger(InternalFileDecryptor.class);
 
   private final FileDecryptionProperties fileDecryptionProperties;
   private final DecryptionKeyRetriever keyRetriever;
@@ -206,6 +210,10 @@ public class InternalFileDecryptor {
         throw new ParquetCryptoRuntimeException("Decryptor re-use: Different footer key metadata");
       }
     }
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("File Decryptor. Algo: {}. Encrypted footer: {}", algorithm, encryptedFooter);
+    }
   }
 
   public InternalColumnDecryptionSetup setColumnCryptoMetadata(ColumnPath path, boolean encrypted, 
@@ -240,8 +248,11 @@ public class InternalFileDecryptor {
         }
         columnDecryptionSetup = new InternalColumnDecryptionSetup(path, true, true, 
             getDataModuleDecryptor(null), getThriftModuleDecryptor(null), columnOrdinal, null);
-      } else {
-        // Column is encrypted with column-specific key
+
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Column decryption (footer key): {}", path);
+        }
+      } else { // Column is encrypted with column-specific key
         byte[] columnKeyBytes = fileDecryptionProperties.getColumnKey(path);
         if ((null == columnKeyBytes) && (null != keyMetadata) && (null != keyRetriever)) {
           // No explicit column key given via API. Retrieve via key metadata.
@@ -251,12 +262,14 @@ public class InternalFileDecryptor {
             throw new KeyAccessDeniedException("Column " + path + ": key access denied", e);
           }
         }
-
-        if (null == columnKeyBytes) { // Hidden column: encrypted, but key unavailable
-          throw new ParquetCryptoRuntimeException("Column " + path + ": key unavailable");
-        } else { // Key is available
-          columnDecryptionSetup = new InternalColumnDecryptionSetup(path, true, false, 
+        if (null == columnKeyBytes) {
+          throw new ParquetCryptoRuntimeException("Column " + path + "is encrypted with NULL column key");
+        }
+        columnDecryptionSetup = new InternalColumnDecryptionSetup(path, true, false, 
               getDataModuleDecryptor(columnKeyBytes), getThriftModuleDecryptor(columnKeyBytes), columnOrdinal, keyMetadata);
+
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Column decryption (column key): {}", path);
         }
       }
     }
@@ -300,4 +313,3 @@ public class InternalFileDecryptor {
     return fileDecryptionProperties;
   }
 }
-
