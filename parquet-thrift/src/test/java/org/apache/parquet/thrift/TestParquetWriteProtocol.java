@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -78,7 +78,7 @@ public class TestParquetWriteProtocol {
          "endField(name, 0)",
          "startField(names, 1)",
           "startGroup()",
-           "startField(map, 0)",
+           "startField(key_value, 0)",
             "startGroup()",
              "startField(key, 0)",
               "addBinary(foo)",
@@ -95,7 +95,7 @@ public class TestParquetWriteProtocol {
               "addBinary(bar2)",
              "endField(value, 1)",
             "endGroup()",
-           "endField(map, 0)",
+           "endField(key_value, 0)",
           "endGroup()",
          "endField(names, 1)",
         "endMessage()"
@@ -107,7 +107,7 @@ public class TestParquetWriteProtocol {
          "endField(name, 0)",
          "startField(names, 1)",
           "startGroup()",
-           "startField(map, 0)",
+           "startField(key_value, 0)",
             "startGroup()",
              "startField(key, 0)",
               "addBinary(foo2)",
@@ -124,7 +124,7 @@ public class TestParquetWriteProtocol {
               "addBinary(bar)",
              "endField(value, 1)",
             "endGroup()",
-           "endField(map, 0)",
+           "endField(key_value, 0)",
           "endGroup()",
          "endField(names, 1)",
         "endMessage()"
@@ -163,7 +163,7 @@ public class TestParquetWriteProtocol {
             "startGroup()",
              "startField(names_tuple, 0)", // map: optional field
               "startGroup()",
-               "startField(map, 0)", // repeated field
+               "startField(key_value, 0)", // repeated field
                 "startGroup()",
                  "startField(key, 0)", // key
                   "addBinary(foo)",
@@ -172,7 +172,7 @@ public class TestParquetWriteProtocol {
                   "addBinary(bar)",
                  "endField(value, 1)",
                 "endGroup()",
-               "endField(map, 0)",
+               "endField(key_value, 0)",
               "endGroup()",
              "endField(names_tuple, 0)",
             "endGroup()",
@@ -198,7 +198,7 @@ public class TestParquetWriteProtocol {
           "startGroup()",
            "startField(names_tuple, 0)", // map: optional field
             "startGroup()",
-             "startField(map, 0)", // repeated field
+             "startField(key_value, 0)", // repeated field
               "startGroup()",
                "startField(key, 0)", // key
                 "addBinary(foo)",
@@ -207,7 +207,7 @@ public class TestParquetWriteProtocol {
                 "addBinary(bar)",
                "endField(value, 1)",
               "endGroup()",
-             "endField(map, 0)",
+             "endField(key_value, 0)",
             "endGroup()",
            "endField(names_tuple, 0)",
           "endGroup()",
@@ -278,7 +278,7 @@ public class TestParquetWriteProtocol {
           "endField(name, 0)",
           "startField(names, 1)",
             "startGroup()",
-              "startField(map, 0)",
+              "startField(key_value, 0)",
                 "startGroup()",
                   "startField(key, 0)",
                     "addBinary(foo)",
@@ -302,12 +302,12 @@ public class TestParquetWriteProtocol {
                     "endGroup()",
                   "endField(value, 1)",
                 "endGroup()",
-              "endField(map, 0)",
+              "endField(key_value, 0)",
             "endGroup()",
           "endField(names, 1)",
           "startField(name_to_id, 2)",
             "startGroup()",
-              "startField(map, 0)",
+              "startField(key_value, 0)",
                 "startGroup()",
                   "startField(key, 0)",
                     "addBinary(bar)",
@@ -316,7 +316,7 @@ public class TestParquetWriteProtocol {
                     "addInt(10)",
                   "endField(value, 1)",
                 "endGroup()",
-              "endField(map, 0)",
+              "endField(key_value, 0)",
             "endGroup()",
           "endField(name_to_id, 2)",
         "endMessage()"

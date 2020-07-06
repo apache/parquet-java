@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -143,7 +143,7 @@ public class TestPigSchemaConverter {
         "message pig_schema {\n" +
         "  optional binary a (UTF8);\n" +
         "  optional group b (MAP) {\n" +
-        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
         "      required binary key (UTF8);\n" +
         "      optional group value {\n" +
         "        optional binary c (UTF8);\n" +
@@ -159,7 +159,7 @@ public class TestPigSchemaConverter {
     testConversion("a:map[int]",
         "message pig_schema {\n" +
         "  optional group a (MAP) {\n" +
-        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
         "      required binary key (UTF8);\n" +
         "      optional int32 value;" +
         "    }\n" +
@@ -172,10 +172,10 @@ public class TestPigSchemaConverter {
     testConversion("a:map[map[int]]",
         "message pig_schema {\n" +
         "  optional group a (MAP) {\n" +
-        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
         "      required binary key (UTF8);\n" +
         "      optional group value (MAP) {\n" +
-        "        repeated group map (MAP_KEY_VALUE) {\n" +
+        "        repeated group key_value (MAP_KEY_VALUE) {\n" +
         "          required binary key (UTF8);\n" +
         "          optional int32 value;\n" +
         "        }\n" +
@@ -190,7 +190,7 @@ public class TestPigSchemaConverter {
     testConversion("a:map[bag{(a:int)}]",
         "message pig_schema {\n" +
         "  optional group a (MAP) {\n" +
-        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
         "      required binary key (UTF8);\n" +
         "      optional group value (LIST) {\n" +
         "        repeated group bag {\n" +
@@ -228,7 +228,7 @@ public class TestPigSchemaConverter {
         "message pig_schema {\n" +
         "  optional binary a;\n" +
         "  optional group b (MAP) {\n" +
-        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
         "      required binary key;\n" +
         "      optional group value {\n" +
         "        optional fixed_len_byte_array(5) c;\n" +
@@ -246,7 +246,7 @@ public class TestPigSchemaConverter {
       "message spark_schema {\n" +
       "  optional binary a;\n" +
       "  optional group b (MAP) {\n" +
-      "    repeated group map {\n" +
+      "    repeated group key_value {\n" +
       "      required binary key;\n" +
       "      optional group value {\n" +
       "        optional fixed_len_byte_array(5) c;\n" +

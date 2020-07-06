@@ -30,6 +30,8 @@ import org.apache.parquet.schema.Type.ID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.mapType;
+
 /**
  * This class provides fluent builders that produce Parquet schema Types.
  * <p>
@@ -1172,18 +1174,18 @@ public class Types {
         keyType = STRING_KEY;
       }
 
-      GroupBuilder<GroupType> builder = buildGroup(repetition).as(OriginalType.MAP);
+      GroupBuilder<GroupType> builder = buildGroup(repetition).as(mapType());
       if (id != null) {
         builder.id(id.intValue());
       }
 
       if (valueType != null) {
         return builder
-            .repeatedGroup().addFields(keyType, valueType).named("map")
+            .repeatedGroup().addFields(keyType, valueType).named(ConversionPatterns.MAP_REPEATED_NAME)
             .named(name);
       } else {
         return builder
-            .repeatedGroup().addFields(keyType).named("map")
+            .repeatedGroup().addFields(keyType).named(ConversionPatterns.MAP_REPEATED_NAME)
             .named(name);
       }
     }

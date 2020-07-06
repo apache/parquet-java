@@ -151,7 +151,7 @@ public class TestThriftSchemaConverter {
     shouldGetProjectedSchema("name;names/key*;names/value/**", "name;names.key*;names.value", "message ParquetSchema {\n" +
             "  optional binary name (UTF8) = 1;\n" +
             "  optional group names (MAP) = 2 {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "    repeated group key_value (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
             "      optional group value {\n" +
             "        optional group name = 1 {\n" +
@@ -159,7 +159,7 @@ public class TestThriftSchemaConverter {
             "          optional binary last_name (UTF8) = 2;\n" +
             "        }\n" +
             "        optional group phones (MAP) = 2 {\n" +
-            "          repeated group map (MAP_KEY_VALUE) {\n" +
+            "          repeated group key_value (MAP_KEY_VALUE) {\n" +
             "            required binary key (ENUM);\n" +
             "            optional binary value (UTF8);\n" +
             "          }\n" +
@@ -173,7 +173,7 @@ public class TestThriftSchemaConverter {
     shouldGetProjectedSchema("name;names/key;names/value/name/*", "name;names.key;names.value.name","message ParquetSchema {\n" +
             "  optional binary name (UTF8) = 1;\n" +
             "  optional group names (MAP) = 2 {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "    repeated group key_value (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
             "      optional group value {\n" +
             "        optional group name = 1 {\n" +
@@ -191,7 +191,7 @@ public class TestThriftSchemaConverter {
     shouldGetProjectedSchema("name;names/key", "name;names.key", "message ParquetSchema {\n" +
             "  optional binary name (UTF8) = 1;\n" +
             "  optional group names (MAP) = 2 {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "    repeated group key_value (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
             "      optional group value {\n" +
             "        optional group name = 1 {\n" +

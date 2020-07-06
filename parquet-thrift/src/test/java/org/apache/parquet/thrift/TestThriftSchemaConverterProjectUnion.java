@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -308,7 +308,7 @@ public class TestThriftSchemaConverterProjectUnion {
         "optMapWithUnionKey.key",
         "message ParquetSchema {\n" +
         "  optional group optMapWithUnionKey (MAP) = 1 {\n" +
-        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
         "      required group key {\n" +
         "        optional group structV3 = 1 {\n" +
         "          required binary name (UTF8) = 1;\n" +
@@ -341,7 +341,7 @@ public class TestThriftSchemaConverterProjectUnion {
         "optMapWithUnionKey.{key,value.gender}",
         "message ParquetSchema {\n" +
         "  optional group optMapWithUnionKey (MAP) = 1 {\n" +
-        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
         "      required group key {\n" +
         "        optional group structV3 = 1 {\n" +
         "          required binary name (UTF8) = 1;\n" +
@@ -377,7 +377,7 @@ public class TestThriftSchemaConverterProjectUnion {
         "optMapWithUnionValue.{key,value.structV4.addedStruct.gender}",
         "message ParquetSchema {\n" +
         "  optional group optMapWithUnionValue (MAP) = 1 {\n" +
-        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
         "      required group key {\n" +
         "        required binary name (UTF8) = 1;\n" +
         "        optional binary age (UTF8) = 2;\n" +

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -111,7 +111,7 @@ public class TestHiveSchemaConverter {
             "map<string,string>",
             "message hive_schema {\n"
             + "  optional group mapCol (MAP) {\n"
-            + "    repeated group map (MAP_KEY_VALUE) {\n"
+            + "    repeated group key_value (MAP_KEY_VALUE) {\n"
             + "      required binary key;\n"
             + "      optional binary value;\n"
             + "    }\n"
@@ -136,7 +136,7 @@ public class TestHiveSchemaConverter {
     assertEquals(1, topLevel.asGroupType().getFieldCount());
     org.apache.parquet.schema.Type secondLevel = topLevel.asGroupType().getFields().get(0);
     //there is one repeated field for mapCol, the field name is "map" and its original Type is MAP_KEY_VALUE;
-    assertEquals("map", secondLevel.getName());
+    assertEquals("key_value", secondLevel.getName());
     assertEquals(OriginalType.MAP_KEY_VALUE, secondLevel.getOriginalType());
     assertEquals(Repetition.REPEATED, secondLevel.getRepetition());
   }

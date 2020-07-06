@@ -30,6 +30,7 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
  */
 public abstract class ConversionPatterns {
 
+  static final String MAP_REPEATED_NAME = "key_value";
   private static final String ELEMENT_NAME = "element";
 
   /**
@@ -49,7 +50,7 @@ public abstract class ConversionPatterns {
   }
 
   public static GroupType mapType(Repetition repetition, String alias, Type keyType, Type valueType) {
-    return mapType(repetition, alias, "map", keyType, valueType);
+    return mapType(repetition, alias, MAP_REPEATED_NAME, keyType, valueType);
   }
 
   public static GroupType stringKeyMapType(Repetition repetition, String alias, String mapAlias, Type valueType) {
@@ -57,7 +58,7 @@ public abstract class ConversionPatterns {
   }
 
   public static GroupType stringKeyMapType(Repetition repetition, String alias, Type valueType) {
-    return stringKeyMapType(repetition, alias, "map", valueType);
+    return stringKeyMapType(repetition, alias, MAP_REPEATED_NAME, valueType);
   }
 
   public static GroupType mapType(Repetition repetition, String alias, String mapAlias, Type keyType, Type valueType) {

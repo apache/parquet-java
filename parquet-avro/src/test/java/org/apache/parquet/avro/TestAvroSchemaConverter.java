@@ -199,13 +199,13 @@ public class TestAvroSchemaConverter {
             "    }\n" +
             "  }\n" +
             "  required group mymap (MAP) {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "    repeated group key_value (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
             "      required int32 value;\n" +
             "    }\n" +
             "  }\n" +
             "  required group myemptymap (MAP) {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "    repeated group key_value (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
             "      required int32 value;\n" +
             "    }\n" +
@@ -246,13 +246,13 @@ public class TestAvroSchemaConverter {
             "    repeated int32 array;\n" +
             "  }\n" +
             "  required group mymap (MAP) {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "    repeated group key_value (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
             "      required int32 value;\n" +
             "    }\n" +
             "  }\n" +
             "  required group myemptymap (MAP) {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "    repeated group key_value (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
             "      required int32 value;\n" +
             "    }\n" +
@@ -317,7 +317,7 @@ public class TestAvroSchemaConverter {
         schema,
         "message record1 {\n" +
             "  required group myintmap (MAP) {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "    repeated group key_value (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
             "      optional int32 value;\n" +
             "    }\n" +

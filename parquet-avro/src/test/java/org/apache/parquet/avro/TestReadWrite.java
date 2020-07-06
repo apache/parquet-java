@@ -539,7 +539,7 @@ public class TestReadWrite {
 
         recordConsumer.startField("mymap", index);
         recordConsumer.startGroup();
-        recordConsumer.startField("map", 0);
+        recordConsumer.startField("key_value", 0);
         recordConsumer.startGroup();
         Map<String, Integer> mymap = (Map<String, Integer>) record.get("mymap");
         recordConsumer.startField("key", 0);
@@ -553,7 +553,7 @@ public class TestReadWrite {
         }
         recordConsumer.endField("value", 1);
         recordConsumer.endGroup();
-        recordConsumer.endField("map", 0);
+        recordConsumer.endField("key_value", 0);
         recordConsumer.endGroup();
         recordConsumer.endField("mymap", index++);
 
