@@ -19,6 +19,25 @@
 
 # Parquet #
 
+### Version 1.11.1 ###
+
+Release Notes - Parquet - Version 1.11.1
+
+#### Sub-task
+
+*   [PARQUET-1740](https://issues.apache.org/jira/browse/PARQUET-1740) - Make ParquetFileReader.getFilteredRecordCount public
+*   [PARQUET-1744](https://issues.apache.org/jira/browse/PARQUET-1744) - Some filters throws ArrayIndexOutOfBoundsException
+
+#### Bug
+
+*   [PARQUET-1765](https://issues.apache.org/jira/browse/PARQUET-1765) - Invalid filteredRowCount in InternalParquetRecordReader
+*   [PARQUET-1879](https://issues.apache.org/jira/browse/PARQUET-1879) - Apache Arrow can not read a Parquet File written with Parqet-Avro 1.11.0 with a Map field
+
+#### Task
+
+*   [PARQUET-1774](https://issues.apache.org/jira/browse/PARQUET-1774) - Release parquet 1.11.1
+*   [PARQUET-1796](https://issues.apache.org/jira/browse/PARQUET-1796) - Bump Apache Avro to 1.9.2
+
 ### Version 1.11.0 ###
 
 Release Notes - Parquet - Version 1.11.0
