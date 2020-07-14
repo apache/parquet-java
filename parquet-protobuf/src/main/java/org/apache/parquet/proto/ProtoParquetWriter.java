@@ -20,7 +20,9 @@ package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -79,6 +81,27 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage) throws IOException {
     this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
             DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
+  }
+
+  /**
+   * Create a new {@link ProtoParquetWriter}.
+   *
+   * @param file                 The file name to write to.
+   * @param mode                 file creation mode
+   * @param protoMessage         Protobuf message class
+   * @param compressionCodecName Compression code to use, or CompressionCodecName.UNCOMPRESSED
+   * @param blockSize            HDFS block size
+   * @param pageSize             See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
+   * @param conf                 Hadoop configuration to use while accessing the filesystem
+   * @throws IOException if there is an error while writing
+   */
+  public ProtoParquetWriter(Path file, ParquetFileWriter.Mode mode, Class<? extends Message> protoMessage,
+                            CompressionCodecName compressionCodecName, int blockSize,
+                            int pageSize, Configuration conf) throws IOException {
+    super(file, mode, new ProtoWriteSupport(protoMessage),
+      compressionCodecName, blockSize, pageSize, pageSize, ParquetWriter.DEFAULT_IS_DICTIONARY_ENABLED,
+      ParquetWriter.DEFAULT_IS_VALIDATING_ENABLED, ParquetWriter.DEFAULT_WRITER_VERSION,
+      conf);
   }
 
 }
