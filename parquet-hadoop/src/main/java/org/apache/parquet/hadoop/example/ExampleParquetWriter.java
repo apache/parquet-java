@@ -85,6 +85,7 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
   public static class Builder extends ParquetWriter.Builder<Group, Builder> {
     private MessageType type = null;
     private Map<String, String> extraMetaData = new HashMap<String, String>();
+    private WriteSupport writeSupport = null;
 
     private Builder(Path file) {
       super(file);
@@ -104,6 +105,11 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
       return this;
     }
 
+    public Builder withWriteSupport(WriteSupport writeSupport) {
+      this.writeSupport = writeSupport;
+      return this;
+    }
+
     @Override
     protected Builder self() {
       return this;
@@ -111,8 +117,7 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
     @Override
     protected WriteSupport<Group> getWriteSupport(Configuration conf) {
-      return new GroupWriteSupport(type, extraMetaData);
+      return writeSupport == null ? new GroupWriteSupport(type, extraMetaData) : writeSupport;
     }
-
   }
 }

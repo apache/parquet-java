@@ -544,8 +544,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public synchronized static MemoryManager getMemoryManager() {
     return memoryManager;
   }
-  
-  private static FileEncryptionProperties createEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath, 
+
+  public static FileEncryptionProperties createEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
       WriteContext fileWriteContext) {
     EncryptionPropertiesFactory cryptoFactory = EncryptionPropertiesFactory.loadFactory(fileHadoopConfig);
     if (null == cryptoFactory) {
