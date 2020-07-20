@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.listType;
@@ -69,6 +70,17 @@ public class ProtoSchemaConverter {
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
     MessageType messageType =
         convertFields(Types.buildMessage(), descriptor.getFields())
+        .named(descriptor.getFullName());
+    LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
+    return messageType;
+  }
+
+  public MessageType convert(Descriptors.Descriptor descriptor) {
+    LOG.debug("Converting protocol buffer class to parquet schema using descriptors." + descriptor);
+    List<FieldDescriptor> fields = descriptor.getFields().stream()
+                                                         .collect(Collectors.toList());
+    MessageType messageType =
+      convertFields(Types.buildMessage(), fields)
         .named(descriptor.getFullName());
     LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
     return messageType;
