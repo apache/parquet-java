@@ -72,6 +72,7 @@ import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
@@ -88,6 +89,7 @@ import org.apache.parquet.hadoop.ColumnIndexFilterUtils.OffsetRange;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
@@ -625,6 +627,8 @@ public class ParquetFileReader implements Closeable {
   // not final. in some cases, this may be lazily loaded for backward-compat.
   private ParquetMetadata footer;
 
+  private CompressionCodecFactory codecFactoryFromMetadata;
+
   private int currentBlock = 0;
   private ColumnChunkPageReadStore currentRowGroup = null;
   private DictionaryPageReader nextDictionaryReader = null;
@@ -751,6 +755,43 @@ public class ParquetFileReader implements Closeable {
       return fileMetaData;
     }
     return getFooter().getFileMetaData();
+  }
+
+  private CompressionCodecFactory getCodeFactoryFromFileMetaData(){
+    if (codecFactoryFromMetadata == null) {
+      FileMetaData fileMetaData = getFileMetaData();
+      Map<String,String> kvMetaData = fileMetaData.getKeyValueMetaData();
+      if (options instanceof HadoopReadOptions) {
+        HadoopReadOptions hadoopOptions = (HadoopReadOptions) options;
+        codecFactoryFromMetadata = CodecFactoryLookupUtil.lookup(kvMetaData,hadoopOptions.getConf());
+      } else {
+        codecFactoryFromMetadata = CodecFactoryLookupUtil.lookup(kvMetaData, new Configuration());
+      }
+    }
+    return codecFactoryFromMetadata;
+  }
+
+  private CompressionCodecFactory getCodecFactoryForCodecName(CompressionCodecName codecName) {
+    CompressionCodecFactory codecFactoryInFileMetaData = getCodeFactoryFromFileMetaData();
+    CompressionCodecFactory codecFactoryInOption = options.getCodecFactory();
+    List<CompressionCodecFactory>  codecFactoryList = new ArrayList<CompressionCodecFactory>();
+    if (codecFactoryInFileMetaData != null) {
+      codecFactoryList.add(codecFactoryInFileMetaData);
+    }
+    if (codecFactoryInOption != null) {
+      codecFactoryList.add(codecFactoryInOption);
+    }
+    CompressionCodecFactory codecFactory = CodecFactoryLookupUtil.lookup(codecFactoryList,codecName);
+    return codecFactory;
+  }
+
+  private BytesInputDecompressor getDecompressor(CompressionCodecName codecName) {
+    CompressionCodecFactory codecFactory = getCodecFactoryForCodecName(codecName);
+    if (codecFactory != null) {
+      return codecFactory.getDecompressor(codecName);
+    } else {
+      return null;
+    }
   }
 
   public long getRecordCount() {
@@ -1033,7 +1074,8 @@ public class ParquetFileReader implements Closeable {
     }
 
     DictionaryPage compressedPage = readCompressedDictionary(pageHeader, f);
-    BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(meta.getCodec());
+    CompressionCodecName codecName = meta.getCodec();
+    BytesInputDecompressor decompressor = getDecompressor(codecName);
 
     return new DictionaryPage(
         decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
@@ -1141,10 +1183,16 @@ public class ParquetFileReader implements Closeable {
         f.close();
       }
     } finally {
-      options.getCodecFactory().release();
+      releaseAllCodecFactory();
     }
   }
 
+  private void releaseAllCodecFactory() {
+    if (codecFactoryFromMetadata != null) {
+      codecFactoryFromMetadata.release();
+    }
+    options.getCodecFactory().release();
+  }
   /*
    * Builder to concatenate the buffers of the discontinuous parts for the same column. These parts are generated as a
    * result of the column-index based filtering when some pages might be skipped at reading.
@@ -1334,7 +1382,8 @@ public class ParquetFileReader implements Closeable {
             " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
             + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
       }
-      BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
+      CompressionCodecName codecName = descriptor.metadata.getCodec();
+      BytesInputDecompressor decompressor = getDecompressor(codecName);
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex,
           blocks.get(currentBlock).getRowCount());
     }

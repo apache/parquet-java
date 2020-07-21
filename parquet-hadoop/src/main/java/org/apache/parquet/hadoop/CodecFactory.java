@@ -256,6 +256,10 @@ public class CodecFactory implements CompressionCodecFactory {
     decompressors.clear();
   }
 
+  @Override
+  public boolean support(CompressionCodecName codec) {
+    return true;
+  }
   /**
    * @deprecated will be removed in 2.0.0; use CompressionCodecFactory.BytesInputCompressor instead.
    */
