@@ -21,6 +21,7 @@ package org.apache.parquet.avro;
 import java.io.IOException;
 
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.specific.SpecificData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -50,6 +51,37 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
 
   public static <T> Builder<T> builder(InputFile file) {
     return new Builder<T>(file);
+  }
+
+  /**
+   * Convenience method for creating a ParquetReader which uses Avro
+   * {@link GenericData} objects to store data from reads.
+   *
+   * @param file The location to read data from
+   * @return A {@code ParquetReader} which reads data as Avro
+   *         {@code GenericData}
+   * @throws IOException if the InputFile has been closed, or if some other I/O
+   *           error occurs
+   */
+  public static ParquetReader<GenericRecord> genericRecordReader(InputFile file) throws IOException {
+    return new Builder<GenericRecord>(file).withDataModel(GenericData.get()).build();
+  }
+
+  /**
+   * Convenience method for creating a ParquetReader which uses Avro
+   * {@link GenericData} objects to store data from reads.
+   *
+   * @param file The location to read data from
+   * @return A {@code ParquetReader} which reads data as Avro
+   *         {@code GenericData}
+   * @throws IOException if the InputFile has been closed, or if some other I/O
+   *           error occurs
+   *
+   * @deprecated will be removed in 2.0.0; use {@link #genericRecordReader(InputFile)} instead.
+   */
+  @Deprecated
+  public static ParquetReader<GenericRecord> genericRecordReader(Path file) throws IOException {
+    return new Builder<GenericRecord>(file).withDataModel(GenericData.get()).build();
   }
 
   /**

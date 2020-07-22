@@ -727,6 +727,52 @@ public class TestReadWrite {
     assertEquals(str("hello"), l2List.get(0));
   }
 
+  /**
+   * A test demonstrating the most simple way to write and read Parquet files
+   * using Avro {@link GenericRecord}.
+   */
+  @Test
+  public void testSimpleGeneric() throws IOException {
+    final Schema schema =
+        Schema.createRecord("Person", null, "org.apache.parquet", false);
+    schema.setFields(Arrays.asList(
+        new Schema.Field("name", Schema.create(Schema.Type.STRING), null, null),
+        new Schema.Field("weight", Schema.create(Schema.Type.INT), null,
+            null)));
+
+    final Path file = new Path(createTempFile().getPath());
+
+    try (final ParquetWriter<GenericData.Record> parquetWriter =
+        AvroParquetWriter.<GenericData.Record> builder(file).withSchema(schema)
+            .build()) {
+
+      final GenericData.Record fooRecord = new GenericData.Record(schema);
+      fooRecord.put("name", "foo");
+      fooRecord.put("weight", 123);
+
+      final GenericData.Record oofRecord = new GenericData.Record(schema);
+      oofRecord.put("name", "oof");
+      oofRecord.put("weight", 321);
+
+      parquetWriter.write(fooRecord);
+      parquetWriter.write(oofRecord);
+    }
+
+    // Read the file. String data is returned as org.apache.avro.util.Utf8 so it
+    // must be converting to a String before checking equality
+    try (ParquetReader<GenericRecord> reader =
+        AvroParquetReader.genericRecordReader(file)) {
+
+      final GenericRecord r1 = reader.read();
+      assertEquals("foo", r1.get("name").toString());
+      assertEquals(123, r1.get("weight"));
+
+      final GenericRecord r2 = reader.read();
+      assertEquals("oof", r2.get("name").toString());
+      assertEquals(321, r2.get("weight"));
+    }
+  }
+
   private File createTempFile() throws IOException {
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
