@@ -19,21 +19,24 @@
 package org.apache.parquet.avro;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.google.common.io.Resources;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.schema.MessageType;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.*;
 import org.apache.parquet.DirectWriterTest;
+import org.junit.rules.TemporaryFolder;
 
 import static org.apache.parquet.avro.AvroTestUtil.array;
 import static org.apache.parquet.avro.AvroTestUtil.field;
@@ -54,6 +57,30 @@ public class TestArrayCompatibility extends DirectWriterTest {
         AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, true);
     NEW_BEHAVIOR_CONF.setBoolean(
         AvroSchemaConverter.ADD_LIST_ELEMENT_RECORDS, false);
+  }
+
+  @Test
+  public void testReadEmptyParquetFileWriteNull() throws IOException {
+    final Schema schema;
+    try (InputStream avroSchema = Resources.getResource("persons.json").openStream()) {
+      schema = new Schema.Parser().parse(avroSchema);
+    }
+
+    try (ParquetWriter<GenericRecord> writer =
+           AvroParquetWriter.<GenericRecord>builder(new org.apache.hadoop.fs.Path("/tmp/persons.parquet"))
+             .withSchema(schema)
+             .build()) {
+
+      // To trigger exception, add array with null element.
+      try {
+        writer.write(new GenericRecordBuilder(schema).set("address", Arrays.asList("first", null, "last")).build());
+      } catch (NullPointerException e) {
+        // We expect this one to fail
+      }
+
+      // At this point all future calls to writer.write will fail
+      writer.write(new GenericRecordBuilder(schema).set("address", Arrays.asList("foo", "bar")).build());
+    }
   }
 
   @Test

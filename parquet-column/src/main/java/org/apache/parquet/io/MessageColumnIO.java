@@ -390,7 +390,9 @@ public class MessageColumnIO extends GroupColumnIO {
 
     @Override
     public void startGroup() {
-      if (DEBUG) log("startGroup()");
+      if (DEBUG) {
+        log("startGroup()");
+      }
       GroupColumnIO group = (GroupColumnIO) currentColumnIO;
 
       // current group is not null, need to flush all the nulls that were cached before
@@ -403,7 +405,9 @@ public class MessageColumnIO extends GroupColumnIO {
 
       int fieldsCount = ((GroupColumnIO) currentColumnIO).getChildrenCount();
       fieldsWritten[currentLevel].reset(fieldsCount);
-      if (DEBUG) printState();
+      if (DEBUG) {
+        printState();
+      }
     }
 
     private boolean hasNullCache(GroupColumnIO group) {

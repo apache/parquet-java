@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "name": "person",
+  "fields": [
+    {
+      "name": "address",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": "string"
+        }
+      ],
+      "default": null
+    }
+  ]
+}

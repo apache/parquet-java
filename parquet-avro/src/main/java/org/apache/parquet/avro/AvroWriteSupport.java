@@ -157,20 +157,16 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
   @Override
   public void write(T record) {
+    recordConsumer.startMessage();
     if (rootLogicalType != null) {
       Conversion<?> conversion = model.getConversionByClass(
           record.getClass(), rootLogicalType);
-
-      recordConsumer.startMessage();
       writeRecordFields(rootSchema, rootAvroSchema,
           convert(rootAvroSchema, rootLogicalType, conversion, record));
-      recordConsumer.endMessage();
-
     } else {
-      recordConsumer.startMessage();
       writeRecordFields(rootSchema, rootAvroSchema, record);
-      recordConsumer.endMessage();
     }
+    recordConsumer.endMessage();
   }
 
   private void writeRecord(GroupType schema, Schema avroSchema,
@@ -416,16 +412,19 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     protected abstract void endArray();
 
     public void writeList(GroupType schema, Schema avroSchema, Object value) {
-      recordConsumer.startGroup(); // group wrapper (original type LIST)
-      if (value instanceof Collection) {
-        writeCollection(schema, avroSchema, (Collection) value);
-      } else {
-        Class<?> arrayClass = value.getClass();
-        Preconditions.checkArgument(arrayClass.isArray(),
+      try {
+        recordConsumer.startGroup(); // group wrapper (original type LIST)
+        if (value instanceof Collection) {
+          writeCollection(schema, avroSchema, (Collection<?>) value);
+        } else {
+          Class<?> arrayClass = value.getClass();
+          Preconditions.checkArgument(arrayClass.isArray(),
             "Cannot write unless collection or array: " + arrayClass.getName());
-        writeJavaArray(schema, avroSchema, arrayClass, value);
+          writeJavaArray(schema, avroSchema, arrayClass, value);
+        }
+      } finally {
+        recordConsumer.endGroup();
       }
-      recordConsumer.endGroup();
     }
 
     public void writeJavaArray(GroupType schema, Schema avroSchema,
@@ -584,8 +583,9 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
               "Array contains a null element at " + idx + ". "
                   + "Set parquet.avro.write-old-list-structure=false to turn "
                   + "on support for arrays with null elements.");
+        } finally {
+          recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
         }
-        recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
     }
 
