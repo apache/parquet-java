@@ -110,6 +110,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   }
 
   @Override
+  public boolean support(CompressionCodecName codecName){
+    return true;
+  }
+
+  @Override
   protected BytesCompressor createCompressor(final CompressionCodecName codecName) {
 
     CompressionCodec codec = getCodec(codecName);

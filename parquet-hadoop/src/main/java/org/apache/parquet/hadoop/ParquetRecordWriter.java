@@ -19,6 +19,8 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,12 +28,16 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
+import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.schema.MessageType;
+
 
 /**
  * Writes records to a Parquet file
@@ -44,7 +50,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   private final InternalParquetRecordWriter<T> internalWriter;
   private final MemoryManager memoryManager;
-  private final CodecFactory codecFactory;
+  private final CompressionCodecFactory codecFactory;
 
   /**
    *
@@ -147,9 +153,10 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       ParquetProperties props,
       MemoryManager memoryManager,
       Configuration conf) {
-    this.codecFactory = new CodecFactory(conf, props.getPageSizeThreshold());
+    this.codecFactory = CodecFactoryLookupUtil.lookup(writeSupport, props.getPageSizeThreshold(), conf, codec);
+    CodecFactory.BytesCompressor compressor = (CodecFactory.BytesCompressor)codecFactory.getCompressor(codec);
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, codecFactory.getCompressor(codec), validating,
+        extraMetaData, blockSize, compressor, validating,
         props);
     this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
     memoryManager.addWriter(internalWriter, blockSize);

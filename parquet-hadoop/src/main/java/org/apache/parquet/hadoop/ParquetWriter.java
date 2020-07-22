@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -55,7 +56,7 @@ public class ParquetWriter<T> implements Closeable {
   public static final int MAX_PADDING_SIZE_DEFAULT = 8 * 1024 * 1024; // 8MB
 
   private final InternalParquetRecordWriter<T> writer;
-  private final CodecFactory codecFactory;
+  private final CompressionCodecFactory codecFactory;
 
   /**
    * Create a new ParquetWriter.
@@ -282,9 +283,8 @@ public class ParquetWriter<T> implements Closeable {
       encodingProps.getColumnIndexTruncateLength(), encodingProps.getStatisticsTruncateLength(),
       encodingProps.getPageWriteChecksumEnabled());
     fileWriter.start();
-
-    this.codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());
-    CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(compressionCodecName);
+    this.codecFactory = CodecFactoryLookupUtil.lookup(writeSupport, encodingProps.getPageSizeThreshold(), conf, compressionCodecName);
+    CodecFactory.BytesCompressor compressor = (CodecFactory.BytesCompressor)codecFactory.getCompressor(compressionCodecName);
     this.writer = new InternalParquetRecordWriter<T>(
         fileWriter,
         writeSupport,
