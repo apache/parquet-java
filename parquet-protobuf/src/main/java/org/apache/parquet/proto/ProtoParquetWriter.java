@@ -24,6 +24,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.io.OutputFile;
+import org.apache.hadoop.conf.Configuration;
 
 import java.io.IOException;
 
@@ -80,5 +82,42 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
     this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
             DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
+  
+  public static <T> Builder<T> builder(Path file) {
+	    return new Builder<T>(file);
+	}
 
+	public static <T> Builder<T> builder(OutputFile file) {
+	    return new Builder<T>(file);
+	}
+	
+	private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(Class<? extends Message> protoMessage) {
+		return new ProtoWriteSupport<T>(protoMessage);
+	}
+	  
+	public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
+		  
+		Class<? extends Message> protoMessage = null;
+
+		private Builder(Path file) {
+			super(file);
+		}
+
+		private Builder(OutputFile file) {
+		    super(file);
+		}
+
+		protected Builder<T> self() {
+		    return this;
+		}
+		
+		public Builder<T> withMessage(Class<? extends Message> protoMessage){
+			this.protoMessage = protoMessage;
+			return this;
+		}
+
+		protected WriteSupport<T> getWriteSupport(Configuration conf) {
+		    return (WriteSupport<T>) ProtoParquetWriter.writeSupport(protoMessage);
+		}    
+	}
 }
