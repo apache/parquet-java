@@ -36,7 +36,6 @@ import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
 import java.io.IOException;
 import java.util.Random;
 
-import static org.apache.parquet.benchmarks.BenchmarkUtils.deleteIfExists;
 import static org.apache.parquet.benchmarks.BenchmarkUtils.exists;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.*;
 
@@ -51,8 +50,9 @@ public class PageChecksumDataGenerator extends DataGenerator {
       "  }" +
       "}");
 
-  public void generateData(Path outFile, int nRows, boolean writeChecksums,
-                           CompressionCodecName compression) throws IOException {
+  public void generateData(
+    Path outFile, int nRows, boolean writeChecksums,
+    CompressionCodecName compression, boolean useAirlift) throws IOException {
     if (exists(configuration, outFile)) {
       System.out.println("File already exists " + outFile);
       return;
@@ -64,6 +64,7 @@ public class PageChecksumDataGenerator extends DataGenerator {
       .withCompressionCodec(compression)
       .withDictionaryEncoding(true)
       .withType(SCHEMA)
+      .withAirliftCompressorsEnabled(useAirlift)
       .withPageWriteChecksumEnabled(writeChecksums)
       .build();
 
@@ -90,15 +91,16 @@ public class PageChecksumDataGenerator extends DataGenerator {
     try {
       // No need to generate the non-checksum versions, as the files generated here are only used in
       // the read benchmarks
-      generateData(file_100K_CHECKSUMS_UNCOMPRESSED, 100 * ONE_K, true, UNCOMPRESSED);
-      generateData(file_100K_CHECKSUMS_GZIP, 100 * ONE_K, true, GZIP);
-      generateData(file_100K_CHECKSUMS_SNAPPY, 100 * ONE_K, true, SNAPPY);
-      generateData(file_1M_CHECKSUMS_UNCOMPRESSED, ONE_MILLION, true, UNCOMPRESSED);
-      generateData(file_1M_CHECKSUMS_GZIP, ONE_MILLION, true, GZIP);
-      generateData(file_1M_CHECKSUMS_SNAPPY, ONE_MILLION, true, SNAPPY);
-      generateData(file_10M_CHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, true, UNCOMPRESSED);
-      generateData(file_10M_CHECKSUMS_GZIP, 10 * ONE_MILLION, true, GZIP);
-      generateData(file_10M_CHECKSUMS_SNAPPY, 10 * ONE_MILLION, true, SNAPPY);
+      generateData(file_100K_CHECKSUMS_UNCOMPRESSED, 100 * ONE_K, true, UNCOMPRESSED, false);
+      generateData(file_100K_CHECKSUMS_GZIP, 100 * ONE_K, true, GZIP, false);
+      generateData(file_100K_CHECKSUMS_SNAPPY, 100 * ONE_K, true, SNAPPY, false);
+      generateData(file_1M_CHECKSUMS_UNCOMPRESSED, ONE_MILLION, true, UNCOMPRESSED, false);
+      generateData(file_1M_CHECKSUMS_GZIP, ONE_MILLION, true, GZIP, false);
+      generateData(file_1M_CHECKSUMS_SNAPPY, ONE_MILLION, true, SNAPPY, false);
+      generateData(file_10M_CHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, true, UNCOMPRESSED, false);
+      generateData(file_10M_CHECKSUMS_GZIP, 10 * ONE_MILLION, true, GZIP, false);
+      generateData(file_10M_CHECKSUMS_AIRLIFT_GZIP, 10 * ONE_MILLION, true, GZIP, false);
+      generateData(file_10M_CHECKSUMS_SNAPPY, 10 * ONE_MILLION, true, SNAPPY, false);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

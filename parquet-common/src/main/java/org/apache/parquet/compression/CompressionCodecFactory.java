@@ -32,6 +32,8 @@ public interface CompressionCodecFactory {
 
   void release();
 
+  CompressionCodecFactory withAirliftCompressors(boolean useAirliftCompressors);
+
   interface BytesInputCompressor {
     BytesInput compress(BytesInput bytes) throws IOException;
     CompressionCodecName getCodecName();

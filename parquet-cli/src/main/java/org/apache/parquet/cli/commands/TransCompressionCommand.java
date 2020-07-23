@@ -57,8 +57,11 @@ public class TransCompressionCommand extends BaseCommand {
   @Parameter(description = "<output parquet file path>")
   String output;
 
-  @Parameter(description = "<new compression codec")
+  @Parameter(description = "<new compression codec>")
   String codec;
+
+  @Parameter(description = "<use Airlift based compressors - only applies for GZIP, LZ0 and LZ4 codecs>")
+  String useAirliftCompressors;
 
   @Override
   @SuppressWarnings("unchecked")
@@ -68,6 +71,8 @@ public class TransCompressionCommand extends BaseCommand {
 
     Preconditions.checkArgument(codec != null,
       "The codec cannot be null");
+
+    boolean useAirliftBasedCompressors = Boolean.valueOf(useAirliftCompressors);
 
     Path inPath = new Path(input);
     Path outPath = new Path(output);
@@ -79,7 +84,8 @@ public class TransCompressionCommand extends BaseCommand {
     writer.start();
 
     try (TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(inPath, getConf()), HadoopReadOptions.builder(getConf()).build())) {
-      compressionConverter.processBlocks(reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(), codecName);
+      compressionConverter.processBlocks(reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(),
+        codecName, useAirliftBasedCompressors);
     } finally {
       writer.end(metaData.getFileMetaData().getKeyValueMetaData());
     }

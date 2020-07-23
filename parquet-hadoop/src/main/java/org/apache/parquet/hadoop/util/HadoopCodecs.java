@@ -25,12 +25,23 @@ import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.hadoop.CodecFactory;
 
 public class HadoopCodecs {
+
+  @Deprecated
   public static CompressionCodecFactory newFactory(int sizeHint) {
-    return new CodecFactory(new Configuration(), sizeHint);
+    return new CodecFactory(new Configuration(), sizeHint, false);
   }
 
+  @Deprecated
   public static CompressionCodecFactory newFactory(Configuration conf, int sizeHint) {
-    return new CodecFactory(conf, sizeHint);
+    return new CodecFactory(conf, sizeHint, false);
+  }
+
+  public static CompressionCodecFactory newFactory(int sizeHint, boolean useAirliftCompressors) {
+    return new CodecFactory(new Configuration(), sizeHint, useAirliftCompressors);
+  }
+
+  public static CompressionCodecFactory newFactory(Configuration conf, int sizeHint, boolean useAirliftCompressors) {
+    return new CodecFactory(conf, sizeHint, useAirliftCompressors);
   }
 
   public static CompressionCodecFactory newDirectFactory(Configuration conf, ByteBufferAllocator allocator, int sizeHint) {

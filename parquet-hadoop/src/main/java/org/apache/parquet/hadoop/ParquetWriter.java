@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -283,7 +284,8 @@ public class ParquetWriter<T> implements Closeable {
       encodingProps.getPageWriteChecksumEnabled());
     fileWriter.start();
 
-    this.codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());
+    this.codecFactory =
+      new CodecFactory(conf, encodingProps.getPageSizeThreshold(), encodingProps.useAirliftCompressors());
     CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(compressionCodecName);
     this.writer = new InternalParquetRecordWriter<T>(
         fileWriter,
@@ -593,6 +595,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Enable or disable using Airlift based compressors and decompressors.
+     *
+     * @param useAirliftCompressors whether to enable
+     * @return this builder for method chaining
+     */
+    public SELF withAirliftCompressorsEnabled(boolean useAirliftCompressors) {
+      encodingPropsBuilder.withAirliftCompressorsEnabled(useAirliftCompressors);
+      return self();
+    }
+
+    /**
      * Set a property that will be available to the read path. For writers that use a Hadoop
      * configuration, this is the recommended way to add configuration values.
      *
@@ -623,5 +636,10 @@ public class ParquetWriter<T> implements Closeable {
             encodingPropsBuilder.build());
       }
     }
+  }
+
+  // Visible for testing purposes only
+  CompressionCodecFactory getCodecFactory() {
+    return codecFactory;
   }
 }

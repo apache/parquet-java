@@ -34,6 +34,7 @@ import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_G
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_NOCHECKSUMS_GZIP;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_SNAPPY;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_NOCHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_AIRLIFT_GZIP;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_UNCOMPRESSED;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_NOCHECKSUMS_UNCOMPRESSED;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_GZIP;
@@ -43,6 +44,7 @@ import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_NOCHECKSUMS_S
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_UNCOMPRESSED;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_UNCOMPRESSED;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_AIRLIFT_GZIP;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_GZIP;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_SNAPPY;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_SNAPPY;
@@ -66,37 +68,37 @@ public class PageChecksumWriteBenchmarks {
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write100KRowsUncompressedWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_100K_NOCHECKSUMS_UNCOMPRESSED, 100 * ONE_K, false, UNCOMPRESSED);
+    pageChecksumDataGenerator.generateData(file_100K_NOCHECKSUMS_UNCOMPRESSED, 100 * ONE_K, false, UNCOMPRESSED, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write100KRowsUncompressedWithChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_100K_CHECKSUMS_UNCOMPRESSED, 100 * ONE_K, true, UNCOMPRESSED);
+    pageChecksumDataGenerator.generateData(file_100K_CHECKSUMS_UNCOMPRESSED, 100 * ONE_K, true, UNCOMPRESSED, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write100KRowsGzipWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_100K_NOCHECKSUMS_GZIP, 100 * ONE_K, false, GZIP);
+    pageChecksumDataGenerator.generateData(file_100K_NOCHECKSUMS_GZIP, 100 * ONE_K, false, GZIP, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write100KRowsGzipWithChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_100K_CHECKSUMS_GZIP, 100 * ONE_K, true, GZIP);
+    pageChecksumDataGenerator.generateData(file_100K_CHECKSUMS_GZIP, 100 * ONE_K, true, GZIP, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write100KRowsSnappyWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_100K_NOCHECKSUMS_SNAPPY, 100 * ONE_K, false, SNAPPY);
+    pageChecksumDataGenerator.generateData(file_100K_NOCHECKSUMS_SNAPPY, 100 * ONE_K, false, SNAPPY, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write100KRowsSnappyWithChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_100K_CHECKSUMS_SNAPPY, 100 * ONE_K, true, SNAPPY);
+    pageChecksumDataGenerator.generateData(file_100K_CHECKSUMS_SNAPPY, 100 * ONE_K, true, SNAPPY, false);
   }
 
   // 1M rows, uncompressed, GZIP, Snappy
@@ -104,37 +106,37 @@ public class PageChecksumWriteBenchmarks {
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsUncompressedWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_1M_NOCHECKSUMS_UNCOMPRESSED, ONE_MILLION, false, UNCOMPRESSED);
+    pageChecksumDataGenerator.generateData(file_1M_NOCHECKSUMS_UNCOMPRESSED, ONE_MILLION, false, UNCOMPRESSED, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsUncompressedWithChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_1M_CHECKSUMS_UNCOMPRESSED, ONE_MILLION, true, UNCOMPRESSED);
+    pageChecksumDataGenerator.generateData(file_1M_CHECKSUMS_UNCOMPRESSED, ONE_MILLION, true, UNCOMPRESSED, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsGzipWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_1M_NOCHECKSUMS_GZIP, ONE_MILLION, false, GZIP);
+    pageChecksumDataGenerator.generateData(file_1M_NOCHECKSUMS_GZIP, ONE_MILLION, false, GZIP, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsGzipWithChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_1M_CHECKSUMS_GZIP, ONE_MILLION, true, GZIP);
+    pageChecksumDataGenerator.generateData(file_1M_CHECKSUMS_GZIP, ONE_MILLION, true, GZIP, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsSnappyWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_1M_NOCHECKSUMS_SNAPPY, ONE_MILLION, false, SNAPPY);
+    pageChecksumDataGenerator.generateData(file_1M_NOCHECKSUMS_SNAPPY, ONE_MILLION, false, SNAPPY, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write1MRowsSnappyWithChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_1M_CHECKSUMS_SNAPPY, ONE_MILLION, true, SNAPPY);
+    pageChecksumDataGenerator.generateData(file_1M_CHECKSUMS_SNAPPY, ONE_MILLION, true, SNAPPY, false);
   }
 
   // 10M rows, uncompressed, GZIP, Snappy
@@ -142,37 +144,50 @@ public class PageChecksumWriteBenchmarks {
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write10MRowsUncompressedWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_10M_NOCHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, false, UNCOMPRESSED);
+    pageChecksumDataGenerator.generateData(file_10M_NOCHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, false, UNCOMPRESSED,
+      false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write10MRowsUncompressedWithChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_10M_CHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, true, UNCOMPRESSED);
+    pageChecksumDataGenerator.generateData(file_10M_CHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, true, UNCOMPRESSED, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write10MRowsGzipWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_10M_NOCHECKSUMS_GZIP, 10 * ONE_MILLION, false, GZIP);
+    pageChecksumDataGenerator.generateData(file_10M_NOCHECKSUMS_GZIP, 10 * ONE_MILLION, false, GZIP, false);
+  }
+
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
+  public void write10MRowsAirliftGzipWithoutChecksums() throws IOException {
+    pageChecksumDataGenerator.generateData(file_10M_NOCHECKSUMS_AIRLIFT_GZIP, 10 * ONE_MILLION, false, GZIP, true);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write10MRowsGzipWithChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_10M_CHECKSUMS_GZIP, 10 * ONE_MILLION, true, GZIP);
+    pageChecksumDataGenerator.generateData(file_10M_CHECKSUMS_GZIP, 10 * ONE_MILLION, true, GZIP, false);
+  }
+
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
+  public void write10MRowsAirliftGzipWithChecksums() throws IOException {
+    pageChecksumDataGenerator.generateData(file_10M_CHECKSUMS_AIRLIFT_GZIP, 10 * ONE_MILLION, true, GZIP, true);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write10MRowsSnappyWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_10M_NOCHECKSUMS_SNAPPY, 10 * ONE_MILLION, false, SNAPPY);
+    pageChecksumDataGenerator.generateData(file_10M_NOCHECKSUMS_SNAPPY, 10 * ONE_MILLION, false, SNAPPY, false);
   }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write10MRowsSnappyWithChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_10M_CHECKSUMS_SNAPPY, 10 * ONE_MILLION, true, SNAPPY);
+    pageChecksumDataGenerator.generateData(file_10M_CHECKSUMS_SNAPPY, 10 * ONE_MILLION, true, SNAPPY, false);
   }
 
 }

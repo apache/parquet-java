@@ -118,7 +118,8 @@ public class CompressionConveterTest {
     writer.start();
 
     try (TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(inPath, conf), HadoopReadOptions.builder(conf).build())) {
-      compressionConverter.processBlocks(reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(), codecName);
+      compressionConverter.processBlocks(reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(),
+        codecName, false);
     } finally {
       writer.end(metaData.getFileMetaData().getKeyValueMetaData());
     }
