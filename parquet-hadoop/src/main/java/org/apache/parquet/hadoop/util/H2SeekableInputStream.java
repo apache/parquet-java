@@ -62,7 +62,7 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
 
   @Override
   public void readFully(byte[] bytes, int start, int len) throws IOException {
-    stream.readFully(bytes);
+    stream.readFully(bytes, start, len);
   }
 
   @Override
