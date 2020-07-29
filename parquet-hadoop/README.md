@@ -161,7 +161,7 @@ This property should be between 0 and 1.
 **Description:** The frequency of checks of the page size limit will be between
 `parquet.page.size.row.check.min` and `parquet.page.size.row.check.max`.  
 If the frequency is high, the page size will be accurate.  
-If the frequency is low, the performance will be better.
+If the frequency is low, the performance will be better.  
 **Default value:** `100`
 
 ---
@@ -170,7 +170,7 @@ If the frequency is low, the performance will be better.
 **Description:** The frequency of checks of the page size limit will be between
 `parquet.page.size.row.check.min` and `parquet.page.size.row.check.max`.  
 If the frequency is high, the page size will be accurate.  
-If the frequency is low, the performance will be better.
+If the frequency is low, the performance will be better.  
 **Default value:** `10000`
 
 ---
@@ -242,8 +242,8 @@ conf.set("parquet.bloom.filter.expected.ndv#column.path", 200)
 ---
 
 **Property:** `parquet.crypto.factory.class`  
-**Description:** Class implementing EncryptionPropertiesFactory.
-**Default value:** None. If not set, the file won't be encrypted by a crypto factory.
+**Description:** Class implementing EncryptionPropertiesFactory.  
+**Default value:** None. If not set, the file won't be encrypted by a crypto factory.  
 
 ## Class: ParquetInputFormat
 
@@ -357,82 +357,82 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 ## Class: PropertiesDrivenCryptoFactory
 
 **Property:** `parquet.encryption.column.keys`  
-**Description:** List of columns to encrypt, with master key IDs (see HIVE-21848).Format: “<masterKeyID>:<colName>,<colName>;<masterKeyID>:<colName>...”
+**Description:** List of columns to encrypt, with master key IDs (see HIVE-21848).Format: `<masterKeyID>:<colName>,<colName>;<masterKeyID>:<colName>...`  
 **Default value:** None. If neither `column.keys` nor `footer.key` are set, the file won't be encrypted by the PropertiesDrivenCryptoFactory. If one of the two properties is set, an exception will be thrown.
 
 ---
 
 **Property:** `parquet.encryption.footer.key`  
-**Description:** Master key ID for footer encryption/signing.
+**Description:** Master key ID for footer encryption/signing.  
 **Default value:** None. If neither `column.keys` nor `footer.key` are set, the file won't be encrypted by the PropertiesDrivenCryptoFactory. If one of the two properties is set, an exception will be thrown.
 
 ---
 
 **Property:** `parquet.encryption.algorithm`  
-**Description:** Parquet encryption algorithm. Can be `AES_GCM_V1` or `AES_GCM_CTR_V1`.
+**Description:** Parquet encryption algorithm. Can be `AES_GCM_V1` or `AES_GCM_CTR_V1`.  
 **Default value:** `AES_GCM_V1`
 
 ---
 
 **Property:** `parquet.encryption.plaintext.footer`  
 **Description:** Write files in plaintext footer mode, that makes many footer fields visible (e.g. schema) but allows legacy readers to access unencrypted columns. The plaintext footer is signed with the footer key. 
-If `false`, write files in encrypted footer mode, that fully encrypts the footer, and signs it with the footer key.
+If `false`, write files in encrypted footer mode, that fully encrypts the footer, and signs it with the footer key.  
 **Default value:** `false`
 
 ---
 
 **Property:** `parquet.encryption.kms.client.class`  
-**Description:** Class implementing the KmsClient interface. "KMS" stands for “key management service”. The Client will interact with a KMS Server to wrap/unrwap encryption keys.
+**Description:** Class implementing the KmsClient interface. "KMS" stands for “key management service”. The Client will interact with a KMS Server to wrap/unrwap encryption keys.  
 **Default value:** None
 
 ---
 
 **Property:** `parquet.encryption.kms.instance.id`  
-**Description:** ID of the KMS instance that will be used for encryption (if multiple KMS instances are available).
+**Description:** ID of the KMS instance that will be used for encryption (if multiple KMS instances are available).  
 **Default value:** `DEFAULT`
 
 ---
 
 **Property:** `parquet.encryption.kms.instance.url`  
-**Description:** URL of the KMS instance.
+**Description:** URL of the KMS instance.  
 **Default value:** `DEFAULT`
 
 ---
 
 **Property:** `parquet.encryption.key.access.token`  
-**Description:** Authorization token that will be passed to KMS.
-**Default value:** None
+**Description:** Authorization token that will be passed to KMS.  
+**Default value:** `DEFAULT`
 
 ---
 
 **Property:** `parquet.encryption.double.wrapping`  
-**Description:** Use double wrapping - where data encryption keys (DEKs) are encrypted with key encryption keys (KEKs), which in turn are encrypted with master keys. 
-If `false`, DEKs are directly encrypted with master keys, KEKs are not used.
+**Description:** Use double wrapping - where data encryption keys (DEKs) are encrypted with key encryption keys (KEKs), which in turn are encrypted with master keys.
+If `false`, DEKs are directly encrypted with master keys, KEKs are not used.  
 **Default value:** `true`
 
 ---
 
 **Property:** `parquet.encryption.cache.lifetime.seconds`  
-**Description:** Lifetime of cached entities (key encryption keys, local wrapping keys, KMS client objects).
+**Description:** Lifetime of cached entities (key encryption keys, local wrapping keys, KMS client objects).  
 **Default value:** `600` (10 minutes)
 
 ---
 
 **Property:** `parquet.encryption.wrap.locally`  
 **Description:** Wrap keys locally - master keys are fetched from the KMS server and used to encrypt other keys (DEKs or KEKs).
-If `false` - key wrapping will be performed by a KMS server. 
+If `false` - key wrapping will be performed by a KMS server.  
 **Default value:** `false`
 
 ---
 
 **Property:** `parquet.encryption.key.material.store.internally`  
 **Description:** Store key material inside Parquet file footers; this mode doesn’t produce additional files. 
-If `false`, key material is stored in separate new files, created in the same folder - this mode enables key rotation for immutable Parquet files.
+If `false`, key material is stored in separate new files, created in the same folder - this mode enables key rotation for immutable Parquet files.  
 **Default value:** `true`
 
 ---
 
 **Property:** `parquet.encryption.data.key.length.bits`  
-**Description:** Length of data encryption keys (DEKs), randomly generated by parquet key management tools. Can be 128, 192 or 256 bits.
+**Description:** Length of data encryption keys (DEKs), randomly generated by parquet key management tools. Can be 128, 192 or 256 bits.  
 **Default value:** `128`
 
