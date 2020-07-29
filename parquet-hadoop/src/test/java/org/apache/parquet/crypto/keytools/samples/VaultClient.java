@@ -119,11 +119,10 @@ public class VaultClient extends RemoteKmsClient {
 
   private String getContentFromTransitEngine(String endPoint, String jPayload, String masterKeyIdentifier) {
     LOG.info("masterKeyIdentifier: " + masterKeyIdentifier);
-    String masterKeyID = masterKeyIdentifier;
 
     final RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE, jPayload);
     Request request = new Request.Builder()
-        .url(endPoint + masterKeyID)
+        .url(endPoint + masterKeyIdentifier)
         .header(tokenHeader,  kmsToken)
         .post(requestBody).build();
 
