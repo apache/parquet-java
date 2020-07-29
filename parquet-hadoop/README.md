@@ -243,7 +243,7 @@ conf.set("parquet.bloom.filter.expected.ndv#column.path", 200)
 
 **Property:** `parquet.crypto.factory.class`  
 **Description:** Class implementing EncryptionPropertiesFactory.  
-**Default value:** None. If not set, the file won't be encrypted by a crypto factory.
+**Default value:** None. If not set, the file won't be encrypted by a crypto factory.  
 
 ## Class: ParquetInputFormat
 
@@ -357,7 +357,7 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 ## Class: PropertiesDrivenCryptoFactory
 
 **Property:** `parquet.encryption.column.keys`  
-**Description:** List of columns to encrypt, with master key IDs (see HIVE-21848).Format: “<masterKeyID>:<colName>,<colName>;<masterKeyID>:<colName>...”  
+**Description:** List of columns to encrypt, with master key IDs (see HIVE-21848).Format: `<masterKeyID>:<colName>,<colName>;<masterKeyID>:<colName>...`  
 **Default value:** None. If neither `column.keys` nor `footer.key` are set, the file won't be encrypted by the PropertiesDrivenCryptoFactory. If one of the two properties is set, an exception will be thrown.
 
 ---
@@ -406,8 +406,8 @@ If `false`, write files in encrypted footer mode, that fully encrypts the footer
 ---
 
 **Property:** `parquet.encryption.double.wrapping`  
-**Description:** Use double wrapping - where data encryption keys (DEKs) are encrypted with key encryption keys (KEKs), which in turn are encrypted with master keys.  
-If `false`, DEKs are directly encrypted with master keys, KEKs are not used.
+**Description:** Use double wrapping - where data encryption keys (DEKs) are encrypted with key encryption keys (KEKs), which in turn are encrypted with master keys.
+If `false`, DEKs are directly encrypted with master keys, KEKs are not used.  
 **Default value:** `true`
 
 ---
