@@ -65,6 +65,11 @@ public class OffsetIndexBuilder {
     public long getFirstRowIndex(int pageIndex) {
       return firstRowIndexes[pageIndex];
     }
+    
+    @Override
+    public int getPageOrdinal(int pageIndex) {
+      return pageIndex;
+    }
   }
 
   private static final OffsetIndexBuilder NO_OP_BUILDER = new OffsetIndexBuilder() {
@@ -171,5 +176,4 @@ public class OffsetIndexBuilder {
 
     return offsetIndex;
   }
-
 }

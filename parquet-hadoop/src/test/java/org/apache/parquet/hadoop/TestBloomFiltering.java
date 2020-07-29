@@ -22,11 +22,16 @@ package org.apache.parquet.hadoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.crypto.ColumnEncryptionProperties;
+import org.apache.parquet.crypto.DecryptionKeyRetrieverMock;
+import org.apache.parquet.crypto.FileDecryptionProperties;
+import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -57,29 +62,46 @@ import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class TestBloomFiltering {
-  private static final Path FILE_V1 = createTempFile();
-  private static final Path FILE_V2 = createTempFile();
+  private static final Path FILE_V1 = createTempFile(false);
+  private static final Path FILE_V2 = createTempFile(false);
+  private static final Path FILE_V1_E = createTempFile(true);
+  private static final Path FILE_V2_E = createTempFile(true);
   private static final Logger LOGGER = LoggerFactory.getLogger(TestBloomFiltering.class);
   private static final Random RANDOM = new Random(42);
   private static final String[] PHONE_KINDS = { null, "mobile", "home", "work" };
   private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(generateData(10000));
 
+  private static final byte[] FOOTER_ENCRYPTION_KEY = "0123456789012345".getBytes();
+  private static final byte[] COLUMN_ENCRYPTION_KEY1 = "1234567890123450".getBytes();
+  private static final byte[] COLUMN_ENCRYPTION_KEY2 = "1234567890123451".getBytes();
+  private static final String FOOTER_ENCRYPTION_KEY_ID = "kf";
+  private static final String COLUMN_ENCRYPTION_KEY1_ID = "kc1";
+  private static final String COLUMN_ENCRYPTION_KEY2_ID = "kc2";
+
   private final Path file;
-  public TestBloomFiltering(Path file) {
+  private final boolean isEncrypted;
+
+  public TestBloomFiltering(Path file, boolean isEncrypted) {
     this.file = file;
+    this.isEncrypted = isEncrypted;
   }
 
-  private static Path createTempFile() {
+  private static Path createTempFile(boolean encrypted) {
+    String suffix = encrypted ? ".parquet.encrypted" : ".parquet";
     try {
-      return new Path(Files.createTempFile("test-bloom-filter_", ".parquet").toAbsolutePath().toString());
+      return new Path(Files.createTempFile("test-bloom-filter_", suffix).toAbsolutePath().toString());
     } catch (IOException e) {
       throw new AssertionError("Unable to create temporary file", e);
     }
   }
 
-  @Parameterized.Parameters
+  @Parameterized.Parameters(name = "Run {index}: isEncrypted={1}")
   public static Collection<Object[]> params() {
-    return Arrays.asList(new Object[] { FILE_V1 }, new Object[] { FILE_V2 });
+    return Arrays.asList(
+      new Object[] { FILE_V1, false /*isEncrypted*/ },
+      new Object[] { FILE_V2, false /*isEncrypted*/ },
+      new Object[] { FILE_V1_E, true /*isEncrypted*/ },
+      new Object[] { FILE_V2_E, true /*isEncrypted*/ });
   }
 
   private static List<PhoneBookWriter.User> generateData(int rowCount) {
@@ -157,8 +179,21 @@ public class TestBloomFiltering {
 
   private List<PhoneBookWriter.User> readUsers(FilterPredicate filter, boolean useOtherFiltering,
                                                boolean useBloomFilter) throws IOException {
+    FileDecryptionProperties fileDecryptionProperties = null;
+    if (isEncrypted) {
+      DecryptionKeyRetrieverMock decryptionKeyRetrieverMock = new DecryptionKeyRetrieverMock()
+        .putKey(FOOTER_ENCRYPTION_KEY_ID, FOOTER_ENCRYPTION_KEY)
+        .putKey(COLUMN_ENCRYPTION_KEY1_ID, COLUMN_ENCRYPTION_KEY1)
+        .putKey(COLUMN_ENCRYPTION_KEY2_ID, COLUMN_ENCRYPTION_KEY2);
+
+      fileDecryptionProperties = FileDecryptionProperties.builder()
+        .withKeyRetriever(decryptionKeyRetrieverMock)
+        .build();
+    }
+
     return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file)
       .withFilter(FilterCompat.get(filter))
+      .withDecryption(fileDecryptionProperties)
       .useDictionaryFilter(useOtherFiltering)
       .useStatsFilter(useOtherFiltering)
       .useRecordFilter(useOtherFiltering)
@@ -202,35 +237,68 @@ public class TestBloomFiltering {
     assertEquals(DATA.stream().filter(expectedFilter).collect(Collectors.toList()), result);
   }
 
+  private static FileEncryptionProperties getFileEncryptionProperties() {
+    ColumnEncryptionProperties columnProperties1 = ColumnEncryptionProperties
+      .builder("id")
+      .withKey(COLUMN_ENCRYPTION_KEY1)
+      .withKeyID(COLUMN_ENCRYPTION_KEY1_ID)
+      .build();
 
-  @BeforeClass
-  public static void createFile() throws IOException {
+    ColumnEncryptionProperties columnProperties2 = ColumnEncryptionProperties
+      .builder("name")
+      .withKey(COLUMN_ENCRYPTION_KEY2)
+      .withKeyID(COLUMN_ENCRYPTION_KEY2_ID)
+      .build();
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = new HashMap<>();
+
+    columnPropertiesMap.put(columnProperties1.getPath(), columnProperties1);
+    columnPropertiesMap.put(columnProperties2.getPath(), columnProperties2);
+
+    FileEncryptionProperties encryptionProperties = FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+      .withFooterKeyID(FOOTER_ENCRYPTION_KEY_ID)
+      .withEncryptedColumns(columnPropertiesMap)
+      .build();
+
+    return encryptionProperties;
+  }
+
+  private static void writePhoneBookToFile(Path file,
+                                           ParquetProperties.WriterVersion parquetVersion,
+                                           FileEncryptionProperties encryptionProperties) throws IOException {
     int pageSize = DATA.size() / 100;     // Ensure that several pages will be created
     int rowGroupSize = pageSize * 4;    // Ensure that there are more row-groups created
-    PhoneBookWriter.write(ExampleParquetWriter.builder(FILE_V1)
+    PhoneBookWriter.write(ExampleParquetWriter.builder(file)
         .withWriteMode(OVERWRITE)
         .withRowGroupSize(rowGroupSize)
         .withPageSize(pageSize)
         .withBloomFilterNDV("location.lat", 10000L)
         .withBloomFilterNDV("name", 10000L)
         .withBloomFilterNDV("id", 10000L)
-        .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0),
-      DATA);
-    PhoneBookWriter.write(ExampleParquetWriter.builder(FILE_V2)
-        .withWriteMode(OVERWRITE)
-        .withRowGroupSize(rowGroupSize)
-        .withPageSize(pageSize)
-        .withBloomFilterNDV("location.lat", 10000L)
-        .withBloomFilterNDV("name", 10000L)
-        .withBloomFilterNDV("id", 10000L)
-        .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_2_0),
+        .withEncryption(encryptionProperties)
+        .withWriterVersion(parquetVersion),
       DATA);
   }
 
+  private static void deleteFile(Path file) throws IOException {
+    file.getFileSystem(new Configuration()).delete(file, false);
+  }
+
+  @BeforeClass
+  public static void createFiles() throws IOException {
+    writePhoneBookToFile(FILE_V1, ParquetProperties.WriterVersion.PARQUET_1_0, null);
+    writePhoneBookToFile(FILE_V2, ParquetProperties.WriterVersion.PARQUET_2_0, null);
+
+    FileEncryptionProperties encryptionProperties = getFileEncryptionProperties();
+    writePhoneBookToFile(FILE_V1_E, ParquetProperties.WriterVersion.PARQUET_1_0, encryptionProperties);
+    writePhoneBookToFile(FILE_V2_E, ParquetProperties.WriterVersion.PARQUET_2_0, encryptionProperties);
+  }
+
   @AfterClass
-  public static void deleteFile() throws IOException {
-    FILE_V1.getFileSystem(new Configuration()).delete(FILE_V1, false);
-    FILE_V2.getFileSystem(new Configuration()).delete(FILE_V2, false);
+  public static void deleteFiles() throws IOException {
+    deleteFile(FILE_V1);
+    deleteFile(FILE_V2);
+    deleteFile(FILE_V1_E);
+    deleteFile(FILE_V2_E);
   }
 
 

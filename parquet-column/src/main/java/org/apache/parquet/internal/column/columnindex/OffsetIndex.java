@@ -49,6 +49,13 @@ public interface OffsetIndex {
    * @return the index of the first row in the page
    */
   public long getFirstRowIndex(int pageIndex);
+  
+  /**
+   * @param pageIndex
+   *         the index of the page
+   * @return the original ordinal of the page in the column chunk
+   */
+  public int getPageOrdinal(int pageIndex);
 
   /**
    * @param pageIndex
