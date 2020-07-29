@@ -33,6 +33,10 @@ Release Notes - Parquet - Version 1.11.1
 *   [PARQUET-1765](https://issues.apache.org/jira/browse/PARQUET-1765) - Invalid filteredRowCount in InternalParquetRecordReader
 *   [PARQUET-1879](https://issues.apache.org/jira/browse/PARQUET-1879) - Apache Arrow can not read a Parquet File written with Parqet-Avro 1.11.0 with a Map field
 
+#### Improvement
+
+*   [PARQUET-1853](https://issues.apache.org/jira/browse/PARQUET-1853) - Minimize the parquet-avro fastutil shaded jar
+
 #### Task
 
 *   [PARQUET-1774](https://issues.apache.org/jira/browse/PARQUET-1774) - Release parquet 1.11.1
