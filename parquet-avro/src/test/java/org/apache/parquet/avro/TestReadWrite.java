@@ -255,7 +255,8 @@ public class TestReadWrite {
       Random random = new Random(34L);
       GenericRecordBuilder builder = new GenericRecordBuilder(decimalSchema);
       for (int i = 0; i < 1000; i += 1) {
-        BigDecimal dec = new BigDecimal(new BigInteger(31, random), 2);
+        // Generating Integers between -(2^29) and (2^29 - 1) to ensure the number of digits <= 9
+        BigDecimal dec = new BigDecimal(new BigInteger(30, random).subtract(BigInteger.valueOf(1L << 28)), 2);
         builder.set("dec", dec);
 
         GenericRecord rec = builder.build();
@@ -307,7 +308,8 @@ public class TestReadWrite {
       Random random = new Random(34L);
       GenericRecordBuilder builder = new GenericRecordBuilder(decimalSchema);
       for (int i = 0; i < 1000; i += 1) {
-        BigDecimal dec = new BigDecimal(new BigInteger(31, random), 2);
+        // Generating Integers between -(2^29) and (2^29 - 1) to ensure the number of digits <= 9
+        BigDecimal dec = new BigDecimal(new BigInteger(30, random).subtract(BigInteger.valueOf(1L << 28)), 2);
         builder.set("dec", dec);
 
         GenericRecord rec = builder.build();
