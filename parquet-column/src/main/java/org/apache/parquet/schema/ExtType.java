@@ -54,88 +54,98 @@ public class ExtType<T> extends Type {
     this.type = new PrimitiveType(type.getRepetition(), type.asPrimitiveType().getPrimitiveTypeName(), name);
   }
 
+  @Override
   public Type withId(int id) {
     return this.type.withId(id);
   }
 
+  @Override
   public boolean isPrimitive() {
     return this.type.isPrimitive();
   }
 
+  @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     this.type.writeToStringBuilder(sb, indent);
   }
 
+  @Override
   public void accept(TypeVisitor visitor) {
     this.type.accept(visitor);
   }
 
   /** @deprecated */
   @Deprecated
+  @Override
   protected int typeHashCode() {
     return this.type.hashCode();
   }
 
   /** @deprecated */
   @Deprecated
+  @Override
   protected boolean typeEquals(Type other) {
     return this.type.typeEquals(other);
   }
 
+  @Override
   protected boolean equals(Type other) {
     return this.type.equals(other);
   }
 
+  @Override
   public int getMaxRepetitionLevel(String[] path, int i) {
     return this.type.getMaxRepetitionLevel(path, i);
   }
 
+  @Override
   public int getMaxDefinitionLevel(String[] path, int i) {
     return this.type.getMaxDefinitionLevel(path, i);
   }
 
+  @Override
   public Type getType(String[] path, int i) {
     return this.type.getType(path, i);
   }
 
+  @Override
   protected List<String[]> getPaths(int depth) {
     return this.type.getPaths(depth);
   }
 
+  @Override
   void checkContains(Type subType) {
     this.type.checkContains(subType);
   }
 
+  @Override
   public <T> T convert(List<GroupType> path, TypeConverter<T> converter) {
     return this.type.convert(path, converter);
   }
 
+  @Override
   protected boolean containsPath(String[] path, int depth) {
     return this.type.containsPath(path, depth);
   }
 
+  @Override
   protected Type union(Type toMerge) {
     return this.type.union(toMerge);
   }
 
+  @Override
   protected Type union(Type toMerge, boolean strict) {
     return this.type.union(toMerge, strict);
   }
 
+  @Override
   public PrimitiveType asPrimitiveType() {
-    if (!this.type.isPrimitive()) {
-      throw new ClassCastException(this + " is not primitive");
-    } else {
-      return (PrimitiveType)this.type;
-    }
+    return this.type.asPrimitiveType();
   }
 
+  @Override
   public GroupType asGroupType() {
-    if (this.type.isPrimitive()) {
-      throw new ClassCastException(this + " is not a group");
-    } else {
-      return (GroupType)this.type;
-    }
+    return this.type.asGroupType();
   }
 
   public void setMetadata(Map<String, T> metadata) {

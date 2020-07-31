@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.parquet.crypto.CryptoPropertiesFactoryTests;
+package org.apache.parquet.crypto.propertiesfactory;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -29,7 +29,6 @@ import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.ExtType;
@@ -39,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -52,10 +52,10 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
   public static final String CONF_ENCRYPTION_FOOTER = "parquet.encrypt.footer";
   private static final byte[] FOOTER_KEY = {0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
     0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
-  private static final byte[] FOOTER_KEY_METADATA = "footkey".getBytes(Charset.defaultCharset());
+  private static final byte[] FOOTER_KEY_METADATA = "footkey".getBytes(StandardCharsets.UTF_8);
   private static final byte[] COL_KEY = {0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
     0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11};
-  private static final byte[] COL_KEY_METADATA = "col".getBytes(Charset.defaultCharset());
+  private static final byte[] COL_KEY_METADATA = "col".getBytes(StandardCharsets.UTF_8);
 
   @Override
   public FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,

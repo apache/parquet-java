@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.parquet.crypto.CryptoPropertiesFactoryTests;
+package org.apache.parquet.crypto.propertiesfactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -28,9 +28,11 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -117,7 +119,7 @@ public class SchemaControlEncryptionTest {
 
   private void runTest(Configuration conf ) throws Exception {
     conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
-      "org.apache.parquet.crypto.CryptoPropertiesFactoryTests.SchemaCryptoPropertiesFactory");
+      "org.apache.parquet.crypto.propertiesfactory.SchemaCryptoPropertiesFactory");
     String file = createTempFile("test");
     markEncryptColumns();
     encryptParquetFile(file, conf);
@@ -145,11 +147,11 @@ public class SchemaControlEncryptionTest {
         new PrimitiveType(REPEATED, BINARY, "Twitter")));
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
+    Path path = new Path(file);
+    Builder builder = new Builder(path);
+    builder.withConf(conf);
 
-    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file))
-                                                              .withConf(conf)
-                                                              .withWriteSupport(new CryptoGroupWriteSupport());
-    try (ParquetWriter writer = builder.build()) {
+   try (ParquetWriter writer = builder.build()) {
       for (int i = 0; i < 1000; i++) {
         SimpleGroup g = new SimpleGroup(schema);
         g.add("Name", (String)testData.get("Name")[i]);
@@ -245,6 +247,23 @@ public class SchemaControlEncryptionTest {
         result.setMetadata(crytoMetadatas.get(field.getName()));
         return result;
       }
+    }
+  }
+
+  public class Builder extends ParquetWriter.Builder<Group, Builder> {
+
+    private Builder(Path file) {
+      super(file);
+    }
+
+    @Override
+    protected Builder self() {
+      return this;
+    }
+
+    @Override
+    protected WriteSupport<Group> getWriteSupport(Configuration conf) {
+      return new CryptoGroupWriteSupport();
     }
   }
 }
