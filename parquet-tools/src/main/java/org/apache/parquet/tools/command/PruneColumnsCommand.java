@@ -48,7 +48,7 @@ public class PruneColumnsCommand extends ArgsOnlyCommand {
 
     "where <input> is the source parquet file",
     "    <output> is the destination parquet file," +
-    "    [<column> ...] are the columns in the case senstive dot format" +
+    "    [<column> ...] are the columns in the case sensitive dot format" +
       " to be pruned, for example a.b.c"
   };
 

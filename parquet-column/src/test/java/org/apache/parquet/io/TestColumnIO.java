@@ -38,6 +38,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ParquetProperties;
 import org.junit.Assert;
 import org.junit.Test;
@@ -675,6 +676,11 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
       @Override
       public void write(double value, int repetitionLevel, int definitionLevel) {
         validate(value, repetitionLevel, definitionLevel);
+      }
+
+      @Override
+      public BytesInput concatWriters() {
+        throw new UnsupportedOperationException();
       }
     };
   }
