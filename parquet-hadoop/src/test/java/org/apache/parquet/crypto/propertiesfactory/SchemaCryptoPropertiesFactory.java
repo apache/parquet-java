@@ -31,13 +31,11 @@ import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.schema.ExtType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -120,10 +118,10 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
     String pathName = field.getName();
     currentPath.add(pathName);
     if (field.isPrimitive()) {
-      if (field instanceof ExtType) {
+      if (field.getMetadata() != null) {
         log.debug("Leaf node {} is being checked crypto settings", field.getName());
         // leaf node
-        Map<String, Object> metaData = ((ExtType<Object>) field).getMetadata();
+        Map<String, Object> metaData = field.getMetadata();
         if (metaData != null && metaData.containsKey("encrypted")) {
           boolean encryptFlag;
           if ((metaData.get("encrypted") instanceof String)) {

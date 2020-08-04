@@ -29,27 +29,22 @@ import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
-import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
-import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
-
-import org.apache.parquet.schema.ExtType;
-import org.apache.parquet.schema.Type;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
@@ -68,7 +63,7 @@ public class SchemaControlEncryptionTest {
   // In the test We use a map to tell WriteSupport which columns to be encrypted with what key. In real use cases, people
   // can find whatever easy way to do so basing on how do they get these information, for example people can choose to 
   // store in HMS, or other metastore. 
-  private Map<String, Map<String, String>> crytoMetadatas = new HashMap<>();
+  private Map<String, Map<String, Object>> crytoMetadatas = new HashMap<>();
   private Map<String, Object[]> testData = new HashMap<>();
 
   @Before
@@ -127,12 +122,12 @@ public class SchemaControlEncryptionTest {
   }
   
   private void markEncryptColumns() {
-    Map<String, String> ageMetadata = new HashMap<>();
+    Map<String, Object> ageMetadata = new HashMap<>();
     ageMetadata.put("columnKeyMetaData", "age_key_id");
     ageMetadata.put("encrypted", "true");
     crytoMetadatas.put("Age", ageMetadata);
 
-    Map<String, String> linkMetadata = new HashMap<>();
+    Map<String, Object> linkMetadata = new HashMap<>();
     linkMetadata.put("columnKeyMetaData", "link_key_id");
     linkMetadata.put("encrypted", "true");
     crytoMetadatas.put("LinkedIn", linkMetadata);
@@ -212,40 +207,27 @@ public class SchemaControlEncryptionTest {
       WriteContext writeContext = super.init(configuration);
       MessageType schema = writeContext.getSchema();
       List<Type> fields = schema.getFields();
-      List<Type> newFields = new ArrayList<>();
 
       if (LOG.isDebugEnabled()) {
         LOG.debug("There are " + fields.size() + " fields");
       }
 
       for (Type field : fields) {
-        ExtType<String> cryptoField = convertToExtTypeField(field);
-        newFields.add(cryptoField);
+        setMetadata(field);
       }
 
-      MessageType newSchema = new MessageType(schema.getName(), newFields);
-      Map<String, String> extraMetadata = new HashMap<>();
-
-      return new WriteContext(newSchema, extraMetadata);
+      return writeContext;
     }
 
-    private ExtType<String> convertToExtTypeField(Type field) {
-      System.out.println(field.getName());
+    private void setMetadata(Type field) {
       if (field.isPrimitive()) {
-        ExtType<String> result = new ExtType<>(field);
         if (crytoMetadatas.containsKey(field.getName())) {
-          result.setMetadata(crytoMetadatas.get(field.getName()));
+          field.setMetadata(crytoMetadatas.get(field.getName()));
         }
-        return result;
       } else {
-        List<Type> newFields = new ArrayList<>();
         for (Type childField : field.asGroupType().getFields()) {
-          ExtType<String> newField = convertToExtTypeField(childField);
-          newFields.add(newField);
+          setMetadata(childField);
         }
-        ExtType<String> result = new ExtType<>(field.asGroupType().withNewFields(newFields));
-        result.setMetadata(crytoMetadatas.get(field.getName()));
-        return result;
       }
     }
   }

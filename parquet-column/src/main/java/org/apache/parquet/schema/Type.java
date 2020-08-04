@@ -19,6 +19,7 @@
 package org.apache.parquet.schema;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.apache.parquet.io.InvalidRecordException;
@@ -138,6 +139,7 @@ abstract public class Type {
   private final Repetition repetition;
   private final LogicalTypeAnnotation logicalTypeAnnotation;
   private final ID id;
+  private Map<String, Object> metadata;
 
   /**
    * @param name the name of the type
@@ -363,4 +365,11 @@ abstract public class Type {
    */
    abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);
 
+   public void setMetadata(Map<String, Object> metadata) {
+    this.metadata = metadata;
+  }
+
+   public Map<String, Object> getMetadata() {
+    return this.metadata;
+  }
 }

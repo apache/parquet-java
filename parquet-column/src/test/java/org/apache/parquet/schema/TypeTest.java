@@ -25,25 +25,23 @@ import java.util.Map;
 
 import static org.junit.Assert.assertTrue;
 
-public class ExtTypeTest {
+public class TypeTest {
 
   @Test
   public void testMetadata() {
     Type primitiveType = new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.BINARY, "testName1");
-    ExtType extType = new ExtType(primitiveType);
     Map<String, Object> metadata = new HashMap<>();
     metadata.put("encryption", "yes");
     metadata.put("encrKey", "x6z09grsfdgj");
-    extType.setMetadata(metadata);
-    assertTrue(extType.getMetadata().equals(metadata));
+    primitiveType.setMetadata(metadata);
+    assertTrue(primitiveType.getMetadata().equals(metadata));
   }
 
   @Test
   public void testMetadataError() {
     Type primitiveType = new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.DOUBLE, "testName2");
-    ExtType extType = new ExtType(primitiveType);
-    extType.setMetadata(null);
-    assertTrue(extType.getMetadata() == null);
+    primitiveType.setMetadata(null);
+    assertTrue(primitiveType.getMetadata() == null);
   }
 
   @Test
@@ -52,11 +50,10 @@ public class ExtTypeTest {
       new PrimitiveType(Type.Repetition.REQUIRED, PrimitiveType.PrimitiveTypeName.INT32, "testName3"),
       new PrimitiveType(Type.Repetition.REPEATED, PrimitiveType.PrimitiveTypeName.BINARY, "testName4")
     );
-    ExtType extType = new ExtType(groupType);
     Map<String, Object> metadata = new HashMap<>();
     metadata.put("encryption", "no");
     metadata.put("encrKey", "8-08dfgjsdf");
-    extType.setMetadata(metadata);
-    assertTrue(extType.getMetadata().equals(metadata));
+    groupType.setMetadata(metadata);
+    assertTrue(groupType.getMetadata().equals(metadata));
   }
 }
