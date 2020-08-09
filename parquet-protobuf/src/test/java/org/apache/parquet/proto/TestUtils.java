@@ -23,13 +23,13 @@ import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.ParquetReader;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 public class TestUtils {
@@ -78,8 +78,7 @@ public class TestUtils {
 
     checkSameBuilderInstance(messages);
 
-    List<MessageOrBuilder> output = (List<MessageOrBuilder>) writeAndRead(messages);
-
+    List<MessageOrBuilder> output = writeAndRead(messages);
     List<Message> outputAsMessages = asMessages(output);
     Descriptors.Descriptor messageDescriptor = Protobufs.getMessageDescriptor(asMessage(messages[0]).getClass());
     Descriptors.FileDescriptor.Syntax syntax = messageDescriptor.getFile().getSyntax();
@@ -117,7 +116,6 @@ public class TestUtils {
     for (MessageOrBuilder messageOrBuilder : mobs) {
       result.add(asMessage(messageOrBuilder));
     }
-
     return result;
   }
 
@@ -161,22 +159,34 @@ public class TestUtils {
    * Reads messages from given file. The file could/should be created by method writeMessages
    */
   public static <T extends MessageOrBuilder> List<T> readMessages(Path file) throws IOException {
-    ProtoParquetReader<T> reader = new ProtoParquetReader<T>(file);
+    return readMessages(file, null);
+  }
 
-    List<T> result = new ArrayList<T>();
-    boolean hasNext = true;
-    while (hasNext) {
-      T item = reader.read();
-      if (item == null) {
-        hasNext = false;
-      } else {
-        assertNotNull(item);
-        // It makes sense to return message but production code wont work with messages
-        result.add((T) asMessage(item).toBuilder());
-      }
+  /**
+   * Read messages from given file into the expected proto class.
+   * @param file
+   * @param messageClass
+   * @param <T>
+   * @return List of protobuf messages for the given type.
+   */
+  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass) throws IOException {
+    ParquetReader.Builder readerBuilder = ProtoParquetReader.builder(file);
+    if (messageClass != null) {
+      readerBuilder.set(ProtoReadSupport.PB_CLASS, messageClass.getName()).build();
     }
-    reader.close();
-    return result;
+    try (ParquetReader reader = readerBuilder.build()) {
+      List<T> result = new ArrayList<T>();
+      boolean hasNext = true;
+      while (hasNext) {
+        T item = (T) reader.read();
+        if (item == null) {
+          hasNext = false;
+        } else {
+          result.add((T) asMessage(item));
+        }
+      }
+      return result;
+    }
   }
 
   /**
