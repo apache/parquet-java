@@ -7,7 +7,7 @@
     <version>16</version>
   </parent>
 
-  <groupId>org.apache.parquet</groupId>
+  <groupId>com.gojek.parquet</groupId>
   <artifactId>parquet</artifactId>
   <version>1.12.0-SNAPSHOT</version>
   <packaging>pom</packaging>
@@ -17,9 +17,9 @@
   <description>Parquet is a columnar storage format that supports nested data. This provides the java implementation.</description>
 
   <scm>
-    <connection>scm:git:git@github.com:apache/parquet-mr.git</connection>
-    <url>scm:git:git@github.com:apache/parquet-mr.git</url>
-    <developerConnection>scm:git:git@github.com:apache/parquet-mr.git</developerConnection>
+    <connection>scm:git:git@github.com:gojek/parquet-mr.git</connection>
+    <url>scm:git:git@github.com:gojek/parquet-mr.git</url>
+    <developerConnection>scm:git:git@github.com:gojek/parquet-mr.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 
@@ -56,6 +56,12 @@
       <url>https://jitpack.io</url>
       <name>Jitpack.io repository</name>
       <!-- needed for brotli-codec -->
+    </repository>
+    <repository>
+      <id>snapshots-repo</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <releases><enabled>false</enabled></releases>
+      <snapshots><enabled>true</enabled></snapshots>
     </repository>
   </repositories>
 
@@ -158,6 +164,17 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <distributionManagement>
+    <snapshotRepository>
+        <id>ossrh</id>
+        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+        <id>ossrh</id>
+        <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
 
   <reporting>
     <plugins>
@@ -503,6 +520,7 @@
         <configuration>
           <parameter>
             <oldVersionPattern>${previous.version}</oldVersionPattern>
+            <ignoreMissingOldVersion>true</ignoreMissingOldVersion>
             <breakBuildBasedOnSemanticVersioning>true</breakBuildBasedOnSemanticVersioning>
             <onlyModified>true</onlyModified>
             <overrideCompatibilityChangeParameters>
@@ -627,5 +645,48 @@
       </properties>
     </profile>
 
+      <profile>
+          <id>ossrh</id>
+          <properties>
+              <gpg.executable>${env.GPG_EXECUTABLE}</gpg.executable>
+              <gpg.passphrase>${env.GPG_PASSPHRASE}</gpg.passphrase>
+          </properties>
+          <activation>
+              <property>
+                  <name>performRelease</name>
+                  <value>true</value>
+              </property>
+          </activation>
+          <build>
+              <plugins>
+                  <plugin>
+                      <groupId>org.apache.maven.plugins</groupId>
+                      <artifactId>maven-gpg-plugin</artifactId>
+                      <version>1.5</version>
+                      <executions>
+                          <execution>
+                              <id>sign-artifacts</id>
+                              <phase>verify</phase>
+                              <goals>
+                                  <goal>sign</goal>
+                              </goals>
+                          </execution>
+                      </executions>
+                  </plugin>
+                  <plugin>
+                      <groupId>org.sonatype.plugins</groupId>
+                      <artifactId>nexus-staging-maven-plugin</artifactId>
+                      <version>1.6.2</version>
+                      <extensions>true</extensions>
+                      <configuration>
+                          <serverId>ossrh</serverId>
+                          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                          <stagingProfileId>9bf6aebae3df9b</stagingProfileId>
+                          <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                      </configuration>
+                  </plugin>
+              </plugins>
+          </build>
+      </profile>
   </profiles>
 </project>

@@ -20,7 +20,7 @@
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>org.apache.parquet</groupId>
+    <groupId>com.gojek.parquet</groupId>
     <artifactId>parquet-hive-binding</artifactId>
     <relativePath>../pom.xml</relativePath>
     <version>1.12.0-SNAPSHOT</version>
@@ -36,30 +36,30 @@
     <!-- bindings depend on parquet-common but it will not be included in this
          bundle because it will be included in parquet-hive-bundle -->
     <dependency>
-      <groupId>org.apache.parquet</groupId>
+      <groupId>com.gojek.parquet</groupId>
       <artifactId>parquet-common</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.parquet</groupId>
+      <groupId>com.gojek.parquet</groupId>
       <artifactId>parquet-hive-binding-factory</artifactId>
       <version>${project.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.parquet</groupId>
+      <groupId>com.gojek.parquet</groupId>
       <artifactId>parquet-hive-binding-interface</artifactId>
       <version>${project.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.parquet</groupId>
+      <groupId>com.gojek.parquet</groupId>
       <artifactId>parquet-hive-0.10-binding</artifactId>
       <version>${project.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.parquet</groupId>
+      <groupId>com.gojek.parquet</groupId>
       <artifactId>parquet-hive-0.12-binding</artifactId>
       <version>${project.version}</version>
       <scope>provided</scope>
