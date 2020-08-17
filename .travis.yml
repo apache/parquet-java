@@ -2,7 +2,7 @@ language: java
 dist: trusty
 
 jdk:
-  - openjdk8
+  - openjdk8  
   - openjdk11
 
 env:
@@ -14,19 +14,20 @@ before_install:
   - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
   - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --import-ownertrust
 
-install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true  -P travis | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
+install: mvn install -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
 
-jobs:
-  include:
-    - stage: test
-      name: "Check"
-      script: mvn verify --batch-mode javadoc:javadoc -P travis,$HADOOP_PROFILE
+script: mvn verify -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn --batch-mode javadoc:javadoc -P travis,$HADOOP_PROFILE
 
 deploy:
   provider: releases
-  api_key:
-    secure: DzlGlZEvb4KPxfJQrJHPXqBGgw1ITNpyxl4NIKMzR5YWcesmya083b1sjNUZ2kmhqOzB0slKh4wewlWhBC6ohGM9v5FpeGbaNOcJ4LFsN6SZLjFENTKnLY7EtQrldqHxZxDFAEI5lfaO4eg6xD4XiCBb3uWzPO2PTv+MmmT8W6Zm9VJyZzWJT9FWAW2HWDdRJ7pRgE8rxoy06vRREUKly+gD5g7x81ZLE1glX9JpWxUUPKwqIikp+RPCO/6THe9Jtf0ulx8tzcG7uGxyp77TtDRO9lAaZWWUz/hlE9UriyXmwL09dkLXKsxoq2aQBQiU5ieGVyxm2DTiUVyiiyFo7+ttcm5x0RdHtJ6Nam4MmayPUqb3qlBMUGN6moLPZafGdp4sBgNqRXB/PB8qNmif3N0tcyNYihxXoLIyJpIiJeMOh9DLYaWd7/YNDj14GBZ42sBNj3z6udQ8KPzJVH1yBo9/q5t3FlJfw5sK87wKq213VRegedT69mKAhA6KYsd3cqiyMqVP0Xy+KkzLzLguXfKGO/nohxLHBzfqJNznGkRgHeF0LxlwG1P9GkW4FBby4/43IljLTMAovPuKPr1TdG2wjDd8TigXdtNxRQwItHEuZR9YeSDpkzYdr0zBmHV3NfaFlrJRMmBp9odMgtelMfLRrndDLJz+pFO/Rh9yhm4=
+  api_key: $RELEASE_OAUTH_TOKEN
+  tag_name: $TRAVIS_TAG
+  body: Release Parquet-MR $TRAVIS_TAG
   on:
     repo: gojek/parquet-mr
     tags: true
   skip_cleanup: 'true'
+
+after_deploy:
+  - echo 'after_deploy'
+  - mvn clean deploy -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn --batch-mode --settings `pwd`/settings.xml -DskipTests=true -P ossrh
