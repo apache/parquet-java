@@ -1,6 +1,5 @@
 language: java
-before_install:
-  - bash dev/travis-before_install.sh
+dist: trusty
 
 jdk:
   - openjdk8
@@ -10,5 +9,24 @@ env:
   - HADOOP_PROFILE=default TEST_CODECS=uncompressed,brotli
   - HADOOP_PROFILE=default TEST_CODECS=gzip,snappy
 
-install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
-script: mvn verify --batch-mode javadoc:javadoc -P travis,$HADOOP_PROFILE
+before_install:
+  - bash dev/travis-before_install.sh
+  - echo $GPG_SECRET_KEYS | base64 --decode | $GPG_EXECUTABLE --import
+  - echo $GPG_OWNERTRUST | base64 --decode | $GPG_EXECUTABLE --import-ownertrust
+
+install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true  -P travis | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
+
+jobs:
+  include:
+    - stage: test
+      name: "Check"
+      script: mvn verify --batch-mode javadoc:javadoc -P travis,$HADOOP_PROFILE
+
+deploy:
+  provider: releases
+  api_key:
+    secure: DzlGlZEvb4KPxfJQrJHPXqBGgw1ITNpyxl4NIKMzR5YWcesmya083b1sjNUZ2kmhqOzB0slKh4wewlWhBC6ohGM9v5FpeGbaNOcJ4LFsN6SZLjFENTKnLY7EtQrldqHxZxDFAEI5lfaO4eg6xD4XiCBb3uWzPO2PTv+MmmT8W6Zm9VJyZzWJT9FWAW2HWDdRJ7pRgE8rxoy06vRREUKly+gD5g7x81ZLE1glX9JpWxUUPKwqIikp+RPCO/6THe9Jtf0ulx8tzcG7uGxyp77TtDRO9lAaZWWUz/hlE9UriyXmwL09dkLXKsxoq2aQBQiU5ieGVyxm2DTiUVyiiyFo7+ttcm5x0RdHtJ6Nam4MmayPUqb3qlBMUGN6moLPZafGdp4sBgNqRXB/PB8qNmif3N0tcyNYihxXoLIyJpIiJeMOh9DLYaWd7/YNDj14GBZ42sBNj3z6udQ8KPzJVH1yBo9/q5t3FlJfw5sK87wKq213VRegedT69mKAhA6KYsd3cqiyMqVP0Xy+KkzLzLguXfKGO/nohxLHBzfqJNznGkRgHeF0LxlwG1P9GkW4FBby4/43IljLTMAovPuKPr1TdG2wjDd8TigXdtNxRQwItHEuZR9YeSDpkzYdr0zBmHV3NfaFlrJRMmBp9odMgtelMfLRrndDLJz+pFO/Rh9yhm4=
+  on:
+    repo: gojek/parquet-mr
+    tags: true
+  skip_cleanup: 'true'
