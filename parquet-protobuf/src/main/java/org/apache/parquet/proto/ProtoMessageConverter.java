@@ -22,7 +22,6 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.hadoop.BadConfigurationException;
@@ -232,8 +231,8 @@ class ProtoMessageConverter extends GroupConverter {
 
       if (extraMetadata.containsKey(METADATA_ENUM_PREFIX + enumType.getFullName())) {
         String enumNameNumberPairs = extraMetadata.get(METADATA_ENUM_PREFIX + enumType.getFullName());
-        if (StringUtils.isBlank(enumNameNumberPairs)) {
-          LOG.info("No enum is written for " + enumType.getFullName());
+        if (enumNameNumberPairs == null || enumNameNumberPairs.trim().isEmpty()) {
+          LOG.debug("No enum is written for " + enumType.getFullName());
           return lookupStructure;
         }
         for (String enumItem : enumNameNumberPairs.split(METADATA_ENUM_ITEM_SEPARATOR)) {
@@ -266,7 +265,7 @@ class ProtoMessageConverter extends GroupConverter {
         // in case of unknown enum value, protobuf is creating new EnumValueDescriptor with the unknown number
         // and name as following "UNKNOWN_ENUM_VALUE_" + parent.getName() + "_" + number
         // so the idea is to parse the name for data created by parquet-proto before this patch
-        String unknownLabel = new String(binaryValue.getBytes());
+        String unknownLabel = binaryValue.toStringUsingUTF8();
         if (unknownLabel.startsWith(unknownEnumPrefix)) {
           try {
             int i = Integer.parseInt(unknownLabel.substring(unknownEnumPrefix.length()));
