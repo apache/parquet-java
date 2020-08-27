@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.hadoop.conf.Configuration;
@@ -50,6 +51,7 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Message;
+import com.google.protobuf.MessageLite;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.TextFormat;
 
@@ -68,25 +70,42 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private boolean writeSpecsCompliant = false;
   private RecordConsumer recordConsumer;
-  private Optional<MessageOrBuilder> message;
+  private final Optional<MessageOrBuilder> message;
   private Class<? extends Message> clazz;
   private MessageWriter messageWriter;
+  private Optional<String> schemaRegistry;
+
   // Keep protobuf enum value with number in the metadata, so that in read time, a reader can read at least
   // the number back even with an outdated schema which might not contain all enum values.
   private Map<String, Map<String, Integer>> protoEnumBookKeeper = new HashMap<>();
 
   public ProtoWriteSupport() {
-    this.message = Optional.empty();
+    this((Class<? extends Message>) null);
+  }
+
+  public ProtoWriteSupport(MessageOrBuilder message, Optional<String> schemaRegistry) {
+    Objects.requireNonNull(message);
+    Objects.requireNonNull(schemaRegistry);
+
+    this.message = Optional.of(message);
+    this.clazz = null;
+    this.schemaRegistry = schemaRegistry;
   }
 
   public ProtoWriteSupport(MessageOrBuilder message) {
-    this.message = Optional.of(message);
-    this.clazz = null;
+    this(message, Optional.empty());
   }
-  
+
   public ProtoWriteSupport(Class<? extends Message> clazz) {
-    this();
+    this(clazz, Optional.empty());
+  }
+
+  public ProtoWriteSupport(Class<? extends Message> clazz,
+      Optional<String> schemaRegistry) {
+    Objects.requireNonNull(schemaRegistry);
+
     this.clazz = clazz;
+    this.message = Optional.empty();
   }
 
   @Override
@@ -142,8 +161,14 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
     this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
 
+    // Create the protobuf class FQDN (type.googleapis.com/org.my.proto.Document)
+    final String protoSchemaRegistry = this.schemaRegistry.orElse("type.googleapis.com");
+    final String protoClass = this.message.get().getClass().getName();
+    final String protoType = protoSchemaRegistry + '/' + protoClass;
+
     Map<String, String> extraMetaData = new HashMap<>();
-    extraMetaData.put(ProtoReadSupport.PB_CLASS, this.message.get().getClass().getName());
+    extraMetaData.put(ProtoReadSupport.PB_CLASS, protoClass);
+    extraMetaData.put(ProtoReadSupport.PB_TYPE, protoType);
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(this.message.get()));
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
     return new WriteContext(rootSchema, extraMetaData);

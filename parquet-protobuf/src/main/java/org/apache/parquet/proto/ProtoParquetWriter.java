@@ -18,16 +18,19 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.Message;
-import com.google.protobuf.MessageOrBuilder;
+import java.io.IOException;
+import java.util.Optional;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.OutputFile;
-import org.apache.hadoop.conf.Configuration;
 
-import java.io.IOException;
+import com.google.protobuf.Message;
+import com.google.protobuf.MessageLite;
+import com.google.protobuf.MessageOrBuilder;
 
 /**
  * Write Protobuf records to a Parquet file.
@@ -95,21 +98,21 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
     return new Builder<T>(file);
   }
 
-  @Deprecated
   private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(
-      Class<? extends Message> clazz) {
-    return new ProtoWriteSupport<T>(clazz);
+      Class<? extends Message> clazz, Optional<String> schemaRegistry) {
+    return new ProtoWriteSupport<T>(clazz, schemaRegistry);
   }
 
   private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(
-      MessageOrBuilder message) {
-    return new ProtoWriteSupport<T>(message);
+      MessageOrBuilder message, Optional<String> schemaRegistry) {
+    return new ProtoWriteSupport<T>(message, schemaRegistry);
   }
 
   public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
 
     private Class<? extends Message> clazz = null;
     private MessageOrBuilder message = null;
+    private Optional<String> schemaRegistry = Optional.empty();
 
     private Builder(Path file) {
       super(file);
@@ -134,13 +137,18 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
       return this;
     }
 
+    public Builder<T> withSchemaRegistry(String schemaRegistry) {
+      this.schemaRegistry = Optional.ofNullable(schemaRegistry);
+      return this;
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     protected WriteSupport<T> getWriteSupport(Configuration conf) {
       if (message != null) {
-        return (WriteSupport<T>) ProtoParquetWriter.writeSupport(message);
+        return (WriteSupport<T>) ProtoParquetWriter.writeSupport(message, this.schemaRegistry);
       }
-      return (WriteSupport<T>) ProtoParquetWriter.writeSupport(clazz);
+      return (WriteSupport<T>) ProtoParquetWriter.writeSupport(clazz, this.schemaRegistry);
     }
   }
 }
