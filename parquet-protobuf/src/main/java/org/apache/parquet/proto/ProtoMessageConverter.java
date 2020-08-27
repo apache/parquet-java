@@ -116,12 +116,7 @@ class ProtoMessageConverter extends GroupConverter {
     this.parent = Objects.requireNonNull(pvc, "Missing parent value container");
     this.extraMetadata = extraMetadata;
     int parquetFieldIndex = 1;
-
-    try {
-      this.message = protoclass.newInstance();
-    } catch (Exception e) {
-      throw new RuntimeException("Unable to load class: " + protoclass);
-    }
+    this.message = ProtoUtils.loadDefaultInstance(protoclass);
 
     this.protoBuilder =
         (message instanceof Message) ? ((Message) message).newBuilderForType()
