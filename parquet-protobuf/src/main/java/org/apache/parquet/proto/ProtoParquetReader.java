@@ -26,7 +26,6 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.hadoop.ParquetReader;
-import org.apache.parquet.proto.ProtoParquetWriter.Builder;
 
 /**
  * Read Protobuf records from a Parquet file.
