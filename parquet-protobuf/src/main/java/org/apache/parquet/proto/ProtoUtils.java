@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.Message;
 import com.google.protobuf.MessageLite;
 
 public final class ProtoUtils {
@@ -40,7 +39,7 @@ public final class ProtoUtils {
   public static <T extends MessageLite> T loadDefaultInstance(String clazz) {
     try {
       return (T) loadDefaultInstance(
-          (Class<? extends Message>) Class.forName(clazz));
+          (Class<? extends MessageLite>) Class.forName(clazz));
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Cannot load protobuf message class from string: " + clazz, e);
