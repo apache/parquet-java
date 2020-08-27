@@ -19,32 +19,31 @@
 package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
-import com.google.protobuf.MessageOrBuilder;
+import com.google.protobuf.MessageLite;
 
 public final class ProtoUtils {
 
   private ProtoUtils() {
   }
 
-  public static MessageOrBuilder loadDefaultInstance(
-      Class<? extends Message> message) {
+  @SuppressWarnings("unchecked")
+  public static <T extends MessageLite> T loadDefaultInstance(Class<T> clazz) {
     try {
-      return (MessageOrBuilder) (message.getMethod("getDefaultInstance")
-          .invoke(null));
+      return (T) (clazz.getMethod("getDefaultInstance").invoke(null));
     } catch (Exception e) {
       throw new IllegalArgumentException(
-          "Cannot load protobuf message class: " + message.getName(), e);
+          "Cannot load protobuf message class: " + clazz, e);
     }
   }
 
   @SuppressWarnings("unchecked")
-  public static MessageOrBuilder loadDefaultInstance(String clazz) {
+  public static <T extends MessageLite> T loadDefaultInstance(String clazz) {
     try {
-      return loadDefaultInstance(
+      return (T) loadDefaultInstance(
           (Class<? extends Message>) Class.forName(clazz));
     } catch (Exception e) {
       throw new IllegalArgumentException(
-          "Cannot load protobuf message class: " + clazz, e);
+          "Cannot load protobuf message class from string: " + clazz, e);
     }
   }
 
