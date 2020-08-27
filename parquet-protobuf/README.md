@@ -78,7 +78,7 @@ parquet.proto.writeSpecsCompliant | true  | Parquet file was written using spec 
 
 #### Reading Google protocol buffers from Parquet file (parquet-protobuf)
 
-```
+```java
     org.apache.hadoop.fs.Path path = ...;
     List<Document> results = new ArrayList<>();
 
