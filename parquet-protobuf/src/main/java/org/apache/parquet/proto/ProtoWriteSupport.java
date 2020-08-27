@@ -57,17 +57,25 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private boolean writeSpecsCompliant = false;
   private RecordConsumer recordConsumer;
-  private Class<? extends Message> protoMessage;
+  private Optional<MessageOrBuilder> message;
+  private Class<? extends Message> clazz;
   private MessageWriter messageWriter;
   // Keep protobuf enum value with number in the metadata, so that in read time, a reader can read at least
   // the number back even with an outdated schema which might not contain all enum values.
   private Map<String, Map<String, Integer>> protoEnumBookKeeper = new HashMap<>();
 
   public ProtoWriteSupport() {
+    this.message = Optional.empty();
   }
 
-  public ProtoWriteSupport(Class<? extends Message> protobufClass) {
-    this.protoMessage = protobufClass;
+  public ProtoWriteSupport(MessageOrBuilder message) {
+    this.message = Optional.of(message);
+    this.clazz = null;
+  }
+  
+  public ProtoWriteSupport(Class<? extends Message> clazz) {
+    this();
+    this.clazz = clazz;
   }
 
   @Override
@@ -113,12 +121,30 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   @Override
   public WriteContext init(Configuration configuration) {
+    if (!this.message.isPresent()) {
+      return initClass(configuration);
+    }
+    this.writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
+    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(this.message.get());
+    Descriptor messageDescriptor = this.message.get().getDescriptorForType();
+    validatedMapping(messageDescriptor, rootSchema);
 
+    this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
+
+    Map<String, String> extraMetaData = new HashMap<>();
+    extraMetaData.put(ProtoReadSupport.PB_CLASS, this.message.get().getClass().getName());
+    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(this.message.get()));
+    extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
+    return new WriteContext(rootSchema, extraMetaData);
+  }
+
+  @Deprecated
+  private WriteContext initClass(Configuration configuration) {
     // if no protobuf descriptor was given in constructor, load descriptor from configuration (set with setProtobufClass)
-    if (protoMessage == null) {
+    if (this.clazz == null) {
       Class<? extends Message> pbClass = configuration.getClass(PB_CLASS_WRITE, null, Message.class);
       if (pbClass != null) {
-        protoMessage = pbClass;
+        this.clazz = pbClass;
       } else {
         String msg = "Protocol buffer class not specified.";
         String hint = " Please use method ProtoParquetOutputFormat.setProtobufClass(...) or other similar method.";
@@ -127,15 +153,15 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
-    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(protoMessage);
-    Descriptor messageDescriptor = Protobufs.getMessageDescriptor(protoMessage);
+    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(this.clazz);
+    Descriptor messageDescriptor = Protobufs.getMessageDescriptor(this.clazz);
     validatedMapping(messageDescriptor, rootSchema);
 
     this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
 
     Map<String, String> extraMetaData = new HashMap<>();
-    extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
-    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
+    extraMetaData.put(ProtoReadSupport.PB_CLASS, this.clazz.getName());
+    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(this.clazz));
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
     return new WriteContext(rootSchema, extraMetaData);
   }
@@ -561,6 +587,11 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   private String serializeDescriptor(Class<? extends Message> protoClass) {
     Descriptor descriptor = Protobufs.getMessageDescriptor(protoClass);
     DescriptorProtos.DescriptorProto asProto = descriptor.toProto();
+    return TextFormat.printToString(asProto);
+  }
+
+  private String serializeDescriptor(MessageOrBuilder message) {
+    DescriptorProtos.DescriptorProto asProto = message.getDescriptorForType().toProto();
     return TextFormat.printToString(asProto);
   }
 }

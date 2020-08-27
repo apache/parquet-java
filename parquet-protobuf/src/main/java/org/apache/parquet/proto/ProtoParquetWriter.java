@@ -82,42 +82,65 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
     this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
             DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
-  
-  public static <T> Builder<T> builder(Path file) {
-	    return new Builder<T>(file);
-	}
 
-	public static <T> Builder<T> builder(OutputFile file) {
-	    return new Builder<T>(file);
-	}
-	
-	private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(Class<? extends Message> protoMessage) {
-		return new ProtoWriteSupport<T>(protoMessage);
-	}
-	  
-	public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
-		  
-		Class<? extends Message> protoMessage = null;
+  public static <T extends MessageOrBuilder> Builder<T> builder(Path file) {
+    return new Builder<T>(file);
+  }
 
-		private Builder(Path file) {
-			super(file);
-		}
+  public static <T extends MessageOrBuilder> Builder<T> builder(Path file, T message) {
+    return new Builder<T>(file).withMessage(message);
+  }
 
-		private Builder(OutputFile file) {
-		    super(file);
-		}
+  public static <T extends MessageOrBuilder> Builder<T> builder(OutputFile file) {
+    return new Builder<T>(file);
+  }
 
-		protected Builder<T> self() {
-		    return this;
-		}
-		
-		public Builder<T> withMessage(Class<? extends Message> protoMessage){
-			this.protoMessage = protoMessage;
-			return this;
-		}
+  @Deprecated
+  private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(
+      Class<? extends Message> clazz) {
+    return new ProtoWriteSupport<T>(clazz);
+  }
 
-		protected WriteSupport<T> getWriteSupport(Configuration conf) {
-		    return (WriteSupport<T>) ProtoParquetWriter.writeSupport(protoMessage);
-		}    
-	}
+  private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(
+      MessageOrBuilder message) {
+    return new ProtoWriteSupport<T>(message);
+  }
+
+  public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
+
+    private Class<? extends Message> clazz = null;
+    private MessageOrBuilder message = null;
+
+    private Builder(Path file) {
+      super(file);
+    }
+
+    private Builder(OutputFile file) {
+      super(file);
+    }
+
+    protected Builder<T> self() {
+      return this;
+    }
+
+    @Deprecated
+    public Builder<T> withMessage(Class<? extends Message> clazz) {
+      this.clazz = clazz;
+      return this;
+    }
+
+    public Builder<T> withMessage(MessageOrBuilder message) {
+      this.message = message;
+      return this;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected WriteSupport<T> getWriteSupport(Configuration conf) {
+      if (message != null) {
+        return (WriteSupport<T>) ProtoParquetWriter.writeSupport(message);
+      }
+      return (WriteSupport<T>) ProtoParquetWriter.writeSupport(clazz);
+    }
+  }
 }

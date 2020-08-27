@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.Message;
-import com.twitter.elephantbird.util.Protobufs;
+import java.util.Map;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
@@ -28,10 +28,10 @@ import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
+import com.google.protobuf.MessageOrBuilder;
 
 
-public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
+public class ProtoReadSupport<T extends MessageOrBuilder> extends ReadSupport<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProtoReadSupport.class);
 
@@ -83,15 +83,18 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
     }
 
     if (headerProtoClass == null) {
-      throw new RuntimeException("I Need parameter " + PB_CLASS + " with Protocol Buffer class");
+      throw new RuntimeException("No protocol class specified with parameter: " + PB_CLASS);
     }
 
     LOG.debug("Reading data with Protocol Buffer class {}", headerProtoClass);
 
-    MessageType requestedSchema = readContext.getRequestedSchema();
-    Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);
-    return new ProtoRecordMaterializer(configuration, requestedSchema, protobufClass, keyValueMetaData);
+    try {
+      MessageType requestedSchema = readContext.getRequestedSchema();
+      return new ProtoRecordMaterializer<T>(configuration, requestedSchema,
+          ProtoUtils.loadDefaultInstance(headerProtoClass), keyValueMetaData);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Could not protobuf class: " + headerProtoClass, e);
+    }
   }
-
 
 }
