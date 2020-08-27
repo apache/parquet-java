@@ -18,29 +18,40 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.*;
-import com.google.protobuf.Descriptors.Descriptor;
-import com.google.protobuf.Descriptors.FieldDescriptor;
-import com.twitter.elephantbird.util.Protobufs;
+import static java.util.Optional.ofNullable;
+import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_ITEM_SEPARATOR;
+import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_KEY_VALUE_SEPARATOR;
+import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_PREFIX;
+
+import java.lang.reflect.Array;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.IncompatibleSchemaModificationException;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
-import org.apache.parquet.schema.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Array;
-import java.util.*;
-
-import static java.util.Optional.ofNullable;
-
-import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_ITEM_SEPARATOR;
-import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_KEY_VALUE_SEPARATOR;
-import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_PREFIX;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Message;
+import com.google.protobuf.MessageOrBuilder;
+import com.google.protobuf.TextFormat;
 
 /**
  * Implementation of {@link WriteSupport} for writing Protocol Buffers.
@@ -154,7 +165,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
     MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(this.clazz);
-    Descriptor messageDescriptor = Protobufs.getMessageDescriptor(this.clazz);
+    Descriptor messageDescriptor = ProtoUtils.loadDefaultInstance(this.clazz).getDescriptorForType();
     validatedMapping(messageDescriptor, rootSchema);
 
     this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
@@ -585,7 +596,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   /** Returns message descriptor as JSON String*/
   private String serializeDescriptor(Class<? extends Message> protoClass) {
-    Descriptor descriptor = Protobufs.getMessageDescriptor(protoClass);
+    Descriptor descriptor = ProtoUtils.loadDefaultInstance(protoClass).getDescriptorForType();
     DescriptorProtos.DescriptorProto asProto = descriptor.toProto();
     return TextFormat.printToString(asProto);
   }

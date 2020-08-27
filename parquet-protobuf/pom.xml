@@ -30,7 +30,6 @@
   <packaging>jar</packaging>
 
   <properties>
-    <elephant-bird.version>4.4</elephant-bird.version>
     <protobuf.version>3.5.1</protobuf.version>
     <truth-proto-extension.version>1.0</truth-proto-extension.version>
   </properties>
@@ -71,18 +70,6 @@
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
       <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter.elephantbird</groupId>
-      <artifactId>elephant-bird-core</artifactId>
-      <version>${elephant-bird.version}</version>
-      <exclusions>
-        <!-- hadoop-lzo is not required for parquet build/tests and there are issues downloading it -->
-        <exclusion>
-          <groupId>com.hadoop.gplcompression</groupId>
-          <artifactId>hadoop-lzo</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>

@@ -21,7 +21,6 @@ package org.apache.parquet.proto;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
-import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 
@@ -80,7 +79,9 @@ public class TestUtils {
 
     List<MessageOrBuilder> output = writeAndRead(messages);
     List<Message> outputAsMessages = asMessages(output);
-    Descriptors.Descriptor messageDescriptor = Protobufs.getMessageDescriptor(asMessage(messages[0]).getClass());
+    Descriptors.Descriptor messageDescriptor =
+        ProtoUtils.loadDefaultInstance(asMessage(messages[0]).getClass())
+            .getDescriptorForType();
     Descriptors.FileDescriptor.Syntax syntax = messageDescriptor.getFile().getSyntax();
     for (int i = 0 ; i < messages.length ; i++) {
       if (Descriptors.FileDescriptor.Syntax.PROTO2.equals(syntax)) {
