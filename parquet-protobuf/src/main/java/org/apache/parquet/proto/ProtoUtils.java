@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.protobuf.Internal;
 import com.google.protobuf.MessageLite;
 
 public final class ProtoUtils {
@@ -25,14 +26,8 @@ public final class ProtoUtils {
   private ProtoUtils() {
   }
 
-  @SuppressWarnings("unchecked")
   public static <T extends MessageLite> T loadDefaultInstance(Class<T> clazz) {
-    try {
-      return (T) (clazz.getMethod("getDefaultInstance").invoke(null));
-    } catch (Exception e) {
-      throw new IllegalArgumentException(
-          "Cannot load protobuf message class: " + clazz, e);
-    }
+    return Internal.getDefaultInstance(clazz);
   }
 
   @SuppressWarnings("unchecked")
