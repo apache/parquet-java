@@ -164,8 +164,8 @@ public class ParquetReader<T> implements Closeable {
     }
   }
 
-  public static <T> Builder<T> read(InputFile file) throws IOException {
-    return new Builder<>(file);
+  public static <T> Builder<T> builder(ReadSupport<T> readSupport, InputFile file) {
+    return new Builder<>(file, readSupport);
   }
 
   public static <T> Builder<T> builder(ReadSupport<T> readSupport, Path path) {
@@ -198,8 +198,8 @@ public class ParquetReader<T> implements Closeable {
       this.optionsBuilder = HadoopReadOptions.builder(conf, path);
     }
 
-    protected Builder(InputFile file) {
-      this.readSupport = null;
+    protected Builder(InputFile file, ReadSupport<T> readSupport) {
+      this.readSupport = Objects.requireNonNull(readSupport, "readSupport cannot be null");
       this.file = Objects.requireNonNull(file, "file cannot be null");
       this.path = null;
       if (file instanceof HadoopInputFile) {
