@@ -164,7 +164,7 @@ public class ParquetReader<T> implements Closeable {
     }
   }
 
-  public static <T> Builder<T> builder(ReadSupport<T> readSupport, InputFile file) {
+  public static <T> Builder<T> read(ReadSupport<T> readSupport, InputFile file) throws IOException {
     return new Builder<>(file, readSupport);
   }
 
