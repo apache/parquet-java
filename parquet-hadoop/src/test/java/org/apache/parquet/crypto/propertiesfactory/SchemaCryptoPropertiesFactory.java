@@ -32,12 +32,10 @@ import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,19 +54,18 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
   private static final byte[] COL_KEY_METADATA = "col".getBytes(StandardCharsets.UTF_8);
 
   @Override
-  public FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
+  public FileEncryptionProperties getFileEncryptionProperties(Configuration conf, Path tempFilePath,
                                                               WriteContext fileWriteContext) throws ParquetCryptoRuntimeException {
     MessageType schema = fileWriteContext.getSchema();
-    List<Type> fields = schema.getFields();
-    if (fields == null || fields.isEmpty()) {
+    List<String[]> paths = schema.getPaths();
+    if (paths == null || paths.isEmpty()) {
       throw new ParquetCryptoRuntimeException("Null or empty fields is found");
     }
 
     Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap = new HashMap<>();
-    List<String> currentPath = new ArrayList<>();
 
-    for (Type field : fields) {
-      getColumnEncryptionProperties(field, columnPropertyMap, currentPath);
+    for (String[] path : paths) {
+      getColumnEncryptionProperties(path, columnPropertyMap, conf);
     }
 
     if (columnPropertyMap.size() == 0) {
@@ -84,11 +81,11 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
      * is always needed. This signature will be verified if parquet-mr code is with parquet-1178.
      * Otherwise, it will be ignored.
      */
-    boolean shouldEncryptFooter = getEncryptFooter(fileHadoopConfig);
+    boolean shouldEncryptFooter = getEncryptFooter(conf);
     FileEncryptionProperties.Builder encryptionPropertiesBuilder =
       FileEncryptionProperties.builder(FOOTER_KEY)
         .withFooterKeyMetadata(FOOTER_KEY_METADATA)
-        .withAlgorithm(getParquetCipherOrDefault(fileHadoopConfig))
+        .withAlgorithm(getParquetCipherOrDefault(conf))
         .withEncryptedColumns(columnPropertyMap);
     if (!shouldEncryptFooter) {
       encryptionPropertiesBuilder = encryptionPropertiesBuilder.withPlaintextFooter();
@@ -113,42 +110,18 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
     return encryptFooter;
   }
 
-  private void getColumnEncryptionProperties(Type field, Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap,
-                                             List<String> currentPath) throws ParquetCryptoRuntimeException {
-    String pathName = field.getName();
-    currentPath.add(pathName);
-    if (field.isPrimitive()) {
-      if (field.getMetadata() != null) {
-        log.debug("Leaf node {} is being checked crypto settings", field.getName());
-        // leaf node
-        Map<String, Object> metaData = field.getMetadata();
-        if (metaData != null && metaData.containsKey("encrypted")) {
-          boolean encryptFlag;
-          if ((metaData.get("encrypted") instanceof String)) {
-            encryptFlag = Boolean.parseBoolean((String) metaData.get("encrypted"));
-          } else {
-            encryptFlag = (boolean) metaData.get("encrypted");
-          }
-          if (encryptFlag) {
-            log.info("Field {} is to be in encrypted mode", field.getName());
-            ColumnPath path = ColumnPath.get(currentPath.toArray(new String[0]));
-            ColumnEncryptionProperties colEncProp =
-              ColumnEncryptionProperties.builder(path)
-                .withKey(COL_KEY)
-                .withKeyMetaData(COL_KEY_METADATA)
-                .build();
-            columnPropertyMap.put(path, colEncProp);
-          }
-        }
-      }
-    } else {
-      // intermediate node containing child(ren)
-      List<Type> fields = field.asGroupType().getFields();
-      for (Type childField : fields) {
-        getColumnEncryptionProperties(childField, columnPropertyMap, currentPath);
-      }
+  private void getColumnEncryptionProperties(String[] path, Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap,
+                                             Configuration conf) throws ParquetCryptoRuntimeException {
+    String pathName = String.join(".", path);
+    String columnKeyName = conf.get(pathName, null);
+    if (columnKeyName != null) {
+      ColumnPath columnPath = ColumnPath.get(path);
+      ColumnEncryptionProperties colEncProp = ColumnEncryptionProperties.builder(columnPath)
+        .withKey(COL_KEY)
+        .withKeyMetaData(COL_KEY_METADATA)
+        .build();
+      columnPropertyMap.put(columnPath, colEncProp);
     }
-    currentPath.remove(currentPath.size() - 1);
   }
 
   @Override

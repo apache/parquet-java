@@ -23,6 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
@@ -34,7 +35,6 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -63,7 +63,7 @@ public class SchemaControlEncryptionTest {
   // In the test We use a map to tell WriteSupport which columns to be encrypted with what key. In real use cases, people
   // can find whatever easy way to do so basing on how do they get these information, for example people can choose to 
   // store in HMS, or other metastore. 
-  private Map<String, Map<String, Object>> crytoMetadatas = new HashMap<>();
+  private Map<String, Map<String, Object>> crytoMetadata = new HashMap<>();
   private Map<String, Object[]> testData = new HashMap<>();
 
   @Before
@@ -124,13 +124,11 @@ public class SchemaControlEncryptionTest {
   private void markEncryptColumns() {
     Map<String, Object> ageMetadata = new HashMap<>();
     ageMetadata.put("columnKeyMetaData", "age_key_id");
-    ageMetadata.put("encrypted", "true");
-    crytoMetadatas.put("Age", ageMetadata);
+    crytoMetadata.put("Age", ageMetadata);
 
     Map<String, Object> linkMetadata = new HashMap<>();
     linkMetadata.put("columnKeyMetaData", "link_key_id");
-    linkMetadata.put("encrypted", "true");
-    crytoMetadatas.put("LinkedIn", linkMetadata);
+    crytoMetadata.put("LinkedIn", linkMetadata);
   }
 
   private String encryptParquetFile(String file, Configuration conf) throws IOException {
@@ -203,31 +201,28 @@ public class SchemaControlEncryptionTest {
     }
 
     @Override
-    public WriteContext init(Configuration configuration) {
-      WriteContext writeContext = super.init(configuration);
+    public WriteContext init(Configuration conf) {
+      WriteContext writeContext = super.init(conf);
       MessageType schema = writeContext.getSchema();
-      List<Type> fields = schema.getFields();
+      List<ColumnDescriptor> columns = schema.getColumns();
 
       if (LOG.isDebugEnabled()) {
-        LOG.debug("There are " + fields.size() + " fields");
+        LOG.debug("There are " + columns.size() + " columns");
       }
 
-      for (Type field : fields) {
-        setMetadata(field);
+      for (ColumnDescriptor column : columns) {
+        setMetadata(column, conf);
       }
 
       return writeContext;
     }
 
-    private void setMetadata(Type field) {
-      if (field.isPrimitive()) {
-        if (crytoMetadatas.containsKey(field.getName())) {
-          field.setMetadata(crytoMetadatas.get(field.getName()));
-        }
-      } else {
-        for (Type childField : field.asGroupType().getFields()) {
-          setMetadata(childField);
-        }
+    private void setMetadata(ColumnDescriptor column, Configuration conf) {
+      String columnShortName = column.getPath()[column.getPath().length - 1];
+      if (crytoMetadata.containsKey(columnShortName) &&
+        crytoMetadata.get(columnShortName).get("columnKeyMetaData") != null) {
+        String columnKey = String.join(".", column.getPath());
+        conf.set(columnKey, crytoMetadata.get(columnShortName).get("columnKeyMetaData").toString());
       }
     }
   }
