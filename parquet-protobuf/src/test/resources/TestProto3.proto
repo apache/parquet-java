@@ -107,7 +107,7 @@ message IOFormatMessage {
 
 //end protocol buffers for ProtoInputOutputFormatTest
 
-//being protocol buffers for ProtoWriteSupport
+//begin protocol buffers for ProtoWriteSupport
 message OneOfTestMessage {
   oneof the_oneof {
     int32 first  = 1;
@@ -115,7 +115,7 @@ message OneOfTestMessage {
   }
 }
 
-//being protocol buffers for ProtoWriteSupport
+//end protocol buffers for ProtoWriteSupport
 
 message InnerMessage {
     string one = 1;
