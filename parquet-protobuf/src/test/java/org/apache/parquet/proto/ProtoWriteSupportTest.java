@@ -913,4 +913,24 @@ public class ProtoWriteSupportTest {
 
     instance.write(msg.build());
   }
+
+  @Test
+  public void testMessageOneOf() {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    ProtoWriteSupport<TestProto3.OneOfTestMessage> spyWriter = createReadConsumerInstance(TestProto3.OneOfTestMessage.class, readConsumerMock);
+    final int theInt = 99;
+
+    TestProto3.OneOfTestMessage.Builder msg = TestProto3.OneOfTestMessage.newBuilder();
+    msg.setSecond(theInt);
+    spyWriter.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("second", 1);
+    inOrder.verify(readConsumerMock).addInteger(theInt);
+    inOrder.verify(readConsumerMock).endField("second", 1);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
 }
