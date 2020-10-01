@@ -20,6 +20,7 @@ package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
@@ -27,6 +28,9 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
+
+import java.io.IOException;
+import java.util.List;
 
 public class ProtoWriteSupportTest {
 
@@ -932,5 +936,35 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endField("second", 1);
     inOrder.verify(readConsumerMock).endMessage();
     Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  /**
+   * Ensure that a message with a oneOf gets written out correctly and can be
+   * read back as expected.
+   */
+  @Test
+  public void testMessageOneOfRoundTrip() throws IOException {
+
+    TestProto3.OneOfTestMessage.Builder msgBuilder = TestProto3.OneOfTestMessage.newBuilder();
+    msgBuilder.setSecond(99);
+    TestProto3.OneOfTestMessage theMessage = msgBuilder.build();
+
+    TestProto3.OneOfTestMessage.Builder msgBuilder2 = TestProto3.OneOfTestMessage.newBuilder();
+    TestProto3.OneOfTestMessage theMessageNothingSet = msgBuilder2.build();
+
+    //Write them out
+    Path tmpFilePath = TestUtils.writeMessages(theMessage, theMessageNothingSet);
+
+    //Read it back!
+    List<TestProto3.OneOfTestMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.OneOfTestMessage.class);
+
+    //First message
+    TestProto3.OneOfTestMessage gotBackFirst = gotBack.get(0);
+    assert gotBackFirst.getSecond() == 99;
+    assert gotBackFirst.getTheOneofCase() == TestProto3.OneOfTestMessage.TheOneofCase.SECOND;
+
+    //Second message with nothing set
+    TestProto3.OneOfTestMessage gotBackSecond = gotBack.get(1);
+    assert gotBackSecond.getTheOneofCase() == TestProto3.OneOfTestMessage.TheOneofCase.THEONEOF_NOT_SET;
   }
 }
