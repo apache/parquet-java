@@ -957,10 +957,8 @@ public class ProtoWriteSupportTest {
     msgBuilder3.setFirst(42);
     TestProto3.OneOfTestMessage theMessageFirstSet = msgBuilder3.build();
 
-    //Write them out
+    //Write them out and read them back
     Path tmpFilePath = TestUtils.writeMessages(theMessage, theMessageNothingSet, theMessageFirstSet);
-
-    //Read them back!
     List<TestProto3.OneOfTestMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.OneOfTestMessage.class);
 
     //First message
