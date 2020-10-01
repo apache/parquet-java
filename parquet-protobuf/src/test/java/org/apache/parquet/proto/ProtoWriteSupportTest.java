@@ -22,6 +22,7 @@ import com.google.protobuf.Message;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
+import static org.junit.Assert.*;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 import org.apache.parquet.io.api.Binary;
@@ -952,19 +953,29 @@ public class ProtoWriteSupportTest {
     TestProto3.OneOfTestMessage.Builder msgBuilder2 = TestProto3.OneOfTestMessage.newBuilder();
     TestProto3.OneOfTestMessage theMessageNothingSet = msgBuilder2.build();
 
-    //Write them out
-    Path tmpFilePath = TestUtils.writeMessages(theMessage, theMessageNothingSet);
+    TestProto3.OneOfTestMessage.Builder msgBuilder3 = TestProto3.OneOfTestMessage.newBuilder();
+    msgBuilder3.setFirst(42);
+    TestProto3.OneOfTestMessage theMessageFirstSet = msgBuilder3.build();
 
-    //Read it back!
+    //Write them out
+    Path tmpFilePath = TestUtils.writeMessages(theMessage, theMessageNothingSet, theMessageFirstSet);
+
+    //Read them back!
     List<TestProto3.OneOfTestMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.OneOfTestMessage.class);
 
     //First message
     TestProto3.OneOfTestMessage gotBackFirst = gotBack.get(0);
-    assert gotBackFirst.getSecond() == 99;
-    assert gotBackFirst.getTheOneofCase() == TestProto3.OneOfTestMessage.TheOneofCase.SECOND;
+    assertEquals(gotBackFirst.getSecond(), 99);
+    assertEquals(gotBackFirst.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.SECOND);
 
     //Second message with nothing set
     TestProto3.OneOfTestMessage gotBackSecond = gotBack.get(1);
-    assert gotBackSecond.getTheOneofCase() == TestProto3.OneOfTestMessage.TheOneofCase.THEONEOF_NOT_SET;
+    assertEquals(gotBackSecond.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.THEONEOF_NOT_SET);
+
+    //Third message with opposite field set
+    TestProto3.OneOfTestMessage gotBackThird = gotBack.get(2);
+    assertEquals(gotBackThird.getFirst(), 42);
+    assertEquals(gotBackThird.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.FIRST);
+
   }
 }
