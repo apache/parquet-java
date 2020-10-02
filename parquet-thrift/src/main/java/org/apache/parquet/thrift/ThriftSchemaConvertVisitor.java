@@ -78,7 +78,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
   private final boolean doProjection;
   private final boolean keepOneOfEachUnion;
 
-  private boolean writeThreeLevelList = ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS_DEFAULT;
+  private final boolean writeThreeLevelList;
 
   private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection,
                                      boolean keepOneOfEachUnion, Configuration configuration) {
@@ -90,6 +90,8 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
       this.writeThreeLevelList = configuration.getBoolean(
         ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS,
         ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS_DEFAULT);
+    } else {
+      writeThreeLevelList = ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS_DEFAULT;
     }
   }
 
