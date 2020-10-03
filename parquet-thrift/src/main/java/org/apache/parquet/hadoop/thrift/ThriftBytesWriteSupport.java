@@ -88,7 +88,7 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
 
   /**
    * @deprecated Use @link{ThriftBytesWriteSupport(Configuration configuration,
-   * TProtocolFactory protocolFactory, Class<\? extends TBase<\?, ?>> thriftClass,
+   * TProtocolFactory protocolFactory, {@literal Class<? extends TBase<?,?>>} thriftClass,
    * boolean buffered, FieldIgnoredHandler errorHandler)} instead
    */
   @Deprecated

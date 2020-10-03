@@ -56,7 +56,8 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
   /**
    *  The buffered implementation will buffer each record and deal with invalid records (more expansive).
    *  when catching an exception the record can be discarded.
-   *  The non-buffered implementation will stream field by field. Exceptions are unrecoverable and the file must be closed when an invalid record is written.
+   *  The non-buffered implementation will stream field by field. Exceptions are unrecoverable and the file
+   *  must be closed when an invalid record is written.
    *
    * @param configuration configuration
    * @param protocolFactory the protocol factory to use to read the bytes
@@ -76,8 +77,13 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
   /**
    * @deprecated Use @link{ParquetThriftBytesOutputFormat(
    * Configuration configuration, TProtocolFactory protocolFactory,
-   * Class<\? extends TBase<\?, ?>> thriftClass, boolean buffered,
-   * FieldIgnoredHandler errorHandler)} instead
+   * {@literal Class<\? extends TBase<\?, ?>>} thriftClass, boolean buffered,
+   * FieldIgnoredHandler errorHandler)} instead.
+   *
+   * @param protocolFactory the protocol factory to use to read the bytes
+   * @param thriftClass thriftClass the class to extract the schema from
+   * @param buffered whether we should buffer each record
+   * @param errorHandler handle record corruption and schema incompatible exception
    */
   @Deprecated
   public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory,
