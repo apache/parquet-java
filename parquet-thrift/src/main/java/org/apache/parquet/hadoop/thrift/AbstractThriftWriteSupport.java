@@ -40,8 +40,10 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   public static final String PARQUET_THRIFT_CLASS = "parquet.thrift.class";
   private static final Logger LOG = LoggerFactory.getLogger(AbstractThriftWriteSupport.class);
+  private static Configuration conf;
 
   public static void setGenericThriftClass(Configuration configuration, Class<?> thriftClass) {
+    conf = configuration;
     configuration.set(PARQUET_THRIFT_CLASS, thriftClass.getName());
   }
 
@@ -84,7 +86,8 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
     this.thriftClass = thriftClass;
     this.thriftStruct = getThriftStruct();
 
-    this.schema = ThriftSchemaConverter.convertWithoutProjection(thriftStruct);
+    ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter(conf);
+    this.schema = thriftSchemaConverter.convert(thriftStruct);
 
     final Map<String, String> extraMetaData = new ThriftMetaData(thriftClass.getName(), thriftStruct).toExtraMetaData();
     // adding the Pig schema as it would have been mapped from thrift
@@ -108,6 +111,7 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
 
   @Override
   public WriteContext init(Configuration configuration) {
+    conf = configuration;
     if (writeContext == null) {
       init(getGenericThriftClass(configuration));
     }
@@ -117,7 +121,8 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   @Override
   public void prepareForWrite(RecordConsumer recordConsumer) {
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    this.parquetWriteProtocol = new ParquetWriteProtocol(recordConsumer, columnIO, thriftStruct);
+    this.parquetWriteProtocol = new ParquetWriteProtocol(
+        conf, recordConsumer, columnIO, thriftStruct);
   }
 
   protected abstract StructType getThriftStruct();

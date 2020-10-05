@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -53,6 +54,7 @@ import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 
+import static org.apache.parquet.schema.ConversionPatterns.listOfElements;
 import static org.apache.parquet.schema.ConversionPatterns.listType;
 import static org.apache.parquet.schema.ConversionPatterns.mapType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
@@ -76,22 +78,39 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
   private final boolean doProjection;
   private final boolean keepOneOfEachUnion;
 
-  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection, boolean keepOneOfEachUnion) {
+  private final boolean writeThreeLevelList;
+
+  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection,
+                                     boolean keepOneOfEachUnion, Configuration configuration) {
     this.fieldProjectionFilter = Objects.requireNonNull(fieldProjectionFilter,
-        "fieldProjectionFilter cannot be null");
+      "fieldProjectionFilter cannot be null");
     this.doProjection = doProjection;
     this.keepOneOfEachUnion = keepOneOfEachUnion;
+    if (configuration != null) {
+      this.writeThreeLevelList = configuration.getBoolean(
+        ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS,
+        ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS_DEFAULT);
+    } else {
+      writeThreeLevelList = ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS_DEFAULT;
+    }
+  }
+
+  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection,
+                                     boolean keepOneOfEachUnion) {
+    this(fieldProjectionFilter, doProjection, keepOneOfEachUnion, new Configuration());
   }
 
   @Deprecated
   public static MessageType convert(StructType struct, FieldProjectionFilter filter) {
-    return convert(struct, filter, true);
+    return convert(struct, filter, true, new Configuration());
   }
 
-  public static MessageType convert(StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion) {
+  public static MessageType convert(StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion,
+                                    Configuration conf) {
     State state = new State(new FieldsPath(), REPEATED, "ParquetSchema");
 
-    ConvertedField converted = struct.accept(new ThriftSchemaConvertVisitor(filter, true, keepOneOfEachUnion), state);
+    ConvertedField converted = struct.accept(
+      new ThriftSchemaConvertVisitor(filter, true, keepOneOfEachUnion, conf), state);
 
     if (!converted.isKeep()) {
       throw new ThriftProjectionException("No columns have been selected");
@@ -178,7 +197,12 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
   }
 
   private ConvertedField visitListLike(ThriftField listLike, State state, boolean isSet) {
-    State childState = new State(state.path, REPEATED, state.name + "_tuple");
+    State childState;
+    if (writeThreeLevelList) {
+      childState = new State(state.path, REQUIRED, "element");
+    } else {
+      childState = new State(state.path, REPEATED, state.name + "_tuple");
+    }
 
     ConvertedField converted = listLike.getType().accept(this, childState);
 
@@ -194,7 +218,13 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
         }
       }
 
-      return new Keep(state.path, listType(state.repetition, state.name, converted.asKeep().getType()));
+      if (writeThreeLevelList) {
+        return new Keep(
+            state.path, listOfElements(state.repetition, state.name, converted.asKeep().getType()));
+      } else {
+        return new Keep(
+            state.path, listType(state.repetition, state.name, converted.asKeep().getType()));
+      }
     }
 
     return new Drop(state.path);
