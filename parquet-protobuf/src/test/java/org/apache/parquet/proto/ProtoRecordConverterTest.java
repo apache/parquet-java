@@ -25,11 +25,12 @@ import org.apache.parquet.proto.test.TestProtobuf;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.apache.parquet.proto.TestUtils.testData;
 import static org.apache.parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public class ProtoRecordConverterTest {
 
@@ -340,5 +341,23 @@ public class ProtoRecordConverterTest {
     builder.addRepeatedInt(2);
 
     testData(builder.build());
+  }
+
+  @Test
+  public void testUnknownEnum() throws Exception {
+    TestProto3.SchemaConverterAllDatatypes.Builder data;
+    data = TestProto3.SchemaConverterAllDatatypes.newBuilder();
+    data.setOptionalEnumValue(42);
+
+    TestProto3.SchemaConverterAllDatatypes dataBuilt = data.build();
+    data.clear();
+
+    List<TestProto3.SchemaConverterAllDatatypes> result;
+    result = testData(dataBuilt);
+
+    //data are fully checked in testData function. Lets do one more check.
+    TestProto3.SchemaConverterAllDatatypes o = result.get(0);
+    assertSame(o.getOptionalEnum(), TestProto3.SchemaConverterAllDatatypes.TestEnum.UNRECOGNIZED);
+    assertEquals(o.getOptionalEnumValue(), 42);
   }
 }
