@@ -72,7 +72,7 @@ public class ProtoSchemaConverterTest {
       "  optional group pbgroup = 17 {\n" +
       "    optional int32 groupInt = 2;\n" +
       "  }\n" +
-      " optional binary optionalEnum (ENUM)  = 18;" +
+      " optional binary optionalEnum (UTF8)  = 18;" +
       "}";
 
     testConversion(TestProtobuf.SchemaConverterAllDatatypes.class, expectedSchema);
@@ -103,7 +103,7 @@ public class ProtoSchemaConverterTest {
         "  optional group optionalMessage = 16 {\n" +
         "    optional int32 someId = 3;\n" +
         "  }\n" +
-        "  optional binary optionalEnum (ENUM) = 18;" +
+        "  optional binary optionalEnum (UTF8) = 18;" +
         "  optional int32 someInt32 = 19;" +
         "  optional binary someString (UTF8) = 20;" +
         "  optional group optionalMap (MAP) = 21 {\n" +

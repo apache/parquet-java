@@ -9,7 +9,7 @@
 
   <groupId>com.gojek.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.11.2</version>
+  <version>1.11.4</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -20,7 +20,7 @@
     <connection>scm:git:git@github.com:gojek/parquet-mr.git</connection>
     <url>scm:git:git@github.com:gojek/parquet-mr.git</url>
     <developerConnection>scm:git:git@github.com:gojek/parquet-mr.git</developerConnection>
-    <tag>apache-parquet-1.11.2-rc0</tag>
+    <tag>apache-parquet-1.11.4-rc1</tag>
   </scm>
 
   <licenses>

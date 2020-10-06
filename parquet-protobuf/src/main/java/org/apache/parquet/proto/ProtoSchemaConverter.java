@@ -34,11 +34,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.listType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.mapType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 
 /**
@@ -74,6 +77,17 @@ public class ProtoSchemaConverter {
     return messageType;
   }
 
+  public MessageType convert(Descriptors.Descriptor descriptor) {
+    LOG.debug("Converting protocol buffer class to parquet schema using descriptors." + descriptor);
+    List<FieldDescriptor> fields = descriptor.getFields().stream()
+                                                         .collect(Collectors.toList());
+    MessageType messageType =
+      convertFields(Types.buildMessage(), fields)
+        .named(descriptor.getFullName());
+    LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
+    return messageType;
+  }
+
   /* Iterates over list of fields. **/
   private <T> GroupBuilder<T> convertFields(GroupBuilder<T> groupBuilder, List<FieldDescriptor> fieldDescriptors) {
     for (FieldDescriptor fieldDescriptor : fieldDescriptors) {
@@ -95,8 +109,16 @@ public class ProtoSchemaConverter {
     }
   }
 
+  private boolean isStructType(FieldDescriptor descriptor) {
+    return descriptor.getJavaType() == JavaType.MESSAGE && descriptor.getMessageType().getFullName().equals(com.google.protobuf.Struct.getDescriptor().getFullName());
+  }
+
+  private boolean isTimestampType(FieldDescriptor fieldDescriptor) {
+    return fieldDescriptor.getJavaType() == JavaType.MESSAGE && fieldDescriptor.getMessageType().getFullName().equals(com.google.protobuf.Timestamp.getDescriptor().getFullName());
+  }
+
   private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addField(FieldDescriptor descriptor, final GroupBuilder<T> builder) {
-    if (descriptor.getJavaType() == JavaType.MESSAGE) {
+    if (descriptor.getJavaType() == JavaType.MESSAGE && !isStructType(descriptor) && !isTimestampType(descriptor)) {
       return addMessageField(descriptor, builder);
     }
 
@@ -166,6 +188,16 @@ public class ProtoSchemaConverter {
   }
 
   private ParquetType getParquetType(FieldDescriptor fieldDescriptor) {
+    // consider timestamp fields with LogicalAnnotation of TIMESTAMP_MILLIS
+    // This facilitates using timestamp fields as TIMESTAMP type in bigquery rather than nested type.
+    // More info: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet#type_conversions
+    if(isTimestampType(fieldDescriptor)) {
+      return ParquetType.of(INT64, timestampType(true, TimeUnit.MILLIS));
+    }
+    // consider Struct as a string
+    else if(isStructType(fieldDescriptor)) {
+      return ParquetType.of(BINARY, stringType());
+    }
 
     JavaType javaType = fieldDescriptor.getJavaType();
     switch (javaType) {
@@ -175,7 +207,9 @@ public class ProtoSchemaConverter {
       case BOOLEAN: return ParquetType.of(BOOLEAN);
       case FLOAT: return ParquetType.of(FLOAT);
       case STRING: return ParquetType.of(BINARY, stringType());
-      case ENUM: return ParquetType.of(BINARY, enumType());
+      // changing the Annotation of Enum from enumType() to stringType()
+      // since Bigquery load job considers Enum as bytes type otherwise
+      case ENUM: return ParquetType.of(BINARY, stringType());
       case BYTE_STRING: return ParquetType.of(BINARY);
       default:
         throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType);

@@ -35,8 +35,12 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Array;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 
 import static java.util.Optional.ofNullable;
+import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_ITEM_SEPARATOR;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_KEY_VALUE_SEPARATOR;
@@ -57,17 +61,23 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private boolean writeSpecsCompliant = false;
   private RecordConsumer recordConsumer;
-  private Class<? extends Message> protoMessage;
+  private ProtoDescriptorSupport protoDescriptorSupport;
   private MessageWriter messageWriter;
   // Keep protobuf enum value with number in the metadata, so that in read time, a reader can read at least
   // the number back even with an outdated schema which might not contain all enum values.
   private Map<String, Map<String, Integer>> protoEnumBookKeeper = new HashMap<>();
 
   public ProtoWriteSupport() {
+    Descriptors.Descriptor protoDescriptor = null;
+    this.protoDescriptorSupport = new ProtoDescriptorSupport(protoDescriptor);
   }
 
   public ProtoWriteSupport(Class<? extends Message> protobufClass) {
-    this.protoMessage = protobufClass;
+    this.protoDescriptorSupport = new ProtoDescriptorSupport(protobufClass);
+  }
+
+  public ProtoWriteSupport(Descriptors.Descriptor messageDescriptor) {
+    this.protoDescriptorSupport = new ProtoDescriptorSupport(messageDescriptor);
   }
 
   @Override
@@ -113,31 +123,25 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   @Override
   public WriteContext init(Configuration configuration) {
-
-    // if no protobuf descriptor was given in constructor, load descriptor from configuration (set with setProtobufClass)
-    if (protoMessage == null) {
-      Class<? extends Message> pbClass = configuration.getClass(PB_CLASS_WRITE, null, Message.class);
-      if (pbClass != null) {
-        protoMessage = pbClass;
-      } else {
-        String msg = "Protocol buffer class not specified.";
-        String hint = " Please use method ProtoParquetOutputFormat.setProtobufClass(...) or other similar method.";
-        throw new BadConfigurationException(msg + hint);
-      }
-    }
-
+    Descriptor messageDescriptor = protoDescriptorSupport.getMessageDescriptor(configuration);
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
-    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(protoMessage);
-    Descriptor messageDescriptor = Protobufs.getMessageDescriptor(protoMessage);
+    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(messageDescriptor);
     validatedMapping(messageDescriptor, rootSchema);
 
     this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
 
-    Map<String, String> extraMetaData = new HashMap<>();
-    extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
-    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
+    Map<String, String> extraMetaData = new HashMap<String, String>();
+    extraMetaData.put(ProtoReadSupport.PB_CLASS, createMessageClassName(messageDescriptor));
+    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(messageDescriptor));
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
     return new WriteContext(rootSchema, extraMetaData);
+  }
+
+
+  private String createMessageClassName(Descriptors.Descriptor messageDescriptor) {
+    String messageClassName = messageDescriptor.getFile().getOptions().getJavaPackage() + "."
+        + messageDescriptor.getFullName().replace(".", "$");
+    return messageClassName;
   }
 
   @Override
@@ -228,7 +232,25 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       }
     }
 
+    private boolean isStructType(FieldDescriptor descriptor) {
+      return descriptor.getJavaType() == JavaType.MESSAGE && descriptor.getMessageType().getFullName().equals(com.google.protobuf.Struct.getDescriptor().getFullName());
+    }
+
+    private boolean isTimestampType(FieldDescriptor fieldDescriptor) {
+      return fieldDescriptor.getJavaType() == JavaType.MESSAGE && fieldDescriptor.getMessageType().getFullName().equals(com.google.protobuf.Timestamp.getDescriptor().getFullName());
+    }
+
     private FieldWriter createWriter(FieldDescriptor fieldDescriptor, Type type) {
+      // consider timestamp fields with LogicalAnnotation of TIMESTAMP_MILLIS
+      // This facilitates using timestamp fields as TIMESTAMP type in bigquery rather than nested type.
+      // More info: https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet#type_conversions
+      if(isTimestampType(fieldDescriptor)) {
+        return new TimestampWriter();
+      }
+      // Write Struct field as string, since recursive data types are not supported by parquet writer
+      else if (isStructType(fieldDescriptor)) {
+        return new StringWriter();
+      }
 
       switch (fieldDescriptor.getJavaType()) {
         case STRING: return new StringWriter() ;
@@ -435,10 +457,28 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
   }
 
+  /*
+  * Custom Writer to write Timestamp field as a single long value depicting time in epoch milliseconds
+  */
+  class TimestampWriter extends FieldWriter {
+    @Override
+    final void writeRawValue(Object entry) {
+      List<Object> timeFields = ((MessageOrBuilder) entry).getAllFields().values().stream().collect(Collectors.toList());
+      long eventTimestampMillis = (((Long) timeFields.get(0)) * 1000);
+      if(timeFields.size() > 1) {
+        eventTimestampMillis += (((Integer)(timeFields.get(1))) / 1000000);
+      }
+      recordConsumer.addLong(eventTimestampMillis);
+    }
+  }
+
 
   class StringWriter extends FieldWriter {
     @Override
     final void writeRawValue(Object value) {
+      if(!value.getClass().equals(String.class)) {
+        value = ((Object) value.toString());
+      }
       Binary binaryString = Binary.fromString((String) value);
       recordConsumer.addBinary(binaryString);
     }
@@ -558,8 +598,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   }
 
   /** Returns message descriptor as JSON String*/
-  private String serializeDescriptor(Class<? extends Message> protoClass) {
-    Descriptor descriptor = Protobufs.getMessageDescriptor(protoClass);
+  private String serializeDescriptor(Descriptor descriptor) {
     DescriptorProtos.DescriptorProto asProto = descriptor.toProto();
     return TextFormat.printToString(asProto);
   }

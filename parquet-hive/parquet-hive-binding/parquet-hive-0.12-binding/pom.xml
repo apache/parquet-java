@@ -21,7 +21,7 @@
     <groupId>com.gojek.parquet</groupId>
     <artifactId>parquet-hive-binding</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.11.2</version>
+    <version>1.11.4</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
