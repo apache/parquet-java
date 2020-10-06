@@ -33,6 +33,8 @@
     <elephant-bird.version>4.4</elephant-bird.version>
     <protobuf.version>3.5.1</protobuf.version>
     <truth-proto-extension.version>1.0</truth-proto-extension.version>
+    <protobuf-java.version>3.4.0</protobuf-java.version>
+    <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
   </properties>
 
 
@@ -40,6 +42,11 @@
   <url>https://parquet.apache.org</url>
 
   <dependencies>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>${protobuf-java.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
@@ -117,6 +124,14 @@
   </developers>
 
   <build>
+    <resources>
+      <resource>
+        <directory>${basedir}/src/main/resources</directory>
+      </resource>
+      <resource>
+        <directory>${project.build.directory}/generated-resources</directory>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -172,7 +187,22 @@
           </execution>
         </executions>
       </plugin>
-
+      <plugin>
+        <groupId>org.xolstice.maven.plugins</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <version>${protobuf-maven-plugin.version}</version>
+        <configuration>
+          <protocExecutable>/usr/local/bin/protoc</protocExecutable>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>test-compile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 

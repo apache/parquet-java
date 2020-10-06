@@ -18,12 +18,14 @@
  */
 package org.apache.parquet.proto;
 
+import com.gojek.offset.KafkaNestedOffsetMetadata;
 import com.google.protobuf.*;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.BadConfigurationException;
+import org.apache.parquet.hadoop.OffsetInfo;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
@@ -35,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Array;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.Optional.ofNullable;
 
@@ -82,8 +85,9 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   /**
    * Make parquet-protobuf use the LIST and MAP wrappers for collections. Set to false if you need backward
    * compatibility with parquet before PARQUET-968 (1.9.0 and older).
-   * @param configuration           The hadoop configuration
-   * @param writeSpecsCompliant     If set to true, the old schema style will be used (without wrappers).
+   *
+   * @param configuration       The hadoop configuration
+   * @param writeSpecsCompliant If set to true, the old schema style will be used (without wrappers).
    */
   public static void setWriteSpecsCompliant(Configuration configuration, boolean writeSpecsCompliant) {
     configuration.setBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
@@ -91,13 +95,43 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   /**
    * Writes Protocol buffer to parquet file.
+   *
    * @param record instance of Message.Builder or Message.
-   * */
+   */
   @Override
   public void write(T record) {
     recordConsumer.startMessage();
     try {
       messageWriter.writeTopLevelMessage(record);
+    } catch (RuntimeException e) {
+      Message m = (record instanceof Message.Builder) ? ((Message.Builder) record).build() : (Message) record;
+      LOG.error("Cannot write message " + e.getMessage() + " : " + m);
+      throw e;
+    }
+    recordConsumer.endMessage();
+  }
+
+  @Override
+  public void write(T record, OffsetInfo offsetInfo, boolean namespaceMetadataFields) {
+    KafkaNestedOffsetMetadata.KafkaOffsetMetadata kafkaOffsetMetadata = KafkaNestedOffsetMetadata.KafkaOffsetMetadata.newBuilder()
+      .setLoadTime(Timestamp.newBuilder().setSeconds().setNanos().build())
+      .setMessageTimestamp(Timestamp.newBuilder().setSeconds().setNanos().build())
+      .setMessageOffset(offsetInfo.getOffset())
+      .setMessagePartition(offsetInfo.getPartition())
+      .setMessageTopic(offsetInfo.getTopic())
+      .build();
+
+    recordConsumer.startMessage();
+    try {
+      if (namespaceMetadataFields) {
+        KafkaNestedOffsetMetadata kafkaMetadata = KafkaNestedOffsetMetadata.newBuilder()
+          .setKafkaMetadata(kafkaOffsetMetadata)
+          .build();
+        messageWriter.writeAllFields(kafkaMetadata);
+      } else {
+        messageWriter.writeAllFields(kafkaOffsetMetadata);
+      }
+      messageWriter.writeAllFields(record);
     } catch (RuntimeException e) {
       Message m = (record instanceof Message.Builder) ? ((Message.Builder) record).build() : (Message) record;
       LOG.error("Cannot write message " + e.getMessage() + " : " + m);
@@ -159,7 +193,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         nameNumberPairs.append(nameNumberPair.getKey())
           .append(METADATA_ENUM_KEY_VALUE_SEPARATOR)
           .append(nameNumberPair.getValue());
-        idx ++;
+        idx++;
         if (idx < enumNameNumberMapping.getValue().size()) {
           nameNumberPairs.append(METADATA_ENUM_ITEM_SEPARATOR);
         }
@@ -173,21 +207,27 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     String fieldName;
     int index = -1;
 
-     void setFieldName(String fieldName) {
+    void setFieldName(String fieldName) {
       this.fieldName = fieldName;
     }
 
-    /** sets index of field inside parquet message.*/
-     void setIndex(int index) {
+    /**
+     * sets index of field inside parquet message.
+     */
+    void setIndex(int index) {
       this.index = index;
     }
 
-    /** Used for writing repeated fields*/
-     void writeRawValue(Object value) {
+    /**
+     * Used for writing repeated fields
+     */
+    void writeRawValue(Object value) {
 
     }
 
-    /** Used for writing nonrepeated (optional, required) fields*/
+    /**
+     * Used for writing nonrepeated (optional, required) fields
+     */
     void writeField(Object value) {
       if (!(this instanceof ProtoWriteSupport.MapWriter)) {
         recordConsumer.startField(fieldName, index);
@@ -208,15 +248,14 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       List<FieldDescriptor> fields = descriptor.getFields();
       fieldWriters = (FieldWriter[]) Array.newInstance(FieldWriter.class, fields.size());
 
-      for (FieldDescriptor fieldDescriptor: fields) {
+      for (FieldDescriptor fieldDescriptor : fields) {
         String name = fieldDescriptor.getName();
         Type type = schema.getType(name);
         FieldWriter writer = createWriter(fieldDescriptor, type);
 
-        if(writeSpecsCompliant && fieldDescriptor.isRepeated() && !fieldDescriptor.isMapField()) {
+        if (writeSpecsCompliant && fieldDescriptor.isRepeated() && !fieldDescriptor.isMapField()) {
           writer = new ArrayWriter(writer);
-        }
-        else if (!writeSpecsCompliant && fieldDescriptor.isRepeated()) {
+        } else if (!writeSpecsCompliant && fieldDescriptor.isRepeated()) {
           // the old schemas style used to write maps as repeated fields instead of wrapping them in a LIST
           writer = new RepeatedWriter(writer);
         }
@@ -231,15 +270,24 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     private FieldWriter createWriter(FieldDescriptor fieldDescriptor, Type type) {
 
       switch (fieldDescriptor.getJavaType()) {
-        case STRING: return new StringWriter() ;
-        case MESSAGE: return createMessageWriter(fieldDescriptor, type);
-        case INT: return new IntWriter();
-        case LONG: return new LongWriter();
-        case FLOAT: return new FloatWriter();
-        case DOUBLE: return new DoubleWriter();
-        case ENUM: return new EnumWriter(fieldDescriptor.getEnumType());
-        case BOOLEAN: return new BooleanWriter();
-        case BYTE_STRING: return new BinaryWriter();
+        case STRING:
+          return new StringWriter();
+        case MESSAGE:
+          return createMessageWriter(fieldDescriptor, type);
+        case INT:
+          return new IntWriter();
+        case LONG:
+          return new LongWriter();
+        case FLOAT:
+          return new FloatWriter();
+        case DOUBLE:
+          return new DoubleWriter();
+        case ENUM:
+          return new EnumWriter(fieldDescriptor.getEnumType());
+        case BOOLEAN:
+          return new BooleanWriter();
+        case BYTE_STRING:
+          return new BinaryWriter();
       }
 
       return unknownType(fieldDescriptor);//should not be executed, always throws exception.
@@ -292,12 +340,16 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       return new MapWriter(keyWriter, valueWriter);
     }
 
-    /** Writes top level message. It cannot call startGroup() */
+    /**
+     * Writes top level message. It cannot call startGroup()
+     */
     void writeTopLevelMessage(Object value) {
       writeAllFields((MessageOrBuilder) value);
     }
 
-    /** Writes message as part of repeated field. It cannot start field*/
+    /**
+     * Writes message as part of repeated field. It cannot start field
+     */
     @Override
     final void writeRawValue(Object value) {
       recordConsumer.startGroup();
@@ -305,7 +357,9 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       recordConsumer.endGroup();
     }
 
-    /** Used for writing nonrepeated (optional, required) fields*/
+    /**
+     * Used for writing nonrepeated (optional, required) fields
+     */
     @Override
     final void writeField(Object value) {
       recordConsumer.startField(fieldName, index);
@@ -324,7 +378,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         for (Map.Entry<FieldDescriptor, Object> entry : changedPbFields.entrySet()) {
           FieldDescriptor fieldDescriptor = entry.getKey();
 
-          if(fieldDescriptor.isExtension()) {
+          if (fieldDescriptor.isExtension()) {
             // Field index of an extension field might overlap with a base field.
             throw new UnsupportedOperationException(
               "Cannot convert Protobuf message with extension field(s)");
@@ -371,7 +425,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       recordConsumer.startGroup();
 
       recordConsumer.startField("list", 0); // This is the wrapper group for the array field
-      for (Object listEntry: list) {
+      for (Object listEntry : list) {
         recordConsumer.startGroup();
         recordConsumer.startField("element", 0); // This is the mandatory inner field
 
@@ -412,7 +466,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
       recordConsumer.startField(fieldName, index);
 
-      for (Object listEntry: list) {
+      for (Object listEntry : list) {
         fieldWriter.writeRawValue(listEntry);
       }
 
@@ -420,11 +474,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
   }
 
-  /** validates mapping between protobuffer fields and parquet fields.*/
+  /**
+   * validates mapping between protobuffer fields and parquet fields.
+   */
   private void validatedMapping(Descriptor descriptor, GroupType parquetSchema) {
     List<FieldDescriptor> allFields = descriptor.getFields();
 
-    for (FieldDescriptor fieldDescriptor: allFields) {
+    for (FieldDescriptor fieldDescriptor : allFields) {
       String fieldName = fieldDescriptor.getName();
       int fieldIndex = fieldDescriptor.getIndex();
       int parquetIndex = parquetSchema.getFieldIndex(fieldName);
@@ -553,11 +609,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private FieldWriter unknownType(FieldDescriptor fieldDescriptor) {
     String exceptionMsg = "Unknown type with descriptor \"" + fieldDescriptor
-            + "\" and type \"" + fieldDescriptor.getJavaType() + "\".";
+      + "\" and type \"" + fieldDescriptor.getJavaType() + "\".";
     throw new InvalidRecordException(exceptionMsg);
   }
 
-  /** Returns message descriptor as JSON String*/
+  /**
+   * Returns message descriptor as JSON String
+   */
   private String serializeDescriptor(Class<? extends Message> protoClass) {
     Descriptor descriptor = Protobufs.getMessageDescriptor(protoClass);
     DescriptorProtos.DescriptorProto asProto = descriptor.toProto();

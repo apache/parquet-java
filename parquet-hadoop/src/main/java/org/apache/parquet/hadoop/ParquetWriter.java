@@ -306,6 +306,14 @@ public class ParquetWriter<T> implements Closeable {
     }
   }
 
+  public void write(T object, OffsetInfo offsetInfo, boolean writeMetadataFields) throws IOException {
+    try {
+      writer.write(object, offsetInfo, writeMetadataFields);
+    } catch (InterruptedException e) {
+      throw new IOException(e);
+    }
+  }
+
   @Override
   public void close() throws IOException {
     try {

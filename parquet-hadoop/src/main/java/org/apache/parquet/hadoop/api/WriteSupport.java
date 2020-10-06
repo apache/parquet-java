@@ -118,6 +118,16 @@ abstract public class WriteSupport<T> {
   public abstract void write(T record);
 
   /**
+   * called once per record
+   * @param record one record to write to the previously provided record consumer
+   * @param offsetInfo kafka offset information to write for record
+   * @param writeMetadataFields boolean flag indicating whether to write kafka metadata to parquet
+   */
+  public void write(T record, OffsetInfo offsetInfo, boolean writeMetadataFields) {
+    
+  }
+
+  /**
    * Called to get a name to identify the WriteSupport object model.
    * If not null, this is added to the file footer metadata.
    * <p>
