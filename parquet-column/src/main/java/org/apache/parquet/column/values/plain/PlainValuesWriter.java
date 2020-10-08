@@ -127,7 +127,6 @@ public class PlainValuesWriter extends ValuesWriter {
   @Override
   public void close() {
     arrayOut.close();
-    out.close();
   }
 
   @Override
