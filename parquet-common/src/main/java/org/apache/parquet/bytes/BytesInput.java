@@ -217,10 +217,10 @@ abstract public class BytesInput {
   public byte[] toByteArray() throws IOException {
     long size = size();
     if (size > Integer.MAX_VALUE) {
-      throw new IOException("Page size, " + size + ", is larger than allowed " + Integer.MAX_VALUE +"." +
+      throw new IOException("Page size, " + size + ", is larger than allowed " + Integer.MAX_VALUE + "." +
         " Usually caused by a Parquet writer writing too big column chunks on encountering highly skewed dataset." +
         " Please set page.size.row.check.max to a lower value on the writer, default value is 10000." +
-        " You can try setting it to " + (10000 / (size/ Integer.MAX_VALUE)) + " or lower.");
+        " You can try setting it to " + (10000 / (size / Integer.MAX_VALUE)) + " or lower.");
     }
     BAOS baos = new BAOS((int)size());
     this.writeAllTo(baos);
