@@ -22,7 +22,6 @@ import java.io.PrintWriter;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -48,14 +47,16 @@ public class HeadCommand extends ArgsOnlyCommand {
 
   static {
     OPTIONS = new Options();
-    Option help = OptionBuilder.withLongOpt("records")
-      .withDescription("The number of records to show (default: " + DEFAULT + ")")
-      .hasOptionalArg()
-      .create('n');
+    Option help = Option.builder("n")
+      .longOpt("records")
+      .desc("The number of records to show (default: " + DEFAULT + ")")
+      .optionalArg(true)
+      .build();
 
-    Option json = OptionBuilder.withLongOpt("json")
-      .withDescription("Show records in JSON format.")
-      .create('j');
+    Option json = Option.builder("j")
+      .longOpt("json")
+      .desc("Show records in JSON format.")
+      .build();
 
     OPTIONS.addOption(help);
     OPTIONS.addOption(json);
