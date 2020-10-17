@@ -305,7 +305,11 @@ public class AvroSchemaConverter {
             }
             @Override
             public Schema convertINT96(PrimitiveTypeName primitiveTypeName) {
-              return Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
+              return Schema.createFixed(
+                  /*name=*/ "INT96",
+                  /*doc=*/ "INT96 represented as byte[12]",
+                  /*space=*/ null,
+                  /*size=*/ 12);
             }
             @Override
             public Schema convertFLOAT(PrimitiveTypeName primitiveTypeName) {
