@@ -586,6 +586,18 @@ public class TestAvroSchemaConverter {
   }
 
   @Test
+  public void testInt96AsLocalDateTimeType() throws Exception {
+    Schema schema = Schema.createRecord("myrecord", null, null, false);
+    Schema int96schema = Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
+    schema.setFields(Collections.singletonList(
+      new Schema.Field("dec", int96schema, null, null)));
+
+    testParquetToAvroConversion(schema, "message myrecord {\n" +
+      "  required int96 dec;\n" +
+      "}\n");
+  }
+
+  @Test
   public void testDateType() throws Exception {
     Schema date = LogicalTypes.date().addToSchema(Schema.create(INT));
     Schema expected = Schema.createRecord("myrecord", null, null, false,
