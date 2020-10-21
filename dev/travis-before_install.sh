@@ -20,7 +20,7 @@
 # This script gets invoked by .travis.yml in the before_install step
 ################################################################################
 
-export THIFT_VERSION=0.12.0
+export THIFT_VERSION=0.13.0
 
 set -e
 date
@@ -30,7 +30,7 @@ sudo apt-get install -qq --no-install-recommends build-essential pv autoconf aut
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
-wget -qO- https://archive.apache.org/dist/thrift/0.12.0/thrift-0.12.0.tar.gz | tar zxf -
+wget -qO- https://archive.apache.org/dist/thrift/0.13.0/thrift-0.13.0.tar.gz | tar zxf -
 cd thrift-${THIFT_VERSION}
 chmod +x ./configure
 ./configure --disable-libs
