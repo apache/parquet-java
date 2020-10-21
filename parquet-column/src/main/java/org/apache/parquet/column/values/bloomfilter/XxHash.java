@@ -30,11 +30,11 @@ import java.nio.ByteBuffer;
 public class XxHash implements HashFunction {
   @Override
   public long hashBytes(byte[] input) {
-    return LongHashFunction.xx(0).hashBytes(input);
+    return LongHashFunction.xx().hashBytes(input);
   }
 
   @Override
   public long hashByteBuffer(ByteBuffer input) {
-    return LongHashFunction.xx(0).hashBytes(input);
+    return LongHashFunction.xx().hashBytes(input);
   }
 }
