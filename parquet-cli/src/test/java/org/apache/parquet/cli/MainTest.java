@@ -16,25 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.parquet.cli;
 
-package org.apache.parquet.column.values.bloomfilter;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.util.ToolRunner;
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
-import net.openhft.hashing.LongHashFunction;
+public class MainTest {
 
-import java.nio.ByteBuffer;
-
-/**
- * The implementation of HashFunction interface. The XxHash uses XXH64 version xxHash
- * with a seed of 0.
- */
-public class XxHash implements HashFunction {
-  @Override
-  public long hashBytes(byte[] input) {
-    return LongHashFunction.xx().hashBytes(input);
-  }
-
-  @Override
-  public long hashByteBuffer(ByteBuffer input) {
-    return LongHashFunction.xx().hashBytes(input);
+  @Test
+  public void mainTest() throws Exception {
+    ToolRunner.run(new Configuration(), new Main(LoggerFactory.getLogger(MainTest.class)), new String[]{});
+    Assert.assertTrue("we simply verify there are no errors here", true);
   }
 }

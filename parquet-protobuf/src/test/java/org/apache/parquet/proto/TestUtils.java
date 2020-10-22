@@ -22,8 +22,12 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.twitter.elephantbird.util.Protobufs;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.InputFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -170,7 +174,8 @@ public class TestUtils {
    * @return List of protobuf messages for the given type.
    */
   public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass) throws IOException {
-    ParquetReader.Builder readerBuilder = ProtoParquetReader.builder(file);
+    InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
+    ParquetReader.Builder readerBuilder = ProtoParquetReader.builder(inputFile);
     if (messageClass != null) {
       readerBuilder.set(ProtoReadSupport.PB_CLASS, messageClass.getName()).build();
     }

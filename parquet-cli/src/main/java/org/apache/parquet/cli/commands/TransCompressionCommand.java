@@ -54,10 +54,14 @@ public class TransCompressionCommand extends BaseCommand {
   @Parameter(description = "<input parquet file path>")
   String input;
 
-  @Parameter(description = "<output parquet file path>")
+  @Parameter(
+    names={"-o", "--output"},
+    description = "<output parquet file path>")
   String output;
 
-  @Parameter(description = "<new compression codec")
+  @Parameter(
+    names = {"-c", "--compression-codec"},
+    description = "<new compression codec")
   String codec;
 
   @Override
@@ -90,7 +94,7 @@ public class TransCompressionCommand extends BaseCommand {
   public List<String> getExamples() {
     return Lists.newArrayList(
         "# Translate the compression from one to another",
-        " input.parquet output.parquet ZSTD"
+        " input.parquet -o output.parquet -c ZSTD"
     );
   }
 }

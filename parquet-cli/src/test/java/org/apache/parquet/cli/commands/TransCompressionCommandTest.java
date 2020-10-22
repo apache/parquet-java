@@ -16,25 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.parquet.cli.commands;
 
-package org.apache.parquet.column.values.bloomfilter;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Test;
 
-import net.openhft.hashing.LongHashFunction;
+import java.io.File;
+import java.io.IOException;
 
-import java.nio.ByteBuffer;
+public class TransCompressionCommandTest extends ParquetFileTest{
 
-/**
- * The implementation of HashFunction interface. The XxHash uses XXH64 version xxHash
- * with a seed of 0.
- */
-public class XxHash implements HashFunction {
-  @Override
-  public long hashBytes(byte[] input) {
-    return LongHashFunction.xx().hashBytes(input);
+  @Test
+  public void testTransCompressionCommand() throws IOException {
+    TransCompressionCommand command = new TransCompressionCommand(createLogger());
+
+    command.input = parquetFile().getAbsolutePath();
+
+    File output = new File(getTempFolder(), getClass().getSimpleName() + ".converted.parquet");
+    command.output = output.getAbsolutePath();
+    command.codec = "ZSTD";
+    command.setConf(new Configuration());
+
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
   }
 
-  @Override
-  public long hashByteBuffer(ByteBuffer input) {
-    return LongHashFunction.xx().hashBytes(input);
-  }
 }
