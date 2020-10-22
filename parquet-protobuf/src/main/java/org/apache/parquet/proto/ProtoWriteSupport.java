@@ -337,6 +337,12 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         List<FieldDescriptor> fieldDescriptors = messageDescriptor.getFields();
         for (FieldDescriptor fieldDescriptor : fieldDescriptors) {
           FieldDescriptor.Type type = fieldDescriptor.getType();
+
+          //For a field in a oneOf that isn't set don't write anything
+          if (fieldDescriptor.getContainingOneof() != null && !pb.hasField(fieldDescriptor)) {
+            continue;
+          }
+
           if (!fieldDescriptor.isRepeated() && FieldDescriptor.Type.MESSAGE.equals(type) && !pb.hasField(fieldDescriptor)) {
             continue;
           }

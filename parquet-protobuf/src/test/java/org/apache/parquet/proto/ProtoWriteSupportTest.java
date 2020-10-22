@@ -20,13 +20,18 @@ package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.junit.Test;
+import static org.junit.Assert.*;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
+
+import java.io.IOException;
+import java.util.List;
 
 public class ProtoWriteSupportTest {
 
@@ -912,5 +917,63 @@ public class ProtoWriteSupportTest {
     msg.setExtension(TestProtobuf.Airplane.wingSpan, 50);
 
     instance.write(msg.build());
+  }
+
+  @Test
+  public void testMessageOneOf() {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    ProtoWriteSupport<TestProto3.OneOfTestMessage> spyWriter = createReadConsumerInstance(TestProto3.OneOfTestMessage.class, readConsumerMock);
+    final int theInt = 99;
+
+    TestProto3.OneOfTestMessage.Builder msg = TestProto3.OneOfTestMessage.newBuilder();
+    msg.setSecond(theInt);
+    spyWriter.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("second", 1);
+    inOrder.verify(readConsumerMock).addInteger(theInt);
+    inOrder.verify(readConsumerMock).endField("second", 1);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  /**
+   * Ensure that a message with a oneOf gets written out correctly and can be
+   * read back as expected.
+   */
+  @Test
+  public void testMessageOneOfRoundTrip() throws IOException {
+
+    TestProto3.OneOfTestMessage.Builder msgBuilder = TestProto3.OneOfTestMessage.newBuilder();
+    msgBuilder.setSecond(99);
+    TestProto3.OneOfTestMessage theMessage = msgBuilder.build();
+
+    TestProto3.OneOfTestMessage.Builder msgBuilder2 = TestProto3.OneOfTestMessage.newBuilder();
+    TestProto3.OneOfTestMessage theMessageNothingSet = msgBuilder2.build();
+
+    TestProto3.OneOfTestMessage.Builder msgBuilder3 = TestProto3.OneOfTestMessage.newBuilder();
+    msgBuilder3.setFirst(42);
+    TestProto3.OneOfTestMessage theMessageFirstSet = msgBuilder3.build();
+
+    //Write them out and read them back
+    Path tmpFilePath = TestUtils.writeMessages(theMessage, theMessageNothingSet, theMessageFirstSet);
+    List<TestProto3.OneOfTestMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.OneOfTestMessage.class);
+
+    //First message
+    TestProto3.OneOfTestMessage gotBackFirst = gotBack.get(0);
+    assertEquals(gotBackFirst.getSecond(), 99);
+    assertEquals(gotBackFirst.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.SECOND);
+
+    //Second message with nothing set
+    TestProto3.OneOfTestMessage gotBackSecond = gotBack.get(1);
+    assertEquals(gotBackSecond.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.THEONEOF_NOT_SET);
+
+    //Third message with opposite field set
+    TestProto3.OneOfTestMessage gotBackThird = gotBack.get(2);
+    assertEquals(gotBackThird.getFirst(), 42);
+    assertEquals(gotBackThird.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.FIRST);
+
   }
 }
