@@ -18,30 +18,27 @@
  */
 package org.apache.parquet.proto;
 
-import java.util.Map;
+import com.google.protobuf.Internal;
+import com.google.protobuf.MessageLite;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.io.api.GroupConverter;
-import org.apache.parquet.io.api.RecordMaterializer;
-import org.apache.parquet.schema.MessageType;
+public final class ProtoUtils {
 
-import com.google.protobuf.MessageOrBuilder;
-
-class ProtoRecordMaterializer<T extends MessageOrBuilder> extends RecordMaterializer<T> {
-
-  private final ProtoRecordConverter<T> root;
-
-  public ProtoRecordMaterializer(Configuration conf, MessageType requestedSchema, MessageOrBuilder message, Map<String, String> metadata) {
-    this.root = new ProtoRecordConverter<T>(conf, message, requestedSchema, metadata);
+  private ProtoUtils() {
   }
 
-  @Override
-  public T getCurrentRecord() {
-    return root.getCurrentRecord();
+  public static <T extends MessageLite> T loadDefaultInstance(Class<T> clazz) {
+    return Internal.getDefaultInstance(clazz);
   }
 
-  @Override
-  public GroupConverter getRootConverter() {
-    return root;
+  @SuppressWarnings("unchecked")
+  public static <T extends MessageLite> T loadDefaultInstance(String clazz) {
+    try {
+      return (T) loadDefaultInstance(
+          (Class<? extends MessageLite>) Class.forName(clazz));
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "Cannot load protobuf message class from string: " + clazz, e);
+    }
   }
+
 }

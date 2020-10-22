@@ -18,16 +18,18 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.Message;
-import com.google.protobuf.MessageOrBuilder;
+import java.io.IOException;
+import java.util.Optional;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.OutputFile;
-import org.apache.hadoop.conf.Configuration;
 
-import java.io.IOException;
+import com.google.protobuf.Message;
+import com.google.protobuf.MessageOrBuilder;
 
 /**
  * Write Protobuf records to a Parquet file.
@@ -82,42 +84,70 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
     this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
             DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
-  
-  public static <T> Builder<T> builder(Path file) {
-	    return new Builder<T>(file);
-	}
 
-	public static <T> Builder<T> builder(OutputFile file) {
-	    return new Builder<T>(file);
-	}
-	
-	private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(Class<? extends Message> protoMessage) {
-		return new ProtoWriteSupport<T>(protoMessage);
-	}
-	  
-	public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
-		  
-		Class<? extends Message> protoMessage = null;
+  public static <T extends MessageOrBuilder> Builder<T> builder(Path file) {
+    return new Builder<T>(file);
+  }
 
-		private Builder(Path file) {
-			super(file);
-		}
+  public static <T extends MessageOrBuilder> Builder<T> builder(Path file, T message) {
+    return new Builder<T>(file).withMessage(message);
+  }
 
-		private Builder(OutputFile file) {
-		    super(file);
-		}
+  public static <T extends MessageOrBuilder> Builder<T> builder(OutputFile file) {
+    return new Builder<T>(file);
+  }
 
-		protected Builder<T> self() {
-		    return this;
-		}
-		
-		public Builder<T> withMessage(Class<? extends Message> protoMessage){
-			this.protoMessage = protoMessage;
-			return this;
-		}
+  private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(
+      Class<? extends Message> clazz, Optional<String> schemaRegistry) {
+    return new ProtoWriteSupport<T>(clazz, schemaRegistry);
+  }
 
-		protected WriteSupport<T> getWriteSupport(Configuration conf) {
-		    return (WriteSupport<T>) ProtoParquetWriter.writeSupport(protoMessage);
-		}    
-	}
+  private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(
+      MessageOrBuilder message, Optional<String> schemaRegistry) {
+    return new ProtoWriteSupport<T>(message, schemaRegistry);
+  }
+
+  public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
+
+    private Class<? extends Message> clazz = null;
+    private MessageOrBuilder message = null;
+    private Optional<String> schemaRegistry = Optional.empty();
+
+    private Builder(Path file) {
+      super(file);
+    }
+
+    private Builder(OutputFile file) {
+      super(file);
+    }
+
+    protected Builder<T> self() {
+      return this;
+    }
+
+    @Deprecated
+    public Builder<T> withMessage(Class<? extends Message> clazz) {
+      this.clazz = clazz;
+      return this;
+    }
+
+    public Builder<T> withMessage(MessageOrBuilder message) {
+      this.message = message;
+      return this;
+    }
+
+    public Builder<T> withSchemaRegistry(String schemaRegistry) {
+      this.schemaRegistry = Optional.ofNullable(schemaRegistry);
+      return this;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected WriteSupport<T> getWriteSupport(Configuration conf) {
+      if (message != null) {
+        return (WriteSupport<T>) ProtoParquetWriter.writeSupport(message, this.schemaRegistry);
+      }
+      return (WriteSupport<T>) ProtoParquetWriter.writeSupport(clazz, this.schemaRegistry);
+    }
+  }
 }

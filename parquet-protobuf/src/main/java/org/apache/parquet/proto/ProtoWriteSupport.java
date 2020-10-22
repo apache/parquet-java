@@ -18,29 +18,42 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.*;
-import com.google.protobuf.Descriptors.Descriptor;
-import com.google.protobuf.Descriptors.FieldDescriptor;
-import com.twitter.elephantbird.util.Protobufs;
+import static java.util.Optional.ofNullable;
+import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_ITEM_SEPARATOR;
+import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_KEY_VALUE_SEPARATOR;
+import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_PREFIX;
+
+import java.lang.reflect.Array;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.IncompatibleSchemaModificationException;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
-import org.apache.parquet.schema.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Array;
-import java.util.*;
-
-import static java.util.Optional.ofNullable;
-
-import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_ITEM_SEPARATOR;
-import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_KEY_VALUE_SEPARATOR;
-import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_PREFIX;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Message;
+import com.google.protobuf.MessageLite;
+import com.google.protobuf.MessageOrBuilder;
+import com.google.protobuf.TextFormat;
 
 /**
  * Implementation of {@link WriteSupport} for writing Protocol Buffers.
@@ -57,17 +70,42 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private boolean writeSpecsCompliant = false;
   private RecordConsumer recordConsumer;
-  private Class<? extends Message> protoMessage;
+  private final Optional<MessageOrBuilder> message;
+  private Class<? extends Message> clazz;
   private MessageWriter messageWriter;
+  private Optional<String> schemaRegistry;
+
   // Keep protobuf enum value with number in the metadata, so that in read time, a reader can read at least
   // the number back even with an outdated schema which might not contain all enum values.
   private Map<String, Map<String, Integer>> protoEnumBookKeeper = new HashMap<>();
 
   public ProtoWriteSupport() {
+    this((Class<? extends Message>) null);
   }
 
-  public ProtoWriteSupport(Class<? extends Message> protobufClass) {
-    this.protoMessage = protobufClass;
+  public ProtoWriteSupport(MessageOrBuilder message, Optional<String> schemaRegistry) {
+    Objects.requireNonNull(message);
+    Objects.requireNonNull(schemaRegistry);
+
+    this.message = Optional.of(message);
+    this.clazz = null;
+    this.schemaRegistry = schemaRegistry;
+  }
+
+  public ProtoWriteSupport(MessageOrBuilder message) {
+    this(message, Optional.empty());
+  }
+
+  public ProtoWriteSupport(Class<? extends Message> clazz) {
+    this(clazz, Optional.empty());
+  }
+
+  public ProtoWriteSupport(Class<? extends Message> clazz,
+      Optional<String> schemaRegistry) {
+    Objects.requireNonNull(schemaRegistry);
+
+    this.clazz = clazz;
+    this.message = Optional.empty();
   }
 
   @Override
@@ -113,12 +151,36 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   @Override
   public WriteContext init(Configuration configuration) {
+    if (!this.message.isPresent()) {
+      return initClass(configuration);
+    }
+    this.writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
+    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(this.message.get());
+    Descriptor messageDescriptor = this.message.get().getDescriptorForType();
+    validatedMapping(messageDescriptor, rootSchema);
 
+    this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
+
+    // Create the protobuf class FQDN (type.googleapis.com/org.my.proto.Document)
+    final String protoSchemaRegistry = this.schemaRegistry.orElse("type.googleapis.com");
+    final String protoClass = this.message.get().getClass().getName();
+    final String protoType = protoSchemaRegistry + '/' + protoClass;
+
+    Map<String, String> extraMetaData = new HashMap<>();
+    extraMetaData.put(ProtoReadSupport.PB_CLASS, protoClass);
+    extraMetaData.put(ProtoReadSupport.PB_TYPE, protoType);
+    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(this.message.get()));
+    extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
+    return new WriteContext(rootSchema, extraMetaData);
+  }
+
+  @Deprecated
+  private WriteContext initClass(Configuration configuration) {
     // if no protobuf descriptor was given in constructor, load descriptor from configuration (set with setProtobufClass)
-    if (protoMessage == null) {
+    if (this.clazz == null) {
       Class<? extends Message> pbClass = configuration.getClass(PB_CLASS_WRITE, null, Message.class);
       if (pbClass != null) {
-        protoMessage = pbClass;
+        this.clazz = pbClass;
       } else {
         String msg = "Protocol buffer class not specified.";
         String hint = " Please use method ProtoParquetOutputFormat.setProtobufClass(...) or other similar method.";
@@ -127,15 +189,15 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
-    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(protoMessage);
-    Descriptor messageDescriptor = Protobufs.getMessageDescriptor(protoMessage);
+    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(this.clazz);
+    Descriptor messageDescriptor = ProtoUtils.loadDefaultInstance(this.clazz).getDescriptorForType();
     validatedMapping(messageDescriptor, rootSchema);
 
     this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
 
     Map<String, String> extraMetaData = new HashMap<>();
-    extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
-    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
+    extraMetaData.put(ProtoReadSupport.PB_CLASS, this.clazz.getName());
+    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(this.clazz));
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
     return new WriteContext(rootSchema, extraMetaData);
   }
@@ -559,8 +621,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   /** Returns message descriptor as JSON String*/
   private String serializeDescriptor(Class<? extends Message> protoClass) {
-    Descriptor descriptor = Protobufs.getMessageDescriptor(protoClass);
+    Descriptor descriptor = ProtoUtils.loadDefaultInstance(protoClass).getDescriptorForType();
     DescriptorProtos.DescriptorProto asProto = descriptor.toProto();
+    return TextFormat.printToString(asProto);
+  }
+
+  private String serializeDescriptor(MessageOrBuilder message) {
+    DescriptorProtos.DescriptorProto asProto = message.getDescriptorForType().toProto();
     return TextFormat.printToString(asProto);
   }
 }

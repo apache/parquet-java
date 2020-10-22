@@ -33,8 +33,14 @@ import org.apache.parquet.hadoop.ParquetReader;
 public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReader<T> {
 
   @SuppressWarnings("unchecked")
-  public static <T> Builder<T> builder(Path file) {
-    return ParquetReader.builder(new ProtoReadSupport(), file);
+  public static <T extends MessageOrBuilder> Builder<T> builder(Path file) {
+    return (Builder<T>) ParquetReader.builder(new ProtoReadSupport<>(), file);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T extends MessageOrBuilder> Builder<T> builder(Path file, T message) {
+    return (Builder<T>) ParquetReader.builder(new ProtoReadSupport<>(), file);
+    
   }
 
   /**
@@ -43,7 +49,7 @@ public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReade
    * @deprecated use {@link #builder(Path)}
    */
   @Deprecated
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   public ProtoParquetReader(Path file) throws IOException {
     super(file, new ProtoReadSupport());
   }
@@ -55,7 +61,7 @@ public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReade
    * @deprecated use {@link #builder(Path)}
    */
   @Deprecated
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   public ProtoParquetReader(Path file, UnboundRecordFilter recordFilter) throws IOException {
     super(file, new ProtoReadSupport(), recordFilter);
   }

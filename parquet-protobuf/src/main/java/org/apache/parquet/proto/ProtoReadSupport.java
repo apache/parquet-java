@@ -18,8 +18,11 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.Message;
-import com.twitter.elephantbird.util.Protobufs;
+import java.util.AbstractMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
@@ -28,16 +31,18 @@ import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
+import com.google.protobuf.MessageOrBuilder;
 
 
-public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
+public class ProtoReadSupport<T extends MessageOrBuilder> extends ReadSupport<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProtoReadSupport.class);
 
   public static final String PB_REQUESTED_PROJECTION = "parquet.proto.projection";
 
+  @Deprecated
   public static final String PB_CLASS = "parquet.proto.class";
+  public static final String PB_TYPE = "parquet.proto.type";
   public static final String PB_DESCRIPTOR = "parquet.proto.descriptor";
 
   public static void setRequestedProjection(Configuration configuration, String requestedProjection) {
@@ -74,24 +79,72 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
   @Override
   public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
-    String headerProtoClass = keyValueMetaData.get(PB_CLASS);
-    String configuredProtoClass = configuration.get(PB_CLASS);
+    final Optional<String> headerProtoClass = Optional.ofNullable(keyValueMetaData.get(PB_CLASS));
+    final Optional<String> headerProtoType = Optional.ofNullable(keyValueMetaData.get(PB_TYPE));
 
-    if (configuredProtoClass != null) {
-      LOG.debug("Replacing class " + headerProtoClass + " by " + configuredProtoClass);
-      headerProtoClass = configuredProtoClass;
+    final Optional<String> configuredProtoClass = Optional.ofNullable(configuration.get(PB_CLASS));
+    final Optional<String> configuredProtoType = Optional.ofNullable(configuration.get(PB_TYPE));
+
+    final String candidateClass;
+
+    /* 
+     * Load the class type, with backwards-compatibility for class-only support (no registry).
+     * Configured values override any values found in the meta section of the file.
+     */
+
+    if (configuredProtoType.isPresent()) {
+      // No schema registry implemented yet
+      LOG.debug("Configured proto type: {}", configuredProtoType.get());
+      candidateClass = parseProtoType(configuredProtoType.get()).getValue();
+    } else if (configuredProtoClass.isPresent()) {
+      LOG.debug("Configured proto class: {}", configuredProtoClass.get());
+      candidateClass = configuredProtoClass.get();
+    } else if (headerProtoType.isPresent()) {
+      // No schema registry implemented yet
+      LOG.debug("Parquet meta proto type: {}", headerProtoType.get());
+      candidateClass = parseProtoType(headerProtoType.get()).getValue();
+    } else if (headerProtoClass.isPresent()) {
+      LOG.debug("Parquet meta proto class: {}", headerProtoClass.get());
+      candidateClass = headerProtoClass.get();
+    } else {
+      throw new IllegalArgumentException("No proto class specified for read");
     }
 
-    if (headerProtoClass == null) {
-      throw new RuntimeException("I Need parameter " + PB_CLASS + " with Protocol Buffer class");
+    LOG.debug("Reading data with Protocol Buffer class {}", candidateClass);
+
+    try {
+      MessageType requestedSchema = readContext.getRequestedSchema();
+      return new ProtoRecordMaterializer<T>(configuration, requestedSchema,
+          ProtoUtils.loadDefaultInstance(candidateClass), keyValueMetaData);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Could not protobuf class: " + candidateClass, e);
     }
-
-    LOG.debug("Reading data with Protocol Buffer class {}", headerProtoClass);
-
-    MessageType requestedSchema = readContext.getRequestedSchema();
-    Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);
-    return new ProtoRecordMaterializer(configuration, requestedSchema, protobufClass, keyValueMetaData);
   }
 
+  /**
+   * Split a fully qualified protobuf type into its two parts.
+   *
+   * <pre>
+   * schema-registry/class
+   * </pre>
+   *
+   * <pre>
+   * type.googleapis.com / google.profile.Person
+   * </pre>
+   *
+   * <ul>
+   * <li>type.googleapis.com/google.profile.Person =
+   * ["type.googleapis.com","google.profile.Person"]</li>
+   * <li>google.profile.Person = ["","google.profile.Person"]</li>
+   * </ul>
+   *
+   * @param protoType The protobuf fully qualifies type
+   * @return Entry containing registry and class information
+   */
+  private Entry<String, String> parseProtoType(final String protoType) {
+    final String[] parts = protoType.split("/");
+    return (parts.length == 1) ? new AbstractMap.SimpleEntry<>("", parts[0])
+        : new AbstractMap.SimpleEntry<>(parts[0], parts[1]);
+  }
 
 }

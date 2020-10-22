@@ -21,7 +21,7 @@ package org.apache.parquet.proto;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
-import com.twitter.elephantbird.util.Protobufs;
+import com.google.protobuf.MessageOrBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.hadoop.BadConfigurationException;
@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -61,7 +62,8 @@ class ProtoMessageConverter extends GroupConverter {
   protected final Configuration conf;
   protected final Converter[] converters;
   protected final ParentValueContainer parent;
-  protected final Message.Builder myBuilder;
+  protected final MessageOrBuilder message;
+  protected final Message.Builder protoBuilder;
   protected final Map<String, String> extraMetadata;
 
   /**
@@ -74,27 +76,22 @@ class ProtoMessageConverter extends GroupConverter {
    * @param parquetSchema The (part of) parquet schema that should match to the expected proto
    * @param extraMetadata Metadata from parquet footer, containing useful information about parquet-proto convertion behavior
    */
-  ProtoMessageConverter(Configuration conf, ParentValueContainer pvc, Class<? extends Message> protoClass, GroupType parquetSchema, Map<String, String> extraMetadata) {
-    this(conf, pvc, Protobufs.getMessageBuilder(protoClass), parquetSchema, extraMetadata);
-  }
-
-  // For usage in message arrays
-  ProtoMessageConverter(Configuration conf, ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema, Map<String, String> extraMetadata) {
+  ProtoMessageConverter(Configuration conf, ParentValueContainer pvc, MessageOrBuilder message, GroupType parquetSchema, Map<String, String> extraMetadata) {
 
     int schemaSize = parquetSchema.getFieldCount();
     converters = new Converter[schemaSize];
     this.conf = conf;
-    this.parent = pvc;
+    this.parent = Objects.requireNonNull(pvc, "Missing parent value container");
     this.extraMetadata = extraMetadata;
     int parquetFieldIndex = 1;
 
-    if (pvc == null) {
-      throw new IllegalStateException("Missing parent value container");
-    }
+    this.message = message;
 
-    myBuilder = builder;
+    this.protoBuilder =
+        (message instanceof Message) ? ((Message) message).newBuilderForType()
+            : ((Message.Builder) message).clone().clear();
 
-    Descriptors.Descriptor protoDescriptor = builder.getDescriptorForType();
+    Descriptors.Descriptor protoDescriptor = message.getDescriptorForType();
 
     for (Type parquetField : parquetSchema.getFields()) {
       Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
@@ -105,7 +102,38 @@ class ProtoMessageConverter extends GroupConverter {
         throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
       }
 
-      converters[parquetFieldIndex - 1] = newMessageConverter(myBuilder, protoField, parquetField);
+      converters[parquetFieldIndex - 1] = newMessageConverter(this.protoBuilder, protoField, parquetField);
+
+      parquetFieldIndex++;
+    }
+  }
+
+  @Deprecated
+  ProtoMessageConverter(Configuration conf, ParentValueContainer pvc, Class<? extends Message> protoclass, GroupType parquetSchema, Map<String, String> extraMetadata) {
+    int schemaSize = parquetSchema.getFieldCount();
+    converters = new Converter[schemaSize];
+    this.conf = conf;
+    this.parent = Objects.requireNonNull(pvc, "Missing parent value container");
+    this.extraMetadata = extraMetadata;
+    int parquetFieldIndex = 1;
+    this.message = ProtoUtils.loadDefaultInstance(protoclass);
+
+    this.protoBuilder =
+        (message instanceof Message) ? ((Message) message).newBuilderForType()
+            : ((Message.Builder) message).clone().clear();
+
+    Descriptors.Descriptor protoDescriptor = message.getDescriptorForType();
+
+    for (Type parquetField : parquetSchema.getFields()) {
+      Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
+
+      if (protoField == null) {
+        String description = "Scheme mismatch \n\"" + parquetField + "\"" +
+                "\n proto descriptor:\n" + protoDescriptor.toProto();
+        throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
+      }
+
+      converters[parquetFieldIndex - 1] = newMessageConverter(this.protoBuilder, protoField, parquetField);
 
       parquetFieldIndex++;
     }
@@ -124,8 +152,8 @@ class ProtoMessageConverter extends GroupConverter {
 
   @Override
   public void end() {
-    parent.add(myBuilder.build());
-    myBuilder.clear();
+    parent.add(protoBuilder.build());
+    protoBuilder.clear();
   }
 
   protected Converter newMessageConverter(final Message.Builder parentBuilder, final Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
@@ -192,7 +220,11 @@ class ProtoMessageConverter extends GroupConverter {
   }
 
   public Message.Builder getBuilder() {
-    return myBuilder;
+    return this.protoBuilder;
+  }
+
+  public MessageOrBuilder getMessage() {
+    return this.message;
   }
 
   static abstract class ParentValueContainer {

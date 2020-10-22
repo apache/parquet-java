@@ -136,6 +136,7 @@ public class ParquetReader<T> implements Closeable {
         return reader == null ? null : read();
       }
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new IOException(e);
     }
   }

@@ -18,11 +18,19 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Descriptors.FieldDescriptor;
-import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
-import com.google.protobuf.Message;
-import com.twitter.elephantbird.util.Protobufs;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.listType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.mapType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+
+import java.util.List;
+
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -33,13 +41,11 @@ import org.apache.parquet.schema.Types.GroupBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
-import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.listType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.mapType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import com.google.protobuf.Message;
+import com.google.protobuf.MessageOrBuilder;
 
 /**
  * Converts a Protocol Buffer Descriptor into a Parquet schema.
@@ -65,12 +71,31 @@ public class ProtoSchemaConverter {
   }
 
   public MessageType convert(Class<? extends Message> protobufClass) {
-    LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
-    Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
+    LOG.debug("Converting protocol buffer class '{}' to parquet schema", protobufClass);
+
+    try {
+      Descriptors.Descriptor descriptor =
+          ProtoUtils.loadDefaultInstance(protobufClass).getDescriptorForType();
+
+      MessageType messageType =
+          convertFields(Types.buildMessage(), descriptor.getFields())
+              .named(descriptor.getFullName());
+
+      LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
+      return messageType;
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Unable to load class: " + protobufClass, e);
+    }
+  }
+
+  public MessageType convert(MessageOrBuilder message) {
+    LOG.debug("Converting protocol buffer {} to parquet schema", message);
+    Descriptors.Descriptor descriptor = message.getDescriptorForType();
     MessageType messageType =
         convertFields(Types.buildMessage(), descriptor.getFields())
-        .named(descriptor.getFullName());
-    LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
+            .named(descriptor.getFullName());
+    LOG.debug("Converter info: {} was converted to {}", descriptor.toProto(),
+        messageType);
     return messageType;
   }
 

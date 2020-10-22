@@ -36,7 +36,6 @@ import java.util.Map;
  */
 public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessageConverter {
 
-  private final Message.Builder reusedBuilder;
   private boolean buildBefore;
 
   /**
@@ -49,21 +48,19 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
     }
   }
 
-  public ProtoRecordConverter(Configuration conf, Class<? extends Message> protoclass, MessageType parquetSchema, Map<String, String> extraMetadata) {
-    super(conf, new SkipParentValueContainer(), protoclass, parquetSchema, extraMetadata);
-    reusedBuilder = getBuilder();
+  public ProtoRecordConverter(Configuration conf, MessageOrBuilder message, MessageType parquetSchema, Map<String, String> extraMetadata) {
+    super(conf, new SkipParentValueContainer(), message, parquetSchema, extraMetadata);
   }
 
   public ProtoRecordConverter(Configuration conf, Message.Builder builder, MessageType parquetSchema, Map<String, String> extraMetadata) {
     super(conf, new SkipParentValueContainer(), builder, parquetSchema, extraMetadata);
-    reusedBuilder = getBuilder();
   }
 
   // Old version constructors, kept for code backward compatibility.
   // The instance will not be able to handle unknowned enum values written by parquet-proto (the behavior before PARQUET-1455)
   @Deprecated
   public ProtoRecordConverter(Class<? extends Message> protoclass, MessageType parquetSchema) {
-    this(new Configuration(), protoclass, parquetSchema, Collections.emptyMap());
+    super(new Configuration(), new SkipParentValueContainer(), protoclass, parquetSchema, Collections.emptyMap());
   }
 
   @Deprecated
@@ -73,7 +70,7 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
 
   @Override
   public void start() {
-    reusedBuilder.clear();
+    this.getBuilder().clear();
     super.start();
   }
 
@@ -84,9 +81,9 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
 
   public T getCurrentRecord() {
     if (buildBefore) {
-      return (T) this.reusedBuilder.build();
+      return (T) this.getBuilder().build();
     } else {
-      return (T) this.reusedBuilder;
+      return (T) this.getBuilder();
     }
   }
 
@@ -97,4 +94,5 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
   public void setBuildBefore(boolean buildBefore) {
     this.buildBefore = buildBefore;
   }
+
 }
