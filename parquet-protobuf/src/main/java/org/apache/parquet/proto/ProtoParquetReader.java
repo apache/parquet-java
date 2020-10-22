@@ -20,21 +20,26 @@ package org.apache.parquet.proto;
 
 import java.io.IOException;
 
-import com.google.protobuf.MessageOrBuilder;
-
 import org.apache.hadoop.fs.Path;
-
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.io.InputFile;
+
+import com.google.protobuf.MessageOrBuilder;
 
 /**
  * Read Protobuf records from a Parquet file.
  */
-public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReader<T> {
+public class ProtoParquetReader<T extends MessageOrBuilder>
+    extends ParquetReader<T> {
 
-  @SuppressWarnings("unchecked")
-  public static <T> Builder<T> builder(Path file) {
-    return ParquetReader.builder(new ProtoReadSupport(), file);
+  public static <T> ParquetReader.Builder<T> builder(Path file) {
+    return new ProtoParquetReader.Builder<T>(file);
+  }
+
+  public static <T> ParquetReader.Builder<T> builder(InputFile file) {
+    return new ProtoParquetReader.Builder<T>(file);
   }
 
   /**
@@ -58,5 +63,22 @@ public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReade
   @SuppressWarnings("unchecked")
   public ProtoParquetReader(Path file, UnboundRecordFilter recordFilter) throws IOException {
     super(file, new ProtoReadSupport(), recordFilter);
+  }
+
+  private static class Builder<T> extends ParquetReader.Builder<T> {
+
+    protected Builder(InputFile file) {
+      super(file);
+    }
+
+    protected Builder(Path path) {
+      super(path);
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @Override
+    protected ReadSupport<T> getReadSupport() {
+      return new ProtoReadSupport();
+    }
   }
 }
