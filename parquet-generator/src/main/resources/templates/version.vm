@@ -24,7 +24,7 @@ package org.apache.parquet;
  * Do not manually edit!
  */
 
-public class Version {
+public final class Version {
 
   public static final String VERSION_NUMBER = "$versionNumber";
   public static final String FULL_VERSION = "$fullVersion";
@@ -33,4 +33,7 @@ public class Version {
     System.out.println(FULL_VERSION);
   }
 
+  public String toString() {
+    return String.format("%s [%s]", VERSION_NUMBER, FULL_VERSION);
+  }
 }
