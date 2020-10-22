@@ -42,6 +42,8 @@ import java.util.Map;
 
 public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactory, DecryptionPropertiesFactory {
 
+  public static final String PATH_NAME_PREFIX = "column_encryption_1178_";
+
   private static Logger log = LoggerFactory.getLogger(SchemaCryptoPropertiesFactory.class);
 
   public static final String CONF_ENCRYPTION_ALGORITHM = "parquet.encryption.algorithm";
@@ -113,7 +115,7 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
   private void getColumnEncryptionProperties(String[] path, Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap,
                                              Configuration conf) throws ParquetCryptoRuntimeException {
     String pathName = String.join(".", path);
-    String columnKeyName = conf.get(pathName, null);
+    String columnKeyName = conf.get(PATH_NAME_PREFIX + pathName, null);
     if (columnKeyName != null) {
       ColumnPath columnPath = ColumnPath.get(path);
       ColumnEncryptionProperties colEncProp = ColumnEncryptionProperties.builder(columnPath)

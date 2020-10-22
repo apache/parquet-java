@@ -114,6 +114,11 @@ public class TestColumnChunkPageWriteStore {
     public long defaultBlockSize() {
       return file.defaultBlockSize();
     }
+
+    @Override
+    public Path getPath() {
+      return file.getPath();
+    }
   }
 
   private int pageSize = 1024;

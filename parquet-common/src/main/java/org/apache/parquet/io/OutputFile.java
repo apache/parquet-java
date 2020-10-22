@@ -21,6 +21,8 @@ package org.apache.parquet.io;
 
 import java.io.IOException;
 
+import org.apache.hadoop.fs.Path;
+
 public interface OutputFile {
 
   PositionOutputStream create(long blockSizeHint) throws IOException;
@@ -31,4 +33,5 @@ public interface OutputFile {
 
   long defaultBlockSize();
 
+  Path getPath();
 }

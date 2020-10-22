@@ -27,6 +27,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.format.EncryptionAlgorithm;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -63,7 +64,7 @@ public class SchemaControlEncryptionTest {
   // In the test We use a map to tell WriteSupport which columns to be encrypted with what key. In real use cases, people
   // can find whatever easy way to do so basing on how do they get these information, for example people can choose to 
   // store in HMS, or other metastore. 
-  private Map<String, Map<String, Object>> crytoMetadata = new HashMap<>();
+  private Map<String, Map<String, Object>> cryptoMetadata = new HashMap<>();
   private Map<String, Object[]> testData = new HashMap<>();
 
   @Before
@@ -94,14 +95,14 @@ public class SchemaControlEncryptionTest {
   @Test
   public void testEncryptionGcm() throws Exception {
     Configuration conf = new Configuration();
-    conf.set(SchemaCryptoPropertiesFactory.CONF_ENCRYPTION_ALGORITHM, "AES_GCM_CTR_V1");
+    conf.set(SchemaCryptoPropertiesFactory.CONF_ENCRYPTION_ALGORITHM, EncryptionAlgorithm._Fields.AES__GCM__CTR__V1.getFieldName());
     runTest(conf);
   }
 
   @Test
   public void testEncryptionGcmCtr() throws Exception {
     Configuration conf = new Configuration();
-    conf.set(SchemaCryptoPropertiesFactory.CONF_ENCRYPTION_ALGORITHM, "AES_GCM_V1");
+    conf.set(SchemaCryptoPropertiesFactory.CONF_ENCRYPTION_ALGORITHM, EncryptionAlgorithm._Fields.AES__GCM__V1.getFieldName());
     runTest(conf);
   }
 
@@ -114,7 +115,7 @@ public class SchemaControlEncryptionTest {
 
   private void runTest(Configuration conf ) throws Exception {
     conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
-      "org.apache.parquet.crypto.propertiesfactory.SchemaCryptoPropertiesFactory");
+      SchemaCryptoPropertiesFactory.class.getName());
     String file = createTempFile("test");
     markEncryptColumns();
     encryptParquetFile(file, conf);
@@ -124,11 +125,11 @@ public class SchemaControlEncryptionTest {
   private void markEncryptColumns() {
     Map<String, Object> ageMetadata = new HashMap<>();
     ageMetadata.put("columnKeyMetaData", "age_key_id");
-    crytoMetadata.put("Age", ageMetadata);
+    cryptoMetadata.put("Age", ageMetadata);
 
     Map<String, Object> linkMetadata = new HashMap<>();
     linkMetadata.put("columnKeyMetaData", "link_key_id");
-    crytoMetadata.put("LinkedIn", linkMetadata);
+    cryptoMetadata.put("LinkedIn", linkMetadata);
   }
 
   private String encryptParquetFile(String file, Configuration conf) throws IOException {
@@ -219,10 +220,11 @@ public class SchemaControlEncryptionTest {
 
     private void setMetadata(ColumnDescriptor column, Configuration conf) {
       String columnShortName = column.getPath()[column.getPath().length - 1];
-      if (crytoMetadata.containsKey(columnShortName) &&
-        crytoMetadata.get(columnShortName).get("columnKeyMetaData") != null) {
+      if (cryptoMetadata.containsKey(columnShortName) &&
+        cryptoMetadata.get(columnShortName).get("columnKeyMetaData") != null) {
         String columnKey = String.join(".", column.getPath());
-        conf.set(columnKey, crytoMetadata.get(columnShortName).get("columnKeyMetaData").toString());
+        conf.set(SchemaCryptoPropertiesFactory.PATH_NAME_PREFIX + columnKey,
+          cryptoMetadata.get(columnShortName).get("columnKeyMetaData").toString());
       }
     }
   }
