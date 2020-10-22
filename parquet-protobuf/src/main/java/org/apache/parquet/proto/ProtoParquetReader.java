@@ -61,8 +61,7 @@ public class ProtoParquetReader<T extends MessageOrBuilder>
    */
   @Deprecated
   @SuppressWarnings("unchecked")
-  public ProtoParquetReader(Path file, UnboundRecordFilter recordFilter)
-      throws IOException {
+  public ProtoParquetReader(Path file, UnboundRecordFilter recordFilter) throws IOException {
     super(file, new ProtoReadSupport(), recordFilter);
   }
 
