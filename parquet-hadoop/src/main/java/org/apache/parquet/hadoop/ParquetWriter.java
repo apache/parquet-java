@@ -281,7 +281,7 @@ public class ParquetWriter<T> implements Closeable {
 
     // encryptionProperties could be built from the implementation of EncryptionPropertiesFactory when it is attached.
     if (encryptionProperties == null) {
-      encryptionProperties = ParquetOutputFormat.createEncryptionProperties(conf, new Path(file.toString()), writeContext);
+      encryptionProperties = ParquetOutputFormat.createEncryptionProperties(conf, file.getPath(), writeContext);
     }
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(
