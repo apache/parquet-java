@@ -61,7 +61,7 @@ public class ColumnMaskingCommand extends BaseCommand {
   @Parameter(description = "<output parquet file path>")
   String output;
 
-  @Parameter(description = "columns to be repalced with masked value")
+  @Parameter(description = "columns to be replaced with masked value")
   List<String> cols;
 
   @Override
