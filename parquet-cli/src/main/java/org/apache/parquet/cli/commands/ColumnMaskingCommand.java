@@ -52,7 +52,7 @@ public class ColumnMaskingCommand extends BaseCommand {
     masker = new ColumnMasker();
   }
 
-  @Parameter(description = "<mask mode: nullify, hash, redact>")
+  @Parameter(description = "<mask mode: nullify>")
   String mode;
 
   @Parameter(description = "<input parquet file path>")
@@ -67,9 +67,8 @@ public class ColumnMaskingCommand extends BaseCommand {
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(mode != null
-        && (mode.equals("nullify") || mode.equals("hash") || mode.equals("redact")),
-      "mask mode cannot be null and can be only nullify, hash or redact");
+    Preconditions.checkArgument(mode != null && (mode.equals("nullify")),
+      "mask mode cannot be null and can be only nullify");
 
     Preconditions.checkArgument(input != null && output != null,
       "Both input and output parquet file paths are required.");

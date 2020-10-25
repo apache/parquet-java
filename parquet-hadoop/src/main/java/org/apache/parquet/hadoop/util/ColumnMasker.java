@@ -18,35 +18,30 @@
  */
 package org.apache.parquet.hadoop.util;
 
-import org.apache.parquet.bytes.BytesInput;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
-import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
-import org.apache.parquet.column.page.DataPage;
-import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
-import org.apache.parquet.column.page.PageWriteStore;
-import org.apache.parquet.column.page.PageWriter;
-import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.hadoop.CodecFactory;
+import org.apache.parquet.hadoop.ColumnChunkPageWriteStore;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileWriter;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 import java.io.IOException;
@@ -122,13 +117,18 @@ public class ColumnMasker {
     int dMax = descriptor.getMaxDefinitionLevel();
     ColumnReader cReader = crStore.getColumnReader(descriptor);
 
-    writer.startColumn(descriptor, totalChunkValues, CompressionCodecName.UNCOMPRESSED);
-
     WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages() ? WriterVersion.PARQUET_2_0 : WriterVersion.PARQUET_1_0;
     ParquetProperties props = ParquetProperties.builder()
       .withWriterVersion(writerVersion)
       .build();
-    ColumnWriter cWriter = props.newColumnWriteStore(schema, new DummyPageWriterStore()).getColumnWriter(descriptor);
+    CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
+    CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(chunk.getCodec());
+    
+    // Create new schema that only has the current column
+    MessageType newSchema = newSchema(schema, descriptor);
+    ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(compressor, newSchema, props.getAllocator(), props.getColumnIndexTruncateLength());
+    ColumnWriteStore cStore = props.newColumnWriteStore(newSchema, cPageStore);
+    ColumnWriter cWriter = cStore.getColumnWriter(descriptor);
 
     for (int i = 0; i < totalChunkValues; i++) {
       int rlvl = cReader.getCurrentRepetitionLevel();
@@ -145,32 +145,56 @@ public class ColumnMasker {
       } else {
         cWriter.writeNull(rlvl, dlvl);
       }
+      cStore.endRecord();
     }
 
-    BytesInput data = cWriter.concatWriters();
-    Statistics statistics = convertStatisticsNullify(chunk.getPrimitiveType(), totalChunkValues);
-    writer.writeDataPage(toIntWithCheck(totalChunkValues),
-      toIntWithCheck(data.size()),
-      data,
-      statistics,
-      toIntWithCheck(totalChunkValues),
-      Encoding.RLE,
-      Encoding.RLE,
-      Encoding.PLAIN);
-    writer.endColumn();
-  }
+    cStore.flush();
+    cPageStore.flushToFileWriter(writer);
 
-  private Statistics convertStatisticsNullify(PrimitiveType type, long rowCount) throws IOException {
-    org.apache.parquet.column.statistics.Statistics.Builder statsBuilder = org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
-    statsBuilder.withNumNulls(rowCount);
-    return statsBuilder.build();
+    cStore.close();
+    cWriter.close();
   }
-
-  private int toIntWithCheck(long size) {
-    if ((int)size != size) {
-      throw new ParquetEncodingException("size is bigger than " + Integer.MAX_VALUE + " bytes: " + size);
+  
+  private MessageType newSchema(MessageType schema, ColumnDescriptor descriptor) {
+    String[] path = descriptor.getPath();
+    Type type = schema.getType(path);
+    if (path.length == 1) {
+      return new MessageType(schema.getName(), type);
     }
-    return (int)size;
+
+    for (Type field : schema.getFields()) {
+      if (!field.isPrimitive()) {
+        Type newType = extractField(field.asGroupType(), type);
+        if (newType != null) {
+          return new MessageType(schema.getName(), newType);
+        }
+      }
+    }
+
+    // We should never hit this because 'type' is returned by schema.getType().
+    throw new RuntimeException("No field is found");
+  }
+
+  private Type extractField(GroupType candidate, Type targetField) {
+    if (targetField.equals(candidate)) {
+      return targetField;
+    }
+
+    // In case 'type' is a descendants of candidate
+    for (Type field : candidate.asGroupType().getFields()) {
+      if (field.isPrimitive()) {
+        if (field.equals(targetField)) {
+          return new GroupType(candidate.getRepetition(), candidate.getName(), targetField);
+        }
+      } else {
+        Type tempField = extractField(field.asGroupType(), targetField);
+        if (tempField != null) {
+          return tempField;
+        }
+      }
+    }
+
+    return null;
   }
 
   public static Set<ColumnPath> convertToColumnPaths(List<String> cols) {
@@ -214,61 +238,5 @@ public class ColumnMasker {
 
   private static final class DummyConverter extends PrimitiveConverter {
     @Override public GroupConverter asGroupConverter() { return new DummyGroupConverter(); }
-  }
-
-  class DummyPageWriterStore implements PageWriteStore {
-    @Override
-    public PageWriter getPageWriter(ColumnDescriptor path){
-      return new DummyPageWriter();
-    }
-  }
-
-  class DummyPageWriter implements PageWriter {
-
-    public DummyPageWriter() {}
-
-    @Override
-    public void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding,
-                          Encoding dlEncoding, Encoding valuesEncoding)
-      throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void writePage(BytesInput bytesInput, int valueCount, int rowCount, Statistics<?> statistics,
-                          Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException {
-      writePage(bytesInput, valueCount, statistics, rlEncoding, dlEncoding, valuesEncoding);
-    }
-
-    @Override
-    public void writePageV2(int rowCount, int nullCount, int valueCount,
-                            BytesInput repetitionLevels, BytesInput definitionLevels,
-                            Encoding dataEncoding, BytesInput data, Statistics<?> statistics) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long getMemSize() {
-      throw new UnsupportedOperationException();
-    }
-
-    public List<DataPage> getPages() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long allocatedSize() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public String memUsageString(String prefix) {
-      throw new UnsupportedOperationException();
-    }
   }
 }
