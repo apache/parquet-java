@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
+import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.EncryptionAlgorithm;
@@ -95,14 +96,14 @@ public class SchemaControlEncryptionTest {
   @Test
   public void testEncryptionGcm() throws Exception {
     Configuration conf = new Configuration();
-    conf.set(SchemaCryptoPropertiesFactory.CONF_ENCRYPTION_ALGORITHM, EncryptionAlgorithm._Fields.AES__GCM__CTR__V1.getFieldName());
+    conf.set(SchemaCryptoPropertiesFactory.CONF_ENCRYPTION_ALGORITHM, ParquetCipher.AES_GCM_V1.toString());
     runTest(conf);
   }
 
   @Test
   public void testEncryptionGcmCtr() throws Exception {
     Configuration conf = new Configuration();
-    conf.set(SchemaCryptoPropertiesFactory.CONF_ENCRYPTION_ALGORITHM, EncryptionAlgorithm._Fields.AES__GCM__V1.getFieldName());
+    conf.set(SchemaCryptoPropertiesFactory.CONF_ENCRYPTION_ALGORITHM, ParquetCipher.AES_GCM_CTR_V1.toString());
     runTest(conf);
   }
 

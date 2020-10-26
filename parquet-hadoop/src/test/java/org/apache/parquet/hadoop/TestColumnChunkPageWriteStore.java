@@ -116,7 +116,7 @@ public class TestColumnChunkPageWriteStore {
     }
 
     @Override
-    public Path getPath() {
+    public String getPath() {
       return file.getPath();
     }
   }

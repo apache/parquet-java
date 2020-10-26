@@ -94,8 +94,8 @@ public class HadoopOutputFile implements OutputFile {
   }
 
   @Override
-  public Path getPath() {
-    return path;
+  public String getPath() {
+    return toString();
   }
 
   @Override
