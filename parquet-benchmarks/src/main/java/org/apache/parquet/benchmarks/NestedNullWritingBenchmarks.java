@@ -121,7 +121,7 @@ public class NestedNullWritingBenchmarks {
     }
 
     @Override
-    public Path getPath() {
+    public String getPath() {
       throw new UnsupportedOperationException();
     }
   };
