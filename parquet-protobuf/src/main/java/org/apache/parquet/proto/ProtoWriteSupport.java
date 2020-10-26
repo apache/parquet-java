@@ -49,7 +49,7 @@ import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_PREFIX;
 /**
  * Implementation of {@link WriteSupport} for writing Protocol Buffers.
  */
-public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<T> {
+public class ProtoWriteSupport<T> extends WriteSupport<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProtoWriteSupport.class);
   public static final String PB_CLASS_WRITE = "parquet.proto.writeClass";
@@ -63,6 +63,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   private RecordConsumer recordConsumer;
   private ProtoDescriptorSupport protoDescriptorSupport;
   private MessageWriter messageWriter;
+  private List<FieldDescriptor> kafkaMetadataFields;
   // Keep protobuf enum value with number in the metadata, so that in read time, a reader can read at least
   // the number back even with an outdated schema which might not contain all enum values.
   private Map<String, Map<String, Integer>> protoEnumBookKeeper = new HashMap<>();
@@ -76,8 +77,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     this.protoDescriptorSupport = new ProtoDescriptorSupport(protobufClass);
   }
 
-  public ProtoWriteSupport(Descriptors.Descriptor messageDescriptor) {
+  public ProtoWriteSupport(Descriptors.Descriptor messageDescriptor, List<FieldDescriptor> kafkaMetadataFields) {
     this.protoDescriptorSupport = new ProtoDescriptorSupport(messageDescriptor);
+    this.kafkaMetadataFields = kafkaMetadataFields;
+  }
+
+  public ProtoWriteSupport(Descriptors.Descriptor messageDescriptor) {
+    this(messageDescriptor, new ArrayList<>());
   }
 
   @Override
@@ -107,8 +113,21 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   public void write(T record) {
     recordConsumer.startMessage();
     try {
-      messageWriter.writeTopLevelMessage(record);
+      if(record instanceof List) {
+        for(Object obj : (List)record) {
+          messageWriter.writeTopLevelMessage(obj);
+        }
+      } else {
+        messageWriter.writeTopLevelMessage(record);
+      }
     } catch (RuntimeException e) {
+      if(record instanceof List) {
+        for(Object obj : (List)record) {
+          Message m = (obj instanceof Message.Builder) ? ((Message.Builder) obj).build() : (Message) obj;
+          LOG.error("Cannot write message " + e.getMessage() + ":" + m);
+        }
+        throw e;
+      }
       Message m = (record instanceof Message.Builder) ? ((Message.Builder) record).build() : (Message) record;
       LOG.error("Cannot write message " + e.getMessage() + " : " + m);
       throw e;
@@ -125,10 +144,10 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   public WriteContext init(Configuration configuration) {
     Descriptor messageDescriptor = protoDescriptorSupport.getMessageDescriptor(configuration);
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
-    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(messageDescriptor);
+    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant, kafkaMetadataFields).convert(messageDescriptor);
     validatedMapping(messageDescriptor, rootSchema);
 
-    this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
+    this.messageWriter = new MessageWriter(messageDescriptor, rootSchema, kafkaMetadataFields);
 
     Map<String, String> extraMetaData = new HashMap<String, String>();
     extraMetaData.put(ProtoReadSupport.PB_CLASS, createMessageClassName(messageDescriptor));
@@ -206,10 +225,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   class MessageWriter extends FieldWriter {
 
     final FieldWriter[] fieldWriters;
+    final List<FieldDescriptor> msgWriterKafkaMetadataFields;
 
     @SuppressWarnings("unchecked")
-    MessageWriter(Descriptor descriptor, GroupType schema) {
-      List<FieldDescriptor> fields = descriptor.getFields();
+    MessageWriter(Descriptor descriptor, GroupType schema, List<FieldDescriptor> kafkaMetadataFields) {
+      this.msgWriterKafkaMetadataFields = kafkaMetadataFields;
+      List<FieldDescriptor> fields = Stream.concat(descriptor.getFields().stream(), kafkaMetadataFields.stream())
+        .collect(Collectors.toList());
       fieldWriters = (FieldWriter[]) Array.newInstance(FieldWriter.class, fields.size());
 
       for (FieldDescriptor fieldDescriptor: fields) {
@@ -228,8 +250,20 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         writer.setFieldName(name);
         writer.setIndex(schema.getFieldIndex(name));
 
-        fieldWriters[fieldDescriptor.getIndex()] = writer;
+        fieldWriters[getIndex(fieldDescriptor)] = writer;
       }
+    }
+
+    private int getIndex(FieldDescriptor field) {
+      if(msgWriterKafkaMetadataFields.size() == 0) {
+        return field.getIndex();
+      }
+      for(FieldDescriptor metadataFd: msgWriterKafkaMetadataFields) {
+        if(field.getNumber() == metadataFd.getNumber()) {
+          return field.getIndex();
+        }
+      }
+      return field.getIndex() + msgWriterKafkaMetadataFields.size();
     }
 
     private boolean isStructType(FieldDescriptor descriptor) {
@@ -272,7 +306,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         return createMapWriter(fieldDescriptor, type);
       }
 
-      return new MessageWriter(fieldDescriptor.getMessageType(), getGroupType(type));
+      return new MessageWriter(fieldDescriptor.getMessageType(), getGroupType(type), new ArrayList<>());
     }
 
     private GroupType getGroupType(Type type) {
@@ -352,7 +386,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
               "Cannot convert Protobuf message with extension field(s)");
           }
 
-          int fieldIndex = fieldDescriptor.getIndex();
+          int fieldIndex = getIndex(fieldDescriptor);
           fieldWriters[fieldIndex].writeField(entry.getValue());
         }
       } else if (Descriptors.FileDescriptor.Syntax.PROTO3.equals(syntax)) {
@@ -362,7 +396,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
           if (!fieldDescriptor.isRepeated() && FieldDescriptor.Type.MESSAGE.equals(type) && !pb.hasField(fieldDescriptor)) {
             continue;
           }
-          int fieldIndex = fieldDescriptor.getIndex();
+          int fieldIndex = getIndex(fieldDescriptor);
           FieldWriter fieldWriter = fieldWriters[fieldIndex];
           fieldWriter.writeField(pb.getField(fieldDescriptor));
         }
