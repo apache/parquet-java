@@ -18,14 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static java.lang.Math.max;
-import static java.lang.Math.min;
-import static org.apache.parquet.Preconditions.checkNotNull;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
@@ -39,8 +31,16 @@ import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class InternalParquetRecordWriter<T> {
-  private static final Logger LOG = LoggerFactory.getLogger(InternalParquetRecordWriter.class);
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+import static org.apache.parquet.Preconditions.checkNotNull;
+
+public class CustomInternalParquetRecordWriter<T> {
+  private static final Logger LOG = LoggerFactory.getLogger(CustomInternalParquetRecordWriter.class);
 
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
@@ -74,7 +74,7 @@ public class InternalParquetRecordWriter<T> {
    * @param rowGroupSize the size of a block in the file (this will be approximate)
    * @param compressor the codec used to compress
    */
-  public InternalParquetRecordWriter(
+  public CustomInternalParquetRecordWriter(
       ParquetFileWriter parquetFileWriter,
       WriteSupport<T> writeSupport,
       MessageType schema,

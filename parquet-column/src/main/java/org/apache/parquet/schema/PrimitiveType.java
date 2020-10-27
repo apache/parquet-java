@@ -515,7 +515,7 @@ public final class PrimitiveType extends Type {
     this(repetition, primitive, length, name, logicalTypeAnnotation, id, null);
   }
 
-  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                 int length, String name, LogicalTypeAnnotation logicalTypeAnnotation,
                 ID id, ColumnOrder columnOrder) {
     super(name, repetition, logicalTypeAnnotation, id);

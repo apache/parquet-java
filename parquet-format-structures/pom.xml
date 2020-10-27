@@ -67,10 +67,10 @@
          </executions>
        </plugin>
       <!-- thrift -->
-      <plugin>
-        <groupId>org.apache.thrift</groupId>
+       <plugin>
+       <groupId>org.apache.thrift</groupId>
         <artifactId>thrift-maven-plugin</artifactId>
-        <version>${thrift-maven-plugin.version}</version>        
+        <version>${thrift-maven-plugin.version}</version>
         <configuration>
           <thriftSourceRoot>${parquet.thrift.path}</thriftSourceRoot>
           <thriftExecutable>${format.thrift.executable}</thriftExecutable>
@@ -163,6 +163,7 @@
       <artifactId>javax.annotation-api</artifactId>
       <version>1.3.2</version>
      </dependency>
+
   </dependencies>
 
   <profiles>

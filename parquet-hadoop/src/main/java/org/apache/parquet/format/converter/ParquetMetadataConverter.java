@@ -1134,6 +1134,7 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter) throws IOException {
+    //long startTime = System.currentTimeMillis();
     FileMetaData fileMetaData = filter.accept(new MetadataFilterVisitor<FileMetaData, IOException>() {
       @Override
       public FileMetaData visit(NoFilter filter) throws IOException {
@@ -1158,10 +1159,12 @@ public class ParquetMetadataConverter {
     LOG.debug("{}", fileMetaData);
     ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
     if (LOG.isDebugEnabled()) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    //System.out.println("******* readParquetMetadata time = " + (System.currentTimeMillis()- startTime));
     return parquetMetadata;
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
+    //long startTime = System.currentTimeMillis();
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
@@ -1211,6 +1214,7 @@ public class ParquetMetadataConverter {
       for (KeyValue keyValue : key_value_metadata) {
         keyValueMetaData.put(keyValue.key, keyValue.value);
       }
+      //System.out.println("******* fromParquetMetadata time = " + (System.currentTimeMillis()- startTime));
     }
     return new ParquetMetadata(
         new org.apache.parquet.hadoop.metadata.FileMetaData(messageType, keyValueMetaData, parquetMetadata.getCreated_by()),

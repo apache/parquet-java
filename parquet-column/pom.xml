@@ -118,7 +118,10 @@
           <dependency>
             <groupId>org.apache.parquet</groupId>
             <artifactId>parquet-generator</artifactId>
+            <!--<version>1.8.1</version> -->
             <version>${project.version}</version>
+            <scope>system</scope>
+            <systemPath>/Users/iritma/Documents/develop/parquet-mr/parquet-generator/target/parquet-generator-1.12.0-SNAPSHOT.jar</systemPath>
           </dependency>
         </dependencies>
         <executions>

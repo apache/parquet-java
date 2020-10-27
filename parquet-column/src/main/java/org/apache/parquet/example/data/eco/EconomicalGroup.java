@@ -1,0 +1,322 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.parquet.example.data.eco;
+
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.Type;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+
+public class EconomicalGroup extends Group {
+
+  private final GroupType schema;
+  private final Object[] data;
+
+  @SuppressWarnings("unchecked")
+  public EconomicalGroup(GroupType schema) {
+    this.schema = schema;
+    this.data = new Object[schema.getFields().size()];
+    for (int i = 0; i < schema.getFieldCount(); i++) {
+      Type type = schema.getType(i);
+      if (type.isRepetition(Type.Repetition.REPEATED)){
+        //define array of values only for repeating fields
+        this.data[i] = new ArrayList<Object>(1);
+      }
+    /*  else {
+        this.data[i] = null;
+      }*/
+    }
+  }
+
+  @Override
+  public String toString() {
+    return toString("");
+  }
+
+  public String toString(String indent) {
+    String result = "";
+    int i = 0;
+    for (Type field : schema.getFields()) {
+      String name = field.getName();
+
+      if (field.isRepetition(Type.Repetition.REPEATED)){
+          List<Object> values = (List<Object>)data[i];
+          ++i;
+          if (values != null) {
+            if (values.size() > 0) {
+              for (Object value : values) {
+                result += indent + name;
+                if (value == null) {
+                  result += ": NULL\n";
+                } else if (value instanceof Group) {
+                  result += "\n" + ((EconomicalGroup) value).toString(indent + "  ");
+                } else {
+                  result += ": " + value.toString() + "\n";
+                }
+              }
+            }
+          }
+      }
+      else {
+        Object value = data[i];
+        result += indent + name;
+        if (value == null) {
+          result += ": NULL\n";
+        } else if (value instanceof Group) {
+          result += "\n" + ((EconomicalGroup) value).toString(indent + "  ");
+        } else {
+          result += ": " + value.toString() + "\n";
+        }
+        ++i;
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public Group addGroup(int fieldIndex) {
+    EconomicalGroup g = new EconomicalGroup(schema.getType(fieldIndex).asGroupType());
+    add(fieldIndex, g);
+    return g;
+  }
+
+  @Override
+  public Group getGroup(int fieldIndex, int index) {
+    return (Group)getValue(fieldIndex, index);
+  }
+
+  public Object getValue(int fieldIndex, int index) {
+    Type type = schema.getType(fieldIndex);
+    if (type.isRepetition(Type.Repetition.REPEATED)) {
+
+      List<Object> list;
+      try {
+        list = (List<Object>)data[fieldIndex];
+      } catch (IndexOutOfBoundsException e) {
+        throw new RuntimeException("not found " + fieldIndex + "(" + schema.getFieldName(fieldIndex) + ") in group:\n" + this);
+      }
+      try {
+        return list.get(index);
+      } catch (IndexOutOfBoundsException e) {
+        throw new RuntimeException("not found " + fieldIndex + "(" + schema.getFieldName(fieldIndex) + ") element number " + index + " in group:\n" + this);
+      }
+    }
+    else {
+      try {
+        return data[fieldIndex];
+      } catch (IndexOutOfBoundsException e) {
+        throw new RuntimeException("not found " + fieldIndex + "(" + schema.getFieldName(fieldIndex) + ") in group:\n" + this);
+      }
+    }
+  }
+
+  private void add(int fieldIndex, Primitive value) {
+    Type type = schema.getType(fieldIndex);
+    if (type.isRepetition(Type.Repetition.REPEATED)) {
+
+      List<Object> list = (List<Object>) data[fieldIndex];
+      if (!type.isRepetition(Type.Repetition.REPEATED)
+        && !list.isEmpty()) {
+        throw new IllegalStateException("field " + fieldIndex + " (" + type.getName() + ") can not have more than one value: " + list);
+      }
+      list.add(value);
+    }
+    else {
+      data[fieldIndex] = value;
+    }
+  }
+
+  @Override
+  public int getFieldRepetitionCount(int fieldIndex) {
+    Type type = schema.getType(fieldIndex);
+    if (type.isRepetition(Type.Repetition.REPEATED)) {
+      List<Object> list = (List<Object>) data[fieldIndex];
+      return list == null ? 0 : list.size();
+    }
+    else {
+      return data[fieldIndex] == null ? 0:1;
+    }
+  }
+
+  @Override
+  public String getValueToString(int fieldIndex, int index) {
+    return String.valueOf(getValue(fieldIndex, index));
+  }
+
+  @Override
+  public String getString(int fieldIndex, int index) {
+    return ((BinaryValue)getValue(fieldIndex, index)).getString();
+  }
+
+  @Override
+  public int getInteger(int fieldIndex, int index) {
+    return ((IntegerValue)getValue(fieldIndex, index)).getInteger();
+  }
+
+  @Override
+  public long getLong(int fieldIndex, int index) {
+    return ((LongValue)getValue(fieldIndex, index)).getLong();
+  }
+
+  @Override
+  public double getDouble(int fieldIndex, int index) {
+    return ((DoubleValue)getValue(fieldIndex, index)).getDouble();
+  }
+
+  @Override
+  public float getFloat(int fieldIndex, int index) {
+    return ((FloatValue)getValue(fieldIndex, index)).getFloat();
+  }
+
+  @Override
+  public boolean getBoolean(int fieldIndex, int index) {
+    return ((BooleanValue)getValue(fieldIndex, index)).getBoolean();
+  }
+
+  @Override
+  public Binary getBinary(int fieldIndex, int index) {
+      return ((BinaryValue) getValue(fieldIndex, index)).getBinary();
+  }
+
+  public NanoTime getTimeNanos(int fieldIndex, int index) {
+    return NanoTime.fromInt96((Int96Value)getValue(fieldIndex, index));
+  }
+
+  @Override
+  public Binary getInt96(int fieldIndex, int index) {
+    return ((Int96Value)getValue(fieldIndex, index)).getInt96();
+  }
+
+  @Override
+  public void add(int fieldIndex, int value) {
+    add(fieldIndex, new IntegerValue(value));
+  }
+
+  @Override
+  public void add(int fieldIndex, long value) {
+    add(fieldIndex, new LongValue(value));
+  }
+
+  @Override
+  public void add(int fieldIndex, String value) {
+      add(fieldIndex, new BinaryValue(Binary.fromString(value)));
+  }
+/*
+  @Override
+  public void add(int fieldIndex, NanoTime value) {
+    add(fieldIndex, value.toInt96());
+  }
+*/
+
+//TODO
+  @Override
+  public void add(int fieldIndex, org.apache.parquet.example.data.simple.NanoTime value) {
+    //add(fieldIndex, value.toInt96());
+  }
+
+  @Override
+  public void add(int fieldIndex, boolean value) {
+    add(fieldIndex, new BooleanValue(value));
+  }
+
+  @Override
+  public void add(int fieldIndex, Binary value) {
+    switch (getType().getType(fieldIndex).asPrimitiveType().getPrimitiveTypeName()) {
+      case BINARY:
+      case FIXED_LEN_BYTE_ARRAY:
+        add(fieldIndex, new BinaryValue(value));
+        break;
+      case INT96:
+        add(fieldIndex, new Int96Value(value));
+        break;
+      default:
+        throw new UnsupportedOperationException(
+          getType().asPrimitiveType().getName() + " not supported for Binary");
+    }
+  }
+  /* //with sessionId as 16 byte[]
+  @Override
+  public void add(int fieldIndex, Binary value) {
+    switch (getType().getType(fieldIndex).asPrimitiveType().getPrimitiveTypeName()) {
+      case BINARY:
+        if (this.getType().getFieldName(fieldIndex).equals("sessionId")) {
+          //sessionId is GUID - read as string (32 byte) - write and store as GUID (16 bytes)
+          String s = value.toStringUsingUTF8();
+          UUID uuid = UUID.fromString(s);
+          ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+          bb.putLong(uuid.getMostSignificantBits());
+          bb.putLong(uuid.getLeastSignificantBits());
+          add(fieldIndex, new BinaryValue(Binary.fromConstantByteArray(bb.array())));
+        }
+        else {
+          add(fieldIndex, new BinaryValue(value));
+        }
+        break;
+      case FIXED_LEN_BYTE_ARRAY:
+        add(fieldIndex, new BinaryValue(value));
+        break;
+      case INT96:
+        add(fieldIndex, new Int96Value(value));
+        break;
+      default:
+        throw new UnsupportedOperationException(
+          getType().asPrimitiveType().getName() + " not supported for Binary");
+    }
+  }*/
+
+  @Override
+  public void add(int fieldIndex, float value) {
+    add(fieldIndex, new FloatValue(value));
+  }
+
+  @Override
+  public void add(int fieldIndex, double value) {
+    add(fieldIndex, new DoubleValue(value));
+  }
+
+  @Override
+  public void add(int fieldIndex, Group value) {
+    Type type = schema.getType(fieldIndex);
+    if (type.isRepetition(Type.Repetition.REPEATED)) {
+      ((List<Object>) data[fieldIndex]).add(value);
+      ((ArrayList<Object>) data[fieldIndex]).trimToSize();
+    }
+    else {
+      data[fieldIndex] = value;
+    }
+  }
+
+  @Override
+  public GroupType getType() {
+    return schema;
+  }
+
+  @Override
+  public void writeValue(int field, int index, RecordConsumer recordConsumer) {
+    ((Primitive)getValue(field, index)).writeValue(recordConsumer);
+  }
+
+}
