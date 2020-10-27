@@ -28,7 +28,6 @@ import static org.openjdk.jmh.annotations.Scope.Benchmark;
 import java.io.IOException;
 import java.util.Random;
 
-import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;

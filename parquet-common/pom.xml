@@ -67,7 +67,6 @@
       <artifactId>audience-annotations</artifactId>
       <version>0.12.0</version>
     </dependency>
-
   </dependencies>
 
   <build>

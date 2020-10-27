@@ -113,5 +113,6 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
     protected WriteSupport<Group> getWriteSupport(Configuration conf) {
       return new GroupWriteSupport(type, extraMetaData);
     }
+
   }
 }

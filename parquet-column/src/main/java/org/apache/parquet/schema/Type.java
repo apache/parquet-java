@@ -362,4 +362,5 @@ abstract public class Type {
    * @return the converted tree
    */
    abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);
+
 }
