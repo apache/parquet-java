@@ -52,16 +52,24 @@ public class ColumnMaskingCommand extends BaseCommand {
     masker = new ColumnMasker();
   }
 
-  @Parameter(description = "<mask mode: nullify>")
+  @Parameter(
+    names = {"-m", "--mode"},
+    description = "<mask mode: nullify>")
   String mode;
 
-  @Parameter(description = "<input parquet file path>")
+  @Parameter(
+    names = {"-i", "--input"},
+    description = "<input parquet file path>")
   String input;
 
-  @Parameter(description = "<output parquet file path>")
+  @Parameter(
+    names = {"-o", "--output"},
+    description = "<output parquet file path>")
   String output;
 
-  @Parameter(description = "columns to be replaced with masked value")
+  @Parameter(
+    names = {"-c", "--columns"},
+    description = "<columns to be replaced with masked value>")
   List<String> cols;
 
   @Override
