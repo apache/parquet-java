@@ -153,7 +153,13 @@ public abstract class LocalWrapKmsClient implements KmsClient {
 
   private byte[] getKeyFromServer(String keyIdentifier) {
     refreshToken();
-    return getMasterKeyFromServer(keyIdentifier);
+    byte[] key = getMasterKeyFromServer(keyIdentifier);
+    int keyLength = key.length;
+    if (!(16 == keyLength || 24 == keyLength || 32 == keyLength)) {
+      throw new ParquetCryptoRuntimeException( "Wrong length: "+ keyLength +
+          " of AES key: "  + keyIdentifier);
+    }
+    return key;
   }
 
   /**
