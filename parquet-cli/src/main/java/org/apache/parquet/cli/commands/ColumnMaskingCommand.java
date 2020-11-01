@@ -105,7 +105,7 @@ public class ColumnMaskingCommand extends BaseCommand {
   public List<String> getExamples() {
     return Lists.newArrayList(
         "# Replace columns with masked values and write to a new Parquet file",
-        " nullify input.parquet output.parquet col1_name"
+        " -m nullify -i input.parquet -o output.parquet -c col1_name"
     );
   }
 }
