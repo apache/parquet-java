@@ -26,8 +26,8 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.apache.parquet.crypto.keytools.RemoteKmsClient;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
+import org.apache.parquet.crypto.keytools.KmsClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * This is a mock class, built for testing only. Don't use it as an example of KmsClient implementation.
  * (VaultClient is the sample implementation).
  */
-public class InMemoryKMS extends RemoteKmsClient {
+public class InMemoryKMS implements KmsClient {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryKMS.class);
 
   public static final String KEY_LIST_PROPERTY_NAME = "parquet.encryption.key.list";
@@ -57,9 +57,9 @@ public class InMemoryKMS extends RemoteKmsClient {
   }
 
   @Override
-  protected synchronized void initializeInternal() {
+  public synchronized void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
     // Parse master  keys
-    String[] masterKeys = hadoopConfiguration.getTrimmedStrings(KEY_LIST_PROPERTY_NAME);
+    String[] masterKeys = configuration.getTrimmedStrings(KEY_LIST_PROPERTY_NAME);
     if (null == masterKeys || masterKeys.length == 0) {
       throw new ParquetCryptoRuntimeException("No encryption key list");
     }
@@ -91,7 +91,7 @@ public class InMemoryKMS extends RemoteKmsClient {
   }
 
   @Override
-  protected synchronized String wrapKeyInServer(byte[] keyBytes, String masterKeyIdentifier)
+  public synchronized String wrapKey(byte[] keyBytes, String masterKeyIdentifier)
       throws KeyAccessDeniedException, UnsupportedOperationException {
 
     // Always use the latest key version for writing
@@ -104,7 +104,7 @@ public class InMemoryKMS extends RemoteKmsClient {
   }
 
   @Override
-  protected synchronized byte[] unwrapKeyInServer(String wrappedKey, String masterKeyIdentifier)
+  public synchronized byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier)
       throws KeyAccessDeniedException, UnsupportedOperationException {
     byte[] masterKey = masterKeyMap.get(masterKeyIdentifier);
     if (null == masterKey) {
@@ -112,12 +112,5 @@ public class InMemoryKMS extends RemoteKmsClient {
     }
     byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
     return KeyToolkit.decryptKeyLocally(wrappedKey, masterKey, AAD);
-  }
-
-  @Override
-  protected synchronized byte[] getMasterKeyFromServer(String masterKeyIdentifier)
-      throws KeyAccessDeniedException, UnsupportedOperationException {
-    // Always return the latest key version
-    return newMasterKeyMap.get(masterKeyIdentifier);
   }
 }
