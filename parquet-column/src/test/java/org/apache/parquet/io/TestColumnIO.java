@@ -677,11 +677,6 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
       public void write(double value, int repetitionLevel, int definitionLevel) {
         validate(value, repetitionLevel, definitionLevel);
       }
-
-      @Override
-      public BytesInput concatWriters() {
-        throw new UnsupportedOperationException();
-      }
     };
   }
 

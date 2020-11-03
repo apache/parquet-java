@@ -398,9 +398,4 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   abstract void writePage(int rowCount, int valueCount, Statistics<?> statistics, ValuesWriter repetitionLevels,
       ValuesWriter definitionLevels, ValuesWriter values) throws IOException;
-
-  @Override
-  public BytesInput concatWriters() {
-    return BytesInput.concat(this.repetitionLevelColumn.getBytes(), this.definitionLevelColumn.getBytes(), this.dataColumn.getBytes());
-  }
 }

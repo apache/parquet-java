@@ -30,11 +30,11 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.ColumnChunkPageWriteStore;
+import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
-import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileWriter;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.api.Converter;
@@ -62,7 +62,7 @@ public class ColumnMasker {
    * @param maskMode Mode to mask
    * @throws IOException
    */
-  public void processBlocks(TransParquetFileReader reader, TransParquetFileWriter writer, ParquetMetadata meta,
+  public void processBlocks(TransParquetFileReader reader, ParquetFileWriter writer, ParquetMetadata meta,
                             MessageType schema, List<String> paths, MaskMode maskMode) throws IOException {
     Set<ColumnPath> nullifyColumns = convertToColumnPaths(paths);
     int blockIndex = 0;
@@ -89,7 +89,7 @@ public class ColumnMasker {
   }
 
   private void processChunk(ColumnDescriptor descriptor, ColumnChunkMetaData chunk, ColumnReadStoreImpl crStore,
-                            TransParquetFileReader reader, TransParquetFileWriter writer, MessageType schema,
+                            TransParquetFileReader reader, ParquetFileWriter writer, MessageType schema,
                             Set<ColumnPath> paths, MaskMode maskMode) throws IOException {
     reader.setStreamPosition(chunk.getStartingPos());
 
@@ -112,7 +112,7 @@ public class ColumnMasker {
   }
 
   private void nullifyColumn(ColumnDescriptor descriptor, ColumnChunkMetaData chunk, ColumnReadStoreImpl crStore,
-                             TransParquetFileWriter writer, MessageType schema) throws IOException {
+                             ParquetFileWriter writer, MessageType schema) throws IOException {
     long totalChunkValues = chunk.getValueCount();
     int dMax = descriptor.getMaxDefinitionLevel();
     ColumnReader cReader = crStore.getColumnReader(descriptor);

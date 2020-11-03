@@ -92,11 +92,5 @@ public interface ColumnWriter {
    * @return the number of bytes of memory used to buffer the current data
    */
   long getBufferedSizeInMemory();
-
-  /**
-   * concat all the values writer in the order of repetitionLevel writer, definitionLevel writer, and data writer
-   * @return combined values in the type of ByteInput
-   */
-  BytesInput concatWriters();
 }
 

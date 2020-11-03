@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.hadoop.util;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -56,14 +54,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
-import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 public class CompressionConverter {
 
@@ -279,15 +272,5 @@ public class CompressionConverter {
     public SeekableInputStream getStream() {
       return f;
     }
-  }
-
-  public static final class TransParquetFileWriter extends ParquetFileWriter {
-
-    public TransParquetFileWriter(Configuration configuration, MessageType schema,
-                             Path file, Mode mode) throws IOException {
-      super(configuration, schema, file, mode);
-    }
-
-
   }
 }

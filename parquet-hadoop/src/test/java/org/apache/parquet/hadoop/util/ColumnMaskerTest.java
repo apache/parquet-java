@@ -35,7 +35,6 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
-import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileWriter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -113,7 +112,7 @@ public class ColumnMaskerTest {
 
     ParquetMetadata metaData = ParquetFileReader.readFooter(conf, inPath, NO_FILTER);
     MessageType schema = metaData.getFileMetaData().getSchema();
-    TransParquetFileWriter writer = new TransParquetFileWriter(conf, schema, outPath, ParquetFileWriter.Mode.OVERWRITE);
+    ParquetFileWriter writer = new ParquetFileWriter(conf, schema, outPath, ParquetFileWriter.Mode.OVERWRITE);
     writer.start();
 
     List<String> paths = new ArrayList<>();

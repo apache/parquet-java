@@ -32,7 +32,6 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.ColumnMasker;
 import org.apache.parquet.hadoop.util.ColumnMasker.MaskMode;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
-import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileWriter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
@@ -90,7 +89,7 @@ public class ColumnMaskingCommand extends BaseCommand {
 
     ParquetMetadata metaData = ParquetFileReader.readFooter(getConf(), inPath, NO_FILTER);
     MessageType schema = metaData.getFileMetaData().getSchema();
-    TransParquetFileWriter writer = new TransParquetFileWriter(getConf(), schema, outPath, ParquetFileWriter.Mode.CREATE);
+    ParquetFileWriter writer = new ParquetFileWriter(getConf(), schema, outPath, ParquetFileWriter.Mode.CREATE);
     writer.start();
 
     try (TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(inPath, getConf()), HadoopReadOptions.builder(getConf()).build())) {
