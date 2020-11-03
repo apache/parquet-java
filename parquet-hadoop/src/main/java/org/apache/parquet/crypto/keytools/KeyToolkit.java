@@ -206,9 +206,10 @@ public class KeyToolkit {
   public static void rotateMasterKeys(String folderPath, Configuration hadoopConfig)
     throws IOException, ParquetCryptoRuntimeException, KeyAccessDeniedException, UnsupportedOperationException {
 
-    if (hadoopConfig.getBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, KEY_MATERIAL_INTERNAL_DEFAULT)) {
+    if (hadoopConfig.getBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, false)) {
       throw new UnsupportedOperationException("Key rotation is not supported for internal key material");
     }
+    hadoopConfig.setBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, false);
 
     if (hadoopConfig.getBoolean(WRAP_LOCALLY_PROPERTY_NAME, WRAP_LOCALLY_DEFAULT)) {
       throw new UnsupportedOperationException("Key rotation is not supported for local key wrapping");
@@ -241,17 +242,19 @@ public class KeyToolkit {
 
       FileKeyMaterialStore keyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem);
       keyMaterialStore.initialize(parquetFile, hadoopConfig, false);
-      FileKeyUnwrapper fileKeyUnwrapper = new FileKeyUnwrapper(hadoopConfig, parquetFile, keyMaterialStore);
 
       FileKeyMaterialStore tempKeyMaterialStore = new HadoopFSKeyMaterialStore(hadoopFileSystem);
       tempKeyMaterialStore.initialize(parquetFile, hadoopConfig, true);
-      FileKeyWrapper fileKeyWrapper = new FileKeyWrapper(hadoopConfig, tempKeyMaterialStore);
 
       Set<String> fileKeyIdSet = keyMaterialStore.getKeyIDSet();
 
       // Start with footer key (to get KMS ID, URL, if needed)
+      FileKeyUnwrapper fileKeyUnwrapper = new FileKeyUnwrapper(hadoopConfig, parquetFile, keyMaterialStore);
       String keyMaterialString = keyMaterialStore.getKeyMaterial(KeyMaterial.FOOTER_KEY_ID_IN_FILE);
       KeyWithMasterID key = fileKeyUnwrapper.getDEKandMasterID(KeyMaterial.parse(keyMaterialString));
+      KmsClientAndDetails kmsDetails = fileKeyUnwrapper.getKmsClientAndDetails();
+
+      FileKeyWrapper fileKeyWrapper = new FileKeyWrapper(hadoopConfig, tempKeyMaterialStore, kmsDetails);
       fileKeyWrapper.getEncryptionKeyMetadata(key.getDataKey(), key.getMasterID(), true,
         KeyMaterial.FOOTER_KEY_ID_IN_FILE);
 
@@ -368,5 +371,29 @@ public class KeyToolkit {
 
   static boolean stringIsEmpty(String str) {
     return (null == str) || str.isEmpty();
+  }
+
+  static class KmsClientAndDetails {
+    private KmsClient kmsClient;
+    private String kmsInstanceID;
+    private String kmsInstanceURL;
+
+    public KmsClientAndDetails(KmsClient kmsClient, String kmsInstanceID, String kmsInstanceURL) {
+      this.kmsClient = kmsClient;
+      this.kmsInstanceID = kmsInstanceID;
+      this.kmsInstanceURL = kmsInstanceURL;
+    }
+
+    public KmsClient getKmsClient() {
+      return kmsClient;
+    }
+
+    public String getKmsInstanceID() {
+      return kmsInstanceID;
+    }
+
+    public String getKmsInstanceURL() {
+      return kmsInstanceURL;
+    }
   }
 }

@@ -42,7 +42,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
   //A map of KEK_ID -> KEK bytes, for the current token
   private final ConcurrentMap<String,byte[]> kekPerKekID;
 
-  private KmsClient kmsClient = null;
+  private KeyToolkit.KmsClientAndDetails kmsDetails = null;
   private FileKeyMaterialStore keyMaterialStore = null;
   private boolean checkedKeyMaterialInternalStorage = false;
   private final Configuration hadoopConfiguration;
@@ -112,8 +112,8 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
 
 
   KeyWithMasterID getDEKandMasterID(KeyMaterial keyMaterial)  {
-    if (null == kmsClient) {
-      kmsClient = getKmsClientFromConfigOrKeyMaterial(keyMaterial);
+    if (null == kmsDetails) {
+      kmsDetails = getKmsClientFromConfigOrKeyMaterial(keyMaterial);
     }
 
     boolean doubleWrapping = keyMaterial.isDoubleWrapped();
@@ -121,6 +121,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     String encodedWrappedDEK = keyMaterial.getWrappedDEK();
 
     byte[] dataKey;
+    KmsClient kmsClient = kmsDetails.getKmsClient();
     if (!doubleWrapping) {
       dataKey = kmsClient.unwrapKey(encodedWrappedDEK, masterKeyID);
     } else {
@@ -143,7 +144,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     return new KeyWithMasterID(dataKey, masterKeyID);
   }
 
-  private KmsClient getKmsClientFromConfigOrKeyMaterial(KeyMaterial keyMaterial) {
+  KeyToolkit.KmsClientAndDetails getKmsClientFromConfigOrKeyMaterial(KeyMaterial keyMaterial) {
     String kmsInstanceID = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME);
     if (stringIsEmpty(kmsInstanceID)) {
       kmsInstanceID = keyMaterial.getKmsInstanceID();
@@ -168,6 +169,8 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     if (LOG.isDebugEnabled()) {
       LOG.debug("File unwrapper - KmsClient: {}; InstanceId: {}; InstanceURL: {}", kmsClient, kmsInstanceID, kmsInstanceURL);
     }
-    return kmsClient;
+    return new KeyToolkit.KmsClientAndDetails(kmsClient, kmsInstanceID, kmsInstanceURL);
   }
+
+  KeyToolkit.KmsClientAndDetails getKmsClientAndDetails() { return kmsDetails; }
 }

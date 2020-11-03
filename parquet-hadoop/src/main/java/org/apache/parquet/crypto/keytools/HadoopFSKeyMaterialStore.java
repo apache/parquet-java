@@ -28,13 +28,13 @@ import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
-  
   public final static String KEY_MATERIAL_FILE_PREFIX = "_KEY_MATERIAL_FOR_";
   public static final String TEMP_FILE_PREFIX = "_TMP";
   public final static String KEY_MATERIAL_FILE_SUFFFIX = ".json";
@@ -77,6 +77,8 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
       JsonNode keyMaterialJson = objectMapper.readTree(keyMaterialStream);
       keyMaterialMap = objectMapper.readValue(keyMaterialJson,
         new TypeReference<Map<String, String>>() { });
+    } catch (FileNotFoundException e) {
+      throw new ParquetCryptoRuntimeException("External key material not found at " + keyMaterialFile, e);
     } catch (IOException e) {
       throw new ParquetCryptoRuntimeException("Failed to get key material from " + keyMaterialFile, e);
     }
@@ -105,7 +107,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
     try {
       hadoopFileSystem.delete(keyMaterialFile, false);
     } catch (IOException e) {
-      throw new ParquetCryptoRuntimeException("Failed to delete file " + keyMaterialFile, e);
+      throw new ParquetCryptoRuntimeException("Failed to delete key material file " + keyMaterialFile, e);
     }
   }
 
