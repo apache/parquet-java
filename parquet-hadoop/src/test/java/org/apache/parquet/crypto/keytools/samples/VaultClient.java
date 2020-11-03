@@ -64,10 +64,6 @@ public class VaultClient implements KmsClient {
   @Override
   public void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) 
       throws KeyAccessDeniedException {
-    if(configuration.getBoolean(KeyToolkit.WRAP_LOCALLY_PROPERTY_NAME, KeyToolkit.WRAP_LOCALLY_DEFAULT)) {
-      throw new ParquetCryptoRuntimeException("This Vault client doesn't support local wrapping");
-    }
-
     hadoopConfiguration = configuration;
     checkToken(accessToken);
     kmsToken = accessToken;
