@@ -33,8 +33,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
-
 public abstract class LocalWrapKmsClient implements KmsClient {
 
   public static final String LOCAL_WRAP_NO_KEY_VERSION = "NO_VERSION";
@@ -144,15 +142,9 @@ public abstract class LocalWrapKmsClient implements KmsClient {
     return KeyToolkit.decryptKeyLocally(encryptedEncodedKey, masterKey, AAD);
   }
 
-  private void refreshToken() {
-    kmsToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME);
-    if (stringIsEmpty(kmsToken)) {
-      throw new ParquetCryptoRuntimeException("Empty token");
-    }
-  }
-
   private byte[] getKeyFromServer(String keyIdentifier) {
-    refreshToken();
+    // refresh token
+    kmsToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME);
     byte[] key = getMasterKeyFromServer(keyIdentifier);
     int keyLength = key.length;
     if (!(16 == keyLength || 24 == keyLength || 32 == keyLength)) {
