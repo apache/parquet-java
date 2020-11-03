@@ -66,6 +66,19 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value=ThriftType.StructType.class, name="STRUCT")
 })
 public abstract class ThriftType {
+  private LogicalTypeAnnotation logicalTypeAnnotation;
+
+  public boolean hasLogicalTypeAnnotation() {
+    return this.logicalTypeAnnotation != null;
+  }
+
+  public LogicalTypeAnnotation getLogicalTypeAnnotation() {
+    return this.logicalTypeAnnotation;
+  }
+
+  public void setLogicalTypeAnnotation(LogicalTypeAnnotation logicalTypeAnnotation) {
+    this.logicalTypeAnnotation = logicalTypeAnnotation;
+  }
 
   @Override
   public boolean equals(Object o) {
@@ -621,23 +634,10 @@ public abstract class ThriftType {
   }
 
   public static class I64Type extends ThriftType {
-    private LogicalTypeAnnotation logicalTypeAnnotation;
 
     @JsonCreator
     public I64Type() {
       super(I64);
-    }
-
-    public boolean hasLogicalTypeAnnotation() {
-      return logicalTypeAnnotation != null;
-    }
-
-    public LogicalTypeAnnotation getLogicalTypeAnnotation() {
-      return logicalTypeAnnotation;
-    }
-
-    public void setLogicalTypeAnnotation(LogicalTypeAnnotation logicalTypeAnnotation) {
-      this.logicalTypeAnnotation = logicalTypeAnnotation;
     }
 
     @Override
