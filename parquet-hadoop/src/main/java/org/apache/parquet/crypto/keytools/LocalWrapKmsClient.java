@@ -33,6 +33,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * Typically, KMS systems support in-server key wrapping. Their clients should implement KmsClient interface directly.
+ * An extension of the LocalWrapKmsClient class should used only in rare situations where in-server wrapping is not
+ * supported. The wrapping will be done locally then - the MEKs will be fetched from the KMS server via the
+ * getMasterKeyFromServer function, and used to encrypt a DEK or KEK inside the LocalWrapKmsClient code.
+ * Note: master key rotation is not supported with local wrapping.
+ */
 public abstract class LocalWrapKmsClient implements KmsClient {
 
   public static final String LOCAL_WRAP_NO_KEY_VERSION = "NO_VERSION";
@@ -41,7 +48,6 @@ public abstract class LocalWrapKmsClient implements KmsClient {
   protected String kmsInstanceURL;
   protected String kmsToken;
   protected Configuration hadoopConfiguration;
-
 
   // MasterKey cache: master keys per key ID (per KMS Client). For local wrapping only.
   private ConcurrentMap<String, byte[]> masterKeyCache;
