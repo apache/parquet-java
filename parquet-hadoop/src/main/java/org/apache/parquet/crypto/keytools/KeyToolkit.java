@@ -252,9 +252,9 @@ public class KeyToolkit {
       FileKeyUnwrapper fileKeyUnwrapper = new FileKeyUnwrapper(hadoopConfig, parquetFile, keyMaterialStore);
       String keyMaterialString = keyMaterialStore.getKeyMaterial(KeyMaterial.FOOTER_KEY_ID_IN_FILE);
       KeyWithMasterID key = fileKeyUnwrapper.getDEKandMasterID(KeyMaterial.parse(keyMaterialString));
-      KmsClientAndDetails kmsDetails = fileKeyUnwrapper.getKmsClientAndDetails();
+      KmsClientAndDetails kmsClientAndDetails = fileKeyUnwrapper.getKmsClientAndDetails();
 
-      FileKeyWrapper fileKeyWrapper = new FileKeyWrapper(hadoopConfig, tempKeyMaterialStore, kmsDetails);
+      FileKeyWrapper fileKeyWrapper = new FileKeyWrapper(hadoopConfig, tempKeyMaterialStore, kmsClientAndDetails);
       fileKeyWrapper.getEncryptionKeyMetadata(key.getDataKey(), key.getMasterID(), true,
         KeyMaterial.FOOTER_KEY_ID_IN_FILE);
 

@@ -53,7 +53,8 @@ public class FileKeyWrapper {
   private short keyCounter;
   private String accessToken;
 
-  FileKeyWrapper(Configuration configuration, FileKeyMaterialStore keyMaterialStore, KeyToolkit.KmsClientAndDetails kmsDetails) {
+  FileKeyWrapper(Configuration configuration, FileKeyMaterialStore keyMaterialStore,
+                 KeyToolkit.KmsClientAndDetails kmsClientAndDetails) {
     this.hadoopConfiguration = configuration;
     this.keyMaterialStore = keyMaterialStore;
 
@@ -69,16 +70,16 @@ public class FileKeyWrapper {
     // Check caches upon each file writing (clean once in cacheEntryLifetime)
     KMS_CLIENT_CACHE_PER_TOKEN.checkCacheForExpiredTokens(cacheEntryLifetime);
     
-    if (null == kmsDetails) {
+    if (null == kmsClientAndDetails) {
       kmsInstanceID = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_ID_PROPERTY_NAME,
         KmsClient.KMS_INSTANCE_ID_DEFAULT);
       kmsInstanceURL = hadoopConfiguration.getTrimmed(KeyToolkit.KMS_INSTANCE_URL_PROPERTY_NAME,
         KmsClient.KMS_INSTANCE_URL_DEFAULT);
       kmsClient = KeyToolkit.getKmsClient(kmsInstanceID, kmsInstanceURL, configuration, accessToken, cacheEntryLifetime);
     } else {
-      kmsInstanceID = kmsDetails.getKmsInstanceID();
-      kmsInstanceURL = kmsDetails.getKmsInstanceURL();
-      kmsClient = kmsDetails.getKmsClient();
+      kmsInstanceID = kmsClientAndDetails.getKmsInstanceID();
+      kmsInstanceURL = kmsClientAndDetails.getKmsInstanceURL();
+      kmsClient = kmsClientAndDetails.getKmsClient();
     }
 
     if (doubleWrapping) {
@@ -96,7 +97,7 @@ public class FileKeyWrapper {
   }
 
   FileKeyWrapper(Configuration configuration, FileKeyMaterialStore keyMaterialStore) {
-    this(configuration, keyMaterialStore, null/*kmsDetails*/);
+    this(configuration, keyMaterialStore, null/*kmsClientAndDetails*/);
   }
 
   byte[] getEncryptionKeyMetadata(byte[] dataKey, String masterKeyID, boolean isFooterKey) {

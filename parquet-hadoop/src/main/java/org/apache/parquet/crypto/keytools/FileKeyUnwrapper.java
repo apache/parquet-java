@@ -42,7 +42,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
   //A map of KEK_ID -> KEK bytes, for the current token
   private final ConcurrentMap<String,byte[]> kekPerKekID;
 
-  private KeyToolkit.KmsClientAndDetails kmsDetails = null;
+  private KeyToolkit.KmsClientAndDetails kmsClientAndDetails = null;
   private FileKeyMaterialStore keyMaterialStore = null;
   private boolean checkedKeyMaterialInternalStorage = false;
   private final Configuration hadoopConfiguration;
@@ -112,8 +112,8 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
 
 
   KeyWithMasterID getDEKandMasterID(KeyMaterial keyMaterial)  {
-    if (null == kmsDetails) {
-      kmsDetails = getKmsClientFromConfigOrKeyMaterial(keyMaterial);
+    if (null == kmsClientAndDetails) {
+      kmsClientAndDetails = getKmsClientFromConfigOrKeyMaterial(keyMaterial);
     }
 
     boolean doubleWrapping = keyMaterial.isDoubleWrapped();
@@ -121,7 +121,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     String encodedWrappedDEK = keyMaterial.getWrappedDEK();
 
     byte[] dataKey;
-    KmsClient kmsClient = kmsDetails.getKmsClient();
+    KmsClient kmsClient = kmsClientAndDetails.getKmsClient();
     if (!doubleWrapping) {
       dataKey = kmsClient.unwrapKey(encodedWrappedDEK, masterKeyID);
     } else {
@@ -172,5 +172,7 @@ public class FileKeyUnwrapper implements DecryptionKeyRetriever {
     return new KeyToolkit.KmsClientAndDetails(kmsClient, kmsInstanceID, kmsInstanceURL);
   }
 
-  KeyToolkit.KmsClientAndDetails getKmsClientAndDetails() { return kmsDetails; }
+  KeyToolkit.KmsClientAndDetails getKmsClientAndDetails() {
+    return kmsClientAndDetails;
+  }
 }
