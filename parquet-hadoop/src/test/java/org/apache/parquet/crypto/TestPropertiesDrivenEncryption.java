@@ -406,6 +406,10 @@ public class TestPropertiesDrivenEncryption {
   private void testReadEncryptedParquetFiles(Path root, List<SingleRow> data, ExecutorService threadPool) throws IOException {
     readFilesMultithreaded(root, data, threadPool, false/*keysRotated*/);
 
+    if (isWrapLocally) {
+      return; // key rotation is not supported with local key wrapping
+    }
+
     LOG.info("--> Start master key rotation");
     Configuration hadoopConfigForRotation =
       EncryptionConfiguration.ENCRYPT_COLUMNS_AND_FOOTER.getHadoopConfiguration(this);
