@@ -209,7 +209,6 @@ public class KeyToolkit {
     if (hadoopConfig.getBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, false)) {
       throw new UnsupportedOperationException("Key rotation is not supported for internal key material");
     }
-    hadoopConfig.setBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, false);
 
     if (hadoopConfig.getBoolean(WRAP_LOCALLY_PROPERTY_NAME, WRAP_LOCALLY_DEFAULT)) {
       throw new UnsupportedOperationException("Key rotation is not supported for local key wrapping");
