@@ -35,6 +35,7 @@ import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.parquet.bytes.BytesInput;
 
 /**
  * Base implementation for {@link ColumnWriter} to be extended to specialize for V1 and V2 pages.

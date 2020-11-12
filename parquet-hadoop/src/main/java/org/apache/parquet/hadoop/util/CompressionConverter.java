@@ -44,6 +44,7 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
@@ -69,7 +70,7 @@ public class CompressionConverter {
   }
 
   public void processBlocks(TransParquetFileReader reader, ParquetFileWriter writer, ParquetMetadata meta, MessageType schema,
-                             String createdBy, CompressionCodecName codecName) throws IOException {
+                            String createdBy, CompressionCodecName codecName) throws IOException {
     int blockIndex = 0;
     PageReadStore store = reader.readNextRowGroup();
     while (store != null) {
@@ -266,6 +267,10 @@ public class CompressionConverter {
 
     public long getPos() throws IOException {
       return f.getPos();
+    }
+
+    public SeekableInputStream getStream() {
+      return f;
     }
   }
 }

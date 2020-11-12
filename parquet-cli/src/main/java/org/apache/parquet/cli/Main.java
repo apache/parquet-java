@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.parquet.cli.commands.CSVSchemaCommand;
 import org.apache.parquet.cli.commands.CatCommand;
 import org.apache.parquet.cli.commands.CheckParquet251Command;
+import org.apache.parquet.cli.commands.ColumnMaskingCommand;
 import org.apache.parquet.cli.commands.ColumnSizeCommand;
 import org.apache.parquet.cli.commands.ConvertCSVCommand;
 import org.apache.parquet.cli.commands.ConvertCommand;
@@ -46,6 +47,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Level;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.parquet.cli.commands.TransCompressionCommand;
+import org.apache.parquet.hadoop.util.ColumnMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Set;
@@ -93,6 +95,7 @@ public class Main extends Configured implements Tool {
     jc.addCommand("column-index", new ShowColumnIndexCommand(console));
     jc.addCommand("column-size", new ColumnSizeCommand(console));
     jc.addCommand("trans-compression", new TransCompressionCommand(console));
+    jc.addCommand("masking", new ColumnMaskingCommand(console));
   }
 
   @Override

@@ -113,8 +113,9 @@ public class ParquetFileWriter {
     OVERWRITE
   }
 
+  protected final PositionOutputStream out;
+
   private final MessageType schema;
-  private final PositionOutputStream out;
   private final AlignmentStrategy alignment;
   private final int columnIndexTruncateLength;
 
@@ -1006,6 +1007,43 @@ public class ParquetFileWriter {
     currentBlock.setTotalByteSize(blockUncompressedSize);
 
     endBlock();
+  }
+
+  /**
+   * @param descriptor the descriptor for the target column
+   * @param from a file stream to read from
+   * @param chunk the column chunk to be copied
+   * @param bloomFilter the bloomFilter for this chunk
+   * @param columnIndex the column index for this chunk
+   * @param offsetIndex the offset index for this chunk
+   * @throws IOException
+   */
+  public void appendColumnChunk(ColumnDescriptor descriptor, SeekableInputStream from, ColumnChunkMetaData chunk,
+                                BloomFilter bloomFilter, ColumnIndex columnIndex, OffsetIndex offsetIndex) throws IOException {
+    long start = chunk.getStartingPos();
+    long length = chunk.getTotalSize();
+    long newChunkStart = out.getPos();
+
+    copy(from, out, start, length);
+
+    currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
+    currentColumnIndexes.add(columnIndex);
+    currentOffsetIndexes.add(offsetIndex);
+
+    currentBlock.addColumn(ColumnChunkMetaData.get(
+      chunk.getPath(),
+      chunk.getPrimitiveType(),
+      chunk.getCodec(),
+      chunk.getEncodingStats(),
+      chunk.getEncodings(),
+      chunk.getStatistics(),
+      newChunkStart,
+      newChunkStart,
+      chunk.getValueCount(),
+      chunk.getTotalSize(),
+      chunk.getTotalUncompressedSize()));
+
+    currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + chunk.getTotalUncompressedSize());
   }
 
   // Buffers for the copy function.
