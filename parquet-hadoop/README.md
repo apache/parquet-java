@@ -418,13 +418,6 @@ If `false`, DEKs are directly encrypted with master keys, KEKs are not used.
 
 ---
 
-**Property:** `parquet.encryption.wrap.locally`  
-**Description:** Wrap keys locally - master keys are fetched from the KMS server and used to encrypt other keys (DEKs or KEKs).
-If `false` - key wrapping will be performed by a KMS server.  
-**Default value:** `false`
-
----
-
 **Property:** `parquet.encryption.key.material.store.internally`  
 **Description:** Store key material inside Parquet file footers; this mode doesn’t produce additional files. 
 If `false`, key material is stored in separate new files, created in the same folder - this mode enables key rotation for immutable Parquet files.  

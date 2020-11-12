@@ -24,6 +24,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
 import org.apache.parquet.crypto.keytools.mocks.InMemoryKMS;
+import org.apache.parquet.crypto.keytools.mocks.LocalWrapInMemoryKMS;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -277,13 +278,16 @@ public class TestPropertiesDrivenEncryption {
     conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
       PropertiesDrivenCryptoFactory.class.getName());
 
-    conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, InMemoryKMS.class.getName());
+    if (test.isWrapLocally) {
+      conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, LocalWrapInMemoryKMS.class.getName());
+    } else {
+      conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, InMemoryKMS.class.getName());
+    }
     conf.set(InMemoryKMS.KEY_LIST_PROPERTY_NAME, KEY_LIST);
     conf.set(InMemoryKMS.NEW_KEY_LIST_PROPERTY_NAME, NEW_KEY_LIST);
 
     conf.setBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, test.isKeyMaterialInternalStorage);
     conf.setBoolean(KeyToolkit.DOUBLE_WRAPPING_PROPERTY_NAME, test.isDoubleWrapping);
-    conf.setBoolean(KeyToolkit.WRAP_LOCALLY_PROPERTY_NAME, test.isWrapLocally);
     return conf;
   }
 
@@ -401,6 +405,10 @@ public class TestPropertiesDrivenEncryption {
 
   private void testReadEncryptedParquetFiles(Path root, List<SingleRow> data, ExecutorService threadPool) throws IOException {
     readFilesMultithreaded(root, data, threadPool, false/*keysRotated*/);
+
+    if (isWrapLocally) {
+      return; // key rotation is not supported with local key wrapping
+    }
 
     LOG.info("--> Start master key rotation");
     Configuration hadoopConfigForRotation =

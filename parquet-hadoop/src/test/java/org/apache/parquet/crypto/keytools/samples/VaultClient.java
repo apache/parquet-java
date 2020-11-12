@@ -25,10 +25,11 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.KmsClient;
-import org.apache.parquet.crypto.keytools.RemoteKmsClient;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,8 +43,9 @@ import java.util.Map;
 /**
  * An example of KmsClient implementation. Not for production use!
  */
-public class VaultClient extends RemoteKmsClient {
+public class VaultClient implements KmsClient {
   private static final Logger LOG = LoggerFactory.getLogger(VaultClient.class);
+
   private static final MediaType JSON_MEDIA_TYPE = MediaType.get("application/json; charset=utf-8");
   private static final String DEFAULT_TRANSIT_ENGINE = "/v1/transit/";
   private static final String transitWrapEndpoint = "encrypt/";
@@ -51,16 +53,20 @@ public class VaultClient extends RemoteKmsClient {
   private static final String tokenHeader="X-Vault-Token";
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
+  private String kmsToken;
+  private Configuration hadoopConfiguration;
+
   private String endPointPrefix;
   private OkHttpClient httpClient = new OkHttpClient.Builder()
     .connectionSpecs(Arrays.asList(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
     .build();
 
   @Override
-  protected void initializeInternal() {
-    if (isDefaultToken) {
-      throw new ParquetCryptoRuntimeException("Vault token not provided");
-    }
+  public void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) 
+      throws KeyAccessDeniedException {
+    hadoopConfiguration = configuration;
+    checkToken(accessToken);
+    kmsToken = accessToken;
 
     if (kmsInstanceURL.equals(KmsClient.KMS_INSTANCE_URL_DEFAULT)) {
       throw new ParquetCryptoRuntimeException("Vault URL not provided");
@@ -82,29 +88,29 @@ public class VaultClient extends RemoteKmsClient {
   }
 
   @Override
-  public String wrapKeyInServer(byte[] dataKey, String masterKeyIdentifier) {
+  public String wrapKey(byte[] keyBytes, String masterKeyIdentifier)
+      throws KeyAccessDeniedException {
+    refreshToken();
     Map<String, String> writeKeyMap = new HashMap<String, String>(1);
-    final String dataKeyStr = Base64.getEncoder().encodeToString(dataKey);
+    final String dataKeyStr = Base64.getEncoder().encodeToString(keyBytes);
     writeKeyMap.put("plaintext", dataKeyStr);
-    String response = getContentFromTransitEngine(endPointPrefix + transitWrapEndpoint, buildPayload(writeKeyMap), masterKeyIdentifier);
+    String response = getContentFromTransitEngine(endPointPrefix + transitWrapEndpoint, 
+        buildPayload(writeKeyMap), masterKeyIdentifier);
     String ciphertext = parseReturn(response, "ciphertext");
     return ciphertext;
   }
 
   @Override
-  public byte[] unwrapKeyInServer(String wrappedKey, String masterKeyIdentifier) {
+  public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier)
+      throws KeyAccessDeniedException {
+    refreshToken();
     Map<String, String> writeKeyMap = new HashMap<String, String>(1);
     writeKeyMap.put("ciphertext", wrappedKey);
-    String response = getContentFromTransitEngine(endPointPrefix + transitUnwrapEndpoint, buildPayload(writeKeyMap), masterKeyIdentifier);
+    String response = getContentFromTransitEngine(endPointPrefix + transitUnwrapEndpoint, 
+        buildPayload(writeKeyMap), masterKeyIdentifier);
     String plaintext = parseReturn(response, "plaintext");
     final byte[] key = Base64.getDecoder().decode(plaintext);
     return key;
-  }
-
-  @Override
-  protected byte[] getMasterKeyFromServer(String masterKeyIdentifier) {
-    // Vault supports in-server wrapping and unwrapping. No need to fetch master keys.
-    throw new UnsupportedOperationException("Use server wrap/unwrap, instead of fetching master keys (local wrap)");
   }
 
   private String buildPayload(Map<String, String> paramMap) {
@@ -115,6 +121,17 @@ public class VaultClient extends RemoteKmsClient {
       throw new ParquetCryptoRuntimeException("Failed to build payload", e);
     }
     return jsonValue;
+  }
+
+  private void checkToken(String token) {
+    if (null == token || token.isEmpty() || token.equals(KmsClient.KEY_ACCESS_TOKEN_DEFAULT)) {
+      throw new ParquetCryptoRuntimeException("Wrong Vault token : " + token);
+    }
+  }
+
+  private void refreshToken() {
+    kmsToken = hadoopConfiguration.getTrimmed(KeyToolkit.KEY_ACCESS_TOKEN_PROPERTY_NAME);
+    checkToken(kmsToken);
   }
 
   private String getContentFromTransitEngine(String endPoint, String jPayload, String masterKeyIdentifier) {
@@ -150,7 +167,6 @@ public class VaultClient extends RemoteKmsClient {
       }
     }
   }
-
 
   private static String parseReturn(String response, String searchKey) {
     String matchingValue;

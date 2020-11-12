@@ -18,16 +18,13 @@
  */
 package org.apache.parquet.crypto.keytools.mocks;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.apache.parquet.crypto.keytools.KeyToolkit;
-import org.apache.parquet.crypto.keytools.KmsClient;
+import org.apache.parquet.crypto.keytools.LocalWrapKmsClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,37 +32,21 @@ import org.slf4j.LoggerFactory;
  * This is a mock class, built for testing only. Don't use it as an example of KmsClient implementation.
  * (VaultClient is the sample implementation).
  */
-public class InMemoryKMS implements KmsClient {
-  private static final Logger LOG = LoggerFactory.getLogger(InMemoryKMS.class);
+public class LocalWrapInMemoryKMS extends LocalWrapKmsClient {
+  private static final Logger LOG = LoggerFactory.getLogger(LocalWrapInMemoryKMS.class);
 
   public static final String KEY_LIST_PROPERTY_NAME = "parquet.encryption.key.list";
-  public static final String NEW_KEY_LIST_PROPERTY_NAME = "parquet.encryption.new.key.list";
 
   private static Map<String,byte[]> masterKeyMap;
-  private static Map<String,byte[]> newMasterKeyMap;
-
-  public static synchronized void startKeyRotation(Configuration hadoopConfiguration) {
-    String[] newMasterKeys = hadoopConfiguration.getTrimmedStrings(NEW_KEY_LIST_PROPERTY_NAME);
-    if (null == newMasterKeys || newMasterKeys.length == 0) {
-      throw new ParquetCryptoRuntimeException("No encryption key list");
-    }
-    newMasterKeyMap = parseKeyList(newMasterKeys);
-  }
-
-  public static synchronized void finishKeyRotation() {
-    masterKeyMap = newMasterKeyMap;
-  }
 
   @Override
-  public synchronized void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
+  protected synchronized void initializeInternal() throws KeyAccessDeniedException {
     // Parse master  keys
-    String[] masterKeys = configuration.getTrimmedStrings(KEY_LIST_PROPERTY_NAME);
+    String[] masterKeys = hadoopConfiguration.getTrimmedStrings(KEY_LIST_PROPERTY_NAME);
     if (null == masterKeys || masterKeys.length == 0) {
       throw new ParquetCryptoRuntimeException("No encryption key list");
     }
     masterKeyMap = parseKeyList(masterKeys);
-
-    newMasterKeyMap = masterKeyMap;
   }
 
   private static Map<String, byte[]> parseKeyList(String[] masterKeys) {
@@ -91,26 +72,8 @@ public class InMemoryKMS implements KmsClient {
   }
 
   @Override
-  public synchronized String wrapKey(byte[] keyBytes, String masterKeyIdentifier)
+  protected synchronized byte[] getMasterKeyFromServer(String masterKeyIdentifier)
       throws KeyAccessDeniedException, UnsupportedOperationException {
-
-    // Always use the latest key version for writing
-    byte[] masterKey = newMasterKeyMap.get(masterKeyIdentifier);
-    if (null == masterKey) {
-      throw new ParquetCryptoRuntimeException("Key not found: " + masterKeyIdentifier);
-    }
-    byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-    return KeyToolkit.encryptKeyLocally(keyBytes, masterKey, AAD);
-  }
-
-  @Override
-  public synchronized byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier)
-      throws KeyAccessDeniedException, UnsupportedOperationException {
-    byte[] masterKey = masterKeyMap.get(masterKeyIdentifier);
-    if (null == masterKey) {
-      throw new ParquetCryptoRuntimeException("Key not found: " + masterKeyIdentifier);
-    }
-    byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-    return KeyToolkit.decryptKeyLocally(wrappedKey, masterKey, AAD);
+    return masterKeyMap.get(masterKeyIdentifier);
   }
 }

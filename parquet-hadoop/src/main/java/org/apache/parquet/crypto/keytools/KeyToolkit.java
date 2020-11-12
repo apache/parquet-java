@@ -69,11 +69,6 @@ public class KeyToolkit {
    */
   public static final String CACHE_LIFETIME_PROPERTY_NAME = "parquet.encryption.cache.lifetime.seconds";
   /**
-   * Wrap keys locally - master keys are fetched from the KMS server and used to encrypt other keys (DEKs or KEKs).
-   * By default, false - key wrapping will be performed by a KMS server.
-   */
-  public static final String WRAP_LOCALLY_PROPERTY_NAME = "parquet.encryption.wrap.locally";
-  /**
    * Store key material inside Parquet file footers; this mode doesn’t produce additional files.
    * By default, true. If set to false, key material is stored in separate files in the same folder,
    * which enables key rotation for immutable Parquet files.
@@ -92,7 +87,6 @@ public class KeyToolkit {
 
   public static final boolean DOUBLE_WRAPPING_DEFAULT = true;
   public static final long CACHE_LIFETIME_DEFAULT_SECONDS = 10 * 60; // 10 minutes
-  public static final boolean WRAP_LOCALLY_DEFAULT = false;
   public static final boolean KEY_MATERIAL_INTERNAL_DEFAULT = true;
   public static final int DATA_KEY_LENGTH_DEFAULT = 128;
   public static final int KEK_LENGTH_DEFAULT = 128;
@@ -214,10 +208,6 @@ public class KeyToolkit {
 
     if (hadoopConfig.getBoolean(KEY_MATERIAL_INTERNAL_PROPERTY_NAME, KEY_MATERIAL_INTERNAL_DEFAULT)) {
       throw new UnsupportedOperationException("Key rotation is not supported for internal key material");
-    }
-
-    if (hadoopConfig.getBoolean(WRAP_LOCALLY_PROPERTY_NAME, WRAP_LOCALLY_DEFAULT)) {
-      throw new UnsupportedOperationException("Key rotation is not supported for local key wrapping");
     }
 
     // If process wrote files with double-wrapped keys, clean KEK cache (since master keys are changing).
