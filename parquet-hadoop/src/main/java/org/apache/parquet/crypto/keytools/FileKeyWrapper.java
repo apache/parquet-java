@@ -21,6 +21,7 @@ package org.apache.parquet.crypto.keytools;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.hadoop.conf.Configuration;
@@ -35,7 +36,7 @@ import static org.apache.parquet.crypto.keytools.KeyToolkit.KEK_WRITE_CACHE_PER_
 public class FileKeyWrapper {
   private static final Logger LOG = LoggerFactory.getLogger(FileKeyWrapper.class);
 
-  public static final int KEK_LENGTH = 16;
+  private static final int[] ACCEPTABLE_KEK_LENGTHS = {128, 192, 256};
   public static final int KEK_ID_LENGTH = 16;
 
   // A map of MEK_ID -> KeyEncryptionKey, for the current token
@@ -49,6 +50,7 @@ public class FileKeyWrapper {
   private final Configuration hadoopConfiguration;
   private final SecureRandom random;
   private final boolean doubleWrapping;
+  private final int kekLength;
 
   private short keyCounter;
   private String accessToken;
@@ -79,8 +81,15 @@ public class FileKeyWrapper {
     if (doubleWrapping) {
       KEK_WRITE_CACHE_PER_TOKEN.checkCacheForExpiredTokens(cacheEntryLifetime);
       KEKPerMasterKeyID = KEK_WRITE_CACHE_PER_TOKEN.getOrCreateInternalCache(accessToken, cacheEntryLifetime);
+      int kekLengthBits = configuration.getInt(KeyToolkit.KEK_LENGTH_PROPERTY_NAME,
+          KeyToolkit.KEK_LENGTH_DEFAULT);
+      if (Arrays.binarySearch(ACCEPTABLE_KEK_LENGTHS, kekLengthBits) < 0) {
+        throw new ParquetCryptoRuntimeException("Wrong key encryption key (KEK) length : " + kekLengthBits);
+      }
+      kekLength = kekLengthBits / 8;
     } else {
       KEKPerMasterKeyID = null;
+      kekLength = 0;
     }
 
     if (LOG.isDebugEnabled()) {
@@ -143,7 +152,7 @@ public class FileKeyWrapper {
   }
 
   private KeyEncryptionKey createKeyEncryptionKey(String masterKeyID) {
-    byte[] kekBytes = new byte[KEK_LENGTH]; 
+    byte[] kekBytes = new byte[kekLength]; 
     random.nextBytes(kekBytes);
 
     byte[] kekID = new byte[KEK_ID_LENGTH];
