@@ -279,6 +279,11 @@ public class ParquetWriter<T> implements Closeable {
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
 
+    // encryptionProperties could be built from the implementation of EncryptionPropertiesFactory when it is attached.
+    if (encryptionProperties == null) {
+      encryptionProperties = ParquetOutputFormat.createEncryptionProperties(conf, new Path(file.getPath()), writeContext);
+    }
+
     ParquetFileWriter fileWriter = new ParquetFileWriter(
       file, schema, mode, rowGroupSize, maxPaddingSize,
       encodingProps.getColumnIndexTruncateLength(), encodingProps.getStatisticsTruncateLength(),

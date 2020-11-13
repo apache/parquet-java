@@ -118,6 +118,11 @@ public class NestedNullWritingBenchmarks {
         }
       };
     }
+
+    @Override
+    public String getPath() {
+      throw new UnsupportedOperationException();
+    }
   };
 
   private static class ValueGenerator {

@@ -31,4 +31,5 @@ public interface OutputFile {
 
   long defaultBlockSize();
 
+  String getPath();
 }
