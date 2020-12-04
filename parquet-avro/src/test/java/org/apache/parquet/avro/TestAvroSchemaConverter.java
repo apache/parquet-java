@@ -587,14 +587,28 @@ public class TestAvroSchemaConverter {
 
   @Test
   public void testParquetInt96AsFixed12AvroType() throws Exception {
+    Configuration enableInt96ReadingConfig = new Configuration();
+    enableInt96ReadingConfig.setBoolean(AvroReadSupport.READ_INT96_AS_FIXED, true);
+
     Schema schema = Schema.createRecord("myrecord", null, null, false);
     Schema int96schema = Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
     schema.setFields(Collections.singletonList(
       new Schema.Field("int96_field", int96schema, null, null)));
 
-    testParquetToAvroConversion(schema, "message myrecord {\n" +
+    testParquetToAvroConversion(enableInt96ReadingConfig, schema, "message myrecord {\n" +
       "  required int96 int96_field;\n" +
       "}\n");
+  }
+
+  @Test
+  public void testParquetInt96DefaultFail() throws Exception {
+    Schema schema = Schema.createRecord("myrecord", null, null, false);
+
+    MessageType parquetSchemaWithInt96 = MessageTypeParser.parseMessageType("message myrecord {\n  required int96 int96_field;\n}\n");
+
+    assertThrows("INT96 is deprecated. As interim enable READ_INT96_AS_FIXED  flag to read as byte array.",
+      IllegalArgumentException.class,
+      () -> new AvroSchemaConverter().convert(parquetSchemaWithInt96));
   }
 
   @Test

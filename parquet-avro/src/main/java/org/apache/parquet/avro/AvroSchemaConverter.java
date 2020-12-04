@@ -314,7 +314,7 @@ public class AvroSchemaConverter {
                 return Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
               }
               throw new IllegalArgumentException(
-                "INT96 is deprecated. As interim READ_INT96_AS_FIXED configuration flag to enable reading as 12-byte fixed byte array.");
+                "INT96 is deprecated. As interim enable READ_INT96_AS_FIXED  flag to read as byte array.");
             }
             @Override
             public Schema convertFLOAT(PrimitiveTypeName primitiveTypeName) {
