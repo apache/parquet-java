@@ -43,6 +43,8 @@ import java.util.Optional;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.avro.JsonProperties.NULL_VALUE;
+import static org.apache.parquet.avro.AvroReadSupport.READ_INT96_AS_FIXED;
+import static org.apache.parquet.avro.AvroReadSupport.READ_INT96_AS_FIXED_DEFAULT;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_PARQUET_UUID;
@@ -74,6 +76,7 @@ public class AvroSchemaConverter {
   private final boolean assumeRepeatedIsListElement;
   private final boolean writeOldListStructure;
   private final boolean writeParquetUUID;
+  private final boolean readInt96AsFixed;
 
   public AvroSchemaConverter() {
     this(ADD_LIST_ELEMENT_RECORDS_DEFAULT);
@@ -89,6 +92,7 @@ public class AvroSchemaConverter {
     this.assumeRepeatedIsListElement = assumeRepeatedIsListElement;
     this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
     this.writeParquetUUID = WRITE_PARQUET_UUID_DEFAULT;
+    this.readInt96AsFixed = READ_INT96_AS_FIXED_DEFAULT;
   }
 
   public AvroSchemaConverter(Configuration conf) {
@@ -97,6 +101,7 @@ public class AvroSchemaConverter {
     this.writeOldListStructure = conf.getBoolean(
         WRITE_OLD_LIST_STRUCTURE, WRITE_OLD_LIST_STRUCTURE_DEFAULT);
     this.writeParquetUUID = conf.getBoolean(WRITE_PARQUET_UUID, WRITE_PARQUET_UUID_DEFAULT);
+    this.readInt96AsFixed = conf.getBoolean(READ_INT96_AS_FIXED, READ_INT96_AS_FIXED_DEFAULT);
   }
 
   /**
@@ -305,7 +310,11 @@ public class AvroSchemaConverter {
             }
             @Override
             public Schema convertINT96(PrimitiveTypeName primitiveTypeName) {
-              return Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
+              if (readInt96AsFixed) {
+                return Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
+              }
+              throw new IllegalArgumentException(
+                "INT96 is deprecated. As interim READ_INT96_AS_FIXED configuration flag to enable reading as 12-byte fixed byte array.");
             }
             @Override
             public Schema convertFLOAT(PrimitiveTypeName primitiveTypeName) {
