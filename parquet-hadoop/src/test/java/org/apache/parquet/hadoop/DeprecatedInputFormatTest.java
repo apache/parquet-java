@@ -125,7 +125,9 @@ public class DeprecatedInputFormatTest {
     }
   }
 
-  // This is the implementation from cascading 2
+  // This is the RecordReader implementation simulate cascading 2 behavior:
+  // https://github.com/Cascading/cascading/blob/2.6/cascading-hadoop/
+  // src/main/shared/cascading/tap/hadoop/io/CombineFileRecordReaderWrapper.java
   static class CombineFileRecordReaderWrapper<K, V> implements RecordReader<K, V>
   {
     private final RecordReader<K, V> delegate;
@@ -173,7 +175,9 @@ public class DeprecatedInputFormatTest {
     }
   }
 
-  // This is the implementation from cascading 2
+  // This is the InputFormat implementation simulates cascading 2:
+  // https://github.com/Cascading/cascading/blob/2.6/cascading-hadoop/
+  // src/main/shared/cascading/tap/hadoop/Hfs.java#L773
   static class CombinedInputFormat extends CombineFileInputFormat implements Configurable
   {
     private Configuration conf;
