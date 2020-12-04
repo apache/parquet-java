@@ -17,12 +17,8 @@
  * under the License.
  */
 
-package org.apache.parquet.tools.command;
+package org.apache.parquet.hadoop.util;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
@@ -53,10 +49,10 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 
-public class TestPruneColumnsCommand {
+public class ColumnPrunerTest {
 
   private final int numRecord = 1000;
-  private PruneColumnsCommand command = new PruneColumnsCommand();
+  private ColumnPruner columnPruner = new ColumnPruner();
   private Configuration conf = new Configuration();
 
   @Test
@@ -65,9 +61,9 @@ public class TestPruneColumnsCommand {
     String inputFile = createParquetFile("input");
     String outputFile = createTempFile("output");
 
-    // Remove column
-    String cargs[] = {inputFile, outputFile, "Gender"};
-    executeCommandLine(cargs);
+    // Remove column Gender
+    List<String> cols = Arrays.asList("Gender");
+    columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
     ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
@@ -95,7 +91,8 @@ public class TestPruneColumnsCommand {
 
     // Remove columns
     String cargs[] = {inputFile, outputFile, "Name", "Gender"};
-    executeCommandLine(cargs);
+    List<String> cols = Arrays.asList("Name", "Gender");
+    columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
     ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
@@ -119,8 +116,8 @@ public class TestPruneColumnsCommand {
     // Create Parquet file
     String inputFile = createParquetFile("input");
     String outputFile = createTempFile("output");
-    String cargs[] = {inputFile, outputFile, "no_exist"};
-    executeCommandLine(cargs);
+    List<String> cols = Arrays.asList("no_exist");
+    columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
   }
 
   @Test
@@ -130,8 +127,8 @@ public class TestPruneColumnsCommand {
     String outputFile = createTempFile("output");
 
     // Remove nested column
-    String cargs[] = {inputFile, outputFile, "Links.Backward"};
-    executeCommandLine(cargs);
+    List<String> cols = Arrays.asList("Links.Backward");
+    columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
     ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
@@ -158,8 +155,8 @@ public class TestPruneColumnsCommand {
     String outputFile = createTempFile("output");
 
     // Remove parent column. All of it's children will be removed.
-    String cargs[] = {inputFile, outputFile, "Links"};
-    executeCommandLine(cargs);
+    List<String> cols = Arrays.asList("Links");
+    columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
     ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
@@ -180,14 +177,8 @@ public class TestPruneColumnsCommand {
     // Create Parquet file
     String inputFile = createParquetFile("input");
     String outputFile = createTempFile("output");
-    String cargs[] = {inputFile, outputFile, "Links.Not_exists"};
-    executeCommandLine(cargs);
-  }
-
-  private void executeCommandLine(String[] cargs) throws Exception {
-    CommandLineParser parser = new PosixParser();
-    CommandLine cmd = parser.parse(new Options(), cargs, command.supportsExtraArgs());
-    command.execute(cmd);
+    List<String> cols = Arrays.asList("Links.Not_exists");
+    columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
   }
 
   private void validateColumns(String inputFile, List<String> prunePaths) throws IOException {
