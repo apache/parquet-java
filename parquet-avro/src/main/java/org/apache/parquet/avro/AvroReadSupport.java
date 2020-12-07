@@ -51,6 +51,10 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   public static final String AVRO_COMPATIBILITY = "parquet.avro.compatible";
   public static final boolean AVRO_DEFAULT_COMPATIBILITY = true;
 
+  // Support reading Parquet INT96 as a 12-byte array.
+  public static final String READ_INT96_AS_FIXED = "parquet.avro.readInt96AsFixed";
+  public static final boolean READ_INT96_AS_FIXED_DEFAULT = false;
+
   /**
    * @param configuration a configuration
    * @param requestedProjection the requested projection schema
