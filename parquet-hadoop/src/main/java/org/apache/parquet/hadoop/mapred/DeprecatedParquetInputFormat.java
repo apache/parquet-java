@@ -151,6 +151,7 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
       }
 
       if (firstRecord) { // key & value are already read.
+        value.set(valueContainer.get());
         firstRecord = false;
         return true;
       }
