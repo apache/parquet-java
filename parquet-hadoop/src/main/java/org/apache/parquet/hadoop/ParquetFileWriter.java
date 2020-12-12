@@ -70,8 +70,10 @@ import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.DefaultKeyValueMetadataMergeStrategy;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
+import org.apache.parquet.hadoop.metadata.KeyValueMetadataMergeStrategy;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.HadoopStreams;
@@ -1290,6 +1292,22 @@ public class ParquetFileWriter {
    */
   @Deprecated
   public static ParquetMetadata mergeMetadataFiles(List<Path> files,  Configuration conf) throws IOException {
+    return mergeMetadataFiles(files, conf, new DefaultKeyValueMetadataMergeStrategy());
+  }
+
+  /**
+   * Given a list of metadata files, merge them into a single ParquetMetadata
+   * Requires that the schemas be compatible, and the extraMetadata be exactly equal.
+   * @param files a list of files to merge metadata from
+   * @param conf a configuration
+   * @param keyValueMetadataMergeStrategy strategy to merge values for same key, if there are multiple
+   * @return merged parquet metadata for the files
+   * @throws IOException if there is an error while writing
+   * @deprecated metadata files are not recommended and will be removed in 2.0.0
+   */
+  @Deprecated
+  public static ParquetMetadata mergeMetadataFiles(List<Path> files, Configuration conf,
+                                                   KeyValueMetadataMergeStrategy keyValueMetadataMergeStrategy) throws IOException {
     Preconditions.checkArgument(!files.isEmpty(), "Cannot merge an empty list of metadata");
 
     GlobalMetaData globalMetaData = null;
@@ -1303,7 +1321,7 @@ public class ParquetFileWriter {
     }
 
     // collapse GlobalMetaData into a single FileMetaData, which will throw if they are not compatible
-    return new ParquetMetadata(globalMetaData.merge(), blocks);
+    return new ParquetMetadata(globalMetaData.merge(keyValueMetadataMergeStrategy), blocks);
   }
 
   /**
@@ -1384,7 +1402,24 @@ public class ParquetFileWriter {
     metadata.close();
   }
 
+  /**
+   * Will merge the metadata of all the footers together
+   * @param root the directory containing all footers
+   * @param footers the list files footers to merge
+   * @return the global meta data for all the footers
+   */
   static ParquetMetadata mergeFooters(Path root, List<Footer> footers) {
+    return mergeFooters(root, footers, new DefaultKeyValueMetadataMergeStrategy());
+  }
+
+  /**
+   * Will merge the metadata of all the footers together
+   * @param root the directory containing all footers
+   * @param footers the list files footers to merge
+   * @param keyValueMergeStrategy strategy to merge values for a given key (if there are multiple values)
+   * @return the global meta data for all the footers
+   */
+  static ParquetMetadata mergeFooters(Path root, List<Footer> footers, KeyValueMetadataMergeStrategy keyValueMergeStrategy) {
     String rootPath = root.toUri().getPath();
     GlobalMetaData fileMetaData = null;
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -1403,7 +1438,7 @@ public class ParquetFileWriter {
         blocks.add(block);
       }
     }
-    return new ParquetMetadata(fileMetaData.merge(), blocks);
+    return new ParquetMetadata(fileMetaData.merge(keyValueMergeStrategy), blocks);
   }
 
   /**
