@@ -165,48 +165,47 @@ public class DumpCommand extends ArgsOnlyCommand {
 
         ParquetFileReader freader = null;
         if (showmd) {
+          long group = 0;
+          for (BlockMetaData block : blocks) {
             try {
-                long group = 0;
-                for (BlockMetaData block : blocks) {
-                    if (group != 0) out.println();
-                    out.format("row group %d%n", group++);
-                    out.rule('-');
+              if (group != 0)
+                out.println();
+              out.format("row group %d%n", group++);
+              out.rule('-');
 
-
-                    List<ColumnChunkMetaData> ccmds = block.getColumns();
-                    if (showColumns != null) {
-                        ccmds = new ArrayList<ColumnChunkMetaData>();
-                        for (ColumnChunkMetaData ccmd : block.getColumns()) {
-                            String path = Joiner.on('.').skipNulls().join(ccmd.getPath().toArray());
-                            if (showColumns.contains(path)) {
-                                ccmds.add(ccmd);
-                            }
-                        }
-                    }
-
-                    MetadataUtils.showDetails(out, ccmds);
-
-                    List<BlockMetaData> rblocks = Collections.singletonList(block);
-                    freader = new ParquetFileReader(
-                        conf, meta.getFileMetaData(), inpath, rblocks, columns);
-                    PageReadStore store = freader.readNextRowGroup();
-                    while (store != null) {
-                        out.incrementTabLevel();
-                        for (ColumnDescriptor column : columns) {
-                            out.println();
-                            dump(out, store, column);
-                        }
-                        out.decrementTabLevel();
-
-                        store = freader.readNextRowGroup();
-                    }
-                    out.flushColumns();
+              List<ColumnChunkMetaData> ccmds = block.getColumns();
+              if (showColumns != null) {
+                ccmds = new ArrayList<ColumnChunkMetaData>();
+                for (ColumnChunkMetaData ccmd : block.getColumns()) {
+                  String path = Joiner.on('.').skipNulls().join(ccmd.getPath().toArray());
+                  if (showColumns.contains(path)) {
+                    ccmds.add(ccmd);
+                  }
                 }
+              }
+
+              MetadataUtils.showDetails(out, ccmds);
+
+              List<BlockMetaData> rblocks = Collections.singletonList(block);
+              freader = new ParquetFileReader(conf, meta.getFileMetaData(), inpath, rblocks, columns);
+              PageReadStore store = freader.readNextRowGroup();
+              while (store != null) {
+                out.incrementTabLevel();
+                for (ColumnDescriptor column : columns) {
+                  out.println();
+                  dump(out, store, column);
+                }
+                out.decrementTabLevel();
+
+                store = freader.readNextRowGroup();
+              }
+              out.flushColumns();
             } finally {
-                if (freader != null) {
-                    freader.close();
-                }
+              if (freader != null) {
+                freader.close();
+              }
             }
+          }
         }
 
         if (showdt) {
