@@ -203,6 +203,7 @@ public class DumpCommand extends ArgsOnlyCommand {
             } finally {
               if (freader != null) {
                 freader.close();
+                freader = null;
               }
             }
           }
@@ -238,6 +239,7 @@ public class DumpCommand extends ArgsOnlyCommand {
                     out.flushColumns();
                     if (freader != null) {
                         freader.close();
+                        freader = null;
                     }
                 }
             }
