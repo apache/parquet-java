@@ -163,31 +163,30 @@ public class DumpCommand extends ArgsOnlyCommand {
             }
         }
 
-        ParquetFileReader freader = null;
         if (showmd) {
           long group = 0;
           for (BlockMetaData block : blocks) {
-            try {
-              if (group != 0)
-                out.println();
-              out.format("row group %d%n", group++);
-              out.rule('-');
+            if (group != 0)
+              out.println();
+            out.format("row group %d%n", group++);
+            out.rule('-');
 
-              List<ColumnChunkMetaData> ccmds = block.getColumns();
-              if (showColumns != null) {
-                ccmds = new ArrayList<ColumnChunkMetaData>();
-                for (ColumnChunkMetaData ccmd : block.getColumns()) {
-                  String path = Joiner.on('.').skipNulls().join(ccmd.getPath().toArray());
-                  if (showColumns.contains(path)) {
-                    ccmds.add(ccmd);
-                  }
+            List<ColumnChunkMetaData> ccmds = block.getColumns();
+            if (showColumns != null) {
+              ccmds = new ArrayList<ColumnChunkMetaData>();
+              for (ColumnChunkMetaData ccmd : block.getColumns()) {
+                String path = Joiner.on('.').skipNulls().join(ccmd.getPath().toArray());
+                if (showColumns.contains(path)) {
+                  ccmds.add(ccmd);
                 }
               }
+            }
 
-              MetadataUtils.showDetails(out, ccmds);
+            MetadataUtils.showDetails(out, ccmds);
 
-              List<BlockMetaData> rblocks = Collections.singletonList(block);
-              freader = new ParquetFileReader(conf, meta.getFileMetaData(), inpath, rblocks, columns);
+            List<BlockMetaData> rblocks = Collections.singletonList(block);
+            try (ParquetFileReader freader = new ParquetFileReader(conf, meta.getFileMetaData(), inpath, rblocks,
+              columns)) {
               PageReadStore store = freader.readNextRowGroup();
               while (store != null) {
                 out.incrementTabLevel();
@@ -200,11 +199,6 @@ public class DumpCommand extends ArgsOnlyCommand {
                 store = freader.readNextRowGroup();
               }
               out.flushColumns();
-            } finally {
-              if (freader != null) {
-                freader.close();
-                freader = null;
-              }
             }
           }
         }
@@ -221,26 +215,22 @@ public class DumpCommand extends ArgsOnlyCommand {
                     long page = 1;
                     long total = blocks.size();
                     long offset = 1;
-                    freader = new ParquetFileReader(
-                        conf, meta.getFileMetaData(), inpath, blocks, Collections.singletonList(column));
-                    PageReadStore store = freader.readNextRowGroup();
-                    while (store != null) {
+                    try(ParquetFileReader freader = new ParquetFileReader(
+                      conf, meta.getFileMetaData(), inpath, blocks, Collections.singletonList(column))){
+                      PageReadStore store = freader.readNextRowGroup();
+                      while (store != null) {
                         ColumnReadStoreImpl crstore = new ColumnReadStoreImpl(
-                            store, new DumpGroupConverter(), schema,
-                            meta.getFileMetaData().getCreatedBy());
+                          store, new DumpGroupConverter(), schema,
+                          meta.getFileMetaData().getCreatedBy());
                         dump(out, crstore, column, page++, total, offset);
 
                         offset += store.getRowCount();
                         store = freader.readNextRowGroup();
+                      }
                     }
-
                     out.flushColumns();
                 } finally {
                     out.flushColumns();
-                    if (freader != null) {
-                        freader.close();
-                        freader = null;
-                    }
                 }
             }
         }
