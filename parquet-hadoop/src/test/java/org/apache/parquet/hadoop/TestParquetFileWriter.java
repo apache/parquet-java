@@ -1028,12 +1028,17 @@ public class TestParquetFileWriter {
       keyValues2, "test");
     GlobalMetaData merged = ParquetFileWriter.mergeInto(md2, ParquetFileWriter.mergeInto(md1, null));
     try {
-      merged.merge(new DefaultKeyValueMetadataMergeStrategy());
+      merged.merge(new StrictKeyValueMetadataMergeStrategy());
       fail("Merge metadata is expected to fail because of conflicting key values");
     } catch (RuntimeException e) {
       // expected because of conflicting values
       assertTrue(e.getMessage().contains("could not merge metadata"));
     }
+
+    Map<String, String> mergedKeyValues = merged.merge(new ConcatenatingKeyValueMetadataMergeStrategy()).getKeyValueMetaData();
+    assertEquals(1, mergedKeyValues.size());
+    String mergedValue = mergedKeyValues.get("a");
+    assertTrue(mergedValue.equals("b,c") || mergedValue.equals("c,b"));
   }
 
   @Test
@@ -1055,7 +1060,7 @@ public class TestParquetFileWriter {
         new PrimitiveType(OPTIONAL, BINARY, "b")),
       keyValues2, "test");
     GlobalMetaData merged = ParquetFileWriter.mergeInto(md2, ParquetFileWriter.mergeInto(md1, null));
-    Map<String, String> mergedValues = merged.merge(new DefaultKeyValueMetadataMergeStrategy()).getKeyValueMetaData();
+    Map<String, String> mergedValues = merged.merge(new StrictKeyValueMetadataMergeStrategy()).getKeyValueMetaData();
     assertEquals("b", mergedValues.get("a"));
     assertEquals("d", mergedValues.get("c"));
   }

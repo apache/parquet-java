@@ -21,10 +21,8 @@ package org.apache.parquet.hadoop.metadata;
 import static java.util.Collections.unmodifiableMap;
 
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.parquet.schema.MessageType;
@@ -91,8 +89,8 @@ public class GlobalMetaData implements Serializable {
    * Provided for backward compatibility
    * @return the merged version of this
    */
-   public FileMetaData merge() {
-     return merge(new DefaultKeyValueMetadataMergeStrategy());
+  public FileMetaData merge() {
+     return merge(new StrictKeyValueMetadataMergeStrategy());
    }
 
   /**

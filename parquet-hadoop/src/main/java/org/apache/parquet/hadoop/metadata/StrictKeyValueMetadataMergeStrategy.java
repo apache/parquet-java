@@ -23,13 +23,11 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- *  Default strategy to throw errors in metadata if there are multiple values for a given key in metadata.
+ *  Strategy to throw errors if there are multiple values for a given key in metadata.
  */
-public class DefaultKeyValueMetadataMergeStrategy implements KeyValueMetadataMergeStrategy {
+public class StrictKeyValueMetadataMergeStrategy implements KeyValueMetadataMergeStrategy {
   /**
    * @param keyValueMetaData the merged app specific metadata
-   *
-   * @throws NullPointerException if keyValueMetaData is {@code null}
    */
   public Map<String, String> merge(Map<String, Set<String>> keyValueMetaData) {
     Map<String, String> mergedKeyValues = new HashMap<String, String>();

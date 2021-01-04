@@ -37,8 +37,6 @@ import static java.util.Collections.unmodifiableMap;
 public interface KeyValueMetadataMergeStrategy extends Serializable {
   /**
    * @param keyValueMetaData the merged app specific metadata
-   *
-   * @throws NullPointerException if keyValueMetaData is {@code null}
    */
   Map<String, String> merge(Map<String, Set<String>> keyValueMetaData);
 }

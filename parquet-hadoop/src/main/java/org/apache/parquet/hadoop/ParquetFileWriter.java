@@ -70,7 +70,7 @@ import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.hadoop.metadata.DefaultKeyValueMetadataMergeStrategy;
+import org.apache.parquet.hadoop.metadata.StrictKeyValueMetadataMergeStrategy;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.hadoop.metadata.KeyValueMetadataMergeStrategy;
@@ -1292,7 +1292,7 @@ public class ParquetFileWriter {
    */
   @Deprecated
   public static ParquetMetadata mergeMetadataFiles(List<Path> files,  Configuration conf) throws IOException {
-    return mergeMetadataFiles(files, conf, new DefaultKeyValueMetadataMergeStrategy());
+    return mergeMetadataFiles(files, conf, new StrictKeyValueMetadataMergeStrategy());
   }
 
   /**
@@ -1409,7 +1409,7 @@ public class ParquetFileWriter {
    * @return the global meta data for all the footers
    */
   static ParquetMetadata mergeFooters(Path root, List<Footer> footers) {
-    return mergeFooters(root, footers, new DefaultKeyValueMetadataMergeStrategy());
+    return mergeFooters(root, footers, new StrictKeyValueMetadataMergeStrategy());
   }
 
   /**

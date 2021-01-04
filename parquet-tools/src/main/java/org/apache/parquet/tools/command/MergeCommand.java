@@ -26,12 +26,12 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.ReflectionUtils;
-import org.apache.parquet.hadoop.metadata.DefaultKeyValueMetadataMergeStrategy;
-import org.apache.parquet.hadoop.metadata.KeyValueMetadataMergeStrategy;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
+import org.apache.parquet.hadoop.metadata.KeyValueMetadataMergeStrategy;
+import org.apache.parquet.hadoop.metadata.StrictKeyValueMetadataMergeStrategy;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.tools.Main;
 
 import java.io.IOException;
@@ -46,7 +46,7 @@ public class MergeCommand extends ArgsOnlyCommand {
           "   <output> is the destination parquet file"
   };
 
-  private static final String DEFAULT_KEY_VALUE_MERGE_STRATEGY = new DefaultKeyValueMetadataMergeStrategy().getClass().getName();
+  private static final String DEFAULT_KEY_VALUE_MERGE_STRATEGY = StrictKeyValueMetadataMergeStrategy.class.getName();
   public static final Options OPTIONS;
 
   static {
