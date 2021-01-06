@@ -38,7 +38,9 @@ import org.apache.parquet.tools.Main;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MergeCommand extends ArgsOnlyCommand {
   public static final String[] USAGE = new String[] {
@@ -57,11 +59,12 @@ public class MergeCommand extends ArgsOnlyCommand {
 
   static {
     OPTIONS = new Options();
+    String availableStrategies = Arrays.stream(MergeStrategy.values()).map(Enum::name).collect(Collectors.joining(", "));
     Option mergeStrategy = Option.builder("s")
       .longOpt("mergeStrategy")
-      .desc("Strategy to merge (key, value) pairs in metadata if there are multiple values for same key " +
-        "(default: " + MergeStrategy.STRICT + "). You can provide your custom implementation by specifying " +
-        MergeStrategy.CUSTOM)
+      .desc("Strategy to merge (key, value) pairs in metadata if there are multiple values for same key. " +
+        "Available strategies: " + availableStrategies.toLowerCase() + ". (default: '" + MergeStrategy.STRICT.name().toLowerCase() + "')." +
+        " You can provide your custom implementation by specifying '" + MergeStrategy.CUSTOM.name().toLowerCase() + "' strategy.")
       .optionalArg(true)
       .build();
     
