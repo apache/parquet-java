@@ -27,6 +27,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.hadoop.ParquetFileWriter;
+import org.apache.parquet.hadoop.metadata.ConcatenatingKeyValueMetadataMergeStrategy;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.KeyValueMetadataMergeStrategy;
 import org.apache.parquet.hadoop.metadata.StrictKeyValueMetadataMergeStrategy;
@@ -46,7 +47,12 @@ public class MergeCommand extends ArgsOnlyCommand {
           "   <output> is the destination parquet file"
   };
 
-  private static final String DEFAULT_KEY_VALUE_MERGE_STRATEGY = StrictKeyValueMetadataMergeStrategy.class.getName();
+  private static enum MergeStrategy {
+    STRICT,
+    CONCAT,
+    CUSTOM,
+  }
+  
   public static final Options OPTIONS;
 
   static {
@@ -54,11 +60,21 @@ public class MergeCommand extends ArgsOnlyCommand {
     Option mergeStrategy = Option.builder("s")
       .longOpt("mergeStrategy")
       .desc("Strategy to merge (key, value) pairs in metadata if there are multiple values for same key " +
-        "(default: " + DEFAULT_KEY_VALUE_MERGE_STRATEGY + ")")
+        "(default: " + MergeStrategy.STRICT + "). You can provide your custom implementation by specifying " +
+        MergeStrategy.CUSTOM)
+      .optionalArg(true)
+      .build();
+    
+    Option mergeStrategyClass = Option.builder("c")
+      .longOpt("mergeStrategyClass")
+      .desc("Custom strategy class to merge (key, value) pairs in metadata if there are multiple values for same key." +
+        "Valid only with " + MergeStrategy.CUSTOM + " mergeStrategy. This can be useful if strategies provided by parquet library are not sufficient. " + 
+        "Requires fully qualified class name. Note that the class specified has to be included in the classpath.")
       .optionalArg(true)
       .build();
 
     OPTIONS.addOption(mergeStrategy);
+    OPTIONS.addOption(mergeStrategyClass);
   }
 
   /**
@@ -100,14 +116,8 @@ public class MergeCommand extends ArgsOnlyCommand {
     List<Path> inputFiles = getInputFiles(args.subList(0, args.size() - 1));
     Path outputFile = new Path(args.get(args.size() - 1));
 
-    String mergeStrategyClass = DEFAULT_KEY_VALUE_MERGE_STRATEGY;
-    if (options.hasOption('s')) {
-      mergeStrategyClass = options.getOptionValue('s');
-    }
-    KeyValueMetadataMergeStrategy mergeStrategy = loadMergeStrategy(mergeStrategyClass);
-
     // Merge schema and extraMeta
-    FileMetaData mergedMeta = mergedMetadata(inputFiles, mergeStrategy);
+    FileMetaData mergedMeta = mergedMetadata(inputFiles, getMergeStrategy(options, conf));
     PrintWriter out = new PrintWriter(Main.out, true);
 
     // Merge data
@@ -138,7 +148,27 @@ public class MergeCommand extends ArgsOnlyCommand {
     return ParquetFileWriter.mergeMetadataFiles(inputFiles, conf, keyValueMetadataMergeStrategy).getFileMetaData();
   }
 
-  private KeyValueMetadataMergeStrategy loadMergeStrategy(String mergeStrategyClass) {
+  private KeyValueMetadataMergeStrategy getMergeStrategy(CommandLine options, Configuration conf) {
+    final MergeStrategy mergeStrategyOption;
+    if (options.hasOption('s')) {
+      mergeStrategyOption = MergeStrategy.valueOf(options.getOptionValue('s').toUpperCase());
+    } else {
+      mergeStrategyOption = MergeStrategy.STRICT;
+    }
+
+    switch(mergeStrategyOption) {
+      case STRICT:
+        return new StrictKeyValueMetadataMergeStrategy();
+      case CONCAT:
+        return new ConcatenatingKeyValueMetadataMergeStrategy();
+      case CUSTOM:
+        return loadCustomMergeStrategy(options.getOptionValue('c'));
+      default:
+        throw new IllegalArgumentException("Unknown merge strategy: " + mergeStrategyOption);
+    }
+  }
+
+  private KeyValueMetadataMergeStrategy loadCustomMergeStrategy(String mergeStrategyClass) {
     Class<? extends KeyValueMetadataMergeStrategy> mergeStrategy = conf.getClass(mergeStrategyClass, null, KeyValueMetadataMergeStrategy.class);
     return ReflectionUtils.newInstance(mergeStrategy, conf);
   }
