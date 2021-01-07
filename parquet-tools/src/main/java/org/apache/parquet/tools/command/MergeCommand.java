@@ -19,20 +19,28 @@
 package org.apache.parquet.tools.command;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.parquet.hadoop.ParquetFileWriter;
+import org.apache.parquet.hadoop.metadata.ConcatenatingKeyValueMetadataMergeStrategy;
+import org.apache.parquet.hadoop.metadata.FileMetaData;
+import org.apache.parquet.hadoop.metadata.KeyValueMetadataMergeStrategy;
+import org.apache.parquet.hadoop.metadata.StrictKeyValueMetadataMergeStrategy;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
-import org.apache.parquet.hadoop.ParquetFileWriter;
-import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.tools.Main;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MergeCommand extends ArgsOnlyCommand {
   public static final String[] USAGE = new String[] {
@@ -40,6 +48,37 @@ public class MergeCommand extends ArgsOnlyCommand {
           "where <input> is the source parquet files/directory to be merged",
           "   <output> is the destination parquet file"
   };
+
+  private static enum MergeStrategy {
+    STRICT,
+    CONCAT,
+    CUSTOM,
+  }
+  
+  public static final Options OPTIONS;
+
+  static {
+    OPTIONS = new Options();
+    String availableStrategies = Arrays.stream(MergeStrategy.values()).map(Enum::name).collect(Collectors.joining(", "));
+    Option mergeStrategy = Option.builder("s")
+      .longOpt("mergeStrategy")
+      .desc("Strategy to merge (key, value) pairs in metadata if there are multiple values for same key. " +
+        "Available strategies: " + availableStrategies.toLowerCase() + ". (default: '" + MergeStrategy.STRICT.name().toLowerCase() + "')." +
+        " You can provide your custom implementation by specifying '" + MergeStrategy.CUSTOM.name().toLowerCase() + "' strategy.")
+      .optionalArg(true)
+      .build();
+    
+    Option mergeStrategyClass = Option.builder("c")
+      .longOpt("mergeStrategyClass")
+      .desc("Custom strategy class to merge (key, value) pairs in metadata if there are multiple values for same key." +
+        "Valid only with " + MergeStrategy.CUSTOM + " mergeStrategy. This can be useful if strategies provided by parquet library are not sufficient. " + 
+        "Requires fully qualified class name. Note that the class specified has to be included in the classpath.")
+      .optionalArg(true)
+      .build();
+
+    OPTIONS.addOption(mergeStrategy);
+    OPTIONS.addOption(mergeStrategyClass);
+  }
 
   /**
    * Biggest number of input files we can merge.
@@ -53,6 +92,11 @@ public class MergeCommand extends ArgsOnlyCommand {
     super(2, MAX_FILE_NUM + 1);
 
     conf = new Configuration();
+  }
+
+  @Override
+  public Options getOptions() {
+    return OPTIONS;
   }
 
   @Override
@@ -76,7 +120,7 @@ public class MergeCommand extends ArgsOnlyCommand {
     Path outputFile = new Path(args.get(args.size() - 1));
 
     // Merge schema and extraMeta
-    FileMetaData mergedMeta = mergedMetadata(inputFiles);
+    FileMetaData mergedMeta = mergedMetadata(inputFiles, getMergeStrategy(options, conf));
     PrintWriter out = new PrintWriter(Main.out, true);
 
     // Merge data
@@ -103,8 +147,33 @@ public class MergeCommand extends ArgsOnlyCommand {
     writer.end(mergedMeta.getKeyValueMetaData());
   }
 
-  private FileMetaData mergedMetadata(List<Path> inputFiles) throws IOException {
-    return ParquetFileWriter.mergeMetadataFiles(inputFiles, conf).getFileMetaData();
+  private FileMetaData mergedMetadata(List<Path> inputFiles, KeyValueMetadataMergeStrategy keyValueMetadataMergeStrategy) throws IOException {
+    return ParquetFileWriter.mergeMetadataFiles(inputFiles, conf, keyValueMetadataMergeStrategy).getFileMetaData();
+  }
+
+  private KeyValueMetadataMergeStrategy getMergeStrategy(CommandLine options, Configuration conf) {
+    final MergeStrategy mergeStrategyOption;
+    if (options.hasOption('s')) {
+      mergeStrategyOption = MergeStrategy.valueOf(options.getOptionValue('s').toUpperCase());
+    } else {
+      mergeStrategyOption = MergeStrategy.STRICT;
+    }
+
+    switch(mergeStrategyOption) {
+      case STRICT:
+        return new StrictKeyValueMetadataMergeStrategy();
+      case CONCAT:
+        return new ConcatenatingKeyValueMetadataMergeStrategy();
+      case CUSTOM:
+        return loadCustomMergeStrategy(options.getOptionValue('c'));
+      default:
+        throw new IllegalArgumentException("Unknown merge strategy: " + mergeStrategyOption);
+    }
+  }
+
+  private KeyValueMetadataMergeStrategy loadCustomMergeStrategy(String mergeStrategyClass) {
+    Class<? extends KeyValueMetadataMergeStrategy> mergeStrategy = conf.getClass(mergeStrategyClass, null, KeyValueMetadataMergeStrategy.class);
+    return ReflectionUtils.newInstance(mergeStrategy, conf);
   }
 
   /**

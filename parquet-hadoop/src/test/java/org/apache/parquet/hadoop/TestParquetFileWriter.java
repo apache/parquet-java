@@ -1008,6 +1008,63 @@ public class TestParquetFileWriter {
     }
   }
 
+  @Test
+  public void testMergeMetadataWithConflictingKeyValues() {
+    Map<String, String> keyValues1 = new HashMap<String, String>() {{
+      put("a", "b");
+    }};
+    Map<String, String> keyValues2 = new HashMap<String, String>() {{
+      put("a", "c");
+    }};
+    FileMetaData md1 = new FileMetaData(
+      new MessageType("root1",
+        new PrimitiveType(REPEATED, BINARY, "a"),
+        new PrimitiveType(OPTIONAL, BINARY, "b")),
+     keyValues1, "test");
+    FileMetaData md2 = new FileMetaData(
+      new MessageType("root1",
+        new PrimitiveType(REPEATED, BINARY, "a"),
+        new PrimitiveType(OPTIONAL, BINARY, "b")),
+      keyValues2, "test");
+    GlobalMetaData merged = ParquetFileWriter.mergeInto(md2, ParquetFileWriter.mergeInto(md1, null));
+    try {
+      merged.merge(new StrictKeyValueMetadataMergeStrategy());
+      fail("Merge metadata is expected to fail because of conflicting key values");
+    } catch (RuntimeException e) {
+      // expected because of conflicting values
+      assertTrue(e.getMessage().contains("could not merge metadata"));
+    }
+
+    Map<String, String> mergedKeyValues = merged.merge(new ConcatenatingKeyValueMetadataMergeStrategy()).getKeyValueMetaData();
+    assertEquals(1, mergedKeyValues.size());
+    String mergedValue = mergedKeyValues.get("a");
+    assertTrue(mergedValue.equals("b,c") || mergedValue.equals("c,b"));
+  }
+
+  @Test
+  public void testMergeMetadataWithNoConflictingKeyValues() {
+    Map<String, String> keyValues1 = new HashMap<String, String>() {{
+      put("a", "b");
+    }};
+    Map<String, String> keyValues2 = new HashMap<String, String>() {{
+      put("c", "d");
+    }};
+    FileMetaData md1 = new FileMetaData(
+      new MessageType("root1",
+        new PrimitiveType(REPEATED, BINARY, "a"),
+        new PrimitiveType(OPTIONAL, BINARY, "b")),
+      keyValues1, "test");
+    FileMetaData md2 = new FileMetaData(
+      new MessageType("root1",
+        new PrimitiveType(REPEATED, BINARY, "a"),
+        new PrimitiveType(OPTIONAL, BINARY, "b")),
+      keyValues2, "test");
+    GlobalMetaData merged = ParquetFileWriter.mergeInto(md2, ParquetFileWriter.mergeInto(md1, null));
+    Map<String, String> mergedValues = merged.merge(new StrictKeyValueMetadataMergeStrategy()).getKeyValueMetaData();
+    assertEquals("b", mergedValues.get("a"));
+    assertEquals("d", mergedValues.get("c"));
+  }
+
   private org.apache.parquet.column.statistics.Statistics<?> statsC1(Binary... values) {
     org.apache.parquet.column.statistics.Statistics<?> stats = org.apache.parquet.column.statistics.Statistics
         .createStats(C1.getPrimitiveType());
