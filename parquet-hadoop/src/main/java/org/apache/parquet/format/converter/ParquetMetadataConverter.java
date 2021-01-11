@@ -520,7 +520,7 @@ public class ParquetMetadataConverter {
         metaData.setDictionary_page_offset(columnMetaData.getDictionaryPageOffset());
       }
       metaData.setBloom_filter_offset(columnMetaData.getBloomFilterOffset());
-      if (!columnMetaData.getStatistics().isEmpty()) {
+      if (columnMetaData.getStatistics() != null && !columnMetaData.getStatistics().isEmpty()) {
         metaData.setStatistics(toParquetStatistics(columnMetaData.getStatistics(), this.statisticsTruncateLength));
       }
       if (columnMetaData.getEncodingStats() != null) {
