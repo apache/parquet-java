@@ -27,6 +27,7 @@ public final class Registry {
   static {
     registry = new LinkedHashMap<String,Class<? extends Command>>();
     registry.put("cat", CatCommand.class);
+    registry.put("catdiff", CatDiffCommand.class);
     registry.put("head", HeadCommand.class);
     registry.put("schema", ShowSchemaCommand.class);
     registry.put("meta", ShowMetaCommand.class);
