@@ -67,7 +67,7 @@ public class TransCompressionCommand extends ArgsOnlyCommand {
 
   @Override
   public String getCommandDescription() {
-    return "Translate the compression of a given Parquet file to a new compression one to a new Parquet file.";
+    return "Translate the compression of a given Parquet file to a new compression one to a new Parquet file (It doesn't support bloom filter feature yet).";
   }
 
   @Override
