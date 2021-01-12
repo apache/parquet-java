@@ -122,8 +122,8 @@
     <module>parquet-arrow</module>
     <module>parquet-avro</module>
     <module>parquet-benchmarks</module>
-    <module>parquet-cascading</module>
-    <module>parquet-cascading3</module>
+    <module>parquet-cascading-deprecated</module>
+    <module>parquet-cascading3-deprecated</module>
     <module>parquet-cli</module>
     <module>parquet-column</module>
     <module>parquet-common</module>
@@ -136,12 +136,10 @@
     <module>parquet-pig-bundle</module>
     <module>parquet-protobuf</module>
     <module>parquet-scala</module>
-    <module>parquet-scrooge</module>
+    <module>parquet-scrooge-deprecated</module>
     <module>parquet-thrift</module>
     <module>parquet-hadoop-bundle</module>
-    <module>parquet-hive</module>
-    <module>parquet-hive-bundle</module>
-    <module>parquet-tools</module>
+    <module>parquet-tools-deprecated</module>
   </modules>
 
   <dependencies>
@@ -522,13 +520,12 @@
               <!-- Excluding the following modules because they are not part of the parquet public API -->
               <excludeModule>parquet-benchmarks</excludeModule>
               <excludeModule>parquet-cli</excludeModule>
-              <excludeModule>parquet-tools</excludeModule>
+              <excludeModule>parquet-tools-deprecated</excludeModule>
               <excludeModule>parquet-format-structures</excludeModule>
 
               <!-- Excluding the following modules because bundles do not contain any java classes while they still fail the
                 compatibility check because of missing dependencies -->
               <excludeModule>parquet-hadoop-bundle</excludeModule>
-              <excludeModule>parquet-hive-bundle</excludeModule>
               <excludeModule>parquet-pig-bundle</excludeModule>
             </excludeModules>
             <excludes>
