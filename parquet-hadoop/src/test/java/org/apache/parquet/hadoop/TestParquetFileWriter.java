@@ -61,6 +61,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 import static org.apache.parquet.CorruptStatistics.shouldIgnoreStatistics;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
@@ -219,6 +220,25 @@ public class TestParquetFileWriter {
       assertNull(r.readNextRowGroup());
     }
     PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
+  public void testWriteEmptyBlock() throws Exception {
+    File testFile = temp.newFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+
+    ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
+    w.start();
+    w.startBlock(0);
+
+    TestUtils.assertThrows("End block with zero record", IOException.class,
+      (Callable<Void>) () -> {
+      w.endBlock();
+      return null;
+    });
   }
 
   @Test
