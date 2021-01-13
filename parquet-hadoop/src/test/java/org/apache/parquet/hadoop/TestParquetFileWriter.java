@@ -30,6 +30,7 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
+import org.apache.parquet.io.ParquetEncodingException;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
@@ -61,6 +62,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 import static org.apache.parquet.CorruptStatistics.shouldIgnoreStatistics;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
@@ -219,6 +221,25 @@ public class TestParquetFileWriter {
       assertNull(r.readNextRowGroup());
     }
     PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
+  public void testWriteEmptyBlock() throws Exception {
+    File testFile = temp.newFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+
+    ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
+    w.start();
+    w.startBlock(0);
+
+    TestUtils.assertThrows("End block with zero record", ParquetEncodingException.class,
+      (Callable<Void>) () -> {
+      w.endBlock();
+      return null;
+    });
   }
 
   @Test
