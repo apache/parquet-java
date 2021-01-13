@@ -30,6 +30,7 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
+import org.apache.parquet.io.ParquetEncodingException;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
@@ -234,7 +235,7 @@ public class TestParquetFileWriter {
     w.start();
     w.startBlock(0);
 
-    TestUtils.assertThrows("End block with zero record", IOException.class,
+    TestUtils.assertThrows("End block with zero record", ParquetEncodingException.class,
       (Callable<Void>) () -> {
       w.endBlock();
       return null;

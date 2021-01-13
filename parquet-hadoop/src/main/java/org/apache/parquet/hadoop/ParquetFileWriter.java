@@ -861,7 +861,7 @@ public class ParquetFileWriter {
    */
   public void endBlock() throws IOException {
     if (currentRecordCount == 0) {
-      throw new IOException("End block with zero record");
+      throw new ParquetEncodingException("End block with zero record");
     }
 
     state = state.endBlock();
