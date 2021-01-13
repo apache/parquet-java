@@ -75,7 +75,7 @@
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
-    <jackson.version>2.11.2</jackson.version>
+    <jackson.version>2.11.4</jackson.version>
     <jackson-databind.version>${jackson.version}</jackson-databind.version>
     <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
