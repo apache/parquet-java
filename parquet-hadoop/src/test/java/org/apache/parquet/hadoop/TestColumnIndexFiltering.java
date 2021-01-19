@@ -391,6 +391,10 @@ public class TestColumnIndexFiltering {
     assertEquals(DATA, readUsers(FilterCompat.NOOP, false));
     assertEquals(DATA, readUsers(FilterCompat.NOOP, true));
 
+    // Column index filtering with null filter
+    assertEquals(DATA, readUsers((Filter) null, false));
+    assertEquals(DATA, readUsers((Filter) null, true));
+
     // Column index filtering turned off
     assertEquals(DATA.stream().filter(user -> user.getId() == 1234).collect(Collectors.toList()),
         readUsers(eq(longColumn("id"), 1234l), true, false));
