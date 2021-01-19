@@ -213,7 +213,9 @@ public class DeprecatedInputFormatTest {
     File outputFile = File.createTempFile("temp", null);
     outputFile.delete();
     PrintWriter pw = new PrintWriter(new FileWriter(inputFile));
-    pw.println(content);
+    if (content != null) {
+      pw.println(content);
+    }
     pw.close();
     writeJob = new Job(conf, "write");
 
@@ -239,10 +241,12 @@ public class DeprecatedInputFormatTest {
     File inputDir = File.createTempFile("temp", null);
     inputDir.delete();
     inputDir.mkdirs();
-    File parquetFile1 = createParquetFile("hello");
-    File parquetFile2 = createParquetFile("world");
+    File parquetFile1 = createParquetFile(null);
+    File parquetFile2 = createParquetFile("hello");
+    File parquetFile3 = createParquetFile("world");
     Files.move(parquetFile1.toPath(), new File(inputDir, "1").toPath());
     Files.move(parquetFile2.toPath(), new File(inputDir, "2").toPath());
+    Files.move(parquetFile3.toPath(), new File(inputDir, "3").toPath());
 
     File outputDir = File.createTempFile("temp", null);
     outputDir.delete();
