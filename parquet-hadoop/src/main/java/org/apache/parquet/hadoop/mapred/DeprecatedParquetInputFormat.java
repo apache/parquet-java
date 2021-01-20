@@ -100,9 +100,9 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
         }
 
         // read once to gain access to key and value objects
+        valueContainer = new Container<V>();
         if (realReader.nextKeyValue()) {
           firstRecord = true;
-          valueContainer = new Container<V>();
           valueContainer.set(realReader.getCurrentValue());
 
         } else {
