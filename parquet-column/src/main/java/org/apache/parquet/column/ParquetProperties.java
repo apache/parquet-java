@@ -58,7 +58,7 @@ public class ParquetProperties {
   public static final int DEFAULT_MAX_BLOOM_FILTER_BYTES = 1024 * 1024;
   public static final boolean DEFAULT_BLOOM_FILTER_ENABLED = false;
 
-  public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
+  public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = false;
 
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
