@@ -121,6 +121,17 @@ public class FilterCompat {
     return NOOP;
   }
 
+  /**
+   * Returns whether filtering is required based on the specified filter. It is used to avoid any significant steps to
+   * prepare filtering if {@link #NOOP} is used.
+   *
+   * @param filter the filter to be checked
+   * @return {@code false} if the filter is {@code null} or is a no-op filter, {@code true} otherwise.
+   */
+  public static boolean isFilteringRequired(Filter filter) {
+    return filter != null && !(filter instanceof NoOpFilter);
+  }
+
   // wraps a FilterPredicate
   public static final class FilterPredicateCompat implements Filter {
     private final FilterPredicate filterPredicate;

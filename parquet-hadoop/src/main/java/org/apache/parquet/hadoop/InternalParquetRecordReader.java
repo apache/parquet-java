@@ -86,7 +86,7 @@ class InternalParquetRecordReader<T> {
    */
   public InternalParquetRecordReader(ReadSupport<T> readSupport, Filter filter) {
     this.readSupport = readSupport;
-    this.filter = Objects.requireNonNull(filter, "filter cannot be null");
+    this.filter = filter == null ? FilterCompat.NOOP : filter;
   }
 
   /**
