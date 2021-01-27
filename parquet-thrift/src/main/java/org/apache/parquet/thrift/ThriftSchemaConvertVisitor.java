@@ -57,8 +57,6 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 import static org.apache.parquet.schema.ConversionPatterns.listOfElements;
 import static org.apache.parquet.schema.ConversionPatterns.listType;
 import static org.apache.parquet.schema.ConversionPatterns.mapType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
@@ -325,7 +323,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   @Override
   public ConvertedField visit(EnumType enumType, State state) {
-    return visitPrimitiveType(BINARY, enumType(), state);
+    return visitPrimitiveType(BINARY, LogicalTypeAnnotation.enumType(), state);
   }
 
   @Override
@@ -350,17 +348,21 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   @Override
   public ConvertedField visit(I32Type i32Type, State state) {
-    return visitPrimitiveType(INT32, state);
+    return i32Type.hasLogicalTypeAnnotation() ? visitPrimitiveType(INT32, i32Type.getLogicalTypeAnnotation(), state) : visitPrimitiveType(INT32, state);
   }
 
   @Override
   public ConvertedField visit(I64Type i64Type, State state) {
-    return visitPrimitiveType(INT64, state);
+    return i64Type.hasLogicalTypeAnnotation() ? visitPrimitiveType(INT64, i64Type.getLogicalTypeAnnotation(), state) : visitPrimitiveType(INT64, state);
   }
 
   @Override
   public ConvertedField visit(StringType stringType, State state) {
-    return stringType.isBinary() ? visitPrimitiveType(BINARY, state) : visitPrimitiveType(BINARY, stringType(), state);
+    if (stringType.isBinary()) {
+      return stringType.hasLogicalTypeAnnotation() ? visitPrimitiveType(BINARY, stringType.getLogicalTypeAnnotation(), state) : visitPrimitiveType(BINARY, state);
+    } else {
+      return visitPrimitiveType(BINARY, LogicalTypeAnnotation.stringType(), state);
+    }
   }
 
   private static boolean isUnion(StructOrUnionType s) {

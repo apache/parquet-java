@@ -35,21 +35,24 @@ public class TestThriftType {
     assertEquals("{\n"
                 +"  \"id\" : \"STRUCT\",\n"
                 +"  \"children\" : [ ],\n"
-                +"  \"structOrUnionType\" : \"STRUCT\"\n"
+                +"  \"structOrUnionType\" : \"STRUCT\",\n"
+                +"  \"logicalTypeAnnotation\" : null\n"
                 +"}", st.toJSON());
 
     st = new StructType(new LinkedList<ThriftField>(), StructOrUnionType.UNION);
     assertEquals("{\n"
         +"  \"id\" : \"STRUCT\",\n"
         +"  \"children\" : [ ],\n"
-        +"  \"structOrUnionType\" : \"UNION\"\n"
+        +"  \"structOrUnionType\" : \"UNION\",\n"
+        +"  \"logicalTypeAnnotation\" : null\n"
         +"}", st.toJSON());
 
     st = new StructType(new LinkedList<ThriftField>(), StructOrUnionType.STRUCT);
     assertEquals("{\n"
         +"  \"id\" : \"STRUCT\",\n"
         +"  \"children\" : [ ],\n"
-        +"  \"structOrUnionType\" : \"STRUCT\"\n"
+        +"  \"structOrUnionType\" : \"STRUCT\",\n"
+        +"  \"logicalTypeAnnotation\" : null\n"
         +"}", st.toJSON());
   }
 

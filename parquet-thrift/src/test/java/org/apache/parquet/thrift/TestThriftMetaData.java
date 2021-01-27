@@ -45,7 +45,8 @@ public class TestThriftMetaData {
     assertEquals("ThriftMetaData(thriftClassName: non existent class!!!, descriptor: {\n" +
         "  \"id\" : \"STRUCT\",\n" +
         "  \"children\" : [ ],\n" +
-        "  \"structOrUnionType\" : \"STRUCT\"\n" +
+        "  \"structOrUnionType\" : \"STRUCT\",\n" +
+        "  \"logicalTypeAnnotation\" : null\n" +
         "})", tmd.toString());
 
     tmd = new ThriftMetaData("non existent class!!!", null);

@@ -69,7 +69,8 @@ public class TestThriftRecordConverter {
           "    \"values\" : [ {\n" +
           "      \"id\" : 77,\n" +
           "      \"name\" : \"hello\"\n" +
-          "    } ]\n" +
+          "    } ],\n" +
+          "    \"logicalTypeAnnotation\" : null\n" +
           "  }\n" +
           "}", e.getMessage());
     }

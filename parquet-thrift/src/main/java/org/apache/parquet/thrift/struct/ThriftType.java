@@ -31,6 +31,8 @@ import static org.apache.parquet.thrift.struct.ThriftTypeID.SET;
 import static org.apache.parquet.thrift.struct.ThriftTypeID.STRING;
 import static org.apache.parquet.thrift.struct.ThriftTypeID.STRUCT;
 
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -64,6 +66,19 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value=ThriftType.StructType.class, name="STRUCT")
 })
 public abstract class ThriftType {
+  private LogicalTypeAnnotation logicalTypeAnnotation;
+
+  public boolean hasLogicalTypeAnnotation() {
+    return this.logicalTypeAnnotation != null;
+  }
+
+  public LogicalTypeAnnotation getLogicalTypeAnnotation() {
+    return this.logicalTypeAnnotation;
+  }
+
+  public void setLogicalTypeAnnotation(LogicalTypeAnnotation logicalTypeAnnotation) {
+    this.logicalTypeAnnotation = logicalTypeAnnotation;
+  }
 
   @Override
   public boolean equals(Object o) {
@@ -624,6 +639,7 @@ public abstract class ThriftType {
     public I64Type() {
       super(I64);
     }
+
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
