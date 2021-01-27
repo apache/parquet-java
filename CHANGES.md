@@ -19,6 +19,145 @@
 
 # Parquet #
 
+### Version 1.12.0 ###
+
+Release Notes - Parquet - Version 1.12.0
+
+#### Sub-task
+
+*   [PARQUET-1228](https://issues.apache.org/jira/browse/PARQUET-1228) - parquet-format-structures encryption
+*   [PARQUET-1229](https://issues.apache.org/jira/browse/PARQUET-1229) - parquet-mr code changes for encryption support
+*   [PARQUET-1286](https://issues.apache.org/jira/browse/PARQUET-1286) - Crypto package in parquet-mr
+*   [PARQUET-1328](https://issues.apache.org/jira/browse/PARQUET-1328) - \[java\]Bloom filter read/write implementation
+*   [PARQUET-1391](https://issues.apache.org/jira/browse/PARQUET-1391) - \[java\] Integrate Bloom filter logic
+*   [PARQUET-1516](https://issues.apache.org/jira/browse/PARQUET-1516) - Store Bloom filters near to footer.
+*   [PARQUET-1740](https://issues.apache.org/jira/browse/PARQUET-1740) - Make ParquetFileReader.getFilteredRecordCount public
+*   [PARQUET-1744](https://issues.apache.org/jira/browse/PARQUET-1744) - Some filters throws ArrayIndexOutOfBoundsException
+*   [PARQUET-1807](https://issues.apache.org/jira/browse/PARQUET-1807) - Encryption: Interop and Function test suite for Java version
+*   [PARQUET-1884](https://issues.apache.org/jira/browse/PARQUET-1884) - Merge encryption branch into master
+*   [PARQUET-1915](https://issues.apache.org/jira/browse/PARQUET-1915) - Add null command
+
+#### Bug
+
+*   [PARQUET-1438](https://issues.apache.org/jira/browse/PARQUET-1438) - \[C++\] corrupted files produced on 32-bit architecture (i686)
+*   [PARQUET-1455](https://issues.apache.org/jira/browse/PARQUET-1455) - \[parquet-protobuf\] Handle "unknown" enum values for parquet-protobuf
+*   [PARQUET-1554](https://issues.apache.org/jira/browse/PARQUET-1554) - Compilation error when upgrading Scrooge version
+*   [PARQUET-1599](https://issues.apache.org/jira/browse/PARQUET-1599) - Fix to-avro to respect the overwrite option
+*   [PARQUET-1684](https://issues.apache.org/jira/browse/PARQUET-1684) - \[parquet-protobuf\] default protobuf field values are stored as nulls
+*   [PARQUET-1699](https://issues.apache.org/jira/browse/PARQUET-1699) - Could not resolve org.apache.yetus:audience-annotations:0.11.0
+*   [PARQUET-1741](https://issues.apache.org/jira/browse/PARQUET-1741) - APIs backward compatibility issues cause master branch build failure
+*   [PARQUET-1765](https://issues.apache.org/jira/browse/PARQUET-1765) - Invalid filteredRowCount in InternalParquetRecordReader
+*   [PARQUET-1794](https://issues.apache.org/jira/browse/PARQUET-1794) - Random data generation may cause flaky tests
+*   [PARQUET-1803](https://issues.apache.org/jira/browse/PARQUET-1803) - Could not find FilleInputSplit in ParquetInputSplit
+*   [PARQUET-1808](https://issues.apache.org/jira/browse/PARQUET-1808) - SimpleGroup.toString() uses String += and so has poor performance
+*   [PARQUET-1818](https://issues.apache.org/jira/browse/PARQUET-1818) - Fix collision of encryption and bloom filters in format-structure Util
+*   [PARQUET-1850](https://issues.apache.org/jira/browse/PARQUET-1850) - toParquetMetadata method in ParquetMetadataConverter does not set dictionary page offset bit
+*   [PARQUET-1851](https://issues.apache.org/jira/browse/PARQUET-1851) - ParquetMetadataConveter throws NPE in an Iceberg unit test
+*   [PARQUET-1868](https://issues.apache.org/jira/browse/PARQUET-1868) - Parquet reader options toggle for bloom filter toggles dictionary filtering
+*   [PARQUET-1879](https://issues.apache.org/jira/browse/PARQUET-1879) - Apache Arrow can not read a Parquet File written with Parqet-Avro 1.11.0 with a Map field
+*   [PARQUET-1893](https://issues.apache.org/jira/browse/PARQUET-1893) - H2SeekableInputStream readFully() doesn't respect start and len
+*   [PARQUET-1896](https://issues.apache.org/jira/browse/PARQUET-1896) - \[Maven\] parquet-tools build is broken
+*   [PARQUET-1910](https://issues.apache.org/jira/browse/PARQUET-1910) - Parquet-cli is broken after TransCompressionCommand was added
+*   [PARQUET-1917](https://issues.apache.org/jira/browse/PARQUET-1917) - \[parquet-proto\] default values are stored in oneOf fields that aren't set
+*   [PARQUET-1920](https://issues.apache.org/jira/browse/PARQUET-1920) - Fix issue with reading parquet files with too large column chunks
+*   [PARQUET-1923](https://issues.apache.org/jira/browse/PARQUET-1923) - parquet-tools 1.11.0: TestSimpleRecordConverter fails with ExceptionInInitializerError on openjdk 15
+*   [PARQUET-1928](https://issues.apache.org/jira/browse/PARQUET-1928) - Interpret Parquet INT96 type as FIXED\[12\] AVRO Schema
+*   [PARQUET-1944](https://issues.apache.org/jira/browse/PARQUET-1944) - Unable to download transitive dependency hadoop-lzo
+*   [PARQUET-1947](https://issues.apache.org/jira/browse/PARQUET-1947) - DeprecatedParquetInputFormat in CombineFileInputFormat would produce wrong data
+*   [PARQUET-1949](https://issues.apache.org/jira/browse/PARQUET-1949) - Mark Parquet-1872 with not support bloom filter yet
+*   [PARQUET-1954](https://issues.apache.org/jira/browse/PARQUET-1954) - TCP connection leak in parquet dump
+*   [PARQUET-1963](https://issues.apache.org/jira/browse/PARQUET-1963) - DeprecatedParquetInputFormat in CombineFileInputFormat throw NPE when the first sub-split is empty
+
+#### New Feature
+
+*   [PARQUET-41](https://issues.apache.org/jira/browse/PARQUET-41) - Add bloom filters to parquet statistics
+*   [PARQUET-1373](https://issues.apache.org/jira/browse/PARQUET-1373) - Encryption key management tools
+*   [PARQUET-1396](https://issues.apache.org/jira/browse/PARQUET-1396) - Example of using EncryptionPropertiesFactory and DecryptionPropertiesFactory
+*   [PARQUET-1622](https://issues.apache.org/jira/browse/PARQUET-1622) - Add BYTE\_STREAM\_SPLIT encoding
+*   [PARQUET-1784](https://issues.apache.org/jira/browse/PARQUET-1784) - Column-wise configuration
+*   [PARQUET-1817](https://issues.apache.org/jira/browse/PARQUET-1817) - Crypto Properties Factory
+*   [PARQUET-1854](https://issues.apache.org/jira/browse/PARQUET-1854) - Properties-Driven Interface to Parquet Encryption
+
+#### Improvement
+
+*   [PARQUET-313](https://issues.apache.org/jira/browse/PARQUET-313) - Implement 3 level list writing rule for Parquet-Thrift
+*   [PARQUET-1528](https://issues.apache.org/jira/browse/PARQUET-1528) - Add JSON support to \`parquet-tools head\`
+*   [PARQUET-1593](https://issues.apache.org/jira/browse/PARQUET-1593) - Replace the example usage in parquet-cli's help message with an actually existent subcommand
+*   [PARQUET-1660](https://issues.apache.org/jira/browse/PARQUET-1660) - \[java\] Align Bloom filter implementation with format
+*   [PARQUET-1666](https://issues.apache.org/jira/browse/PARQUET-1666) - Remove Unused Modules
+*   [PARQUET-1696](https://issues.apache.org/jira/browse/PARQUET-1696) - Remove unused hadoop-1 profile
+*   [PARQUET-1710](https://issues.apache.org/jira/browse/PARQUET-1710) - Use Objects.requireNonNull
+*   [PARQUET-1723](https://issues.apache.org/jira/browse/PARQUET-1723) - Read From Maps Without Using Contains
+*   [PARQUET-1724](https://issues.apache.org/jira/browse/PARQUET-1724) - Use ConcurrentHashMap for Cache in DictionaryPageReader
+*   [PARQUET-1725](https://issues.apache.org/jira/browse/PARQUET-1725) - Replace Usage of Strings.join with JDK Functionality in ColumnPath Class
+*   [PARQUET-1726](https://issues.apache.org/jira/browse/PARQUET-1726) - Use Java 8 Multi Exception Handling
+*   [PARQUET-1727](https://issues.apache.org/jira/browse/PARQUET-1727) - Do Not Swallow InterruptedException in ParquetLoader
+*   [PARQUET-1728](https://issues.apache.org/jira/browse/PARQUET-1728) - Simplify NullPointerException Handling in AvroWriteSupport
+*   [PARQUET-1729](https://issues.apache.org/jira/browse/PARQUET-1729) - Avoid AutoBoxing in EncodingStats
+*   [PARQUET-1730](https://issues.apache.org/jira/browse/PARQUET-1730) - Use switch Statement in AvroIndexedRecordConverter for Enums
+*   [PARQUET-1731](https://issues.apache.org/jira/browse/PARQUET-1731) - Use JDK 8 Facilities to Simplify FilteringRecordMaterializer
+*   [PARQUET-1732](https://issues.apache.org/jira/browse/PARQUET-1732) - Call toArray With Empty Array
+*   [PARQUET-1735](https://issues.apache.org/jira/browse/PARQUET-1735) - Clean Up parquet-columns Module
+*   [PARQUET-1737](https://issues.apache.org/jira/browse/PARQUET-1737) - Replace Test Class RandomStr with Apache Commons Lang
+*   [PARQUET-1738](https://issues.apache.org/jira/browse/PARQUET-1738) - Remove unused imports in parquet-column
+*   [PARQUET-1743](https://issues.apache.org/jira/browse/PARQUET-1743) - Add equals to BlockSplitBloomFilter
+*   [PARQUET-1749](https://issues.apache.org/jira/browse/PARQUET-1749) - Use Java 8 Streams for Empty PrimitiveIterator
+*   [PARQUET-1750](https://issues.apache.org/jira/browse/PARQUET-1750) - Reduce Memory Usage of RowRanges Class
+*   [PARQUET-1751](https://issues.apache.org/jira/browse/PARQUET-1751) - Fix Protobuf Build Warning
+*   [PARQUET-1756](https://issues.apache.org/jira/browse/PARQUET-1756) - Remove Dependency on Maven Plugin semantic-versioning
+*   [PARQUET-1759](https://issues.apache.org/jira/browse/PARQUET-1759) - InternalParquetRecordReader Use Singleton Set
+*   [PARQUET-1763](https://issues.apache.org/jira/browse/PARQUET-1763) - Add SLF4J to TestCircularReferences
+*   [PARQUET-1764](https://issues.apache.org/jira/browse/PARQUET-1764) - The ParquetProperties constructor parameter list is so long
+*   [PARQUET-1775](https://issues.apache.org/jira/browse/PARQUET-1775) - Deprecate AvroParquetWriter Builder Hadoop Path
+*   [PARQUET-1778](https://issues.apache.org/jira/browse/PARQUET-1778) - Do Not Consider Class for Avro Generic Record Reader
+*   [PARQUET-1782](https://issues.apache.org/jira/browse/PARQUET-1782) - Use Switch Statement in AvroRecordConverter
+*   [PARQUET-1790](https://issues.apache.org/jira/browse/PARQUET-1790) - ParquetFileWriter missing Api for DataPageV2
+*   [PARQUET-1791](https://issues.apache.org/jira/browse/PARQUET-1791) - Add 'prune' command to parquet-tools
+*   [PARQUET-1801](https://issues.apache.org/jira/browse/PARQUET-1801) - Add column index support for 'prune' command in Parquet-tools/cli
+*   [PARQUET-1802](https://issues.apache.org/jira/browse/PARQUET-1802) - CompressionCodec class not found if the codec class is not in the same defining classloader as the CodecFactory class
+*   [PARQUET-1805](https://issues.apache.org/jira/browse/PARQUET-1805) - Refactor the configuration for bloom filters
+*   [PARQUET-1821](https://issues.apache.org/jira/browse/PARQUET-1821) - Add 'column-size' command to parquet-cli and parquet-tools
+*   [PARQUET-1826](https://issues.apache.org/jira/browse/PARQUET-1826) - Document hadoop configuration options
+*   [PARQUET-1827](https://issues.apache.org/jira/browse/PARQUET-1827) - UUID type currently not supported by parquet-mr
+*   [PARQUET-1853](https://issues.apache.org/jira/browse/PARQUET-1853) - Minimize the parquet-avro fastutil shaded jar
+*   [PARQUET-1863](https://issues.apache.org/jira/browse/PARQUET-1863) - Remove use of add-test-source mojo in parquet-protobuf
+*   [PARQUET-1866](https://issues.apache.org/jira/browse/PARQUET-1866) - Replace Hadoop ZSTD with JNI-ZSTD
+*   [PARQUET-1890](https://issues.apache.org/jira/browse/PARQUET-1890) - Upgrade to Avro 1.10.0
+*   [PARQUET-1891](https://issues.apache.org/jira/browse/PARQUET-1891) - Encryption-related light fixes
+*   [PARQUET-1914](https://issues.apache.org/jira/browse/PARQUET-1914) - Allow ProtoParquetReader To Support InputFile
+*   [PARQUET-1924](https://issues.apache.org/jira/browse/PARQUET-1924) - Do not Instantiate a New LongHashFunction
+*   [PARQUET-1926](https://issues.apache.org/jira/browse/PARQUET-1926) - Add LogicalType support to ThriftType.I64Type
+*   [PARQUET-1929](https://issues.apache.org/jira/browse/PARQUET-1929) - Bump Snappy to 1.1.8
+*   [PARQUET-1930](https://issues.apache.org/jira/browse/PARQUET-1930) - Bump Apache Thrift to 0.13.0
+*   [PARQUET-1931](https://issues.apache.org/jira/browse/PARQUET-1931) - Bump Junit 4.13.1
+*   [PARQUET-1932](https://issues.apache.org/jira/browse/PARQUET-1932) - Bump Fastutil to 8.4.2
+*   [PARQUET-1938](https://issues.apache.org/jira/browse/PARQUET-1938) - Option to get KMS details from key material (in key rotation)
+*   [PARQUET-1939](https://issues.apache.org/jira/browse/PARQUET-1939) - Fix RemoteKmsClient API ambiguity
+*   [PARQUET-1940](https://issues.apache.org/jira/browse/PARQUET-1940) - Make KeyEncryptionKey length configurable
+*   [PARQUET-1941](https://issues.apache.org/jira/browse/PARQUET-1941) - Bump Commons CLI from 1.3.1 to 1.4
+*   [PARQUET-1951](https://issues.apache.org/jira/browse/PARQUET-1951) - Allow different strategies to combine key values when merging parquet files
+*   [PARQUET-1952](https://issues.apache.org/jira/browse/PARQUET-1952) - Upgrade Avro to 1.10.1
+*   [PARQUET-1961](https://issues.apache.org/jira/browse/PARQUET-1961) - Bump Jackson to 2.11.4
+*   [PARQUET-1964](https://issues.apache.org/jira/browse/PARQUET-1964) - Properly handle missing/null filter
+
+#### Test
+
+*   [PARQUET-1832](https://issues.apache.org/jira/browse/PARQUET-1832) - Travis fails with too long output
+
+#### Wish
+
+*   [PARQUET-1717](https://issues.apache.org/jira/browse/PARQUET-1717) - parquet-thrift converts Thrift i16 to parquet INT32 instead of INT\_16
+
+#### Task
+
+*   [PARQUET-1676](https://issues.apache.org/jira/browse/PARQUET-1676) - Remove hive modules
+*   [PARQUET-1703](https://issues.apache.org/jira/browse/PARQUET-1703) - Update API compatibility check
+*   [PARQUET-1796](https://issues.apache.org/jira/browse/PARQUET-1796) - Bump Apache Avro to 1.9.2
+*   [PARQUET-1842](https://issues.apache.org/jira/browse/PARQUET-1842) - Update Jackson Databind version to address CVE
+*   [PARQUET-1844](https://issues.apache.org/jira/browse/PARQUET-1844) - Removed Hadoop transitive dependency on commons-lang
+*   [PARQUET-1895](https://issues.apache.org/jira/browse/PARQUET-1895) - Update jackson-databind
+*   [PARQUET-1898](https://issues.apache.org/jira/browse/PARQUET-1898) - Release parquet-mr 1.12.0
+
 ### Version 1.11.0 ###
 
 Release Notes - Parquet - Version 1.11.0
