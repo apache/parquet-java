@@ -42,7 +42,7 @@ public class MessageTypeParser {
     private StringTokenizer st;
 
     private int line = 0;
-    private StringBuffer currentLine = new StringBuffer();
+    private StringBuilder currentLine = new StringBuilder();
 
     public Tokenizer(String schemaString, String string) {
       st = new StringTokenizer(schemaString, " ,;{}()\n\t=", true);
