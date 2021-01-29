@@ -393,6 +393,7 @@
         <!-- Override source and target from the ASF parent -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
         <configuration>
           <argLine>-XX:MaxPermSize=256m</argLine>
           <source>${maven.compiler.source}</source>
@@ -624,6 +625,24 @@
         <surefire.logLevel>WARN</surefire.logLevel>
         <surefire.argLine>-Xmx512m -XX:MaxJavaStackTraceDepth=10</surefire.argLine>
       </properties>
+    </profile>
+
+    <profile>
+      <id>jdk9+</id>
+      <activation>
+        <jdk>[1.9,)</jdk>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+              <release>8</release>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
 
   </profiles>
