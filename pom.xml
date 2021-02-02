@@ -469,6 +469,7 @@
           <consoleOutput>true</consoleOutput>
           <excludes>
             <exclude>.github/PULL_REQUEST_TEMPLATE.md</exclude>
+            <exclude>.github/workflows/test.yml</exclude>
             <exclude>**/*.parquet</exclude>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.json</exclude>
