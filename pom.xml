@@ -504,7 +504,7 @@
         <configuration>
           <parameter>
             <oldVersionPattern>${previous.version}</oldVersionPattern>
-            <breakBuildBasedOnSemanticVersioning>true</breakBuildBasedOnSemanticVersioning>
+            <breakBuildOnSourceIncompatibleModifications>true</breakBuildOnSourceIncompatibleModifications>
             <onlyModified>true</onlyModified>
             <overrideCompatibilityChangeParameters>
               <!-- Adding a new method with default implementation to an interface should be a compatible change.
