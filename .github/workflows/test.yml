@@ -13,6 +13,7 @@ jobs:
 
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         java: [ '1.8', '11' ]
         codes: [ 'uncompressed,brotli', 'gzip,snappy' ]
@@ -31,6 +32,8 @@ jobs:
         run: |
           mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java }}
       - name: verify
+        env:
+          HADOOP_PROFILE: default
+          TEST_CODECS: ${{ matrix.codes }}
         run: |
-          export TEST_CODECS=${{ matrix.codes }}
-          mvn verify --batch-mode javadoc:javadoc -Ptravis
+          mvn verify --batch-mode javadoc:javadoc -Ptravis,$HADOOP_PROFILE
