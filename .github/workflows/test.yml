@@ -29,8 +29,8 @@ jobs:
           bash dev/travis-before_install.sh
       - name: install
         run: |
-          mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java }} | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
+          mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java }}
       - name: verify
         run: |
           export TEST_CODECS=${{ matrix.codes }}
-          mvn verify --batch-mode javadoc:javadoc -P travis,default
+          mvn verify --batch-mode javadoc:javadoc -Ptravis
