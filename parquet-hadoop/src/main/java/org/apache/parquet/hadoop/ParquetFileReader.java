@@ -851,23 +851,22 @@ public class ParquetFileReader implements Closeable {
   }
 
   private List<BlockMetaData> filterRowGroups(List<BlockMetaData> blocks) throws IOException {
-    // set up data filters based on configured levels
-    List<RowGroupFilter.FilterLevel> levels = new ArrayList<>();
-
-    if (options.useStatsFilter()) {
-      levels.add(STATISTICS);
-    }
-
-    if (options.useDictionaryFilter()) {
-      levels.add(DICTIONARY);
-    }
-
-    if (options.useBloomFilter()) {
-      levels.add(BLOOMFILTER);
-    }
-
     FilterCompat.Filter recordFilter = options.getRecordFilter();
     if (FilterCompat.isFilteringRequired(recordFilter)) {
+      // set up data filters based on configured levels
+      List<RowGroupFilter.FilterLevel> levels = new ArrayList<>();
+
+      if (options.useStatsFilter()) {
+        levels.add(STATISTICS);
+      }
+
+      if (options.useDictionaryFilter()) {
+        levels.add(DICTIONARY);
+      }
+
+      if (options.useBloomFilter()) {
+        levels.add(BLOOMFILTER);
+      }
       return RowGroupFilter.filterRowGroups(levels, recordFilter, blocks, this);
     }
 
