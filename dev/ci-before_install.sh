@@ -17,7 +17,7 @@
 # under the License.
 
 ################################################################################
-# This script gets invoked by .travis.yml in the before_install step
+# This script gets invoked by the CI system in a "before install" step
 ################################################################################
 
 export THIFT_VERSION=0.13.0
@@ -30,13 +30,13 @@ sudo apt-get install -qq --no-install-recommends build-essential pv autoconf aut
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
-wget -qO- https://archive.apache.org/dist/thrift/0.13.0/thrift-0.13.0.tar.gz | tar zxf -
+wget -qO- https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz | tar zxf -
 cd thrift-${THIFT_VERSION}
 chmod +x ./configure
 ./configure --disable-libs
 sudo make install
 cd ..
-branch_specific_script="dev/travis-before_install-${TRAVIS_BRANCH}.sh"
+branch_specific_script="dev/ci-before_install-${CI_TARGET_BRANCH}.sh"
 if [[ -e "$branch_specific_script" ]]
 then
   . "$branch_specific_script"

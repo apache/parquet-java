@@ -17,7 +17,7 @@
   ~ under the License.
   -->
 
-Parquet MR [![Build Status](https://travis-ci.org/apache/parquet-mr.svg?branch=master)](http://travis-ci.org/apache/parquet-mr)
+Parquet MR [![Build Status](https://github.com/apache/parquet-mr/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
 ======
 
 Parquet-MR contains the java implementation of the [Parquet format](https://github.com/apache/parquet-format).
@@ -135,8 +135,8 @@ To run the unit tests: `mvn test`
 
 To build the jars: `mvn package`
 
-The build runs in [Travis CI](http://travis-ci.org/apache/parquet-mr):
-[![Build Status](https://travis-ci.org/apache/parquet-mr.svg?branch=master)](http://travis-ci.org/apache/parquet-mr)
+The build runs in [GitHub Actions](https://github.com/apache/parquet-mr/actions):
+[![Build Status](https://github.com/apache/parquet-mr/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
 
 ## Add Parquet as a dependency in Maven
 The current release is version `1.11.0`

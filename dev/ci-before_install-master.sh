@@ -17,7 +17,7 @@
 
 ################################################################################
 # This is a branch-specific script that gets invoked at the end of
-# travis-before_install.sh. It is run for the master branch only.
+# ci-before_install.sh. It is run for the master branch only.
 ################################################################################
 
 fail_the_build=
