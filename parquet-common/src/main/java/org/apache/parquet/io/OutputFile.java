@@ -32,6 +32,6 @@ public interface OutputFile {
   long defaultBlockSize();
 
   default String getPath() {
-    throw new UnsupportedOperationException();
+    return null;
   }
 }

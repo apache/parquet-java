@@ -194,7 +194,7 @@ public class ParquetWriter<T> implements Closeable {
         compressionCodecName, blockSize, pageSize, dictionaryPageSize,
         enableDictionary, validating, writerVersion, conf);
   }
-  
+
   /**
    * Create a new ParquetWriter.
    *
@@ -281,7 +281,8 @@ public class ParquetWriter<T> implements Closeable {
 
     // encryptionProperties could be built from the implementation of EncryptionPropertiesFactory when it is attached.
     if (encryptionProperties == null) {
-      encryptionProperties = ParquetOutputFormat.createEncryptionProperties(conf, new Path(file.getPath()), writeContext);
+      encryptionProperties = ParquetOutputFormat.createEncryptionProperties(conf,
+          file == null ? null : new Path(file.getPath()), writeContext);
     }
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(

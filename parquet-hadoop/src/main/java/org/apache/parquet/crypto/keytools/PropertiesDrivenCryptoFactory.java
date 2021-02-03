@@ -92,6 +92,9 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     boolean keyMaterialInternalStorage = fileHadoopConfig.getBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME,
         KeyToolkit.KEY_MATERIAL_INTERNAL_DEFAULT);
     if (!keyMaterialInternalStorage) {
+      if (tempFilePath == null) {
+        throw new ParquetCryptoRuntimeException("Output file path cannot be null");
+      }
       try {
         keyMaterialStore = new HadoopFSKeyMaterialStore(tempFilePath.getFileSystem(fileHadoopConfig));
         keyMaterialStore.initialize(tempFilePath, fileHadoopConfig, false);
