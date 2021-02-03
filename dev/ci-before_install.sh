@@ -20,7 +20,7 @@
 # This script gets invoked by the CI system in a "before install" step
 ################################################################################
 
-export THIFT_VERSION=0.13.0
+export THRIFT_VERSION=0.13.0
 
 set -e
 date
@@ -31,7 +31,7 @@ sudo apt-get install -qq --no-install-recommends build-essential pv autoconf aut
 date
 pwd
 wget -qO- https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz | tar zxf -
-cd thrift-${THIFT_VERSION}
+cd thrift-${THRIFT_VERSION}
 chmod +x ./configure
 ./configure --disable-libs
 sudo make install
