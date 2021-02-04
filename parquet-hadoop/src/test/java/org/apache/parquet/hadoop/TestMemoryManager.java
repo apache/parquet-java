@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -68,11 +68,11 @@ public class TestMemoryManager {
   public void testMemoryManagerUpperLimit() {
     // Verify the memory pool size
     // this value tends to change a little between setup and tests, so this
-    // validates that it is within 10% of the expected value
+    // validates that it is within 15% of the expected value
     long poolSize = ParquetOutputFormat.getMemoryManager().getTotalMemoryPool();
-    Assert.assertTrue("Pool size should be within 10% of the expected value" +
+    Assert.assertTrue("Pool size should be within 15% of the expected value" +
                     " (expected = " + expectedPoolSize + " actual = " + poolSize + ")",
-        Math.abs(expectedPoolSize - poolSize) < (long) (expectedPoolSize * 0.10));
+        Math.abs(expectedPoolSize - poolSize) < (long) (expectedPoolSize * 0.15));
   }
 
   @Test
