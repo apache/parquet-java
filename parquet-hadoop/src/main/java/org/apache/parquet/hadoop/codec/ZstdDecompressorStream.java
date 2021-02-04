@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import com.github.luben.zstd.BufferPool;
 import com.github.luben.zstd.ZstdInputStream;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 
@@ -31,6 +32,11 @@ public class ZstdDecompressorStream extends CompressionInputStream {
   public ZstdDecompressorStream(InputStream stream) throws IOException {
 	  super(stream);
     zstdInputStream = new ZstdInputStream(stream);
+  }
+
+  public ZstdDecompressorStream(InputStream stream, BufferPool pool) throws IOException {
+    super(stream);
+    zstdInputStream = new ZstdInputStream(stream, pool);
   }
 
   public int read(byte[] b, int off, int len) throws IOException {
