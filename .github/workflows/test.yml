@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ '1.8', '11' ]
+        java: [ '8.0.252', '11' ]
         codes: [ 'uncompressed,brotli', 'gzip,snappy' ]
     name: Build Parquet with JDK ${{ matrix.java }} and ${{ matrix.codes }}
 
