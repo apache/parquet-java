@@ -9,6 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # PARQUET-1971: Use fixed JDK version(8.0.252) to fix flaky test in github action
         java: [ '8.0.252', '11' ]
         codes: [ 'uncompressed,brotli', 'gzip,snappy' ]
     name: Build Parquet with JDK ${{ matrix.java }} and ${{ matrix.codes }}
