@@ -338,8 +338,8 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 
 ## Class: ZstandardCodec
 
-**Property:** `parquet.compression.codec.zstd.bufferPool.enabled`
-**Description:** If it is true, [RecyclingBufferPool](https://github.com/luben/zstd-jni/blob/master/src/main/java/com/github/luben/zstd/RecyclingBufferPool.java) is used.
+**Property:** `parquet.compression.codec.zstd.bufferPool.enabled`  
+**Description:** If it is true, [RecyclingBufferPool](https://github.com/luben/zstd-jni/blob/master/src/main/java/com/github/luben/zstd/RecyclingBufferPool.java) is used.  
 **Default value:** `false`
 
 ---
