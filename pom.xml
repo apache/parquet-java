@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>16</version>
+    <version>23</version>
   </parent>
 
   <groupId>org.apache.parquet</groupId>
@@ -86,9 +86,10 @@
     <previous.version>1.12.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
-    <scala.version>2.12.8</scala.version>
+    <scala.version>2.12.13</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.12</scala.binary.version>
+    <scala-maven-plugin.version>4.4.0</scala-maven-plugin.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
@@ -103,8 +104,8 @@
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
     <net.openhft.version>0.9</net.openhft.version>
-    <maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
-    <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
+    <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
+    <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
@@ -220,14 +221,8 @@
         </plugin>
 
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-resources-plugin</artifactId>
-          <version>2.7</version>
-        </plugin>
-
-        <plugin>
           <artifactId>maven-enforcer-plugin</artifactId>
-          <version>1.3.1</version>
+          <version>1.4.1</version>
          <executions>
            <execution>
             <id>enforce-banned-dependencies</id>
@@ -250,7 +245,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <version>3.2.1</version>
+          <version>3.2.4</version>
           <executions>
             <execution>
               <phase>package</phase>
@@ -348,13 +343,13 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
-        <version>2.7</version>
+        <version>3.2.0</version>
       </plugin>
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-remote-resources-plugin</artifactId>
-          <version>1.5</version>
+          <version>1.7.0</version>
           <configuration>
             <skip>true</skip>
           </configuration>
@@ -366,7 +361,6 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <configuration>
-          <argLine>-XX:MaxPermSize=256m</argLine>
           <source>${maven.compiler.source}</source>
           <target>${maven.compiler.target}</target>
         </configuration>
@@ -375,7 +369,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <version>2.10</version>
+        <version>2.22.2</version>
         <executions>
           <execution>
             <goals>
@@ -524,7 +518,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-project-info-reports-plugin</artifactId>
-            <version>2.7</version>
+            <version>3.1.1</version>
             <reportSets>
               <reportSet>
                 <reports>
@@ -553,7 +547,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-site-plugin</artifactId>
-            <version>3.3</version>
+            <version>3.9.1</version>
             <configuration>
               <skipDeploy>true</skipDeploy>
             </configuration>
@@ -561,7 +555,7 @@
           <plugin>
             <groupId>com.github.github</groupId>
             <artifactId>site-maven-plugin</artifactId>
-            <version>0.8</version>
+            <version>0.12</version>
             <configuration>
               <message>Creating site for ${project.version}</message>
               <path>${project.distributionManagement.site.url}</path>
