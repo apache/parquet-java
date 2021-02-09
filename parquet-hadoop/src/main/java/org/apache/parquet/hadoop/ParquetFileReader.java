@@ -889,19 +889,45 @@ public class ParquetFileReader implements Closeable {
   }
 
   /**
+   * Reads all the columns requested from the row group at the specified block.
+   *
+   * @param block the metadata for the requested RowGroup
+   * @throws IOException if an error occurs while reading
+   * @return the PageReadStore which can provide PageReaders for each column.
+   */
+  public PageReadStore readRowGroup(BlockMetaData block) throws IOException {
+    return internalReadRowGroup(block);
+  }
+
+  /**
    * Reads all the columns requested from the row group at the current file position.
    * @throws IOException if an error occurs while reading
    * @return the PageReadStore which can provide PageReaders for each column.
    */
   public PageReadStore readNextRowGroup() throws IOException {
-    if (currentBlock == blocks.size()) {
+    if (currentBlock >= blocks.size()) {
       return null;
     }
-    BlockMetaData block = blocks.get(currentBlock);
+    this.currentRowGroup = internalReadRowGroup(blocks.get(currentBlock));
+
+    // avoid re-reading bytes the dictionary reader is used after this call
+    if (nextDictionaryReader != null) {
+      nextDictionaryReader.setRowGroup(currentRowGroup);
+    }
+
+    advanceToNextBlock();
+
+    return currentRowGroup;
+  }
+
+  private ColumnChunkPageReadStore internalReadRowGroup(BlockMetaData block) throws IOException {
+    if (block == null) {
+      return null;
+    }
     if (block.getRowCount() == 0) {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
-    this.currentRowGroup = new ColumnChunkPageReadStore(block.getRowCount());
+    ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(block.getRowCount());
     // prepare the list of consecutive parts to read them in one scan
     List<ConsecutivePartList> allParts = new ArrayList<ConsecutivePartList>();
     ConsecutivePartList currentParts = null;
@@ -920,22 +946,52 @@ public class ParquetFileReader implements Closeable {
       }
     }
     // actually read all the chunks
-    ChunkListBuilder builder = new ChunkListBuilder();
+    ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
     for (ConsecutivePartList consecutiveChunks : allParts) {
       consecutiveChunks.readAll(f, builder);
     }
     for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block);
+      readChunkPages(chunk, block, rowGroup);
     }
 
-    // avoid re-reading bytes the dictionary reader is used after this call
-    if (nextDictionaryReader != null) {
-      nextDictionaryReader.setRowGroup(currentRowGroup);
+    return rowGroup;
+  }
+
+  /**
+   * Reads all the columns requested from the specified row group. It may skip specific pages based on the column
+   * indexes according to the actual filter. As the rows are not aligned among the pages of the different columns row
+   * synchronization might be required. See the documentation of the class SynchronizingColumnReader for details.
+   *
+   * @param blockIndex the index of the requested block
+   * @return the PageReadStore which can provide PageReaders for each column or null if there are no rows in this block
+   * @throws IOException if an error occurs while reading
+   */
+  public PageReadStore readFilteredRowGroup(int blockIndex) throws IOException {
+    if (blockIndex < 0 || blockIndex >= blocks.size()) {
+      return null;
+    }
+    BlockMetaData block = blocks.get(blockIndex);
+
+    // Filtering not required -> fall back to the non-filtering path
+    if (!options.useColumnIndexFilter() || !FilterCompat.isFilteringRequired(options.getRecordFilter())) {
+      return internalReadRowGroup(block);
     }
 
-    advanceToNextBlock();
+    if (block.getRowCount() == 0) {
+      throw new RuntimeException("Illegal row group of 0 rows");
+    }
+    RowRanges rowRanges = getRowRanges(blockIndex);
+    long rowCount = rowRanges.rowCount();
+    if (rowCount == 0) {
+      // There are no matching rows -> returning null
+      return null;
+    }
+    if (rowCount == block.getRowCount()) {
+      // All rows are matching -> fall back to the non-filtering path
+      return internalReadRowGroup(block);
+    }
 
-    return currentRowGroup;
+    return internalReadFilteredRowGroup(block, rowRanges, getColumnIndexStore(blockIndex));
   }
 
   /**
@@ -945,13 +1001,13 @@ public class ParquetFileReader implements Closeable {
    * details.
    *
    * @return the PageReadStore which can provide PageReaders for each column
-   * @throws IOException
-   *           if any I/O error occurs while reading
+   * @throws IOException if an error occurs while reading
    */
   public PageReadStore readNextFilteredRowGroup() throws IOException {
     if (currentBlock == blocks.size()) {
       return null;
     }
+    // Filtering not required -> fall back to the non-filtering path
     if (!options.useColumnIndexFilter() || !FilterCompat.isFilteringRequired(options.getRecordFilter())) {
       return readNextRowGroup();
     }
@@ -959,7 +1015,6 @@ public class ParquetFileReader implements Closeable {
     if (block.getRowCount() == 0) {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
-    ColumnIndexStore ciStore = getColumnIndexStore(currentBlock);
     RowRanges rowRanges = getRowRanges(currentBlock);
     long rowCount = rowRanges.rowCount();
     if (rowCount == 0) {
@@ -972,9 +1027,22 @@ public class ParquetFileReader implements Closeable {
       return readNextRowGroup();
     }
 
-    this.currentRowGroup = new ColumnChunkPageReadStore(rowRanges);
+    this.currentRowGroup = internalReadFilteredRowGroup(block, rowRanges, getColumnIndexStore(currentBlock));
+
+    // avoid re-reading bytes the dictionary reader is used after this call
+    if (nextDictionaryReader != null) {
+      nextDictionaryReader.setRowGroup(currentRowGroup);
+    }
+
+    advanceToNextBlock();
+
+    return this.currentRowGroup;
+  }
+
+  private ColumnChunkPageReadStore internalReadFilteredRowGroup(BlockMetaData block, RowRanges rowRanges, ColumnIndexStore ciStore) throws IOException {
+    ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(rowRanges);
     // prepare the list of consecutive parts to read them in one scan
-    ChunkListBuilder builder = new ChunkListBuilder();
+    ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
     List<ConsecutivePartList> allParts = new ArrayList<ConsecutivePartList>();
     ConsecutivePartList currentParts = null;
     for (ColumnChunkMetaData mc : block.getColumns()) {
@@ -1005,31 +1073,24 @@ public class ParquetFileReader implements Closeable {
       consecutiveChunks.readAll(f, builder);
     }
     for (Chunk chunk : builder.build()) {
-      readChunkPages(chunk, block);
+      readChunkPages(chunk, block, rowGroup);
     }
 
-    // avoid re-reading bytes the dictionary reader is used after this call
-    if (nextDictionaryReader != null) {
-      nextDictionaryReader.setRowGroup(currentRowGroup);
-    }
-
-    advanceToNextBlock();
-
-    return currentRowGroup;
+    return rowGroup;
   }
 
-  private void readChunkPages(Chunk chunk, BlockMetaData block) throws IOException {
+  private void readChunkPages(Chunk chunk, BlockMetaData block, ColumnChunkPageReadStore rowGroup) throws IOException {
     if (null == fileDecryptor || fileDecryptor.plaintextFile()) {
-      currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
+      rowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
       return;
     }
     // Encrypted file
     ColumnPath columnPath = ColumnPath.get(chunk.descriptor.col.getPath());
     InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.getColumnSetup(columnPath);
     if (!columnDecryptionSetup.isEncrypted()) { // plaintext column
-      currentRowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
+      rowGroup.addColumn(chunk.descriptor.col, chunk.readAllPages());
     }  else { // encrypted column
-      currentRowGroup.addColumn(chunk.descriptor.col,
+      rowGroup.addColumn(chunk.descriptor.col,
           chunk.readAllPages(columnDecryptionSetup.getMetaDataDecryptor(), columnDecryptionSetup.getDataDecryptor(),
               fileDecryptor.getFileAAD(), block.getOrdinal(), columnDecryptionSetup.getOrdinal()));
     }
@@ -1315,7 +1376,12 @@ public class ParquetFileReader implements Closeable {
 
     private final Map<ChunkDescriptor, ChunkData> map = new HashMap<>();
     private ChunkDescriptor lastDescriptor;
+    private final long rowCount;
     private SeekableInputStream f;
+
+    public ChunkListBuilder(long rowCount) {
+      this.rowCount = rowCount;
+    }
 
     void add(ChunkDescriptor descriptor, List<ByteBuffer> buffers, SeekableInputStream f) {
       ChunkData data = map.get(descriptor);
@@ -1345,9 +1411,9 @@ public class ParquetFileReader implements Closeable {
         ChunkData data = entry.getValue();
         if (descriptor.equals(lastDescriptor)) {
           // because of a bug, the last chunk might be larger than descriptor.size
-          chunks.add(new WorkaroundChunk(lastDescriptor, data.buffers, f, data.offsetIndex));
+          chunks.add(new WorkaroundChunk(lastDescriptor, data.buffers, f, data.offsetIndex, rowCount));
         } else {
-          chunks.add(new Chunk(descriptor, data.buffers, data.offsetIndex));
+          chunks.add(new Chunk(descriptor, data.buffers, data.offsetIndex, rowCount));
         }
       }
       return chunks;
@@ -1362,16 +1428,18 @@ public class ParquetFileReader implements Closeable {
     protected final ChunkDescriptor descriptor;
     protected final ByteBufferInputStream stream;
     final OffsetIndex offsetIndex;
+    final long rowCount;
 
     /**
      * @param descriptor descriptor for the chunk
      * @param buffers ByteBuffers that contain the chunk
      * @param offsetIndex the offset index for this column; might be null
      */
-    public Chunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers, OffsetIndex offsetIndex) {
+    public Chunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers, OffsetIndex offsetIndex, long rowCount) {
       this.descriptor = descriptor;
       this.stream = ByteBufferInputStream.wrap(buffers);
       this.offsetIndex = offsetIndex;
+      this.rowCount = rowCount;
     }
 
     protected PageHeader readPageHeader() throws IOException {
@@ -1518,7 +1586,7 @@ public class ParquetFileReader implements Closeable {
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex,
-          blocks.get(currentBlock).getRowCount(), pageBlockDecryptor, aadPrefix, rowGroupOrdinal, columnOrdinal);
+        rowCount, pageBlockDecryptor, aadPrefix, rowGroupOrdinal, columnOrdinal);
     }
 
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
@@ -1556,8 +1624,8 @@ public class ParquetFileReader implements Closeable {
      * @param descriptor the descriptor of the chunk
      * @param f the file stream positioned at the end of this chunk
      */
-    private WorkaroundChunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers, SeekableInputStream f, OffsetIndex offsetIndex) {
-      super(descriptor, buffers, offsetIndex);
+    private WorkaroundChunk(ChunkDescriptor descriptor, List<ByteBuffer> buffers, SeekableInputStream f, OffsetIndex offsetIndex, long rowCount) {
+      super(descriptor, buffers, offsetIndex, rowCount);
       this.f = f;
     }
 
