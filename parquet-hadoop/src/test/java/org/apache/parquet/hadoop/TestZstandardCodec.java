@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.hadoop;
 
+import com.github.luben.zstd.BufferPool;
+import com.github.luben.zstd.NoPool;
+import com.github.luben.zstd.RecyclingBufferPool;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -56,14 +59,18 @@ public class TestZstandardCodec {
   public void testZstdCodec() throws IOException {
     ZstandardCodec codec = new ZstandardCodec();
     Configuration conf = new Configuration();
+    boolean[] pools = {false, true};
     int[] levels = {1, 4, 7, 10, 13, 16, 19, 22};
     int[] dataSizes = {0, 1, 10, 1024, 1024 * 1024};
 
-    for (int i = 0; i < levels.length; i++) {
-      conf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, levels[i]);
-      codec.setConf(conf);
-      for (int j = 0; j < dataSizes.length; j++) {
-        testZstd(codec, dataSizes[j]);
+    for (boolean pool: pools) {
+      for (int i = 0; i < levels.length; i++) {
+        conf.setBoolean(ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, pool);
+        conf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, levels[i]);
+        codec.setConf(conf);
+        for (int j = 0; j < dataSizes.length; j++) {
+          testZstd(codec, dataSizes[j]);
+        }
       }
     }
   }

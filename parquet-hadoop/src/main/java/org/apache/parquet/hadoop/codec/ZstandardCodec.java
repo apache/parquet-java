@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import com.github.luben.zstd.BufferPool;
+import com.github.luben.zstd.NoPool;
+import com.github.luben.zstd.RecyclingBufferPool;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -43,6 +46,8 @@ import java.io.OutputStream;
  */
 public class ZstandardCodec implements Configurable, CompressionCodec {
 
+  public final static String PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED = "parquet.compression.codec.zstd.bufferPool.enabled";
+  public final static boolean DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED = false;
   public final static String PARQUET_COMPRESS_ZSTD_LEVEL = "parquet.compression.codec.zstd.level";
   public final static int DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL = 3;
   public final static String PARQUET_COMPRESS_ZSTD_WORKERS = "parquet.compression.codec.zstd.workers";
@@ -80,7 +85,13 @@ public class ZstandardCodec implements Configurable, CompressionCodec {
 
   @Override
   public CompressionInputStream createInputStream(InputStream stream) throws IOException {
-    return new ZstdDecompressorStream(stream);
+    BufferPool pool;
+    if (conf.getBoolean(PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
+      pool = RecyclingBufferPool.INSTANCE;
+    } else {
+      pool = NoPool.INSTANCE;
+    }
+    return new ZstdDecompressorStream(stream, pool);
   }
 
   @Override
@@ -91,7 +102,14 @@ public class ZstandardCodec implements Configurable, CompressionCodec {
 
   @Override
   public CompressionOutputStream createOutputStream(OutputStream stream) throws IOException {
-    return new ZstdCompressorStream(stream, conf.getInt(PARQUET_COMPRESS_ZSTD_LEVEL, DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
+    BufferPool pool;
+    if (conf.getBoolean(PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
+      pool = RecyclingBufferPool.INSTANCE;
+    } else {
+      pool = NoPool.INSTANCE;
+    }
+    return new ZstdCompressorStream(stream, pool,
+      conf.getInt(PARQUET_COMPRESS_ZSTD_LEVEL, DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
       conf.getInt(PARQUET_COMPRESS_ZSTD_WORKERS, DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS));
   }
 

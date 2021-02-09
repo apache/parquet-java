@@ -338,6 +338,12 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 
 ## Class: ZstandardCodec
 
+**Property:** `parquet.compression.codec.zstd.bufferPool.enabled`  
+**Description:** If it is true, [RecyclingBufferPool](https://github.com/luben/zstd-jni/blob/master/src/main/java/com/github/luben/zstd/RecyclingBufferPool.java) is used.  
+**Default value:** `false`
+
+---
+
 **Property:** `parquet.compression.codec.zstd.level`  
 **Description:** The compression level of ZSTD. The valid range is 1~22. Generally the higher compression level, the higher compression ratio can be achieved, but the writing time will be longer.  
 **Default value:** `3`
