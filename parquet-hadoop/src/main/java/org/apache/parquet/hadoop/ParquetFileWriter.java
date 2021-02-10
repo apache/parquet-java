@@ -65,6 +65,7 @@ import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.BlockCipher;
+import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -155,14 +156,13 @@ public class ParquetFileWriter {
   private Statistics currentStatistics; // accumulated in writePage(s)
   private ColumnIndexBuilder columnIndexBuilder;
   private OffsetIndexBuilder offsetIndexBuilder;
-  private long firstPageOffset;
 
   // column chunk data set at the start of a column
   private CompressionCodecName currentChunkCodec; // set in startColumn
   private ColumnPath currentChunkPath;            // set in startColumn
   private PrimitiveType currentChunkType;         // set in startColumn
   private long currentChunkValueCount;            // set in startColumn
-  private long currentChunkFirstDataPage;         // set in startColumn (out.pos())
+  private long currentChunkFirstDataPage;         // set in startColumn & writeDictionaryPage (out.pos())
   private long currentChunkDictionaryPageOffset;  // set in writeDictionaryPage
 
   // set when end is called
@@ -445,7 +445,6 @@ public class ParquetFileWriter {
 
     columnIndexBuilder = ColumnIndexBuilder.getBuilder(currentChunkType, columnIndexTruncateLength);
     offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
-    firstPageOffset = -1;
   }
 
   /**
@@ -493,6 +492,9 @@ public class ParquetFileWriter {
     dictionaryPage.getBytes().writeAllTo(out); // for encrypted column, dictionary page bytes are already encrypted
     encodingStatsBuilder.addDictEncoding(dictionaryPage.getEncoding());
     currentEncodings.add(dictionaryPage.getEncoding());
+
+    // First data page comes just after the dictionary page
+    currentChunkFirstDataPage = out.getPos();
   }
 
 
@@ -600,9 +602,6 @@ public class ParquetFileWriter {
       Encoding valuesEncoding) throws IOException {
     state = state.write();
     long beforeHeader = out.getPos();
-    if (firstPageOffset == -1) {
-      firstPageOffset = beforeHeader;
-    }
     LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
     int compressedPageSize = (int) bytes.size();
     if (pageWriteChecksumEnabled) {
@@ -689,9 +688,6 @@ public class ParquetFileWriter {
     );
 
     long beforeHeader = out.getPos();
-    if (firstPageOffset == -1) {
-      firstPageOffset = beforeHeader;
-    }
 
     metadataConverter.writeDataPageV2Header(
       uncompressedSize, compressedSize,
@@ -806,7 +802,6 @@ public class ParquetFileWriter {
     this.uncompressedLength += uncompressedTotalPageSize + headersSize;
     this.compressedLength += compressedTotalPageSize + headersSize;
     LOG.debug("{}: write data pages content", out.getPos());
-    firstPageOffset = out.getPos();
     bytes.writeAllTo(out);
     encodingStatsBuilder.addDataEncodings(dataEncodings);
     if (rlEncodings.isEmpty()) {
@@ -835,7 +830,7 @@ public class ParquetFileWriter {
     } else {
       currentColumnIndexes.add(columnIndexBuilder.build());
     }
-    currentOffsetIndexes.add(offsetIndexBuilder.build(firstPageOffset));
+    currentOffsetIndexes.add(offsetIndexBuilder.build(currentChunkFirstDataPage));
     currentBlock.addColumn(ColumnChunkMetaData.get(
         currentChunkPath,
         currentChunkType,
@@ -994,6 +989,7 @@ public class ParquetFileWriter {
       currentColumnIndexes.add(null);
       currentOffsetIndexes.add(null);
 
+      Offsets offsets = Offsets.getOffsets(from, chunk, newChunkStart);
       currentBlock.addColumn(ColumnChunkMetaData.get(
           chunk.getPath(),
           chunk.getPrimitiveType(),
@@ -1001,8 +997,8 @@ public class ParquetFileWriter {
           chunk.getEncodingStats(),
           chunk.getEncodings(),
           chunk.getStatistics(),
-          newChunkStart,
-          newChunkStart,
+          offsets.firstDataPageOffset,
+          offsets.dictionaryPageOffset,
           chunk.getValueCount(),
           chunk.getTotalSize(),
           chunk.getTotalUncompressedSize()));
@@ -1036,6 +1032,7 @@ public class ParquetFileWriter {
     currentColumnIndexes.add(columnIndex);
     currentOffsetIndexes.add(offsetIndex);
 
+    Offsets offsets = Offsets.getOffsets(from, chunk, newChunkStart);
     currentBlock.addColumn(ColumnChunkMetaData.get(
       chunk.getPath(),
       chunk.getPrimitiveType(),
@@ -1043,8 +1040,8 @@ public class ParquetFileWriter {
       chunk.getEncodingStats(),
       chunk.getEncodings(),
       chunk.getStatistics(),
-      newChunkStart,
-      newChunkStart,
+      offsets.firstDataPageOffset,
+      offsets.dictionaryPageOffset,
       chunk.getValueCount(),
       chunk.getTotalSize(),
       chunk.getTotalUncompressedSize()));

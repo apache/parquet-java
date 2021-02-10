@@ -39,6 +39,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
+import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -69,6 +70,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.*;
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.PLAIN;
+import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.MAX_STATS_SIZE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.Type.Repetition.*;
@@ -157,12 +159,15 @@ public class TestParquetFileWriter {
     w.startBlock(3);
     w.startColumn(C1, 5, CODEC);
     long c1Starts = w.getPos();
+    long c1p1Starts = w.getPos();
     w.writeDataPage(2, 4, BytesInput.from(BYTES1), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
     w.writeDataPage(3, 4, BytesInput.from(BYTES1), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     long c1Ends = w.getPos();
     w.startColumn(C2, 6, CODEC);
     long c2Starts = w.getPos();
+    w.writeDictionaryPage(new DictionaryPage(BytesInput.from(BYTES2), 4, RLE_DICTIONARY));
+    long c2p1Starts = w.getPos();
     w.writeDataPage(2, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
     w.writeDataPage(3, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
     w.writeDataPage(1, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
@@ -181,17 +186,26 @@ public class TestParquetFileWriter {
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
     assertEquals("footer: "+ readFooter, 2, readFooter.getBlocks().size());
-    assertEquals(c1Ends - c1Starts, readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
-    assertEquals(c2Ends - c2Starts, readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
-    assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
+    BlockMetaData rowGroup = readFooter.getBlocks().get(0);
+    assertEquals(c1Ends - c1Starts, rowGroup.getColumns().get(0).getTotalSize());
+    assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSize());
+    assertEquals(c2Ends - c1Starts, rowGroup.getTotalByteSize());
+
+    assertEquals(c1Starts, rowGroup.getColumns().get(0).getStartingPos());
+    assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffset());
+    assertEquals(c1p1Starts, rowGroup.getColumns().get(0).getFirstDataPageOffset());
+    assertEquals(c2Starts, rowGroup.getColumns().get(1).getStartingPos());
+    assertEquals(c2Starts, rowGroup.getColumns().get(1).getDictionaryPageOffset());
+    assertEquals(c2p1Starts, rowGroup.getColumns().get(1).getFirstDataPageOffset());
+
     HashSet<Encoding> expectedEncoding=new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
     expectedEncoding.add(BIT_PACKED);
-    assertEquals(expectedEncoding,readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
+    assertEquals(expectedEncoding,rowGroup.getColumns().get(0).getEncodings());
 
     { // read first block of col #1
       ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
-          Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
+          Arrays.asList(rowGroup), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
       PageReadStore pages = r.readNextRowGroup();
       assertEquals(3, pages.getRowCount());
       validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
