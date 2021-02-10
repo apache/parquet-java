@@ -37,6 +37,7 @@ import org.apache.parquet.cli.commands.PruneColumnsCommand;
 import org.apache.parquet.cli.commands.SchemaCommand;
 import org.apache.parquet.cli.commands.ShowColumnIndexCommand;
 import org.apache.parquet.cli.commands.ShowDictionaryCommand;
+import org.apache.parquet.cli.commands.ShowFooterCommand;
 import org.apache.parquet.cli.commands.ShowPagesCommand;
 import org.apache.parquet.cli.commands.ToAvroCommand;
 import org.apache.commons.logging.LogFactory;
@@ -97,6 +98,7 @@ public class Main extends Configured implements Tool {
     jc.addCommand("prune", new PruneColumnsCommand(console));
     jc.addCommand("trans-compression", new TransCompressionCommand(console));
     jc.addCommand("masking", new ColumnMaskingCommand(console));
+    jc.addCommand("footer", new ShowFooterCommand(console));
   }
 
   @Override
