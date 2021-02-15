@@ -112,7 +112,7 @@ public class ShowFooterCommand extends BaseCommand {
       f.readFully(magic);
 
       if (Arrays.equals(EFMAGIC, magic)) {
-        throw new RuntimeException("Encrypted Parquet files are not supported.");
+        throw new RuntimeException("Parquet files with encrypted footers are not supported.");
       } else if (!Arrays.equals(MAGIC, magic)) {
         throw new RuntimeException(
             "Not a Parquet file (expected magic number at tail, but found " + Arrays.toString(magic) + ')');
