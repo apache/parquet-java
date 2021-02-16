@@ -255,6 +255,26 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testBloomFilterOffset() throws IOException {
+    ParquetMetadata origMetaData = createParquetMetaData(null, Encoding.PLAIN);
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Without bloom filter offset
+    FileMetaData footer = converter.toParquetMetadata(1, origMetaData);
+    assertFalse(footer.getRow_groups().get(0).getColumns().get(0).getMeta_data().isSetBloom_filter_offset());
+    ParquetMetadata convertedMetaData = converter.fromParquetMetadata(footer);
+    assertTrue(convertedMetaData.getBlocks().get(0).getColumns().get(0).getBloomFilterOffset() < 0);
+
+    // With bloom filter offset
+    origMetaData.getBlocks().get(0).getColumns().get(0).setBloomFilterOffset(1234);
+    footer = converter.toParquetMetadata(1, origMetaData);
+    assertTrue(footer.getRow_groups().get(0).getColumns().get(0).getMeta_data().isSetBloom_filter_offset());
+    assertEquals(1234, footer.getRow_groups().get(0).getColumns().get(0).getMeta_data().getBloom_filter_offset());
+    convertedMetaData = converter.fromParquetMetadata(footer);
+    assertEquals(1234, convertedMetaData.getBlocks().get(0).getColumns().get(0).getBloomFilterOffset());
+  }
+
+  @Test
   public void testLogicalTypesBackwardCompatibleWithConvertedTypes() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     MessageType expected = Types.buildMessage()
