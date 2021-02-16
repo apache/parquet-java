@@ -581,10 +581,10 @@ public class TestParquetMetadataConverter {
   public void testMetadataToJson() {
     ParquetMetadata metadata = new ParquetMetadata(null, null);
     assertEquals("{\"fileMetaData\":null,\"blocks\":null}", ParquetMetadata.toJSON(metadata));
-    assertEquals("{\n" +
+    assertEquals(("{\n" +
             "  \"fileMetaData\" : null,\n" +
             "  \"blocks\" : null\n" +
-            "}", ParquetMetadata.toPrettyJSON(metadata));
+            "}").replace("\n", System.lineSeparator()), ParquetMetadata.toPrettyJSON(metadata));
   }
 
   private ColumnChunkMetaData createColumnChunkMetaData() {

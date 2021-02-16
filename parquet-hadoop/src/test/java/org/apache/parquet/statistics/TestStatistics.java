@@ -113,12 +113,11 @@ public class TestStatistics {
       ParquetProperties.WriterVersion writerVersion = context.version;
       CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-      ParquetWriter<Group> writer = new ParquetWriter<Group>(context.fsPath,
+      try (ParquetWriter<Group> writer = new ParquetWriter<Group>(context.fsPath,
           groupWriteSupport, codec, blockSize, pageSize, dictionaryPageSize,
-          enableDictionary, enableValidation, writerVersion, configuration);
-
-      context.write(writer);
-      writer.close();
+          enableDictionary, enableValidation, writerVersion, configuration)) {
+        context.write(writer);
+      }
 
       context.test();
 
@@ -467,17 +466,18 @@ public class TestStatistics {
       Configuration configuration = new Configuration();
       ParquetMetadata metadata = ParquetFileReader.readFooter(configuration,
           super.fsPath, ParquetMetadataConverter.NO_FILTER);
-      ParquetFileReader reader = new ParquetFileReader(configuration,
+      try (ParquetFileReader reader = new ParquetFileReader(configuration,
         metadata.getFileMetaData(),
         super.fsPath,
         metadata.getBlocks(),
-        metadata.getFileMetaData().getSchema().getColumns());
+        metadata.getFileMetaData().getSchema().getColumns())) {
 
-      PageStatsValidator validator = new PageStatsValidator();
+        PageStatsValidator validator = new PageStatsValidator();
 
-      PageReadStore pageReadStore;
-      while ((pageReadStore = reader.readNextRowGroup()) != null) {
-        validator.validate(metadata.getFileMetaData().getSchema(), pageReadStore);
+        PageReadStore pageReadStore;
+        while ((pageReadStore = reader.readNextRowGroup()) != null) {
+          validator.validate(metadata.getFileMetaData().getSchema(), pageReadStore);
+        }
       }
     }
   }
