@@ -210,7 +210,7 @@ abstract public class ColumnChunkMetaData {
   private IndexReference columnIndexReference;
   private IndexReference offsetIndexReference;
 
-  private long bloomFilterOffset;
+  private long bloomFilterOffset = -1;
 
   protected ColumnChunkMetaData(ColumnChunkProperties columnChunkProperties) {
     this(null, columnChunkProperties);
@@ -332,7 +332,7 @@ abstract public class ColumnChunkMetaData {
   }
 
   /**
-   * @return the offset to the Bloom filter
+   * @return the offset to the Bloom filter or {@code -1} if there is no bloom filter for this column chunk
    */
   @Private
   public long getBloomFilterOffset() {
@@ -618,7 +618,9 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
     shadowColumnChunkMetaData = parquetMetadataConverter.buildColumnChunkMetaData(metaData, path, primitiveType, createdBy);
     this.encodingStats = shadowColumnChunkMetaData.encodingStats;
     this.properties = shadowColumnChunkMetaData.properties;
-    setBloomFilterOffset(metaData.bloom_filter_offset);
+    if (metaData.isSetBloom_filter_offset()) {
+      setBloomFilterOffset(metaData.getBloom_filter_offset());
+    }
   }
 
   @Override

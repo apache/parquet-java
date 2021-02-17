@@ -1180,7 +1180,7 @@ public class ParquetFileReader implements Closeable {
    */
   public BloomFilter readBloomFilter(ColumnChunkMetaData meta) throws IOException {
     long bloomFilterOffset = meta.getBloomFilterOffset();
-    if (0 == bloomFilterOffset) {
+    if (bloomFilterOffset < 0) {
       return null;
     }
 

@@ -519,7 +519,10 @@ public class ParquetMetadataConverter {
       if (columnMetaData.getEncodingStats() != null && columnMetaData.getEncodingStats().hasDictionaryPages()) {
         metaData.setDictionary_page_offset(columnMetaData.getDictionaryPageOffset());
       }
-      metaData.setBloom_filter_offset(columnMetaData.getBloomFilterOffset());
+      long bloomFilterOffset = columnMetaData.getBloomFilterOffset();
+      if (bloomFilterOffset >= 0) {
+        metaData.setBloom_filter_offset(bloomFilterOffset);
+      }
       if (columnMetaData.getStatistics() != null && !columnMetaData.getStatistics().isEmpty()) {
         metaData.setStatistics(toParquetStatistics(columnMetaData.getStatistics(), this.statisticsTruncateLength));
       }
@@ -1452,7 +1455,9 @@ public class ParquetMetadataConverter {
             column = buildColumnChunkMetaData(metaData, columnPath,
                 messageType.getType(columnPath.toArray()).asPrimitiveType(), createdBy);
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
-            column.setBloomFilterOffset(metaData.bloom_filter_offset);
+            if (metaData.isSetBloom_filter_offset()) {
+              column.setBloomFilterOffset(metaData.getBloom_filter_offset());
+            }
           }  else { // column encrypted with column key
             // Metadata will be decrypted later, if this column is accessed
             EncryptionWithColumnKey columnKeyStruct = cryptoMetaData.getENCRYPTION_WITH_COLUMN_KEY();
