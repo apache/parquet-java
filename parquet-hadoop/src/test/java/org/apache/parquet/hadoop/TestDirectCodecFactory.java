@@ -39,7 +39,7 @@ import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 
 public class TestDirectCodecFactory {
 
-  private static enum Decompression {
+  private enum Decompression {
     ON_HEAP, OFF_HEAP, OFF_HEAP_BYTES_INPUT
   }
 
@@ -150,13 +150,18 @@ public class TestDirectCodecFactory {
   }
 
   @Test
-  public void compressionCodecs() throws Exception {
+  public void compressionCodecs() {
     final int[] sizes = { 4 * 1024, 1 * 1024 * 1024 };
     final boolean[] comp = { true, false };
     Set<CompressionCodecName> codecsToSkip = new HashSet<>();
     codecsToSkip.add(LZO); // not distributed because it is GPL
     codecsToSkip.add(LZ4); // not distributed in the default version of Hadoop
     codecsToSkip.add(ZSTD); // not distributed in the default version of Hadoop
+    final String arch = System.getProperty("os.arch");
+    if (!"amd64".equals(arch)) {
+      // PARQUET-1975 brotli-codec does not have natives for non-x86_64 architectures
+      codecsToSkip.add(BROTLI);
+    }
 
     for (final int size : sizes) {
       for (final boolean useOnHeapComp : comp) {
