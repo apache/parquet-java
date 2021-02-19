@@ -158,8 +158,8 @@ public class TestDirectCodecFactory {
     codecsToSkip.add(LZ4); // not distributed in the default version of Hadoop
     codecsToSkip.add(ZSTD); // not distributed in the default version of Hadoop
     final String arch = System.getProperty("os.arch");
-    if (!"amd64".equals(arch)) {
-      // PARQUET-1975 brotli-codec does not have natives for non-x86_64 architectures
+    if ("aarch64".equals(arch)) {
+      // PARQUET-1975 brotli-codec does not have natives for ARM64 architectures
       codecsToSkip.add(BROTLI);
     }
 

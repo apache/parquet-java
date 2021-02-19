@@ -146,12 +146,12 @@
   </build>
 
   <profiles>
-    <!-- PARQUET-1975 Do not add brotli-codec for non-x86_64 architectures -->
+    <!-- PARQUET-1975 Do not add brotli-codec for ARM64 architectures -->
     <profile>
-      <id>x86_64</id>
+      <id>non-aarch64</id>
       <activation>
         <os>
-          <arch>amd64</arch>
+          <arch>!aarch64</arch>
         </os>
       </activation>
       <dependencies>
