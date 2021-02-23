@@ -28,6 +28,8 @@ import org.apache.parquet.io.SeekableInputStream;
 
 /**
  * Class to help gather/calculate the proper values of the dictionary/first data page offset values in a column chunk.
+ * This class is used by Tools (parquet-tools/-cli) that do not support encryption so this does not support it either.
+ * (In some cases this tool would read the dictionary page header which might be encrypted.)
  */
 class Offsets {
 
@@ -63,7 +65,6 @@ class Offsets {
     long origPos = -1;
     try {
       origPos = in.getPos();
-      // TODO: Do we need to handle encryption here?
       PageHeader header = Util.readPageHeader(in);
       long headerSize = in.getPos() - origPos;
       return headerSize + header.getCompressed_page_size();
