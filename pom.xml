@@ -110,7 +110,7 @@
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.72</jcommander.version>
-    <zstd-jni.version>1.4.8-3</zstd-jni.version>
+    <zstd-jni.version>1.4.8-5</zstd-jni.version>
     <commons-text.version>1.8</commons-text.version>
 
     <!-- properties for the profiles -->
