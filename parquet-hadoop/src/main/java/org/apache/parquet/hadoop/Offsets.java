@@ -47,10 +47,17 @@ class Offsets {
     long firstDataPageOffset;
     long dictionaryPageOffset;
     if (chunk.hasDictionaryPage()) {
-      long dictionaryPageSize = chunk.getFirstDataPageOffset() - chunk.getDictionaryPageOffset();
-      if (dictionaryPageSize <= 0) {
-        // The offset values might be invalid so we have to read the size of the dictionary page
+      long dictionaryPageSize;
+      if (chunk.getDictionaryPageOffset() == 0 || chunk.getFirstDataPageOffset() <= chunk.getDictionaryPageOffset()) {
+        /*
+         * The offsets might not contain the proper values (so we need to read the dictionary page header):
+         * - The dictionaryPageOffset might not be set; in this case 0 is returned
+         *   (0 cannot be a valid offset because of the MAGIC bytes)
+         * - The firstDataPageOffset might point to the dictionary page
+         */
         dictionaryPageSize = readDictionaryPageSize(input, newChunkStart);
+      } else {
+        dictionaryPageSize = chunk.getFirstDataPageOffset() - chunk.getDictionaryPageOffset();
       }
       firstDataPageOffset = newChunkStart + dictionaryPageSize;
       dictionaryPageOffset = newChunkStart;
