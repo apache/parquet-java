@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -261,15 +261,17 @@ public class DeprecatedInputFormatTest {
     conf.set(ParquetInputFormat.READ_SUPPORT_CLASS, GroupReadSupport.class.getCanonicalName());
     JobClient.runJob(conf);
     File partFile = outputDir.listFiles(new PartFileFilter())[0];
-    BufferedReader br = new BufferedReader(new FileReader(partFile));
-    String line;
-    Set<String> s = new HashSet<String>();
-    while ((line = br.readLine()) != null) {
-      s.add(line.split("\t")[1]);
+    try (BufferedReader br = new BufferedReader(new FileReader(partFile))) {
+      String line;
+      Set<String> s = new HashSet<String>();
+      while ((line = br.readLine()) != null) {
+        s.add(line.split("\t")[1]);
+      }
+      assertEquals(s.size(), 2);
+      assertTrue(s.contains("hello"));
+      assertTrue(s.contains("world"));
     }
-    assertEquals(s.size(), 2);
-    assertTrue(s.contains("hello"));
-    assertTrue(s.contains("world"));
+
     FileUtils.deleteDirectory(inputDir);
     FileUtils.deleteDirectory(outputDir);
   }
