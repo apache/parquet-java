@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.SystemUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -391,23 +392,20 @@ public class TestInputFormat {
     tempDir.deleteOnExit();
     int numFiles = 10; // create a nontrivial number of files so that it actually tests getFooters() returns files in the correct order
 
-    StringBuilder url = new StringBuilder();
+    Path[] paths = new Path[numFiles];
     for (int i = 0; i < numFiles; i++) {
       File file = new File(tempDir, String.format("part-%05d.parquet", i));
       createParquetFile(file);
-      if (i > 0) {
-        url.append(',');
-      }
-      url.append("file:").append(file.getAbsolutePath());
+      paths[i] = new Path(file.toURI());
     }
 
     Job job = new Job();
-    FileInputFormat.setInputPaths(job, url.toString());
+    FileInputFormat.setInputPaths(job, paths);
     List<Footer> footers = new ParquetInputFormat<Object>().getFooters(job);
     for (int i = 0; i < numFiles; i++) {
       Footer footer = footers.get(i);
       File file = new File(tempDir, String.format("part-%05d.parquet", i));
-      assertEquals("file:" + file.getAbsolutePath(), footer.getFile().toString());
+      assertEquals(file.toURI().toString(), footer.getFile().toString());
     }
   }
 
