@@ -891,12 +891,12 @@ public class ParquetFileReader implements Closeable {
   /**
    * Reads all the columns requested from the row group at the specified block.
    *
-   * @param block the metadata for the requested RowGroup
+   * @param blockIndex the index of the requested block
    * @throws IOException if an error occurs while reading
    * @return the PageReadStore which can provide PageReaders for each column.
    */
-  public PageReadStore readRowGroup(BlockMetaData block) throws IOException {
-    return internalReadRowGroup(block);
+  public PageReadStore readRowGroup(int blockIndex) throws IOException {
+    return internalReadRowGroup(blockIndex);
   }
 
   /**
@@ -905,11 +905,11 @@ public class ParquetFileReader implements Closeable {
    * @return the PageReadStore which can provide PageReaders for each column.
    */
   public PageReadStore readNextRowGroup() throws IOException {
-    if (currentBlock >= blocks.size()) {
+    ColumnChunkPageReadStore rowGroup = internalReadRowGroup(currentBlock);
+    if (rowGroup == null) {
       return null;
     }
-    this.currentRowGroup = internalReadRowGroup(blocks.get(currentBlock));
-
+    this.currentRowGroup = rowGroup;
     // avoid re-reading bytes the dictionary reader is used after this call
     if (nextDictionaryReader != null) {
       nextDictionaryReader.setRowGroup(currentRowGroup);
@@ -920,10 +920,11 @@ public class ParquetFileReader implements Closeable {
     return currentRowGroup;
   }
 
-  private ColumnChunkPageReadStore internalReadRowGroup(BlockMetaData block) throws IOException {
-    if (block == null) {
+  private ColumnChunkPageReadStore internalReadRowGroup(int blockIndex) throws IOException {
+    if (blockIndex < 0 || blockIndex >= blocks.size()) {
       return null;
     }
+    BlockMetaData block = blocks.get(blockIndex);
     if (block.getRowCount() == 0) {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
@@ -970,25 +971,27 @@ public class ParquetFileReader implements Closeable {
     if (blockIndex < 0 || blockIndex >= blocks.size()) {
       return null;
     }
-    BlockMetaData block = blocks.get(blockIndex);
 
     // Filtering not required -> fall back to the non-filtering path
     if (!options.useColumnIndexFilter() || !FilterCompat.isFilteringRequired(options.getRecordFilter())) {
-      return internalReadRowGroup(block);
+      return internalReadRowGroup(blockIndex);
     }
 
+    BlockMetaData block = blocks.get(blockIndex);
     if (block.getRowCount() == 0) {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
+
     RowRanges rowRanges = getRowRanges(blockIndex);
     long rowCount = rowRanges.rowCount();
     if (rowCount == 0) {
       // There are no matching rows -> returning null
       return null;
     }
+
     if (rowCount == block.getRowCount()) {
       // All rows are matching -> fall back to the non-filtering path
-      return internalReadRowGroup(block);
+      return internalReadRowGroup(blockIndex);
     }
 
     return internalReadFilteredRowGroup(block, rowRanges, getColumnIndexStore(blockIndex));
@@ -1141,10 +1144,17 @@ public class ParquetFileReader implements Closeable {
    * @return a DictionaryPageReadStore for the next row group
    */
   public DictionaryPageReadStore getNextDictionaryReader() {
-    if (nextDictionaryReader == null && currentBlock < blocks.size()) {
-      this.nextDictionaryReader = getDictionaryReader(blocks.get(currentBlock));
+    if (nextDictionaryReader == null) {
+      this.nextDictionaryReader = getDictionaryReader(currentBlock);
     }
     return nextDictionaryReader;
+  }
+
+  public DictionaryPageReader getDictionaryReader(int blockIndex) {
+    if (blockIndex < 0 || blockIndex >= blocks.size()) {
+      return null;
+    }
+    return new DictionaryPageReader(this, blocks.get(blockIndex));
   }
 
   public DictionaryPageReader getDictionaryReader(BlockMetaData block) {
@@ -1226,6 +1236,13 @@ public class ParquetFileReader implements Closeable {
     return new DictionaryPage(
         bin, uncompressedPageSize, dictHeader.getNum_values(),
         converter.getEncoding(dictHeader.getEncoding()));
+  }
+
+  public BloomFilterReader getBloomFilterDataReader(int blockIndex) {
+    if (blockIndex < 0 || blockIndex >= blocks.size()) {
+      return null;
+    }
+    return new BloomFilterReader(this, blocks.get(blockIndex));
   }
 
   public BloomFilterReader getBloomFilterDataReader(BlockMetaData block) {

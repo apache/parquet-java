@@ -27,7 +27,6 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
 import org.apache.parquet.filter2.compat.FilterCompat;
-import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
@@ -60,7 +59,7 @@ import static org.junit.Assert.*;
 /**
  * This tests the random access methods of the ParquetFileReader, specifically:
  * <ul>
- *   <li>{@link ParquetFileReader#readRowGroup(BlockMetaData)}</li>
+ *   <li>{@link ParquetFileReader#readRowGroup(int)}</li>
  *   <li>{@link ParquetFileReader#readFilteredRowGroup(int)}</li>
  * </ul>
  *
@@ -288,9 +287,8 @@ public class TestParquetReaderRandomAccess {
 
     @Override
     protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
-      List<BlockMetaData> blocks = reader.getRowGroups();
       for (int index: indexes) {
-        PageReadStore pages = reader.readRowGroup(blocks.get(index));
+        PageReadStore pages = reader.readRowGroup(index);
         assertValues(pages, fromNumber.get(index), toNumber.get(index));
       }
     }
@@ -312,7 +310,6 @@ public class TestParquetReaderRandomAccess {
 
     @Override
     protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
-      List<BlockMetaData> blocks = reader.getRowGroups();
       int splitPoint = indexes.size()/2;
 
       {
@@ -321,7 +318,7 @@ public class TestParquetReaderRandomAccess {
       }
       for (int i = 0; i < splitPoint; i++) {
         int index = indexes.get(i);
-        PageReadStore pages = reader.readRowGroup(blocks.get(index));
+        PageReadStore pages = reader.readRowGroup(index);
         assertValues(pages, fromNumber.get(index), toNumber.get(index));
       }
       {
@@ -330,7 +327,7 @@ public class TestParquetReaderRandomAccess {
       }
       for (int i = splitPoint; i < indexes.size(); i++) {
         int index = indexes.get(i);
-        PageReadStore pages = reader.readRowGroup(blocks.get(index));
+        PageReadStore pages = reader.readRowGroup(index);
         assertValues(pages, fromNumber.get(index), toNumber.get(index));
       }
       {
