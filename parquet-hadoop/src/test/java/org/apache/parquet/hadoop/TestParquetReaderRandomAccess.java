@@ -20,18 +20,22 @@ package org.apache.parquet.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ParquetReadOptions;
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.column.page.DataPage;
-import org.apache.parquet.column.page.DataPageV1;
-import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
+import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.schema.*;
+import org.apache.parquet.io.ColumnIOFactory;
+import org.apache.parquet.io.MessageColumnIO;
+import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.RecordReader;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 import org.apache.parquet.statistics.DataGenerationContext;
 import org.apache.parquet.statistics.RandomValues;
 import org.junit.Rule;
@@ -46,16 +50,28 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.filter2.predicate.FilterApi.eq;
+import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.*;
 
+/**
+ * This tests the random access methods of the ParquetFileReader, specifically:
+ * <ul>
+ *   <li>{@link ParquetFileReader#readRowGroup(BlockMetaData)}</li>
+ *   <li>{@link ParquetFileReader#readFilteredRowGroup(int)}</li>
+ * </ul>
+ *
+ *  For this we use two columns.
+ *  Column "i64" that starts at value 0 and counts up.
+ *  Column "i64_flip" that start at value 1 and flips between 1 and 0.
+ *
+ *  With these two column we can validate the read data without holding the written data in memory.
+ *  The "i64_flip" column is mainly used to test the filtering.
+ *  We filter "i64_flip" to be equal to one, that means all values in "i64" have to be even.
+ */
 public class TestParquetReaderRandomAccess {
   private static final int KILOBYTE = 1 << 10;
   private static final long RANDOM_SEED = 7174252115631550700L;
@@ -70,8 +86,8 @@ public class TestParquetReaderRandomAccess {
     File file = temp.newFile("test_file.parquet");
     file.delete();
 
-    int blockSize = 500 * KILOBYTE;
-    int pageSize = 20 * KILOBYTE;
+    int blockSize = 50 * KILOBYTE;
+    int pageSize = 2 * KILOBYTE;
 
     List<DataContext> contexts = new ArrayList<>();
 
@@ -91,51 +107,56 @@ public class TestParquetReaderRandomAccess {
     }
   }
 
-  public static abstract class DataContext extends DataGenerationContext.WriteContext {
+  public static class SequentialLongGenerator extends RandomValues.RandomValueGenerator<Long> {
+    private long value= 0;
 
-    private static final int recordCount = 100_000;
-
-    private final Random random;
-
-    private final List<RandomValues.RandomValueGenerator<?>> randomGenerators;
-
-    protected final ColumnDescriptor testColumnDescriptor;
-
-    public DataContext(long seed, File path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
-      super(path, buildSchema(seed), blockSize, pageSize, enableDictionary, true, version);
-
-      this.random = new Random(seed);
-
-      int fixedLength = schema.getType("fixed-binary").asPrimitiveType().getTypeLength();
-
-      this.testColumnDescriptor = super.schema.getColumnDescription(new String[]{"unconstrained-i64"});
-
-      randomGenerators = Arrays.asList(
-        new RandomValues.IntGenerator(random.nextLong()),
-        new RandomValues.LongGenerator(random.nextLong()),
-        new RandomValues.FloatGenerator(random.nextLong()),
-        new RandomValues.DoubleGenerator(random.nextLong()),
-        new RandomValues.StringGenerator(random.nextLong()),
-        new RandomValues.FixedGenerator(random.nextLong(), fixedLength),
-        new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
-        new RandomValues.UnconstrainedLongGenerator(random.nextLong())
-      );
+    protected SequentialLongGenerator() {
+      super(0L);
     }
 
-    private static MessageType buildSchema(long seed) {
-      Random random = new Random(seed);
-      int fixedBinaryLength = random.nextInt(21) + 1;
+    @Override
+    public Long nextValue() {
+      return value++;
+    }
+  }
 
+  public static class SequentialFlippingLongGenerator extends RandomValues.RandomValueGenerator<Long> {
+    private long value = 0;
+
+    protected SequentialFlippingLongGenerator() {
+      super(0L);
+    }
+
+    @Override
+    public Long nextValue() {
+      value = value == 0 ? 1 : 0;
+      return value;
+    }
+  }
+
+  public static abstract class DataContext extends DataGenerationContext.WriteContext {
+
+    private static final int recordCount = 1_000_000;
+
+    private final List<RandomValues.RandomValueGenerator<?>> randomGenerators;
+    private final Random random;
+    private final FilterCompat.Filter filter;
+
+    public DataContext(long seed, File path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
+      super(path, buildSchema(), blockSize, pageSize, enableDictionary, true, version);
+
+      this.random = new Random(seed);
+      this.randomGenerators = Arrays.asList(
+        new SequentialLongGenerator(),
+        new SequentialFlippingLongGenerator());
+
+      this.filter = FilterCompat.get(eq(longColumn("i64_flip"), 1L));
+    }
+
+    private static MessageType buildSchema() {
       return new MessageType("schema",
-        new PrimitiveType(OPTIONAL, INT32, "i32"),
-        new PrimitiveType(OPTIONAL, INT64, "i64"),
-        new PrimitiveType(OPTIONAL, FLOAT, "sngl"),
-        new PrimitiveType(OPTIONAL, DOUBLE, "dbl"),
-        new PrimitiveType(OPTIONAL, BINARY, "strings"),
-        new PrimitiveType(OPTIONAL, FIXED_LEN_BYTE_ARRAY, fixedBinaryLength, "fixed-binary"),
-        new PrimitiveType(REQUIRED, INT32, "unconstrained-i32"),
-        new PrimitiveType(REQUIRED, INT64, "unconstrained-i64")
-      );
+        new PrimitiveType(REQUIRED, INT64, "i64"),
+        new PrimitiveType(REQUIRED, INT64, "i64_flip"));
     }
 
     @Override
@@ -149,41 +170,9 @@ public class TestParquetReaderRandomAccess {
           if (type.isRepetition(OPTIONAL) && generator.shouldGenerateNull()) {
             continue;
           }
-          switch (type.asPrimitiveType().getPrimitiveTypeName()) {
-            case BINARY:
-            case FIXED_LEN_BYTE_ARRAY:
-            case INT96:
-              group.append(type.getName(), ((RandomValues.RandomBinaryBase<?>) generator).nextBinaryValue());
-              break;
-            case INT32:
-              group.append(type.getName(), (Integer) generator.nextValue());
-              break;
-            case INT64:
-              group.append(type.getName(), (Long) generator.nextValue());
-              break;
-            case FLOAT:
-              group.append(type.getName(), (Float) generator.nextValue());
-              break;
-            case DOUBLE:
-              group.append(type.getName(), (Double) generator.nextValue());
-              break;
-            case BOOLEAN:
-              group.append(type.getName(), (Boolean) generator.nextValue());
-              break;
-          }
+          group.append(type.getName(), (Long) generator.nextValue());
         }
         writer.write(group);
-      }
-    }
-
-    public static byte[] getBytesFromPage(DataPage page) throws IOException {
-      if (page instanceof  DataPageV1) {
-        return ((DataPageV1) page).getBytes().toByteArray();
-      } else if (page instanceof DataPageV2) {
-        return ((DataPageV2) page).getData().toByteArray();
-      } else {
-        fail();
-        return null;
       }
     }
 
@@ -192,36 +181,103 @@ public class TestParquetReaderRandomAccess {
       Configuration configuration = new Configuration();
       ParquetReadOptions options = ParquetReadOptions.builder().build();
 
-      List<byte[]> testPageBytes = new ArrayList<>();
-      List<Integer> testPageValueCounts = new ArrayList<>();
+      ParquetReadOptions filterOptions = ParquetReadOptions.builder()
+        .copy(options)
+        .withRecordFilter(filter)
+        .useDictionaryFilter(true)
+        .useStatsFilter(true)
+        .useRecordFilter(true)
+        .useColumnIndexFilter(true)
+        .build();
+
+      List<Long> fromNumber = new ArrayList<>();
+      List<Long> toNumber = new ArrayList<>();
+      int blocks;
 
       try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), options)) {
+        blocks = reader.getRowGroups().size();
         PageReadStore pages;
         while ((pages = reader.readNextRowGroup()) != null) {
-          DataPage page = pages.getPageReader(testColumnDescriptor).readPage();
-          testPageBytes.add(getBytesFromPage(page));
-          testPageValueCounts.add(page.getValueCount());
+          MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(super.schema);
+          RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema));
+          long rowCount = pages.getRowCount();
+          long from = recordReader.read().getLong("i64", 0);
+          for (int i = 1; i < rowCount - 1; i++) {
+            recordReader.read();
+          }
+          Group group = recordReader.read();
+          long to;
+          if (group == null) {
+            to = from;
+          } else {
+            to = group.getLong("i64", 0);
+          }
+          fromNumber.add(from);
+          toNumber.add(to);
         }
       }
 
-      try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), options)) {
-        List<BlockMetaData> blocks = reader.getRowGroups();
-
-        // Randomize indexes
-        List<Integer> indexes = new ArrayList<>();
-        for (int i = 0; i < blocks.size(); i++) {
-          for (int j = 0; j < 4; j++) {
-            indexes.add(i);
-          }
+      // Randomize indexes
+      List<Integer> indexes = new ArrayList<>();
+      for (int i = 0; i < blocks; i++) {
+        for (int j = 0; j < 4; j++) {
+          indexes.add(i);
         }
+      }
 
-        Collections.shuffle(indexes, random);
+      Collections.shuffle(indexes, random);
 
-        test(reader, indexes, testPageBytes, testPageValueCounts);
+      try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), options)) {
+        test(reader, indexes, fromNumber, toNumber);
+      }
+
+      try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), filterOptions)) {
+        testFiltered(reader, indexes, fromNumber, toNumber);
       }
     }
 
-    protected abstract void test(ParquetFileReader reader, List<Integer> indexes, List<byte[]> idPageBytes, List<Integer> idPageValueCounts) throws IOException;
+    public void assertValues(PageReadStore pages, long firstValue, long lastValue) {
+      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(super.schema);
+      RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema));
+      for (long i = firstValue; i <= lastValue; i++) {
+        Group group = recordReader.read();
+        assertEquals(i, group.getLong("i64", 0));
+        assertEquals((i % 2) == 0 ? 1 : 0, group.getLong("i64_flip", 0));
+      }
+      boolean exceptionThrown = false;
+      try {
+        recordReader.read();
+      } catch (ParquetDecodingException e) {
+        exceptionThrown = true;
+      }
+      assertTrue(exceptionThrown);
+    }
+
+    public void assertFilteredValues(PageReadStore pages, long firstValue, long lastValue) {
+      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(super.schema);
+      RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema), filter);
+
+      for (long i = firstValue; i <= lastValue; i++) {
+        Group group = recordReader.read();
+        if ((i % 2) == 0) {
+          assertEquals(i, group.getLong("i64", 0));
+          assertEquals(1, group.getLong("i64_flip", 0));
+        } else {
+          assertTrue(group == null || recordReader.shouldSkipCurrentRecord());
+        }
+      }
+
+      boolean exceptionThrown = false;
+      try {
+        recordReader.read();
+      } catch (ParquetDecodingException e) {
+        exceptionThrown = true;
+      }
+      assertTrue(exceptionThrown);
+    }
+
+    protected abstract void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException;
+    protected abstract void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException;
   }
 
   public static class DataContextRandom extends DataContext {
@@ -231,14 +287,19 @@ public class TestParquetReaderRandomAccess {
     }
 
     @Override
-    protected void test(ParquetFileReader reader, List<Integer> indexes, List<byte[]> testPageBytes, List<Integer> testPageValueCounts) throws IOException {
+    protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
       List<BlockMetaData> blocks = reader.getRowGroups();
-
       for (int index: indexes) {
         PageReadStore pages = reader.readRowGroup(blocks.get(index));
-        DataPage page = pages.getPageReader(testColumnDescriptor).readPage();
-        assertArrayEquals(testPageBytes.get(index), getBytesFromPage(page));
-        assertEquals((int) testPageValueCounts.get(index), page.getValueCount());
+        assertValues(pages, fromNumber.get(index), toNumber.get(index));
+      }
+    }
+
+    @Override
+    protected void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
+      for (int index: indexes) {
+        PageReadStore pages = reader.readFilteredRowGroup(index);
+        assertFilteredValues(pages, fromNumber.get(index), toNumber.get(index));
       }
     }
   }
@@ -250,41 +311,59 @@ public class TestParquetReaderRandomAccess {
     }
 
     @Override
-    protected void test(ParquetFileReader reader, List<Integer> indexes, List<byte[]> testPageBytes, List<Integer> testPageValueCounts) throws IOException {
+    protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
       List<BlockMetaData> blocks = reader.getRowGroups();
       int splitPoint = indexes.size()/2;
 
       {
         PageReadStore pages = reader.readNextRowGroup();
-        DataPage page = pages.getPageReader(testColumnDescriptor).readPage();
-        assertArrayEquals(testPageBytes.get(0), getBytesFromPage(page));
-        assertEquals((int) testPageValueCounts.get(0), page.getValueCount());
+        assertValues(pages, fromNumber.get(0), toNumber.get(0));
       }
       for (int i = 0; i < splitPoint; i++) {
         int index = indexes.get(i);
         PageReadStore pages = reader.readRowGroup(blocks.get(index));
-        DataPage page = pages.getPageReader(testColumnDescriptor).readPage();
-        assertArrayEquals(testPageBytes.get(index), getBytesFromPage(page));
-        assertEquals((int) testPageValueCounts.get(index), page.getValueCount());
+        assertValues(pages, fromNumber.get(index), toNumber.get(index));
       }
       {
         PageReadStore pages = reader.readNextRowGroup();
-        DataPage page = pages.getPageReader(testColumnDescriptor).readPage();
-        assertArrayEquals(testPageBytes.get(1), getBytesFromPage(page));
-        assertEquals((int) testPageValueCounts.get(1), page.getValueCount());
+        assertValues(pages, fromNumber.get(1), toNumber.get(1));
       }
       for (int i = splitPoint; i < indexes.size(); i++) {
         int index = indexes.get(i);
         PageReadStore pages = reader.readRowGroup(blocks.get(index));
-        DataPage page = pages.getPageReader(testColumnDescriptor).readPage();
-        assertArrayEquals(testPageBytes.get(index), getBytesFromPage(page));
-        assertEquals((int) testPageValueCounts.get(index), page.getValueCount());
+        assertValues(pages, fromNumber.get(index), toNumber.get(index));
       }
       {
         PageReadStore pages = reader.readNextRowGroup();
-        DataPage page = pages.getPageReader(testColumnDescriptor).readPage();
-        assertArrayEquals(testPageBytes.get(2), getBytesFromPage(page));
-        assertEquals((int) testPageValueCounts.get(2), page.getValueCount());
+        assertValues(pages, fromNumber.get(2), toNumber.get(2));
+      }
+    }
+
+    @Override
+    protected void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
+      int splitPoint = indexes.size()/2;
+
+      {
+        PageReadStore pages = reader.readNextFilteredRowGroup();
+        assertFilteredValues(pages, fromNumber.get(0), toNumber.get(0));
+      }
+      for (int i = 0; i < splitPoint; i++) {
+        int index = indexes.get(i);
+        PageReadStore pages = reader.readFilteredRowGroup(index);
+        assertFilteredValues(pages, fromNumber.get(index), toNumber.get(index));
+      }
+      {
+        PageReadStore pages = reader.readNextFilteredRowGroup();
+        assertFilteredValues(pages, fromNumber.get(1), toNumber.get(1));
+      }
+      for (int i = splitPoint; i < indexes.size(); i++) {
+        int index = indexes.get(i);
+        PageReadStore pages = reader.readFilteredRowGroup(index);
+        assertFilteredValues(pages, fromNumber.get(index), toNumber.get(index));
+      }
+      {
+        PageReadStore pages = reader.readNextFilteredRowGroup();
+        assertFilteredValues(pages, fromNumber.get(2), toNumber.get(2));
       }
     }
   }
