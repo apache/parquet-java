@@ -191,10 +191,10 @@ public class TestParquetReaderRandomAccess {
 
       List<Long> fromNumber = new ArrayList<>();
       List<Long> toNumber = new ArrayList<>();
-      int blocks;
+      int blockAmount;
 
       try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), options)) {
-        blocks = reader.getRowGroups().size();
+        blockAmount = reader.getRowGroups().size();
         PageReadStore pages;
         while ((pages = reader.readNextRowGroup()) != null) {
           MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(super.schema);
@@ -218,24 +218,35 @@ public class TestParquetReaderRandomAccess {
 
       // Randomize indexes
       List<Integer> indexes = new ArrayList<>();
-      for (int i = 0; i < blocks; i++) {
-        for (int j = 0; j < 4; j++) {
+      for (int j = 0; j < 4; j++) {
+        for (int i = 0; i < blockAmount; i++) {
           indexes.add(i);
         }
+        indexes.add(-1);
+        indexes.add(blockAmount);
+        indexes.add(blockAmount + 1);
       }
 
       Collections.shuffle(indexes, random);
 
       try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), options)) {
-        test(reader, indexes, fromNumber, toNumber);
+        test(reader, indexes, fromNumber, toNumber, blockAmount);
       }
 
       try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), filterOptions)) {
-        testFiltered(reader, indexes, fromNumber, toNumber);
+        testFiltered(reader, indexes, fromNumber, toNumber, blockAmount);
       }
     }
 
-    public void assertValues(PageReadStore pages, long firstValue, long lastValue) {
+    public void assertValues(PageReadStore pages, List<Long> fromNumber, List<Long> toNumber, int index, int blockAmount) {
+      if (index < 0 || index >= blockAmount) {
+        assertNull(pages);
+        return;
+      }
+
+      long firstValue = fromNumber.get(index);
+      long lastValue = toNumber.get(index);
+
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(super.schema);
       RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema));
       for (long i = firstValue; i <= lastValue; i++) {
@@ -252,7 +263,15 @@ public class TestParquetReaderRandomAccess {
       assertTrue(exceptionThrown);
     }
 
-    public void assertFilteredValues(PageReadStore pages, long firstValue, long lastValue) {
+    public void assertFilteredValues(PageReadStore pages, List<Long> fromNumber, List<Long> toNumber, int index, int blockAmount) {
+      if (index < 0 || index >= blockAmount) {
+        assertNull(pages);
+        return;
+      }
+
+      long firstValue = fromNumber.get(index);
+      long lastValue = toNumber.get(index);
+
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(super.schema);
       RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema), filter);
 
@@ -275,8 +294,8 @@ public class TestParquetReaderRandomAccess {
       assertTrue(exceptionThrown);
     }
 
-    protected abstract void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException;
-    protected abstract void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException;
+    protected abstract void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException;
+    protected abstract void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException;
   }
 
   public static class DataContextRandom extends DataContext {
@@ -286,18 +305,18 @@ public class TestParquetReaderRandomAccess {
     }
 
     @Override
-    protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
+    protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException {
       for (int index: indexes) {
         PageReadStore pages = reader.readRowGroup(index);
-        assertValues(pages, fromNumber.get(index), toNumber.get(index));
+        assertValues(pages, fromNumber, toNumber, index, blockAmount);
       }
     }
 
     @Override
-    protected void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
+    protected void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException {
       for (int index: indexes) {
         PageReadStore pages = reader.readFilteredRowGroup(index);
-        assertFilteredValues(pages, fromNumber.get(index), toNumber.get(index));
+        assertFilteredValues(pages, fromNumber, toNumber, index, blockAmount);
       }
     }
   }
@@ -309,58 +328,58 @@ public class TestParquetReaderRandomAccess {
     }
 
     @Override
-    protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
+    protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException {
       int splitPoint = indexes.size()/2;
 
       {
         PageReadStore pages = reader.readNextRowGroup();
-        assertValues(pages, fromNumber.get(0), toNumber.get(0));
+        assertValues(pages, fromNumber, toNumber, 0 , blockAmount);
       }
       for (int i = 0; i < splitPoint; i++) {
         int index = indexes.get(i);
         PageReadStore pages = reader.readRowGroup(index);
-        assertValues(pages, fromNumber.get(index), toNumber.get(index));
+        assertValues(pages, fromNumber, toNumber, index, blockAmount);
       }
       {
         PageReadStore pages = reader.readNextRowGroup();
-        assertValues(pages, fromNumber.get(1), toNumber.get(1));
+        assertValues(pages, fromNumber, toNumber, 1 , blockAmount);
       }
       for (int i = splitPoint; i < indexes.size(); i++) {
         int index = indexes.get(i);
         PageReadStore pages = reader.readRowGroup(index);
-        assertValues(pages, fromNumber.get(index), toNumber.get(index));
+        assertValues(pages, fromNumber, toNumber, index, blockAmount);
       }
       {
         PageReadStore pages = reader.readNextRowGroup();
-        assertValues(pages, fromNumber.get(2), toNumber.get(2));
+        assertValues(pages, fromNumber, toNumber, 2 , blockAmount);
       }
     }
 
     @Override
-    protected void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber) throws IOException {
+    protected void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException {
       int splitPoint = indexes.size()/2;
 
       {
         PageReadStore pages = reader.readNextFilteredRowGroup();
-        assertFilteredValues(pages, fromNumber.get(0), toNumber.get(0));
+        assertFilteredValues(pages, fromNumber, toNumber, 0, blockAmount);
       }
       for (int i = 0; i < splitPoint; i++) {
         int index = indexes.get(i);
         PageReadStore pages = reader.readFilteredRowGroup(index);
-        assertFilteredValues(pages, fromNumber.get(index), toNumber.get(index));
+        assertFilteredValues(pages, fromNumber, toNumber, index, blockAmount);
       }
       {
         PageReadStore pages = reader.readNextFilteredRowGroup();
-        assertFilteredValues(pages, fromNumber.get(1), toNumber.get(1));
+        assertFilteredValues(pages, fromNumber, toNumber, 1, blockAmount);
       }
       for (int i = splitPoint; i < indexes.size(); i++) {
         int index = indexes.get(i);
         PageReadStore pages = reader.readFilteredRowGroup(index);
-        assertFilteredValues(pages, fromNumber.get(index), toNumber.get(index));
+        assertFilteredValues(pages, fromNumber, toNumber, index, blockAmount);
       }
       {
         PageReadStore pages = reader.readNextFilteredRowGroup();
-        assertFilteredValues(pages, fromNumber.get(2), toNumber.get(2));
+        assertFilteredValues(pages, fromNumber, toNumber, 2, blockAmount);
       }
     }
   }
