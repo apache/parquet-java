@@ -152,7 +152,7 @@
       <plugin>
         <groupId>com.github.os72</groupId>
         <artifactId>protoc-jar-maven-plugin</artifactId>
-        <version>3.8.0</version>
+        <version>3.11.4</version>
         <executions>
           <execution>
             <id>generate-sources</id>
@@ -161,7 +161,7 @@
               <goal>run</goal>
             </goals>
             <configuration>
-              <protocVersion>${protobuf.version}</protocVersion>
+              <protocArtifact>com.google.protobuf:protoc:3.5.1</protocArtifact>
               <addSources>test</addSources>
               <addProtoSources>all</addProtoSources>
               <outputDirectory>${project.build.directory}/generated-test-sources/java</outputDirectory>
