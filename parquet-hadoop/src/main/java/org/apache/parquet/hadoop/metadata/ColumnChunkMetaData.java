@@ -262,7 +262,8 @@ abstract public class ColumnChunkMetaData {
   abstract public long getFirstDataPageOffset();
 
   /**
-   * @return the location of the dictionary page if any
+   * @return the location of the dictionary page if any; {@code 0} is returned if there is no dictionary page. Check
+   *         {@link #hasDictionaryPage()} to validate.
    */
   abstract public long getDictionaryPageOffset();
 
