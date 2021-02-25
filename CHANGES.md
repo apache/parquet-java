@@ -56,6 +56,7 @@ Release Notes - Parquet - Version 1.12.0
 *   [PARQUET-1868](https://issues.apache.org/jira/browse/PARQUET-1868) - Parquet reader options toggle for bloom filter toggles dictionary filtering
 *   [PARQUET-1879](https://issues.apache.org/jira/browse/PARQUET-1879) - Apache Arrow can not read a Parquet File written with Parqet-Avro 1.11.0 with a Map field
 *   [PARQUET-1893](https://issues.apache.org/jira/browse/PARQUET-1893) - H2SeekableInputStream readFully() doesn't respect start and len
+*   [PARQUET-1894](https://issues.apache.org/jira/browse/PARQUET-1894) - Please fix the related Shaded Jackson Databind CVEs
 *   [PARQUET-1896](https://issues.apache.org/jira/browse/PARQUET-1896) - \[Maven\] parquet-tools build is broken
 *   [PARQUET-1910](https://issues.apache.org/jira/browse/PARQUET-1910) - Parquet-cli is broken after TransCompressionCommand was added
 *   [PARQUET-1917](https://issues.apache.org/jira/browse/PARQUET-1917) - \[parquet-proto\] default values are stored in oneOf fields that aren't set
@@ -67,6 +68,12 @@ Release Notes - Parquet - Version 1.12.0
 *   [PARQUET-1949](https://issues.apache.org/jira/browse/PARQUET-1949) - Mark Parquet-1872 with not support bloom filter yet
 *   [PARQUET-1954](https://issues.apache.org/jira/browse/PARQUET-1954) - TCP connection leak in parquet dump
 *   [PARQUET-1963](https://issues.apache.org/jira/browse/PARQUET-1963) - DeprecatedParquetInputFormat in CombineFileInputFormat throw NPE when the first sub-split is empty
+*   [PARQUET-1966](https://issues.apache.org/jira/browse/PARQUET-1966) - Fix build with JDK11 for JDK8
+*   [PARQUET-1970](https://issues.apache.org/jira/browse/PARQUET-1970) - Make minor releases source compatible
+*   [PARQUET-1971](https://issues.apache.org/jira/browse/PARQUET-1971) - Flaky test in github action
+*   [PARQUET-1977](https://issues.apache.org/jira/browse/PARQUET-1977) - Invalid data\_page\_offset
+*   [PARQUET-1979](https://issues.apache.org/jira/browse/PARQUET-1979) - Optional bloom\_filter\_offset is filled if no bloom filter is present
+*   [PARQUET-1984](https://issues.apache.org/jira/browse/PARQUET-1984) - Some tests fail on windows
 
 #### New Feature
 
@@ -139,6 +146,8 @@ Release Notes - Parquet - Version 1.12.0
 *   [PARQUET-1952](https://issues.apache.org/jira/browse/PARQUET-1952) - Upgrade Avro to 1.10.1
 *   [PARQUET-1961](https://issues.apache.org/jira/browse/PARQUET-1961) - Bump Jackson to 2.11.4
 *   [PARQUET-1964](https://issues.apache.org/jira/browse/PARQUET-1964) - Properly handle missing/null filter
+*   [PARQUET-1967](https://issues.apache.org/jira/browse/PARQUET-1967) - Upgrade Zstd-jni to 1.4.8-3
+*   [PARQUET-1969](https://issues.apache.org/jira/browse/PARQUET-1969) - Test by GithubAction
 
 #### Test
 
