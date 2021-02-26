@@ -98,12 +98,6 @@
       <version>${fastutil.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.github.rdblue</groupId>
-      <artifactId>brotli-codec</artifactId>
-      <version>${brotli-codec.version}</version>
-      <optional>true</optional>
-    </dependency>
-    <dependency>
       <groupId>com.github.luben</groupId>
       <artifactId>zstd-jni</artifactId>
       <version>${zstd-jni.version}</version>
@@ -151,5 +145,24 @@
     </plugins>
   </build>
 
+  <profiles>
+    <!-- PARQUET-1975 Do not add brotli-codec for ARM64 architectures -->
+    <profile>
+      <id>non-aarch64</id>
+      <activation>
+        <os>
+          <arch>!aarch64</arch>
+        </os>
+      </activation>
+      <dependencies>
+        <dependency>
+          <groupId>com.github.rdblue</groupId>
+          <artifactId>brotli-codec</artifactId>
+          <version>${brotli-codec.version}</version>
+          <optional>true</optional>
+        </dependency>
+      </dependencies>
+    </profile>
+  </profiles>
 
 </project>
