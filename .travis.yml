@@ -22,7 +22,10 @@ distro: bionic
 arch: arm64
 language: java
 jdk: openjdk11
-env: HADOOP_PROFILE=default TEST_CODECS=uncompressed
+env: 
+  - HADOOP_PROFILE=default TEST_CODECS=uncompressed
+  - HADOOP_PROFILE=default TEST_CODECS=gzip
+  - HADOOP_PROFILE=default TEST_CODECS=snappy
 
 cache:
   directories:
