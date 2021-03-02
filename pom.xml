@@ -90,7 +90,6 @@
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.12</scala.binary.version>
     <skip.integration.tests>true</skip.integration.tests>
-    <skip.unit.tests>false</skip.unit.tests>
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <scrooge.verion>19.10.0</scrooge.verion>
     <pig.version>0.16.0</pig.version>
@@ -412,8 +411,6 @@
             <!-- Configure log level for Hadoop -->
             <hadoop.logLevel>${surefire.logLevel}</hadoop.logLevel>
           </systemPropertyVariables>
-          <!-- Skips unit tests if the value of skip.unit.tests property is true -->
-          <skipTests>${skip.unit.tests}</skipTests>
           <excludes>
             <exclude>**/benchmark/*.java</exclude>
             <exclude>**/IT*.java</exclude>
@@ -598,45 +595,15 @@
       </properties>
     </profile>
 
-    <!-- Profile for CI tests to have less output -->
+    <!-- Profile for CI tests to have less output and initialize
+    or update submodules needed for integration tests -->
     <profile>
       <id>ci-test</id>
       <properties>
         <surefire.logLevel>WARN</surefire.logLevel>
         <surefire.argLine>-Xmx512m -XX:MaxJavaStackTraceDepth=10</surefire.argLine>
-      </properties>
-    </profile>
-
-    <profile>
-      <id>jdk9+</id>
-      <activation>
-        <jdk>[1.9,)</jdk>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <configuration>
-              <release>8</release>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <profile>
-      <id>integration-test</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-      </activation>
-      <properties>
-        <!--
-            Only integration tests are run when the integration-test profile is active
-        -->
         <skip.integration.tests>false</skip.integration.tests>
-        <skip.unit.tests>true</skip.unit.tests>
       </properties>
-
       <build>
         <pluginManagement>
           <plugins>
@@ -665,6 +632,24 @@
             </plugin>
           </plugins>
         </pluginManagement>
+      </build>
+    </profile>
+
+    <profile>
+      <id>jdk9+</id>
+      <activation>
+        <jdk>[1.9,)</jdk>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+              <release>8</release>
+            </configuration>
+          </plugin>
+        </plugins>
       </build>
     </profile>
   </profiles>
