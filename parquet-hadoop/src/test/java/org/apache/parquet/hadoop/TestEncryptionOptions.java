@@ -64,8 +64,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
  *    readers that support encryption.
  * 3) Produce encrypted files with plaintext footer, for testing the ability of legacy
  *    readers to parse the footer and read unencrypted columns.
- * 4) Perform interoperability tests with other (eg parquet-cpp) writers, by reading
- *    encrypted files produced by these writers.
  *
  * The write sample produces number of parquet files, each encrypted with a different
  * encryption configuration as described below.
@@ -299,7 +297,6 @@ public class TestEncryptionOptions {
     testReadEncryptedParquetFiles(rootPath, DATA);
   }
 
-  @Test
   public void testInteropReadEncryptedParquetFiles() throws IOException {
     Path rootPath = new Path(PARQUET_TESTING_PATH);
     LOG.info("======== testInteropReadEncryptedParquetFiles {} ========", rootPath.toString());
