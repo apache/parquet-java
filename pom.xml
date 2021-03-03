@@ -413,7 +413,6 @@
           </systemPropertyVariables>
           <excludes>
             <exclude>**/benchmark/*.java</exclude>
-            <exclude>**/IT*.java</exclude>
           </excludes>
         </configuration>
       </plugin>

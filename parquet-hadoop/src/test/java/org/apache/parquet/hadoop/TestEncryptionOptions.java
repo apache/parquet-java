@@ -121,7 +121,8 @@ public class TestEncryptionOptions {
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Rule
-  public ErrorCollector errorCollector = new ErrorCollector();
+  public ErrorCollector localErrorCollector = new ErrorCollector();
+  private ErrorCollector errorCollector;
 
   private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data";
 
@@ -288,6 +289,7 @@ public class TestEncryptionOptions {
 
   @Test
   public void testWriteReadEncryptedParquetFiles() throws IOException {
+    this.errorCollector = localErrorCollector;
     Path rootPath = new Path(temporaryFolder.getRoot().getPath());
     LOG.info("======== testWriteReadEncryptedParquetFiles {} ========", rootPath.toString());
     byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
@@ -297,7 +299,8 @@ public class TestEncryptionOptions {
     testReadEncryptedParquetFiles(rootPath, DATA);
   }
 
-  public void testInteropReadEncryptedParquetFiles() throws IOException {
+  public void testInteropReadEncryptedParquetFiles(ErrorCollector errorCollector) throws IOException {
+    this.errorCollector = errorCollector;
     Path rootPath = new Path(PARQUET_TESTING_PATH);
     LOG.info("======== testInteropReadEncryptedParquetFiles {} ========", rootPath.toString());
     byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);

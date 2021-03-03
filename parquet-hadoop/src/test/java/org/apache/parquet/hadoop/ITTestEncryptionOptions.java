@@ -19,6 +19,8 @@
 package org.apache.parquet.hadoop;
 
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.ErrorCollector;
 
 import java.io.IOException;
 
@@ -30,12 +32,14 @@ import java.io.IOException;
  * For a full description and the actual implementation see TestEncryptionOptions.
  */
 public class ITTestEncryptionOptions {
+  @Rule
+  public ErrorCollector errorCollector = new ErrorCollector();
 
   TestEncryptionOptions test = new TestEncryptionOptions();
 
   @Test
   public void testInteropReadEncryptedParquetFiles() throws IOException {
-    test.testInteropReadEncryptedParquetFiles();
+    test.testInteropReadEncryptedParquetFiles(errorCollector);
   }
 
 }
