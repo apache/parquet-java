@@ -594,8 +594,8 @@
       </properties>
     </profile>
 
-    <!-- Profile for CI tests to have less output and initialize
-    or update submodules needed for integration tests -->
+    <!-- Profile for CI tests to have less output and
+         enable integration tests -->
     <profile>
       <id>ci-test</id>
       <properties>
@@ -603,35 +603,6 @@
         <surefire.argLine>-Xmx512m -XX:MaxJavaStackTraceDepth=10</surefire.argLine>
         <skip.integration.tests>false</skip.integration.tests>
       </properties>
-      <build>
-        <pluginManagement>
-          <plugins>
-            <plugin>
-              <groupId>org.codehaus.mojo</groupId>
-              <artifactId>exec-maven-plugin</artifactId>
-              <version>${exec-maven-plugin.version}</version>
-              <executions>
-                <execution>
-                  <id>git submodule update</id>
-                  <phase>initialize</phase>
-                  <configuration>
-                    <executable>git</executable>
-                    <arguments>
-                      <argument>submodule</argument>
-                      <argument>update</argument>
-                      <argument>--init</argument>
-                      <argument>--recursive</argument>
-                    </arguments>
-                  </configuration>
-                  <goals>
-                    <goal>exec</goal>
-                  </goals>
-                </execution>
-              </executions>
-            </plugin>
-          </plugins>
-        </pluginManagement>
-      </build>
     </profile>
 
     <profile>

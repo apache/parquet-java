@@ -19,3 +19,4 @@ target/
 .cache
 *~
 mvn_install.log
+parquet-hadoop/parquet-testing
