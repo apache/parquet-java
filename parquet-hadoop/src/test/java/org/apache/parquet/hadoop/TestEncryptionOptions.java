@@ -20,6 +20,9 @@ package org.apache.parquet.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.parquet.crypto.ColumnDecryptionProperties;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
 import org.apache.parquet.crypto.DecryptionKeyRetrieverMock;
@@ -42,6 +45,12 @@ import org.junit.rules.ErrorCollector;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import okhttp3.ConnectionSpec;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -50,7 +59,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
@@ -116,6 +124,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
  */
 public class TestEncryptionOptions {
   private static final Logger LOG = LoggerFactory.getLogger(TestEncryptionOptions.class);
+  // The link includes a reference to a specific commit. To take a newer version - update this link.
+  private static final String PARQUET_TESTING_REPO = "https://github.com/apache/parquet-testing/raw/40379b3/data/";
 
   @Rule
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -124,7 +134,7 @@ public class TestEncryptionOptions {
   public ErrorCollector localErrorCollector = new ErrorCollector();
   private ErrorCollector errorCollector;
 
-  private static String PARQUET_TESTING_PATH = "../submodules/parquet-testing/data";
+  private static String PARQUET_TESTING_PATH = "parquet-testing/data";
 
   private static final byte[] FOOTER_ENCRYPTION_KEY = "0123456789012345".getBytes();
   private static final byte[][] COLUMN_ENCRYPTION_KEYS = { "1234567890123450".getBytes(),
@@ -299,13 +309,15 @@ public class TestEncryptionOptions {
     testReadEncryptedParquetFiles(rootPath, DATA);
   }
 
-  public void testInteropReadEncryptedParquetFiles(ErrorCollector errorCollector) throws IOException {
+  public void testInteropReadEncryptedParquetFiles(ErrorCollector errorCollector, OkHttpClient httpClient) throws IOException {
     this.errorCollector = errorCollector;
     Path rootPath = new Path(PARQUET_TESTING_PATH);
     LOG.info("======== testInteropReadEncryptedParquetFiles {} ========", rootPath.toString());
+    boolean readOnlyEncrypted = true;
+    downloadInteropFiles(rootPath, readOnlyEncrypted, httpClient);
     byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
     // Read using various decryption configurations.
-    testInteropReadEncryptedParquetFiles(rootPath, true/*readOnlyEncrypted*/, LINEAR_DATA);
+    testInteropReadEncryptedParquetFiles(rootPath, readOnlyEncrypted, LINEAR_DATA);
   }
 
   private void testWriteEncryptedParquetFiles(Path root, List<SingleRow> data) throws IOException {
@@ -415,6 +427,40 @@ public class TestEncryptionOptions {
             encryptionConfiguration, decryptionConfiguration);
         }
         conf.unset("parquet.read.schema");
+      }
+    }
+  }
+
+  private void downloadInteropFiles(Path rootPath, boolean readOnlyEncrypted, OkHttpClient httpClient) throws IOException {
+    LOG.info("Download interop files if needed");
+    Configuration conf = new Configuration();
+    FileSystem fs = rootPath.getFileSystem(conf);
+    LOG.info(rootPath + " exists?: " + fs.exists(rootPath));
+    if (!fs.exists(rootPath)) {
+      LOG.info("Create folder for interop files: " + rootPath);
+      if (!fs.mkdirs(rootPath)) {
+        throw new IOException("Cannot create path " + rootPath);
+      }
+    }
+
+    EncryptionConfiguration[] encryptionConfigurations = EncryptionConfiguration.values();
+    for (EncryptionConfiguration encryptionConfiguration : encryptionConfigurations) {
+      if (readOnlyEncrypted && (EncryptionConfiguration.NO_ENCRYPTION == encryptionConfiguration)) {
+        continue;
+      }
+      String fileName = getFileName(encryptionConfiguration);
+      Path file = new Path(rootPath, fileName);
+      if (!fs.exists(file)) {
+        String downloadUrl = PARQUET_TESTING_REPO + fileName;
+        LOG.info("Download interop file: " + downloadUrl);
+        Request request = new Request.Builder().url(downloadUrl).build();
+        Response response = httpClient.newCall(request).execute();
+        if (!response.isSuccessful()) {
+          throw new IOException("Failed to download file: " + response);
+        }
+        try (FSDataOutputStream fdos = fs.create(file)) {
+          fdos.write(response.body().bytes());
+        }
       }
     }
   }

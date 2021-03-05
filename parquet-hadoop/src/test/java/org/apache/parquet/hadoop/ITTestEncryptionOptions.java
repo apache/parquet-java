@@ -22,6 +22,9 @@ import org.junit.Test;
 import org.junit.Rule;
 import org.junit.rules.ErrorCollector;
 
+import okhttp3.OkHttpClient;
+
+
 import java.io.IOException;
 
 /*
@@ -37,9 +40,11 @@ public class ITTestEncryptionOptions {
 
   TestEncryptionOptions test = new TestEncryptionOptions();
 
+  OkHttpClient httpClient = new OkHttpClient();
+
   @Test
   public void testInteropReadEncryptedParquetFiles() throws IOException {
-    test.testInteropReadEncryptedParquetFiles(errorCollector);
+    test.testInteropReadEncryptedParquetFiles(errorCollector, httpClient);
   }
 
 }
