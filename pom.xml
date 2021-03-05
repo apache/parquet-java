@@ -89,7 +89,6 @@
     <scala.version>2.12.8</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.12</scala.binary.version>
-    <skip.integration.tests>true</skip.integration.tests>
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <scrooge.verion>19.10.0</scrooge.verion>
     <pig.version>0.16.0</pig.version>
@@ -594,14 +593,12 @@
       </properties>
     </profile>
 
-    <!-- Profile for CI tests to have less output and
-         enable integration tests -->
+    <!-- Profile for CI tests to have less output -->
     <profile>
       <id>ci-test</id>
       <properties>
         <surefire.logLevel>WARN</surefire.logLevel>
         <surefire.argLine>-Xmx512m -XX:MaxJavaStackTraceDepth=10</surefire.argLine>
-        <skip.integration.tests>false</skip.integration.tests>
       </properties>
     </profile>
 
