@@ -43,4 +43,4 @@ install:
   - mvn -version
   - mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
   
-script: mvn verify --batch-mode javadoc:javadoc -P travis,$HADOOP_PROFILE | pv -fbi 60 > mvn_verify.log || (cat mvn_verify.log && false)
+script: mvn verify --batch-mode javadoc:javadoc -P ci-test,$HADOOP_PROFILE | pv -fbi 60 > mvn_verify.log || (cat mvn_verify.log && false)
