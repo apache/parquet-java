@@ -134,7 +134,7 @@ public class TestEncryptionOptions {
   public ErrorCollector localErrorCollector = new ErrorCollector();
   private ErrorCollector errorCollector;
 
-  private static String PARQUET_TESTING_PATH = "parquet-testing/data";
+  private static String PARQUET_TESTING_PATH = "target/parquet-testing/data";
 
   private static final byte[] FOOTER_ENCRYPTION_KEY = "0123456789012345".getBytes();
   private static final byte[][] COLUMN_ENCRYPTION_KEYS = { "1234567890123450".getBytes(),
@@ -309,6 +309,13 @@ public class TestEncryptionOptions {
     testReadEncryptedParquetFiles(rootPath, DATA);
   }
 
+  /**
+   * This interop test should be run from a separate integration tests suite, so it's not marked with @Test.
+   * It's not moved into a separate file since it shares many utilities with the unit tests in this file.
+   * @param errorCollector - the error collector of the integration tests suite
+   * @param httpClient - HTTP client to be used for fetching parquet files for interop tests
+   * @throws IOException
+   */
   public void testInteropReadEncryptedParquetFiles(ErrorCollector errorCollector, OkHttpClient httpClient) throws IOException {
     this.errorCollector = errorCollector;
     Path rootPath = new Path(PARQUET_TESTING_PATH);

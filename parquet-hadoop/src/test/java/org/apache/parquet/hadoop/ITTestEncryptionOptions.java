@@ -29,7 +29,7 @@ import java.io.IOException;
 
 /*
  * This file continues the testing in TestEncryptionOptions. This test goals:
- * 4) Perform interoperability tests with other (eg parquet-cpp) writers, by reading
+ *  Perform interoperability tests with other (eg parquet-cpp) writers, by reading
  *    encrypted files produced by these writers.
  *
  * For a full description and the actual implementation see TestEncryptionOptions.
