@@ -214,30 +214,6 @@
     <pluginManagement>
       <plugins>
         <plugin>
-          <groupId>org.codehaus.mojo</groupId>
-          <artifactId>exec-maven-plugin</artifactId>
-          <version>${exec-maven-plugin.version}</version>
-          <executions>
-            <execution>
-              <id>git submodule update</id>
-              <phase>initialize</phase>
-              <configuration>
-                <executable>git</executable>
-                <arguments>
-                  <argument>submodule</argument>
-                  <argument>update</argument>
-                  <argument>--init</argument>
-                  <argument>--recursive</argument>
-                </arguments>
-              </configuration>
-              <goals>
-                <goal>exec</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
-
-        <plugin>
           <!-- Disable the source artifact from ASF parent -->
           <artifactId>maven-assembly-plugin</artifactId>
           <executions>
@@ -643,6 +619,5 @@
         </plugins>
       </build>
     </profile>
-
   </profiles>
 </project>
