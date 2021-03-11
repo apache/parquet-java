@@ -71,9 +71,11 @@ Release Notes - Parquet - Version 1.12.0
 *   [PARQUET-1966](https://issues.apache.org/jira/browse/PARQUET-1966) - Fix build with JDK11 for JDK8
 *   [PARQUET-1970](https://issues.apache.org/jira/browse/PARQUET-1970) - Make minor releases source compatible
 *   [PARQUET-1971](https://issues.apache.org/jira/browse/PARQUET-1971) - Flaky test in github action
+*   [PARQUET-1975](https://issues.apache.org/jira/browse/PARQUET-1975) - Test failure on ARM64 CPU architecture
 *   [PARQUET-1977](https://issues.apache.org/jira/browse/PARQUET-1977) - Invalid data\_page\_offset
 *   [PARQUET-1979](https://issues.apache.org/jira/browse/PARQUET-1979) - Optional bloom\_filter\_offset is filled if no bloom filter is present
 *   [PARQUET-1984](https://issues.apache.org/jira/browse/PARQUET-1984) - Some tests fail on windows
+*   [PARQUET-1992](https://issues.apache.org/jira/browse/PARQUET-1992) - Cannot build from tarball because of git submodules
 
 #### New Feature
 
@@ -105,6 +107,7 @@ Release Notes - Parquet - Version 1.12.0
 *   [PARQUET-1731](https://issues.apache.org/jira/browse/PARQUET-1731) - Use JDK 8 Facilities to Simplify FilteringRecordMaterializer
 *   [PARQUET-1732](https://issues.apache.org/jira/browse/PARQUET-1732) - Call toArray With Empty Array
 *   [PARQUET-1735](https://issues.apache.org/jira/browse/PARQUET-1735) - Clean Up parquet-columns Module
+*   [PARQUET-1736](https://issues.apache.org/jira/browse/PARQUET-1736) - Use StringBuilder instead of StringBuffer
 *   [PARQUET-1737](https://issues.apache.org/jira/browse/PARQUET-1737) - Replace Test Class RandomStr with Apache Commons Lang
 *   [PARQUET-1738](https://issues.apache.org/jira/browse/PARQUET-1738) - Remove unused imports in parquet-column
 *   [PARQUET-1743](https://issues.apache.org/jira/browse/PARQUET-1743) - Add equals to BlockSplitBloomFilter
@@ -148,10 +151,14 @@ Release Notes - Parquet - Version 1.12.0
 *   [PARQUET-1964](https://issues.apache.org/jira/browse/PARQUET-1964) - Properly handle missing/null filter
 *   [PARQUET-1967](https://issues.apache.org/jira/browse/PARQUET-1967) - Upgrade Zstd-jni to 1.4.8-3
 *   [PARQUET-1969](https://issues.apache.org/jira/browse/PARQUET-1969) - Test by GithubAction
+*   [PARQUET-1973](https://issues.apache.org/jira/browse/PARQUET-1973) - Support ZSTD JNI BufferPool
+*   [PARQUET-1988](https://issues.apache.org/jira/browse/PARQUET-1988) - Upgrade to ZSTD 1.4.8-6
+*   [PARQUET-1994](https://issues.apache.org/jira/browse/PARQUET-1994) - Upgrade ZSTD JNI to 1.4.9-1
 
 #### Test
 
 *   [PARQUET-1832](https://issues.apache.org/jira/browse/PARQUET-1832) - Travis fails with too long output
+*   [PARQUET-1980](https://issues.apache.org/jira/browse/PARQUET-1980) - Build and test Apache Parquet on ARM64 CPU architecture
 
 #### Wish
 
