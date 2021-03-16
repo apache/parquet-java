@@ -49,6 +49,7 @@ import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.Types;
@@ -65,11 +66,45 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.io.OutputFile;
+import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.junit.rules.TemporaryFolder;
 
 public class TestParquetWriter {
+
+  /**
+   * A test OutputFile implementation to validate the scenario of an OutputFile is implemented by an API client.
+   */
+  private static class TestOutputFile implements OutputFile {
+
+    private final OutputFile outputFile;
+
+    TestOutputFile(Path path, Configuration conf) throws IOException {
+      outputFile = HadoopOutputFile.fromPath(path, conf);
+    }
+
+    @Override
+    public PositionOutputStream create(long blockSizeHint) throws IOException {
+      return outputFile.create(blockSizeHint);
+    }
+
+    @Override
+    public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
+      return outputFile.createOrOverwrite(blockSizeHint);
+    }
+
+    @Override
+    public boolean supportsBlockSize() {
+      return outputFile.supportsBlockSize();
+    }
+
+    @Override
+    public long defaultBlockSize() {
+      return outputFile.defaultBlockSize();
+    }
+  }
 
   @Test
   public void test() throws Exception {
@@ -97,10 +132,16 @@ public class TestParquetWriter {
     for (int modulo : asList(10, 1000)) {
       for (WriterVersion version : WriterVersion.values()) {
         Path file = new Path(root, version.name() + "_" + modulo);
-        ParquetWriter<Group> writer = new ParquetWriter<Group>(
-            file,
-            new GroupWriteSupport(),
-            UNCOMPRESSED, 1024, 1024, 512, true, false, version, conf);
+        ParquetWriter<Group> writer = ExampleParquetWriter.builder(new TestOutputFile(file, conf))
+            .withCompressionCodec(UNCOMPRESSED)
+            .withRowGroupSize(1024)
+            .withPageSize(1024)
+            .withDictionaryPageSize(512)
+            .enableDictionaryEncoding()
+            .withValidation(false)
+            .withWriterVersion(version)
+            .withConf(conf)
+            .build();
         for (int i = 0; i < 1000; i++) {
           writer.write(
               f.newGroup()
