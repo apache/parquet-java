@@ -65,13 +65,7 @@ public class ShowFooterCommand extends BaseCommand {
   public int run() throws IOException {
     InputFile inputFile = HadoopInputFile.fromPath(qualifiedPath(target), getConf());
 
-    String json;
-    if (raw) {
-      json = readRawFooter(inputFile);
-    } else {
-      json = readFooter(inputFile);
-    }
-    console.info(json);
+    console.info(raw ? readRawFooter(inputFile) : readFooter(inputFile));
 
     return 0;
   }
