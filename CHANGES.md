@@ -40,6 +40,7 @@ Release Notes - Parquet - Version 1.12.0
 #### Bug
 
 *   [PARQUET-1438](https://issues.apache.org/jira/browse/PARQUET-1438) - \[C++\] corrupted files produced on 32-bit architecture (i686)
+*   [PARQUET-1493](https://issues.apache.org/jira/browse/PARQUET-1493) - maven protobuf plugin not work properly
 *   [PARQUET-1455](https://issues.apache.org/jira/browse/PARQUET-1455) - \[parquet-protobuf\] Handle "unknown" enum values for parquet-protobuf
 *   [PARQUET-1554](https://issues.apache.org/jira/browse/PARQUET-1554) - Compilation error when upgrading Scrooge version
 *   [PARQUET-1599](https://issues.apache.org/jira/browse/PARQUET-1599) - Fix to-avro to respect the overwrite option
@@ -76,6 +77,7 @@ Release Notes - Parquet - Version 1.12.0
 *   [PARQUET-1979](https://issues.apache.org/jira/browse/PARQUET-1979) - Optional bloom\_filter\_offset is filled if no bloom filter is present
 *   [PARQUET-1984](https://issues.apache.org/jira/browse/PARQUET-1984) - Some tests fail on windows
 *   [PARQUET-1992](https://issues.apache.org/jira/browse/PARQUET-1992) - Cannot build from tarball because of git submodules
+*   [PARQUET-1999](https://issues.apache.org/jira/browse/PARQUET-1999) - NPE might occur if OutputFile is implemented by the client
 
 #### New Feature
 
