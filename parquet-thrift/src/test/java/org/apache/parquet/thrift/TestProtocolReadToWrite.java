@@ -25,6 +25,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 import org.apache.parquet.thrift.test.Phone;
 import org.apache.parquet.thrift.test.StructWithExtraField;
@@ -358,11 +359,11 @@ public class TestProtocolReadToWrite {
     assertEquals(1, countingHandler.fieldIgnoredCount);
   }
 
-  private TCompactProtocol protocol(OutputStream to) {
+  private TCompactProtocol protocol(OutputStream to) throws TTransportException {
     return new TCompactProtocol(new TIOStreamTransport(to));
   }
 
-  private TCompactProtocol protocol(InputStream from) {
+  private TCompactProtocol protocol(InputStream from) throws TTransportException {
     return new TCompactProtocol(new TIOStreamTransport(from));
   }
 

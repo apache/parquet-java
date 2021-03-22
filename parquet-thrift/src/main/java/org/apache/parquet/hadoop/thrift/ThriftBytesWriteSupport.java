@@ -30,6 +30,7 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.parquet.hadoop.BadConfigurationException;
@@ -156,7 +157,7 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
     }
   }
 
-  private TProtocol protocol(BytesWritable record) {
+  private TProtocol protocol(BytesWritable record) throws TTransportException {
     TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(new ByteArrayInputStream(record.getBytes())));
 
     /* Reduce the chance of OOM when data is corrupted. When readBinary is called on TBinaryProtocol, it reads the length of the binary first,
