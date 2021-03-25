@@ -223,21 +223,6 @@
             </executions>
         </plugin>
         <!--end for scrooge and thrift-->
-
-      <plugin>
-        <groupId>com.github.siom79.japicmp</groupId>
-        <artifactId>japicmp-maven-plugin</artifactId>
-        <version>${japicmp.version}</version>
-        <configuration>
-          <oldVersion>
-            <dependency>
-              <groupId>${project.groupId}</groupId>
-              <artifactId>parquet-scrooge_${scala.binary.version}</artifactId>
-              <version>${previous.version}</version>
-            </dependency>
-          </oldVersion>
-        </configuration>
-      </plugin>
     </plugins>
   </build>
 </project>
