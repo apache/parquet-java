@@ -43,6 +43,8 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    * @param blockSize            HDFS block size
    * @param pageSize             See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
    * @throws IOException if there is an error while writing
+   *
+   * @deprecated will be removed in 2.0.0.; Used ProtoParquetWriter.Builder instead
    */
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
                             CompressionCodecName compressionCodecName, int blockSize,
@@ -62,6 +64,8 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    * @param enableDictionary     Whether to use a dictionary to compress columns.
    * @param validating           to turn on validation using the schema
    * @throws IOException if there is an error while writing
+   *
+   * @deprecated will be removed in 2.0.0.; Used ProtoParquetWriter.Builder instead
    */
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
                             CompressionCodecName compressionCodecName, int blockSize,
@@ -77,12 +81,13 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    * @param file The file name to write to.
    * @param protoMessage         Protobuf message class
    * @throws IOException if there is an error while writing
+   *
+   * @deprecated will be removed in 2.0.0.; Used ProtoParquetWriter.Builder instead
    */
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage) throws IOException {
     this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
             DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
-  
   public static <T> Builder<T> builder(Path file) {
 	    return new Builder<T>(file);
 	}
@@ -90,13 +95,10 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
 	public static <T> Builder<T> builder(OutputFile file) {
 	    return new Builder<T>(file);
 	}
-	
 	private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(Class<? extends Message> protoMessage) {
-		return new ProtoWriteSupport<T>(protoMessage);
+		return new ProtoWriteSupport<>(protoMessage);
 	}
-	  
 	public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
-		  
 		Class<? extends Message> protoMessage = null;
 
 		private Builder(Path file) {
@@ -110,7 +112,6 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
 		protected Builder<T> self() {
 		    return this;
 		}
-		
 		public Builder<T> withMessage(Class<? extends Message> protoMessage){
 			this.protoMessage = protoMessage;
 			return this;
@@ -118,6 +119,6 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
 
 		protected WriteSupport<T> getWriteSupport(Configuration conf) {
 		    return (WriteSupport<T>) ProtoParquetWriter.writeSupport(protoMessage);
-		}    
+		}
 	}
 }

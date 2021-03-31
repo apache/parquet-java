@@ -26,6 +26,7 @@ import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
 
@@ -46,9 +47,7 @@ public class TestUtils {
   }
 
   public static <T extends MessageOrBuilder> List<T> writeAndRead(T... records) throws IOException {
-    Class<? extends Message> cls = inferRecordsClass(records);
-
-    Path file = writeMessages(cls, records);
+    Path file = writeMessages(records);
 
     return readMessages(file);
   }
@@ -198,14 +197,11 @@ public class TestUtils {
    * Writes messages to temporary file and returns its path.
    */
   public static Path writeMessages(MessageOrBuilder... records) throws IOException {
-    return writeMessages(inferRecordsClass(records), records);
-  }
-
-  public static Path writeMessages(Class<? extends Message> cls, MessageOrBuilder... records) throws IOException {
     Path file = someTemporaryFilePath();
+    Class<? extends Message> cls = inferRecordsClass(records);
 
-    ProtoParquetWriter<MessageOrBuilder> writer =
-            new ProtoParquetWriter<MessageOrBuilder>(file, cls);
+    ParquetWriter<MessageOrBuilder> writer =
+      ProtoParquetWriter.<MessageOrBuilder>builder(file).withMessage(cls).build();
 
     for (MessageOrBuilder record : records) {
       writer.write(record);
