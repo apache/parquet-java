@@ -44,8 +44,9 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    * @param pageSize             See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
    * @throws IOException if there is an error while writing
    *
-   * @deprecated will be removed in 2.0.0.; Used ProtoParquetWriter.Builder instead
+   * @deprecated will be removed in 2.0.0.; Use ProtoParquetWriter.Builder instead
    */
+  @Deprecated
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
                             CompressionCodecName compressionCodecName, int blockSize,
                             int pageSize) throws IOException {
@@ -65,8 +66,9 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    * @param validating           to turn on validation using the schema
    * @throws IOException if there is an error while writing
    *
-   * @deprecated will be removed in 2.0.0.; Used ProtoParquetWriter.Builder instead
+   * @deprecated will be removed in 2.0.0.; Use ProtoParquetWriter.Builder instead
    */
+  @Deprecated
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
                             CompressionCodecName compressionCodecName, int blockSize,
                             int pageSize, boolean enableDictionary, boolean validating) throws IOException {
@@ -82,8 +84,9 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    * @param protoMessage         Protobuf message class
    * @throws IOException if there is an error while writing
    *
-   * @deprecated will be removed in 2.0.0.; Used ProtoParquetWriter.Builder instead
+   * @deprecated will be removed in 2.0.0.; Use ProtoParquetWriter.Builder instead
    */
+  @Deprecated
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage) throws IOException {
     this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
             DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
