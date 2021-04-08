@@ -228,4 +228,9 @@ public class InterningProtocol extends TProtocol {
     return delegate.toString();
   }
 
+  @Override
+  public int getMinSerializedSize(byte type) throws TException {
+    return delegate.getMinSerializedSize(type);
+  }
+
 }

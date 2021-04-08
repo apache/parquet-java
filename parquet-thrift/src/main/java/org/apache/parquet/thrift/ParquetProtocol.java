@@ -274,4 +274,9 @@ public abstract class ParquetProtocol extends TProtocol {
     throw exception();
   }
 
+  @Override
+  public int getMinSerializedSize(byte type) throws TException {
+    throw exception();
+  }
+
 }

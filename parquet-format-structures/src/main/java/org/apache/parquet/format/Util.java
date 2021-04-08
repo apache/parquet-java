@@ -45,6 +45,7 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TMemoryBuffer;
+import org.apache.thrift.transport.TTransportException;
 import org.apache.parquet.format.event.Consumers.Consumer;
 import org.apache.parquet.format.event.Consumers.DelegatingFieldConsumer;
 import org.apache.parquet.format.event.EventBasedThriftReader;
@@ -336,11 +337,11 @@ public class Util {
     }
   }
 
-  private static TProtocol protocol(OutputStream to) {
+  private static TProtocol protocol(OutputStream to) throws TTransportException {
     return protocol(new TIOStreamTransport(to));
   }
 
-  private static TProtocol protocol(InputStream from) {
+  private static TProtocol protocol(InputStream from) throws TTransportException {
     return protocol(new TIOStreamTransport(from));
   }
 

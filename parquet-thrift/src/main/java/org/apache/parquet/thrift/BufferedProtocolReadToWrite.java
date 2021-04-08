@@ -728,6 +728,11 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public ByteBuffer readBinary() throws TException {
       return null;
     }
+
+    @Override
+    public int getMinSerializedSize(byte type) throws TException {
+      return 0;
+    }
   }
 
 }

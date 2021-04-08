@@ -40,8 +40,8 @@ public class CliUtils {
    * @throws IOException if any Thrift error occurs during the serialization
    */
   public static String toJson(TBase<?, ?> tbase) throws IOException {
-    TSerializer serializer = new TSerializer(new TSimpleJSONProtocol.Factory());
     try {
+      TSerializer serializer = new TSerializer(new TSimpleJSONProtocol.Factory());
       return serializer.toString(tbase);
     } catch (TException e) {
       // Wrapping the exception the not to expose the shaded Thrift class TException

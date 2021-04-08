@@ -85,7 +85,7 @@
     <parquet.format.version>2.8.0</parquet.format.version>
     <previous.version>1.12.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
-    <format.thrift.executable>thrift</format.thrift.executable>
+    <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <scala.version>2.12.8</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.12</scala.binary.version>
@@ -94,8 +94,8 @@
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.13.0</thrift.version>
-    <format.thrift.version>0.13.0</format.thrift.version>
+    <thrift.version>0.14.1</thrift.version>
+    <format.thrift.version>${thrift.version}</format.thrift.version>
     <fastutil.version>8.4.2</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.22</slf4j.version>
@@ -584,13 +584,6 @@
           </plugin>
         </plugins>
       </build>
-    </profile>
-
-    <profile>
-      <id>thrift9</id>
-      <properties>
-        <thrift.version>0.9.0</thrift.version>
-      </properties>
     </profile>
 
     <!-- Profile for CI tests to have less output -->
