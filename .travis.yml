@@ -41,6 +41,6 @@ install:
   - sudo apt-get install -qq maven
   - java -version
   - mvn -version
-  - mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true | pv -fbi 60 > mvn_install.log || (cat mvn_install.log && false)
+  - mvn install --quiet --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true
   
-script: mvn verify --batch-mode javadoc:javadoc -P ci-test,$HADOOP_PROFILE | pv -fbi 60 > mvn_verify.log || (cat mvn_verify.log && false)
+script: mvn verify --quiet --batch-mode javadoc:javadoc -P ci-test,$HADOOP_PROFILE
