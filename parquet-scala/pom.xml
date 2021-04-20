@@ -61,7 +61,13 @@
     <dependency>
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.binary.version}</artifactId>
-      <version>3.0.1</version>
+      <version>3.2.7</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.scalatestplus</groupId>
+      <artifactId>junit-4-13_${scala.binary.version}</artifactId>
+      <version>3.2.7.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -77,15 +83,6 @@
       <plugin>
         <groupId>net.alchim31.maven</groupId>
         <artifactId>scala-maven-plugin</artifactId>
-        <version>${scala-maven-plugin.version}</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>compile</goal>
-              <goal>testCompile</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

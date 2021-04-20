@@ -20,10 +20,9 @@ package org.apache.parquet.filter2.dsl
 
 import java.lang.{Double => JDouble, Integer => JInt}
 import java.io.Serializable
-
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
-import org.scalatest.junit.JUnitRunner
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatestplus.junit.JUnitRunner
 import org.apache.parquet.filter2.predicate.Operators.{Or, UserDefined, UserDefinedByClass, DoubleColumn => JDoubleColumn, IntColumn => JIntColumn}
 import org.apache.parquet.filter2.predicate.{FilterApi, Statistics, UserDefinedPredicate}
 
@@ -36,7 +35,7 @@ class DummyFilter extends UserDefinedPredicate[JInt] with Serializable {
 }
 
 @RunWith(classOf[JUnitRunner])
-class DslTest extends FlatSpec{
+class DslTest extends AnyFlatSpec{
   import org.apache.parquet.filter2.dsl.Dsl._
 
   "predicates" should "be correctly constructed using the dsl" in {

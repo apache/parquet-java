@@ -89,7 +89,7 @@
     <scala.version>2.12.13</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.12</scala.binary.version>
-    <scala-maven-plugin.version>4.4.0</scala-maven-plugin.version>
+    <scala-maven-plugin.version>4.4.1</scala-maven-plugin.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
@@ -142,7 +142,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.13.1</version>
+      <version>4.13.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -307,6 +307,19 @@
             </execution>
           </executions>
         </plugin>
+        <plugin>
+          <groupId>net.alchim31.maven</groupId>
+          <artifactId>scala-maven-plugin</artifactId>
+          <version>${scala-maven-plugin.version}</version>
+          <executions>
+            <execution>
+              <goals>
+                <goal>compile</goal>
+                <goal>testCompile</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -383,7 +396,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.10</version>
+        <version>2.22.2</version>
         <configuration>
           <argLine>${surefire.argLine}</argLine>
           <systemPropertyVariables>
@@ -408,7 +421,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>buildnumber-maven-plugin</artifactId>
-        <version>1.1</version>
+        <version>1.4</version>
         <executions>
           <execution>
             <phase>validate</phase>
@@ -422,7 +435,7 @@
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
-        <version>0.12</version>
+        <version>0.13</version>
         <executions>
           <execution>
             <phase>test</phase>
