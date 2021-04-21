@@ -37,7 +37,6 @@ import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESS
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,14 +44,13 @@ import java.util.concurrent.Callable;
 
 import net.openhft.hashing.LongHashFunction;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.hadoop.util.HadoopStreams;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.Types;
@@ -80,35 +78,32 @@ public class TestParquetWriter {
   /**
    * A test OutputFile implementation to validate the scenario of an OutputFile is implemented by an API client.
    */
-  private class TestOutputFile implements OutputFile {
+  private static class TestOutputFile implements OutputFile {
 
-    private final File file;
-    private final FileSystem.Statistics stats;
+    private final OutputFile outputFile;
 
-    TestOutputFile() throws IOException {
-      this.file = temp.newFile();
-      this.stats = new FileSystem.Statistics("TestParquetWriter");
+    TestOutputFile(Path path, Configuration conf) throws IOException {
+      outputFile = HadoopOutputFile.fromPath(path, conf);
     }
 
     @Override
     public PositionOutputStream create(long blockSizeHint) throws IOException {
-      return createOrOverwrite(blockSizeHint);
+      return outputFile.create(blockSizeHint);
     }
 
     @Override
     public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
-      FileOutputStream fos = new FileOutputStream(file);
-      return HadoopStreams.wrap(new FSDataOutputStream(fos, this.stats));
+      return outputFile.createOrOverwrite(blockSizeHint);
     }
 
     @Override
     public boolean supportsBlockSize() {
-      return false;
+      return outputFile.supportsBlockSize();
     }
 
     @Override
     public long defaultBlockSize() {
-      return 0;
+      return outputFile.defaultBlockSize();
     }
   }
 
@@ -138,7 +133,7 @@ public class TestParquetWriter {
     for (int modulo : asList(10, 1000)) {
       for (WriterVersion version : WriterVersion.values()) {
         Path file = new Path(root, version.name() + "_" + modulo);
-        ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
+        ParquetWriter<Group> writer = ExampleParquetWriter.builder(new TestOutputFile(file, conf))
             .withCompressionCodec(UNCOMPRESSED)
             .withRowGroupSize(1024)
             .withPageSize(1024)
@@ -287,7 +282,17 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void testParquetFileNotFlushedWhenRowCountLimitsAreNotExceeded() throws IOException {
+  public void testParquetFileWritesExpectedNumberOfBlocks() throws IOException {
+    testParquetFileNumberOfBlocks(ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK,
+                                  ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+                                  1);
+    testParquetFileNumberOfBlocks(1, 1, 3);
+
+  }
+
+  private void testParquetFileNumberOfBlocks(int minRowCountForPageSizeCheck,
+                                             int maxRowCountForPageSizeCheck,
+                                             int expectedNumberOfBlocks) throws IOException {
     MessageType schema = Types
       .buildMessage()
       .required(BINARY)
@@ -295,123 +300,30 @@ public class TestParquetWriter {
       .named("str")
       .named("msg");
 
-    TestOutputFile file = new TestOutputFile();
-    ParquetWriter<Group> writer = getParquetWriterBuilder(schema, file)
-      .withMinRowCountForPageSizeCheck(4)
-      .withMaxRowCountForPageSizeCheck(4)
-      .build();
-
-    writeRecords(writer, schema);
-    assertHasNotFlushed(file);
-  }
-
-  @Test
-  public void testParquetFileIsFlushedWhenMinRowCountIsExceeded() throws IOException {
-    MessageType schema = Types
-      .buildMessage()
-      .required(BINARY)
-      .as(stringType())
-      .named("str")
-      .named("msg");
-
-    TestOutputFile file = new TestOutputFile();
-    ParquetWriter<Group> writer = getParquetWriterBuilder(schema, file)
-      .withMinRowCountForPageSizeCheck(3)
-      .withMaxRowCountForPageSizeCheck(4)
-      .build();
-
-    writeRecords(writer, schema);
-
-    assertHasFlushed(file, 3, 1);
-  }
-
-  @Test
-  public void testParquetFileIsNotFlushedIfMinRowCountIsNotExceeded() throws IOException {
-    MessageType schema = Types
-      .buildMessage()
-      .required(BINARY)
-      .as(stringType())
-      .named("str")
-      .named("msg");
-
-    TestOutputFile file = new TestOutputFile();
-    ParquetWriter<Group> writer = getParquetWriterBuilder(schema, file)
-      .withMinRowCountForPageSizeCheck(4)
-      .withMaxRowCountForPageSizeCheck(2)
-      .build();
-
-    writeRecords(writer, schema);
-
-    assertHasNotFlushed(file);
-  }
-
-  @Test
-  public void testParquetFileIsFlushedAfterEachRecord() throws IOException {
-    MessageType schema = Types
-      .buildMessage()
-      .required(BINARY)
-      .as(stringType())
-      .named("str")
-      .named("msg");
-
-    TestOutputFile file = new TestOutputFile();
-    ParquetWriter<Group> writer = getParquetWriterBuilder(schema, file)
-      .withMinRowCountForPageSizeCheck(1)
-      .withMaxRowCountForPageSizeCheck(4)
-      .build();
-
-    writeRecords(writer, schema);
-
-    assertHasFlushed(file, 3, 3);
-  }
-
-  @Test
-  public void testParquetFileNotFlushingAllRows() throws IOException {
-    MessageType schema = Types
-      .buildMessage()
-      .required(BINARY)
-      .as(stringType())
-      .named("str")
-      .named("msg");
-
-    TestOutputFile file = new TestOutputFile();
-    ParquetWriter<Group> writer = getParquetWriterBuilder(schema, file)
-      .withMinRowCountForPageSizeCheck(2)
-      .withMaxRowCountForPageSizeCheck(3)
-      .build();
-
-    writeRecords(writer, schema);
-
-    assertHasFlushed(file, 2, 1);
-  }
-
-  private ExampleParquetWriter.Builder getParquetWriterBuilder(MessageType schema,
-                                                               TestOutputFile file) throws IOException {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
-    return ExampleParquetWriter.builder(file)
+
+    File file = temp.newFile();
+    temp.delete();
+    Path path = new Path(file.getAbsolutePath());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
       .withConf(conf)
       // Set row group size to 1, to make sure we flush every time
       // minRowCountForPageSizeCheck or maxRowCountForPageSizeCheck is exceeded
-      .withRowGroupSize(1);
-  }
+      .withRowGroupSize(1)
+      .withMinRowCountForPageSizeCheck(minRowCountForPageSizeCheck)
+      .withMaxRowCountForPageSizeCheck(maxRowCountForPageSizeCheck)
+      .build()) {
 
-  private void writeRecords(ParquetWriter<Group> writer, MessageType schema) throws IOException {
-    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
-    writer.write(factory.newGroup().append("str", "foo"));
-    writer.write(factory.newGroup().append("str", "bar"));
-    writer.write(factory.newGroup().append("str", "baz"));
-  }
+      SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+      writer.write(factory.newGroup().append("str", "foo"));
+      writer.write(factory.newGroup().append("str", "bar"));
+      writer.write(factory.newGroup().append("str", "baz"));
+    }
 
-  private void assertHasNotFlushed(TestOutputFile file) {
-    int emptyFileLength = ParquetFileWriter.MAGIC.length;
-    assertEquals(emptyFileLength, file.stats.getBytesWritten());
-  }
-
-  private void assertHasFlushed(TestOutputFile file, int numWrites, int numFlushes) {
-    int emptyFileLength = ParquetFileWriter.MAGIC.length;
-    // Each write in "writerRecords" writes 7B, and every flush writers 23B
-    assertEquals(emptyFileLength + 7L * numWrites + 23L * numFlushes,
-                 file.stats.getBytesWritten());
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      ParquetMetadata footer = reader.getFooter();
+      assertEquals(expectedNumberOfBlocks, footer.getBlocks().size());
+    }
   }
 }
