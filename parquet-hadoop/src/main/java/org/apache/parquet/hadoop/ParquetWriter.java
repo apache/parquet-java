@@ -616,6 +616,28 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets the minimum number of rows to write before a page size check is done.
+     *
+     * @param min writes at least `min` rows before invoking a page size check
+     * @return this builder for method chaining
+     */
+    public SELF withMinRowCountForPageSizeCheck(int min) {
+      encodingPropsBuilder.withMinRowCountForPageSizeCheck(min);
+      return self();
+    }
+
+    /**
+     * Sets the maximum number of rows to write before a page size check is done.
+     *
+     * @param max makes a page size check after `max` rows have been written
+     * @return this builder for method chaining
+     */
+    public SELF withMaxRowCountForPageSizeCheck(int max) {
+      encodingPropsBuilder.withMaxRowCountForPageSizeCheck(max);
+      return self();
+    }
+
+    /**
      * Set a property that will be available to the read path. For writers that use a Hadoop
      * configuration, this is the recommended way to add configuration values.
      *

@@ -45,6 +45,7 @@ import java.util.concurrent.Callable;
 import net.openhft.hashing.LongHashFunction;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -277,6 +278,52 @@ public class TestParquetWriter {
     for (String name: testNames) {
       assertTrue(bloomFilter.findHash(
         LongHashFunction.xx(0).hashBytes(Binary.fromString(name).toByteBuffer())));
+    }
+  }
+
+  @Test
+  public void testParquetFileWritesExpectedNumberOfBlocks() throws IOException {
+    testParquetFileNumberOfBlocks(ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK,
+                                  ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+                                  1);
+    testParquetFileNumberOfBlocks(1, 1, 3);
+
+  }
+
+  private void testParquetFileNumberOfBlocks(int minRowCountForPageSizeCheck,
+                                             int maxRowCountForPageSizeCheck,
+                                             int expectedNumberOfBlocks) throws IOException {
+    MessageType schema = Types
+      .buildMessage()
+      .required(BINARY)
+      .as(stringType())
+      .named("str")
+      .named("msg");
+
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    File file = temp.newFile();
+    temp.delete();
+    Path path = new Path(file.getAbsolutePath());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+      .withConf(conf)
+      // Set row group size to 1, to make sure we flush every time
+      // minRowCountForPageSizeCheck or maxRowCountForPageSizeCheck is exceeded
+      .withRowGroupSize(1)
+      .withMinRowCountForPageSizeCheck(minRowCountForPageSizeCheck)
+      .withMaxRowCountForPageSizeCheck(maxRowCountForPageSizeCheck)
+      .build()) {
+
+      SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+      writer.write(factory.newGroup().append("str", "foo"));
+      writer.write(factory.newGroup().append("str", "bar"));
+      writer.write(factory.newGroup().append("str", "baz"));
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      ParquetMetadata footer = reader.getFooter();
+      assertEquals(expectedNumberOfBlocks, footer.getBlocks().size());
     }
   }
 }
