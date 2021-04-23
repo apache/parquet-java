@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.parquet.column.statistics.*;
+import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.ContextUtil;
@@ -328,7 +329,7 @@ public class TestThriftToParquetFileWriter {
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, parquetFilePath);
     MessageType schema = readFooter.getFileMetaData().getSchema();
 
-    readSupport.init(configuration, null, schema);
+    readSupport.init(new InitContext(configuration, null, schema));
     return new ParquetReader<Group>(parquetFilePath, readSupport);
   }
 
