@@ -55,7 +55,7 @@ class Offsets {
          *   (0 cannot be a valid offset because of the MAGIC bytes)
          * - The firstDataPageOffset might point to the dictionary page
          */
-        dictionaryPageSize = readDictionaryPageSize(input, newChunkStart);
+        dictionaryPageSize = readDictionaryPageSize(input, chunk);
       } else {
         dictionaryPageSize = chunk.getFirstDataPageOffset() - chunk.getDictionaryPageOffset();
       }
@@ -68,12 +68,14 @@ class Offsets {
     return new Offsets(firstDataPageOffset, dictionaryPageOffset);
   }
 
-  private static long readDictionaryPageSize(SeekableInputStream in, long pos) throws IOException {
+  private static long readDictionaryPageSize(SeekableInputStream in, ColumnChunkMetaData chunk) throws IOException {
     long origPos = -1;
     try {
       origPos = in.getPos();
+      in.seek(chunk.getStartingPos());
+      long headerStart = in.getPos();
       PageHeader header = Util.readPageHeader(in);
-      long headerSize = in.getPos() - origPos;
+      long headerSize = in.getPos() - headerStart;
       return headerSize + header.getCompressed_page_size();
     } finally {
       if (origPos != -1) {
