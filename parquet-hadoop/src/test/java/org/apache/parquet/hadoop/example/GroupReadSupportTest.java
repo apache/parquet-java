@@ -1,4 +1,4 @@
-/*
+/* 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * 
  *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,9 +18,7 @@
  */
 package org.apache.parquet.hadoop.example;
 
-import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.hadoop.api.InitContext;
 import org.junit.Test;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.schema.MessageType;
@@ -45,10 +43,10 @@ public class GroupReadSupportTest {
   public void testInitWithoutSpecifyingRequestSchema() throws Exception {
     GroupReadSupport s = new GroupReadSupport();
     Configuration configuration = new Configuration();
-    Map<String, Set<String>> keyValueMetaData = new HashMap<>();
+    Map<String, String> keyValueMetaData = new HashMap<String, String>();
     MessageType fileSchema = MessageTypeParser.parseMessageType(fullSchemaStr);
 
-    ReadSupport.ReadContext context = s.init(new InitContext(configuration, keyValueMetaData, fileSchema));
+    ReadSupport.ReadContext context = s.init(configuration, keyValueMetaData, fileSchema);
     assertEquals(context.getRequestedSchema(), fileSchema);
   }
 
@@ -56,12 +54,12 @@ public class GroupReadSupportTest {
   public void testInitWithPartialSchema() {
     GroupReadSupport s = new GroupReadSupport();
     Configuration configuration = new Configuration();
-    Map<String, Set<String>> keyValueMetaData = new HashMap<>();
+    Map<String, String> keyValueMetaData = new HashMap<String, String>();
     MessageType fileSchema = MessageTypeParser.parseMessageType(fullSchemaStr);
     MessageType partialSchema = MessageTypeParser.parseMessageType(partialSchemaStr);
     configuration.set(ReadSupport.PARQUET_READ_SCHEMA, partialSchemaStr);
 
-    ReadSupport.ReadContext context = s.init(new InitContext(configuration, keyValueMetaData, fileSchema));
+    ReadSupport.ReadContext context = s.init(configuration, keyValueMetaData, fileSchema);
     assertEquals(context.getRequestedSchema(), partialSchema);
   }
 }
