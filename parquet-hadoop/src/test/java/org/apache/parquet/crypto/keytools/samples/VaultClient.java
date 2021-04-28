@@ -30,7 +30,7 @@ import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.KmsClient;
-import org.codehaus.jackson.map.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -171,7 +171,7 @@ public class VaultClient implements KmsClient {
   private static String parseReturn(String response, String searchKey) {
     String matchingValue;
     try {
-      matchingValue = objectMapper.readTree(response).findValue(searchKey).getTextValue();
+      matchingValue = objectMapper.readTree(response).findValue(searchKey).textValue();
     } catch (IOException e) {
       throw new ParquetCryptoRuntimeException("Failed to parse vault response. " + searchKey + " not found."  + response, e);
     }
