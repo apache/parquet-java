@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * parquet.dictionary.page.size=1048576 # in bytes, default = 1 * 1024 * 1024
  *
  * # The compression algorithm used to compress pages
- * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
+ * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO, ZSTD. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
  *
  * # The write support class to convert the records written to the OutputFormat into the events accepted by the record consumer
  * # Usually provided by a specific ParquetOutputFormat subclass
